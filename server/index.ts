@@ -209,6 +209,7 @@ process.on('uncaughtException', (error: Error) => {
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
               campaign_id TEXT NOT NULL,
               source_type TEXT NOT NULL,
+              platform_context TEXT,
               display_name TEXT,
               currency TEXT,
               mapping_config TEXT,
@@ -216,6 +217,12 @@ process.on('uncaughtException', (error: Error) => {
               connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+          `);
+
+          // Migration: platform-scoped revenue sources (LinkedIn vs GA4). Legacy rows may be null (treated as GA4).
+          await db.execute(sql`
+            ALTER TABLE revenue_sources
+            ADD COLUMN IF NOT EXISTS platform_context TEXT;
           `);
 
           await db.execute(sql`

@@ -30,6 +30,7 @@ interface UploadAdditionalDataModalProps {
   defaultGoogleSheetsUseCase?: 'view' | 'enhance'; // Default selection when the use-case step is shown
   prefillGoogleSheetsEditMode?: boolean; // If true, open Google Sheets mapping prefilled (for "Update" / edit flows)
   titleOverride?: string; // Override modal title (e.g. "Edit revenue source")
+  onOpenRevenueCsvWizard?: () => void; // Launch GA4-parity CSV revenue wizard (used by LinkedIn "Upload CSV")
 }
 
 type DataSourceType = 'google-sheets' | 'crm' | 'ecommerce' | 'custom-integration' | 'upload-file' | null;
@@ -51,7 +52,8 @@ export function UploadAdditionalDataModal({
   showGoogleSheetsUseCaseStep = false,
   defaultGoogleSheetsUseCase = 'view',
   prefillGoogleSheetsEditMode = false,
-  titleOverride
+  titleOverride,
+  onOpenRevenueCsvWizard
 }: UploadAdditionalDataModalProps) {
   const [selectedSource, setSelectedSource] = useState<DataSourceType>(googleSheetsOnly ? 'google-sheets' : null);
   const [selectedCrmProvider, setSelectedCrmProvider] = useState<'hubspot' | 'salesforce' | null>(null);
@@ -622,15 +624,23 @@ export function UploadAdditionalDataModal({
             {/* Upload File */}
             <Card 
               className="cursor-pointer hover:border-blue-500 hover:shadow-md transition-all md:col-span-2"
-              onClick={() => handleComingSoon('File Upload')}
+              onClick={() => {
+                // LinkedIn: allow CSV upload and reuse GA4's CSV revenue wizard UX.
+                if (onOpenRevenueCsvWizard) {
+                  onClose();
+                  onOpenRevenueCsvWizard();
+                  return;
+                }
+                handleComingSoon('File Upload');
+              }}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Upload className="w-5 h-5 text-slate-600" />
-                  Upload File
+                  Upload CSV
                 </CardTitle>
                 <CardDescription>
-                  Upload CSV or Excel files directly
+                  Upload revenue data from a CSV file
                 </CardDescription>
               </CardHeader>
             </Card>

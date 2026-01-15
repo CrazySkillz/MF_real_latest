@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
+import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { SalesforceDataViewerModal } from "@/components/SalesforceDataViewerModal";
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
 import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
@@ -118,6 +119,9 @@ export default function LinkedInAnalytics() {
   const [isCampaignDetailsModalOpen, setIsCampaignDetailsModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isUploadDataModalOpen, setIsUploadDataModalOpen] = useState(false);
+  const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
+  const [revenueWizardInitialStep, setRevenueWizardInitialStep] = useState<any>("select");
+  const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
   const [isSalesforceViewerOpen, setIsSalesforceViewerOpen] = useState(false);
   const [salesforceViewerSourceId, setSalesforceViewerSourceId] = useState<string | null>(null);
   const [isSalesforceRevenueWizardOpen, setIsSalesforceRevenueWizardOpen] = useState(false);
@@ -131,6 +135,12 @@ export default function LinkedInAnalytics() {
   const openAddRevenueModal = (intent: 'add' | 'edit' = 'add') => {
     setRevenueModalIntent(intent);
     setIsUploadDataModalOpen(true);
+  };
+
+  const openRevenueCsvWizard = () => {
+    setRevenueWizardInitialSource(null);
+    setRevenueWizardInitialStep("csv");
+    setIsRevenueWizardOpen(true);
   };
 
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
@@ -8982,6 +8992,7 @@ export default function LinkedInAnalytics() {
           campaignId={campaignId}
           returnUrl={window.location.pathname + window.location.search}
           titleOverride={revenueModalIntent === 'edit' ? 'Edit revenue source' : undefined}
+          onOpenRevenueCsvWizard={openRevenueCsvWizard}
           onDataConnected={() => {
             // Refresh all data after connection to show updated conversion values
             queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
@@ -9008,6 +9019,26 @@ export default function LinkedInAnalytics() {
           autoStartMappingOnGoogleSheetsConnect={true}
           showGoogleSheetsUseCaseStep={false}
           defaultGoogleSheetsUseCase="enhance"
+        />
+      )}
+
+      {/* LinkedIn revenue CSV wizard (GA4-parity flow) */}
+      {campaignId && (
+        <AddRevenueWizardModal
+          open={isRevenueWizardOpen}
+          onOpenChange={setIsRevenueWizardOpen}
+          campaignId={campaignId}
+          currency={(campaign as any)?.currency || "USD"}
+          dateRange={"to_date"}
+          platformContext="linkedin"
+          initialStep={revenueWizardInitialStep as any}
+          initialSource={revenueWizardInitialSource || undefined}
+          onSuccess={() => {
+            // Recompute LinkedIn metrics after revenue import
+            queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
+            queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
+            queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
+          }}
         />
       )}
 

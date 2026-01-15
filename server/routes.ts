@@ -3541,35 +3541,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.er = parseFloat(((totalEngagements / totalImpressions) * 100).toFixed(2));
       }
       
-      // Revenue Metrics (only if conversion value is set)
-      // CRITICAL: Explicitly set hasRevenueTracking based on conversionValue AND active mappings
-      // If no active Google Sheets with mappings, force hasRevenueTracking to 0 even if conversionValue > 0
-      // This ensures that when a mapped Google Sheet is deleted, revenue metrics disappear immediately
-      
-      if (conversionValue > 0 && hasActiveGoogleSheetsWithMappings) {
-        aggregated.hasRevenueTracking = 1; // Flag to indicate revenue tracking is enabled
-        aggregated.conversionValue = conversionValue;
-        aggregated.totalRevenue = parseFloat(totalRevenue.toFixed(2));
-        aggregated.profit = parseFloat(profit.toFixed(2));
+      // Revenue Metrics
+      // Enable revenue tracking if EITHER:
+      // - a mapped Conversion Value exists (Google Sheets mapping flow), OR
+      // - a LinkedIn-scoped imported revenue source exists (CSV/manual/Sheets/CRM) and we can derive conversion value from (revenue ÷ conversions).
+
+      const isoDateUTC = (d: any) => {
+        try {
+          const dt = d instanceof Date ? d : new Date(d);
+          if (Number.isNaN(dt.getTime())) return null;
+          return dt.toISOString().slice(0, 10);
+        } catch {
+          return null;
+        }
+      };
+      const yesterdayUTC = () => {
+        const now = new Date();
+        const y = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+        return y.toISOString().slice(0, 10);
+      };
+
+      let importedRevenueToDate = 0;
+      try {
+        const startDate =
+          isoDateUTC((campaign as any)?.startDate) ||
+          isoDateUTC((campaign as any)?.createdAt) ||
+          "2020-01-01";
+        const endDate = yesterdayUTC();
+        const totals = await storage.getRevenueTotalForRange(session.campaignId, startDate, endDate, 'linkedin');
+        importedRevenueToDate = Number(totals?.totalRevenue || 0);
+      } catch {
+        importedRevenueToDate = 0;
+      }
+
+      const hasImportedRevenue = importedRevenueToDate > 0;
+      const canDeriveConvValue = hasImportedRevenue && totalConversions > 0;
+      const derivedConversionValue = canDeriveConvValue ? (importedRevenueToDate / totalConversions) : 0;
+
+      const hasMappedConversionValue = conversionValue > 0 && hasActiveGoogleSheetsWithMappings;
+      const shouldEnableRevenueTracking = hasMappedConversionValue || canDeriveConvValue;
+
+      if (shouldEnableRevenueTracking) {
+        const effectiveConversionValue = hasMappedConversionValue ? conversionValue : derivedConversionValue;
+        const effectiveTotalRevenue = hasMappedConversionValue ? (totalConversions * effectiveConversionValue) : importedRevenueToDate;
+        const effectiveProfit = effectiveTotalRevenue - totalSpend;
+
+        aggregated.hasRevenueTracking = 1;
+        aggregated.conversionValue = parseFloat(Number(effectiveConversionValue).toFixed(2));
+        aggregated.totalRevenue = parseFloat(Number(effectiveTotalRevenue).toFixed(2));
+        aggregated.profit = parseFloat(Number(effectiveProfit).toFixed(2));
         
         // ROI - Return on Investment: ((Revenue - Spend) / Spend) × 100
         if (totalSpend > 0) {
-          aggregated.roi = parseFloat((((totalRevenue - totalSpend) / totalSpend) * 100).toFixed(2));
+          aggregated.roi = parseFloat((((effectiveTotalRevenue - totalSpend) / totalSpend) * 100).toFixed(2));
         }
         
         // ROAS - Return on Ad Spend: Revenue / Spend
         if (totalSpend > 0) {
-          aggregated.roas = parseFloat((totalRevenue / totalSpend).toFixed(2));
+          aggregated.roas = parseFloat((effectiveTotalRevenue / totalSpend).toFixed(2));
         }
         
         // Profit Margin: (Profit / Revenue) × 100
-        if (totalRevenue > 0) {
-          aggregated.profitMargin = parseFloat(((profit / totalRevenue) * 100).toFixed(2));
+        if (effectiveTotalRevenue > 0) {
+          aggregated.profitMargin = parseFloat(((effectiveProfit / effectiveTotalRevenue) * 100).toFixed(2));
         }
         
         // Revenue Per Lead: Revenue / Leads
         if (totalLeads > 0) {
-          aggregated.revenuePerLead = parseFloat((totalRevenue / totalLeads).toFixed(2));
+          aggregated.revenuePerLead = parseFloat((effectiveTotalRevenue / totalLeads).toFixed(2));
         }
       } else {
         // Force hasRevenueTracking to 0 if no active mappings OR conversionValue is 0

@@ -31,8 +31,10 @@ export function AddRevenueWizardModal(props: {
   dateRange: string;
   initialSource?: any;
   onSuccess?: () => void;
+  platformContext?: 'ga4' | 'linkedin';
+  initialStep?: Step;
 }) {
-  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource } = props;
+  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource, platformContext = 'ga4', initialStep } = props;
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>("select");
@@ -86,7 +88,7 @@ export function AddRevenueWizardModal(props: {
   const [sheetsProcessing, setSheetsProcessing] = useState(false);
 
   const resetAll = () => {
-    setStep("select");
+    setStep(initialStep || "select");
     setManualAmount("");
     setSavingManual(false);
     setCsvFile(null);
@@ -112,6 +114,14 @@ export function AddRevenueWizardModal(props: {
 
   useEffect(() => {
     if (!open) resetAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!initialStep) return;
+    // Only apply on first open to avoid stomping user navigation.
+    setStep(initialStep);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -282,7 +292,7 @@ export function AddRevenueWizardModal(props: {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/process/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amt, currency, dateRange }),
+        body: JSON.stringify({ amount: amt, currency, dateRange, platformContext }),
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save revenue");
@@ -362,6 +372,7 @@ export function AddRevenueWizardModal(props: {
       const fd = new FormData();
       fd.append("file", csvFile);
       fd.append("mapping", JSON.stringify(mapping));
+      fd.append("platformContext", platformContext);
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/process`, { method: "POST", body: fd });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process CSV");
@@ -443,7 +454,7 @@ export function AddRevenueWizardModal(props: {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/process`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connectionId: sheetsConnectionId, mapping }),
+        body: JSON.stringify({ connectionId: sheetsConnectionId, mapping, platformContext }),
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process sheet");
@@ -1095,7 +1106,7 @@ export function AddRevenueWizardModal(props: {
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <HubSpotRevenueWizard
                   campaignId={campaignId}
-                  platformContext="ga4"
+                  platformContext={platformContext}
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {
@@ -1110,7 +1121,7 @@ export function AddRevenueWizardModal(props: {
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
-                  platformContext="ga4"
+                  platformContext={platformContext}
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {

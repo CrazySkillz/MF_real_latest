@@ -672,7 +672,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const sources = await storage.getRevenueSources(campaignId);
+      const ctxRaw = String((req.query as any)?.platformContext || "ga4").trim().toLowerCase();
+      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
+      const sources = await storage.getRevenueSources(campaignId, platformContext);
       res.json({ success: true, sources });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue sources" });
@@ -729,7 +731,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const existing = await storage.getRevenueSources(campaignId);
+      const ctxRaw = String((req.query as any)?.platformContext || "ga4").trim().toLowerCase();
+      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
+      const existing = await storage.getRevenueSources(campaignId, platformContext);
       for (const s of existing || []) {
         if (!s) continue;
         const sid = String((s as any).id);
@@ -775,10 +779,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const deactivateRevenueSourcesForCampaign = async (campaignId: string, opts?: { keepSourceId?: string }) => {
+  const deactivateRevenueSourcesForCampaign = async (
+    campaignId: string,
+    opts?: { keepSourceId?: string; platformContext?: 'ga4' | 'linkedin' }
+  ) => {
     try {
       const keep = opts?.keepSourceId ? String(opts.keepSourceId) : "";
-      const existing = await storage.getRevenueSources(campaignId);
+      const platformContext = opts?.platformContext || 'ga4';
+      const existing = await storage.getRevenueSources(campaignId, platformContext);
       for (const s of existing || []) {
         if (!s) continue;
         const sid = String((s as any).id);
@@ -796,17 +804,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const amount = parseNum((req.body as any)?.amount);
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
+      const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
+      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
       if (!(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
 
-      await deactivateRevenueSourcesForCampaign(campaignId);
+      await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
 
       const source = await storage.createRevenueSource({
         campaignId,
         sourceType: "manual",
+        platformContext,
         displayName: "Manual revenue (to date)",
         currency: cur,
         mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "revenue_to_date" }),
@@ -856,6 +867,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
       const file = (req as any).file as any;
       const mapping = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
+      const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
+      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
       if (!mapping?.revenueColumn) {
         return res.status(400).json({ success: false, error: "revenueColumn is required" });
       }
@@ -894,12 +907,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
-      await deactivateRevenueSourcesForCampaign(campaignId);
+      await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
 
       const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: "revenue_to_date" };
       const source = await storage.createRevenueSource({
         campaignId,
         sourceType: "csv",
+        platformContext,
         displayName: mapping.displayName || file.originalname,
         currency,
         mappingConfig: JSON.stringify(normalizedMapping),
@@ -1029,6 +1043,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const connectionId = String((req.body as any)?.connectionId || "").trim();
       const mapping = (req.body as any)?.mapping || null;
+      const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
+      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
       if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
       if (!mapping?.revenueColumn) {
         return res.status(400).json({ success: false, error: "revenueColumn is required" });
@@ -1145,7 +1161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Idempotent upsert: if the active revenue source is already this same Google Sheets connection,
       // keep the same sourceId (stable provenance) and just update values.
-      const existingSources = await storage.getRevenueSources(campaignId).catch(() => [] as any[]);
+      const existingSources = await storage.getRevenueSources(campaignId, platformContext).catch(() => [] as any[]);
       const existingSheetsSource = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
         if (!s || (s as any).isActive === false) return false;
         if (String((s as any).sourceType || "") !== "google_sheets") return false;
@@ -1159,10 +1175,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let source: any = existingSheetsSource || null;
       if (!source) {
-        await deactivateRevenueSourcesForCampaign(campaignId);
+        await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
         source = await storage.createRevenueSource({
           campaignId,
           sourceType: "google_sheets",
+          platformContext,
           displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),
           currency,
           mappingConfig: nextMappingConfig,
@@ -1170,7 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } as any);
       } else {
         // Deactivate any other revenue sources (avoid silent double-counting), while keeping this sourceId stable.
-        await deactivateRevenueSourcesForCampaign(campaignId, { keepSourceId: String((source as any).id) });
+        await deactivateRevenueSourcesForCampaign(campaignId, { keepSourceId: String((source as any).id), platformContext });
         // Keep as the active source and refresh metadata.
         await storage.updateRevenueSource(String((source as any).id), {
           displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),
@@ -8221,15 +8238,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const cur = (camp as any)?.currency || "USD";
 
         // Idempotent: reuse the same HubSpot revenue source id (stable provenance) across daily refreshes.
-        const existingSources = await storage.getRevenueSources(campaignId).catch(() => [] as any[]);
+        const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);
         const existingHubspot = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
           return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "hubspot";
         });
 
         if (!existingHubspot) {
-          await deactivateRevenueSourcesForCampaign(campaignId);
+          await deactivateRevenueSourcesForCampaign(campaignId, { platformContext: platformCtx as any });
         } else {
-          await deactivateRevenueSourcesForCampaign(campaignId, { keepSourceId: String((existingHubspot as any).id) });
+          await deactivateRevenueSourcesForCampaign(campaignId, { keepSourceId: String((existingHubspot as any).id), platformContext: platformCtx as any });
         }
 
         const mappingConfig = JSON.stringify({
@@ -8258,6 +8275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : await storage.createRevenueSource({
                 campaignId,
                 sourceType: "hubspot",
+                platformContext: platformCtx,
                 displayName: `HubSpot (Deals)`,
                 currency: cur,
                 mappingConfig,
@@ -13354,19 +13372,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (Array.isArray(hubspotConns) ? hubspotConns : []).some((c: any) => (c as any)?.isActive !== false && isLinkedInTaggedMapping((c as any)?.mappingConfig)) ||
         (Array.isArray(salesforceConns) ? salesforceConns : []).some((c: any) => (c as any)?.isActive !== false && isLinkedInTaggedMapping((c as any)?.mappingConfig));
 
+      // Also allow LinkedIn-scoped revenue sources (CSV/manual/Sheets/CRM) to enable revenue metrics.
+      const isoDateUTC = (d: any) => {
+        try {
+          const dt = d instanceof Date ? d : new Date(d);
+          if (Number.isNaN(dt.getTime())) return null;
+          return dt.toISOString().slice(0, 10);
+        } catch {
+          return null;
+        }
+      };
+      const yesterdayUTC = () => {
+        const now = new Date();
+        const y = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+        return y.toISOString().slice(0, 10);
+      };
+
+      let importedRevenueToDate = 0;
+      try {
+        const camp = await storage.getCampaign(campaignId);
+        const startDate =
+          isoDateUTC((camp as any)?.startDate) ||
+          isoDateUTC((camp as any)?.createdAt) ||
+          "2020-01-01";
+        const endDate = yesterdayUTC();
+        const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, 'linkedin');
+        importedRevenueToDate = Number(totals?.totalRevenue || 0);
+      } catch {
+        importedRevenueToDate = 0;
+      }
+      const hasLinkedInRevenueSources = importedRevenueToDate > 0;
+
       // Prefer LinkedIn-specific conversionValue (connection/session), never campaign-level
       const linkedInConn = await storage.getLinkedInConnection(campaignId);
       const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
       const sessionCv = latestSession.conversionValue ? parseFloat(String(latestSession.conversionValue)) : 0;
-      const conversionValue = connCv > 0 ? connCv : sessionCv;
+      const mappedConversionValue = connCv > 0 ? connCv : sessionCv;
+      const derivedConversionValue = (hasLinkedInRevenueSources && conversions > 0) ? (importedRevenueToDate / conversions) : 0;
+      const conversionValue = mappedConversionValue > 0 ? mappedConversionValue : derivedConversionValue;
 
-      if (hasLinkedInRevenueTrackingSource && conversionValue > 0 && conversions > 0) {
-        aggregated.revenue = parseFloat((conversions * conversionValue).toFixed(2));
+      const shouldEnableRevenue = (hasLinkedInRevenueTrackingSource || hasLinkedInRevenueSources) && conversionValue > 0 && conversions > 0;
+      if (shouldEnableRevenue) {
+        const revenueTotal = hasLinkedInRevenueSources && mappedConversionValue <= 0
+          ? importedRevenueToDate
+          : (conversions * conversionValue);
+        aggregated.revenue = parseFloat(Number(revenueTotal).toFixed(2));
         aggregated.conversionValue = conversionValue;
+        aggregated.hasRevenueTracking = 1;
         if (spend > 0) {
-          aggregated.roas = parseFloat((aggregated.revenue / spend).toFixed(2));
-          aggregated.roi = parseFloat((((aggregated.revenue - spend) / spend) * 100).toFixed(2));
+          aggregated.roas = parseFloat(((aggregated.revenue as any) / spend).toFixed(2));
+          aggregated.roi = parseFloat(((((aggregated.revenue as any) - spend) / spend) * 100).toFixed(2));
         }
+      } else {
+        aggregated.hasRevenueTracking = 0;
       }
       
       // CTR: (Clicks / Impressions) * 100

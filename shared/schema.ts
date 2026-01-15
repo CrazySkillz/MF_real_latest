@@ -120,6 +120,9 @@ export const revenueSources = pgTable("revenue_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
   sourceType: text("source_type").notNull(), // 'manual' | 'csv' | 'google_sheets' | 'shopify' | 'hubspot' | 'salesforce' | 'custom'
+  // Platform scoping for revenue sources to avoid cross-platform leakage (e.g., LinkedIn vs GA4)
+  // Legacy rows may be null; treat null as "ga4".
+  platformContext: text("platform_context"),
   displayName: text("display_name"),
   currency: text("currency"),
   mappingConfig: text("mapping_config"), // JSON string (mappings + filters + provenance)

@@ -92,6 +92,17 @@ export function UploadAdditionalDataModal({
     },
   });
 
+  // Single source of truth for edit-mode prefill: ask the server which connection is the active LinkedIn revenue source.
+  const { data: linkedInRevenueSourceData } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "linkedin", "revenue-source"],
+    enabled: isOpen && !!campaignId && prefillGoogleSheetsEditMode,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/linkedin/revenue-source`);
+      if (!resp.ok) return null;
+      return resp.json();
+    },
+  });
+
   const isConnectionMapped = (conn: any): boolean => {
     const cm = conn?.columnMappings ?? conn?.column_mappings;
     if (!cm || (typeof cm === 'string' && cm.trim() === '')) return false;
@@ -108,8 +119,24 @@ export function UploadAdditionalDataModal({
   useEffect(() => {
     if (!isOpen) return;
     if (!prefillGoogleSheetsEditMode) return;
-    if (!Array.isArray(googleSheetsConnections) || googleSheetsConnections.length === 0) return;
     if (showGuidedMapping || newConnectionInfo) return;
+
+    const serverPick = (linkedInRevenueSourceData as any)?.revenueSource;
+    const serverHas = (linkedInRevenueSourceData as any)?.hasRevenueSource === true && serverPick?.connectionId;
+    if (serverHas) {
+      setSelectedSource('google-sheets');
+      setShowDatasetsView(false);
+      setJustConnected(false);
+      setMappingLaunchedFromConnect(false);
+      setShowGuidedMapping(true);
+      setNewConnectionInfo({
+        connectionId: String(serverPick.connectionId),
+        spreadsheetId: String(serverPick.spreadsheetId || ''),
+      });
+      return;
+    }
+
+    if (!Array.isArray(googleSheetsConnections) || googleSheetsConnections.length === 0) return;
 
     const mapped = (googleSheetsConnections as any[])
       .filter((c) => c && c.isActive !== false)
@@ -135,7 +162,7 @@ export function UploadAdditionalDataModal({
       connectionId: String(pick.id),
       spreadsheetId: String(pick.spreadsheetId || ''),
     });
-  }, [isOpen, prefillGoogleSheetsEditMode, googleSheetsConnections, showGuidedMapping, newConnectionInfo]);
+  }, [isOpen, prefillGoogleSheetsEditMode, linkedInRevenueSourceData, googleSheetsConnections, showGuidedMapping, newConnectionInfo]);
 
   // Reset states when modal closes or source changes
   useEffect(() => {

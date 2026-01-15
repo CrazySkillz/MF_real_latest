@@ -2657,6 +2657,139 @@ export default function LinkedInAnalytics() {
     return metricConfig[metricKey] || { icon: BarChart3, format: formatNumber, label: metricKey };
   };
 
+  const formatMetricValueForInput = (metricKey: string, raw: number | string) => {
+    const k = String(metricKey || '').toLowerCase();
+    const maxDecimals = getMaxDecimalsForMetric(k);
+    const n = typeof raw === 'string' ? parseFloat(stripNumeric(raw)) : raw;
+    if (!Number.isFinite(n)) return '';
+    const rounded = maxDecimals <= 0 ? Math.round(n) : n;
+    return formatNumberAsYouType(String(rounded), { maxDecimals });
+  };
+
+  const isLowerBetterBenchmarkMetric = (metricKey: string) => {
+    const k = String(metricKey || '').toLowerCase();
+    return ['spend', 'cpc', 'cpm', 'cpa', 'cpl'].includes(k);
+  };
+
+  const isRevenueDependentBenchmarkMetric = (metricKey: string) => {
+    const k = String(metricKey || '').toLowerCase();
+    return ['roi', 'roas', 'totalrevenue', 'profit', 'profitmargin', 'revenueperlead'].includes(k);
+  };
+
+  const getLiveLinkedInMetricValue = (metricKey: string, linkedInCampaignName?: string): number => {
+    const k = String(metricKey || '').toLowerCase();
+    const hasRevenueTracking = !!aggregated?.hasRevenueTracking;
+    const conversionValue = Number(aggregated?.conversionValue || 0);
+
+    // Campaign-scoped metrics
+    if (linkedInCampaignName) {
+      const campaignMetrics = getCampaignSpecificMetrics(linkedInCampaignName);
+      if (!campaignMetrics) return 0;
+      const base = (campaignMetrics as any)[k];
+      if (typeof base === 'number') return base;
+
+      // Compute revenue metrics for campaign scope when available
+      if (hasRevenueTracking && conversionValue > 0) {
+        const spend = Number((campaignMetrics as any).spend || 0);
+        const conversions = Number((campaignMetrics as any).conversions || 0);
+        const leads = Number((campaignMetrics as any).leads || 0);
+        const revenue = conversions * conversionValue;
+        const profit = revenue - spend;
+        switch (k) {
+          case 'totalrevenue': return revenue;
+          case 'profit': return profit;
+          case 'profitmargin': return revenue > 0 ? (profit / revenue) * 100 : 0;
+          case 'roi': return spend > 0 ? (profit / spend) * 100 : 0;
+          case 'roas': return spend > 0 ? revenue / spend : 0;
+          case 'revenueperlead': return leads > 0 ? revenue / leads : 0;
+        }
+      }
+      return 0;
+    }
+
+    // Aggregate metrics (Overview)
+    switch (k) {
+      case 'impressions': return Number(aggregated?.totalImpressions || 0);
+      case 'reach': return Number(aggregated?.totalReach || 0);
+      case 'clicks': return Number(aggregated?.totalClicks || 0);
+      case 'engagements': return Number(aggregated?.totalEngagements || 0);
+      case 'spend': return Number(aggregated?.totalSpend || 0);
+      case 'conversions': return Number(aggregated?.totalConversions || 0);
+      case 'leads': return Number(aggregated?.totalLeads || 0);
+      case 'videoviews': return Number(aggregated?.totalVideoViews || 0);
+      case 'viralimpressions': return Number(aggregated?.totalViralImpressions || 0);
+      case 'ctr': return Number(aggregated?.ctr || 0);
+      case 'cpc': return Number(aggregated?.cpc || 0);
+      case 'cpm': return Number(aggregated?.cpm || 0);
+      case 'cvr': return Number(aggregated?.cvr || 0);
+      case 'cpa': return Number(aggregated?.cpa || 0);
+      case 'cpl': return Number(aggregated?.cpl || 0);
+      case 'er': return Number(aggregated?.er || 0);
+      case 'roi': return Number(aggregated?.roi || 0);
+      case 'roas': return Number(aggregated?.roas || 0);
+      case 'totalrevenue': return Number(aggregated?.totalRevenue || 0);
+      case 'profit': return Number(aggregated?.profit || 0);
+      case 'profitmargin': return Number(aggregated?.profitMargin || 0);
+      case 'revenueperlead': return Number(aggregated?.revenuePerLead || 0);
+      default: return 0;
+    }
+  };
+
+  const computeBenchmarkProgress = (benchmark: any) => {
+    const metricKey = String((benchmark as any)?.metric || '').toLowerCase();
+    const isBlocked = isRevenueDependentBenchmarkMetric(metricKey) && !aggregated?.hasRevenueTracking;
+    if (isBlocked) return { status: 'blocked' as const, ratio: 0, pct: 0, color: 'bg-slate-300', deltaPct: 0 };
+
+    const current = getLiveLinkedInMetricValue(metricKey, (benchmark as any)?.linkedInCampaignName || undefined);
+    const bench = parseFloat(stripNumeric(String((benchmark as any)?.benchmarkValue ?? (benchmark as any)?.targetValue ?? '0'))) || 0;
+    const safeCurrent = Number.isFinite(current) ? current : 0;
+    const safeBench = Number.isFinite(bench) ? bench : 0;
+    const lowerIsBetter = isLowerBetterBenchmarkMetric(metricKey);
+
+    let ratio = 0;
+    if (lowerIsBetter) ratio = safeCurrent > 0 ? (safeBench / safeCurrent) : 0;
+    else ratio = safeBench > 0 ? (safeCurrent / safeBench) : 0;
+
+    const pct = Math.max(0, Math.min(ratio * 100, 100));
+    const status = ratio >= 0.9 ? 'on_track' : ratio >= 0.7 ? 'needs_attention' : 'behind';
+    const color = ratio >= 0.9 ? 'bg-green-500' : ratio >= 0.7 ? 'bg-yellow-500' : 'bg-red-500';
+    const deltaPct =
+      safeBench > 0
+        ? (lowerIsBetter ? ((safeBench - safeCurrent) / safeBench) * 100 : ((safeCurrent - safeBench) / safeBench) * 100)
+        : 0;
+
+    return { status, ratio, pct, color, deltaPct };
+  };
+
+  const benchmarkTracker = useMemo(() => {
+    const items = Array.isArray(benchmarksData) ? (benchmarksData as any[]) : Array.isArray(benchmarks) ? (benchmarks as any[]) : [];
+    let scored = 0;
+    let onTrack = 0;
+    let needsAttention = 0;
+    let behind = 0;
+    let blocked = 0;
+    let sumPct = 0;
+
+    for (const b of items) {
+      const benchVal = parseFloat(stripNumeric(String((b as any)?.benchmarkValue ?? (b as any)?.targetValue ?? '0'))) || 0;
+      if (!Number.isFinite(benchVal) || benchVal <= 0) continue;
+
+      const p = computeBenchmarkProgress(b);
+      if (p.status === 'blocked') {
+        blocked += 1;
+        continue;
+      }
+      scored += 1;
+      sumPct += Number(p.pct || 0);
+      if (p.status === 'on_track') onTrack += 1;
+      else if (p.status === 'needs_attention') needsAttention += 1;
+      else if (p.status === 'behind') behind += 1;
+    }
+
+    const avgPct = scored > 0 ? sumPct / scored : 0;
+    return { total: items.length, scored, onTrack, needsAttention, behind, blocked, avgPct };
+  }, [benchmarksData, benchmarks, aggregated, adsData]);
+
   const getTrendIcon = (direction: 'up' | 'down' | 'neutral') => {
     if (direction === 'up') return <TrendingUp className="w-4 h-4 text-green-500" />;
     if (direction === 'down') return <TrendingDown className="w-4 h-4 text-red-500" />;
@@ -4374,6 +4507,82 @@ export default function LinkedInAnalytics() {
                   </Button>
                 </div>
 
+                {/* Benchmarks performance tracker (exec snapshot) - show even when there are 0 benchmarks */}
+                {!benchmarksLoading ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Benchmarks</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.total}</p>
+                          </div>
+                          <Target className="w-7 h-7 text-slate-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">On Track</p>
+                            <p className="text-2xl font-bold text-emerald-600">{benchmarkTracker.onTrack}</p>
+                          </div>
+                          <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs Attention</p>
+                            <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
+                          </div>
+                          <AlertTriangle className="w-7 h-7 text-amber-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Behind</p>
+                            <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
+                          </div>
+                          <TrendingDown className="w-7 h-7 text-red-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.avgPct.toFixed(1)}%</p>
+                          </div>
+                          <TrendingUp className="w-7 h-7 text-violet-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  <div className="animate-pulse grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Card key={i}>
+                        <CardContent className="p-5">
+                          <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-2/3 mb-2"></div>
+                          <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded w-1/2"></div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
                 {/* DEBUG: Force show condition check */}
                 {console.log('[RENDER CHECK] benchmarksLoading:', benchmarksLoading)}
                 {console.log('[RENDER CHECK] benchmarksData:', benchmarksData)}
@@ -4504,8 +4713,8 @@ export default function LinkedInAnalytics() {
                                       metric: benchmark.metric || '',
                                       name: benchmark.name || '',
                                       unit: benchmark.unit || inferUnitForBenchmarkMetric(benchmark.metric),
-                                      benchmarkValue: benchmark.benchmarkValue || '',
-                                      currentValue: benchmark.currentValue || '',
+                                      benchmarkValue: formatMetricValueForInput(benchmark.metric, benchmark.benchmarkValue || ''),
+                                      currentValue: formatMetricValueForInput(benchmark.metric, benchmark.currentValue || ''),
                                       benchmarkType: (benchmark as any).benchmarkType || (benchmark.industry ? 'industry' : 'custom'),
                                       industry: benchmark.industry || '',
                                       description: benchmark.description || '',
@@ -4569,9 +4778,10 @@ export default function LinkedInAnalytics() {
                                         const value = campaignMetrics[benchmark.metric];
                                         if (typeof value === 'number') {
                                           // Round count-based metrics to whole numbers
-                                          const formattedValue = isCountMetric(benchmark.metric) 
-                                            ? Math.round(value).toLocaleString()
-                                            : value.toFixed(2);
+                                          const decimals = getMaxDecimalsForMetric(benchmark.metric);
+                                          const formattedValue = decimals <= 0
+                                            ? Math.round(value).toLocaleString('en-US')
+                                            : Number(value).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
                                           return `${formattedValue}${benchmark.unit || ''}`;
                                         }
                                         return `${value}${benchmark.unit || ''}`;
@@ -4579,9 +4789,10 @@ export default function LinkedInAnalytics() {
                                     }
                                     // Otherwise use stored currentValue, round if count metric
                                     const currentVal = parseFloat(benchmark.currentValue || '0');
-                                    const formattedCurrentVal = isCountMetric(benchmark.metric)
-                                      ? Math.round(currentVal).toLocaleString()
-                                      : currentVal.toFixed(2);
+                                    const decimals = getMaxDecimalsForMetric(benchmark.metric);
+                                    const formattedCurrentVal = decimals <= 0
+                                      ? Math.round(currentVal).toLocaleString('en-US')
+                                      : Number(currentVal).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
                                     return `${formattedCurrentVal}${benchmark.unit || ''}`;
                                   })()}
                                 </div>
@@ -4594,9 +4805,10 @@ export default function LinkedInAnalytics() {
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
                                   {(() => {
                                     const benchVal = parseFloat(benchmark.benchmarkValue || benchmark.targetValue || '0');
-                                    const formattedBenchVal = isCountMetric(benchmark.metric)
-                                      ? Math.round(benchVal).toLocaleString()
-                                      : benchVal.toFixed(2);
+                                    const decimals = getMaxDecimalsForMetric(benchmark.metric);
+                                    const formattedBenchVal = decimals <= 0
+                                      ? Math.round(benchVal).toLocaleString('en-US')
+                                      : Number(benchVal).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
                                     return `${formattedBenchVal}${benchmark.unit || ''}`;
                                   })()}
                                 </div>
@@ -4612,66 +4824,55 @@ export default function LinkedInAnalytics() {
                               </div>
                             </div>
                             
-                            {/* Performance Comparison */}
-                            {benchmark.currentValue && benchmark.benchmarkValue && (
-                              <div className="mt-4 flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Performance vs Benchmark:
-                                  </span>
-                                  {(() => {
-                                    // Use campaign-specific value if applicable
-                                    let currentVal = parseFloat(benchmark.currentValue);
-                                    if (benchmark.linkedInCampaignName && benchmark.specificCampaignId) {
-                                      const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
-                                      if (campaignMetrics && campaignMetrics[benchmark.metric] !== undefined) {
-                                        currentVal = campaignMetrics[benchmark.metric];
-                                        console.log(`[Performance Comparison] Using campaign-specific ${benchmark.metric}: ${currentVal}`);
-                                      }
-                                    }
-                                    
-                                    const current = currentVal;
-                                    const benchmarkVal = parseFloat(benchmark.benchmarkValue || benchmark.targetValue);
-                                    const diff = current - benchmarkVal;
-                                    const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100).toFixed(1) : '0';
-                                    const isAbove = current > benchmarkVal;
-                                    
-                                    // Determine if metric is "lower is better" (cost metrics)
-                                    const metricLower = benchmark.metric?.toLowerCase() || '';
-                                    const isLowerBetter = ['cpc', 'cpm', 'cpa', 'cpl'].includes(metricLower) || 
-                                                         benchmark.category === 'cost' ||
-                                                         benchmark.unit === '$';
-                                    
-                                    // For lower-better metrics, flip the logic
-                                    const isGoodPerformance = isLowerBetter ? !isAbove : isAbove;
-                                    
-                                    return (
-                                      <>
-                                        <Badge 
-                                          variant={isGoodPerformance ? "default" : "secondary"}
-                                          className={isGoodPerformance ? "bg-green-600" : "bg-red-600"}
-                                        >
-                                          {isAbove ? (
-                                            <>
-                                              <TrendingUp className="w-3 h-3 mr-1" />
-                                              {percentDiff}% Above
-                                            </>
-                                          ) : (
-                                            <>
-                                              <TrendingDown className="w-3 h-3 mr-1" />
-                                              {Math.abs(parseFloat(percentDiff))}% Below
-                                            </>
-                                          )}
-                                        </Badge>
-                                        <span className="text-xs text-slate-500">
-                                          {isGoodPerformance ? '🎉 Outperforming!' : '⚠️ Needs improvement'}
-                                        </span>
-                                      </>
-                                    );
-                                  })()}
+                            {/* Performance vs Benchmark (GA4-parity logic + thresholds) */}
+                            {(() => {
+                              const benchVal = parseFloat(stripNumeric(String(benchmark.benchmarkValue || benchmark.targetValue || '0'))) || 0;
+                              if (!Number.isFinite(benchVal) || benchVal <= 0) return null;
+                              const p = computeBenchmarkProgress(benchmark);
+                              if (p.status === 'blocked') {
+                                return (
+                                  <div className="mt-4 flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        Performance vs Benchmark:
+                                      </span>
+                                      <Badge variant="outline" className="border-amber-300 text-amber-800 dark:border-amber-700 dark:text-amber-300">
+                                        Blocked
+                                      </Badge>
+                                      <span className="text-xs text-slate-600 dark:text-slate-400">
+                                        Requires revenue tracking (conversion value / revenue source)
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              const statusLabel = p.status === 'on_track' ? 'On Track' : p.status === 'needs_attention' ? 'Needs Attention' : 'Behind';
+                              const badgeClass =
+                                p.status === 'on_track'
+                                  ? 'bg-emerald-600'
+                                  : p.status === 'needs_attention'
+                                    ? 'bg-amber-600'
+                                    : 'bg-red-600';
+                              return (
+                                <div className="mt-4 flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                      Performance vs Benchmark:
+                                    </span>
+                                    <Badge className={badgeClass}>
+                                      {statusLabel}
+                                    </Badge>
+                                    <span className="text-xs text-slate-500">
+                                      {p.pct.toFixed(1)}% progress
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                    {p.deltaPct >= 0 ? '+' : ''}
+                                    {p.deltaPct.toFixed(1)}%
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </CardContent>
                         </Card>
                         );
@@ -6247,8 +6448,13 @@ export default function LinkedInAnalytics() {
                     }
                     console.log('[Metric Selection] Auto-filled currentValue:', currentValue, unit);
                     
-                    // Update form with metric, currentValue, and unit
-                    const updatedForm = { ...benchmarkForm, metric: value, currentValue, unit };
+                    // Update form with metric, currentValue, and unit (format for correct decimals/integers)
+                    const updatedForm = { 
+                      ...benchmarkForm, 
+                      metric: value, 
+                      currentValue: formatMetricValueForInput(value, currentValue),
+                      unit 
+                    };
                     setBenchmarkForm(updatedForm);
                     
                     // If industry is already selected, also auto-fill benchmark value
@@ -6413,7 +6619,7 @@ export default function LinkedInAnalytics() {
                           }
                           
                           if (currentValue) {
-                            updatedForm.currentValue = currentValue;
+                            updatedForm.currentValue = formatMetricValueForInput(metric, currentValue);
                             console.log('[Campaign Selection] Updated currentValue to:', currentValue);
                           }
                         }
@@ -6452,12 +6658,11 @@ export default function LinkedInAnalytics() {
                   id="benchmark-current"
                   type="text"
                   placeholder="0"
-                  value={benchmarkForm.currentValue ? parseFloat(benchmarkForm.currentValue).toLocaleString('en-US') : ''}
+                  inputMode="decimal"
+                  value={benchmarkForm.currentValue}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/,/g, '');
-                    if (value === '' || !isNaN(parseFloat(value))) {
-                      setBenchmarkForm({ ...benchmarkForm, currentValue: value });
-                    }
+                    const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) });
+                    setBenchmarkForm({ ...benchmarkForm, currentValue: formatted });
                   }}
                   data-testid="input-benchmark-current"
                 />

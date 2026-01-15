@@ -541,7 +541,17 @@ export default function LinkedInAnalytics() {
     const cpa = totals.conversions > 0 ? totals.spend / totals.conversions : 0;
     const cpl = totals.leads > 0 ? totals.spend / totals.leads : 0;
     const er = totals.impressions > 0 ? (totals.engagements / totals.impressions) * 100 : 0;
-    
+
+    // Revenue-derived metrics (only when revenue tracking is enabled for LinkedIn)
+    const hasRevenueTracking = !!aggregated?.hasRevenueTracking;
+    const conversionValue = Number(aggregated?.conversionValue || 0);
+    const totalRevenue = hasRevenueTracking && conversionValue > 0 ? totals.conversions * conversionValue : 0;
+    const profit = totalRevenue - totals.spend;
+    const roi = totals.spend > 0 ? (profit / totals.spend) * 100 : 0; // percent
+    const roas = totals.spend > 0 ? totalRevenue / totals.spend : 0; // x
+    const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0; // percent
+    const revenuePerLead = totals.leads > 0 ? totalRevenue / totals.leads : 0;
+
     return {
       ...totals,
       ctr,
@@ -550,7 +560,15 @@ export default function LinkedInAnalytics() {
       cvr,
       cpa,
       cpl,
-      er
+      er,
+
+      // keep naming consistent with other UI paths
+      totalRevenue,
+      profit,
+      roi,
+      roas,
+      profitMargin,
+      revenuePerLead,
     };
   };
 

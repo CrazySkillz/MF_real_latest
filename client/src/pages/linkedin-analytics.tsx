@@ -4345,33 +4345,6 @@ export default function LinkedInAnalytics() {
                       Compare your performance against industry benchmarks
                     </p>
                   </div>
-                  <Button 
-                    onClick={() => {
-                      setEditingBenchmark(null);
-                      setBenchmarkForm({
-                        metric: '',
-                        name: '',
-                        unit: '',
-                        benchmarkValue: '',
-                        currentValue: '',
-                        benchmarkType: 'custom',
-                        industry: '',
-                        description: '',
-                        applyTo: 'all',
-                        specificCampaignId: '',
-                        alertsEnabled: false,
-                        alertThreshold: '',
-                        alertCondition: 'below',
-                        emailRecipients: ''
-                      });
-                      setIsBenchmarkModalOpen(true);
-                    }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                    data-testid="button-create-benchmark"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Benchmark
-                  </Button>
                 </div>
 
                 {/* DEBUG: Force show condition check */}
@@ -4492,11 +4465,18 @@ export default function LinkedInAnalytics() {
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => {
+                                    const inferUnitForBenchmarkMetric = (metricKey: string) => {
+                                      const k = String(metricKey || '').toLowerCase();
+                                      if (['ctr', 'cvr', 'er', 'roi', 'profitmargin'].includes(k)) return '%';
+                                      if (['roas'].includes(k)) return 'x';
+                                      if (['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'totalrevenue', 'profit', 'revenueperlead'].includes(k)) return campaignCurrencySymbol;
+                                      return '';
+                                    };
                                     setEditingBenchmark(benchmark);
                                     setBenchmarkForm({
                                       metric: benchmark.metric || '',
                                       name: benchmark.name || '',
-                                      unit: benchmark.unit || '',
+                                      unit: benchmark.unit || inferUnitForBenchmarkMetric(benchmark.metric),
                                       benchmarkValue: benchmark.benchmarkValue || '',
                                       currentValue: benchmark.currentValue || '',
                                       benchmarkType: (benchmark as any).benchmarkType || (benchmark.industry ? 'industry' : 'custom'),

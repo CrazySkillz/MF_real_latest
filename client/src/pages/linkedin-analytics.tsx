@@ -138,6 +138,7 @@ export default function LinkedInAnalytics() {
 
   const KPI_DESC_MAX = 200;
   const BENCHMARK_DESC_MAX = 200;
+  const DEFAULT_BENCHMARK_DESCRIPTION = "Tracks this metric against your benchmark for executive review.";
 
   // Connected Data Sources tab removed (revenue connections are handled via the "Add revenue" flow).
 
@@ -174,7 +175,7 @@ export default function LinkedInAnalytics() {
     currentValue: '',
     benchmarkType: 'custom', // 'industry' or 'custom' (default to custom)
     industry: '',
-    description: '',
+    description: DEFAULT_BENCHMARK_DESCRIPTION,
     applyTo: 'all', // 'all' or 'specific'
     specificCampaignId: '', // ID of specific campaign if applyTo='specific'
     alertsEnabled: false,
@@ -860,7 +861,7 @@ export default function LinkedInAnalytics() {
         currentValue: '',
         benchmarkType: 'custom',
         industry: '',
-        description: '',
+        description: DEFAULT_BENCHMARK_DESCRIPTION,
         applyTo: 'all',
         specificCampaignId: '',
         alertsEnabled: false,
@@ -911,7 +912,7 @@ export default function LinkedInAnalytics() {
         currentValue: '',
         benchmarkType: 'custom',
         industry: '',
-        description: '',
+        description: DEFAULT_BENCHMARK_DESCRIPTION,
         applyTo: 'all',
         specificCampaignId: '',
         alertsEnabled: false,
@@ -956,7 +957,7 @@ export default function LinkedInAnalytics() {
         currentValue: '',
         benchmarkType: 'custom',
         industry: '',
-        description: '',
+        description: DEFAULT_BENCHMARK_DESCRIPTION,
         applyTo: 'all',
         specificCampaignId: '',
         alertsEnabled: false,
@@ -1037,7 +1038,7 @@ export default function LinkedInAnalytics() {
       benchmarkValue: stripNumeric(benchmarkForm.benchmarkValue || ''),
       currentValue: stripNumeric(benchmarkForm.currentValue || '0'),
       industry: benchmarkForm.industry,
-      description: benchmarkForm.description,
+      description: (String(benchmarkForm.description || '').trim() || DEFAULT_BENCHMARK_DESCRIPTION),
       applyTo: benchmarkForm.applyTo, // 'all' or 'specific'
       specificCampaignId: finalSpecificCampaignId, // Use the converted campaign ID
       linkedInCampaignName: benchmarkForm.applyTo === 'specific' ? benchmarkForm.specificCampaignId : null, // Store LinkedIn campaign name for display
@@ -1919,7 +1920,7 @@ export default function LinkedInAnalytics() {
         doc.setFontSize(9);
         doc.setTextColor(100, 100, 100);
         const descY = benchmark.applyTo === 'campaign' ? y + 22 : y + 16;
-        doc.text(benchmark.description || 'No description provided', 25, descY);
+        doc.text((String(benchmark.description || '').trim() || DEFAULT_BENCHMARK_DESCRIPTION), 25, descY);
         
         // Benchmark Type (Industry or Custom)
         const typeY = descY + 6;
@@ -2779,7 +2780,8 @@ export default function LinkedInAnalytics() {
     // Currency must always match campaign currency and be prefixed (e.g., £1,234.56)
     if (isCurrencyLikeMetric(k)) return `${campaignCurrencySymbol}${formatted}`;
     if (['ctr', 'cvr', 'er', 'roi', 'profitmargin'].includes(k)) return `${formatted}%`;
-    if (['roas'].includes(k)) return `${formatted}x`;
+    // ROAS: keep the value clean; the metric label already indicates ROAS (avoid "x" unit in UI).
+    if (['roas'].includes(k)) return `${formatted}`;
     return formatted;
   };
 
@@ -4618,7 +4620,7 @@ export default function LinkedInAnalytics() {
                         currentValue: '',
                         benchmarkType: 'custom',
                         industry: '',
-                        description: '',
+                        description: DEFAULT_BENCHMARK_DESCRIPTION,
                         applyTo: 'all',
                         specificCampaignId: '',
                         alertsEnabled: false,
@@ -4759,7 +4761,7 @@ export default function LinkedInAnalytics() {
                                   )}
                                 </div>
                                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                                  {benchmark.description || 'No description provided'}
+                                  {(String(benchmark.description || '').trim() || DEFAULT_BENCHMARK_DESCRIPTION)}
                                 </p>
                                 <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
                                   {benchmark.industry && <span>{benchmark.industry}</span>}
@@ -4788,7 +4790,7 @@ export default function LinkedInAnalytics() {
                                     const inferUnitForBenchmarkMetric = (metricKey: string) => {
                                       const k = String(metricKey || '').toLowerCase();
                                       if (['ctr', 'cvr', 'er', 'roi', 'profitmargin'].includes(k)) return '%';
-                                      if (['roas'].includes(k)) return 'x';
+                                      if (['roas'].includes(k)) return '';
                                       if (['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'totalrevenue', 'profit', 'revenueperlead'].includes(k)) return campaignCurrencySymbol;
                                       return '';
                                     };
@@ -4801,9 +4803,11 @@ export default function LinkedInAnalytics() {
                                       currentValue: formatMetricValueForInput(benchmark.metric, benchmark.currentValue || ''),
                                       benchmarkType: (benchmark as any).benchmarkType || (benchmark.industry ? 'industry' : 'custom'),
                                       industry: benchmark.industry || '',
-                                      description: benchmark.description || '',
-                                      applyTo: benchmark.applyTo || 'all',
-                                      specificCampaignId: benchmark.specificCampaignId || '',
+                                      description: (benchmark.description || '').trim() || DEFAULT_BENCHMARK_DESCRIPTION,
+                                      // Some older rows may not have applyTo persisted correctly; infer from linkedInCampaignName.
+                                      applyTo: benchmark.linkedInCampaignName ? 'specific' : (benchmark.applyTo || 'all'),
+                                      // For "specific", the selector expects LinkedIn campaign NAME, not the DB campaignId.
+                                      specificCampaignId: benchmark.linkedInCampaignName ? String(benchmark.linkedInCampaignName) : '',
                                       alertsEnabled: benchmark.alertsEnabled || false,
                                       alertThreshold: benchmark.alertThreshold || '',
                                       alertCondition: benchmark.alertCondition || 'below',
@@ -6494,7 +6498,7 @@ export default function LinkedInAnalytics() {
                           break;
                         case 'roas':
                           currentValue = String(metricsSource.roas || 0);
-                          unit = 'x';
+                          unit = '';
                           break;
                         case 'totalRevenue':
                           currentValue = String(metricsSource.totalRevenue || 0);
@@ -6537,7 +6541,9 @@ export default function LinkedInAnalytics() {
                             setBenchmarkForm(prev => ({
                               ...prev,
                               benchmarkValue: formatNumberAsYouType(String(data.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
-                              unit: isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (data.unit || prev.unit)
+                              unit: String(value || '').toLowerCase() === 'roas'
+                                ? ''
+                                : (isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (data.unit || prev.unit))
                             }));
                           } else {
                             // Fallback to hardcoded values
@@ -6547,7 +6553,9 @@ export default function LinkedInAnalytics() {
                               setBenchmarkForm(prev => ({
                                 ...prev,
                                 benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
-                                unit: isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (fallbackData.unit || prev.unit)
+                                unit: String(value || '').toLowerCase() === 'roas'
+                                  ? ''
+                                  : (isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (fallbackData.unit || prev.unit))
                               }));
                             }
                           }
@@ -6559,7 +6567,9 @@ export default function LinkedInAnalytics() {
                             setBenchmarkForm(prev => ({
                               ...prev,
                               benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
-                              unit: isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (fallbackData.unit || prev.unit)
+                              unit: String(value || '').toLowerCase() === 'roas'
+                                ? ''
+                                : (isCurrencyLikeMetric(value) ? campaignCurrencySymbol : (fallbackData.unit || prev.unit))
                             }));
                           }
                         }
@@ -6815,7 +6825,9 @@ export default function LinkedInAnalytics() {
                           setBenchmarkForm(prev => ({
                             ...prev,
                             benchmarkValue: formatNumberAsYouType(String(data.value), { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) }),
-                            unit: isCurrencyLikeMetric(benchmarkForm.metric) ? campaignCurrencySymbol : data.unit
+                            unit: String(benchmarkForm.metric || '').toLowerCase() === 'roas'
+                              ? ''
+                              : (isCurrencyLikeMetric(benchmarkForm.metric) ? campaignCurrencySymbol : data.unit)
                           }));
                         } else {
                           // Fallback to hardcoded values
@@ -6824,7 +6836,9 @@ export default function LinkedInAnalytics() {
                             setBenchmarkForm(prev => ({
                               ...prev,
                               benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) }),
-                              unit: isCurrencyLikeMetric(benchmarkForm.metric) ? campaignCurrencySymbol : fallbackData.unit
+                              unit: String(benchmarkForm.metric || '').toLowerCase() === 'roas'
+                                ? ''
+                                : (isCurrencyLikeMetric(benchmarkForm.metric) ? campaignCurrencySymbol : fallbackData.unit)
                             }));
                           }
                         }
@@ -6836,7 +6850,9 @@ export default function LinkedInAnalytics() {
                           setBenchmarkForm(prev => ({
                             ...prev,
                             benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) }),
-                            unit: isCurrencyLikeMetric(benchmarkForm.metric) ? campaignCurrencySymbol : fallbackData.unit
+                            unit: String(benchmarkForm.metric || '').toLowerCase() === 'roas'
+                              ? ''
+                              : (isCurrencyLikeMetric(benchmarkForm.metric) ? campaignCurrencySymbol : fallbackData.unit)
                           }));
                         }
                       }
@@ -6946,7 +6962,7 @@ export default function LinkedInAnalytics() {
                     currentValue: '',
                     benchmarkType: 'custom',
                     industry: '',
-                    description: '',
+                    description: DEFAULT_BENCHMARK_DESCRIPTION,
                     applyTo: 'all',
                     specificCampaignId: '',
                     alertsEnabled: false,

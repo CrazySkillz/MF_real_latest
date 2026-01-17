@@ -22,12 +22,29 @@ export function ShopifyRevenueWizard(props: {
    * Example: GA4 revenue sources must not unlock LinkedIn revenue metrics.
    */
   platformContext?: "ga4" | "linkedin";
+  /**
+   * Optional: parent-driven navigation (used by outer modal Back button).
+   */
+  externalStep?: Step;
+  externalNavNonce?: number;
+  onStepChange?: (step: Step) => void;
 }) {
-  const { campaignId, onBack, onClose, onSuccess, platformContext = "ga4" } = props;
+  const { campaignId, onBack, onClose, onSuccess, platformContext = "ga4", externalStep, externalNavNonce, onStepChange } = props;
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
 
   const [step, setStep] = useState<Step>("campaign-field");
+  // Allow parent (outer modal Back button) to drive navigation back to the connect screen.
+  useEffect(() => {
+    if (!externalStep) return;
+    setStep(externalStep);
+  }, [externalStep, externalNavNonce]);
+
+  // Report current step up to the parent for smarter Back behavior.
+  useEffect(() => {
+    onStepChange?.(step);
+  }, [step, onStepChange]);
+
   const [days, setDays] = useState<number>(90);
   const [campaignField, setCampaignField] = useState<string>("utm_campaign");
   const [revenueMetric, setRevenueMetric] = useState<string>("total_price");
@@ -167,6 +184,10 @@ export function ShopifyRevenueWizard(props: {
 
   const handleNext = async () => {
     if (step === "campaign-field") {
+      if (!connected) {
+        toast({ title: "Connect Shopify", description: "Connect your Shopify store before continuing.", variant: "destructive" });
+        return;
+      }
       setUniqueValues([]);
       setSelectedValues([]);
       setStep("crosswalk");
@@ -315,37 +336,36 @@ export function ShopifyRevenueWizard(props: {
         <CardContent className="space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-2">
-              {!connected && (
-                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2">
-                  <div className="text-sm font-medium">Connect Shopify</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400">
-                    Connect your Shopify store via OAuth to import order revenue and map it to this campaign.
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label>Shop domain</Label>
-                      <Input
-                        value={shopDomain}
-                        onChange={(e) => setShopDomain(e.target.value)}
-                        placeholder="your-store.myshopify.com"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button type="button" variant="outline" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                        {isConnecting ? "Connecting…" : "Connect Shopify"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {connected && shopName && (
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2">
+                <div className="text-sm font-medium">{connected ? "Connected Shopify store" : "Connect Shopify"}</div>
                 <div className="text-xs text-slate-600 dark:text-slate-400">
-                  Connected store: <span className="font-medium">{shopName}</span>
+                  {connected
+                    ? "To change stores, update the domain below and click Reconnect."
+                    : "Connect your Shopify store via OAuth to import order revenue and map it to this campaign."}
                 </div>
-              )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label>Shop domain</Label>
+                    <Input
+                      value={shopDomain}
+                      onChange={(e) => setShopDomain(e.target.value)}
+                      placeholder="your-store.myshopify.com"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="button" variant="outline" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                      {isConnecting ? "Connecting…" : (connected ? "Reconnect / Change store" : "Connect Shopify")}
+                    </Button>
+                  </div>
+                </div>
+                {connected && shopName && (
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    Connected store: <span className="font-medium">{shopName}</span>
+                  </div>
+                )}
+              </div>
 
               <Label>Attribution key</Label>
               <Select value={campaignField} onValueChange={(v) => setCampaignField(v)}>

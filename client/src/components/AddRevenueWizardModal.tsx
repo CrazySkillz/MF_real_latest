@@ -122,6 +122,11 @@ export function AddRevenueWizardModal(props: {
   const [sheetsProcessing, setSheetsProcessing] = useState(false);
   const [sheetsValueSource, setSheetsValueSource] = useState<'revenue' | 'conversion_value'>('revenue');
 
+  // Embedded wizard navigation helpers (outer modal Back button should behave like the wizard back).
+  const [shopifyWizardStep, setShopifyWizardStep] = useState<any>("campaign-field");
+  const [shopifyExternalStep, setShopifyExternalStep] = useState<any>(null);
+  const [shopifyExternalNonce, setShopifyExternalNonce] = useState(0);
+
   const resetAll = () => {
     setStep(initialStep || "select");
     setManualAmount("");
@@ -151,6 +156,9 @@ export function AddRevenueWizardModal(props: {
     setSheetsCampaignValues([]);
     setSheetsProcessing(false);
     setSheetsValueSource('revenue');
+    setShopifyWizardStep("campaign-field");
+    setShopifyExternalStep(null);
+    setShopifyExternalNonce(0);
   };
 
   useEffect(() => {
@@ -332,6 +340,17 @@ export function AddRevenueWizardModal(props: {
     if (step === "select") return;
     if (step === "csv_map") return setStep("csv");
     if (step === "sheets_map") return setStep("sheets_choose");
+    // Embedded Shopify wizard: go back inside the Shopify flow first (campaign-field),
+    // then exit to source selection if already at the first screen.
+    if (step === "shopify") {
+      if (shopifyWizardStep && shopifyWizardStep !== "campaign-field") {
+        setShopifyExternalStep("campaign-field");
+        setShopifyExternalNonce((n) => n + 1);
+        return;
+      }
+      setStep("select");
+      return;
+    }
     setStep("select");
   };
 
@@ -1439,6 +1458,9 @@ export function AddRevenueWizardModal(props: {
                 <ShopifyRevenueWizard
                   campaignId={campaignId}
                   platformContext={platformContext}
+                  onStepChange={(s) => setShopifyWizardStep(s as any)}
+                  externalStep={shopifyExternalStep as any}
+                  externalNavNonce={shopifyExternalNonce}
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {

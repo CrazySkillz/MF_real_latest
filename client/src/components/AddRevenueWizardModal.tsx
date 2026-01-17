@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +13,7 @@ import { HubSpotRevenueWizard } from "@/components/HubSpotRevenueWizard";
 import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
 import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
@@ -36,6 +38,29 @@ export function AddRevenueWizardModal(props: {
 }) {
   const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource, platformContext = 'ga4', initialStep } = props;
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const invalidateAfterRevenueChange = () => {
+    // Always refresh campaign-level rollups and connection badges.
+    void queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId], exact: false });
+    void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+
+    // Revenue-derived endpoints used across GA4 + LinkedIn screens.
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+
+    if (platformContext === 'linkedin') {
+      // LinkedIn-specific caches (some pages use array-shaped keys).
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "linkedin"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId], exact: false });
+    }
+
+    // Best-effort immediate refresh when mounted (keeps Overview feeling instant).
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+    void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
+  };
 
   const [step, setStep] = useState<Step>("select");
   const isEditing = !!initialSource;
@@ -44,6 +69,7 @@ export function AddRevenueWizardModal(props: {
   // Manual
   const [manualAmount, setManualAmount] = useState<string>("");
   const [manualConversionValue, setManualConversionValue] = useState<string>("");
+  const [manualValueSource, setManualValueSource] = useState<'revenue' | 'conversion_value'>('revenue');
   const [savingManual, setSavingManual] = useState(false);
   const formatCurrencyWhileTyping = (raw: string) => {
     const s = String(raw ?? "");
@@ -97,6 +123,7 @@ export function AddRevenueWizardModal(props: {
     setStep(initialStep || "select");
     setManualAmount("");
     setManualConversionValue("");
+    setManualValueSource('revenue');
     setSavingManual(false);
     setCsvFile(null);
     setCsvPreview(null);
@@ -151,8 +178,13 @@ export function AddRevenueWizardModal(props: {
     const type = String(initialSource?.sourceType || "").toLowerCase();
     if (type === "manual") {
       const amt = config?.amount;
+      const cv = config?.conversionValue;
+      const vsRaw = String(config?.valueSource || "").trim().toLowerCase();
+      const vs: 'revenue' | 'conversion_value' = vsRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
       setStep("manual");
       setManualAmount(amt === 0 || amt ? String(amt) : "");
+      setManualConversionValue(cv === 0 || cv ? String(cv) : "");
+      setManualValueSource(vs);
       return;
     }
 
@@ -309,19 +341,27 @@ export function AddRevenueWizardModal(props: {
         toast({ title: "Enter Revenue or Conversion Value", description: "Provide at least one value.", variant: "destructive" });
         return;
       }
+      // Enforce explicit "source of truth" decision when both are present (enterprise-grade correctness).
+      if (hasAmt && hasCv && (manualValueSource !== 'revenue' && manualValueSource !== 'conversion_value')) {
+        toast({ title: "Choose source of truth", description: "Select whether Revenue or Conversion Value should drive calculations.", variant: "destructive" });
+        return;
+      }
     }
     setSavingManual(true);
     try {
+      const hasAmt = Number.isFinite(amt) && amt > 0;
+      const hasCv = Number.isFinite(cv) && cv > 0;
+      const valueSource: 'revenue' | 'conversion_value' =
+        platformContext === 'linkedin'
+          ? (hasAmt && hasCv ? manualValueSource : (hasCv ? 'conversion_value' : 'revenue'))
+          : 'revenue';
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/process/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: Number.isFinite(amt) ? amt : null,
           conversionValue: platformContext === 'linkedin' && Number.isFinite(cv) ? cv : null,
-          // If both are present for LinkedIn, default to revenue unless user only entered conversion value.
-          valueSource: platformContext === 'linkedin'
-            ? ((Number.isFinite(amt) && amt > 0) && (Number.isFinite(cv) && cv > 0) ? 'revenue' : ((Number.isFinite(cv) && cv > 0) ? 'conversion_value' : 'revenue'))
-            : 'revenue',
+          valueSource,
           currency,
           dateRange,
           platformContext
@@ -334,6 +374,7 @@ export function AddRevenueWizardModal(props: {
       } else {
         toast({ title: isEditing ? "Revenue updated" : "Revenue saved", description: platformContext === 'linkedin' ? "Revenue will be used to calculate LinkedIn financial metrics." : "Revenue will now be used when GA4 revenue is missing." });
       }
+      invalidateAfterRevenueChange();
       onSuccess?.();
       onOpenChange(false);
     } catch (e: any) {
@@ -437,6 +478,7 @@ export function AddRevenueWizardModal(props: {
           description: `Imported ${Number(json.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.`,
         });
       }
+      invalidateAfterRevenueChange();
       onSuccess?.();
       onOpenChange(false);
     } catch (e: any) {
@@ -532,6 +574,7 @@ export function AddRevenueWizardModal(props: {
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process sheet");
       toast({ title: "Revenue imported", description: `Imported ${Number(json.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.` });
+      invalidateAfterRevenueChange();
       onSuccess?.();
       onOpenChange(false);
     } catch (e: any) {
@@ -681,6 +724,33 @@ export function AddRevenueWizardModal(props: {
                         </div>
                       )}
                     </div>
+
+                    {platformContext === 'linkedin' && (() => {
+                      const amt = Number(String(manualAmount || "").replace(/,/g, "").trim());
+                      const cv = Number(String(manualConversionValue || "").replace(/,/g, "").trim());
+                      const hasAmt = Number.isFinite(amt) && amt > 0;
+                      const hasCv = Number.isFinite(cv) && cv > 0;
+                      if (!hasAmt || !hasCv) return null;
+                      return (
+                        <div className="rounded-md border p-3 space-y-2">
+                          <div className="text-sm font-medium">Source of truth</div>
+                          <RadioGroup
+                            value={manualValueSource}
+                            onValueChange={(v) => setManualValueSource(v as 'revenue' | 'conversion_value')}
+                            className="flex flex-col space-y-1"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="revenue" id="manual-source-revenue" />
+                              <Label htmlFor="manual-source-revenue">Use Revenue (derive conversion value)</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="conversion_value" id="manual-source-conversion-value" />
+                              <Label htmlFor="manual-source-conversion-value">Use Conversion Value (ignore revenue amount)</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      );
+                    })()}
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
@@ -1326,6 +1396,7 @@ export function AddRevenueWizardModal(props: {
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {
+                    invalidateAfterRevenueChange();
                     onSuccess?.();
                     onOpenChange(false);
                   }}
@@ -1341,6 +1412,7 @@ export function AddRevenueWizardModal(props: {
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {
+                    invalidateAfterRevenueChange();
                     onSuccess?.();
                     onOpenChange(false);
                   }}
@@ -1355,6 +1427,7 @@ export function AddRevenueWizardModal(props: {
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {
+                    invalidateAfterRevenueChange();
                     onSuccess?.();
                     onOpenChange(false);
                   }}

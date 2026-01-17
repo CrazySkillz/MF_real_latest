@@ -5659,6 +5659,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
               aggregated[k] = parseFloat(total.toFixed(2));
             });
             linkedInSpend = parseNum(aggregated.spend);
+
+            // IMPORTANT: LinkedIn conversion value can be updated independently of import sessions
+            // (e.g. via manual/CSV/Sheets "conversion value" sources). For campaign Overview correctness,
+            // prefer the LinkedIn connection's conversionValue and fall back to session conversionValue.
+            const connCv = linkedInConn?.conversionValue ? parseNum((linkedInConn as any).conversionValue) : 0;
+            const sessionCv = latestSession.conversionValue ? parseNum(latestSession.conversionValue) : 0;
+
+            // Pull LinkedIn-scoped imported revenue (best-effort) so Overview can show revenue-to-date when provided.
+            let importedRevenueToDate = 0;
+            try {
+              const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, 'linkedin');
+              importedRevenueToDate = parseNum((totals as any)?.totalRevenue);
+            } catch {
+              importedRevenueToDate = 0;
+            }
+
+            const conversions = parseNum(aggregated.conversions);
+            const derivedCv = (importedRevenueToDate > 0 && conversions > 0) ? (importedRevenueToDate / conversions) : 0;
+            const conversionValue = connCv > 0 ? connCv : (sessionCv > 0 ? sessionCv : derivedCv);
+
+            // If imported revenue exists and no explicit conversion value is set, prefer imported revenue.
+            // Otherwise derive revenue from conversions × conversion value.
+            const attributedRevenueRaw =
+              (importedRevenueToDate > 0 && connCv <= 0)
+                ? importedRevenueToDate
+                : (conversionValue > 0 ? conversions * conversionValue : 0);
+
+            const attributedRevenue = parseFloat(Number(attributedRevenueRaw || 0).toFixed(2));
+            const roas = linkedInSpend > 0 ? parseFloat((attributedRevenue / linkedInSpend).toFixed(2)) : 0;
+            const roi = linkedInSpend > 0 ? parseFloat((((attributedRevenue - linkedInSpend) / linkedInSpend) * 100).toFixed(2)) : 0;
+
             linkedIn = {
               connected: true,
               spend: linkedInSpend,
@@ -5666,10 +5697,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               impressions: parseNum(aggregated.impressions),
               conversions: parseNum(aggregated.conversions),
               leads: parseNum(aggregated.leads),
-              conversionValue: latestSession.conversionValue ? parseNum(latestSession.conversionValue) : 0,
-              attributedRevenue: parseNum(aggregated.revenue),
-              roas: parseNum(aggregated.roas),
-              roi: parseNum(aggregated.roi),
+              conversionValue: conversionValue > 0 ? parseFloat(Number(conversionValue).toFixed(2)) : 0,
+              attributedRevenue,
+              roas,
+              roi,
               lastImportedAt: latestSession.importedAt,
             };
           } else {

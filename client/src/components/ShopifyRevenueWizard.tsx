@@ -391,12 +391,19 @@ export function ShopifyRevenueWizard(props: {
               <div className="text-xs text-slate-500 min-h-[16px]">
                 {statusLoading ? "Checking Shopify connection…" : "\u00A0"}
               </div>
+              {/* Keep this block layout-stable to prevent "jumpy" transitions */}
               <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2">
-                <div className="text-sm font-medium">{connected ? "Connected Shopify store" : "Connect Shopify"}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">
-                  {connected
-                    ? "To change stores, update the domain below and click Reconnect."
-                    : "Connect your Shopify store via OAuth to import order revenue and map it to this campaign."}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium">Shopify store</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[16px]">
+                    {connected ? "Connected" : "Not connected"}
+                  </div>
+                </div>
+
+                {/* Fixed-height helper text to avoid reflow on connected state */}
+                <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[40px]">
+                  <div>Connect your Shopify store via OAuth to import order revenue and map it to this campaign.</div>
+                  <div>To change stores, update the domain below and click Reconnect.</div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div className="space-y-1">

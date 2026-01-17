@@ -8436,6 +8436,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignProperty,
         selectedValues,
         revenueProperty,
+        conversionValueProperty,
+        valueSource,
         revenueClassification,
         days,
         stageIds,
@@ -8444,6 +8446,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaignProp = String(campaignProperty || '').trim();
       const revenueProp = String(revenueProperty || 'amount').trim();
+      const convValueProp = String(conversionValueProperty || '').trim();
+      const valueSourceRaw = String(valueSource || '').trim().toLowerCase();
+      const parsedValueSource: 'revenue' | 'conversion_value' = valueSourceRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
       const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
       const rangeDays = Math.min(Math.max(parseInt(String(days || '90'), 10) || 90, 1), 3650);
 
@@ -8475,6 +8480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let totalRevenue = 0;
       const currencies = new Set<string>();
+      const conversionValues: number[] = [];
 
       let after: string | undefined;
       let pages = 0;
@@ -8489,7 +8495,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ],
             },
           ],
-          properties: [campaignProp, revenueProp, 'hs_currency', 'dealname', 'dealstage', 'closedate'],
+          properties: Array.from(new Set([
+            campaignProp,
+            revenueProp,
+            'hs_currency',
+            'dealname',
+            'dealstage',
+            'closedate',
+            ...(convValueProp ? [convValueProp] : []),
+          ])),
           limit: 100,
           after,
         };
@@ -8505,6 +8519,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
           if (c) currencies.add(c);
+
+          if (convValueProp) {
+            const cvRaw = props[convValueProp];
+            const cv = cvRaw === undefined || cvRaw === null ? NaN : Number(String(cvRaw).replace(/[^0-9.\-]/g, ''));
+            if (Number.isFinite(cv) && cv > 0) conversionValues.push(cv);
+          }
         }
 
         after = json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
@@ -8522,6 +8542,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // NOTE: No LinkedIn coupling here. This endpoint only saves HubSpot mappings + materializes revenue.
 
       const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
+      const effectiveValueSource: 'revenue' | 'conversion_value' = (platformCtx === 'linkedin' ? parsedValueSource : 'revenue');
+
+      if (platformCtx === 'linkedin' && effectiveValueSource === 'conversion_value' && !convValueProp) {
+        return res.status(400).json({ error: 'conversionValueProperty is required when valueSource=conversion_value' });
+      }
 
       // Persist mapping config on the active HubSpot connection
       const hubspotConn: any = await storage.getHubspotConnection(campaignId);
@@ -8535,6 +8560,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignProperty: campaignProp,
           selectedValues: selected,
           revenueProperty: revenueProp,
+          conversionValueProperty: convValueProp || null,
+          valueSource: effectiveValueSource,
           days: rangeDays,
           stageIds: effectiveStageIds,
           currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
@@ -8564,10 +8591,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const mappingConfig = JSON.stringify({
           provider: "hubspot",
           platformContext: platformCtx,
-          mode: "revenue_to_date",
+          mode: effectiveValueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date",
+          valueSource: effectiveValueSource,
           campaignProperty: campaignProp,
           selectedValues: selected,
           revenueProperty: revenueProp,
+          conversionValueProperty: convValueProp || null,
           days: rangeDays,
           stageIds: effectiveStageIds,
           revenueClassification,
@@ -8595,6 +8624,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
               } as any);
 
         await storage.deleteRevenueRecordsBySource(String((source as any).id));
+
+        if (platformCtx === "linkedin" && effectiveValueSource === "conversion_value") {
+          const sorted = conversionValues.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+          if (sorted.length === 0) {
+            return res.status(400).json({ error: "No valid conversion value rows found for the selected HubSpot filter." });
+          }
+          const mid = Math.floor(sorted.length / 2);
+          const median = sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+          const convValue = Number(Number(median).toFixed(2));
+
+          try {
+            await storage.updateLinkedInConnection(campaignId, { conversionValue: convValue.toFixed(2) as any } as any);
+          } catch {
+            // ignore
+          }
+
+          // Ensure dependent metrics recompute immediately.
+          await recomputeCampaignDerivedValues(campaignId);
+
+          return res.json({
+            success: true,
+            mode: "conversion_value",
+            conversionValue: convValue,
+            // return totalRevenue as a diagnostic only (not used as source of truth in this mode)
+            totalRevenue: Number(totalRevenue.toFixed(2)),
+            currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+          });
+        }
 
         // Materialize revenue across the selected window so date-range queries behave correctly.
         const endDate = new Date().toISOString().slice(0, 10);

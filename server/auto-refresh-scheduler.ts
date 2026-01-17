@@ -61,8 +61,11 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord): P
     campaignProperty: mappingConfig.campaignProperty,
     selectedValues: mappingConfig.selectedValues,
     revenueProperty: mappingConfig.revenueProperty,
+    conversionValueProperty: mappingConfig.conversionValueProperty,
+    valueSource: mappingConfig.valueSource,
     days: mappingConfig.days,
     stageIds: mappingConfig.stageIds,
+    platformContext: mappingConfig.platformContext,
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body);
   if (!result.ok) {

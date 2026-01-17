@@ -53,9 +53,16 @@ export function ShopifyRevenueWizard(props: {
 
   // OAuth / connection
   const [shopName, setShopName] = useState<string | null>(null);
-  const [shopDomain, setShopDomain] = useState<string>("");
+  const [shopDomain, setShopDomain] = useState<string>(() => {
+    try {
+      return localStorage.getItem(`mm:shopifyDomain:${campaignId}`) || "";
+    } catch {
+      return "";
+    }
+  });
   const [isConnecting, setIsConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(true);
 
   const [valuesLoading, setValuesLoading] = useState(false);
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
@@ -69,7 +76,15 @@ export function ShopifyRevenueWizard(props: {
     const isConnected = !!json?.connected;
     setConnected(isConnected);
     setShopName(isConnected ? (json?.shopName || null) : null);
-    setShopDomain((prev) => prev || (isConnected ? String(json?.shopDomain || "") : ""));
+    const serverDomain = isConnected ? String(json?.shopDomain || "") : "";
+    setShopDomain((prev) => prev || serverDomain);
+    if (serverDomain) {
+      try {
+        localStorage.setItem(`mm:shopifyDomain:${campaignId}`, serverDomain);
+      } catch {
+        // ignore
+      }
+    }
     return isConnected;
   };
 
@@ -171,19 +186,40 @@ export function ShopifyRevenueWizard(props: {
     }
   };
 
+  // Load connection status once on mount (prevents visible flashing on step transitions).
   useEffect(() => {
+    let mounted = true;
     void (async () => {
       try {
         await fetchStatus();
       } catch {
         // ignore
+      } finally {
+        if (mounted) setStatusLoading(false);
       }
     })();
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId]);
+
+  // Fetch crosswalk values only when entering crosswalk.
+  useEffect(() => {
     if (step !== "crosswalk") return;
     if (uniqueValues.length > 0) return;
     void fetchUniqueValues();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  }, [step, campaignField, days]);
+
+  // Persist domain edits so going Back preserves the typed store.
+  useEffect(() => {
+    try {
+      if (shopDomain) localStorage.setItem(`mm:shopifyDomain:${campaignId}`, shopDomain);
+    } catch {
+      // ignore
+    }
+  }, [shopDomain, campaignId]);
 
   const handleBackStep = () => {
     if (step === "campaign-field") {
@@ -351,6 +387,11 @@ export function ShopifyRevenueWizard(props: {
         <CardContent className="space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-2">
+              {statusLoading && (
+                <div className="text-xs text-slate-500">
+                  Checking Shopify connection…
+                </div>
+              )}
               <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2">
                 <div className="text-sm font-medium">{connected ? "Connected Shopify store" : "Connect Shopify"}</div>
                 <div className="text-xs text-slate-600 dark:text-slate-400">

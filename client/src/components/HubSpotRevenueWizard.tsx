@@ -571,18 +571,23 @@ export function HubSpotRevenueWizard(props: {
                     <div className="flex items-start gap-2">
                       <RadioGroupItem id="hs-vs-revenue" value="revenue" />
                       <label htmlFor="hs-vs-revenue" className="text-sm font-medium leading-none cursor-pointer">
-                        Use Revenue (to date)
+                        Use Revenue (to date) — recommended
                       </label>
                     </div>
                     <div className="flex items-start gap-2">
                       <RadioGroupItem id="hs-vs-cv" value="conversion_value" />
                       <label htmlFor="hs-vs-cv" className="text-sm font-medium leading-none cursor-pointer">
-                        Use Conversion Value (ignore Revenue)
+                        Use Conversion Value (ignore Revenue) — advanced
                       </label>
                     </div>
                   </RadioGroup>
                   <div className="text-xs text-slate-500">
-                    Revenue mode imports campaign revenue-to-date. Conversion Value mode sets the per-conversion value used to compute revenue from LinkedIn conversions.
+                    <div>
+                      <span className="font-medium">Industry standard:</span> use <span className="font-medium">Revenue (Closed Won Deal Amount)</span> for executive ROI/ROAS.
+                    </div>
+                    <div className="mt-1">
+                      Conversion Value is best when you’re intentionally using an <span className="font-medium">estimated value</span> (e.g., LTV/ACV/Expected Value) instead of realized revenue.
+                    </div>
                   </div>
                 </div>
               )}
@@ -610,7 +615,10 @@ export function HubSpotRevenueWizard(props: {
                   </SelectContent>
                 </Select>
                 <div className="text-xs text-slate-500">
-                  {isLinkedIn && valueSource === "conversion_value" ? "Choose the numeric field that represents value per conversion." : "Default: Deal amount."}
+                  {isLinkedIn && valueSource === "conversion_value"
+                    ? "Choose the numeric field that represents value per conversion (estimated value)."
+                    : "Default (recommended): Deal amount (Closed Won)."
+                  }
                 </div>
               </div>
 
@@ -665,6 +673,16 @@ export function HubSpotRevenueWizard(props: {
                     </>
                   )}
                 </div>
+
+                {isLinkedIn && valueSource === "conversion_value" && (
+                  <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    <div className="font-medium">Heads up: this is an estimated ROI/ROAS mode</div>
+                    <div className="mt-1">
+                      Conversion Value mode computes revenue as <span className="font-medium">LinkedIn Conversions × Conversion Value</span>.
+                      Use this only if the selected HubSpot field represents a consistent value per conversion (e.g., LTV/ACV/Expected Value).
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>

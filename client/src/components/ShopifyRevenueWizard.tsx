@@ -387,11 +387,10 @@ export function ShopifyRevenueWizard(props: {
         <CardContent className="space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-2">
-              {statusLoading && (
-                <div className="text-xs text-slate-500">
-                  Checking Shopify connection…
-                </div>
-              )}
+              {/* Reserve space to avoid layout shift when statusLoading flips */}
+              <div className="text-xs text-slate-500 min-h-[16px]">
+                {statusLoading ? "Checking Shopify connection…" : "\u00A0"}
+              </div>
               <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2">
                 <div className="text-sm font-medium">{connected ? "Connected Shopify store" : "Connect Shopify"}</div>
                 <div className="text-xs text-slate-600 dark:text-slate-400">
@@ -416,11 +415,16 @@ export function ShopifyRevenueWizard(props: {
                     </Button>
                   </div>
                 </div>
-                {connected && shopName && (
-                  <div className="text-xs text-slate-600 dark:text-slate-400">
-                    Connected store: <span className="font-medium">{shopName}</span>
-                  </div>
-                )}
+                {/* Reserve space to avoid layout shift when connected/shopName arrives */}
+                <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[16px]">
+                  {connected && shopName ? (
+                    <>
+                      Connected store: <span className="font-medium">{shopName}</span>
+                    </>
+                  ) : (
+                    "\u00A0"
+                  )}
+                </div>
               </div>
 
               <Label>Attribution key</Label>

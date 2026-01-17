@@ -95,7 +95,10 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord): P
     campaignField: mappingConfig.campaignField,
     selectedValues: mappingConfig.selectedValues,
     revenueMetric: mappingConfig.revenueMetric,
+    revenueClassification: mappingConfig.revenueClassification,
     days: mappingConfig.days,
+    platformContext: mappingConfig.platformContext,
+    valueSource: mappingConfig.valueSource,
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/shopify/save-mappings`, body);
   if (!result.ok) {

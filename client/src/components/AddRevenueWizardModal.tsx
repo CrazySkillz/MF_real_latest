@@ -1438,6 +1438,7 @@ export function AddRevenueWizardModal(props: {
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <ShopifyRevenueWizard
                   campaignId={campaignId}
+                  platformContext={platformContext}
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {

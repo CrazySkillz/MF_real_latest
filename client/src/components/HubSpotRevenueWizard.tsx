@@ -720,12 +720,6 @@ export function HubSpotRevenueWizard(props: {
                   </div>
                 </div>
 
-                <div className="mt-4 text-xs text-slate-600 dark:text-slate-400">
-                  <span className="font-medium">Revenue classification</span>:{" "}
-                  {revenueClassification === "offsite_not_in_ga4"
-                    ? "Offsite (NOT tracked in GA4)"
-                    : "Onsite (also tracked in GA4)"}
-                </div>
               </div>
             </div>
           )}

@@ -9171,6 +9171,7 @@ export default function LinkedInAnalytics() {
             </DialogHeader>
             <ShopifyRevenueWizard
               campaignId={campaignId}
+              platformContext="linkedin"
               onBack={() => setIsShopifyRevenueWizardOpen(false)}
               onClose={() => {
                 setIsShopifyRevenueWizardOpen(false);

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, ClipboardCheck, DollarSign, Link2, Target } from "lucide-react";
 
@@ -16,15 +17,22 @@ export function ShopifyRevenueWizard(props: {
   onBack?: () => void;
   onClose?: () => void;
   onSuccess?: (result: any) => void;
+  /**
+   * Used to prevent cross-platform leakage of revenue metrics.
+   * Example: GA4 revenue sources must not unlock LinkedIn revenue metrics.
+   */
+  platformContext?: "ga4" | "linkedin";
 }) {
-  const { campaignId, onBack, onClose, onSuccess } = props;
+  const { campaignId, onBack, onClose, onSuccess, platformContext = "ga4" } = props;
   const { toast } = useToast();
+  const isLinkedIn = platformContext === "linkedin";
 
   const [step, setStep] = useState<Step>("campaign-field");
   const [days, setDays] = useState<number>(90);
   const [campaignField, setCampaignField] = useState<string>("utm_campaign");
   const [revenueMetric, setRevenueMetric] = useState<string>("total_price");
   const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("onsite_in_ga4");
+  const [valueSource, setValueSource] = useState<"revenue" | "conversion_value">("revenue");
 
   // OAuth / connection
   const [shopName, setShopName] = useState<string | null>(null);
@@ -101,10 +109,10 @@ export function ShopifyRevenueWizard(props: {
     () => [
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
-      { id: "revenue" as const, label: "Revenue", icon: DollarSign },
+      { id: "revenue" as const, label: isLinkedIn ? "Revenue / Conversion Value" : "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ],
-    []
+    [isLinkedIn]
   );
 
   const currentStepIndex = useMemo(() => {
@@ -192,13 +200,18 @@ export function ShopifyRevenueWizard(props: {
             revenueMetric,
             revenueClassification,
             days,
+            platformContext,
+            valueSource: isLinkedIn ? valueSource : "revenue",
           }),
         });
         const json = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(json?.error || "Failed to process revenue metrics");
         toast({
           title: "Revenue Metrics Processed",
-          description: `Conversion value calculated: $${json?.conversionValue || "0"} per conversion.`,
+          description:
+            isLinkedIn && String(json?.mode || "") === "conversion_value"
+              ? `Conversion value saved: ${Number(json?.conversionValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per conversion.`
+              : `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
         });
         onSuccess?.(json);
         setStep("complete");
@@ -287,11 +300,16 @@ export function ShopifyRevenueWizard(props: {
             )}
           </CardTitle>
           <CardDescription>
-            {step === "campaign-field" && "Choose how MetricMind should attribute Shopify orders to this LinkedIn campaign."}
+            {step === "campaign-field" && `Choose how MetricMind should attribute Shopify orders to this ${isLinkedIn ? "LinkedIn" : "campaign"}.`}
             {step === "crosswalk" && "Select the Shopify value(s) that map to this campaign."}
-            {step === "revenue" && "Choose what revenue field MetricMind should sum from matched orders."}
+            {step === "revenue" && (isLinkedIn ? "Choose whether Shopify should drive Revenue-to-date or Conversion Value for LinkedIn financial metrics." : "Choose what revenue field MetricMind should sum from matched orders.")}
             {step === "review" && "Confirm your selections and process revenue metrics."}
-            {step === "complete" && "Conversion value is saved. Revenue metrics should now be unlocked in Overview."}
+            {step === "complete" &&
+              (isLinkedIn
+                ? (valueSource === "conversion_value"
+                    ? "Conversion value is saved. LinkedIn revenue metrics should now recompute immediately."
+                    : "Revenue is connected. LinkedIn financial metrics should now recompute immediately.")
+                : "Revenue metrics processed.")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -393,6 +411,29 @@ export function ShopifyRevenueWizard(props: {
 
           {step === "revenue" && (
             <div className="space-y-4">
+              {isLinkedIn && (
+                <div className="space-y-2">
+                  <Label>Source of truth</Label>
+                  <RadioGroup value={valueSource} onValueChange={(v: any) => setValueSource(v)} className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem id="shop-vs-rev" value="revenue" />
+                      <label htmlFor="shop-vs-rev" className="text-sm font-medium leading-none cursor-pointer">
+                        Use Revenue (to date) — recommended
+                      </label>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem id="shop-vs-cv" value="conversion_value" />
+                      <label htmlFor="shop-vs-cv" className="text-sm font-medium leading-none cursor-pointer">
+                        Use Conversion Value (computed from Shopify revenue) — advanced
+                      </label>
+                    </div>
+                  </RadioGroup>
+                  <div className="text-xs text-slate-500">
+                    Industry standard is using Shopify revenue as the source of truth. Conversion Value mode computes a per-conversion value from Shopify revenue ÷ LinkedIn conversions.
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>Revenue metric</Label>
                 <Select value={revenueMetric} onValueChange={(v) => setRevenueMetric(v)}>
@@ -442,6 +483,11 @@ export function ShopifyRevenueWizard(props: {
 
           {step === "review" && (
             <div className="space-y-2 text-sm text-slate-700">
+              {isLinkedIn && (
+                <div>
+                  <strong>Source of truth:</strong> {valueSource === "conversion_value" ? "Conversion Value (derived)" : "Revenue (to date)"}
+                </div>
+              )}
               <div>
                 <strong>Attribution key:</strong> {campaignField}
               </div>

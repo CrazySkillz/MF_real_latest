@@ -1402,6 +1402,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // ignore
         }
 
+        // Ensure dependent metrics recompute immediately (enterprise-grade freshness).
+        await recomputeCampaignDerivedValues(campaignId);
+
         return res.json({
           success: true,
           mode: "conversion_value",

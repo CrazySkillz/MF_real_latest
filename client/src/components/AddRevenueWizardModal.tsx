@@ -101,6 +101,7 @@ export function AddRevenueWizardModal(props: {
   const [csvPreviewing, setCsvPreviewing] = useState(false);
   const [csvPrefill, setCsvPrefill] = useState<null | {
     revenueColumn?: string;
+    conversionValueColumn?: string;
     campaignColumn?: string;
     campaignValues?: string[];
   }>(null);
@@ -192,22 +193,31 @@ export function AddRevenueWizardModal(props: {
 
     if (type === "google_sheets") {
       const connId = String(config?.connectionId || initialSource?.connectionId || "");
+      const vsRaw = String(config?.valueSource || config?.mode || "").trim().toLowerCase();
+      const vs: 'revenue' | 'conversion_value' = vsRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
       setStep("sheets_map");
       if (connId) setSheetsConnectionId(connId);
       // We'll fetch preview in the mapping step; after preview loads we re-apply mappings below.
       setSheetsRevenueCol(String(config?.revenueColumn || ""));
+      setSheetsConversionValueCol(String(config?.conversionValueColumn || ""));
+      setSheetsValueSource(vs);
       setSheetsCampaignCol(String(config?.campaignColumn || ""));
       setSheetsCampaignValues(Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : []);
       return;
     }
 
     if (type === "csv") {
+      const vsRaw = String(config?.valueSource || config?.mode || "").trim().toLowerCase();
+      const vs: 'revenue' | 'conversion_value' = vsRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
       setStep("csv");
       setCsvPrefill({
         revenueColumn: String(config?.revenueColumn || ""),
+        conversionValueColumn: String(config?.conversionValueColumn || ""),
         campaignColumn: String(config?.campaignColumn || ""),
         campaignValues: Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : [],
       });
+      setCsvConversionValueCol(String(config?.conversionValueColumn || ""));
+      setCsvValueSource(vs);
       return;
     }
 
@@ -408,8 +418,10 @@ export function AddRevenueWizardModal(props: {
       if (csvPrefill) {
         const pickIfExists = (v?: string) => (v && headers.includes(v) ? v : "");
         const rc = pickIfExists(csvPrefill.revenueColumn);
+        const cvc = pickIfExists(csvPrefill.conversionValueColumn);
         const cc = pickIfExists(csvPrefill.campaignColumn);
         if (rc) setCsvRevenueCol(rc);
+        if (cvc) setCsvConversionValueCol(cvc);
         if (cc) setCsvCampaignCol(cc);
         if (Array.isArray(csvPrefill.campaignValues) && csvPrefill.campaignValues.length > 0) {
           setCsvCampaignValues(csvPrefill.campaignValues.map(String));

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SiGoogle } from "react-icons/si";
 import { AlertCircle, RefreshCw, FileSpreadsheet } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -14,7 +15,7 @@ interface SimpleGoogleSheetsAuthProps {
   onSuccess: (connectionInfo?: { connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] }) => void;
   onError: (error: string) => void;
   selectionMode?: 'replace' | 'append';
-  purpose?: 'spend' | 'revenue' | 'general';
+  purpose?: 'spend' | 'revenue' | 'general' | 'linkedin_revenue';
 }
 
 interface Spreadsheet {
@@ -37,6 +38,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string>("");
   const [availableSheets, setAvailableSheets] = useState<Sheet[]>([]);
   const [selectedSheetNames, setSelectedSheetNames] = useState<string[]>([]);
+  const isRevenueConnector = purpose === 'revenue' || purpose === 'linkedin_revenue';
   // Keep a ref in sync to avoid any edge-case where the latest checkbox selection
   // isn't reflected yet when the user immediately clicks "Connect".
   const selectedSheetNamesRef = useRef<string[]>([]);
@@ -182,6 +184,13 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
 
   const toggleSheetSelection = useCallback((sheetTitle: string) => {
     setSelectedSheetNames(prev => {
+      // Revenue connector must be single-tab to avoid ambiguity/double-counting.
+      if (isRevenueConnector) {
+        const next = prev.includes(sheetTitle) ? [] : [sheetTitle];
+        selectedSheetNamesRef.current = next;
+        return next;
+      }
+
       if (prev.includes(sheetTitle)) {
         const next = prev.filter(s => s !== sheetTitle);
         selectedSheetNamesRef.current = next;
@@ -192,7 +201,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
         return next;
       }
     });
-  }, []);
+  }, [isRevenueConnector]);
 
   const selectAllSheets = useCallback(() => {
     if (selectedSheetNames.length === availableSheets.length) {
@@ -214,7 +223,11 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     // Require explicit tab selection to avoid accidentally connecting the wrong tab due to defaults/stale state.
     const sheetsToConnect = selectedSheetNamesRef.current.length > 0 ? selectedSheetNamesRef.current : selectedSheetNames;
     if (availableSheets.length > 0 && (!Array.isArray(sheetsToConnect) || sheetsToConnect.length === 0)) {
-      onError("Please select at least one tab to connect.");
+      onError(isRevenueConnector ? "Please select 1 tab to connect." : "Please select at least one tab to connect.");
+      return;
+    }
+    if (isRevenueConnector && Array.isArray(sheetsToConnect) && sheetsToConnect.length > 1) {
+      onError("Revenue connections support 1 tab only. Please select a single tab.");
       return;
     }
 
@@ -275,7 +288,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     } finally {
       setIsSelectingSpreadsheet(false);
     }
-  }, [campaignId, selectedSpreadsheet, selectedSheetNames, availableSheets, onSuccess, onError]);
+  }, [campaignId, selectedSpreadsheet, selectedSheetNames, availableSheets, onSuccess, onError, isRevenueConnector]);
 
   // Show spreadsheet selection after auth
   if (authCompleted && spreadsheets.length > 0) {
@@ -311,8 +324,8 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
           {selectedSpreadsheet && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Select Sheet/Tab(s)</Label>
-                {availableSheets.length > 1 && (
+                <Label>{isRevenueConnector ? "Select Sheet/Tab (Revenue/Conversion Value)" : "Select Sheet/Tab(s)"}</Label>
+                {!isRevenueConnector && availableSheets.length > 1 && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -332,27 +345,42 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
               ) : availableSheets.length > 0 ? (
                 <>
                   <div className="space-y-2 max-h-64 overflow-y-auto border border-slate-200 rounded-md p-3">
-                    {availableSheets.map((sheet) => (
-                      <div key={sheet.sheetId} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`sheet-${sheet.sheetId}`}
-                          checked={selectedSheetNames.includes(sheet.title)}
-                          onCheckedChange={() => toggleSheetSelection(sheet.title)}
-                        />
-                        <label
-                          htmlFor={`sheet-${sheet.sheetId}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                        >
-                          {sheet.title}
-                        </label>
-                      </div>
-                    ))}
+                    {isRevenueConnector ? (
+                      <RadioGroup
+                        value={selectedSheetNames[0] || ""}
+                        onValueChange={(v) => toggleSheetSelection(v)}
+                        className="space-y-2"
+                      >
+                        {availableSheets.map((sheet) => (
+                          <div key={sheet.sheetId} className="flex items-center space-x-2">
+                            <RadioGroupItem id={`sheet-${sheet.sheetId}`} value={sheet.title} />
+                            <label
+                              htmlFor={`sheet-${sheet.sheetId}`}
+                              className="text-sm font-medium leading-none cursor-pointer flex-1"
+                            >
+                              {sheet.title}
+                            </label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    ) : (
+                      availableSheets.map((sheet) => (
+                        <div key={sheet.sheetId} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`sheet-${sheet.sheetId}`}
+                            checked={selectedSheetNames.includes(sheet.title)}
+                            onCheckedChange={() => toggleSheetSelection(sheet.title)}
+                          />
+                          <label
+                            htmlFor={`sheet-${sheet.sheetId}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                          >
+                            {sheet.title}
+                          </label>
+                        </div>
+                      ))
+                    )}
                   </div>
-                  {selectedSheetNames.length > 0 && (
-                    <p className="text-xs text-green-600 dark:text-green-400">
-                      {selectedSheetNames.length} sheet{selectedSheetNames.length > 1 ? 's' : ''} selected
-                    </p>
-                  )}
                 </>
               ) : (
                 <p className="text-sm text-slate-500">
@@ -361,7 +389,9 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
               )}
               <p className="text-xs text-slate-400">
                 {availableSheets.length > 0 
-                  ? `Select one or multiple tabs to connect. If none selected, the first tab will be used.`
+                  ? (isRevenueConnector
+                      ? `Select exactly 1 tab. You’ll map Revenue or Conversion Value columns in the next step.`
+                      : `Select one or multiple tabs to connect. If none selected, the first tab will be used.`)
                   : `The first tab in the spreadsheet will be used.`}
               </p>
             </div>
@@ -381,8 +411,8 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
             ) : (
               <>
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                {selectedSheetNames.length > 0 
-                  ? `Connect ${selectedSheetNames.length} Sheet${selectedSheetNames.length > 1 ? 's' : ''}`
+                {selectedSheetNames.length > 0
+                  ? (isRevenueConnector ? `Connect Tab` : `Connect ${selectedSheetNames.length} Sheet${selectedSheetNames.length > 1 ? 's' : ''}`)
                   : 'Connect Spreadsheet'}
               </>
             )}

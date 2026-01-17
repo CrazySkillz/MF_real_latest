@@ -6749,6 +6749,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Sheet names array is required and must not be empty' });
       }
 
+      // Enterprise-grade guardrail: revenue connectors must be single-tab to avoid ambiguity/double-counting.
+      if ((sheetsPurpose === 'revenue' || sheetsPurpose === 'linkedin_revenue') && Array.isArray(sheetNames) && sheetNames.length > 1) {
+        return res.status(400).json({ error: 'Revenue connections support 1 tab only. Please select a single tab.' });
+      }
+
       // Enforce max connections per campaign server-side (prevents runaway counts like 48/10)
       const MAX_GOOGLE_SHEETS_CONNECTIONS = 10;
       // Exclude placeholder 'pending' connections from the limit count.

@@ -15,6 +15,8 @@
 
 import { storage } from "./storage";
 import { refreshAllLinkedInData } from "./linkedin-scheduler";
+import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
+import { checkPerformanceAlerts } from "./kpi-scheduler";
 
 type AnyRecord = Record<string, any>;
 
@@ -160,6 +162,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
     let attempted = 0;
     let succeeded = 0;
     let skipped = 0;
+    let anyCampaignUpdated = false;
 
     for (const campaign of campaigns) {
       const campaignId = campaign.id;
@@ -231,14 +234,27 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
 
         // If any upstream sources changed for this campaign, immediately recompute GA4 KPI/Benchmark series for Insights.
         if (anyUpdated) {
+          anyCampaignUpdated = true;
           const r = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4/run-insights-jobs`, {});
           if (!r.ok) {
             console.warn(`[Auto Refresh] KPI/Benchmark recompute failed for campaign ${campaignId}:`, r.status, r.json?.error || r.text);
           }
+
+          // Also recompute KPI values immediately (exec-grade freshness).
+          await refreshKPIsForCampaign(campaignId).catch((e) => {
+            console.warn(`[Auto Refresh] KPI refresh failed for campaign ${campaignId}:`, (e as any)?.message || e);
+          });
         }
       } catch (e: any) {
         console.error(`[Auto Refresh] Error processing campaign ${campaignId}:`, e?.message || e);
       }
+    }
+
+    // Run alert check once per refresh cycle (avoid N-times per campaign).
+    if (anyCampaignUpdated) {
+      await checkPerformanceAlerts().catch((e) => {
+        console.warn("[Auto Refresh] Alert check failed after provider reprocess:", (e as any)?.message || e);
+      });
     }
 
     console.log("[Auto Refresh] Summary:");

@@ -22,6 +22,8 @@ import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
+import { checkPerformanceAlerts } from "./kpi-scheduler";
 
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
@@ -808,6 +810,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // Enterprise-grade: whenever a source-of-truth input (revenue / conversion value) changes,
+  // recompute all dependent derived values (KPIs + alerts) immediately.
+  const recomputeCampaignDerivedValues = async (campaignId: string) => {
+    try {
+      await refreshKPIsForCampaign(campaignId);
+    } catch (e) {
+      console.warn(`[Revenue Update] KPI recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
+    }
+    try {
+      await checkPerformanceAlerts();
+    } catch (e) {
+      console.warn(`[Revenue Update] Alert check failed after revenue update for campaign ${campaignId}:`, (e as any)?.message || e);
+    }
+  };
+
   // When "revenue to date" is the source of truth for LinkedIn, we must clear any previously computed
   // session-level conversion value; otherwise some endpoints may incorrectly prefer stale sessionCv.
   const clearLatestLinkedInImportSessionConversionValue = async (campaignId: string) => {
@@ -926,6 +943,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         revenueToDate: amountIsValid ? Number(amount.toFixed(2)) : 0,
         conversionValue: cvIsValid ? Number(conversionValueRaw.toFixed(2)) : 0,
       });
+
+      // Ensure all derived values are recomputed immediately for exec-grade accuracy.
+      await recomputeCampaignDerivedValues(campaignId);
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process manual revenue" });
     }
@@ -1048,6 +1068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionValue: Number(convValue.toFixed(2)),
           totalRevenue: 0,
         });
+        await recomputeCampaignDerivedValues(campaignId);
       } else {
         // Revenue is source of truth.
         try {
@@ -1080,6 +1101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mode: "revenue_to_date",
           totalRevenue,
         });
+        await recomputeCampaignDerivedValues(campaignId);
       }
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
@@ -1423,6 +1445,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: endDate,
         totalRevenue,
       });
+
+      await recomputeCampaignDerivedValues(campaignId);
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process Sheets revenue" });
     }
@@ -8215,6 +8239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
         sessionId: latestSession.id,
       });
+      await recomputeCampaignDerivedValues(campaignId);
     } catch (error: any) {
       console.error('[Salesforce Save Mappings] Error:', error);
       res.status(500).json({ error: error.message || 'Failed to save Salesforce mappings' });
@@ -8607,6 +8632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalRevenue: Number(totalRevenue.toFixed(2)),
         currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
       });
+      await recomputeCampaignDerivedValues(campaignId);
     } catch (error: any) {
       console.error('[HubSpot Save Mappings] Error:', error);
       res.status(500).json({ error: error.message || 'Failed to save HubSpot mappings' });
@@ -14511,16 +14537,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/linkedin/imports/:sessionId/ads", async (req, res) => {
     try {
       const { sessionId } = req.params;
-      
+
+      // Enterprise-grade correctness:
+      // Ad-level revenue must be derived from the *current* conversion value / revenue source-of-truth,
+      // not whatever value happened to be stored at import time.
+      const session = await storage.getLinkedInImportSession(sessionId);
+      if (!session) return res.status(404).json({ message: "Import session not found" });
+
       const ads = await storage.getLinkedInAdPerformance(sessionId);
-      
-      // Sort by revenue descending (convert string to number for comparison)
-      const sortedAds = ads.sort((a, b) => {
-        const revenueA = parseFloat(a.revenue || '0');
-        const revenueB = parseFloat(b.revenue || '0');
-        return revenueB - revenueA;
+
+      const campaign = await storage.getCampaign(session.campaignId);
+      const linkedInConn = await storage.getLinkedInConnection(session.campaignId);
+
+      const parseNum = (v: any): number => {
+        if (v === null || typeof v === "undefined" || v === "") return 0;
+        const n = typeof v === "string" ? parseFloat(v) : Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
+      const isoDateUTC = (d: any) => {
+        try {
+          const dt = d instanceof Date ? d : new Date(d);
+          if (Number.isNaN(dt.getTime())) return null;
+          return dt.toISOString().slice(0, 10);
+        } catch {
+          return null;
+        }
+      };
+      const yesterdayUTC = () => {
+        const now = new Date();
+        const y = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+        return y.toISOString().slice(0, 10);
+      };
+
+      // Determine LinkedIn-scoped imported revenue-to-date (lifetime bounds).
+      let importedRevenueToDate = 0;
+      try {
+        let startDate =
+          isoDateUTC((campaign as any)?.startDate) ||
+          isoDateUTC((campaign as any)?.createdAt) ||
+          "2020-01-01";
+        const endDate = yesterdayUTC();
+        if (String(startDate) > String(endDate)) startDate = endDate;
+        const totals = await storage.getRevenueTotalForRange(String(session.campaignId), startDate, endDate, 'linkedin');
+        importedRevenueToDate = parseNum((totals as any)?.totalRevenue);
+      } catch {
+        importedRevenueToDate = 0;
+      }
+
+      const connCv = linkedInConn?.conversionValue ? parseNum((linkedInConn as any).conversionValue) : 0;
+      const sessionCv = (session as any)?.conversionValue ? parseNum((session as any).conversionValue) : 0;
+
+      const totalAdConversions = (ads || []).reduce((sum: number, ad: any) => sum + parseNum(ad?.conversions), 0);
+      const derivedCv = (importedRevenueToDate > 0 && totalAdConversions > 0) ? (importedRevenueToDate / totalAdConversions) : 0;
+      const conversionValue = connCv > 0 ? connCv : (derivedCv > 0 ? derivedCv : sessionCv);
+
+      const computeAdRevenue = (conversions: number): number => {
+        if (conversionValue > 0) return conversions * conversionValue;
+        // If we have revenue-to-date but no conversion value, allocate by conversions share.
+        if (importedRevenueToDate > 0 && totalAdConversions > 0) return importedRevenueToDate * (conversions / totalAdConversions);
+        return 0;
+      };
+
+      const enriched = (ads || []).map((ad: any) => {
+        const conversions = parseNum(ad?.conversions);
+        const spend = parseNum(ad?.spend);
+        const revenue = parseFloat(Number(computeAdRevenue(conversions)).toFixed(2));
+        const profit = parseFloat(Number(revenue - spend).toFixed(2));
+        const roas = spend > 0 ? parseFloat((revenue / spend).toFixed(2)) : 0;
+        const roi = spend > 0 ? parseFloat((((revenue - spend) / spend) * 100).toFixed(2)) : 0;
+        const profitMargin = revenue > 0 ? parseFloat(((profit / revenue) * 100).toFixed(2)) : 0;
+        return {
+          ...ad,
+          revenue: revenue.toFixed(2),
+          roas: roas.toFixed(2),
+          roi: roi.toFixed(2),
+          profit: profit.toFixed(2),
+          profitMargin: profitMargin.toFixed(2),
+          _computed: {
+            conversionValue: parseFloat(Number(conversionValue || 0).toFixed(2)),
+            importedRevenueToDate: parseFloat(Number(importedRevenueToDate || 0).toFixed(2)),
+          },
+        };
       });
-      
+
+      // Sort by computed revenue desc; tie-breaker by conversions then spend.
+      const sortedAds = enriched.sort((a: any, b: any) => {
+        const revA = parseNum(a?.revenue);
+        const revB = parseNum(b?.revenue);
+        if (revB !== revA) return revB - revA;
+        const convA = parseNum(a?.conversions);
+        const convB = parseNum(b?.conversions);
+        if (convB !== convA) return convB - convA;
+        return parseNum(b?.spend) - parseNum(a?.spend);
+      });
+
       res.json(sortedAds);
     } catch (error) {
       console.error('LinkedIn ad performance fetch error:', error);
@@ -17540,6 +17650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalConversions: Number(totalConversions.toFixed(2)),
         matchedOrderCount: matchedOrders.length,
       });
+      await recomputeCampaignDerivedValues(campaignId);
     } catch (error: any) {
       console.error("[Shopify Save Mappings] Error:", error);
       res.status(500).json({ error: error.message || "Failed to process Shopify revenue metrics" });

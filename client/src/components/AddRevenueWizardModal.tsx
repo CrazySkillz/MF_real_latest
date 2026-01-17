@@ -55,6 +55,8 @@ export function AddRevenueWizardModal(props: {
       // LinkedIn-specific caches (some pages use array-shaped keys).
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "linkedin"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId], exact: false });
+      // LinkedIn Overview tab consumes session-scoped aggregates: refresh any open session views.
+      void queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
     }
 
     // Best-effort immediate refresh when mounted (keeps Overview feeling instant).

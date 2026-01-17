@@ -179,6 +179,15 @@ export default function FinancialAnalysis() {
   // Get conversion value from LinkedIn (configured during connection setup)
   // This is the primary source for revenue calculations per system design
   const linkedInConversionValue = linkedInData?.conversionValue || 0;
+  const linkedInRevenueFromBackend = Number.isFinite(Number((linkedInData as any)?.revenue))
+    ? Number((linkedInData as any).revenue)
+    : null;
+  const linkedInROASFromBackend = Number.isFinite(Number((linkedInData as any)?.roas))
+    ? Number((linkedInData as any).roas)
+    : null;
+  const linkedInROIFromBackend = Number.isFinite(Number((linkedInData as any)?.roi))
+    ? Number((linkedInData as any).roi)
+    : null;
   
   // Get AOV from GA4 or Custom Integration as fallback
   const fallbackAOV = ga4Data?.averageOrderValue || 
@@ -204,16 +213,28 @@ export default function FinancialAnalysis() {
     return spend > 0 ? revenue / spend : 0;
   };
   
-  const linkedInROAS = calculatePlatformROAS(platformMetrics.linkedIn.spend, platformMetrics.linkedIn.conversions, linkedInConversionValue);
+  const linkedInROAS =
+    linkedInROASFromBackend !== null
+      ? linkedInROASFromBackend
+      : calculatePlatformROAS(platformMetrics.linkedIn.spend, platformMetrics.linkedIn.conversions, linkedInConversionValue);
   const customIntegrationROAS = calculatePlatformROAS(platformMetrics.customIntegration.spend, platformMetrics.customIntegration.conversions);
   
   // Calculate revenue/ROI using LinkedIn conversion value for LinkedIn conversions
   // and fallback AOV for other platforms
-  const linkedInRevenue = platformMetrics.linkedIn.conversions * linkedInConversionValue;
+  // IMPORTANT: Prefer backend-computed LinkedIn revenue. This remains correct even when revenue-to-date is imported
+  // (e.g. conversions=0, conversionValue=0, but revenue still exists).
+  const linkedInRevenue =
+    linkedInRevenueFromBackend !== null
+      ? linkedInRevenueFromBackend
+      : (platformMetrics.linkedIn.conversions * linkedInConversionValue);
   const otherRevenue = (platformMetrics.customIntegration.conversions + platformMetrics.sheets.conversions) * fallbackAOV;
   const estimatedRevenue = linkedInRevenue + otherRevenue;
   const roas = totalSpend > 0 ? estimatedRevenue / totalSpend : 0;
-  const roi = totalSpend > 0 ? ((estimatedRevenue - totalSpend) / totalSpend) * 100 : 0;
+  const roi =
+    // If this campaign is effectively LinkedIn-only, prefer backend ROI (it accounts for revenue-to-date vs derived revenue).
+    (linkedInROIFromBackend !== null && otherRevenue === 0 && totalSpend === platformMetrics.linkedIn.spend)
+      ? linkedInROIFromBackend
+      : (totalSpend > 0 ? ((estimatedRevenue - totalSpend) / totalSpend) * 100 : 0);
 
   // Calculate comparison metrics
   const calculateChange = (current: number, previous: number) => {
@@ -289,15 +310,15 @@ export default function FinancialAnalysis() {
                         Financial Data Source: LinkedIn Ads
                       </p>
                       <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        All financial metrics (spend, revenue, ROI, ROAS) are calculated from LinkedIn advertising data with a configured conversion value of {formatCurrency(linkedInConversionValue)}. Custom Integration provides website analytics only.
+                        Financial metrics use the backend’s canonical LinkedIn revenue logic: either imported revenue-to-date or conversions × conversion value (when configured). This ensures exec-grade accuracy across all tabs.
                       </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* AOV Warning */}
-              {estimatedAOV === 0 && (
+              {/* AOV Warning (only when we have no usable revenue source) */}
+              {estimatedAOV === 0 && !(linkedInRevenueFromBackend !== null && linkedInRevenueFromBackend > 0) && (
                 <Card className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2">

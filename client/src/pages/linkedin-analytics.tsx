@@ -8964,14 +8964,17 @@ export default function LinkedInAnalytics() {
                   </div>
                 </div>
 
-                {/* Revenue Metrics Section - Only if conversion value is set */}
-                {aggregated?.hasRevenueTracking === 1 && (() => {
-                  const conversionValue = aggregated.conversionValue || 0;
+                {/* Revenue Metrics Section - only computable at a per-campaign level when conversion value is known */}
+                {(() => {
+                  const conversionValue = Number(aggregated?.conversionValue || 0);
+                  const hasConversionValue = conversionValue > 0;
+                  if (!hasConversionValue) return null;
+
                   const revenue = conversions * conversionValue;
                   const profit = revenue - spend;
                   const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
                   const roas = spend > 0 ? revenue / spend : 0;
-                  
+
                   return (
                     <div>
                       <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Revenue Metrics</h3>

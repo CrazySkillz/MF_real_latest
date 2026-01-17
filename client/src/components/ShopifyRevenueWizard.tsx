@@ -74,11 +74,24 @@ export function ShopifyRevenueWizard(props: {
   };
 
   const openOAuthWindow = async () => {
-    const domain = String(shopDomain || "").trim();
+    // Normalize domain so users can type either:
+    // - "my-store" (we assume my-store.myshopify.com)
+    // - "my-store.myshopify.com"
+    // - "https://my-store.myshopify.com/..."
+    let domain = String(shopDomain || "").trim();
     if (!domain) {
       toast({ title: "Enter your shop domain", description: "Example: your-store.myshopify.com", variant: "destructive" });
       return;
     }
+    domain = domain.replace(/^https?:\/\//i, "").split("/")[0].trim().toLowerCase();
+    if (domain && !domain.includes(".")) domain = `${domain}.myshopify.com`;
+    if (!domain.includes(".")) {
+      toast({ title: "Invalid shop domain", description: "Example: your-store.myshopify.com", variant: "destructive" });
+      return;
+    }
+    // Keep state in sync so user sees what we will connect to.
+    if (domain !== String(shopDomain || "").trim().toLowerCase()) setShopDomain(domain);
+
     setIsConnecting(true);
     try {
       const resp = await fetch("/api/auth/shopify/connect", {
@@ -90,6 +103,8 @@ export function ShopifyRevenueWizard(props: {
       if (!resp.ok) throw new Error(json?.message || "Failed to start Shopify OAuth");
       const authUrl = json?.authUrl;
       if (!authUrl) throw new Error("No auth URL returned");
+
+      toast({ title: "Opening Shopify", description: `Connecting to ${domain}…` });
 
       const w = window.open(authUrl, "shopify_oauth", "width=520,height=680");
       if (!w) throw new Error("Popup blocked. Please allow popups and try again.");

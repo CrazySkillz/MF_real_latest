@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, ClipboardCheck, DollarSign, Link2, Target } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, DollarSign, Link2, Loader2, Target } from "lucide-react";
 
 type Step = "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
 type UniqueValue = { value: string; count: number };
@@ -387,16 +387,14 @@ export function ShopifyRevenueWizard(props: {
         <CardContent className="space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-2">
-              {/* Reserve space to avoid layout shift when statusLoading flips */}
-              <div className="text-xs text-slate-500 min-h-[16px]">
-                {statusLoading ? "Checking Shopify connection…" : "\u00A0"}
-              </div>
               {/* Keep this block layout-stable to prevent "jumpy" transitions */}
-              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2 relative">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium">Shopify store</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[16px]">
-                    {connected ? "Connected" : "Not connected"}
+                  <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[16px] transition-opacity duration-200">
+                    <span className={statusLoading ? "opacity-0" : "opacity-100"}>
+                      {connected ? "Connected" : "Not connected"}
+                    </span>
                   </div>
                 </div>
 
@@ -423,15 +421,24 @@ export function ShopifyRevenueWizard(props: {
                   </div>
                 </div>
                 {/* Reserve space to avoid layout shift when connected/shopName arrives */}
-                <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[16px]">
-                  {connected && shopName ? (
-                    <>
-                      Connected store: <span className="font-medium">{shopName}</span>
-                    </>
-                  ) : (
-                    "\u00A0"
-                  )}
+                <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[16px] transition-opacity duration-200">
+                  <span className={statusLoading ? "opacity-0" : "opacity-100"}>
+                    {connected && shopName ? (
+                      <>
+                        Connected store: <span className="font-medium">{shopName}</span>
+                      </>
+                    ) : (
+                      "\u00A0"
+                    )}
+                  </span>
                 </div>
+
+                {/* Non-shifting loading indicator (no text) */}
+                {statusLoading && (
+                  <div className="absolute top-3 right-3 text-slate-400">
+                    <Loader2 className="w-4 h-4 animate-spin" aria-label="Loading" />
+                  </div>
+                )}
               </div>
 
               <Label>Attribution key</Label>

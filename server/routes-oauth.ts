@@ -5658,7 +5658,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .reduce((sum: number, m: any) => sum + parseNum(m.metricValue), 0);
               aggregated[k] = parseFloat(total.toFixed(2));
             });
-            linkedInSpend = parseNum(aggregated.spend);
+
+            // Canonicalize core LinkedIn totals defensively (enterprise-grade).
+            const normalizeMetricKey = (key: any) =>
+              String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const sumMetricValues = (normalizedKeys: string[]) =>
+              (metrics || []).reduce((sum: number, m: any) => {
+                const k = normalizeMetricKey((m as any)?.metricKey);
+                if (normalizedKeys.includes(k)) return sum + parseNum((m as any)?.metricValue);
+                return sum;
+              }, 0);
+            const canonImpressions = sumMetricValues(['impressions']);
+            const canonClicks = sumMetricValues(['clicks']);
+            const canonSpend = sumMetricValues(['spend']);
+            const canonConversions = sumMetricValues(['conversions', 'externalwebsiteconversions']);
+            const canonLeads = sumMetricValues(['leads']);
+
+            linkedInSpend = parseNum(canonSpend);
 
             // IMPORTANT: LinkedIn conversion value can be updated independently of import sessions
             // (e.g. via manual/CSV/Sheets "conversion value" sources). For campaign Overview correctness,
@@ -5675,7 +5691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               importedRevenueToDate = 0;
             }
 
-            const conversions = parseNum(aggregated.conversions);
+            const conversions = parseNum(canonConversions);
             const derivedCv = (importedRevenueToDate > 0 && conversions > 0) ? (importedRevenueToDate / conversions) : 0;
             const conversionValue = connCv > 0 ? connCv : (sessionCv > 0 ? sessionCv : derivedCv);
 
@@ -5693,10 +5709,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             linkedIn = {
               connected: true,
               spend: linkedInSpend,
-              clicks: parseNum(aggregated.clicks),
-              impressions: parseNum(aggregated.impressions),
-              conversions: parseNum(aggregated.conversions),
-              leads: parseNum(aggregated.leads),
+              clicks: parseNum(canonClicks),
+              impressions: parseNum(canonImpressions),
+              conversions: parseNum(canonConversions),
+              leads: parseNum(canonLeads),
               conversionValue: conversionValue > 0 ? parseFloat(Number(conversionValue).toFixed(2)) : 0,
               attributedRevenue,
               roas,
@@ -13517,6 +13533,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get metrics for this session
       const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
+
+      // Canonicalize core metric totals defensively (enterprise-grade):
+      // even if upstream key naming changes, derived financial metrics must remain correct.
+      const normalizeMetricKey = (key: any) =>
+        String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const sumMetricValues = (normalizedKeys: string[]) =>
+        (metrics || []).reduce((sum: number, m: any) => {
+          const k = normalizeMetricKey(m?.metricKey);
+          if (normalizedKeys.includes(k)) {
+            const v = parseFloat(String(m?.metricValue ?? '0')) || 0;
+            return sum + (Number.isFinite(v) ? v : 0);
+          }
+          return sum;
+        }, 0);
+      const canonImpressions = sumMetricValues(['impressions']);
+      const canonClicks = sumMetricValues(['clicks']);
+      const canonSpend = sumMetricValues(['spend']);
+      const canonConversions = sumMetricValues(['conversions', 'externalwebsiteconversions']);
+      const canonLeads = sumMetricValues(['leads']);
+      const canonEngagements = sumMetricValues(['engagements']);
+      const canonReach = sumMetricValues(['reach']);
+      const canonVideoViews = sumMetricValues(['videoviews']);
+      const canonViralImpressions = sumMetricValues(['viralimpressions']);
       
       // Aggregate metrics
       const aggregated: Record<string, number> = {};
@@ -13545,10 +13584,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Calculate derived metrics
-      const impressions = aggregated.impressions || 0;
-      const clicks = aggregated.clicks || 0;
-      const spend = aggregated.spend || 0;
-      const conversions = aggregated.conversions || 0;
+      // Use canonical totals, and also expose them on the response in stable keys.
+      const impressions = Math.round(canonImpressions);
+      const clicks = Math.round(canonClicks);
+      const spend = parseFloat(Number(canonSpend).toFixed(2));
+      const conversions = parseFloat(Number(canonConversions).toFixed(2));
+      aggregated.impressions = impressions;
+      aggregated.clicks = clicks;
+      aggregated.spend = spend;
+      aggregated.conversions = conversions;
+      aggregated.leads = Math.round(canonLeads);
+      aggregated.engagements = Math.round(canonEngagements);
+      aggregated.reach = Math.round(canonReach);
+      aggregated.videoViews = Math.round(canonVideoViews);
+      aggregated.viralImpressions = Math.round(canonViralImpressions);
 
       // STRICT PLATFORM ISOLATION:
       // LinkedIn revenue metrics must NOT be enabled by GA4 revenue sources or campaign-level conversionValue.
@@ -13693,6 +13742,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // CPM: (Spend / Impressions) * 1000
       if (impressions > 0) {
         aggregated.cpm = parseFloat(((spend / impressions) * 1000).toFixed(2));
+      }
+
+      // CVR: (Conversions / Clicks) * 100
+      if (clicks > 0) {
+        aggregated.cvr = parseFloat(((conversions / clicks) * 100).toFixed(2));
+      }
+
+      // CPA: Spend / Conversions
+      if (conversions > 0) {
+        aggregated.cpa = parseFloat((spend / conversions).toFixed(2));
+      }
+
+      // CPL: Spend / Leads
+      if ((aggregated.leads || 0) > 0) {
+        aggregated.cpl = parseFloat((spend / (aggregated.leads || 1)).toFixed(2));
+      }
+
+      // ER: (Engagements / Impressions) * 100
+      if (impressions > 0) {
+        aggregated.er = parseFloat((((aggregated.engagements || 0) / impressions) * 100).toFixed(2));
       }
       
       res.json(aggregated);

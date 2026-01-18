@@ -3150,9 +3150,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!shop) return res.status(400).json({ message: "Shop domain is required" });
 
       const clientId = process.env.SHOPIFY_CLIENT_ID || "";
-      const scope = String(process.env.SHOPIFY_SCOPES || "read_orders,read_customers").trim();
+      const scopeRaw = String(process.env.SHOPIFY_SCOPES || "read_orders,read_customers");
+      const scope = scopeRaw.trim();
       if (!clientId) {
         return res.status(500).json({ message: "Shopify OAuth is not configured (missing SHOPIFY_CLIENT_ID)" });
+      }
+      // Guard against a surprisingly common production misconfig where SHOPIFY_SCOPES is set to whitespace.
+      // That yields a valid OAuth flow but issues a token without the required permissions (e.g., read_orders).
+      if (!scope) {
+        return res.status(500).json({
+          message:
+            "Shopify OAuth is misconfigured: SHOPIFY_SCOPES is empty. Set SHOPIFY_SCOPES to e.g. 'read_orders,read_customers' and redeploy, then reconnect.",
+        });
       }
 
       const rawBaseUrl =
@@ -17536,11 +17545,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const raw = (conn as any)?.mappingConfig ?? (conn as any)?.mapping_config ?? null;
         const cfg = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : null;
         if (cfg && typeof cfg === "object") {
-          storedGrantedScopes = cfg?.grantedScopes ? String(cfg.grantedScopes) : null;
+          // Preserve empty string (""), which indicates Shopify didn't return a scope string in token exchange.
+          if (Object.prototype.hasOwnProperty.call(cfg, "grantedScopes")) {
+            storedGrantedScopes = String((cfg as any).grantedScopes ?? "");
+          } else {
+            storedGrantedScopes = null;
+          }
           storedGrantedScopesList = Array.isArray(cfg?.grantedScopesList)
             ? cfg.grantedScopesList.map((s: any) => String(s)).filter(Boolean)
             : null;
-          storedAuthType = cfg?.authType ? String(cfg.authType) : null;
+          storedAuthType = Object.prototype.hasOwnProperty.call(cfg, "authType") ? String((cfg as any).authType ?? "") : null;
         }
       } catch {
         // ignore

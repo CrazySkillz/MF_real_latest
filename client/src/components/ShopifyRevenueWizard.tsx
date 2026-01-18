@@ -178,7 +178,17 @@ export function ShopifyRevenueWizard(props: {
         )}&limit=300`
       );
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.error || "Failed to load values");
+      if (!resp.ok) {
+        // Enterprise-grade: Shopify may block orders access pending merchant approval for read_orders.
+        if (resp.status === 403 && String(json?.code || "") === "SHOPIFY_READ_ORDERS_APPROVAL_REQUIRED") {
+          toast({
+            title: "Shopify permission required",
+            description: String(json?.error || "Shopify requires merchant approval for read_orders. Please approve the app and reconnect."),
+            variant: "destructive",
+          });
+        }
+        throw new Error(json?.error || "Failed to load values");
+      }
       const vals = Array.isArray(json?.values) ? json.values : [];
       setUniqueValues(vals);
       const allowed = new Set(vals.map((v: any) => String(v.value)));

@@ -17368,9 +17368,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         json?.message ||
         (text && text.length < 300 ? text : "") ||
         `Shopify API error (HTTP ${resp.status})`;
-      throw new Error(String(msg));
+      const err: any = new Error(String(msg));
+      err.status = resp.status;
+      err._shopifyText = text;
+      throw err;
     }
     return json;
+  };
+
+  const shopifyRequiresMerchantApproval = (err: any): boolean => {
+    const msg = String(err?.message || "");
+    return msg.toLowerCase().includes("requires merchant approval") && msg.toLowerCase().includes("read_orders");
   };
 
   const parseUtm = (urlOrPath: string | null | undefined) => {
@@ -17615,6 +17623,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("[Shopify Unique Values] Error:", error);
+      if (shopifyRequiresMerchantApproval(error)) {
+        return res.status(403).json({
+          error: "[Shopify] MetricMind needs merchant approval for the Shopify Orders scope (read_orders). Please approve the app's access in Shopify Admin and reconnect.",
+          code: "SHOPIFY_READ_ORDERS_APPROVAL_REQUIRED",
+        });
+      }
       res.status(500).json({ error: error.message || "Failed to load Shopify values" });
     }
   });

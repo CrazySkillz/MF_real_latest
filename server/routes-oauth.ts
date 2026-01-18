@@ -17377,6 +17377,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // Many Shopify setups store UTMs on the Order as note_attributes (shown as "Additional details" in the UI),
+  // not in landing_site / landing_site_ref. Support both.
+  const getUtmFromNoteAttributes = (order: any, key: 'utm_campaign' | 'utm_source' | 'utm_medium' | 'utm_content' | 'utm_term'): string => {
+    const attrs = Array.isArray(order?.note_attributes) ? order.note_attributes : [];
+    if (!attrs || attrs.length === 0) return "";
+    const canon = (s: any) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    const want = canon(key);
+    const suffix = want.replace(/^utm_/, ""); // campaign/source/medium/content/term
+    for (const a of attrs) {
+      const name = canon((a as any)?.name);
+      const val = String((a as any)?.value ?? "").trim();
+      if (!val) continue;
+      if (name === want) return val;
+      // Accept variants like utm_tracking.campaign → utm_tracking_campaign
+      if (name.includes("utm") && name.endsWith(`_${suffix}`)) return val;
+    }
+    return "";
+  };
+
+  const getUtmFromOrder = (order: any) => {
+    const parsed = parseUtm(order?.landing_site || order?.landing_site_ref || "");
+    const p: any = parsed || {};
+    return {
+      utm_campaign: String(p.utm_campaign || "") || getUtmFromNoteAttributes(order, "utm_campaign"),
+      utm_source: String(p.utm_source || "") || getUtmFromNoteAttributes(order, "utm_source"),
+      utm_medium: String(p.utm_medium || "") || getUtmFromNoteAttributes(order, "utm_medium"),
+      utm_content: String((p as any).utm_content || "") || getUtmFromNoteAttributes(order, "utm_content"),
+      utm_term: String((p as any).utm_term || "") || getUtmFromNoteAttributes(order, "utm_term"),
+    };
+  };
+
   const getShopifyConnectionForCampaign = async (campaignId: string) => {
     const conn: any = await storage.getShopifyConnection(campaignId);
     if (!conn || !conn.isActive || !conn.accessToken || !conn.shopDomain) {
@@ -17484,7 +17515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const headers = selectedColumns.filter((h) => availableColumns.includes(h));
 
       const rows = orders.slice(0, limit).map((o) => {
-        const utm = parseUtm(o?.landing_site || o?.landing_site_ref || "");
+        const utm = getUtmFromOrder(o);
         const discountCodes = Array.isArray(o?.discount_codes)
           ? o.discount_codes.map((d: any) => d?.code).filter(Boolean).join(", ")
           : "";
@@ -17533,7 +17564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orders: any[] = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
 
       const getValue = (o: any): string => {
-        const utm = parseUtm(o?.landing_site || o?.landing_site_ref || "");
+        const utm = getUtmFromOrder(o);
         if (field === "utm_campaign") return String((utm as any).utm_campaign || "");
         if (field === "utm_source") return String((utm as any).utm_source || "");
         if (field === "utm_medium") return String((utm as any).utm_medium || "");
@@ -17590,7 +17621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orders: any[] = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
 
       const getFieldValue = (o: any): string => {
-        const utm = parseUtm(o?.landing_site || o?.landing_site_ref || "");
+        const utm = getUtmFromOrder(o);
         if (field === "utm_campaign") return String((utm as any).utm_campaign || "");
         if (field === "utm_source") return String((utm as any).utm_source || "");
         if (field === "utm_medium") return String((utm as any).utm_medium || "");

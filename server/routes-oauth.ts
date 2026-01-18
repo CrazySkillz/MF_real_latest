@@ -17501,6 +17501,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * Shopify diagnostics: confirm the *actual* access scopes on the stored token (enterprise-grade debugging).
+   * This helps differentiate:
+   * - app config shows scopes but token is stale (needs reinstall/re-auth)
+   * - wrong store connected
+   * - token lacks approval for read_orders
+   */
+  app.get("/api/shopify/:campaignId/debug", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const conn = await getShopifyConnectionForCampaign(campaignId);
+      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+
+      // Validate token and fetch scopes.
+      const scopesJson = await shopifyApiFetch({
+        shopDomain: conn.shopDomain,
+        accessToken: conn.accessToken,
+        path: `/admin/api/${apiVersion}/oauth/access_scopes.json`,
+      });
+      const scopes = Array.isArray(scopesJson?.access_scopes)
+        ? scopesJson.access_scopes.map((s: any) => String(s?.handle || "")).filter(Boolean)
+        : [];
+
+      res.json({
+        success: true,
+        shopDomain: conn.shopDomain,
+        shopName: conn.shopName || null,
+        scopes,
+        hasReadOrders: scopes.includes("read_orders"),
+        hasWriteOrders: scopes.includes("write_orders"),
+      });
+    } catch (error: any) {
+      if (shopifyRequiresMerchantApproval(error)) {
+        return res.status(403).json({
+          success: false,
+          code: "SHOPIFY_READ_ORDERS_APPROVAL_REQUIRED",
+          error: "[Shopify] This token is not approved for read_orders. Reinstall/reauthorize the Shopify app on the store, then reconnect in MetricMind.",
+        });
+      }
+      res.status(500).json({ success: false, error: error?.message || "Failed to load Shopify debug info" });
+    }
+  });
+
   app.get("/api/shopify/:campaignId/orders/preview", async (req, res) => {
     try {
       const { campaignId } = req.params;

@@ -45,7 +45,9 @@ export function ShopifyRevenueWizard(props: {
     onStepChange?.(step);
   }, [step, onStepChange]);
 
-  const [days, setDays] = useState<number>(90);
+  // Treat Shopify revenue as "to date" (campaign lifetime-style) to avoid confusing windowing.
+  // We keep a long lookback under the hood but do not expose it in the UI.
+  const [days] = useState<number>(3650);
   const [campaignField, setCampaignField] = useState<string>("utm_campaign");
   const [revenueMetric, setRevenueMetric] = useState<string>("total_price");
   const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("onsite_in_ga4");
@@ -473,7 +475,7 @@ export function ShopifyRevenueWizard(props: {
                 {valuesLoading ? (
                   <div className="text-sm text-slate-500">Loading values…</div>
                 ) : uniqueValues.length === 0 ? (
-                  <div className="text-sm text-slate-500">No values found. Try increasing the lookback window.</div>
+                  <div className="text-sm text-slate-500">No values found for the selected attribution key.</div>
                 ) : (
                   <div className="space-y-2">
                     {uniqueValues.map((v) => {
@@ -542,18 +544,6 @@ export function ShopifyRevenueWizard(props: {
               </div>
 
               <div className="space-y-2">
-                <Label>Lookback window (days)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={3650}
-                  value={days}
-                  onChange={(e) => setDays(Math.min(Math.max(parseInt(e.target.value || "90", 10) || 90, 1), 3650))}
-                />
-                <div className="text-xs text-slate-500">Default: last 90 days.</div>
-              </div>
-
-              <div className="space-y-2">
                 <Label>Is this revenue already tracked in GA4?</Label>
                 <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>
                   <SelectTrigger>
@@ -590,9 +580,6 @@ export function ShopifyRevenueWizard(props: {
               </div>
               <div>
                 <strong>Revenue metric:</strong> {revenueMetric}
-              </div>
-              <div>
-                <strong>Lookback (days):</strong> {days}
               </div>
             </div>
           )}

@@ -3506,6 +3506,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       const accessToken = String(tokenJson.access_token);
+      // Shopify returns the granted scopes as a comma-separated string in the token exchange response.
+      // Store this so we can debug scope issues even when /oauth/access_scopes.json is not supported.
+      const grantedScopesRaw = tokenJson?.scope ? String(tokenJson.scope) : "";
 
       // Fetch shop name
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
@@ -3525,13 +3528,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const c of existing || []) {
         if ((c as any)?.id) await storage.updateShopifyConnection((c as any).id, { isActive: false } as any);
       }
+      const mappingConfig = JSON.stringify({
+        authType: "oauth",
+        grantedScopes: grantedScopesRaw,
+        grantedScopesList: grantedScopesRaw
+          ? grantedScopesRaw
+              .split(",")
+              .map((s: any) => String(s).trim())
+              .filter(Boolean)
+          : [],
+        connectedAt: new Date().toISOString(),
+      });
       const created = await storage.createShopifyConnection({
         campaignId,
         shopDomain: shop,
         shopName,
         accessToken,
         isActive: true,
-        mappingConfig: null,
+        mappingConfig,
       } as any);
 
       // One-time use state
@@ -17514,6 +17528,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
 
+      // Stored config from connect flow (best-effort).
+      let storedGrantedScopes: string | null = null;
+      let storedGrantedScopesList: string[] | null = null;
+      let storedAuthType: string | null = null;
+      try {
+        const raw = (conn as any)?.mappingConfig ?? (conn as any)?.mapping_config ?? null;
+        const cfg = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : null;
+        if (cfg && typeof cfg === "object") {
+          storedGrantedScopes = cfg?.grantedScopes ? String(cfg.grantedScopes) : null;
+          storedGrantedScopesList = Array.isArray(cfg?.grantedScopesList)
+            ? cfg.grantedScopesList.map((s: any) => String(s)).filter(Boolean)
+            : null;
+          storedAuthType = cfg?.authType ? String(cfg.authType) : null;
+        }
+      } catch {
+        // ignore
+      }
+
       // Validate token and fetch scopes if possible.
       // NOTE: Some Shopify token types/environments may return "Not Found" for access_scopes.
       // In that case, we fall back to capability checks (read orders).
@@ -17557,6 +17589,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         shopDomain: conn.shopDomain,
         shopName: conn.shopName || null,
+        storedAuthType,
+        storedGrantedScopes,
+        storedGrantedScopesList,
         scopes,
         accessScopesSupported,
         hasReadOrders: Array.isArray(scopes) ? scopes.includes("read_orders") : null,

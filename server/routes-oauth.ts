@@ -17514,23 +17514,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
 
-      // Validate token and fetch scopes.
-      const scopesJson = await shopifyApiFetch({
-        shopDomain: conn.shopDomain,
-        accessToken: conn.accessToken,
-        path: `/admin/api/${apiVersion}/oauth/access_scopes.json`,
-      });
-      const scopes = Array.isArray(scopesJson?.access_scopes)
-        ? scopesJson.access_scopes.map((s: any) => String(s?.handle || "")).filter(Boolean)
-        : [];
+      // Validate token and fetch scopes if possible.
+      // NOTE: Some Shopify token types/environments may return "Not Found" for access_scopes.
+      // In that case, we fall back to capability checks (read orders).
+      let scopes: string[] | null = null;
+      let accessScopesSupported = true;
+      try {
+        const scopesJson = await shopifyApiFetch({
+          shopDomain: conn.shopDomain,
+          accessToken: conn.accessToken,
+          path: `/admin/api/${apiVersion}/oauth/access_scopes.json`,
+        });
+        scopes = Array.isArray(scopesJson?.access_scopes)
+          ? scopesJson.access_scopes.map((s: any) => String(s?.handle || "")).filter(Boolean)
+          : [];
+      } catch (e: any) {
+        const msg = String(e?.message || "");
+        if (msg.toLowerCase() === "not found") {
+          accessScopesSupported = false;
+          scopes = null;
+        } else {
+          throw e;
+        }
+      }
+
+      // Capability checks: can we actually read orders?
+      let canReadOrders = false;
+      let ordersReadError: string | null = null;
+      try {
+        await shopifyApiFetch({
+          shopDomain: conn.shopDomain,
+          accessToken: conn.accessToken,
+          path: `/admin/api/${apiVersion}/orders.json?status=any&limit=1`,
+        });
+        canReadOrders = true;
+      } catch (e: any) {
+        canReadOrders = false;
+        ordersReadError = String(e?.message || e);
+      }
 
       res.json({
         success: true,
         shopDomain: conn.shopDomain,
         shopName: conn.shopName || null,
         scopes,
-        hasReadOrders: scopes.includes("read_orders"),
-        hasWriteOrders: scopes.includes("write_orders"),
+        accessScopesSupported,
+        hasReadOrders: Array.isArray(scopes) ? scopes.includes("read_orders") : null,
+        hasWriteOrders: Array.isArray(scopes) ? scopes.includes("write_orders") : null,
+        canReadOrders,
+        ordersReadError,
       });
     } catch (error: any) {
       if (shopifyRequiresMerchantApproval(error)) {

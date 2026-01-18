@@ -75,7 +75,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Render/infra health checks should be fast and never depend on DB/OAuth.
   // Render defaults to checking "/" but that can depend on static serving; provide an explicit health endpoint.
   app.get("/health", (_req, res) => res.status(200).send("ok"));
-  app.get("/api/health", (_req, res) => res.status(200).json({ ok: true }));
+  app.get("/api/health", (_req, res) => {
+    const commit =
+      process.env.RENDER_GIT_COMMIT ||
+      process.env.GITHUB_SHA ||
+      process.env.VERCEL_GIT_COMMIT_SHA ||
+      process.env.COMMIT_SHA ||
+      null;
+    res.status(200).json({
+      ok: true,
+      commit,
+      nodeEnv: process.env.NODE_ENV || null,
+      ts: new Date().toISOString(),
+    });
+  });
 
   // ============================================================================
   // Deterministic GA4 simulation (for demo/testing properties like "yesop")
@@ -17576,10 +17589,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const counts = new Map<string, number>();
+      const sample: string[] = [];
       for (const o of orders) {
         const v = getValue(o).trim();
         if (!v) continue;
         counts.set(v, (counts.get(v) || 0) + 1);
+        if (sample.length < 5 && !sample.includes(v)) sample.push(v);
       }
 
       const values = Array.from(counts.entries())
@@ -17587,7 +17602,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .slice(0, limit)
         .map(([value, count]) => ({ value, count }));
 
-      res.json({ success: true, field, days, values });
+      res.json({
+        success: true,
+        field,
+        days,
+        values,
+        debug: {
+          ordersFetched: Array.isArray(orders) ? orders.length : 0,
+          nonEmptyValues: values.length,
+          sampleValues: sample,
+        },
+      });
     } catch (error: any) {
       console.error("[Shopify Unique Values] Error:", error);
       res.status(500).json({ error: error.message || "Failed to load Shopify values" });

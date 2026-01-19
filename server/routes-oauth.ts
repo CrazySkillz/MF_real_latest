@@ -17803,15 +17803,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let totalRevenue = 0;
       const matchedOrders: any[] = [];
+      const matchedCurrencies = new Set<string>();
       const selectedSet = new Set(selected);
       for (const o of orders) {
         const v = getFieldValue(o).trim();
         if (!v || !selectedSet.has(v)) continue;
         matchedOrders.push(o);
+        if (o?.currency) matchedCurrencies.add(String(o.currency).trim().toUpperCase());
         if (metric === "total_price") totalRevenue += parseMoney(o?.total_price);
         else if (metric === "current_total_price") totalRevenue += parseMoney(o?.current_total_price);
         else totalRevenue += parseMoney(o?.total_price);
       }
+      const matchedCurrency = matchedCurrencies.size === 1 ? Array.from(matchedCurrencies)[0] : null;
 
       // In LinkedIn conversion-value mode, compute conversion value from Shopify revenue ÷ LinkedIn conversions.
       let calculatedConversionValue: number | null = null;
@@ -17854,6 +17857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionValue: calculatedConversionValue,
           totalConversions,
           latestSessionId,
+          currency: matchedCurrency,
         });
       }
 
@@ -17882,7 +17886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Materialize revenue into revenue_sources/revenue_records so the correct platform context can use it.
       try {
         const camp = await storage.getCampaign(campaignId);
-        const cur = (camp as any)?.currency || "USD";
+        const cur = matchedCurrency || (camp as any)?.currency || "USD";
 
         // Back-compat cleanup: remove legacy Shopify sources that were created without platformContext.
         if (platformCtx === "linkedin") {
@@ -17926,6 +17930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastConversionValue: calculatedConversionValue,
           lastSyncedAt: new Date().toISOString(),
+          currency: matchedCurrency,
         });
 
         const source =

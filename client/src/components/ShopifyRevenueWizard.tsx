@@ -617,12 +617,30 @@ export function ShopifyRevenueWizard(props: {
                     <>
                       <div>
                         <strong>Shopify revenue (to date):</strong>{" "}
-                        ${Number(preview?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {(() => {
+                          const amount = Number(preview?.totalRevenue || 0);
+                          const currency = String(preview?.currency || "").trim().toUpperCase();
+                          if (!currency) return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                          try {
+                            return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+                          } catch {
+                            return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+                          }
+                        })()}
                       </div>
                       {isLinkedIn && valueSource === "conversion_value" && (
                         <div className="mt-1">
                           <strong>Conversion value:</strong>{" "}
-                          ${Number(preview?.conversionValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                          {(() => {
+                            const amount = Number(preview?.conversionValue || 0);
+                            const currency = String(preview?.currency || "").trim().toUpperCase();
+                            if (!currency) return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                            try {
+                              return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+                            } catch {
+                              return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+                            }
+                          })()}{" "}
                           <span className="text-slate-500">per conversion</span>
                         </div>
                       )}

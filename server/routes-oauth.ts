@@ -17801,20 +17801,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return Number.isFinite(n) ? n : 0;
       };
 
+      // Shopify orders can contain both "shop money" (store currency) and "presentment money" (customer currency).
+      // For enterprise-grade consistency, we treat "shop money" as the canonical amount for totals, and surface
+      // presentment totals as diagnostics.
+      const getOrderAmounts = (o: any) => {
+        const set =
+          metric === "current_total_price"
+            ? (o?.current_total_price_set || o?.current_total_price_set)
+            : (o?.total_price_set || o?.total_price_set);
+        const shopMoney = set?.shop_money || set?.shopMoney || null;
+        const presMoney = set?.presentment_money || set?.presentmentMoney || null;
+        const shopAmount = shopMoney?.amount ?? (metric === "current_total_price" ? o?.current_total_price : o?.total_price);
+        const shopCurrency = shopMoney?.currency_code ?? o?.currency ?? null;
+        const presentmentAmount = presMoney?.amount ?? null;
+        const presentmentCurrency = presMoney?.currency_code ?? o?.presentment_currency ?? null;
+        return {
+          shopAmount: parseMoney(shopAmount),
+          shopCurrency: shopCurrency ? String(shopCurrency).trim().toUpperCase() : null,
+          presentmentAmount: presentmentAmount === null ? null : parseMoney(presentmentAmount),
+          presentmentCurrency: presentmentCurrency ? String(presentmentCurrency).trim().toUpperCase() : null,
+        };
+      };
+
       let totalRevenue = 0;
       const matchedOrders: any[] = [];
       const matchedCurrencies = new Set<string>();
+      let presentmentTotal = 0;
+      const presentmentCurrencies = new Set<string>();
       const selectedSet = new Set(selected);
       for (const o of orders) {
         const v = getFieldValue(o).trim();
         if (!v || !selectedSet.has(v)) continue;
         matchedOrders.push(o);
-        if (o?.currency) matchedCurrencies.add(String(o.currency).trim().toUpperCase());
-        if (metric === "total_price") totalRevenue += parseMoney(o?.total_price);
-        else if (metric === "current_total_price") totalRevenue += parseMoney(o?.current_total_price);
-        else totalRevenue += parseMoney(o?.total_price);
+        const amt = getOrderAmounts(o);
+        if (amt.shopCurrency) matchedCurrencies.add(amt.shopCurrency);
+        totalRevenue += amt.shopAmount;
+        if (amt.presentmentAmount !== null) {
+          presentmentTotal += amt.presentmentAmount;
+          if (amt.presentmentCurrency) presentmentCurrencies.add(amt.presentmentCurrency);
+        }
       }
       const matchedCurrency = matchedCurrencies.size === 1 ? Array.from(matchedCurrencies)[0] : null;
+      const presentmentCurrency = presentmentCurrencies.size === 1 ? Array.from(presentmentCurrencies)[0] : null;
 
       // In LinkedIn conversion-value mode, compute conversion value from Shopify revenue ÷ LinkedIn conversions.
       let calculatedConversionValue: number | null = null;
@@ -17858,6 +17886,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalConversions,
           latestSessionId,
           currency: matchedCurrency,
+          presentmentTotal: presentmentCurrency ? Number(presentmentTotal.toFixed(2)) : null,
+          presentmentCurrency,
         });
       }
 
@@ -18001,6 +18031,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalRevenue: Number(totalRevenue.toFixed(2)),
         totalConversions: totalConversions === null ? null : Number((totalConversions as number).toFixed(2)),
         matchedOrderCount: matchedOrders.length,
+        currency: matchedCurrency,
+        presentmentTotal: presentmentCurrency ? Number(presentmentTotal.toFixed(2)) : null,
+        presentmentCurrency,
       });
       await recomputeCampaignDerivedValues(campaignId);
     } catch (error: any) {

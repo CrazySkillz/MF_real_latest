@@ -628,6 +628,25 @@ export function ShopifyRevenueWizard(props: {
                           }
                         })()}
                       </div>
+                      {(() => {
+                        const pAmt = preview?.presentmentTotal;
+                        const pCur = String(preview?.presentmentCurrency || "").trim().toUpperCase();
+                        const shopCur = String(preview?.currency || "").trim().toUpperCase();
+                        if (!pCur || pAmt === null || typeof pAmt === "undefined") return null;
+                        if (shopCur && pCur === shopCur) return null;
+                        const amount = Number(pAmt || 0);
+                        let formatted = `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${pCur}`;
+                        try {
+                          formatted = new Intl.NumberFormat(undefined, { style: "currency", currency: pCur, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+                        } catch {
+                          // ignore
+                        }
+                        return (
+                          <div className="mt-1 text-xs text-slate-500">
+                            Customer currency (presentment): <span className="font-medium text-slate-700 dark:text-slate-200">{formatted}</span>
+                          </div>
+                        );
+                      })()}
                       {isLinkedIn && valueSource === "conversion_value" && (
                         <div className="mt-1">
                           <strong>Conversion value:</strong>{" "}

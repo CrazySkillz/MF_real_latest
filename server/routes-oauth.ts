@@ -17760,7 +17760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/shopify/save-mappings", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { campaignField, selectedValues, revenueMetric, revenueClassification, days, platformContext, valueSource } = req.body || {};
+      const { campaignField, selectedValues, revenueMetric, revenueClassification, days, platformContext, valueSource, dryRun } = req.body || {};
       const field = String(campaignField || "").trim();
       const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
       const metric = String(revenueMetric || "total_price").trim();
@@ -17769,6 +17769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const valueSourceRaw = String(valueSource || "").trim().toLowerCase();
       const effectiveValueSource: "revenue" | "conversion_value" =
         platformCtx === "linkedin" && valueSourceRaw === "conversion_value" ? "conversion_value" : "revenue";
+      const isDryRun = Boolean(dryRun);
 
       if (!field) return res.status(400).json({ error: "campaignField is required" });
       if (selected.length === 0) return res.status(400).json({ error: "selectedValues is required" });
@@ -17837,8 +17838,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "LinkedIn conversions are 0. Cannot compute conversion value." });
         }
         calculatedConversionValue = Number((totalRevenue / (totalConversions as number)).toFixed(2));
-        await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
-        await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
+        if (!isDryRun) {
+          await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
+          await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
+        }
+      }
+
+      // Dry-run preview: return computed totals without persisting anything.
+      if (isDryRun) {
+        return res.json({
+          success: true,
+          mode: effectiveValueSource === "conversion_value" ? "conversion_value" : "revenue_to_date",
+          platformContext: platformCtx,
+          totalRevenue: Number(totalRevenue.toFixed(2)),
+          conversionValue: calculatedConversionValue,
+          totalConversions,
+          latestSessionId,
+        });
       }
 
       // Persist mapping config on the active Shopify connection

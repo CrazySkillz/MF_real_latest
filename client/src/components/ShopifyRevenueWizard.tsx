@@ -50,8 +50,9 @@ export function ShopifyRevenueWizard(props: {
   const [days] = useState<number>(3650);
   const [campaignField, setCampaignField] = useState<string>("utm_campaign");
   const [revenueMetric, setRevenueMetric] = useState<string>("total_price");
-  const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("onsite_in_ga4");
   const [valueSource, setValueSource] = useState<"revenue" | "conversion_value">("revenue");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [preview, setPreview] = useState<any>(null);
 
   // OAuth / connection
   const [shopName, setShopName] = useState<string | null>(null);
@@ -282,7 +283,6 @@ export function ShopifyRevenueWizard(props: {
             campaignField,
             selectedValues,
             revenueMetric,
-            revenueClassification,
             days,
             platformContext,
             valueSource: isLinkedIn ? valueSource : "revenue",
@@ -310,6 +310,37 @@ export function ShopifyRevenueWizard(props: {
       }
     }
   };
+
+  const fetchPreview = async () => {
+    setPreviewLoading(true);
+    try {
+      const resp = await fetch(`/api/campaigns/${campaignId}/shopify/save-mappings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignField,
+          selectedValues,
+          revenueMetric,
+          days,
+          platformContext,
+          valueSource: isLinkedIn ? valueSource : "revenue",
+          dryRun: true,
+        }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || "Failed to load preview");
+      setPreview(json);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Compute a preview when entering Review (so the final step can show the amount before saving).
+  useEffect(() => {
+    if (step !== "review") return;
+    void fetchPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, campaignField, revenueMetric, days, platformContext, valueSource, selectedValues.join("|")]);
 
   return (
     <div className="space-y-6">
@@ -552,31 +583,11 @@ export function ShopifyRevenueWizard(props: {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label>Is this revenue already tracked in GA4?</Label>
-                <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>
-                  <SelectTrigger>
-                    <span>
-                      {revenueClassification === "onsite_in_ga4"
-                        ? "Yes — it’s onsite revenue (also tracked in GA4)"
-                        : "No — it’s offsite revenue (NOT tracked in GA4)"}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent className="z-[10000]">
-                    <SelectItem value="onsite_in_ga4">Yes — it’s onsite revenue (also tracked in GA4)</SelectItem>
-                    <SelectItem value="offsite_not_in_ga4">No — it’s offsite revenue (NOT tracked in GA4)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="text-xs text-slate-500">
-                  If you choose “No”, this revenue can be included in campaign-level total revenue without double counting GA4.
-                </div>
-              </div>
             </div>
           )}
 
           {step === "review" && (
-            <div className="space-y-2 text-sm text-slate-700">
+            <div className="space-y-3 text-sm text-slate-700">
               {isLinkedIn && (
                 <div>
                   <strong>Source of truth:</strong> {valueSource === "conversion_value" ? "Conversion Value (derived)" : "Revenue (to date)"}
@@ -586,10 +597,41 @@ export function ShopifyRevenueWizard(props: {
                 <strong>Attribution key:</strong> {campaignField}
               </div>
               <div>
+                <strong>Shopify campaign{selectedValues.length === 1 ? "" : "s"}:</strong>{" "}
+                {selectedValues.length === 0 ? "—" : selectedValues.length <= 3 ? selectedValues.join(", ") : `${selectedValues.slice(0, 3).join(", ")} + ${selectedValues.length - 3} more`}
+              </div>
+              <div>
                 <strong>Selected values:</strong> {selectedValues.length}
               </div>
               <div>
                 <strong>Revenue metric:</strong> {revenueMetric}
+              </div>
+              <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-medium">Preview</div>
+                  <Button variant="outline" size="sm" onClick={() => void fetchPreview()} disabled={previewLoading || isSaving}>
+                    {previewLoading ? "Refreshing…" : "Refresh preview"}
+                  </Button>
+                </div>
+                <div className="mt-2 text-sm">
+                  {previewLoading ? (
+                    <div className="text-slate-500">Computing…</div>
+                  ) : (
+                    <>
+                      <div>
+                        <strong>Shopify revenue (to date):</strong>{" "}
+                        ${Number(preview?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                      {isLinkedIn && valueSource === "conversion_value" && (
+                        <div className="mt-1">
+                          <strong>Conversion value:</strong>{" "}
+                          ${Number(preview?.conversionValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                          <span className="text-slate-500">per conversion</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}

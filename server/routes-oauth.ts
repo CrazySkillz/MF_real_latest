@@ -17404,6 +17404,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return msg.toLowerCase().includes("requires merchant approval") && msg.toLowerCase().includes("read_orders");
   };
 
+  const shopifyRequiresProtectedCustomerDataApproval = (err: any): boolean => {
+    const msg = String(err?.message || "");
+    return msg.toLowerCase().includes("not approved to access rest endpoints with protected customer data");
+  };
+
   const parseUtm = (urlOrPath: string | null | undefined) => {
     const s = String(urlOrPath || "").trim();
     if (!s) return {};
@@ -17493,7 +17498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shopName: shopName,
         accessToken: token,
         isActive: true,
-        mappingConfig: null,
+        mappingConfig: JSON.stringify({ authType: "token", connectedAt: new Date().toISOString() }),
       } as any);
 
       res.json({
@@ -17687,6 +17692,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("[Shopify Preview] Error:", error);
+      if (shopifyRequiresProtectedCustomerDataApproval(error)) {
+        return res.status(403).json({
+          error: "[Shopify] This OAuth app is not approved for protected customer data (Orders). Use an Admin API token or complete Shopify approval, then reconnect.",
+          code: "SHOPIFY_PROTECTED_CUSTOMER_DATA_APPROVAL_REQUIRED",
+        });
+      }
       res.status(500).json({ error: error.message || "Failed to load Shopify preview" });
     }
   });
@@ -17751,6 +17762,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({
           error: "[Shopify] MetricMind needs merchant approval for the Shopify Orders scope (read_orders). Please approve the app's access in Shopify Admin and reconnect.",
           code: "SHOPIFY_READ_ORDERS_APPROVAL_REQUIRED",
+        });
+      }
+      if (shopifyRequiresProtectedCustomerDataApproval(error)) {
+        return res.status(403).json({
+          error: "[Shopify] This OAuth app is not approved for protected customer data (Orders). Use an Admin API token or complete Shopify approval, then reconnect.",
+          code: "SHOPIFY_PROTECTED_CUSTOMER_DATA_APPROVAL_REQUIRED",
         });
       }
       res.status(500).json({ error: error.message || "Failed to load Shopify values" });

@@ -66,6 +66,8 @@ export function ShopifyRevenueWizard(props: {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [connectMethod, setConnectMethod] = useState<"oauth" | "token">("oauth");
+  const [adminToken, setAdminToken] = useState<string>("");
 
   const [valuesLoading, setValuesLoading] = useState(false);
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
@@ -155,6 +157,46 @@ export function ShopifyRevenueWizard(props: {
     }
   };
 
+  const connectWithToken = async () => {
+    // Normalize domain like OAuth flow does
+    let domain = String(shopDomain || "").trim();
+    if (!domain) {
+      toast({ title: "Enter your shop domain", description: "Example: your-store.myshopify.com", variant: "destructive" });
+      return;
+    }
+    domain = domain.replace(/^https?:\/\//i, "").split("/")[0].trim().toLowerCase();
+    if (domain && !domain.includes(".")) domain = `${domain}.myshopify.com`;
+    if (!domain.includes(".")) {
+      toast({ title: "Invalid shop domain", description: "Example: your-store.myshopify.com", variant: "destructive" });
+      return;
+    }
+    if (domain !== String(shopDomain || "").trim().toLowerCase()) setShopDomain(domain);
+
+    const token = String(adminToken || "").trim();
+    if (!token || !token.startsWith("shpat_")) {
+      toast({ title: "Enter an Admin API token", description: "Paste a token that starts with shpat_.", variant: "destructive" });
+      return;
+    }
+
+    setIsConnecting(true);
+    try {
+      const resp = await fetch("/api/shopify/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, shopDomain: domain, accessToken: token }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || "Failed to connect Shopify");
+      await fetchStatus();
+      toast({ title: "Shopify Connected", description: "Now map how Shopify orders should be attributed to this campaign." });
+      setStep("campaign-field");
+    } catch (err: any) {
+      toast({ title: "Shopify Connection Failed", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
   const steps = useMemo(
     () => [
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
@@ -187,6 +229,14 @@ export function ShopifyRevenueWizard(props: {
             description: String(json?.error || "Shopify requires merchant approval for read_orders. Please approve the app and reconnect."),
             variant: "destructive",
           });
+        }
+        if (resp.status === 403 && String(json?.code || "") === "SHOPIFY_PROTECTED_CUSTOMER_DATA_APPROVAL_REQUIRED") {
+          toast({
+            title: "Shopify approval required",
+            description: "Shopify is blocking OAuth access to Orders (protected customer data). Switch to “Admin API token” to connect immediately, or complete Shopify approval for the OAuth app.",
+            variant: "destructive",
+          });
+          setConnectMethod("token");
         }
         throw new Error(json?.error || "Failed to load values");
       }
@@ -443,9 +493,32 @@ export function ShopifyRevenueWizard(props: {
 
                 {/* Fixed-height helper text to avoid reflow on connected state */}
                 <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[40px]">
-                  <div>Connect your Shopify store via OAuth to import order revenue and map it to this campaign.</div>
-                  <div>To change stores, update the domain below and click Reconnect.</div>
+                  <div>
+                    Connect your Shopify store to import orders and map revenue to this campaign.
+                  </div>
+                  <div>
+                    If Shopify blocks OAuth (protected customer data), use an Admin API token.
+                  </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Connection method</Label>
+                  <RadioGroup value={connectMethod} onValueChange={(v: any) => setConnectMethod(v)} className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem id="shopify-method-oauth" value="oauth" />
+                      <label htmlFor="shopify-method-oauth" className="text-sm font-medium leading-none cursor-pointer">
+                        OAuth (recommended)
+                      </label>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem id="shopify-method-token" value="token" />
+                      <label htmlFor="shopify-method-token" className="text-sm font-medium leading-none cursor-pointer">
+                        Admin API token (fallback)
+                      </label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <Label>Shop domain</Label>
@@ -458,11 +531,32 @@ export function ShopifyRevenueWizard(props: {
                     />
                   </div>
                   <div className="flex items-end">
-                    <Button type="button" variant="outline" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void (connectMethod === "token" ? connectWithToken() : openOAuthWindow())}
+                      disabled={isConnecting}
+                    >
                       {isConnecting ? "Connecting…" : (connected ? "Reconnect / Change store" : "Connect Shopify")}
                     </Button>
                   </div>
                 </div>
+
+                {connectMethod === "token" && (
+                  <div className="space-y-1">
+                    <Label>Admin API token</Label>
+                    <Input
+                      value={adminToken}
+                      onChange={(e) => setAdminToken(e.target.value)}
+                      placeholder="shpat_…"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                    />
+                    <div className="text-xs text-slate-500">
+                      Create this in Shopify Admin → Apps → Develop apps → your app → Admin API access token. Keep it secret.
+                    </div>
+                  </div>
+                )}
                 {/* Reserve space to avoid layout shift when connected/shopName arrives */}
                 <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[16px] transition-opacity duration-200">
                   <span className={statusLoading ? "opacity-0" : "opacity-100"}>

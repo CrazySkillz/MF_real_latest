@@ -50,7 +50,6 @@ export function ShopifyRevenueWizard(props: {
   const [days] = useState<number>(3650);
   const [campaignField, setCampaignField] = useState<string>("utm_campaign");
   const [revenueMetric, setRevenueMetric] = useState<string>("total_price");
-  const [valueSource, setValueSource] = useState<"revenue" | "conversion_value">("revenue");
   const [previewLoading, setPreviewLoading] = useState(false);
   const [preview, setPreview] = useState<any>(null);
 
@@ -335,7 +334,7 @@ export function ShopifyRevenueWizard(props: {
             revenueMetric,
             days,
             platformContext,
-            valueSource: isLinkedIn ? valueSource : "revenue",
+          valueSource: "revenue",
           }),
         });
         const json = await resp.json().catch(() => ({}));
@@ -343,9 +342,7 @@ export function ShopifyRevenueWizard(props: {
         toast({
           title: "Revenue Metrics Processed",
           description:
-            isLinkedIn && String(json?.mode || "") === "conversion_value"
-              ? `Conversion value saved: ${Number(json?.conversionValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per conversion.`
-              : `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+          `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
         });
         onSuccess?.(json);
         setStep("complete");
@@ -373,7 +370,7 @@ export function ShopifyRevenueWizard(props: {
           revenueMetric,
           days,
           platformContext,
-          valueSource: isLinkedIn ? valueSource : "revenue",
+          valueSource: "revenue",
           dryRun: true,
         }),
       });
@@ -390,7 +387,7 @@ export function ShopifyRevenueWizard(props: {
     if (step !== "review") return;
     void fetchPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, campaignField, revenueMetric, days, platformContext, valueSource, selectedValues.join("|")]);
+  }, [step, campaignField, revenueMetric, days, platformContext, selectedValues.join("|")]);
 
   return (
     <div className="space-y-6">
@@ -467,13 +464,11 @@ export function ShopifyRevenueWizard(props: {
           <CardDescription>
             {step === "campaign-field" && `Choose how MetricMind should attribute Shopify orders to this ${isLinkedIn ? "LinkedIn" : "campaign"}.`}
             {step === "crosswalk" && "Select the Shopify value(s) that map to this campaign."}
-            {step === "revenue" && (isLinkedIn ? "Choose whether Shopify should drive Revenue-to-date or Conversion Value for LinkedIn financial metrics." : "Choose what revenue field MetricMind should sum from matched orders.")}
+            {step === "revenue" && "Choose what revenue field MetricMind should sum from matched orders."}
             {step === "review" && "Confirm your selections and process revenue metrics."}
             {step === "complete" &&
               (isLinkedIn
-                ? (valueSource === "conversion_value"
-                    ? "Conversion value is saved. LinkedIn revenue metrics should now recompute immediately."
-                    : "Revenue is connected. LinkedIn financial metrics should now recompute immediately.")
+                ? "Revenue is connected. LinkedIn financial metrics should now recompute immediately."
                 : "Revenue metrics processed.")}
           </CardDescription>
         </CardHeader>
@@ -642,29 +637,6 @@ export function ShopifyRevenueWizard(props: {
 
           {step === "revenue" && (
             <div className="space-y-4">
-              {isLinkedIn && (
-                <div className="space-y-2">
-                  <Label>Source of truth</Label>
-                  <RadioGroup value={valueSource} onValueChange={(v: any) => setValueSource(v)} className="space-y-2">
-                    <div className="flex items-start gap-2">
-                      <RadioGroupItem id="shop-vs-rev" value="revenue" />
-                      <label htmlFor="shop-vs-rev" className="text-sm font-medium leading-none cursor-pointer">
-                        Use Revenue (to date) — recommended
-                      </label>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <RadioGroupItem id="shop-vs-cv" value="conversion_value" />
-                      <label htmlFor="shop-vs-cv" className="text-sm font-medium leading-none cursor-pointer">
-                        Use Conversion Value (computed from Shopify revenue) — advanced
-                      </label>
-                    </div>
-                  </RadioGroup>
-                  <div className="text-xs text-slate-500">
-                    Industry standard is using Shopify revenue as the source of truth. Conversion Value mode computes a per-conversion value from Shopify revenue ÷ LinkedIn conversions.
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-2">
                 <Label>Revenue metric</Label>
                 <Select value={revenueMetric} onValueChange={(v) => setRevenueMetric(v)}>
@@ -682,11 +654,6 @@ export function ShopifyRevenueWizard(props: {
 
           {step === "review" && (
             <div className="space-y-3 text-sm text-slate-700">
-              {isLinkedIn && (
-                <div>
-                  <strong>Source of truth:</strong> {valueSource === "conversion_value" ? "Conversion Value (derived)" : "Revenue (to date)"}
-                </div>
-              )}
               <div>
                 <strong>Attribution key:</strong> {campaignField}
               </div>
@@ -741,22 +708,6 @@ export function ShopifyRevenueWizard(props: {
                           </div>
                         );
                       })()}
-                      {isLinkedIn && valueSource === "conversion_value" && (
-                        <div className="mt-1">
-                          <strong>Conversion value:</strong>{" "}
-                          {(() => {
-                            const amount = Number(preview?.conversionValue || 0);
-                            const currency = String(preview?.currency || "").trim().toUpperCase();
-                            if (!currency) return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                            try {
-                              return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
-                            } catch {
-                              return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
-                            }
-                          })()}{" "}
-                          <span className="text-slate-500">per conversion</span>
-                        </div>
-                      )}
                     </>
                   )}
                 </div>

@@ -17783,9 +17783,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metric = String(revenueMetric || "total_price").trim();
       const rangeDays = Math.min(Math.max(parseInt(String(days || "90"), 10) || 90, 1), 3650);
       const platformCtx = String(platformContext || "").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
-      const valueSourceRaw = String(valueSource || "").trim().toLowerCase();
-      const effectiveValueSource: "revenue" | "conversion_value" =
-        platformCtx === "linkedin" && valueSourceRaw === "conversion_value" ? "conversion_value" : "revenue";
+      // Shopify is revenue-only. We intentionally do NOT support "conversion_value" as a source of truth here,
+      // because Shopify orders do not contain a native conversion value field.
+      const effectiveValueSource: "revenue" = "revenue";
       const isDryRun = Boolean(dryRun);
 
       if (!field) return res.status(400).json({ error: "campaignField is required" });
@@ -17861,42 +17861,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const matchedCurrency = matchedCurrencies.size === 1 ? Array.from(matchedCurrencies)[0] : null;
       const presentmentCurrency = presentmentCurrencies.size === 1 ? Array.from(presentmentCurrencies)[0] : null;
 
-      // In LinkedIn conversion-value mode, compute conversion value from Shopify revenue ÷ LinkedIn conversions.
-      let calculatedConversionValue: number | null = null;
-      let totalConversions: number | null = null;
-      let latestSessionId: string | null = null;
-      if (platformCtx === "linkedin" && effectiveValueSource === "conversion_value") {
-        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-        if (!sessions || sessions.length === 0) {
-          return res.status(400).json({ error: "No LinkedIn import session found for this campaign." });
-        }
-        const latestSession = sessions.sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
-        latestSessionId = String(latestSession.id);
-        const importMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
-        const canonicalKey = (k: any) => String(k || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-        totalConversions = (importMetrics || []).reduce((sum: number, m: any) => {
-          const key = canonicalKey(m.metricKey);
-          if (key === "conversions" || key === "externalwebsiteconversions") {
-            const v = Number(m.metricValue);
-            if (Number.isFinite(v)) return sum + v;
-          }
-          return sum;
-        }, 0);
-        if (!Number.isFinite(totalConversions) || (totalConversions as number) <= 0) {
-          return res.status(400).json({ error: "LinkedIn conversions are 0. Cannot compute conversion value." });
-        }
-        calculatedConversionValue = Number((totalRevenue / (totalConversions as number)).toFixed(2));
-        if (!isDryRun) {
-          await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
-          await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
-        }
-      }
+      // Revenue-only; conversion value is not computed/persisted from Shopify in this wizard.
+      const calculatedConversionValue: number | null = null;
+      const totalConversions: number | null = null;
+      const latestSessionId: string | null = null;
 
       // Dry-run preview: return computed totals without persisting anything.
       if (isDryRun) {
         return res.json({
           success: true,
-          mode: effectiveValueSource === "conversion_value" ? "conversion_value" : "revenue_to_date",
+          mode: "revenue_to_date",
           platformContext: platformCtx,
           totalRevenue: Number(totalRevenue.toFixed(2)),
           conversionValue: calculatedConversionValue,
@@ -18001,40 +17975,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         await storage.deleteRevenueRecordsBySource(String((source as any).id));
 
-        if (platformCtx === "linkedin" && effectiveValueSource === "conversion_value") {
-          // Conversion value is the source of truth: don't persist revenue-to-date rows.
-        } else {
-          const endDate = new Date().toISOString().slice(0, 10);
-          const startObj = new Date();
-          startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
-          const startDate = startObj.toISOString().slice(0, 10);
-          const days = enumerateDatesInclusive(startDate, endDate);
+        const endDate = new Date().toISOString().slice(0, 10);
+        const startObj = new Date();
+        startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
+        const startDate = startObj.toISOString().slice(0, 10);
+        const days = enumerateDatesInclusive(startDate, endDate);
 
-          const totalCents = Math.round(Number(totalRevenue.toFixed(2)) * 100);
-          const baseCents = Math.floor(totalCents / Math.max(1, days.length));
-          const remainder = totalCents - baseCents * Math.max(1, days.length);
+        const totalCents = Math.round(Number(totalRevenue.toFixed(2)) * 100);
+        const baseCents = Math.floor(totalCents / Math.max(1, days.length));
+        const remainder = totalCents - baseCents * Math.max(1, days.length);
 
-          const records = days.map((d, idx) => {
-            const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
-            return {
-              campaignId,
-              revenueSourceId: String((source as any).id),
-              date: d,
-              revenue: (cents / 100).toFixed(2) as any,
-              currency: cur,
-            } as any;
-          });
-          await storage.createRevenueRecords(records);
+        const records = days.map((d, idx) => {
+          const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
+          return {
+            campaignId,
+            revenueSourceId: String((source as any).id),
+            date: d,
+            revenue: (cents / 100).toFixed(2) as any,
+            currency: cur,
+          } as any;
+        });
+        await storage.createRevenueRecords(records);
 
-          if (platformCtx === "linkedin") {
-            // Revenue is the source of truth: clear any conversion value so LinkedIn metrics don't switch to derived revenue.
-            try {
-              await storage.updateLinkedInConnection(campaignId, { conversionValue: null as any } as any);
-            } catch {
-              // ignore
-            }
-            await clearLatestLinkedInImportSessionConversionValue(campaignId);
+        if (platformCtx === "linkedin") {
+          // Revenue is the source of truth: clear any conversion value so LinkedIn metrics don't switch to derived revenue.
+          try {
+            await storage.updateLinkedInConnection(campaignId, { conversionValue: null as any } as any);
+          } catch {
+            // ignore
           }
+          await clearLatestLinkedInImportSessionConversionValue(campaignId);
         }
       } catch (e) {
         console.warn("[Shopify Save Mappings] Failed to materialize revenue records:", e);
@@ -18042,8 +18012,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        mode: effectiveValueSource === "conversion_value" ? "conversion_value" : "revenue_to_date",
-        conversionValueCalculated: effectiveValueSource === "conversion_value",
+        mode: "revenue_to_date",
+        conversionValueCalculated: false,
         conversionValue: calculatedConversionValue,
         totalRevenue: Number(totalRevenue.toFixed(2)),
         totalConversions: totalConversions === null ? null : Number((totalConversions as number).toFixed(2)),

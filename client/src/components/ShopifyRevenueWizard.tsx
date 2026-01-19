@@ -601,9 +601,6 @@ export function ShopifyRevenueWizard(props: {
                 {selectedValues.length === 0 ? "—" : selectedValues.length <= 3 ? selectedValues.join(", ") : `${selectedValues.slice(0, 3).join(", ")} + ${selectedValues.length - 3} more`}
               </div>
               <div>
-                <strong>Selected values:</strong> {selectedValues.length}
-              </div>
-              <div>
                 <strong>Revenue metric:</strong> {revenueMetric}
               </div>
               <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3">

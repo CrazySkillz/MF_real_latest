@@ -52,6 +52,8 @@ export function SalesforceRevenueWizard(props: {
 
   const [orgName, setOrgName] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const isConnected = !!orgId;
 
   const [fields, setFields] = useState<SalesforceField[]>([]);
   const [fieldsLoading, setFieldsLoading] = useState(false);
@@ -101,6 +103,8 @@ export function SalesforceRevenueWizard(props: {
       setOrgId(json?.orgId || null);
       return true;
     }
+    setOrgName(null);
+    setOrgId(null);
     return false;
   };
 
@@ -145,9 +149,12 @@ export function SalesforceRevenueWizard(props: {
   useEffect(() => {
     void (async () => {
       try {
+        setStatusLoading(true);
         await fetchStatus();
       } catch {
         // ignore (wizard can still load fields if backend allows; otherwise user can connect)
+      } finally {
+        setStatusLoading(false);
       }
     })();
   }, [campaignId]);
@@ -247,7 +254,9 @@ export function SalesforceRevenueWizard(props: {
 
         if (data.type === "salesforce_auth_success") {
           window.removeEventListener("message", onMessage);
+          setStatusLoading(true);
           await fetchStatus();
+          setStatusLoading(false);
           toast({
             title: "Salesforce Connected",
             description: connectOnly
@@ -285,6 +294,8 @@ export function SalesforceRevenueWizard(props: {
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
     if (fields.length > 0) return;
+    // Match HubSpot UX: don't fetch fields until connected.
+    if (statusLoading || !isConnected) return;
     (async () => {
       try {
         await fetchFields();
@@ -382,6 +393,10 @@ export function SalesforceRevenueWizard(props: {
 
   const handleNext = async () => {
     if (step === "campaign-field") {
+      if (!isConnected) {
+        toast({ title: "Connect Salesforce", description: "Connect Salesforce before continuing.", variant: "destructive" });
+        return;
+      }
       if (!campaignField) {
         toast({
           title: "Select a field",
@@ -512,7 +527,11 @@ export function SalesforceRevenueWizard(props: {
           </CardTitle>
           <CardDescription>
             {step === "campaign-field" &&
-              `${connectedLabel ? `Connected: ${connectedLabel}. ` : "Salesforce is connected. "}Select the Opportunity field that identifies which deals belong to this MetricMind campaign.`}
+              (statusLoading
+                ? "Checking Salesforce connection…"
+                : isConnected
+                ? `${connectedLabel ? `Connected: ${connectedLabel}. ` : ""}Select the Opportunity field that identifies which deals belong to this MetricMind campaign.`
+                : "Connect Salesforce to load Opportunity fields and map revenue to this campaign.")}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignFieldLabel}” that should map to this MetricMind campaign.`}
             {step === "revenue" && "Select the Opportunity field that represents revenue (usually Amount)."}
@@ -524,7 +543,7 @@ export function SalesforceRevenueWizard(props: {
         <CardContent className="space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-2">
-              {!orgId && (
+              {!statusLoading && !isConnected ? (
                 <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
                   <div className="text-sm font-medium flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-blue-600" />
@@ -544,42 +563,37 @@ export function SalesforceRevenueWizard(props: {
                     )}
                   </div>
                 </div>
-              )}
-              <Label>Opportunity field used to attribute deals to this campaign</Label>
-              <div className="text-xs text-slate-500">
-                Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}
-                <strong>Opportunity Name</strong> can work only if your opportunity naming convention contains the campaign value you want to map.
-              </div>
-              <Select value={campaignField} onValueChange={(v) => setCampaignField(v)} disabled={fieldsLoading}>
-                <SelectTrigger>
-                  <span>{campaignFieldDisplay}</span>
-                </SelectTrigger>
-                <SelectContent className="z-[10000]">
-                  {fields
-                    .slice()
-                    .sort((a, b) => a.label.localeCompare(b.label))
-                    .map((f) => (
-                      <SelectItem key={f.name} value={f.name}>
-                        {f.label}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              {fieldsError && (
-                <div className="text-sm text-red-600">
-                  {fieldsError}{" "}
-                  <button
-                    className="underline"
-                    onClick={() => {
-                      void fetchFields();
-                    }}
-                  >
-                    Retry
-                  </button>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Opportunity field used to attribute deals to this campaign</Label>
+                  <div className="text-xs text-slate-500">
+                    Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}
+                    <strong>Opportunity Name</strong> can work only if your opportunity naming convention contains the campaign value you want to map.
+                  </div>
+                  <Select value={campaignField} onValueChange={(v) => setCampaignField(v)} disabled={!isConnected || statusLoading || fieldsLoading}>
+                    <SelectTrigger>
+                      <span>{statusLoading ? "Checking connection…" : campaignFieldDisplay}</span>
+                    </SelectTrigger>
+                    <SelectContent className="z-[10000]">
+                      {fields
+                        .slice()
+                        .sort((a, b) => a.label.localeCompare(b.label))
+                        .map((f) => (
+                          <SelectItem key={f.name} value={f.name}>
+                            {f.label}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  {isConnected && fieldsError && (
+                    <div className="text-sm text-red-600">
+                      {fieldsError}{" "}
+                      <button className="underline" onClick={() => void fetchFields()}>
+                        Retry
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
-              {!fieldsError && fields.length === 0 && !fieldsLoading && (
-                <div className="text-sm text-slate-500">No fields loaded yet. Click retry if this persists.</div>
               )}
             </div>
           )}
@@ -781,7 +795,7 @@ export function SalesforceRevenueWizard(props: {
                 disabled={
                   valuesLoading ||
                   isSaving ||
-                  (step === "campaign-field" && (fieldsLoading || fields.length === 0 || !campaignField))
+                  (step === "campaign-field" && (statusLoading || !isConnected || fieldsLoading || fields.length === 0 || !campaignField))
                 }
               >
                 {step === "review" ? (isSaving ? "Processing…" : "Process Revenue Metrics") : "Continue"}

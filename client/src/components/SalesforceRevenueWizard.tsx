@@ -59,6 +59,7 @@ export function SalesforceRevenueWizard(props: {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const isConnected = !!orgId;
+  const [oauthError, setOauthError] = useState<string | null>(null);
 
   const [fields, setFields] = useState<SalesforceField[]>([]);
   const [fieldsLoading, setFieldsLoading] = useState(false);
@@ -225,6 +226,7 @@ export function SalesforceRevenueWizard(props: {
 
   const openOAuthWindow = async () => {
     setIsConnecting(true);
+    setOauthError(null);
     try {
       const resp = await fetch("/api/auth/salesforce/connect", {
         method: "POST",
@@ -286,6 +288,7 @@ export function SalesforceRevenueWizard(props: {
 
       window.addEventListener("message", onMessage);
     } catch (err: any) {
+      setOauthError(err?.message || "Failed to open Salesforce OAuth.");
       toast({
         title: "Salesforce Connection Failed",
         description: err?.message || "Please try again.",
@@ -547,11 +550,7 @@ export function SalesforceRevenueWizard(props: {
           </CardTitle>
           <CardDescription>
             {step === "campaign-field" &&
-              (statusLoading
-                ? "Checking Salesforce connection…"
-                : isConnected
-                ? `${connectedLabel ? `Connected: ${connectedLabel}. ` : ""}Select the Opportunity field that identifies which deals belong to this MetricMind campaign.`
-                : "Connect Salesforce to load Opportunity fields and map revenue to this campaign.")}
+              "Select the Salesforce Opportunity field that identifies which deals belong to this MetricMind campaign."}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignFieldLabel}” that should map to this MetricMind campaign.`}
             {step === "revenue" && "Select the Opportunity field that represents revenue (usually Amount)."}
@@ -566,22 +565,12 @@ export function SalesforceRevenueWizard(props: {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <Label>Salesforce Opportunity field used to attribute deals to this campaign</Label>
-                  {!statusLoading && !isConnected && (
-                    <Button onClick={() => void openOAuthWindow()} disabled={isConnecting} size="sm">
-                      {isConnecting ? "Connecting…" : "Connect Salesforce"}
-                    </Button>
-                  )}
-                  {statusLoading && (
-                    <div className="text-xs text-slate-500 flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-blue-600" />
-                      Checking connection…
-                    </div>
-                  )}
+                  <div className="w-4 h-4">{/* reserved space (matches HubSpot layout) */}</div>
                 </div>
 
                 <Select value={campaignField} onValueChange={(v) => setCampaignField(v)} disabled={!isConnected || statusLoading || fieldsLoading}>
                   <SelectTrigger>
-                    <span>{!isConnected ? "Connect Salesforce to load fields…" : campaignFieldDisplay}</span>
+                    <span>{statusLoading ? "Checking connection…" : (!isConnected ? "Select a Salesforce Opportunity field…" : campaignFieldDisplay)}</span>
                   </SelectTrigger>
                   <SelectContent className="z-[10000]" side="bottom" align="start" sideOffset={4} avoidCollisions={false}>
                     {fields
@@ -599,6 +588,15 @@ export function SalesforceRevenueWizard(props: {
                   Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}
                   <strong>Opportunity Name</strong> can work only if your opportunity naming convention contains the campaign value you want to map.
                 </div>
+
+                {oauthError && (
+                  <div className="text-sm text-red-600">
+                    {oauthError}{" "}
+                    <button className="underline" onClick={() => void openOAuthWindow()}>
+                      Retry
+                    </button>
+                  </div>
+                )}
 
                 {isConnected && fieldsError && (
                   <div className="text-sm text-red-600">

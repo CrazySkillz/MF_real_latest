@@ -9105,6 +9105,7 @@ export default function LinkedInAnalytics() {
             <SalesforceRevenueWizard
               campaignId={campaignId}
               platformContext="linkedin"
+              autoStartOAuth
               onBack={() => setIsSalesforceRevenueWizardOpen(false)}
               onClose={() => {
                 setIsSalesforceRevenueWizardOpen(false);

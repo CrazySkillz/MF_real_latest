@@ -15,6 +15,9 @@ const app = express();
 
 // Set Express environment mode based on NODE_ENV
 app.set("env", process.env.NODE_ENV || "development");
+// Trust proxy headers on platforms like Render so req.protocol reflects X-Forwarded-Proto (https)
+// This prevents OAuth redirect_uri mismatches (http vs https).
+app.set("trust proxy", 1);
 
 // Conditionally apply body parsing - skip for webhook routes that use multer
 app.use((req, res, next) => {

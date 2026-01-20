@@ -3346,6 +3346,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <h2>✓ Salesforce Connected</h2>
             <p>You can now close this window.</p>
             <script>
+              try {
+                const bc = new BroadcastChannel('metricmind_oauth');
+                bc.postMessage({ type: 'salesforce_auth_success', orgId: ${JSON.stringify(orgId)}, orgName: ${JSON.stringify(orgName)} });
+                bc.close();
+              } catch (e) {}
               if (window.opener) {
                 window.opener.postMessage({ type: 'salesforce_auth_success', orgId: ${JSON.stringify(orgId)}, orgName: ${JSON.stringify(orgName)} }, window.location.origin);
               }
@@ -3363,6 +3368,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <h2>Authentication Error</h2>
             <p>${error?.message || 'Failed to complete authentication'}</p>
             <script>
+              try {
+                const bc = new BroadcastChannel('metricmind_oauth');
+                bc.postMessage({ type: 'salesforce_auth_error', error: ${JSON.stringify(error?.message || 'Failed to complete authentication')} });
+                bc.close();
+              } catch (e) {}
               if (window.opener) {
                 window.opener.postMessage({ type: 'salesforce_auth_error', error: ${JSON.stringify(error?.message || 'Failed to complete authentication')} }, window.location.origin);
               }

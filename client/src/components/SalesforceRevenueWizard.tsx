@@ -254,39 +254,91 @@ export function SalesforceRevenueWizard(props: {
       const w = window.open(authUrl, "salesforce_oauth", "width=520,height=680");
       if (!w) throw new Error("Popup blocked. Please allow popups and try again.");
 
-      const onMessage = async (event: MessageEvent) => {
+      let done = false;
+      const cleanup = () => {
+        if (done) return;
+        done = true;
+        window.removeEventListener("message", onWindowMessage);
+        try {
+          bc?.removeEventListener("message", onBcMessage as any);
+          bc?.close();
+        } catch {}
+        if (pollTimer) window.clearInterval(pollTimer);
+        if (pollTimeout) window.clearTimeout(pollTimeout);
+      };
+
+      const handleAuthSuccess = async () => {
+        cleanup();
+        setStatusLoading(true);
+        await fetchStatus();
+        setStatusLoading(false);
+        toast({
+          title: "Salesforce Connected",
+          description: connectOnly
+            ? "Connection saved. You can now view Salesforce data in MetricMind."
+            : "Now select the Opportunity field used to attribute deals to this campaign.",
+        });
+        if (connectOnly) {
+          onConnected?.();
+          onClose?.();
+          return;
+        }
+        setStep("campaign-field");
+      };
+
+      const handleAuthError = (msg?: string) => {
+        cleanup();
+        toast({
+          title: "Salesforce Connection Failed",
+          description: msg || "Please try again.",
+          variant: "destructive",
+        });
+      };
+
+      const onWindowMessage = async (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
         const data: any = event.data;
         if (!data || typeof data !== "object") return;
 
         if (data.type === "salesforce_auth_success") {
-          window.removeEventListener("message", onMessage);
-          setStatusLoading(true);
-          await fetchStatus();
-          setStatusLoading(false);
-          toast({
-            title: "Salesforce Connected",
-            description: connectOnly
-              ? "Connection saved. You can now view Salesforce data in MetricMind."
-              : "Now select the Opportunity field used to attribute deals to this campaign.",
-          });
-          if (connectOnly) {
-            onConnected?.();
-            onClose?.();
-            return;
-          }
-          setStep("campaign-field");
+          await handleAuthSuccess();
         } else if (data.type === "salesforce_auth_error") {
-          window.removeEventListener("message", onMessage);
-          toast({
-            title: "Salesforce Connection Failed",
-            description: data.error || "Please try again.",
-            variant: "destructive",
-          });
+          handleAuthError(data.error);
         }
       };
 
-      window.addEventListener("message", onMessage);
+      // BroadcastChannel fallback (Salesforce pages can set COOP which breaks window.opener messaging)
+      let bc: BroadcastChannel | null = null;
+      const onBcMessage = async (event: MessageEvent) => {
+        const data: any = (event as any)?.data;
+        if (!data || typeof data !== "object") return;
+        if (data.type === "salesforce_auth_success") await handleAuthSuccess();
+        if (data.type === "salesforce_auth_error") handleAuthError(data.error);
+      };
+      try {
+        bc = new BroadcastChannel("metricmind_oauth");
+        bc.addEventListener("message", onBcMessage as any);
+      } catch {
+        bc = null;
+      }
+
+      // As a final fallback, poll status briefly in case popup messaging is blocked.
+      let pollTimer: number | null = null;
+      let pollTimeout: number | null = null;
+      pollTimer = window.setInterval(async () => {
+        try {
+          const resp = await fetch(`/api/salesforce/${campaignId}/status`);
+          const json = await resp.json().catch(() => ({}));
+          if (json?.connected) {
+            await handleAuthSuccess();
+          }
+        } catch {
+          // ignore
+        }
+      }, 1200);
+      pollTimeout = window.setTimeout(() => cleanup(), 60_000);
+
+      window.addEventListener("message", onWindowMessage);
     } catch (err: any) {
       setOauthError(err?.message || "Failed to open Salesforce OAuth.");
       toast({

@@ -574,7 +574,13 @@ export function SalesforceRevenueWizard(props: {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <Label>Salesforce Opportunity field used to attribute deals to this campaign</Label>
-                  <div className="w-4 h-4">{/* reserved space (matches HubSpot layout) */}</div>
+                  {!statusLoading && !isConnected ? (
+                    <Button type="button" variant="outline" size="sm" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                      {isConnecting ? "Connecting…" : "Connect Salesforce"}
+                    </Button>
+                  ) : (
+                    <div className="w-4 h-4">{/* reserved space (matches HubSpot layout) */}</div>
+                  )}
                 </div>
 
                 <Select value={campaignField} onValueChange={(v) => setCampaignField(v)} disabled={!isConnected || statusLoading || fieldsLoading}>

@@ -563,57 +563,52 @@ export function SalesforceRevenueWizard(props: {
         <CardContent className="space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-2">
-              {statusLoading ? (
-                <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
-                  <div className="text-sm font-medium flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-blue-600" />
-                    Checking Salesforce connection…
-                  </div>
-                </div>
-              ) : !isConnected ? (
-                <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
-                  <div className="text-sm font-medium flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-blue-600" />
-                    Connect Salesforce
-                  </div>
-                  <div className="mt-3">
-                    <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Salesforce Opportunity field used to attribute deals to this campaign</Label>
+                  {!statusLoading && !isConnected && (
+                    <Button onClick={() => void openOAuthWindow()} disabled={isConnecting} size="sm">
                       {isConnecting ? "Connecting…" : "Connect Salesforce"}
                     </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label>Opportunity field used to attribute deals to this campaign</Label>
-                  <div className="text-xs text-slate-500">
-                    Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}
-                    <strong>Opportunity Name</strong> can work only if your opportunity naming convention contains the campaign value you want to map.
-                  </div>
-                  <Select value={campaignField} onValueChange={(v) => setCampaignField(v)} disabled={!isConnected || statusLoading || fieldsLoading}>
-                    <SelectTrigger>
-                      <span>{statusLoading ? "Checking connection…" : campaignFieldDisplay}</span>
-                    </SelectTrigger>
-                    <SelectContent className="z-[10000]">
-                      {fields
-                        .slice()
-                        .sort((a, b) => a.label.localeCompare(b.label))
-                        .map((f) => (
-                          <SelectItem key={f.name} value={f.name}>
-                            {f.label}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  {isConnected && fieldsError && (
-                    <div className="text-sm text-red-600">
-                      {fieldsError}{" "}
-                      <button className="underline" onClick={() => void fetchFields()}>
-                        Retry
-                      </button>
+                  )}
+                  {statusLoading && (
+                    <div className="text-xs text-slate-500 flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      Checking connection…
                     </div>
                   )}
                 </div>
-              )}
+
+                <Select value={campaignField} onValueChange={(v) => setCampaignField(v)} disabled={!isConnected || statusLoading || fieldsLoading}>
+                  <SelectTrigger>
+                    <span>{!isConnected ? "Connect Salesforce to load fields…" : campaignFieldDisplay}</span>
+                  </SelectTrigger>
+                  <SelectContent className="z-[10000]" side="bottom" align="start" sideOffset={4} avoidCollisions={false}>
+                    {fields
+                      .slice()
+                      .sort((a, b) => a.label.localeCompare(b.label))
+                      .map((f) => (
+                        <SelectItem key={f.name} value={f.name}>
+                          {f.label}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="text-xs text-slate-500">
+                  Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}
+                  <strong>Opportunity Name</strong> can work only if your opportunity naming convention contains the campaign value you want to map.
+                </div>
+
+                {isConnected && fieldsError && (
+                  <div className="text-sm text-red-600">
+                    {fieldsError}{" "}
+                    <button className="underline" onClick={() => void fetchFields()}>
+                      Retry
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

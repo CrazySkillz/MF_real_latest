@@ -30,6 +30,11 @@ export function SalesforceRevenueWizard(props: {
     days?: number;
   } | null;
   connectOnly?: boolean;
+  /**
+   * If true, auto-launches the Salesforce OAuth popup once when the wizard opens and no connection exists.
+   * Falls back to the manual "Connect Salesforce" button if popups are blocked.
+   */
+  autoStartOAuth?: boolean;
   onConnected?: () => void;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
@@ -40,7 +45,7 @@ export function SalesforceRevenueWizard(props: {
    */
   platformContext?: "ga4" | "linkedin";
 }) {
-  const { campaignId, mode = "connect", initialMappingConfig = null, connectOnly = false, onConnected, onBack, onSuccess, onClose, platformContext = "ga4" } = props;
+  const { campaignId, mode = "connect", initialMappingConfig = null, connectOnly = false, autoStartOAuth = false, onConnected, onBack, onSuccess, onClose, platformContext = "ga4" } = props;
   const { toast } = useToast();
 
   type Step = "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
@@ -290,6 +295,21 @@ export function SalesforceRevenueWizard(props: {
       setIsConnecting(false);
     }
   };
+
+  // Optional: auto-prompt OAuth when opened from "Add revenue source" so the flow matches HubSpot UX expectations.
+  const [autoStartAttempted, setAutoStartAttempted] = useState(false);
+  useEffect(() => {
+    if (!autoStartOAuth) return;
+    if (autoStartAttempted) return;
+    if (mode !== "connect") return;
+    if (connectOnly) return;
+    if (statusLoading) return;
+    if (isConnected) return;
+    // Mark attempted first to avoid loops if the popup is blocked and state doesn't change.
+    setAutoStartAttempted(true);
+    void openOAuthWindow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartOAuth, autoStartAttempted, mode, connectOnly, statusLoading, isConnected, campaignId]);
 
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;

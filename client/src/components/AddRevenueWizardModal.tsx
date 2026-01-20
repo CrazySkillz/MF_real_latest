@@ -1442,6 +1442,7 @@ export function AddRevenueWizardModal(props: {
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
                   platformContext={platformContext}
+                  autoStartOAuth
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {

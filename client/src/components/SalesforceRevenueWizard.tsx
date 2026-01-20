@@ -516,38 +516,47 @@ export function SalesforceRevenueWizard(props: {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {step === "campaign-field" && (
-              <>
-                <Target className="w-5 h-5 text-blue-600" />
-                Select Campaign Identifier Field
-              </>
+          <div className="flex items-start justify-between gap-3">
+            <CardTitle className="flex items-center gap-2">
+              {step === "campaign-field" && (
+                <>
+                  <Target className="w-5 h-5 text-blue-600" />
+                  Select Campaign Identifier Field
+                </>
+              )}
+              {step === "crosswalk" && (
+                <>
+                  <Link2 className="w-5 h-5 text-blue-600" />
+                  Link Campaign to Salesforce Value(s)
+                </>
+              )}
+              {step === "revenue" && (
+                <>
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  Select Revenue Field
+                </>
+              )}
+              {step === "review" && (
+                <>
+                  <ClipboardCheck className="w-5 h-5 text-blue-600" />
+                  Process Revenue Metrics
+                </>
+              )}
+              {step === "complete" && (
+                <>
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  Completed
+                </>
+              )}
+            </CardTitle>
+
+            {/* Subtle reconnect affordance (keeps first-step layout clean, matches HubSpot-style UX). */}
+            {!statusLoading && isConnected && step !== "complete" && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                {isConnecting ? "Reconnecting…" : "Reconnect"}
+              </Button>
             )}
-            {step === "crosswalk" && (
-              <>
-                <Link2 className="w-5 h-5 text-blue-600" />
-                Link Campaign to Salesforce Value(s)
-              </>
-            )}
-            {step === "revenue" && (
-              <>
-                <DollarSign className="w-5 h-5 text-green-600" />
-                Select Revenue Field
-              </>
-            )}
-            {step === "review" && (
-              <>
-                <ClipboardCheck className="w-5 h-5 text-blue-600" />
-                Process Revenue Metrics
-              </>
-            )}
-            {step === "complete" && (
-              <>
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-                Completed
-              </>
-            )}
-          </CardTitle>
+          </div>
           <CardDescription>
             {step === "campaign-field" &&
               "Select the Salesforce Opportunity field that identifies which deals belong to this MetricMind campaign."}

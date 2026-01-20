@@ -563,24 +563,23 @@ export function SalesforceRevenueWizard(props: {
         <CardContent className="space-y-4">
           {step === "campaign-field" && (
             <div className="space-y-2">
-              {!statusLoading && !isConnected ? (
+              {statusLoading ? (
                 <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
                   <div className="text-sm font-medium flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-blue-600" />
-                    Connect Salesforce to continue
+                    Checking Salesforce connection…
                   </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    Salesforce must be connected before we can load Opportunity fields.
+                </div>
+              ) : !isConnected ? (
+                <div className="border rounded p-3 bg-slate-50 dark:bg-slate-900/30">
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    Connect Salesforce
                   </div>
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3">
                     <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
                       {isConnecting ? "Connecting…" : "Connect Salesforce"}
                     </Button>
-                    {onBack && (
-                      <Button variant="outline" onClick={onBack} disabled={isConnecting}>
-                        Back
-                      </Button>
-                    )}
                   </div>
                 </div>
               ) : (

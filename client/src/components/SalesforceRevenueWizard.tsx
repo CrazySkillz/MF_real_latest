@@ -73,8 +73,8 @@ export function SalesforceRevenueWizard(props: {
   const [revenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">(
     platformContext === "ga4" ? "onsite_in_ga4" : "offsite_not_in_ga4"
   );
-  // Testing default: show older mock Opportunities (e.g. Jan 2025) in the Crosswalk list.
-  const [days, setDays] = useState<number>(3650);
+  // Production-friendly default: reduce query volume for large orgs, while still being adjustable in Advanced.
+  const [days, setDays] = useState<number>(365);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
@@ -788,9 +788,9 @@ export function SalesforceRevenueWizard(props: {
                       min={1}
                       max={3650}
                       value={days}
-                      onChange={(e) => setDays(Math.min(Math.max(parseInt(e.target.value || "90", 10) || 90, 1), 3650))}
+                      onChange={(e) => setDays(Math.min(Math.max(parseInt(e.target.value || "365", 10) || 365, 1), 3650))}
                     />
-                    <div className="text-xs text-slate-500">Default: last 90 days.</div>
+                    <div className="text-xs text-slate-500">Default: last 365 days.</div>
                   </div>
                 </div>
               )}

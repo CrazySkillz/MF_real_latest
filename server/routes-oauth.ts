@@ -7470,7 +7470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(404).json({ error: 'Source not found' });
           }
 
-          // Salesforce preview: show rows based on saved mappingConfig (if present), otherwise a generic Closed Won sample.
+          // Salesforce preview: show rows based on saved mappingConfig (if present), otherwise a generic Won sample.
           const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
           const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
 
@@ -7486,7 +7486,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const selected = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
 
           const whereParts: string[] = [
-            `StageName = 'Closed Won'`,
+            // Use IsWon instead of a hard-coded StageName label. Stage names are org-customizable.
+            `IsWon = true`,
             `CloseDate = LAST_N_DAYS:${rangeDays}`,
           ];
           if (attribField && selected.length > 0) {
@@ -7937,7 +7938,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const soqlAgg =
         `SELECT ${field}, COUNT(Id) c ` +
         `FROM Opportunity ` +
-        `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null ` +
+        // Use IsWon instead of StageName. Stage labels vary per org.
+        `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null ` +
         `GROUP BY ${field} ` +
         `ORDER BY COUNT(Id) DESC ` +
         `LIMIT ${Math.min(limit, 500)}`;
@@ -7958,7 +7960,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const soql =
           `SELECT Id, ${field} ` +
           `FROM Opportunity ` +
-          `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null ` +
+          // Use IsWon instead of StageName. Stage labels vary per org.
+          `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${days} AND ${field} != null ` +
           `LIMIT 2000`;
         let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
         let pages = 0;
@@ -8043,7 +8046,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const soql =
           `SELECT ${baseFields.join(', ')} ` +
           `FROM Opportunity ` +
-          `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
+          // Use IsWon instead of StageName. Stage labels vary per org.
+          `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
           `ORDER BY CloseDate DESC ` +
           `LIMIT ${rowLimit}`;
         return { soql, headers: baseFields };
@@ -8127,7 +8131,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Salesforce does not allow aliasing non-aggregate expressions in SOQL.
         `SELECT Id, ${revenue}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
         `FROM Opportunity ` +
-        `WHERE StageName = 'Closed Won' AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
+        // Use IsWon instead of StageName. Stage labels vary per org.
+        `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
         `LIMIT 2000`;
 
       const fetchOppRecords = async (includeCurrency: boolean): Promise<{ records: any[]; includeCurrency: boolean }> => {

@@ -718,7 +718,7 @@ export function SalesforceRevenueWizard(props: {
                   </div>
                 )}
               </div>
-              <div className="text-xs text-slate-500">Default filter: Closed Won opportunities within the last {days} days.</div>
+              <div className="text-xs text-slate-500">Default filter: Won opportunities (IsWon = true) within the last {days} days.</div>
             </div>
           )}
 
@@ -791,7 +791,7 @@ export function SalesforceRevenueWizard(props: {
           {step === "review" && (
             <div className="space-y-3">
               <div className="text-sm text-slate-700">
-                Preview the Opportunities that will be used to compute revenue for this campaign (Closed Won, last {days} days).
+                Preview the Opportunities that will be used to compute revenue for this campaign (Won only, last {days} days).
               </div>
 
               <div className="flex items-center justify-between gap-2">

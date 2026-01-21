@@ -8099,12 +8099,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      // Second fallback: some orgs restrict querying Organization. If so, use the connected user's CurrencyIsoCode.
+      const fetchUserCurrencyIsoCode = async (): Promise<string | null> => {
+        try {
+          const uiResp = await fetch(`${instanceUrl}/services/oauth2/userinfo`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const uiJson: any = await uiResp.json().catch(() => ({}));
+          if (!uiResp.ok) return null;
+          const userId = uiJson?.user_id || uiJson?.userId || null;
+          if (!userId) return null;
+          const soql = `SELECT CurrencyIsoCode FROM User WHERE Id = '${String(userId).replace(/'/g, "\\'")}' LIMIT 1`;
+          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) return null;
+          const rec = Array.isArray(json?.records) ? json.records[0] : null;
+          const cur = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim().toUpperCase() : null;
+          return cur || null;
+        } catch {
+          return null;
+        }
+      };
+
       let detectedCurrency = currencies.size === 1 ? Array.from(currencies)[0] : null;
       if (!detectedCurrency) {
         const orgCur = await fetchOrgDefaultCurrency();
         if (orgCur) {
           detectedCurrency = orgCur;
           if (currencies.size === 0) currencies.add(orgCur);
+        }
+      }
+      if (!detectedCurrency) {
+        const userCur = await fetchUserCurrencyIsoCode();
+        if (userCur) {
+          detectedCurrency = userCur;
+          if (currencies.size === 0) currencies.add(userCur);
         }
       }
       const currencyMismatch = !!(detectedCurrency && campaignCurrency && detectedCurrency !== campaignCurrency);

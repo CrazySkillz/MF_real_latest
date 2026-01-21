@@ -90,6 +90,7 @@ export function SalesforceRevenueWizard(props: {
   const [previewCampaignCurrency, setPreviewCampaignCurrency] = useState<string | null>(null);
   const [previewDetectedCurrency, setPreviewDetectedCurrency] = useState<string | null>(null);
   const [previewCurrencyMismatch, setPreviewCurrencyMismatch] = useState<boolean>(false);
+  const [salesforceCurrencyOverride, setSalesforceCurrencyOverride] = useState<string>("");
 
   const steps = useMemo(
     () => [
@@ -441,6 +442,7 @@ export function SalesforceRevenueWizard(props: {
       setPreviewCampaignCurrency(json?.campaignCurrency ? String(json.campaignCurrency) : null);
       setPreviewDetectedCurrency(json?.detectedCurrency ? String(json.detectedCurrency) : null);
       setPreviewCurrencyMismatch(!!json?.currencyMismatch);
+      // If Salesforce currency can't be detected, keep any user-selected override so they can proceed deterministically.
     } catch (err: any) {
       setPreviewError(err?.message || "Failed to load preview");
       setPreviewHeaders([]);
@@ -452,6 +454,16 @@ export function SalesforceRevenueWizard(props: {
       setPreviewLoading(false);
     }
   };
+
+  const effectiveSalesforceCurrency = useMemo(() => {
+    return (previewDetectedCurrency || salesforceCurrencyOverride || "").trim().toUpperCase() || null;
+  }, [previewDetectedCurrency, salesforceCurrencyOverride]);
+
+  const effectiveCurrencyMismatch = useMemo(() => {
+    if (!previewCampaignCurrency) return false;
+    if (!effectiveSalesforceCurrency) return false;
+    return String(previewCampaignCurrency).toUpperCase() !== String(effectiveSalesforceCurrency).toUpperCase();
+  }, [previewCampaignCurrency, effectiveSalesforceCurrency]);
 
   const save = async () => {
     setIsSaving(true);
@@ -466,6 +478,7 @@ export function SalesforceRevenueWizard(props: {
           revenueClassification,
           days,
           platformContext,
+          salesforceCurrencyOverride: effectiveSalesforceCurrency,
         }),
       });
       const json = await resp.json().catch(() => ({}));
@@ -817,20 +830,43 @@ export function SalesforceRevenueWizard(props: {
               {previewCampaignCurrency && (
                 <div className={`text-xs ${previewCurrencyMismatch ? "text-amber-700" : "text-slate-500"}`}>
                   Currency: campaign <strong>{previewCampaignCurrency}</strong>
-                  {previewDetectedCurrency ? (
+                  {effectiveSalesforceCurrency ? (
                     <>
-                      {" "}· Salesforce <strong>{previewDetectedCurrency}</strong>
+                      {" "}· Salesforce <strong>{effectiveSalesforceCurrency}</strong>
                     </>
                   ) : (
                     <>
                       {" "}· Salesforce <strong>unknown</strong>
                     </>
                   )}
-                  {previewCurrencyMismatch && (
+                  {effectiveCurrencyMismatch && (
                     <>
                       {" "}— please align currencies before saving.
                     </>
                   )}
+                </div>
+              )}
+
+              {/* If we can't detect Salesforce currency reliably, allow user to set it explicitly (enterprise-safe, no guessing). */}
+              {!previewDetectedCurrency && (
+                <div className="max-w-[360px] space-y-2">
+                  <Label>Salesforce currency (if unknown)</Label>
+                  <Select value={salesforceCurrencyOverride} onValueChange={(v) => setSalesforceCurrencyOverride(String(v || ""))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select currency…" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[10000]">
+                      {/* Keep list short and practical; expand later if needed */}
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="CAD">CAD</SelectItem>
+                      <SelectItem value="AUD">AUD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-slate-500">
+                    If your Salesforce org uses a currency different from the campaign currency, we will block saving to avoid silent FX errors.
+                  </div>
                 </div>
               )}
 
@@ -915,7 +951,8 @@ export function SalesforceRevenueWizard(props: {
                   valuesLoading ||
                   isSaving ||
                   (step === "campaign-field" && (statusLoading || !isConnected || fieldsLoading || fields.length === 0 || !campaignField)) ||
-                  (step === "review" && previewCurrencyMismatch)
+                  // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.
+                  (step === "review" && (effectiveCurrencyMismatch || !effectiveSalesforceCurrency))
                 }
               >
                 {step === "review" ? (isSaving ? "Processing…" : "Process Revenue Metrics") : "Continue"}

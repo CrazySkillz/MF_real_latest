@@ -8191,7 +8191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/salesforce/save-mappings", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { campaignField, selectedValues, revenueField, days, revenueClassification, platformContext } = req.body || {};
+      const { campaignField, selectedValues, revenueField, days, revenueClassification, platformContext, salesforceCurrencyOverride } = req.body || {};
 
       const attribField = String(campaignField || '').trim();
       const revenue = String(revenueField || 'Amount').trim();
@@ -8314,15 +8314,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Enterprise accuracy: never silently assume Salesforce currency equals campaign currency.
       // If we can determine Salesforce currency and it differs from the campaign currency, fail fast with a clear message.
-      if (currencies.size === 1) {
-        const sfCurrency = Array.from(currencies)[0].toUpperCase();
-        if (sfCurrency && campaignCurrency && sfCurrency !== campaignCurrency) {
-          return res.status(400).json({
-            error: `Currency mismatch: Salesforce Opportunities are in ${sfCurrency}, but this campaign is set to ${campaignCurrency}. Please align currencies (change campaign currency or import Opportunities in the campaign currency).`,
-            salesforceCurrency: sfCurrency,
-            campaignCurrency,
-          });
-        }
+      // UI may provide an explicit override when Salesforce currency cannot be detected from the API response.
+      const overrideCur = salesforceCurrencyOverride ? String(salesforceCurrencyOverride).trim().toUpperCase() : '';
+      const sfCurFromApi = currencies.size === 1 ? Array.from(currencies)[0].toUpperCase() : '';
+      const sfCurrency = sfCurFromApi || overrideCur;
+      if (sfCurrency && campaignCurrency && sfCurrency !== campaignCurrency) {
+        return res.status(400).json({
+          error: `Currency mismatch: Salesforce Opportunities are in ${sfCurrency}, but this campaign is set to ${campaignCurrency}. Please align currencies (change campaign currency or import Opportunities in the campaign currency).`,
+          salesforceCurrency: sfCurrency,
+          campaignCurrency,
+        });
       }
 
       // Compute conversion value only for LinkedIn context (Salesforce revenue ÷ LinkedIn conversions).

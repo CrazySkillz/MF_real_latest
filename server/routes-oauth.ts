@@ -8082,7 +8082,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const camp = await storage.getCampaign(campaignId);
       const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
-      const detectedCurrency = currencies.size === 1 ? Array.from(currencies)[0] : null;
+      // Fallback: if CurrencyIsoCode isn't present/returned (common when multi-currency is disabled),
+      // try the org's default currency so we can still provide a useful UX signal.
+      const fetchOrgDefaultCurrency = async (): Promise<string | null> => {
+        try {
+          const soql = `SELECT DefaultCurrencyIsoCode FROM Organization LIMIT 1`;
+          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) return null;
+          const rec = Array.isArray(json?.records) ? json.records[0] : null;
+          const cur = rec?.DefaultCurrencyIsoCode ? String(rec.DefaultCurrencyIsoCode).trim().toUpperCase() : null;
+          return cur || null;
+        } catch {
+          return null;
+        }
+      };
+
+      let detectedCurrency = currencies.size === 1 ? Array.from(currencies)[0] : null;
+      if (!detectedCurrency) {
+        const orgCur = await fetchOrgDefaultCurrency();
+        if (orgCur) {
+          detectedCurrency = orgCur;
+          if (currencies.size === 0) currencies.add(orgCur);
+        }
+      }
       const currencyMismatch = !!(detectedCurrency && campaignCurrency && detectedCurrency !== campaignCurrency);
 
       res.json({

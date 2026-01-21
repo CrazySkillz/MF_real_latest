@@ -1,9 +1,16 @@
 /**
  * Seed Salesforce with test Opportunities for MetricMind mapping/testing.
  *
- * Runs against ANY Salesforce org (Developer Edition / Sandbox / Production) as long as you provide:
+ * Two modes:
+ *
+ * A) Direct-to-Salesforce (requires a token):
  * - SF_INSTANCE_URL  e.g. "https://your-domain.my.salesforce.com"
  * - SF_ACCESS_TOKEN  a valid OAuth access token with scope "api"
+ *
+ * B) Via MetricMind (recommended; uses the stored Salesforce connection for a campaign):
+ * - MM_BASE_URL      e.g. "https://mforensics.onrender.com"
+ * - MM_CAMPAIGN_ID   the MetricMind campaign UUID
+ * - MM_SEED_KEY      must match server env SALESFORCE_SEED_KEY (and server must set ALLOW_SALESFORCE_SEED=true)
  *
  * Recommended way to get token for a dev org:
  * - Use Salesforce CLI (`sf org login web`) then `sf org display --verbose` to copy instanceUrl + accessToken.
@@ -137,8 +144,8 @@ async function validateOpportunityFieldExists(
 
 async function main() {
   const apiVersion = (process.env.SF_API_VERSION || "v59.0").trim();
-  const instanceUrl = normalizeInstanceUrl(requireEnv("SF_INSTANCE_URL"));
-  const accessToken = requireEnv("SF_ACCESS_TOKEN");
+  const instanceUrlRaw = String(process.env.SF_INSTANCE_URL || "").trim();
+  const accessTokenRaw = String(process.env.SF_ACCESS_TOKEN || "").trim();
 
   const count = parseIntEnv("OPPORTUNITY_COUNT", 25, 1, 500);
   const namePrefix = (process.env.OPPORTUNITY_NAME_PREFIX || "MetricMind Test Opportunity").trim();
@@ -156,6 +163,56 @@ async function main() {
         .map((s) => s.trim())
         .filter(Boolean)
     : [];
+
+  // Mode B: via MetricMind backend (no Salesforce token needed)
+  const mmBaseUrl = String(process.env.MM_BASE_URL || "").trim().replace(/\/+$/, "");
+  const mmCampaignId = String(process.env.MM_CAMPAIGN_ID || "").trim();
+  const mmSeedKey = String(process.env.MM_SEED_KEY || "").trim();
+  if (!instanceUrlRaw || !accessTokenRaw) {
+    if (!mmBaseUrl || !mmCampaignId || !mmSeedKey) {
+      console.error(
+        "Missing credentials. Provide either:\n" +
+          "- SF_INSTANCE_URL + SF_ACCESS_TOKEN (direct-to-Salesforce)\n" +
+          "OR\n" +
+          "- MM_BASE_URL + MM_CAMPAIGN_ID + MM_SEED_KEY (via MetricMind stored connection)\n"
+      );
+      process.exit(2);
+    }
+
+    console.log(`MetricMind: ${mmBaseUrl}`);
+    console.log(`CampaignId: ${mmCampaignId}`);
+    console.log(`Seeding ${count} Opportunities via MetricMind…`);
+    const resp = await fetch(`${mmBaseUrl}/api/salesforce/${encodeURIComponent(mmCampaignId)}/opportunities/seed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-mm-seed-key": mmSeedKey,
+      },
+      body: JSON.stringify({
+        count,
+        namePrefix,
+        stageName,
+        amountMin,
+        amountMax,
+        closeDays,
+        campaignFieldApiName: campaignField || undefined,
+        campaignFieldValues: campaignValues.length > 0 ? campaignValues : undefined,
+      }),
+    });
+    const json: any = await resp.json().catch(() => ({}));
+    if (!resp.ok || !json?.success) {
+      throw new Error(json?.error || `MetricMind seed failed (HTTP ${resp.status})`);
+    }
+    console.log(`✅ Seeded via MetricMind. createdCount=${json.createdCount} accountId=${json.accountId}`);
+    if (Array.isArray(json.opportunityIds) && json.opportunityIds.length > 0) {
+      console.log(`First OpportunityId: ${json.opportunityIds[0]}`);
+    }
+    return;
+  }
+
+  // Mode A: direct-to-Salesforce
+  const instanceUrl = normalizeInstanceUrl(instanceUrlRaw);
+  const accessToken = accessTokenRaw;
 
   console.log(`Instance: ${instanceUrl}`);
   console.log(`API version: ${apiVersion}`);

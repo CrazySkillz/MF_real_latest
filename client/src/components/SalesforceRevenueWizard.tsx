@@ -392,7 +392,7 @@ export function SalesforceRevenueWizard(props: {
         });
       }
     })();
-  }, [step, fields.length, toast]);
+  }, [step, fields.length, toast, statusLoading, isConnected, campaignId]);
 
   const campaignFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === campaignField);

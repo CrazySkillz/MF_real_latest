@@ -8108,6 +8108,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
+      const platformCtx = String(platformContext || "linkedin").trim().toLowerCase() === "ga4" ? "ga4" : "linkedin";
+      const camp = await storage.getCampaign(campaignId);
+      const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
 
       // Helper: read a dynamic (possibly dotted) field from a record.
       const readField = (rec: any, path: string): any => {
@@ -8129,7 +8132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // We'll try with CurrencyIsoCode first, then fall back without it if Salesforce reports INVALID_FIELD.
       const buildSoql = (includeCurrency: boolean) =>
         // Salesforce does not allow aliasing non-aggregate expressions in SOQL.
-        `SELECT Id, ${revenue}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
+        `SELECT Id, CloseDate, ${revenue}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
         `FROM Opportunity ` +
         // Use IsWon instead of StageName. Stage labels vary per org.
         `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
@@ -8165,6 +8168,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let totalRevenue = 0;
       const currencies = new Set<string>();
+      const revenueByDate = new Map<string, number>();
+
+      // Best-effort: if the org doesn't expose CurrencyIsoCode (no multi-currency), attempt to read org default currency.
+      const fetchOrgDefaultCurrency = async (): Promise<string | null> => {
+        try {
+          const soql = `SELECT DefaultCurrencyIsoCode FROM Organization LIMIT 1`;
+          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) return null;
+          const rec = Array.isArray(json?.records) ? json.records[0] : null;
+          const cur = rec?.DefaultCurrencyIsoCode ? String(rec.DefaultCurrencyIsoCode).trim().toUpperCase() : null;
+          return cur || null;
+        } catch {
+          return null;
+        }
+      };
 
       const fetched = await fetchOppRecords(true);
       // If fetchOppRecords returned an Express response (error), stop here.
@@ -8174,6 +8194,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const rRaw = readField(rec, revenue);
           const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
           if (Number.isFinite(r)) totalRevenue += r;
+        const closeDate = rec?.CloseDate ? String(rec.CloseDate).slice(0, 10) : '';
+        if (closeDate && Number.isFinite(r)) {
+          revenueByDate.set(closeDate, (revenueByDate.get(closeDate) || 0) + r);
+        }
         if (includeCurrency) {
           const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : '';
           if (c) currencies.add(c);
@@ -8187,36 +8211,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currencies: Array.from(currencies),
         });
       }
-
-      // Pull conversions from latest LinkedIn import session
-      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-      const latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
-      if (!latestSession) {
-        return res.status(400).json({ error: 'No LinkedIn import session found. Please import LinkedIn metrics first.' });
+      if (!includeCurrency && currencies.size === 0) {
+        const orgCur = await fetchOrgDefaultCurrency();
+        if (orgCur) currencies.add(orgCur);
       }
-      const importMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
-      const canonicalKey = (k: string) => String(k || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const totalConversions = (importMetrics || []).reduce((sum: number, m: any) => {
-        const key = canonicalKey(m.metricKey);
-        if (key === 'conversions' || key === 'externalwebsiteconversions') {
-          const v = Number(m.metricValue);
-          if (Number.isFinite(v)) return sum + v;
+
+      // Enterprise accuracy: never silently assume Salesforce currency equals campaign currency.
+      // If we can determine Salesforce currency and it differs from the campaign currency, fail fast with a clear message.
+      if (currencies.size === 1) {
+        const sfCurrency = Array.from(currencies)[0].toUpperCase();
+        if (sfCurrency && campaignCurrency && sfCurrency !== campaignCurrency) {
+          return res.status(400).json({
+            error: `Currency mismatch: Salesforce Opportunities are in ${sfCurrency}, but this campaign is set to ${campaignCurrency}. Please align currencies (change campaign currency or import Opportunities in the campaign currency).`,
+            salesforceCurrency: sfCurrency,
+            campaignCurrency,
+          });
         }
-        return sum;
-      }, 0);
-      if (!Number.isFinite(totalConversions) || totalConversions <= 0) {
-        return res.status(400).json({ error: 'LinkedIn conversions are 0. Cannot compute conversion value.' });
       }
 
-      const calculatedConversionValue = Number((totalRevenue / totalConversions).toFixed(2));
-      const platformCtx = String(platformContext || "linkedin").trim().toLowerCase() === "ga4" ? "ga4" : "linkedin";
+      // Compute conversion value only for LinkedIn context (Salesforce revenue ÷ LinkedIn conversions).
+      // GA4 context uses imported revenue directly and should not depend on LinkedIn sessions.
+      let calculatedConversionValue: number | null = null;
+      let totalConversions: number | null = null;
+      let latestSession: any = null;
+      if (platformCtx === 'linkedin') {
+        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+        latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+        if (!latestSession) {
+          return res.status(400).json({ error: 'No LinkedIn import session found. Please import LinkedIn metrics first.' });
+        }
+        const importMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
+        const canonicalKey = (k: string) => String(k || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        // Prefer externalWebsiteConversions when present; otherwise fall back to conversions.
+        let ext = 0;
+        let conv = 0;
+        for (const m of (importMetrics || [])) {
+          const key = canonicalKey((m as any).metricKey);
+          const v = Number((m as any).metricValue);
+          if (!Number.isFinite(v)) continue;
+          if (key === 'externalwebsiteconversions') ext += v;
+          if (key === 'conversions') conv += v;
+        }
+        totalConversions = ext > 0 ? ext : conv;
+        if (!Number.isFinite(totalConversions) || totalConversions <= 0) {
+          return res.status(400).json({ error: 'LinkedIn conversions are 0. Cannot compute conversion value.' });
+        }
+        calculatedConversionValue = Number((totalRevenue / totalConversions).toFixed(2));
+      }
 
       // STRICT PLATFORM ISOLATION:
       // Never write campaign-level conversionValue from LinkedIn revenue mappings.
       // Store conversionValue on the LinkedIn connection/session only.
       if (platformCtx === "linkedin") {
-        await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
-        await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
+        if (calculatedConversionValue !== null && latestSession) {
+          await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
+          await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
+        }
       }
 
       const sfConn: any = await storage.getSalesforceConnection(campaignId);
@@ -8240,13 +8290,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it when GA4 revenue is missing.
       try {
-        await deactivateRevenueSourcesForCampaign(campaignId);
-        const camp = await storage.getCampaign(campaignId);
-        const cur = (camp as any)?.currency || "USD";
+        await deactivateRevenueSourcesForCampaign(campaignId, { platformContext: platformCtx });
+        const cur = campaignCurrency;
 
         const source = await storage.createRevenueSource({
           campaignId,
           sourceType: "salesforce",
+          platformContext: platformCtx,
           displayName: `Salesforce (Opportunities)`,
           currency: cur,
           mappingConfig: JSON.stringify({
@@ -8264,39 +8314,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         await storage.deleteRevenueRecordsBySource(source.id);
 
-        const endDate = new Date().toISOString().slice(0, 10);
-        const startObj = new Date();
-        startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
-        const startDate = startObj.toISOString().slice(0, 10);
-        const days = enumerateDatesInclusive(startDate, endDate);
-
-        const totalCents = Math.round(Number(totalRevenue.toFixed(2)) * 100);
-        const baseCents = Math.floor(totalCents / Math.max(1, days.length));
-        const remainder = totalCents - baseCents * Math.max(1, days.length);
-
-        const records = days.map((d, idx) => {
-          const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
-          return {
+        // Enterprise accuracy: record revenue on actual Opportunity CloseDate (daily totals),
+        // rather than distributing evenly across the range.
+        const records = Array.from(revenueByDate.entries())
+          .filter(([d]) => !!d)
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([date, amt]) => ({
             campaignId,
             revenueSourceId: source.id,
-            date: d,
-            revenue: (cents / 100).toFixed(2) as any,
+            date,
+            revenue: Number(amt.toFixed(2)).toFixed(2) as any,
             currency: cur,
-          } as any;
-        });
-        await storage.createRevenueRecords(records);
+          })) as any[];
+        if (records.length > 0) {
+          await storage.createRevenueRecords(records);
+        }
       } catch (e) {
         console.warn("[Salesforce Save Mappings] Failed to materialize revenue records:", e);
       }
 
       res.json({
         success: true,
-        conversionValueCalculated: true,
-        conversionValue: calculatedConversionValue,
+        conversionValueCalculated: platformCtx === 'linkedin' && calculatedConversionValue !== null,
+        conversionValue: calculatedConversionValue ?? 0,
         totalRevenue: Number(totalRevenue.toFixed(2)),
-        totalConversions,
+        totalConversions: totalConversions ?? 0,
         currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
-        sessionId: latestSession.id,
+        sessionId: latestSession?.id || null,
       });
       await recomputeCampaignDerivedValues(campaignId);
     } catch (error: any) {

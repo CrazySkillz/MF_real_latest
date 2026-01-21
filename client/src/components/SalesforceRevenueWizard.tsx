@@ -76,6 +76,7 @@ export function SalesforceRevenueWizard(props: {
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
+  const [valuesError, setValuesError] = useState<string | null>(null);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
 
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -207,6 +208,7 @@ export function SalesforceRevenueWizard(props: {
 
   const fetchUniqueValues = async (fieldName: string) => {
     setValuesLoading(true);
+    setValuesError(null);
     try {
       const resp = await fetch(
         `/api/salesforce/${campaignId}/opportunities/unique-values?field=${encodeURIComponent(fieldName)}&days=${encodeURIComponent(
@@ -219,6 +221,13 @@ export function SalesforceRevenueWizard(props: {
       setUniqueValues(vals);
       const allowed = new Set(vals.map((v: any) => String(v.value)));
       setSelectedValues((prev) => prev.filter((v) => allowed.has(v)));
+      return vals;
+    } catch (err: any) {
+      const msg = err?.message || "Failed to load values";
+      setUniqueValues([]);
+      setValuesError(msg);
+      toast({ title: "Failed to Load Values", description: msg, variant: "destructive" });
+      return [];
     } finally {
       setValuesLoading(false);
     }
@@ -610,12 +619,17 @@ export function SalesforceRevenueWizard(props: {
             )}
           </div>
           <CardDescription>
+            {!statusLoading && isConnected && connectedLabel && (
+              <div className="text-xs text-slate-500 mb-1">
+                Connected to: <strong>{connectedLabel}</strong>
+              </div>
+            )}
             {step === "campaign-field" &&
               "Select the Salesforce Opportunity field that identifies which deals belong to this MetricMind campaign."}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignFieldLabel}” that should map to this MetricMind campaign.`}
             {step === "revenue" && "Select the Opportunity field that represents revenue (usually Amount)."}
-            {step === "review" && "Confirm your selections. We'll pull Closed Won Opportunities and compute conversion value for this campaign."}
+            {step === "review" && "Confirm your selections. We'll pull won Opportunities and compute conversion value for this campaign."}
             {step === "complete" && "Conversion value is saved. Revenue metrics should now be unlocked in Overview."}
           </CardDescription>
         </CardHeader>
@@ -690,8 +704,17 @@ export function SalesforceRevenueWizard(props: {
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (
                   <div className="text-sm text-slate-500">Loading values…</div>
+                ) : valuesError ? (
+                  <div className="text-sm text-red-600">
+                    {valuesError}{" "}
+                    <button className="underline" onClick={() => void fetchUniqueValues(campaignField)}>
+                      Retry
+                    </button>
+                  </div>
                 ) : uniqueValues.length === 0 ? (
-                  <div className="text-sm text-slate-500">No values found. Try adjusting Advanced settings.</div>
+                  <div className="text-sm text-slate-500">
+                    No values found. Try increasing the lookback window, or confirm you’re connected to the correct Salesforce org/user.
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {uniqueValues.map((v) => {

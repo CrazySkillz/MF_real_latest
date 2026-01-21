@@ -87,6 +87,9 @@ export function SalesforceRevenueWizard(props: {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
   const [previewRows, setPreviewRows] = useState<string[][]>([]);
+  const [previewCampaignCurrency, setPreviewCampaignCurrency] = useState<string | null>(null);
+  const [previewDetectedCurrency, setPreviewDetectedCurrency] = useState<string | null>(null);
+  const [previewCurrencyMismatch, setPreviewCurrencyMismatch] = useState<boolean>(false);
 
   const steps = useMemo(
     () => [
@@ -435,10 +438,16 @@ export function SalesforceRevenueWizard(props: {
       if (!resp.ok) throw new Error(json?.error || "Failed to load preview");
       setPreviewHeaders(Array.isArray(json?.headers) ? json.headers : []);
       setPreviewRows(Array.isArray(json?.rows) ? json.rows : []);
+      setPreviewCampaignCurrency(json?.campaignCurrency ? String(json.campaignCurrency) : null);
+      setPreviewDetectedCurrency(json?.detectedCurrency ? String(json.detectedCurrency) : null);
+      setPreviewCurrencyMismatch(!!json?.currencyMismatch);
     } catch (err: any) {
       setPreviewError(err?.message || "Failed to load preview");
       setPreviewHeaders([]);
       setPreviewRows([]);
+      setPreviewCampaignCurrency(null);
+      setPreviewDetectedCurrency(null);
+      setPreviewCurrencyMismatch(false);
     } finally {
       setPreviewLoading(false);
     }
@@ -805,6 +814,26 @@ export function SalesforceRevenueWizard(props: {
                 Preview the Opportunities that will be used to compute revenue for this campaign (Won only, last {days} days).
               </div>
 
+              {previewCampaignCurrency && (
+                <div className={`text-xs ${previewCurrencyMismatch ? "text-amber-700" : "text-slate-500"}`}>
+                  Currency: campaign <strong>{previewCampaignCurrency}</strong>
+                  {previewDetectedCurrency ? (
+                    <>
+                      {" "}· Salesforce <strong>{previewDetectedCurrency}</strong>
+                    </>
+                  ) : (
+                    <>
+                      {" "}· Salesforce <strong>unknown</strong>
+                    </>
+                  )}
+                  {previewCurrencyMismatch && (
+                    <>
+                      {" "}— please align currencies before saving.
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-slate-500">
                   Matching on <strong>{campaignFieldDisplay}</strong> · Revenue field <strong>{revenueFieldLabel}</strong> · Selected values{" "}
@@ -885,7 +914,8 @@ export function SalesforceRevenueWizard(props: {
                 disabled={
                   valuesLoading ||
                   isSaving ||
-                  (step === "campaign-field" && (statusLoading || !isConnected || fieldsLoading || fields.length === 0 || !campaignField))
+                  (step === "campaign-field" && (statusLoading || !isConnected || fieldsLoading || fields.length === 0 || !campaignField)) ||
+                  (step === "review" && previewCurrencyMismatch)
                 }
               >
                 {step === "review" ? (isSaving ? "Processing…" : "Process Revenue Metrics") : "Continue"}

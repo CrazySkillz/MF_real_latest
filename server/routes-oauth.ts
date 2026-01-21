@@ -8075,6 +8075,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const headers = result.headers;
       const records = result.records || [];
       const rows = records.map((r: any) => headers.map((h: string) => String(readField(r, h) ?? '')));
+      const currencies = new Set<string>();
+      for (const r of records) {
+        const c = r?.CurrencyIsoCode ? String(r.CurrencyIsoCode).trim().toUpperCase() : '';
+        if (c) currencies.add(c);
+      }
+      const camp = await storage.getCampaign(campaignId);
+      const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
+      const detectedCurrency = currencies.size === 1 ? Array.from(currencies)[0] : null;
+      const currencyMismatch = !!(detectedCurrency && campaignCurrency && detectedCurrency !== campaignCurrency);
 
       res.json({
         success: true,
@@ -8084,6 +8093,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers,
         rows,
         rowCount: rows.length,
+        campaignCurrency,
+        detectedCurrency,
+        detectedCurrencies: Array.from(currencies),
+        currencyMismatch,
       });
     } catch (error: any) {
       console.error('[Salesforce Preview] Error:', error);

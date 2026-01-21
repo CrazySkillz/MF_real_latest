@@ -8269,14 +8269,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Best-effort: if the org doesn't expose CurrencyIsoCode (no multi-currency), attempt to read org default currency.
       const fetchOrgDefaultCurrency = async (): Promise<string | null> => {
         try {
-          const soql = `SELECT DefaultCurrencyIsoCode FROM Organization LIMIT 1`;
-          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) return null;
-          const rec = Array.isArray(json?.records) ? json.records[0] : null;
-          const cur = rec?.DefaultCurrencyIsoCode ? String(rec.DefaultCurrencyIsoCode).trim().toUpperCase() : null;
-          return cur || null;
+          const trySoql = async (objectName: string, fieldName: string): Promise<string | null> => {
+            const soql = `SELECT ${fieldName} FROM ${objectName} LIMIT 1`;
+            const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+            const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+            const json: any = await resp.json().catch(() => ({}));
+            if (!resp.ok) return null;
+            const rec = Array.isArray(json?.records) ? json.records[0] : null;
+            const raw = rec?.[fieldName];
+            const cur = raw ? String(raw).trim().toUpperCase() : null;
+            return cur || null;
+          };
+
+          // Org currency is exposed inconsistently across orgs; try the common places.
+          return (
+            (await trySoql('Organization', 'DefaultCurrencyIsoCode')) ||
+            (await trySoql('Organization', 'CurrencyIsoCode')) ||
+            (await trySoql('CompanyInfo', 'CurrencyIsoCode')) ||
+            (await trySoql('CompanyInfo', 'DefaultCurrencyIsoCode'))
+          );
         } catch {
           return null;
         }

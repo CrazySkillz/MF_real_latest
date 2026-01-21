@@ -8001,7 +8001,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/salesforce/:campaignId/opportunities/preview", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
-      const { campaignField, selectedValues, revenueField, days, limit } = req.body || {};
+      const { campaignField, selectedValues, revenueField, days, limit, debug } = req.body || {};
+      const debugMode = !!debug;
 
       const attribField = String(campaignField || '').trim();
       const revenue = String(revenueField || 'Amount').trim();
@@ -8082,6 +8083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const camp = await storage.getCampaign(campaignId);
       const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
+      const currencyDetectionDebug: any = debugMode ? { steps: [] as any[] } : null;
       // Fallback: if CurrencyIsoCode isn't present/returned (common when multi-currency is disabled),
       // try the org's default currency so we can still provide a useful UX signal.
       const fetchOrgDefaultCurrency = async (): Promise<string | null> => {
@@ -8095,17 +8097,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const msg = String(json?.[0]?.message || json?.message || '');
               // If the field doesn't exist in this org/api version, return null so we can try an alternate.
               if (msg.toLowerCase().includes('no such column') || msg.toLowerCase().includes('invalid_field')) return null;
+              if (debugMode) currencyDetectionDebug.steps.push({ method: 'Organization', field: fieldName, ok: false, status: resp.status, error: msg || null });
               return null;
             }
             const rec = Array.isArray(json?.records) ? json.records[0] : null;
             const raw = rec?.[fieldName];
             const cur = raw ? String(raw).trim().toUpperCase() : null;
+            if (debugMode) currencyDetectionDebug.steps.push({ method: 'Organization', field: fieldName, ok: !!cur, value: cur || null });
             return cur || null;
           };
 
           // Different orgs/api versions expose different org currency fields; try both.
           return (await trySoql('DefaultCurrencyIsoCode')) || (await trySoql('CurrencyIsoCode'));
         } catch {
+          if (debugMode) currencyDetectionDebug.steps.push({ method: 'Organization', ok: false, error: 'Exception during Organization currency detection' });
           return null;
         }
       };
@@ -8117,18 +8122,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
           const uiJson: any = await uiResp.json().catch(() => ({}));
-          if (!uiResp.ok) return null;
+          if (!uiResp.ok) {
+            if (debugMode) currencyDetectionDebug.steps.push({ method: 'userinfo', ok: false, status: uiResp.status, error: uiJson?.error || uiJson?.message || null });
+            return null;
+          }
           const userId = uiJson?.user_id || uiJson?.userId || null;
-          if (!userId) return null;
+          if (!userId) {
+            if (debugMode) currencyDetectionDebug.steps.push({ method: 'userinfo', ok: true, userId: null });
+            return null;
+          }
+          if (debugMode) currencyDetectionDebug.steps.push({ method: 'userinfo', ok: true, userId: String(userId) });
           const soql = `SELECT CurrencyIsoCode FROM User WHERE Id = '${String(userId).replace(/'/g, "\\'")}' LIMIT 1`;
           const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
           const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
           const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) return null;
+          if (!resp.ok) {
+            if (debugMode) currencyDetectionDebug.steps.push({ method: 'User', field: 'CurrencyIsoCode', ok: false, status: resp.status, error: json?.[0]?.message || json?.message || null });
+            return null;
+          }
           const rec = Array.isArray(json?.records) ? json.records[0] : null;
           const cur = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim().toUpperCase() : null;
+          if (debugMode) currencyDetectionDebug.steps.push({ method: 'User', field: 'CurrencyIsoCode', ok: !!cur, value: cur || null });
           return cur || null;
         } catch {
+          if (debugMode) currencyDetectionDebug.steps.push({ method: 'User', ok: false, error: 'Exception during User currency detection' });
           return null;
         }
       };
@@ -8162,6 +8179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         detectedCurrency,
         detectedCurrencies: Array.from(currencies),
         currencyMismatch,
+        ...(debugMode ? { currencyDetectionDebug } : {}),
       });
     } catch (error: any) {
       console.error('[Salesforce Preview] Error:', error);

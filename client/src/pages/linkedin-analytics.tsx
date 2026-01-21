@@ -122,7 +122,6 @@ export default function LinkedInAnalytics() {
   const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
   const [isSalesforceViewerOpen, setIsSalesforceViewerOpen] = useState(false);
   const [salesforceViewerSourceId, setSalesforceViewerSourceId] = useState<string | null>(null);
-  const [isSalesforceRevenueWizardOpen, setIsSalesforceRevenueWizardOpen] = useState(false);
   const [isHubspotRevenueWizardOpen, setIsHubspotRevenueWizardOpen] = useState(false);
   const [isShopifyViewerOpen, setIsShopifyViewerOpen] = useState(false);
   const [isShopifyRevenueWizardOpen, setIsShopifyRevenueWizardOpen] = useState(false);
@@ -9090,36 +9089,6 @@ export default function LinkedInAnalytics() {
           campaignId={campaignId}
           sourceId={salesforceViewerSourceId}
         />
-      )}
-
-      {/* Salesforce Revenue Wizard (separate modal for a cleaner flow) */}
-      {campaignId && (
-        <Dialog open={isSalesforceRevenueWizardOpen} onOpenChange={setIsSalesforceRevenueWizardOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Salesforce Revenue Metrics</DialogTitle>
-              <DialogDescription>
-                Connect Salesforce, choose Opportunity fields, and process revenue metrics for this campaign.
-              </DialogDescription>
-            </DialogHeader>
-            <SalesforceRevenueWizard
-              campaignId={campaignId}
-              platformContext="linkedin"
-              autoStartOAuth
-              onBack={() => setIsSalesforceRevenueWizardOpen(false)}
-              onClose={() => {
-                setIsSalesforceRevenueWizardOpen(false);
-                void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
-              }}
-              onSuccess={() => {
-                setIsSalesforceRevenueWizardOpen(false);
-                void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
-              }}
-            />
-          </DialogContent>
-        </Dialog>
       )}
 
       {/* HubSpot Revenue Wizard (OAuth happens first; wizard starts at campaign field) */}

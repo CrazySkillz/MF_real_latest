@@ -68,7 +68,11 @@ export function SalesforceRevenueWizard(props: {
   // This is the most universally available field and matches the desired default behavior.
   const [campaignField, setCampaignField] = useState<string>("Name");
   const [revenueField, setRevenueField] = useState<string>("Amount");
-  const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("onsite_in_ga4");
+  // Internal flag used to avoid double-counting GA4 revenue in campaign totals.
+  // We no longer expose this choice in the Salesforce wizard UI; default based on context.
+  const [revenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">(
+    platformContext === "ga4" ? "onsite_in_ga4" : "offsite_not_in_ga4"
+  );
   // Testing default: show older mock Opportunities (e.g. Jan 2025) in the Crosswalk list.
   const [days, setDays] = useState<number>(3650);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -764,22 +768,6 @@ export function SalesforceRevenueWizard(props: {
                   </SelectContent>
                 </Select>
                 <div className="text-xs text-slate-500">Default: Amount.</div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Is this revenue already tracked in GA4?</Label>
-                <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[10000]">
-                    <SelectItem value="onsite_in_ga4">Yes — it’s onsite revenue (also tracked in GA4)</SelectItem>
-                    <SelectItem value="offsite_not_in_ga4">No — it’s offsite revenue (NOT tracked in GA4)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="text-xs text-slate-500">
-                  If you choose “No”, this revenue can be included in campaign-level total revenue without double counting GA4.
-                </div>
               </div>
 
               <div className="flex items-center justify-between gap-3">

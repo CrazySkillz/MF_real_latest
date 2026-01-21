@@ -8086,14 +8086,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // try the org's default currency so we can still provide a useful UX signal.
       const fetchOrgDefaultCurrency = async (): Promise<string | null> => {
         try {
-          const soql = `SELECT DefaultCurrencyIsoCode FROM Organization LIMIT 1`;
-          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) return null;
-          const rec = Array.isArray(json?.records) ? json.records[0] : null;
-          const cur = rec?.DefaultCurrencyIsoCode ? String(rec.DefaultCurrencyIsoCode).trim().toUpperCase() : null;
-          return cur || null;
+          const trySoql = async (fieldName: string): Promise<string | null> => {
+            const soql = `SELECT ${fieldName} FROM Organization LIMIT 1`;
+            const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+            const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+            const json: any = await resp.json().catch(() => ({}));
+            if (!resp.ok) {
+              const msg = String(json?.[0]?.message || json?.message || '');
+              // If the field doesn't exist in this org/api version, return null so we can try an alternate.
+              if (msg.toLowerCase().includes('no such column') || msg.toLowerCase().includes('invalid_field')) return null;
+              return null;
+            }
+            const rec = Array.isArray(json?.records) ? json.records[0] : null;
+            const raw = rec?.[fieldName];
+            const cur = raw ? String(raw).trim().toUpperCase() : null;
+            return cur || null;
+          };
+
+          // Different orgs/api versions expose different org currency fields; try both.
+          return (await trySoql('DefaultCurrencyIsoCode')) || (await trySoql('CurrencyIsoCode'));
         } catch {
           return null;
         }

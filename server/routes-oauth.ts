@@ -3107,8 +3107,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
       // Some orgs reject certain scope combos (we've seen invalid_scope for refresh_token).
       // Default to the minimum needed for this integration.
-      // You can override via env var if your org allows/needs more (e.g. "api refresh_token offline_access").
-      const scope = String(process.env.SALESFORCE_OAUTH_SCOPE || process.env.SALESFORCE_OAUTH_SCOPES || 'api').trim();
+      // NOTE: we include "id" so we can call the identity/userinfo endpoints to reliably detect user/org currency.
+      // You can override via env var if your org allows/needs more (e.g. "api id refresh_token offline_access").
+      const scope = String(process.env.SALESFORCE_OAUTH_SCOPE || process.env.SALESFORCE_OAUTH_SCOPES || 'api id').trim();
 
       // PKCE
       cleanupSalesforcePkce();

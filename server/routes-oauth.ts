@@ -8083,136 +8083,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const camp = await storage.getCampaign(campaignId);
       const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
-      const currencyDetectionDebug: any = debugMode ? { steps: [] as any[] } : null;
-      // Fallback: if CurrencyIsoCode isn't present/returned (common when multi-currency is disabled),
-      // try the org's default currency so we can still provide a useful UX signal.
-      const fetchOrgDefaultCurrency = async (): Promise<string | null> => {
-        try {
-          const trySoql = async (fieldName: string): Promise<string | null> => {
-            const soql = `SELECT ${fieldName} FROM Organization LIMIT 1`;
-            const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-            const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-            const json: any = await resp.json().catch(() => ({}));
-            if (!resp.ok) {
-              const msg = String(json?.[0]?.message || json?.message || '');
-              // If the field doesn't exist in this org/api version, return null so we can try an alternate.
-              if (msg.toLowerCase().includes('no such column') || msg.toLowerCase().includes('invalid_field')) return null;
-              if (debugMode) currencyDetectionDebug.steps.push({ method: 'Organization', field: fieldName, ok: false, status: resp.status, error: msg || null });
-              return null;
-            }
-            const rec = Array.isArray(json?.records) ? json.records[0] : null;
-            const raw = rec?.[fieldName];
-            const cur = raw ? String(raw).trim().toUpperCase() : null;
-            if (debugMode) currencyDetectionDebug.steps.push({ method: 'Organization', field: fieldName, ok: !!cur, value: cur || null });
-            return cur || null;
-          };
-
-          // Different orgs/api versions expose different org currency fields; try both.
-          return (await trySoql('DefaultCurrencyIsoCode')) || (await trySoql('CurrencyIsoCode'));
-        } catch {
-          if (debugMode) currencyDetectionDebug.steps.push({ method: 'Organization', ok: false, error: 'Exception during Organization currency detection' });
-          return null;
-        }
-      };
-
       const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
-
-      // Second fallback: some orgs restrict querying Organization. If so, use the connected user's CurrencyIsoCode.
-      const fetchUserCurrencyIsoCode = async (): Promise<string | null> => {
-        try {
-          // IMPORTANT: userinfo is served on the auth base domain (login/test), not reliably on instanceUrl.
-          const uiResp = await fetch(`${authBase}/services/oauth2/userinfo`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          const uiJson: any = await uiResp.json().catch(() => ({}));
-          if (!uiResp.ok) {
-            if (debugMode) currencyDetectionDebug.steps.push({ method: 'userinfo', ok: false, status: uiResp.status, error: uiJson?.error || uiJson?.message || null });
-            return null;
-          }
-          const userIdRaw = uiJson?.user_id || uiJson?.userId || null;
-          if (!userIdRaw) {
-            if (debugMode) currencyDetectionDebug.steps.push({ method: 'userinfo', ok: true, userId: null });
-            return null;
-          }
-          // Salesforce userinfo often returns user_id as a URL like:
-          //   https://login.salesforce.com/id/00D.../005...
-          // Extract the actual 15/18-char User Id.
-          const userIdStr = String(userIdRaw);
-          const userId = userIdStr.includes('/') ? userIdStr.split('/').filter(Boolean).slice(-1)[0] : userIdStr;
-          if (!userId) {
-            if (debugMode) currencyDetectionDebug.steps.push({ method: 'userinfo', ok: true, userId: null });
-            return null;
-          }
-          if (debugMode) currencyDetectionDebug.steps.push({ method: 'userinfo', ok: true, userId: String(userId) });
-          const soql = `SELECT CurrencyIsoCode FROM User WHERE Id = '${String(userId).replace(/'/g, "\\'")}' LIMIT 1`;
-          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) {
-            if (debugMode) currencyDetectionDebug.steps.push({ method: 'User', field: 'CurrencyIsoCode', ok: false, status: resp.status, error: json?.[0]?.message || json?.message || null });
-            return null;
-          }
-          const rec = Array.isArray(json?.records) ? json.records[0] : null;
-          const cur = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim().toUpperCase() : null;
-          if (debugMode) currencyDetectionDebug.steps.push({ method: 'User', field: 'CurrencyIsoCode', ok: !!cur, value: cur || null });
-          return cur || null;
-        } catch {
-          if (debugMode) currencyDetectionDebug.steps.push({ method: 'User', ok: false, error: 'Exception during User currency detection' });
-          return null;
-        }
-      };
-
-      // Third fallback: query corporate currency via CurrencyType (works in many orgs even when Organization/User are restricted).
-      const fetchCorporateCurrencyIsoCode = async (): Promise<string | null> => {
-        try {
-          const soql = `SELECT IsoCode FROM CurrencyType WHERE IsCorporate = true LIMIT 1`;
-          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
-          if (!resp.ok) {
-            if (debugMode) {
-              currencyDetectionDebug.steps.push({
-                method: 'CurrencyType',
-                field: 'IsoCode',
-                ok: false,
-                status: resp.status,
-                error: json?.[0]?.message || json?.message || null,
-              });
-            }
-            return null;
-          }
-          const rec = Array.isArray(json?.records) ? json.records[0] : null;
-          const cur = rec?.IsoCode ? String(rec.IsoCode).trim().toUpperCase() : null;
-          if (debugMode) currencyDetectionDebug.steps.push({ method: 'CurrencyType', field: 'IsoCode', ok: !!cur, value: cur || null });
-          return cur || null;
-        } catch {
-          if (debugMode) currencyDetectionDebug.steps.push({ method: 'CurrencyType', ok: false, error: 'Exception during CurrencyType currency detection' });
-          return null;
-        }
-      };
-
-      let detectedCurrency = currencies.size === 1 ? Array.from(currencies)[0] : null;
-      if (!detectedCurrency) {
-        const orgCur = await fetchOrgDefaultCurrency();
-        if (orgCur) {
-          detectedCurrency = orgCur;
-          if (currencies.size === 0) currencies.add(orgCur);
-        }
-      }
-      if (!detectedCurrency) {
-        const userCur = await fetchUserCurrencyIsoCode();
-        if (userCur) {
-          detectedCurrency = userCur;
-          if (currencies.size === 0) currencies.add(userCur);
-        }
-      }
-      if (!detectedCurrency) {
-        const corpCur = await fetchCorporateCurrencyIsoCode();
-        if (corpCur) {
-          detectedCurrency = corpCur;
-          if (currencies.size === 0) currencies.add(corpCur);
-        }
-      }
+      const { detectSalesforceCurrency } = await import('./utils/salesforceCurrency');
+      const curResult = await detectSalesforceCurrency({
+        accessToken,
+        instanceUrl,
+        apiVersion: version,
+        authBase,
+        currenciesFromRecords: currencies,
+        debug: debugMode,
+      });
+      const detectedCurrency = curResult.detectedCurrency;
       const currencyMismatch = !!(detectedCurrency && campaignCurrency && detectedCurrency !== campaignCurrency);
 
       res.json({
@@ -8227,7 +8108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         detectedCurrency,
         detectedCurrencies: Array.from(currencies),
         currencyMismatch,
-        ...(debugMode ? { currencyDetectionDebug } : {}),
+        ...(debugMode ? { currencyDetectionDebug: { steps: curResult.debugSteps || [] } } : {}),
       });
     } catch (error: any) {
       console.error('[Salesforce Preview] Error:', error);

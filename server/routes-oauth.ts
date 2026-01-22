@@ -8115,10 +8115,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
+
       // Second fallback: some orgs restrict querying Organization. If so, use the connected user's CurrencyIsoCode.
       const fetchUserCurrencyIsoCode = async (): Promise<string | null> => {
         try {
-          const uiResp = await fetch(`${instanceUrl}/services/oauth2/userinfo`, {
+          // IMPORTANT: userinfo is served on the auth base domain (login/test), not reliably on instanceUrl.
+          const uiResp = await fetch(`${authBase}/services/oauth2/userinfo`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
           const uiJson: any = await uiResp.json().catch(() => ({}));
@@ -8357,7 +8360,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fallback: query the connected user's CurrencyIsoCode (userinfo often returns user_id as a URL; extract the User Id).
       const fetchUserCurrencyIsoCode = async (): Promise<string | null> => {
         try {
-          const uiResp = await fetch(`${instanceUrl}/services/oauth2/userinfo`, {
+          const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
+          const uiResp = await fetch(`${authBase}/services/oauth2/userinfo`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
           const uiJson: any = await uiResp.json().catch(() => ({}));

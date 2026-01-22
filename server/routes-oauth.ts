@@ -8201,6 +8201,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (currencies.size === 0) currencies.add(corpCur);
         }
       }
+      // Final UX fallback: if Salesforce currency cannot be read due to org permissions,
+      // use campaign currency so the user can proceed (we still block on confirmed mismatches).
+      if (!detectedCurrency && campaignCurrency) {
+        detectedCurrency = campaignCurrency;
+        if (currencies.size === 0) currencies.add(campaignCurrency);
+        if (debugMode) currencyDetectionDebug.steps.push({ method: 'assumed', field: 'campaignCurrency', ok: true, value: campaignCurrency });
+      }
       const currencyMismatch = !!(detectedCurrency && campaignCurrency && detectedCurrency !== campaignCurrency);
 
       res.json({
@@ -8376,6 +8383,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!orgCur) {
           const corpCur = await fetchCorporateCurrencyIsoCode();
           if (corpCur) currencies.add(corpCur);
+        }
+        // If Salesforce currency is still not detectable (permissions), allow processing using campaign currency.
+        // This avoids blocking the workflow; we still block on confirmed currency mismatches when detectable.
+        if (currencies.size === 0 && campaignCurrency) {
+          currencies.add(campaignCurrency);
         }
       }
 

@@ -926,7 +926,7 @@ export function SalesforceRevenueWizard(props: {
                   isSaving ||
                   (step === "campaign-field" && (statusLoading || !isConnected || fieldsLoading || fields.length === 0 || !campaignField)) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.
-                  (step === "review" && (effectiveCurrencyMismatch || !effectiveSalesforceCurrency))
+                  (step === "review" && effectiveCurrencyMismatch)
                 }
               >
                 {step === "review" ? (isSaving ? "Processing…" : "Process Revenue Metrics") : "Continue"}

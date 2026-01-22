@@ -52,6 +52,33 @@ describe("detectSalesforceCurrency", () => {
 
     expect(res.detectedCurrency).toBe("USD");
   });
+
+  it("infers sandbox auth base for userinfo when authBase not provided", async () => {
+    const instanceUrl = "https://example.sandbox.my.salesforce.com";
+    const apiVersion = "v59.0";
+    const accessToken = "token";
+
+    const userinfoUrl = `https://test.salesforce.com/services/oauth2/userinfo`;
+    const userSoql = `${instanceUrl}/services/data/${apiVersion}/query?q=${encodeURIComponent(
+      "SELECT CurrencyIsoCode FROM User WHERE Id = '005xx0000012345' LIMIT 1"
+    )}`;
+
+    const fetchImpl = makeFetch({
+      [userinfoUrl]: { status: 200, body: { user_id: "https://test.salesforce.com/id/00Dxx0000000001/005xx0000012345" } },
+      [userSoql]: { status: 200, body: { records: [{ CurrencyIsoCode: "USD" }] } },
+    });
+
+    const res = await detectSalesforceCurrency({
+      instanceUrl,
+      apiVersion,
+      accessToken,
+      currenciesFromRecords: new Set(),
+      debug: true,
+      fetchImpl,
+    });
+
+    expect(res.detectedCurrency).toBe("USD");
+  });
 });
 
 

@@ -8150,6 +8150,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      // Third fallback: query corporate currency via CurrencyType (works in many orgs even when Organization/User are restricted).
+      const fetchCorporateCurrencyIsoCode = async (): Promise<string | null> => {
+        try {
+          const soql = `SELECT IsoCode FROM CurrencyType WHERE IsCorporate = true LIMIT 1`;
+          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            if (debugMode) {
+              currencyDetectionDebug.steps.push({
+                method: 'CurrencyType',
+                field: 'IsoCode',
+                ok: false,
+                status: resp.status,
+                error: json?.[0]?.message || json?.message || null,
+              });
+            }
+            return null;
+          }
+          const rec = Array.isArray(json?.records) ? json.records[0] : null;
+          const cur = rec?.IsoCode ? String(rec.IsoCode).trim().toUpperCase() : null;
+          if (debugMode) currencyDetectionDebug.steps.push({ method: 'CurrencyType', field: 'IsoCode', ok: !!cur, value: cur || null });
+          return cur || null;
+        } catch {
+          if (debugMode) currencyDetectionDebug.steps.push({ method: 'CurrencyType', ok: false, error: 'Exception during CurrencyType currency detection' });
+          return null;
+        }
+      };
+
       let detectedCurrency = currencies.size === 1 ? Array.from(currencies)[0] : null;
       if (!detectedCurrency) {
         const orgCur = await fetchOrgDefaultCurrency();
@@ -8163,6 +8192,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (userCur) {
           detectedCurrency = userCur;
           if (currencies.size === 0) currencies.add(userCur);
+        }
+      }
+      if (!detectedCurrency) {
+        const corpCur = await fetchCorporateCurrencyIsoCode();
+        if (corpCur) {
+          detectedCurrency = corpCur;
+          if (currencies.size === 0) currencies.add(corpCur);
         }
       }
       const currencyMismatch = !!(detectedCurrency && campaignCurrency && detectedCurrency !== campaignCurrency);
@@ -8293,6 +8329,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      // Additional fallback: corporate currency via CurrencyType (often available even when Organization/User are restricted).
+      const fetchCorporateCurrencyIsoCode = async (): Promise<string | null> => {
+        try {
+          const soql = `SELECT IsoCode FROM CurrencyType WHERE IsCorporate = true LIMIT 1`;
+          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) return null;
+          const rec = Array.isArray(json?.records) ? json.records[0] : null;
+          const cur = rec?.IsoCode ? String(rec.IsoCode).trim().toUpperCase() : null;
+          return cur || null;
+        } catch {
+          return null;
+        }
+      };
+
       const fetched = await fetchOppRecords(true);
       // If fetchOppRecords returned an Express response (error), stop here.
       if (!fetched || typeof (fetched as any).includeCurrency !== 'boolean') return;
@@ -8321,6 +8373,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!includeCurrency && currencies.size === 0) {
         const orgCur = await fetchOrgDefaultCurrency();
         if (orgCur) currencies.add(orgCur);
+        if (!orgCur) {
+          const corpCur = await fetchCorporateCurrencyIsoCode();
+          if (corpCur) currencies.add(corpCur);
+        }
       }
 
       // Enterprise accuracy: never silently assume Salesforce currency equals campaign currency.
@@ -8328,6 +8384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // UI may provide an explicit override when Salesforce currency cannot be detected from the API response.
       const overrideCur = salesforceCurrencyOverride ? String(salesforceCurrencyOverride).trim().toUpperCase() : '';
       const sfCurFromApi = currencies.size === 1 ? Array.from(currencies)[0].toUpperCase() : '';
+      // Keep override support for backwards compatibility, but the UI no longer depends on it.
       const sfCurrency = sfCurFromApi || overrideCur;
       if (sfCurrency && campaignCurrency && sfCurrency !== campaignCurrency) {
         return res.status(400).json({

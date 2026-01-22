@@ -8126,7 +8126,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (debugMode) currencyDetectionDebug.steps.push({ method: 'userinfo', ok: false, status: uiResp.status, error: uiJson?.error || uiJson?.message || null });
             return null;
           }
-          const userId = uiJson?.user_id || uiJson?.userId || null;
+          const userIdRaw = uiJson?.user_id || uiJson?.userId || null;
+          if (!userIdRaw) {
+            if (debugMode) currencyDetectionDebug.steps.push({ method: 'userinfo', ok: true, userId: null });
+            return null;
+          }
+          // Salesforce userinfo often returns user_id as a URL like:
+          //   https://login.salesforce.com/id/00D.../005...
+          // Extract the actual 15/18-char User Id.
+          const userIdStr = String(userIdRaw);
+          const userId = userIdStr.includes('/') ? userIdStr.split('/').filter(Boolean).slice(-1)[0] : userIdStr;
           if (!userId) {
             if (debugMode) currencyDetectionDebug.steps.push({ method: 'userinfo', ok: true, userId: null });
             return null;
@@ -8200,13 +8209,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           detectedCurrency = corpCur;
           if (currencies.size === 0) currencies.add(corpCur);
         }
-      }
-      // Final UX fallback: if Salesforce currency cannot be read due to org permissions,
-      // use campaign currency so the user can proceed (we still block on confirmed mismatches).
-      if (!detectedCurrency && campaignCurrency) {
-        detectedCurrency = campaignCurrency;
-        if (currencies.size === 0) currencies.add(campaignCurrency);
-        if (debugMode) currencyDetectionDebug.steps.push({ method: 'assumed', field: 'campaignCurrency', ok: true, value: campaignCurrency });
       }
       const currencyMismatch = !!(detectedCurrency && campaignCurrency && detectedCurrency !== campaignCurrency);
 
@@ -8352,6 +8354,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      // Fallback: query the connected user's CurrencyIsoCode (userinfo often returns user_id as a URL; extract the User Id).
+      const fetchUserCurrencyIsoCode = async (): Promise<string | null> => {
+        try {
+          const uiResp = await fetch(`${instanceUrl}/services/oauth2/userinfo`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const uiJson: any = await uiResp.json().catch(() => ({}));
+          if (!uiResp.ok) return null;
+          const userIdRaw = uiJson?.user_id || uiJson?.userId || null;
+          if (!userIdRaw) return null;
+          const userIdStr = String(userIdRaw);
+          const userId = userIdStr.includes('/') ? userIdStr.split('/').filter(Boolean).slice(-1)[0] : userIdStr;
+          if (!userId) return null;
+          const soql = `SELECT CurrencyIsoCode FROM User WHERE Id = '${String(userId).replace(/'/g, "\\'")}' LIMIT 1`;
+          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) return null;
+          const rec = Array.isArray(json?.records) ? json.records[0] : null;
+          const cur = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim().toUpperCase() : null;
+          return cur || null;
+        } catch {
+          return null;
+        }
+      };
+
       const fetched = await fetchOppRecords(true);
       // If fetchOppRecords returned an Express response (error), stop here.
       if (!fetched || typeof (fetched as any).includeCurrency !== 'boolean') return;
@@ -8384,10 +8412,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const corpCur = await fetchCorporateCurrencyIsoCode();
           if (corpCur) currencies.add(corpCur);
         }
-        // If Salesforce currency is still not detectable (permissions), allow processing using campaign currency.
-        // This avoids blocking the workflow; we still block on confirmed currency mismatches when detectable.
-        if (currencies.size === 0 && campaignCurrency) {
-          currencies.add(campaignCurrency);
+        if (currencies.size === 0) {
+          const userCur = await fetchUserCurrencyIsoCode();
+          if (userCur) currencies.add(userCur);
         }
       }
 

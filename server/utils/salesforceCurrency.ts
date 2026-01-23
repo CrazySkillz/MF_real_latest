@@ -1,7 +1,8 @@
 type DebugStep =
   | { method: 'Opportunity'; ok: boolean; value?: string | null; note?: string | null }
   | { method: 'Organization' | 'CompanyInfo' | 'CurrencyType' | 'User'; ok: boolean; field?: string; value?: string | null; status?: number; error?: string | null }
-  | { method: 'userinfo'; ok: boolean; status?: number; error?: string | null; userId?: string | null };
+  | { method: 'userinfo'; ok: boolean; status?: number; error?: string | null; userId?: string | null }
+  | { method: 'SOAP'; ok: boolean; field?: string; value?: string | null; status?: number; error?: string | null };
 
 export type DetectSalesforceCurrencyArgs = {
   accessToken: string;
@@ -33,6 +34,30 @@ async function soqlQuery(fetchImpl: typeof fetch, args: { instanceUrl: string; a
   const resp = await fetchImpl(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   const json: any = await resp.json().catch(() => ({}));
   return { resp, json };
+}
+
+async function fetchSoapUserDefaultCurrencyIsoCode(fetchImpl: typeof fetch, args: { instanceUrl: string; apiVersion: string; accessToken: string }) {
+  const ver = String(args.apiVersion || '').replace(/^v/i, '') || '59.0';
+  const url = `${args.instanceUrl}/services/Soap/u/${ver}`;
+  const body =
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+    `<env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">` +
+    `<env:Header>` +
+    `<SessionHeader xmlns="urn:partner.soap.sforce.com"><sessionId>${String(args.accessToken)}</sessionId></SessionHeader>` +
+    `</env:Header>` +
+    `<env:Body><getUserInfo xmlns="urn:partner.soap.sforce.com" /></env:Body>` +
+    `</env:Envelope>`;
+
+  const resp = await fetchImpl(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/xml; charset=UTF-8',
+      SOAPAction: 'getUserInfo',
+    },
+    body,
+  } as any);
+  const text = await (resp as any).text?.().catch?.(() => '') ?? '';
+  return { resp, text: String(text || '') };
 }
 
 export async function detectSalesforceCurrency(args: DetectSalesforceCurrencyArgs): Promise<DetectSalesforceCurrencyResult> {
@@ -175,6 +200,28 @@ export async function detectSalesforceCurrency(args: DetectSalesforceCurrencyArg
     }
   } catch (e: any) {
     if (args.debug) steps.push({ method: 'User', ok: false, error: e?.message || 'Exception' });
+  }
+
+  // 5) Final fallback: SOAP getUserInfo (works in some orgs where REST objects/fields are not exposed)
+  try {
+    const { resp, text } = await fetchSoapUserDefaultCurrencyIsoCode(fetchImpl, {
+      instanceUrl: args.instanceUrl,
+      apiVersion: args.apiVersion,
+      accessToken: args.accessToken,
+    });
+    if (!(resp as any)?.ok) {
+      if (args.debug) steps.push({ method: 'SOAP', ok: false, status: (resp as any)?.status, error: text.slice(0, 400) || null });
+    } else {
+      const m =
+        text.match(/<userDefaultCurrencyIsoCode>([^<]+)<\/userDefaultCurrencyIsoCode>/i) ||
+        text.match(/<defaultCurrencyIsoCode>([^<]+)<\/defaultCurrencyIsoCode>/i) ||
+        text.match(/<currencyIsoCode>([^<]+)<\/currencyIsoCode>/i);
+      const cur = normCurrency(m?.[1]);
+      if (args.debug) steps.push({ method: 'SOAP', field: 'userDefaultCurrencyIsoCode', ok: !!cur, value: cur });
+      if (cur) return { detectedCurrency: cur, detectedCurrencies: [...Array.from(currenciesFromRecords), cur].filter(Boolean).map(String), ...(args.debug ? { debugSteps: steps } : {}) };
+    }
+  } catch (e: any) {
+    if (args.debug) steps.push({ method: 'SOAP', ok: false, error: e?.message || 'Exception' });
   }
 
   return { detectedCurrency: null, detectedCurrencies: Array.from(currenciesFromRecords).map(String), ...(args.debug ? { debugSteps: steps } : {}) };

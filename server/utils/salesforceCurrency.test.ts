@@ -110,6 +110,53 @@ describe("detectSalesforceCurrency", () => {
 
     expect(res.detectedCurrency).toBe("USD");
   });
+
+  it("falls back to SOAP getUserInfo when REST currency objects/fields are not available", async () => {
+    const instanceUrl = "https://example.my.salesforce.com";
+    const apiVersion = "v59.0";
+    const accessToken = "token";
+
+    const orgSoql1 = `${instanceUrl}/services/data/${apiVersion}/query?q=${encodeURIComponent("SELECT DefaultCurrencyIsoCode FROM Organization LIMIT 1")}`;
+    const orgSoql2 = `${instanceUrl}/services/data/${apiVersion}/query?q=${encodeURIComponent("SELECT CurrencyIsoCode FROM Organization LIMIT 1")}`;
+    const companySoql = `${instanceUrl}/services/data/${apiVersion}/query?q=${encodeURIComponent("SELECT CurrencyIsoCode FROM CompanyInfo LIMIT 1")}`;
+    const currencyTypeSoql = `${instanceUrl}/services/data/${apiVersion}/query?q=${encodeURIComponent("SELECT IsoCode FROM CurrencyType WHERE IsCorporate = true LIMIT 1")}`;
+    const servicesDataUrl = `${instanceUrl}/services/data/${apiVersion}`;
+    const soapUrl = `${instanceUrl}/services/Soap/u/59.0`;
+
+    const fetchImpl = (async (url: any, init?: any) => {
+      const key = String(url);
+      // Fail all REST currency endpoints
+      if (key === orgSoql1 || key === orgSoql2 || key === companySoql || key === currencyTypeSoql) {
+        return { ok: false, status: 400, json: async () => ({ message: "not supported" }) } as any;
+      }
+      if (key === servicesDataUrl) {
+        // Identity path not available / missing identity
+        return { ok: true, status: 200, json: async () => ({}) } as any;
+      }
+      if (key.endsWith("/services/oauth2/userinfo")) {
+        return { ok: false, status: 401, json: async () => ({ error: "invalid_scope" }) } as any;
+      }
+      if (key === soapUrl && init?.method === "POST") {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => `<userDefaultCurrencyIsoCode>USD</userDefaultCurrencyIsoCode>`,
+        } as any;
+      }
+      return { ok: false, status: 500, json: async () => ({ message: `No mock for ${key}` }), text: async () => "" } as any;
+    }) as any;
+
+    const res = await detectSalesforceCurrency({
+      instanceUrl,
+      apiVersion,
+      accessToken,
+      currenciesFromRecords: new Set(),
+      debug: true,
+      fetchImpl,
+    });
+
+    expect(res.detectedCurrency).toBe("USD");
+  });
 });
 
 

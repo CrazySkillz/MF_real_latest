@@ -746,6 +746,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // ignore
       }
 
+      // 4) Clear revenue-dependent KPI current values so KPI screens don't show stale ROI/ROAS/etc.
+      // The KPI UI already treats these as blocked when revenue tracking is disabled, but we also clear persisted values
+      // to prevent any stale data from leaking into other views/exports.
+      try {
+        const allKpis = await storage.getPlatformKPIs('linkedin', campaignId).catch(() => [] as any[]);
+        const revenueDependent = new Set(['roi', 'roas', 'totalrevenue', 'profit', 'profitmargin', 'revenueperlead']);
+        for (const kpi of (Array.isArray(allKpis) ? allKpis : []) as any[]) {
+          const key = String(kpi?.metric || kpi?.metricKey || '').toLowerCase();
+          if (!key || !revenueDependent.has(key)) continue;
+          await storage.updateKPI(String(kpi.id), { currentValue: null as any, lastComputedValue: null as any } as any);
+        }
+      } catch {
+        // ignore (best-effort cleanup)
+      }
+
       res.json({ success: true, removedRevenueSources: true, deactivatedConnections: linkedInRevenueConns.map((c: any) => c.id) });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to remove LinkedIn revenue source" });

@@ -1105,10 +1105,13 @@ export default function LinkedInAnalytics() {
       await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
       await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
       await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
+      // KPI tab: clear/recompute revenue-dependent KPIs (ROI/ROAS/etc)
+      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId] });
       // Force immediate recompute for the active page (no waiting for intervals)
       await queryClient.refetchQueries({ queryKey: ["/api/linkedin/metrics", campaignId], exact: true });
       await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId], exact: true });
       await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'], exact: true });
+      await queryClient.refetchQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId], exact: true });
     },
     onError: (error: any) => {
       toast({
@@ -4416,6 +4419,8 @@ export default function LinkedInAnalytics() {
                                     )}
                                     {/* Red Dot Indicator for Active Alerts */}
                                     {kpi.alertsEnabled && (() => {
+                                      const isRevenueBlocked = isRevenueDependentBenchmarkMetric(String(kpi.metric || kpi.metricKey || '')) && aggregated?.hasRevenueTracking !== 1;
+                                      if (isRevenueBlocked) return null;
                                       const currentValue = parseFloat(kpi.currentValue);
                                       const alertThreshold = kpi.alertThreshold ? parseFloat(kpi.alertThreshold.toString()) : null;
                                       const alertCondition = kpi.alertCondition || 'below';
@@ -4561,6 +4566,8 @@ export default function LinkedInAnalytics() {
                                 </div>
                                 <div className="text-xl font-bold text-slate-900 dark:text-white">
                                   {(() => {
+                                    const isRevenueBlocked = isRevenueDependentBenchmarkMetric(String(kpi.metric || kpi.metricKey || '')) && aggregated?.hasRevenueTracking !== 1;
+                                    if (isRevenueBlocked) return '—';
                                     const value = parseFloat(kpi.currentValue || '0');
                                     const formatted = value.toLocaleString('en-US', { 
                                       minimumFractionDigits: 2, 
@@ -4589,6 +4596,8 @@ export default function LinkedInAnalytics() {
                             
                             {/* Performance Assessment */}
                             {kpi.targetValue && kpi.currentValue && (() => {
+                              const isRevenueBlocked = isRevenueDependentBenchmarkMetric(String(kpi.metric || kpi.metricKey || '')) && aggregated?.hasRevenueTracking !== 1;
+                              if (isRevenueBlocked) return null;
                               const currentVal = parseFloat(kpi.currentValue);
                               const targetVal = parseFloat(kpi.targetValue);
                               const ratio = currentVal / targetVal;

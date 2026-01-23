@@ -79,6 +79,37 @@ describe("detectSalesforceCurrency", () => {
 
     expect(res.detectedCurrency).toBe("USD");
   });
+
+  it("detects currency via /services/data identity URL even when userinfo is not accessible", async () => {
+    const instanceUrl = "https://example.my.salesforce.com";
+    const apiVersion = "v59.0";
+    const accessToken = "token";
+
+    const servicesDataUrl = `${instanceUrl}/services/data/${apiVersion}`;
+    const identityUrl = "https://login.salesforce.com/id/00Dxx0000000001/005xx0000012345";
+    const userSoql = `${instanceUrl}/services/data/${apiVersion}/query?q=${encodeURIComponent(
+      "SELECT CurrencyIsoCode FROM User WHERE Id = '005xx0000012345' LIMIT 1"
+    )}`;
+
+    const fetchImpl = makeFetch({
+      [servicesDataUrl]: { status: 200, body: { identity: identityUrl } },
+      [identityUrl]: { status: 200, body: { user_id: identityUrl } },
+      [userSoql]: { status: 200, body: { records: [{ CurrencyIsoCode: "USD" }] } },
+      // userinfo not accessible
+      ["https://login.salesforce.com/services/oauth2/userinfo"]: { status: 401, body: { error: "invalid_scope" } },
+    });
+
+    const res = await detectSalesforceCurrency({
+      instanceUrl,
+      apiVersion,
+      accessToken,
+      currenciesFromRecords: new Set(),
+      debug: true,
+      fetchImpl,
+    });
+
+    expect(res.detectedCurrency).toBe("USD");
+  });
 });
 
 

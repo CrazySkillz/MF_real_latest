@@ -100,7 +100,44 @@ export async function detectSalesforceCurrency(args: DetectSalesforceCurrencyArg
     if (args.debug) steps.push({ method: 'CurrencyType', ok: false, error: e?.message || 'Exception' });
   }
 
-  // 3) Connected user's currency via userinfo + User query
+  // 3) Identity-based user lookup (doesn't require userinfo; uses standard REST resource listing)
+  try {
+    const url = `${args.instanceUrl}/services/data/${args.apiVersion}`;
+    const resp = await fetchImpl(url, { headers: { Authorization: `Bearer ${args.accessToken}` } });
+    const json: any = await resp.json().catch(() => ({}));
+    const identityUrl = typeof json?.identity === 'string' ? String(json.identity) : null;
+    if (!resp.ok || !identityUrl) {
+      if (args.debug) steps.push({ method: 'User', ok: false, error: !resp.ok ? `Failed to load services/data/${args.apiVersion}` : 'No identity URL in services data' });
+    } else {
+      const idResp = await fetchImpl(identityUrl, { headers: { Authorization: `Bearer ${args.accessToken}` } });
+      const idJson: any = await idResp.json().catch(() => ({}));
+      const userIdRaw = idJson?.user_id || idJson?.userId || null;
+      const userIdStr = String(userIdRaw ?? '');
+      const userId = userIdStr.includes('/') ? userIdStr.split('/').filter(Boolean).slice(-1)[0] : userIdStr;
+      if (args.debug) steps.push({ method: 'User', ok: !!userId, value: userId || null });
+      if (userId) {
+        const soql = `SELECT CurrencyIsoCode FROM User WHERE Id = '${String(userId).replace(/'/g, "\\'")}' LIMIT 1`;
+        const { resp: qResp, json: qJson } = await soqlQuery(fetchImpl, {
+          instanceUrl: args.instanceUrl,
+          apiVersion: args.apiVersion,
+          accessToken: args.accessToken,
+          soql,
+        });
+        if (!qResp.ok) {
+          if (args.debug) steps.push({ method: 'User', field: 'CurrencyIsoCode', ok: false, status: qResp.status, error: String(qJson?.[0]?.message || qJson?.message || null) });
+        } else {
+          const rec = Array.isArray(qJson?.records) ? qJson.records[0] : null;
+          const cur = normCurrency(rec?.CurrencyIsoCode);
+          if (args.debug) steps.push({ method: 'User', field: 'CurrencyIsoCode', ok: !!cur, value: cur });
+          if (cur) return { detectedCurrency: cur, detectedCurrencies: [...Array.from(currenciesFromRecords), cur].filter(Boolean).map(String), ...(args.debug ? { debugSteps: steps } : {}) };
+        }
+      }
+    }
+  } catch (e: any) {
+    if (args.debug) steps.push({ method: 'User', ok: false, error: e?.message || 'Exception' });
+  }
+
+  // 4) Connected user's currency via userinfo + User query
   try {
     const tryUserInfo = async (base: string) => {
       const url = `${base.replace(/\/+$/, '')}/services/oauth2/userinfo`;

@@ -90,6 +90,8 @@ export function SalesforceRevenueWizard(props: {
   const [previewCampaignCurrency, setPreviewCampaignCurrency] = useState<string | null>(null);
   const [previewDetectedCurrency, setPreviewDetectedCurrency] = useState<string | null>(null);
   const [previewCurrencyMismatch, setPreviewCurrencyMismatch] = useState<boolean>(false);
+  const [previewCurrencyDebugSteps, setPreviewCurrencyDebugSteps] = useState<any[] | null>(null);
+  const [previewBuild, setPreviewBuild] = useState<string | null>(null);
 
   const steps = useMemo(
     () => [
@@ -441,6 +443,8 @@ export function SalesforceRevenueWizard(props: {
       setPreviewCampaignCurrency(json?.campaignCurrency ? String(json.campaignCurrency) : null);
       setPreviewDetectedCurrency(json?.detectedCurrency ? String(json.detectedCurrency) : null);
       setPreviewCurrencyMismatch(!!json?.currencyMismatch);
+      setPreviewCurrencyDebugSteps(Array.isArray(json?.currencyDetectionDebug?.steps) ? json.currencyDetectionDebug.steps : null);
+      setPreviewBuild(json?.build ? String(json.build) : null);
     } catch (err: any) {
       setPreviewError(err?.message || "Failed to load preview");
       setPreviewHeaders([]);
@@ -448,6 +452,8 @@ export function SalesforceRevenueWizard(props: {
       setPreviewCampaignCurrency(null);
       setPreviewDetectedCurrency(null);
       setPreviewCurrencyMismatch(false);
+      setPreviewCurrencyDebugSteps(null);
+      setPreviewBuild(null);
     } finally {
       setPreviewLoading(false);
     }
@@ -840,6 +846,28 @@ export function SalesforceRevenueWizard(props: {
                     <>
                       {" "}— please align currencies before saving.
                     </>
+                  )}
+                </div>
+              )}
+
+              {/* When currency is unknown, show immediate diagnostics (no DevTools required). */}
+              {!effectiveSalesforceCurrency && (
+                <div className="text-xs text-slate-500 space-y-1">
+                  <div>
+                    We couldn’t read Salesforce currency via API. Click <strong>Reconnect</strong> and try again.
+                    {previewBuild ? (
+                      <>
+                        {" "}Build: <strong>{previewBuild}</strong>
+                      </>
+                    ) : null}
+                  </div>
+                  {Array.isArray(previewCurrencyDebugSteps) && previewCurrencyDebugSteps.length > 0 && (
+                    <details className="mt-1">
+                      <summary className="cursor-pointer underline">Why is it unknown?</summary>
+                      <pre className="mt-2 max-h-[220px] overflow-auto rounded border bg-slate-50 p-2 text-[11px] leading-snug">
+                        {JSON.stringify(previewCurrencyDebugSteps, null, 2)}
+                      </pre>
+                    </details>
                   )}
                 </div>
               )}

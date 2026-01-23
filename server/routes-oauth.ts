@@ -8086,13 +8086,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
       const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
       const { detectSalesforceCurrency } = await import('./utils/salesforceCurrency');
+      // Always compute debug steps; only return them when requested or when currency is unknown.
       const curResult = await detectSalesforceCurrency({
         accessToken,
         instanceUrl,
         apiVersion: version,
         authBase,
         currenciesFromRecords: currencies,
-        debug: debugMode,
+        debug: true,
       });
       const detectedCurrency = curResult.detectedCurrency;
       const currencyMismatch = !!(detectedCurrency && campaignCurrency && detectedCurrency !== campaignCurrency);
@@ -8109,7 +8110,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         detectedCurrency,
         detectedCurrencies: Array.from(currencies),
         currencyMismatch,
-        ...(debugMode ? { currencyDetectionDebug: { steps: curResult.debugSteps || [] } } : {}),
+        // Always include build so we can confirm the deployed backend version without DevTools.
+        build: String(process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || '').slice(0, 12) || null,
+        ...(debugMode || !detectedCurrency ? { currencyDetectionDebug: { steps: curResult.debugSteps || [] } } : {}),
       });
     } catch (error: any) {
       console.error('[Salesforce Preview] Error:', error);

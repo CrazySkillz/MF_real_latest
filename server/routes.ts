@@ -1713,8 +1713,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformType: platformType,
         campaignId: req.body.campaignId, // Explicitly include campaignId
         alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
-        targetValue: req.body.targetValue === '' ? null : req.body.targetValue,
-        currentValue: req.body.currentValue === '' ? null : req.body.currentValue,
+        // KPI targetValue is required by schema (decimal -> string). Never send null to zod.
+        targetValue:
+          req.body.targetValue === '' || req.body.targetValue === null || typeof req.body.targetValue === 'undefined'
+            ? "0"
+            : String(req.body.targetValue),
+        currentValue:
+          req.body.currentValue === '' || req.body.currentValue === null || typeof req.body.currentValue === 'undefined'
+            ? "0"
+            : String(req.body.currentValue),
         // Set defaults for new fields in case migration hasn't run
         applyTo: req.body.applyTo || 'all',
         specificCampaignId: req.body.specificCampaignId || null
@@ -1791,8 +1798,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Convert empty strings to null for numeric fields
       const cleanedData = { ...req.body };
       if (cleanedData.alertThreshold === '') cleanedData.alertThreshold = null;
-      if (cleanedData.targetValue === '') cleanedData.targetValue = null;
-      if (cleanedData.currentValue === '') cleanedData.currentValue = null;
+      // targetValue/currentValue are decimals (strings). For patch, treat empty as "0" (back-compat),
+      // and coerce null -> undefined (so it doesn't fail validation or unintentionally wipe).
+      if (cleanedData.targetValue === '') cleanedData.targetValue = "0";
+      if (cleanedData.targetValue === null) delete cleanedData.targetValue;
+      if (cleanedData.currentValue === '') cleanedData.currentValue = "0";
+      if (cleanedData.currentValue === null) delete cleanedData.currentValue;
       
       const validatedKPI = insertKPISchema.partial().parse(cleanedData);
       

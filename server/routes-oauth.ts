@@ -12166,11 +12166,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
 
-      const toNullableDecimalString = (v: any) => {
-        if (v === '' || v === null || typeof v === 'undefined') return null;
-        // Drizzle-Zod decimal fields commonly expect strings; accept numbers too.
-        if (typeof v === 'number') return String(v);
-        return String(v);
+      const toDecimalString = (v: any, fallback: string) => {
+        if (v === '' || v === null || typeof v === 'undefined') return fallback;
+        return typeof v === 'number' ? String(v) : String(v);
       };
       
       // Convert empty strings to null for numeric and optional text fields
@@ -12179,9 +12177,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformType: platformType,
         campaignId: req.body.campaignId || null, // Preserve campaignId from request
         metric: req.body.metric === '' ? null : req.body.metric,
-        targetValue: toNullableDecimalString(req.body.targetValue),
-        currentValue: toNullableDecimalString(req.body.currentValue),
-        alertThreshold: toNullableDecimalString(req.body.alertThreshold),
+        // KPI targetValue is required by schema (decimal -> string). Never pass null to zod.
+        targetValue: toDecimalString(req.body.targetValue, "0"),
+        currentValue: toDecimalString(req.body.currentValue, "0"),
+        alertThreshold: (req.body.alertThreshold === '' || req.body.alertThreshold === null || typeof req.body.alertThreshold === 'undefined')
+          ? null
+          : (typeof req.body.alertThreshold === 'number' ? String(req.body.alertThreshold) : String(req.body.alertThreshold)),
         emailRecipients: req.body.emailRecipients === '' ? null : req.body.emailRecipients,
         timeframe: req.body.timeframe || "monthly",
         trackingPeriod: req.body.trackingPeriod || 30,
@@ -12211,19 +12212,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { kpiId } = req.params;
       
-      const toNullableDecimalString = (v: any) => {
-        if (v === '' || v === null || typeof v === 'undefined') return null;
-        if (typeof v === 'number') return String(v);
-        return String(v);
+      const toDecimalStringOrUndefined = (v: any): string | undefined => {
+        if (typeof v === 'undefined') return undefined;
+        if (v === null) return undefined;
+        if (v === '') return "0";
+        return typeof v === 'number' ? String(v) : String(v);
       };
 
       // Convert empty strings to null for numeric and optional text fields
       const updateData = {
         ...req.body,
         metric: req.body.metric === '' ? null : req.body.metric,
-        targetValue: toNullableDecimalString(req.body.targetValue),
-        currentValue: toNullableDecimalString(req.body.currentValue),
-        alertThreshold: toNullableDecimalString(req.body.alertThreshold),
+        targetValue: toDecimalStringOrUndefined(req.body.targetValue),
+        currentValue: toDecimalStringOrUndefined(req.body.currentValue),
+        alertThreshold: (req.body.alertThreshold === '' || req.body.alertThreshold === null || typeof req.body.alertThreshold === 'undefined')
+          ? null
+          : (typeof req.body.alertThreshold === 'number' ? String(req.body.alertThreshold) : String(req.body.alertThreshold)),
         emailRecipients: req.body.emailRecipients === '' ? null : req.body.emailRecipients,
         targetDate: req.body.targetDate ? new Date(req.body.targetDate) : req.body.targetDate === null ? null : undefined
       };

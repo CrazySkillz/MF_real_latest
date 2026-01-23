@@ -67,6 +67,12 @@ export function AddRevenueWizardModal(props: {
   const [step, setStep] = useState<Step>("select");
   const isEditing = !!initialSource;
   const sheetsPurpose = platformContext === 'linkedin' ? 'linkedin_revenue' : 'revenue';
+  const [salesforceInitialMappingConfig, setSalesforceInitialMappingConfig] = useState<null | {
+    campaignField?: string;
+    selectedValues?: string[];
+    revenueField?: string;
+    days?: number;
+  }>(null);
 
   // Manual
   const [manualAmount, setManualAmount] = useState<string>("");
@@ -159,6 +165,7 @@ export function AddRevenueWizardModal(props: {
     setShopifyWizardStep("campaign-field");
     setShopifyExternalStep(null);
     setShopifyExternalNonce(0);
+    setSalesforceInitialMappingConfig(null);
   };
 
   useEffect(() => {
@@ -226,6 +233,18 @@ export function AddRevenueWizardModal(props: {
       });
       setCsvConversionValueCol(String(config?.conversionValueColumn || ""));
       setCsvValueSource(vs);
+      return;
+    }
+
+    if (type === "salesforce") {
+      const next = {
+        campaignField: config?.campaignField ? String(config.campaignField) : undefined,
+        selectedValues: Array.isArray(config?.selectedValues) ? config.selectedValues.map(String) : undefined,
+        revenueField: config?.revenueField ? String(config.revenueField) : undefined,
+        days: Number.isFinite(Number(config?.days)) ? Number(config.days) : undefined,
+      };
+      setSalesforceInitialMappingConfig(next);
+      setStep("salesforce");
       return;
     }
 
@@ -1442,7 +1461,9 @@ export function AddRevenueWizardModal(props: {
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
                   platformContext={platformContext}
-                  autoStartOAuth
+                  autoStartOAuth={!isEditing}
+                  mode={isEditing ? "edit" : "connect"}
+                  initialMappingConfig={isEditing ? (salesforceInitialMappingConfig || null) : null}
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {

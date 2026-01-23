@@ -227,9 +227,21 @@ export function SalesforceRevenueWizard(props: {
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load values");
       const vals = Array.isArray(json?.values) ? json.values : [];
-      setUniqueValues(vals);
       const allowed = new Set(vals.map((v: any) => String(v.value)));
-      setSelectedValues((prev) => prev.filter((v) => allowed.has(v)));
+      if (mode === "edit") {
+        // Preserve previously-saved selections even if they don't appear in the current lookback window.
+        // Add them to the list with count=0 so they remain visible + checked.
+        const missing = selectedValues.filter((v) => v && !allowed.has(String(v)));
+        const merged = [
+          ...vals,
+          ...missing.map((v) => ({ value: String(v), count: 0 })),
+        ];
+        setUniqueValues(merged);
+        setSelectedValues((prev) => prev);
+      } else {
+        setUniqueValues(vals);
+        setSelectedValues((prev) => prev.filter((v) => allowed.has(v)));
+      }
       return vals;
     } catch (err: any) {
       const msg = err?.message || "Failed to load values";

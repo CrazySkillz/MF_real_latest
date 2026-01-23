@@ -212,13 +212,26 @@ export async function detectSalesforceCurrency(args: DetectSalesforceCurrencyArg
     if (!(resp as any)?.ok) {
       if (args.debug) steps.push({ method: 'SOAP', ok: false, status: (resp as any)?.status, error: text.slice(0, 400) || null });
     } else {
-      const m =
-        text.match(/<userDefaultCurrencyIsoCode>([^<]+)<\/userDefaultCurrencyIsoCode>/i) ||
-        text.match(/<defaultCurrencyIsoCode>([^<]+)<\/defaultCurrencyIsoCode>/i) ||
-        text.match(/<currencyIsoCode>([^<]+)<\/currencyIsoCode>/i);
-      const cur = normCurrency(m?.[1]);
-      if (args.debug) steps.push({ method: 'SOAP', field: 'userDefaultCurrencyIsoCode', ok: !!cur, value: cur });
-      if (cur) return { detectedCurrency: cur, detectedCurrencies: [...Array.from(currenciesFromRecords), cur].filter(Boolean).map(String), ...(args.debug ? { debugSteps: steps } : {}) };
+      // If Salesforce returns a SOAP Fault inside a 200, surface it.
+      if (/<(?:\w+:)?Fault\b/i.test(text)) {
+        if (args.debug) steps.push({ method: 'SOAP', ok: false, status: (resp as any)?.status, error: text.slice(0, 600) || null });
+      } else {
+        // Allow namespace-prefixed tags; Salesforce SOAP responses often include prefixes.
+        const pick =
+          text.match(/<(?:\w+:)?userDefaultCurrencyIsoCode[^>]*>([^<]+)<\/(?:\w+:)?userDefaultCurrencyIsoCode>/i) ||
+          text.match(/<(?:\w+:)?organizationDefaultCurrencyIsoCode[^>]*>([^<]+)<\/(?:\w+:)?organizationDefaultCurrencyIsoCode>/i) ||
+          text.match(/<(?:\w+:)?defaultCurrencyIsoCode[^>]*>([^<]+)<\/(?:\w+:)?defaultCurrencyIsoCode>/i) ||
+          text.match(/<(?:\w+:)?currencyIsoCode[^>]*>([^<]+)<\/(?:\w+:)?currencyIsoCode>/i);
+
+        // Last resort: any tag ending in CurrencyIsoCode.
+        const anyIso =
+          pick ||
+          text.match(/<(?:\w+:)?[A-Za-z0-9_]*CurrencyIsoCode[^>]*>([^<]{1,10})<\/(?:\w+:)?[A-Za-z0-9_]*CurrencyIsoCode>/i);
+
+        const cur = normCurrency(anyIso?.[1]);
+        if (args.debug) steps.push({ method: 'SOAP', field: 'CurrencyIsoCode', ok: !!cur, value: cur, error: !cur ? text.slice(0, 600) || null : null });
+        if (cur) return { detectedCurrency: cur, detectedCurrencies: [...Array.from(currenciesFromRecords), cur].filter(Boolean).map(String), ...(args.debug ? { debugSteps: steps } : {}) };
+      }
     }
   } catch (e: any) {
     if (args.debug) steps.push({ method: 'SOAP', ok: false, error: e?.message || 'Exception' });

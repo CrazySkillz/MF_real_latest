@@ -4350,7 +4350,7 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Above target</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Better</p>
                               <p className="text-2xl font-bold text-green-600">
                                 {aboveTarget}
                               </p>
@@ -4364,7 +4364,7 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Near target</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">On track</p>
                               <p className="text-2xl font-bold text-blue-600">
                                 {nearTarget}
                               </p>
@@ -4378,7 +4378,7 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Below target</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Worse</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {belowTarget}
                               </p>

@@ -4601,163 +4601,20 @@ export default function LinkedInAnalytics() {
                               </div>
                             </div>
                             
-                            {/* Performance Assessment */}
-                            {kpi.targetValue && kpi.currentValue && (() => {
-                              if (isRevenueBlocked) return null;
-                              const currentVal = parseFloat(kpi.currentValue);
-                              const targetVal = parseFloat(kpi.targetValue);
-                              const ratio = currentVal / targetVal;
-                              
-                              // Determine if this is a "lower is better" metric (cost metrics)
-                              const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(m => 
-                                kpi.metric?.toLowerCase().includes(m) || kpi.name?.toLowerCase().includes(m)
-                              );
-                              
-                              // Calculate performance level using same logic as Benchmarks
-                              let performanceLevel: 'excellent' | 'good' | 'fair' | 'poor';
-                              let gapText = '';
-                              
-                              if (lowerIsBetter) {
-                                // For cost metrics, lower is better
-                                if (ratio <= 0.8) {
-                                  performanceLevel = 'excellent';
-                                  gapText = `${Math.round((1 - ratio) * 100)}% below target`;
-                                } else if (ratio <= 1.0) {
-                                  performanceLevel = 'good';
-                                  gapText = `${Math.round((1 - ratio) * 100)}% below target`;
-                                } else if (ratio <= 1.2) {
-                                  performanceLevel = 'fair';
-                                  gapText = `${Math.round((ratio - 1) * 100)}% above target`;
-                                } else {
-                                  performanceLevel = 'poor';
-                                  gapText = `${Math.round((ratio - 1) * 100)}% above target`;
-                                }
-                              } else {
-                                // For performance metrics, higher is better
-                                if (ratio >= 1.2) {
-                                  performanceLevel = 'excellent';
-                                  gapText = `${Math.round((ratio - 1) * 100)}% above target`;
-                                } else if (ratio >= 1.0) {
-                                  performanceLevel = 'good';
-                                  gapText = `${Math.round((ratio - 1) * 100)}% above target`;
-                                } else if (ratio >= 0.8) {
-                                  performanceLevel = 'fair';
-                                  gapText = `${Math.round((1 - ratio) * 100)}% below target`;
-                                } else {
-                                  performanceLevel = 'poor';
-                                  gapText = `${Math.round((1 - ratio) * 100)}% below target`;
-                                }
-                              }
-                              
-                              return (
-                                <div className="space-y-3">
-                                  {/* Performance Badge */}
-                                  <div className="flex items-center justify-between">
-                                    <Badge 
-                                      variant={
-                                        performanceLevel === 'excellent' ? 'default' :
-                                        performanceLevel === 'good' ? 'secondary' :
-                                        performanceLevel === 'fair' ? 'outline' : 'destructive'
-                                      }
-                                      className={
-                                        performanceLevel === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                        performanceLevel === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                        performanceLevel === 'fair' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                        'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                      }
-                                    >
-                                      {performanceLevel === 'excellent' && '🟢 Excellent'}
-                                      {performanceLevel === 'good' && '🔵 Good'}
-                                      {performanceLevel === 'fair' && '🟡 Fair'}
-                                      {performanceLevel === 'poor' && '🔴 Poor'}
-                                    </Badge>
-                                    <span className="text-xs text-slate-500 dark:text-slate-500">
-                                      {gapText}
-                                    </span>
-                                  </div>
-
-                                  {/* Period Comparison - Full Featured */}
-                                  {(() => {
-                                    const latestPeriod = kpiPeriods?.[kpi.id];
-                                    
-                                    if (!latestPeriod) {
-                                      return null;
-                                    }
-                                    
-                                    // Parse values
-                                    const previousValue = parseFloat(latestPeriod.finalValue);
-                                    const previousTarget = parseFloat(latestPeriod.targetValue);
-                                    const changePercentage = latestPeriod.changePercentage 
-                                      ? parseFloat(latestPeriod.changePercentage) 
-                                      : null;
-                                    const trendDirection = latestPeriod.trendDirection;
-                                    
-                                    return (
-                                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                                        <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                                          Previous Period ({latestPeriod.periodLabel})
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-2 gap-2">
-                                          <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                                            <div className="text-xs text-slate-500 mb-1">Final</div>
-                                            <div className="text-sm font-semibold">
-                                              {(() => {
-                                                const formatted = previousValue.toLocaleString('en-US', { 
-                                                  minimumFractionDigits: 2, 
-                                                  maximumFractionDigits: 2 
-                                                });
-                                                return kpi.unit === '$' ? `$${formatted}` : `${formatted}${kpi.unit}`;
-                                              })()}
-                                            </div>
-                                          </div>
-                                          
-                                          <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                                            <div className="text-xs text-slate-500 mb-1">Target</div>
-                                            <div className="text-sm font-semibold">
-                                              {(() => {
-                                                const formatted = previousTarget.toLocaleString('en-US', { 
-                                                  minimumFractionDigits: 2, 
-                                                  maximumFractionDigits: 2 
-                                                });
-                                                return kpi.unit === '$' ? `$${formatted}` : `${formatted}${kpi.unit}`;
-                                              })()}
-                                            </div>
-                                          </div>
-                                        </div>
-                                        
-                                        <div className="mt-2 flex items-center justify-between">
-                                          <Badge 
-                                            variant={latestPeriod.targetAchieved ? 'default' : 'outline'}
-                                            className={latestPeriod.targetAchieved 
-                                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                            }
-                                          >
-                                            {latestPeriod.targetAchieved ? '✓ Target Achieved' : '✗ Target Missed'}
-                                          </Badge>
-                                          
-                                          {changePercentage !== null && (
-                                            <div className="flex items-center gap-1 text-xs">
-                                              {trendDirection === 'up' && (
-                                                <span className="text-green-600 font-medium">↑ {Math.abs(changePercentage).toFixed(1)}%</span>
-                                              )}
-                                              {trendDirection === 'down' && (
-                                                <span className="text-red-600 font-medium">↓ {Math.abs(changePercentage).toFixed(1)}%</span>
-                                              )}
-                                              {trendDirection === 'stable' && (
-                                                <span className="text-slate-500">→ Stable</span>
-                                              )}
-                                              <span className="text-slate-500">vs previous</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              );
-                            })()}
+                            {/* Delta vs target (keeps the concrete signal; removes heuristic bucket labels) */}
+                            {!isRevenueBlocked && (
+                              <div className="text-xs text-slate-600 dark:text-slate-400">
+                                {(() => {
+                                  const currentVal = parseFloat(kpi.currentValue || '');
+                                  const targetVal = parseFloat(kpi.targetValue || '');
+                                  if (!Number.isFinite(currentVal) || !Number.isFinite(targetVal) || targetVal <= 0) return null;
+                                  const deltaPct = ((currentVal - targetVal) / targetVal) * 100;
+                                  if (Math.abs(deltaPct) < 0.0001) return 'At target';
+                                  const pctText = `${Math.round(Math.abs(deltaPct))}%`;
+                                  return deltaPct > 0 ? `${pctText} above target` : `${pctText} below target`;
+                                })()}
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       )})}

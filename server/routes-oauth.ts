@@ -1445,6 +1445,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch {
           // ignore
         }
+        // Persist on latest import session too (matches manual/CSV/HubSpot behavior; avoids stale-session ambiguity).
+        await setLatestLinkedInImportSessionConversionValue(campaignId, convValue.toFixed(2));
 
         // Ensure dependent metrics recompute immediately (enterprise-grade freshness).
         await recomputeCampaignDerivedValues(campaignId);
@@ -8459,6 +8461,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn("[Salesforce Save Mappings] Failed to materialize revenue records:", e);
       }
 
+      // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
+      await recomputeCampaignDerivedValues(campaignId);
+
       res.json({
         success: true,
         conversionValueCalculated: platformCtx === 'linkedin' && calculatedConversionValue !== null,
@@ -8468,7 +8473,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
         sessionId: latestSession?.id || null,
       });
-      await recomputeCampaignDerivedValues(campaignId);
     } catch (error: any) {
       console.error('[Salesforce Save Mappings] Error:', error);
       res.status(500).json({ error: error.message || 'Failed to save Salesforce mappings' });
@@ -8915,12 +8919,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn("[HubSpot Save Mappings] Failed to materialize revenue records:", e);
       }
 
+      // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
+      await recomputeCampaignDerivedValues(campaignId);
+
       res.json({
         success: true,
         totalRevenue: Number(totalRevenue.toFixed(2)),
         currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
       });
-      await recomputeCampaignDerivedValues(campaignId);
     } catch (error: any) {
       console.error('[HubSpot Save Mappings] Error:', error);
       res.status(500).json({ error: error.message || 'Failed to save HubSpot mappings' });
@@ -18190,6 +18196,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn("[Shopify Save Mappings] Failed to materialize revenue records:", e);
       }
 
+      // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
+      await recomputeCampaignDerivedValues(campaignId);
+
       res.json({
         success: true,
         mode: "revenue_to_date",
@@ -18202,7 +18211,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         presentmentTotal: presentmentCurrency ? Number(presentmentTotal.toFixed(2)) : null,
         presentmentCurrency,
       });
-      await recomputeCampaignDerivedValues(campaignId);
     } catch (error: any) {
       console.error("[Shopify Save Mappings] Error:", error);
       res.status(500).json({ error: error.message || "Failed to process Shopify revenue metrics" });

@@ -177,6 +177,39 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
       }
     }
 
+    // Additional enterprise-grade fallback:
+    // If user set LinkedIn "conversion value" via Add Revenue (manual/CSV/Sheets/CRM),
+    // that value is always persisted in the active revenue source mappingConfig.
+    // KPI refresh must read it, otherwise ROI/ROAS KPIs can stay at 0 even when Overview shows revenue metrics.
+    if (totalRevenue === 0 && conversions > 0) {
+      try {
+        const sources = await storage.getRevenueSources(campaignId, "linkedin");
+        for (const s of sources || []) {
+          const rawCfg = (s as any)?.mappingConfig;
+          if (!rawCfg) continue;
+          let cfg: any = null;
+          try {
+            cfg = typeof rawCfg === "string" ? JSON.parse(rawCfg) : rawCfg;
+          } catch {
+            cfg = null;
+          }
+          const src = String(cfg?.valueSource || cfg?.mode || "").toLowerCase();
+          const cvRaw = cfg?.conversionValue ?? cfg?.conversion_value ?? cfg?.conversionvalue;
+          const cv = typeof cvRaw === "number" ? cvRaw : parseFloat(String(cvRaw ?? ""));
+          if ((src === "conversion_value" || src === "conversionvalue") && Number.isFinite(cv) && cv > 0) {
+            conversionValue = cv;
+            totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
+            console.log(
+              `[KPI Refresh] Using active revenue source conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`
+            );
+            break;
+          }
+        }
+      } catch (e) {
+        console.warn(`[KPI Refresh] Could not read revenue source mappingConfig for conversion value:`, e);
+      }
+    }
+
     // Final fallback: if revenue rows exist (manual/CSV/Sheets/CRM revenue-to-date), use that total.
     if (totalRevenue === 0) {
       try {

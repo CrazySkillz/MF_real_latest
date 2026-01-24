@@ -18,6 +18,23 @@ describe("linkedin derived metrics math (shared)", () => {
     const conversions = 5563;
     const leads = 18575;
 
+    if (process.env.PRINT_TEST_VECTORS === "1") {
+      const outputs = {
+        ctrPct: computeCtrPercent(clicks, impressions),
+        cpc: computeCpc(spend, clicks),
+        cpm: computeCpm(spend, impressions),
+        cvrPct: computeCvrPercent(conversions, clicks),
+        cpa: computeCpaRounded(spend, conversions),
+        cpl: computeCpl(spend, leads),
+        erPct: computeErPercent(engagements, impressions),
+      };
+      // eslint-disable-next-line no-console
+      console.table([
+        { type: "inputs", impressions, clicks, engagements, spend, conversions, leads },
+        { type: "outputs (2dp)", ...outputs },
+      ]);
+    }
+
     expect(computeCtrPercent(clicks, impressions)).toBeCloseTo(51.34, 2);
     expect(computeCpc(spend, clicks)).toBeCloseTo(2.70, 2);
     expect(computeCpm(spend, impressions)).toBeCloseTo(1387.50, 2);

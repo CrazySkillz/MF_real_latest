@@ -12185,6 +12185,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       const { campaignId } = req.query;
+
+      // Enterprise-grade correctness: ensure KPI currentValue is refreshed from latest LinkedIn metrics
+      // whenever KPIs are fetched for a LinkedIn campaign. This prevents stale ROI/ROAS values even if
+      // a prior revenue update path didn't trigger refresh (timing/race/path variance).
+      if (String(platformType || '').toLowerCase() === 'linkedin' && campaignId) {
+        try {
+          await refreshKPIsForCampaign(String(campaignId));
+        } catch (e: any) {
+          console.warn('[GET KPIs] KPI refresh failed (continuing with stored values):', e?.message || e);
+        }
+      }
+
       const kpis = await storage.getPlatformKPIs(platformType, campaignId as string | undefined);
       res.json(kpis);
     } catch (error) {

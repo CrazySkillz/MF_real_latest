@@ -8376,7 +8376,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (key === 'externalwebsiteconversions') ext += v;
           if (key === 'conversions') conv += v;
         }
-        totalConversions = ext > 0 ? ext : conv;
+        // Keep Salesforce conversion value math coherent with Overview/KPI refresh:
+        // totalConversions = conversions + externalWebsiteConversions (not "prefer one").
+        totalConversions = ext + conv;
         if (!Number.isFinite(totalConversions) || totalConversions <= 0) {
           return res.status(400).json({ error: 'LinkedIn conversions are 0. Cannot compute conversion value.' });
         }
@@ -8858,6 +8860,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch {
             // ignore
           }
+          // Persist on latest import session too (matches manual/CSV/Sheets behavior; avoids stale-session ambiguity).
+          await setLatestLinkedInImportSessionConversionValue(campaignId, convValue.toFixed(2));
 
           // Ensure dependent metrics recompute immediately.
           await recomputeCampaignDerivedValues(campaignId);

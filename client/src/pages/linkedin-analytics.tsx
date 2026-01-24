@@ -4589,9 +4589,10 @@ export default function LinkedInAnalytics() {
                                   {(() => {
                                     if (isRevenueBlocked) return '—';
                                     const value = parseFloat(kpi.currentValue || '0');
+                                    const metricKey = String(kpi.metric || kpi.metricKey || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                                     const formatted = value.toLocaleString('en-US', { 
-                                      minimumFractionDigits: 2, 
-                                      maximumFractionDigits: 2 
+                                      minimumFractionDigits: (String(kpi.unit || '') === '%' && (metricKey === 'roi' || metricKey === 'profitmargin')) ? 1 : 2,
+                                      maximumFractionDigits: (String(kpi.unit || '') === '%' && (metricKey === 'roi' || metricKey === 'profitmargin')) ? 1 : 2
                                     });
                                     const unit = String(kpi.unit || '');
                                     if (unit === '$' || unit === '£' || unit === '€') return `${unit}${formatted}`;
@@ -4607,9 +4608,10 @@ export default function LinkedInAnalytics() {
                                 <div className="text-xl font-bold text-slate-900 dark:text-white">
                                   {(() => {
                                     const value = parseFloat(kpi.targetValue || '0');
+                                    const metricKey = String(kpi.metric || kpi.metricKey || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                                     const formatted = value.toLocaleString('en-US', { 
-                                      minimumFractionDigits: 2, 
-                                      maximumFractionDigits: 2 
+                                      minimumFractionDigits: (String(kpi.unit || '') === '%' && (metricKey === 'roi' || metricKey === 'profitmargin')) ? 1 : 2,
+                                      maximumFractionDigits: (String(kpi.unit || '') === '%' && (metricKey === 'roi' || metricKey === 'profitmargin')) ? 1 : 2
                                     });
                                     const unit = String(kpi.unit || '');
                                     if (unit === '$' || unit === '£' || unit === '€') return `${unit}${formatted}`;

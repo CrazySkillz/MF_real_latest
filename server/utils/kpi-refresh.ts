@@ -48,6 +48,22 @@ function getMetricCaseInsensitive(obj: Record<string, any>, key: string): number
   return 0;
 }
 
+function parseConversionValueFrom(obj: any): number {
+  if (!obj) return 0;
+  const candidates = [
+    obj.conversionValue,
+    obj.conversion_value,
+    obj.conversionvalue,
+    obj.conversionValueUsd,
+    obj.conversion_value_usd,
+  ];
+  for (const c of candidates) {
+    const n = typeof c === "number" ? c : parseFloat(String(c ?? ""));
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return 0;
+}
+
 /**
  * Get aggregated LinkedIn metrics for a campaign
  * Returns all core, derived, and revenue metrics
@@ -123,13 +139,14 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
       try {
         // Try to get conversion value from LinkedIn connection (platform-specific)
         const linkedInConnection = await storage.getLinkedInConnection(campaignId);
-        if (linkedInConnection?.conversionValue && parseFloat(linkedInConnection.conversionValue) > 0) {
-          conversionValue = parseFloat(linkedInConnection.conversionValue);
+        const connCv = parseConversionValueFrom(linkedInConnection as any);
+        if (connCv > 0) {
+          conversionValue = connCv;
           totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
           console.log(`[KPI Refresh] Using LinkedIn connection conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
-        } else if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
+        } else if (parseConversionValueFrom(latestSession as any) > 0) {
           // Fallback to session conversion value
-          conversionValue = parseFloat(latestSession.conversionValue);
+          conversionValue = parseConversionValueFrom(latestSession as any);
           totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
           console.log(`[KPI Refresh] Using LinkedIn session conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
         } else {
@@ -144,8 +161,8 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
       } catch (error) {
         console.warn(`[KPI Refresh] Could not fetch platform connection, using session/campaign value:`, error);
         // Final fallback to session or campaign value
-        if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
-          conversionValue = parseFloat(latestSession.conversionValue);
+        if (parseConversionValueFrom(latestSession as any) > 0) {
+          conversionValue = parseConversionValueFrom(latestSession as any);
           totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
         }
       }
@@ -286,13 +303,14 @@ async function getCampaignSpecificMetrics(
       try {
         // Try to get conversion value from LinkedIn connection (platform-specific)
         const linkedInConnection = await storage.getLinkedInConnection(campaignId);
-        if (linkedInConnection?.conversionValue && parseFloat(linkedInConnection.conversionValue) > 0) {
-          conversionValue = parseFloat(linkedInConnection.conversionValue);
+        const connCv = parseConversionValueFrom(linkedInConnection as any);
+        if (connCv > 0) {
+          conversionValue = connCv;
           totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
           console.log(`[KPI Refresh] Campaign-specific: Using LinkedIn connection conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
-        } else if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
+        } else if (parseConversionValueFrom(latestSession as any) > 0) {
           // Fallback to session conversion value
-          conversionValue = parseFloat(latestSession.conversionValue);
+          conversionValue = parseConversionValueFrom(latestSession as any);
           totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
           console.log(`[KPI Refresh] Campaign-specific: Using LinkedIn session conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
         } else {
@@ -307,8 +325,8 @@ async function getCampaignSpecificMetrics(
       } catch (error) {
         console.warn(`[KPI Refresh] Could not fetch platform connection, using session/campaign value:`, error);
         // Final fallback to session or campaign value
-        if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
-          conversionValue = parseFloat(latestSession.conversionValue);
+        if (parseConversionValueFrom(latestSession as any) > 0) {
+          conversionValue = parseConversionValueFrom(latestSession as any);
           totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
         }
       }

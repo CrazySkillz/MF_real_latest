@@ -4620,15 +4620,17 @@ export default function LinkedInAnalytics() {
                                   const attainmentRatio = lowerIsBetter
                                     ? (currentVal > 0 ? (targetVal / currentVal) : 1)
                                     : (currentVal / targetVal);
-                                  const progress = Math.max(0, Math.min(attainmentRatio * 100, 100));
+                                  // Use an uncapped % for the label (accuracy), but cap the bar fill (UI).
+                                  const progressPct = Math.max(0, attainmentRatio * 100);
+                                  const progressFill = Math.min(progressPct, 100);
 
                                   return (
                                     <>
                                       <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
                                         <span>Progress</span>
-                                        <span>{Math.round(progress)}%</span>
+                                        <span>{Math.round(progressPct)}%</span>
                                       </div>
-                                      <Progress value={progress} className="h-2" />
+                                      <Progress value={progressFill} className="h-2" />
                                     </>
                                   );
                                 })()}

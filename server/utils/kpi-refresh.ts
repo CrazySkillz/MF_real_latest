@@ -126,110 +126,89 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
     aggregated.engagements = parseFloat(engagements.toFixed(2));
     aggregated.reach = parseFloat(reach.toFixed(2));
 
-    // Calculate revenue - prioritize webhook events (actual values) over platform-specific conversion value
-    let totalRevenue = 0;
+    // Revenue logic MUST match Overview (`GET /api/linkedin/imports/:sessionId`) for coherence.
+    // Key rules from Overview:
+    // - Never use campaign.conversionValue as a fallback (it can be stale/incoherent).
+    // - Prefer imported revenue-to-date when it exists and there is no explicit mapped conversion value.
+    // - When a conversion value source exists, compute revenue as conversions × conversionValue.
+    let hasAnyActiveLinkedInRevenueSource = false;
+    let hasLinkedInConversionValueSource = false;
+    let importedRevenueToDate = 0;
     let conversionValue = 0;
-    
-    // First, try to get revenue from webhook conversion events (most accurate)
+    let totalRevenue = 0;
+
+    // 1) Revenue sources (active) determine whether conversion value is explicitly mapped.
     try {
-      const conversionEvents = await storage.getConversionEvents(campaignId);
-      if (conversionEvents.length > 0) {
-        // Use actual values from webhook events
-        totalRevenue = conversionEvents.reduce((sum, e) => sum + parseFloat(e.value || "0"), 0);
-        conversionValue = totalRevenue / conversionEvents.length; // Average for reference
-        console.log(`[KPI Refresh] Using webhook events for revenue: ${conversionEvents.length} events, total: $${totalRevenue.toFixed(2)}`);
-      }
-    } catch (error) {
-      console.warn(`[KPI Refresh] Could not fetch conversion events, falling back to platform connection value:`, error);
-    }
-    
-    // Next: platform-specific conversion value from LinkedIn connection (if no webhook events)
-    if (totalRevenue === 0 && conversions > 0) {
-      try {
-        // Try to get conversion value from LinkedIn connection (platform-specific)
-        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
-        const connCv = parseConversionValueFrom(linkedInConnection as any);
-        if (connCv > 0) {
-          conversionValue = connCv;
-          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-          console.log(`[KPI Refresh] Using LinkedIn connection conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
-        } else if (parseConversionValueFrom(latestSession as any) > 0) {
-          // Fallback to session conversion value
-          conversionValue = parseConversionValueFrom(latestSession as any);
-          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-          console.log(`[KPI Refresh] Using LinkedIn session conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
-        } else {
-          // Last fallback: campaign conversion value
-          const campaign = await storage.getCampaign(campaignId);
-          if (campaign?.conversionValue && parseFloat(campaign.conversionValue) > 0) {
-            conversionValue = parseFloat(campaign.conversionValue);
-            totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-            console.log(`[KPI Refresh] Using campaign conversion value (fallback): ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
-          }
+      const sources = await storage.getRevenueSources(campaignId, "linkedin");
+      hasAnyActiveLinkedInRevenueSource = (sources || []).length > 0;
+      hasLinkedInConversionValueSource = (sources || []).some((s: any) => {
+        try {
+          const raw = (s as any)?.mappingConfig;
+          if (!raw) return false;
+          const cfg = typeof raw === "string" ? JSON.parse(raw) : raw;
+          const vs = String(cfg?.valueSource || "").trim().toLowerCase();
+          const mode = String(cfg?.mode || "").trim().toLowerCase();
+          return vs === "conversion_value" || mode === "conversion_value";
+        } catch {
+          return false;
         }
-      } catch (error) {
-        console.warn(`[KPI Refresh] Could not fetch platform connection, using session/campaign value:`, error);
-        // Final fallback to session or campaign value
-        if (parseConversionValueFrom(latestSession as any) > 0) {
-          conversionValue = parseConversionValueFrom(latestSession as any);
-          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-        }
-      }
+      });
+    } catch {
+      hasAnyActiveLinkedInRevenueSource = false;
+      hasLinkedInConversionValueSource = false;
     }
 
-    // Additional enterprise-grade fallback:
-    // If user set LinkedIn "conversion value" via Add Revenue (manual/CSV/Sheets/CRM),
-    // that value is always persisted in the active revenue source mappingConfig.
-    // KPI refresh must read it, otherwise ROI/ROAS KPIs can stay at 0 even when Overview shows revenue metrics.
-    if (totalRevenue === 0 && conversions > 0) {
-      try {
-        const sources = await storage.getRevenueSources(campaignId, "linkedin");
-        for (const s of sources || []) {
-          const rawCfg = (s as any)?.mappingConfig;
-          if (!rawCfg) continue;
-          let cfg: any = null;
-          try {
-            cfg = typeof rawCfg === "string" ? JSON.parse(rawCfg) : rawCfg;
-          } catch {
-            cfg = null;
-          }
-          const src = String(cfg?.valueSource || cfg?.mode || "").toLowerCase();
-          const cvRaw = cfg?.conversionValue ?? cfg?.conversion_value ?? cfg?.conversionvalue;
-          const cv = typeof cvRaw === "number" ? cvRaw : parseFloat(String(cvRaw ?? ""));
-          if ((src === "conversion_value" || src === "conversionvalue") && Number.isFinite(cv) && cv > 0) {
-            conversionValue = cv;
-            totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-            console.log(
-              `[KPI Refresh] Using active revenue source conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`
-            );
-            break;
-          }
-        }
-      } catch (e) {
-        console.warn(`[KPI Refresh] Could not read revenue source mappingConfig for conversion value:`, e);
-      }
+    // 2) Imported revenue-to-date (manual/CSV/Sheets/CRM revenue rows)
+    try {
+      const campaign = await storage.getCampaign(campaignId);
+      let startDate =
+        isoDateUTC((campaign as any)?.startDate) ||
+        isoDateUTC((campaign as any)?.createdAt) ||
+        "2020-01-01";
+      const endDate = yesterdayUTC();
+      if (String(startDate) > String(endDate)) startDate = endDate;
+      const totals = await (storage as any).getRevenueTotalForRange?.(campaignId, startDate, endDate, "linkedin");
+      importedRevenueToDate = Number(totals?.totalRevenue || 0);
+    } catch {
+      importedRevenueToDate = 0;
     }
+    const hasImportedRevenue = importedRevenueToDate > 0;
 
-    // Final fallback: if revenue rows exist (manual/CSV/Sheets/CRM revenue-to-date), use that total.
-    if (totalRevenue === 0) {
-      try {
-        const campaign = await storage.getCampaign(campaignId);
-        let startDate =
-          isoDateUTC((campaign as any)?.startDate) ||
-          isoDateUTC((campaign as any)?.createdAt) ||
-          "2020-01-01";
-        const endDate = yesterdayUTC();
-        if (String(startDate) > String(endDate)) startDate = endDate;
-        const totals = await (storage as any).getRevenueTotalForRange?.(campaignId, startDate, endDate, "linkedin");
-        const importedRevenueToDate = Number(totals?.totalRevenue || 0);
-        if (importedRevenueToDate > 0) {
-          totalRevenue = parseFloat(importedRevenueToDate.toFixed(2));
-          conversionValue = conversions > 0 ? parseFloat((totalRevenue / conversions).toFixed(2)) : 0;
-          console.log(`[KPI Refresh] Using imported revenue-to-date: $${totalRevenue.toFixed(2)} (derived CV: $${conversionValue})`);
-        }
-      } catch (e) {
-        console.warn(`[KPI Refresh] Could not fetch revenue-to-date totals:`, e);
-      }
+    // 3) Mapped conversion value: LinkedIn connection → session (never campaign-level)
+    let connCv = 0;
+    let sessionCv = 0;
+    try {
+      const linkedInConn = await storage.getLinkedInConnection(campaignId);
+      connCv = linkedInConn?.conversionValue ? parseFloat(String((linkedInConn as any).conversionValue)) : 0;
+    } catch {
+      connCv = 0;
+    }
+    try {
+      sessionCv = parseFloat((latestSession as any)?.conversionValue || "0");
+    } catch {
+      sessionCv = 0;
+    }
+    const mappedConversionValue = hasAnyActiveLinkedInRevenueSource ? (connCv > 0 ? connCv : sessionCv) : connCv;
+
+    // Derived conversion value (if we have imported revenue-to-date): Revenue-to-date ÷ Conversions
+    const derivedConversionValue = (hasImportedRevenue && conversions > 0) ? (importedRevenueToDate / conversions) : 0;
+    conversionValue = mappedConversionValue > 0 ? mappedConversionValue : derivedConversionValue;
+
+    const shouldEnableRevenueTracking =
+      ((hasAnyActiveLinkedInRevenueSource || hasLinkedInConversionValueSource) && conversionValue > 0) ||
+      hasImportedRevenue;
+
+    if (shouldEnableRevenueTracking) {
+      // Match Overview: if imported revenue exists and there's no explicit mapped CV, use imported revenue-to-date.
+      const effectiveTotalRevenue =
+        hasImportedRevenue && (!hasAnyActiveLinkedInRevenueSource || mappedConversionValue <= 0)
+          ? importedRevenueToDate
+          : (conversions * conversionValue);
+      totalRevenue = Number(Number(effectiveTotalRevenue || 0).toFixed(2));
+      conversionValue = Number(Number(conversionValue || 0).toFixed(2));
+    } else {
+      totalRevenue = 0;
+      conversionValue = 0;
     }
     
     // Set revenue metrics if we have a value
@@ -323,55 +302,82 @@ async function getCampaignSpecificMetrics(
     const leads = aggregated.leads || 0;
     const engagements = aggregated.engagements || 0;
 
-    // Calculate revenue - prioritize webhook events (actual values) over fixed conversion value
-    let totalRevenue = 0;
+    // Campaign-specific revenue MUST also match Overview logic:
+    // use the campaign-level conversionValue determined by the same rules as aggregate,
+    // then allocate campaign revenue as campaignConversions × conversionValue.
+    let hasAnyActiveLinkedInRevenueSource = false;
+    let hasLinkedInConversionValueSource = false;
+    let importedRevenueToDate = 0;
     let conversionValue = 0;
-    
-    // First, try to get revenue from webhook conversion events (most accurate)
+    let totalRevenue = 0;
+
+    // Determine total conversions overall for this session (used to derive CV from imported revenue-to-date)
+    const totalConversionsOverall = campaignAds.reduce((sum: number, ad: any) => sum + (Number(ad?.conversions) || 0), 0);
+
     try {
-      const conversionEvents = await storage.getConversionEvents(campaignId);
-      if (conversionEvents.length > 0) {
-        // Use actual values from webhook events
-        totalRevenue = conversionEvents.reduce((sum, e) => sum + parseFloat(e.value || "0"), 0);
-        conversionValue = totalRevenue / conversionEvents.length; // Average for reference
-        console.log(`[KPI Refresh] Campaign-specific: Using webhook events for revenue: ${conversionEvents.length} events, total: $${totalRevenue.toFixed(2)}`);
-      }
-    } catch (error) {
-      console.warn(`[KPI Refresh] Campaign-specific: Could not fetch conversion events, falling back to fixed value:`, error);
+      const sources = await storage.getRevenueSources(campaignId, "linkedin");
+      hasAnyActiveLinkedInRevenueSource = (sources || []).length > 0;
+      hasLinkedInConversionValueSource = (sources || []).some((s: any) => {
+        try {
+          const raw = (s as any)?.mappingConfig;
+          if (!raw) return false;
+          const cfg = typeof raw === "string" ? JSON.parse(raw) : raw;
+          const vs = String(cfg?.valueSource || "").trim().toLowerCase();
+          const mode = String(cfg?.mode || "").trim().toLowerCase();
+          return vs === "conversion_value" || mode === "conversion_value";
+        } catch {
+          return false;
+        }
+      });
+    } catch {
+      hasAnyActiveLinkedInRevenueSource = false;
+      hasLinkedInConversionValueSource = false;
     }
-    
-    // Fallback to platform-specific conversion value from LinkedIn connection (if no webhook events)
-    if (totalRevenue === 0 && conversions > 0) {
-      try {
-        // Try to get conversion value from LinkedIn connection (platform-specific)
-        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
-        const connCv = parseConversionValueFrom(linkedInConnection as any);
-        if (connCv > 0) {
-          conversionValue = connCv;
-          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-          console.log(`[KPI Refresh] Campaign-specific: Using LinkedIn connection conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
-        } else if (parseConversionValueFrom(latestSession as any) > 0) {
-          // Fallback to session conversion value
-          conversionValue = parseConversionValueFrom(latestSession as any);
-          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-          console.log(`[KPI Refresh] Campaign-specific: Using LinkedIn session conversion value: ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
-        } else {
-          // Last fallback: campaign conversion value
-          const campaign = await storage.getCampaign(campaignId);
-          if (campaign?.conversionValue && parseFloat(campaign.conversionValue) > 0) {
-            conversionValue = parseFloat(campaign.conversionValue);
-            totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-            console.log(`[KPI Refresh] Campaign-specific: Using campaign conversion value (fallback): ${conversions} conversions × $${conversionValue} = $${totalRevenue.toFixed(2)}`);
-          }
-        }
-      } catch (error) {
-        console.warn(`[KPI Refresh] Could not fetch platform connection, using session/campaign value:`, error);
-        // Final fallback to session or campaign value
-        if (parseConversionValueFrom(latestSession as any) > 0) {
-          conversionValue = parseConversionValueFrom(latestSession as any);
-          totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
-        }
-      }
+
+    try {
+      const campaign = await storage.getCampaign(campaignId);
+      let startDate =
+        isoDateUTC((campaign as any)?.startDate) ||
+        isoDateUTC((campaign as any)?.createdAt) ||
+        "2020-01-01";
+      const endDate = yesterdayUTC();
+      if (String(startDate) > String(endDate)) startDate = endDate;
+      const totals = await (storage as any).getRevenueTotalForRange?.(campaignId, startDate, endDate, "linkedin");
+      importedRevenueToDate = Number(totals?.totalRevenue || 0);
+    } catch {
+      importedRevenueToDate = 0;
+    }
+    const hasImportedRevenue = importedRevenueToDate > 0;
+
+    let connCv = 0;
+    let sessionCv = 0;
+    try {
+      const linkedInConn = await storage.getLinkedInConnection(campaignId);
+      connCv = linkedInConn?.conversionValue ? parseFloat(String((linkedInConn as any).conversionValue)) : 0;
+    } catch {
+      connCv = 0;
+    }
+    try {
+      sessionCv = parseFloat((latestSession as any)?.conversionValue || "0");
+    } catch {
+      sessionCv = 0;
+    }
+    const mappedConversionValue = hasAnyActiveLinkedInRevenueSource ? (connCv > 0 ? connCv : sessionCv) : connCv;
+    const derivedConversionValue = (hasImportedRevenue && totalConversionsOverall > 0)
+      ? (importedRevenueToDate / totalConversionsOverall)
+      : 0;
+    conversionValue = mappedConversionValue > 0 ? mappedConversionValue : derivedConversionValue;
+
+    const shouldEnableRevenueTracking =
+      ((hasAnyActiveLinkedInRevenueSource || hasLinkedInConversionValueSource) && conversionValue > 0) ||
+      hasImportedRevenue;
+
+    if (shouldEnableRevenueTracking && conversionValue > 0 && conversions > 0) {
+      totalRevenue = Number(Number(conversions * conversionValue).toFixed(2));
+      conversionValue = Number(Number(conversionValue).toFixed(2));
+    } else {
+      totalRevenue = 0;
+      conversionValue = Number(Number(conversionValue || 0).toFixed(2));
     }
     
     // Set revenue metrics if we have a value

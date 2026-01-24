@@ -3070,7 +3070,9 @@ export default function LinkedInAnalytics() {
   };
 
   const benchmarkTracker = useMemo(() => {
-    const items = Array.isArray(benchmarksData) ? (benchmarksData as any[]) : Array.isArray(benchmarks) ? (benchmarks as any[]) : [];
+    // Single authoritative source for the Benchmarks tab: use `benchmarksData` only
+    // (so the tracker counts can’t disagree with the rendered benchmark cards).
+    const items = Array.isArray(benchmarksData) ? (benchmarksData as any[]) : [];
     let scored = 0;
     let onTrack = 0;
     let needsAttention = 0;
@@ -3096,7 +3098,7 @@ export default function LinkedInAnalytics() {
 
     const avgPct = scored > 0 ? sumPct / scored : 0;
     return { total: items.length, scored, onTrack, needsAttention, behind, blocked, avgPct };
-  }, [benchmarksData, benchmarks, aggregated, adsData]);
+  }, [benchmarksData, aggregated, adsData]);
 
   const getTrendIcon = (direction: 'up' | 'down' | 'neutral') => {
     if (direction === 'up') return <TrendingUp className="w-4 h-4 text-green-500" />;
@@ -4798,6 +4800,7 @@ export default function LinkedInAnalytics() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">On Track</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-500">≥ 90% of benchmark value</p>
                             <p className="text-2xl font-bold text-emerald-600">{benchmarkTracker.onTrack}</p>
                           </div>
                           <CheckCircle2 className="w-7 h-7 text-emerald-600" />
@@ -4810,6 +4813,7 @@ export default function LinkedInAnalytics() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs Attention</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-500">70–89% of benchmark value</p>
                             <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
                           </div>
                           <AlertTriangle className="w-7 h-7 text-amber-600" />
@@ -4822,6 +4826,7 @@ export default function LinkedInAnalytics() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Behind</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-500">&lt; 70% of benchmark value</p>
                             <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
                           </div>
                           <TrendingDown className="w-7 h-7 text-red-600" />
@@ -4869,11 +4874,14 @@ export default function LinkedInAnalytics() {
                 ) : benchmarksData && Array.isArray(benchmarksData) && (benchmarksData as any[]).length > 0 ? (
                   <>
                     {/* Benchmark Cards */}
-                    <div className="space-y-4">
+                    <div className="grid gap-6 lg:grid-cols-2">
                       {console.log('[MAPPING] About to map benchmarks:', benchmarksData.length)}
                       {(benchmarksData as any[]).map((benchmark: any, index: number) => {
                         console.log(`[MAPPING] Rendering benchmark ${index + 1}:`, benchmark.name);
                         try {
+                          const p = computeBenchmarkProgress(benchmark);
+                          const progressPct = Math.max(0, (p.ratio || 0) * 100);
+                          const progressFill = Math.min(progressPct, 100);
                           return (
                         <Card key={benchmark.id} data-testid={`benchmark-card-${benchmark.id}`}>
                           <CardContent className="p-6">
@@ -4995,7 +5003,7 @@ export default function LinkedInAnalytics() {
                             <div className="grid gap-4 md:grid-cols-3">
                               <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                                 <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                                  Your Performance
+                                  Current Value
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
                                   {(() => {
@@ -5035,12 +5043,35 @@ export default function LinkedInAnalytics() {
                                 </div>
                               </div>
                             </div>
+
+                            {/* Progress bar (accurate ratio vs benchmark; label is uncapped, bar fill capped) */}
+                            {(() => {
+                              if (p.status === 'blocked') {
+                                return (
+                                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                                    <div className="flex items-center justify-between text-xs text-amber-900 dark:text-amber-200">
+                                      <span>Progress</span>
+                                      <span>Blocked</span>
+                                    </div>
+                                    <Progress value={0} className="mt-2 h-2" />
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div className="mt-4">
+                                  <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                                    <span>Progress</span>
+                                    <span>{Math.round(progressPct)}%</span>
+                                  </div>
+                                  <Progress value={progressFill} className="mt-2 h-2" />
+                                </div>
+                              );
+                            })()}
                             
                             {/* Performance vs Benchmark (GA4-parity logic + thresholds) */}
                             {(() => {
                               const benchVal = parseFloat(stripNumeric(String(benchmark.benchmarkValue || benchmark.targetValue || '0'))) || 0;
                               if (!Number.isFinite(benchVal) || benchVal <= 0) return null;
-                              const p = computeBenchmarkProgress(benchmark);
                               if (p.status === 'blocked') {
                                 return (
                                   <div className="mt-4 flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">

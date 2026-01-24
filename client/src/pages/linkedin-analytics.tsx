@@ -3768,8 +3768,8 @@ export default function LinkedInAnalytics() {
                                 <SelectItem value="ctr">CTR (High to Low)</SelectItem>
                                 <SelectItem value="cpa">CPA (Low to High)</SelectItem>
                                 <SelectItem value="cvr">CVR (High to Low)</SelectItem>
-                                {/* Revenue-based sorting options - only show when conversion value is set */}
-                                {aggregated?.hasRevenueTracking === 1 && (
+                                {/* Revenue-based sorting options - only show when per-campaign revenue allocation is possible */}
+                                {(aggregated?.hasRevenueTracking === 1 && Number(aggregated?.conversionValue || 0) > 0) && (
                                   <>
                                     <SelectItem value="revenue">Total Revenue (High to Low)</SelectItem>
                                     <SelectItem value="roas">ROAS (High to Low)</SelectItem>
@@ -3847,30 +3847,35 @@ export default function LinkedInAnalytics() {
                                 const cvrA = (a.metrics.clicks || 0) > 0 ? ((a.metrics.conversions || 0) / (a.metrics.clicks || 0)) * 100 : 0;
                                 const cvrB = (b.metrics.clicks || 0) > 0 ? ((b.metrics.conversions || 0) / (b.metrics.clicks || 0)) * 100 : 0;
                                 return cvrB - cvrA;
-                              case 'revenue':
-                                // Total Revenue = Conversions × Conversion Value
-                                const conversionValue = aggregated?.conversionValue || 0;
-                                const revenueA = (a.metrics.conversions || 0) * conversionValue;
-                                const revenueB = (b.metrics.conversions || 0) * conversionValue;
+                              case 'revenue': {
+                                // Total Revenue (per-campaign estimate) = Conversions × Conversion Value (overall)
+                                const conversionValue = Number(aggregated?.conversionValue || 0);
+                                const revenueA = conversionValue > 0 ? (Number(a.metrics.conversions || 0) * conversionValue) : 0;
+                                const revenueB = conversionValue > 0 ? (Number(b.metrics.conversions || 0) * conversionValue) : 0;
                                 return revenueB - revenueA;
-                              case 'roas':
-                                // ROAS = Revenue / Spend
-                                const roasConversionValue = aggregated?.conversionValue || 0;
-                                const roasRevenueA = (a.metrics.conversions || 0) * roasConversionValue;
-                                const roasRevenueB = (b.metrics.conversions || 0) * roasConversionValue;
-                                const roasA = (a.metrics.spend || 0) > 0 ? roasRevenueA / (a.metrics.spend || 0) : 0;
-                                const roasB = (b.metrics.spend || 0) > 0 ? roasRevenueB / (b.metrics.spend || 0) : 0;
+                              }
+                              case 'roas': {
+                                // ROAS = Revenue / Spend (per-campaign estimate)
+                                const cv = Number(aggregated?.conversionValue || 0);
+                                const roasRevenueA = cv > 0 ? (Number(a.metrics.conversions || 0) * cv) : 0;
+                                const roasRevenueB = cv > 0 ? (Number(b.metrics.conversions || 0) * cv) : 0;
+                                const roasA = (Number(a.metrics.spend || 0)) > 0 ? roasRevenueA / Number(a.metrics.spend || 0) : 0;
+                                const roasB = (Number(b.metrics.spend || 0)) > 0 ? roasRevenueB / Number(b.metrics.spend || 0) : 0;
                                 return roasB - roasA;
-                              case 'roi':
-                                // ROI = ((Revenue - Spend) / Spend) × 100
-                                const roiConversionValue = aggregated?.conversionValue || 0;
-                                const roiRevenueA = (a.metrics.conversions || 0) * roiConversionValue;
-                                const roiRevenueB = (b.metrics.conversions || 0) * roiConversionValue;
-                                const roiProfitA = roiRevenueA - (a.metrics.spend || 0);
-                                const roiProfitB = roiRevenueB - (b.metrics.spend || 0);
-                                const roiA = (a.metrics.spend || 0) > 0 ? (roiProfitA / (a.metrics.spend || 0)) * 100 : 0;
-                                const roiB = (b.metrics.spend || 0) > 0 ? (roiProfitB / (b.metrics.spend || 0)) * 100 : 0;
+                              }
+                              case 'roi': {
+                                // ROI = ((Revenue - Spend) / Spend) × 100 (per-campaign estimate)
+                                const cv = Number(aggregated?.conversionValue || 0);
+                                const roiRevenueA = cv > 0 ? (Number(a.metrics.conversions || 0) * cv) : 0;
+                                const roiRevenueB = cv > 0 ? (Number(b.metrics.conversions || 0) * cv) : 0;
+                                const spendA = Number(a.metrics.spend || 0);
+                                const spendB = Number(b.metrics.spend || 0);
+                                const roiProfitA = roiRevenueA - spendA;
+                                const roiProfitB = roiRevenueB - spendB;
+                                const roiA = spendA > 0 ? (roiProfitA / spendA) * 100 : 0;
+                                const roiB = spendB > 0 ? (roiProfitB / spendB) * 100 : 0;
                                 return roiB - roiA;
+                              }
                               default:
                                 return 0;
                             }
@@ -4077,9 +4082,10 @@ export default function LinkedInAnalytics() {
                                     </div>
                                   </div>
 
-                                  {/* Revenue Metrics - Only shown if conversion value is set */}
-                                  {aggregated?.hasRevenueTracking === 1 && (() => {
-                                    const campaignRevenue = conversions * (aggregated.conversionValue || 0);
+                                  {/* Revenue Metrics - Only shown when per-campaign revenue allocation is possible */}
+                                  {(aggregated?.hasRevenueTracking === 1 && Number(aggregated?.conversionValue || 0) > 0) && (() => {
+                                    const conversionValue = Number(aggregated.conversionValue || 0);
+                                    const campaignRevenue = conversions * conversionValue;
                                     const campaignProfit = campaignRevenue - spend;
                                     const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
                                     const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;
@@ -4102,7 +4108,7 @@ export default function LinkedInAnalytics() {
                                           <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg">
                                             <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROAS</p>
                                             <p className="text-sm font-bold text-blue-700 dark:text-blue-400">
-                                              {campaignROAS.toFixed(2)}x
+                                              {campaignROAS.toFixed(2)}×
                                             </p>
                                           </div>
                                           <div className="bg-purple-50 dark:bg-purple-900/10 p-3 rounded-lg">
@@ -4267,32 +4273,6 @@ export default function LinkedInAnalytics() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Button 
-                          variant="outline"
-                          onClick={() => {
-                            setEditingReportId(null);
-                            setReportForm({
-                              name: 'KPIs Report',
-                              description: '',
-                              reportType: 'kpis',
-                              configuration: {},
-                              scheduleEnabled: false,
-                              scheduleFrequency: 'daily',
-                              scheduleDayOfWeek: 'monday',
-                              scheduleDayOfMonth: 'first',
-                              quarterTiming: 'end',
-                              scheduleTime: '9:00 AM',
-                              emailRecipients: '',
-                              status: 'draft'
-                            });
-                            setIsReportModalOpen(true);
-                          }}
-                          className="border-slate-300 dark:border-slate-700"
-                          data-testid="button-export-kpi-report"
-                        >
-                          <FileText className="w-4 h-4 mr-2" />
-                          Export KPI Report
-                        </Button>
                         <Button 
                           onClick={() => setIsKPIModalOpen(true)}
                           className="bg-purple-600 hover:bg-purple-700 text-white"
@@ -4481,6 +4461,13 @@ export default function LinkedInAnalytics() {
                                     </Badge>
                                   </div>
                                 )}
+                                {kpi.applyTo !== 'specific' && (
+                                  <div className="mt-2">
+                                    <Badge variant="outline" className="bg-slate-50 text-slate-700 dark:bg-slate-900/20 dark:text-slate-300 border-slate-200 dark:border-slate-800">
+                                      All Campaigns
+                                    </Badge>
+                                  </div>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge variant={kpi.status === 'active' ? 'default' : 'secondary'}>
@@ -4578,7 +4565,10 @@ export default function LinkedInAnalytics() {
                                       minimumFractionDigits: 2, 
                                       maximumFractionDigits: 2 
                                     });
-                                    return kpi.unit === '$' ? `$${formatted}` : `${formatted}${kpi.unit || ''}`;
+                                    const unit = String(kpi.unit || '');
+                                    if (unit === '$' || unit === '£' || unit === '€') return `${unit}${formatted}`;
+                                    if (unit === '%') return `${formatted}%`;
+                                    return `${formatted}${unit}`;
                                   })()}
                                 </div>
                               </div>
@@ -4593,7 +4583,10 @@ export default function LinkedInAnalytics() {
                                       minimumFractionDigits: 2, 
                                       maximumFractionDigits: 2 
                                     });
-                                    return kpi.unit === '$' ? `$${formatted}` : `${formatted}${kpi.unit || ''}`;
+                                    const unit = String(kpi.unit || '');
+                                    if (unit === '$' || unit === '£' || unit === '€') return `${unit}${formatted}`;
+                                    if (unit === '%') return `${formatted}%`;
+                                    return `${formatted}${unit}`;
                                   })()}
                                 </div>
                               </div>

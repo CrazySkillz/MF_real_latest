@@ -64,6 +64,14 @@ function parseConversionValueFrom(obj: any): number {
   return 0;
 }
 
+function firstNonZero(obj: Record<string, any>, keys: string[]): number {
+  for (const k of keys) {
+    const v = getMetricCaseInsensitive(obj, k);
+    if (Number.isFinite(v) && v !== 0) return v;
+  }
+  return 0;
+}
+
 /**
  * Get aggregated LinkedIn metrics for a campaign
  * Returns all core, derived, and revenue metrics
@@ -97,16 +105,17 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
     });
 
     // Normalize commonly-aliased metric keys (LinkedIn sometimes uses externalWebsiteConversions, etc.)
-    const impressions = getMetricCaseInsensitive(aggregated, "impressions");
-    const clicks = getMetricCaseInsensitive(aggregated, "clicks");
-    const spend = getMetricCaseInsensitive(aggregated, "spend");
+    const impressions = firstNonZero(aggregated, ["impressions", "totalImpressions"]);
+    const clicks = firstNonZero(aggregated, ["clicks", "totalClicks"]);
+    const spend = firstNonZero(aggregated, ["spend", "totalSpend"]);
     const conversions =
-      getMetricCaseInsensitive(aggregated, "conversions") +
+      firstNonZero(aggregated, ["conversions", "totalConversions"]) +
       getMetricCaseInsensitive(aggregated, "externalwebsiteconversions") +
-      getMetricCaseInsensitive(aggregated, "externalWebsiteConversions");
-    const leads = getMetricCaseInsensitive(aggregated, "leads");
-    const engagements = getMetricCaseInsensitive(aggregated, "engagements");
-    const reach = getMetricCaseInsensitive(aggregated, "reach");
+      getMetricCaseInsensitive(aggregated, "externalWebsiteConversions") +
+      getMetricCaseInsensitive(aggregated, "external_website_conversions");
+    const leads = firstNonZero(aggregated, ["leads", "totalLeads"]);
+    const engagements = firstNonZero(aggregated, ["engagements", "totalEngagements"]);
+    const reach = firstNonZero(aggregated, ["reach", "totalReach"]);
 
     // Store normalized totals under canonical keys so KPI mapping is consistent.
     aggregated.impressions = parseFloat(impressions.toFixed(2));

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { computeAttainmentFillPct, computeAttainmentPct, computeEffectiveDeltaPct, classifyKpiBand, isLowerIsBetterKpi } from "@shared/kpi-math";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -4319,17 +4320,13 @@ export default function LinkedInAnalytics() {
 
                           const current = parseFloat(k.currentValue || '0');
                           const target = parseFloat(k.targetValue || '0');
-                          if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) continue;
+                          const lowerIsBetter = isLowerIsBetterKpi({ metric: k.metric || k.metricKey, name: k.name });
+                          const effectiveDeltaPct = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
+                          if (effectiveDeltaPct === null) continue;
 
-                          const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some((m) =>
-                            String(k.metric || '').toLowerCase().includes(m) || String(k.name || '').toLowerCase().includes(m)
-                          );
-
-                          const rawDeltaPct = ((current - target) / target) * 100;
-                          const effectiveDeltaPct = lowerIsBetter ? -rawDeltaPct : rawDeltaPct; // positive = better vs target
-
-                          if (effectiveDeltaPct > NEAR_TARGET_BAND_PCT) aboveTarget += 1;
-                          else if (effectiveDeltaPct < -NEAR_TARGET_BAND_PCT) belowTarget += 1;
+                          const band = classifyKpiBand({ effectiveDeltaPct, nearTargetBandPct: NEAR_TARGET_BAND_PCT });
+                          if (band === "above") aboveTarget += 1;
+                          else if (band === "below") belowTarget += 1;
                           else nearTarget += 1;
                         }
 
@@ -4610,19 +4607,10 @@ export default function LinkedInAnalytics() {
                                   const targetVal = parseFloat(kpi.targetValue || '');
                                   if (!Number.isFinite(currentVal) || !Number.isFinite(targetVal) || targetVal <= 0) return null;
 
-                                  const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some((m) =>
-                                    String(kpi.metric || '').toLowerCase().includes(m) || String(kpi.name || '').toLowerCase().includes(m)
-                                  );
-
-                                  // "Attainment" towards target: 100% means meeting target
-                                  // - higher-is-better: current/target
-                                  // - lower-is-better: target/current
-                                  const attainmentRatio = lowerIsBetter
-                                    ? (currentVal > 0 ? (targetVal / currentVal) : 1)
-                                    : (currentVal / targetVal);
-                                  // Use an uncapped % for the label (accuracy), but cap the bar fill (UI).
-                                  const progressPct = Math.max(0, attainmentRatio * 100);
-                                  const progressFill = Math.min(progressPct, 100);
+                                  const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi.metric || kpi.metricKey, name: kpi.name });
+                                  const progressPct = computeAttainmentPct({ current: currentVal, target: targetVal, lowerIsBetter });
+                                  if (progressPct === null) return null;
+                                  const progressFill = computeAttainmentFillPct(progressPct);
 
                                   return (
                                     <>

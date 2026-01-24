@@ -14409,47 +14409,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // CTR (Click-Through Rate): (Clicks / Impressions) * 100
-      if (totalImpressions > 0) {
-        const ctr = (totalClicks / totalImpressions) * 100;
-        aggregated.ctr = sanitizeCalculatedMetric('ctr', parseFloat(ctr.toFixed(2)));
-      }
-      
-      // CPC (Cost Per Click): Spend / Clicks
-      if (totalClicks > 0 && totalSpend > 0) {
-        const cpc = totalSpend / totalClicks;
-        aggregated.cpc = sanitizeCalculatedMetric('cpc', parseFloat(cpc.toFixed(2)));
-      }
-      
-      // CPM (Cost Per Mille): (Spend / Impressions) * 1000
-      if (totalImpressions > 0 && totalSpend > 0) {
-        const cpm = (totalSpend / totalImpressions) * 1000;
-        aggregated.cpm = sanitizeCalculatedMetric('cpm', parseFloat(cpm.toFixed(2)));
-      }
-      
-      // CVR (Conversion Rate): (Conversions / Clicks) * 100
-      if (totalClicks > 0) {
-        const cvr = (totalConversions / totalClicks) * 100;
-        aggregated.cvr = sanitizeCalculatedMetric('cvr', parseFloat(cvr.toFixed(2)));
-      }
-      
-      // CPA (Cost per Conversion): Spend / Conversions
-      if (totalConversions > 0 && totalSpend > 0) {
-        const cpa = totalSpend / totalConversions;
-        aggregated.cpa = sanitizeCalculatedMetric('cpa', parseFloat(cpa.toFixed(2)));
-      }
-      
-      // CPL (Cost per Lead): Spend / Leads
-      if (totalLeads > 0 && totalSpend > 0) {
-        const cpl = totalSpend / totalLeads;
-        aggregated.cpl = sanitizeCalculatedMetric('cpl', parseFloat(cpl.toFixed(2)));
-      }
-      
-      // ER (Engagement Rate): (Total Engagements / Impressions) * 100
-      if (totalImpressions > 0) {
-        const er = (totalEngagements / totalImpressions) * 100;
-        aggregated.er = sanitizeCalculatedMetric('er', parseFloat(er.toFixed(2)));
-      }
+      // Derived metrics (single source-of-truth math helpers)
+      const {
+        computeCpaRounded,
+        computeCpc,
+        computeCpl,
+        computeCpm,
+        computeCtrPercent,
+        computeCvrPercent,
+        computeErPercent,
+      } = await import("../shared/linkedin-metrics-math");
+
+      aggregated.ctr = sanitizeCalculatedMetric('ctr', computeCtrPercent(totalClicks, totalImpressions));
+      aggregated.cpc = sanitizeCalculatedMetric('cpc', computeCpc(totalSpend, totalClicks));
+      aggregated.cpm = sanitizeCalculatedMetric('cpm', computeCpm(totalSpend, totalImpressions));
+      aggregated.cvr = sanitizeCalculatedMetric('cvr', computeCvrPercent(totalConversions, totalClicks));
+      aggregated.cpa = sanitizeCalculatedMetric('cpa', computeCpaRounded(totalSpend, totalConversions));
+      aggregated.cpl = sanitizeCalculatedMetric('cpl', computeCpl(totalSpend, totalLeads));
+      aggregated.er = sanitizeCalculatedMetric('er', computeErPercent(totalEngagements, totalImpressions));
       
       // Revenue sources (Google Sheets + HubSpot + Salesforce)
       // IMPORTANT: Revenue metrics should only be enabled when there is at least one ACTIVE *revenue-tracking* source.

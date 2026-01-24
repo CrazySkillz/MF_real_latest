@@ -5,6 +5,15 @@
 
 import { storage } from "../storage";
 import type { KPI } from "../../shared/schema";
+import {
+  computeCpaRounded,
+  computeCpc,
+  computeCpl,
+  computeCpm,
+  computeCtrPercent,
+  computeCvrPercent,
+  computeErPercent,
+} from "../../shared/linkedin-metrics-math";
 
 /**
  * Get aggregated LinkedIn metrics for a campaign
@@ -115,40 +124,14 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
       }
     }
 
-    // CTR: (Clicks / Impressions) * 100
-    if (impressions > 0) {
-      aggregated.ctr = parseFloat(((clicks / impressions) * 100).toFixed(2));
-    }
-
-    // CPC: Spend / Clicks
-    if (clicks > 0) {
-      aggregated.cpc = parseFloat((spend / clicks).toFixed(2));
-    }
-
-    // CPM: (Spend / Impressions) * 1000
-    if (impressions > 0) {
-      aggregated.cpm = parseFloat(((spend / impressions) * 1000).toFixed(2));
-    }
-
-    // CVR (Conversion Rate): (Conversions / Clicks) * 100
-    if (clicks > 0) {
-      aggregated.cvr = parseFloat(((conversions / clicks) * 100).toFixed(2));
-    }
-
-    // CPA (Cost per Acquisition): Spend / Conversions
-    if (conversions > 0) {
-      aggregated.cpa = parseFloat((spend / conversions).toFixed(2));
-    }
-
-    // CPL (Cost per Lead): Spend / Leads
-    if (leads > 0) {
-      aggregated.cpl = parseFloat((spend / leads).toFixed(2));
-    }
-
-    // ER (Engagement Rate): (Engagements / Impressions) * 100
-    if (impressions > 0) {
-      aggregated.er = parseFloat(((engagements / impressions) * 100).toFixed(2));
-    }
+    // Derived metrics (single source-of-truth math helpers)
+    aggregated.ctr = computeCtrPercent(clicks, impressions);
+    aggregated.cpc = computeCpc(spend, clicks);
+    aggregated.cpm = computeCpm(spend, impressions);
+    aggregated.cvr = computeCvrPercent(conversions, clicks);
+    aggregated.cpa = computeCpaRounded(spend, conversions);
+    aggregated.cpl = computeCpl(spend, leads);
+    aggregated.er = computeErPercent(engagements, impressions);
 
     return aggregated;
   } catch (error) {
@@ -281,27 +264,14 @@ async function getCampaignSpecificMetrics(
       }
     }
 
-    if (impressions > 0) {
-      aggregated.ctr = parseFloat(((clicks / impressions) * 100).toFixed(2));
-    }
-    if (clicks > 0) {
-      aggregated.cpc = parseFloat((spend / clicks).toFixed(2));
-    }
-    if (impressions > 0) {
-      aggregated.cpm = parseFloat(((spend / impressions) * 1000).toFixed(2));
-    }
-    if (clicks > 0) {
-      aggregated.cvr = parseFloat(((conversions / clicks) * 100).toFixed(2));
-    }
-    if (conversions > 0) {
-      aggregated.cpa = parseFloat((spend / conversions).toFixed(2));
-    }
-    if (leads > 0) {
-      aggregated.cpl = parseFloat((spend / leads).toFixed(2));
-    }
-    if (impressions > 0) {
-      aggregated.er = parseFloat(((engagements / impressions) * 100).toFixed(2));
-    }
+    // Derived metrics (single source-of-truth math helpers)
+    aggregated.ctr = computeCtrPercent(clicks, impressions);
+    aggregated.cpc = computeCpc(spend, clicks);
+    aggregated.cpm = computeCpm(spend, impressions);
+    aggregated.cvr = computeCvrPercent(conversions, clicks);
+    aggregated.cpa = computeCpaRounded(spend, conversions);
+    aggregated.cpl = computeCpl(spend, leads);
+    aggregated.er = computeErPercent(engagements, impressions);
 
     return aggregated;
   } catch (error) {

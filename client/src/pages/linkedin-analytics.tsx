@@ -4332,7 +4332,7 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Above target</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
                               <p className="text-xs text-slate-500 dark:text-slate-500">more than +5% above target</p>
                               <p className="text-2xl font-bold text-green-600">
                                 {aboveTarget}
@@ -4347,7 +4347,7 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">On track</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
                               <p className="text-xs text-slate-500 dark:text-slate-500">within ±5% of target</p>
                               <p className="text-2xl font-bold text-blue-600">
                                 {nearTarget}
@@ -4362,7 +4362,7 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Below target</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Below Track</p>
                               <p className="text-xs text-slate-500 dark:text-slate-500">more than −5% below target</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {belowTarget}
@@ -4474,7 +4474,7 @@ export default function LinkedInAnalytics() {
                                             : 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:border-amber-800'
                                       }
                                     >
-                                      {performanceBand === 'above' ? 'Above target' : performanceBand === 'near' ? 'On track' : 'Below target'}
+                                      {performanceBand === 'above' ? 'Above Target' : performanceBand === 'near' ? 'On Track' : 'Below Track'}
                                     </Badge>
                                   )}
                                 </div>
@@ -4653,8 +4653,9 @@ export default function LinkedInAnalytics() {
                                   if (!Number.isFinite(currentVal) || !Number.isFinite(targetVal) || targetVal <= 0) return null;
                                   if (effectiveDeltaPct === null) return null;
                                   if (Math.abs(effectiveDeltaPct) < 0.0001) return 'At target';
-                                  const pctText = `${Math.round(Math.abs(effectiveDeltaPct))}%`;
-                                  return effectiveDeltaPct > 0 ? `${pctText} above target` : `${pctText} below target`;
+                                  const signed = `${effectiveDeltaPct >= 0 ? '+' : ''}${effectiveDeltaPct.toFixed(1)}%`;
+                                  const absRounded = `${Math.round(Math.abs(effectiveDeltaPct))}%`;
+                                  return effectiveDeltaPct > 0 ? `${absRounded} above target (${signed})` : `${absRounded} below target (${signed})`;
                                 })()}
                               </div>
                             )}

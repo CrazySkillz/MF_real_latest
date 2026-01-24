@@ -867,6 +867,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // When "conversion value" is the source of truth for LinkedIn, persist it on the latest import session
+  // so KPI refresh (which reads sessions) can compute ROI/ROAS immediately even if a LinkedIn connection row is absent.
+  const setLatestLinkedInImportSessionConversionValue = async (campaignId: string, conversionValue: string) => {
+    try {
+      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+      const latest = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+      if (latest) {
+        await storage.updateLinkedInImportSession(String((latest as any).id), { conversionValue } as any);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   app.post("/api/campaigns/:id/revenue/process/manual", async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -926,6 +940,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch {
             // ignore
           }
+          // Also persist on the latest session so KPI refresh can compute ROI/ROAS deterministically.
+          await setLatestLinkedInImportSessionConversionValue(campaignId, Number(conversionValueRaw.toFixed(2)).toFixed(2));
           // If conversion value is the source of truth, do not create revenue records.
         } else {
           // Revenue is source of truth: clear any previously set conversion value so derived revenue uses imported revenue.
@@ -960,6 +976,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } as any,
         ]);
       }
+      // Ensure all derived values are recomputed BEFORE responding so clients refetching onSuccess see correct values.
+      await recomputeCampaignDerivedValues(campaignId);
 
       res.json({
         success: true,
@@ -971,9 +989,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         revenueToDate: amountIsValid ? Number(amount.toFixed(2)) : 0,
         conversionValue: cvIsValid ? Number(conversionValueRaw.toFixed(2)) : 0,
       });
-
-      // Ensure all derived values are recomputed immediately for exec-grade accuracy.
-      await recomputeCampaignDerivedValues(campaignId);
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process manual revenue" });
     }
@@ -1085,6 +1100,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch {
           // ignore
         }
+        await setLatestLinkedInImportSessionConversionValue(campaignId, Number(convValue.toFixed(2)).toFixed(2));
+        await recomputeCampaignDerivedValues(campaignId);
         res.json({
           success: true,
           sourceId: source.id,
@@ -1096,7 +1113,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionValue: Number(convValue.toFixed(2)),
           totalRevenue: 0,
         });
-        await recomputeCampaignDerivedValues(campaignId);
       } else {
         // Revenue is source of truth.
         try {
@@ -1119,6 +1135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } as any,
           ]);
         }
+        await recomputeCampaignDerivedValues(campaignId);
         res.json({
           success: true,
           sourceId: source.id,
@@ -1129,7 +1146,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mode: "revenue_to_date",
           totalRevenue,
         });
-        await recomputeCampaignDerivedValues(campaignId);
       }
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
@@ -1466,6 +1482,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await clearLatestLinkedInImportSessionConversionValue(campaignId);
       }
 
+      // Ensure KPIs/alerts are recomputed before returning so the UI refetch sees correct values.
+      await recomputeCampaignDerivedValues(campaignId);
       res.json({
         success: true,
         mode: "revenue_to_date",
@@ -1476,8 +1494,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: endDate,
         totalRevenue,
       });
-
-      await recomputeCampaignDerivedValues(campaignId);
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process Sheets revenue" });
     }

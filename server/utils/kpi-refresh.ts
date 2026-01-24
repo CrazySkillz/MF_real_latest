@@ -15,6 +15,39 @@ import {
   computeErPercent,
 } from "../../shared/linkedin-metrics-math";
 
+function isoDateUTC(d: any): string | null {
+  try {
+    const dt = d instanceof Date ? d : new Date(d);
+    if (Number.isNaN(dt.getTime())) return null;
+    return dt.toISOString().slice(0, 10);
+  } catch {
+    return null;
+  }
+}
+
+function yesterdayUTC(): string {
+  const now = new Date();
+  const y = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+  return y.toISOString().slice(0, 10);
+}
+
+function getMetricCaseInsensitive(obj: Record<string, any>, key: string): number {
+  const direct = obj[key];
+  if (direct !== undefined && direct !== null) {
+    const n = typeof direct === "number" ? direct : parseFloat(String(direct));
+    return Number.isFinite(n) ? n : 0;
+  }
+  const wanted = String(key || "").toLowerCase();
+  for (const k of Object.keys(obj)) {
+    if (String(k).toLowerCase() === wanted) {
+      const v = (obj as any)[k];
+      const n = typeof v === "number" ? v : parseFloat(String(v));
+      return Number.isFinite(n) ? n : 0;
+    }
+  }
+  return 0;
+}
+
 /**
  * Get aggregated LinkedIn metrics for a campaign
  * Returns all core, derived, and revenue metrics
@@ -47,14 +80,26 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
       aggregated[metricKey] = parseFloat(total.toFixed(2));
     });
 
-    // Calculate derived metrics
-    const impressions = aggregated.impressions || 0;
-    const clicks = aggregated.clicks || 0;
-    const spend = aggregated.spend || 0;
-    const conversions = aggregated.conversions || 0;
-    const leads = aggregated.leads || 0;
-    const engagements = aggregated.engagements || 0;
-    const reach = aggregated.reach || 0;
+    // Normalize commonly-aliased metric keys (LinkedIn sometimes uses externalWebsiteConversions, etc.)
+    const impressions = getMetricCaseInsensitive(aggregated, "impressions");
+    const clicks = getMetricCaseInsensitive(aggregated, "clicks");
+    const spend = getMetricCaseInsensitive(aggregated, "spend");
+    const conversions =
+      getMetricCaseInsensitive(aggregated, "conversions") +
+      getMetricCaseInsensitive(aggregated, "externalwebsiteconversions") +
+      getMetricCaseInsensitive(aggregated, "externalWebsiteConversions");
+    const leads = getMetricCaseInsensitive(aggregated, "leads");
+    const engagements = getMetricCaseInsensitive(aggregated, "engagements");
+    const reach = getMetricCaseInsensitive(aggregated, "reach");
+
+    // Store normalized totals under canonical keys so KPI mapping is consistent.
+    aggregated.impressions = parseFloat(impressions.toFixed(2));
+    aggregated.clicks = parseFloat(clicks.toFixed(2));
+    aggregated.spend = parseFloat(spend.toFixed(2));
+    aggregated.conversions = parseFloat(conversions.toFixed(2));
+    aggregated.leads = parseFloat(leads.toFixed(2));
+    aggregated.engagements = parseFloat(engagements.toFixed(2));
+    aggregated.reach = parseFloat(reach.toFixed(2));
 
     // Calculate revenue - prioritize webhook events (actual values) over platform-specific conversion value
     let totalRevenue = 0;
@@ -73,7 +118,7 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
       console.warn(`[KPI Refresh] Could not fetch conversion events, falling back to platform connection value:`, error);
     }
     
-    // Fallback to platform-specific conversion value from LinkedIn connection (if no webhook events)
+    // Next: platform-specific conversion value from LinkedIn connection (if no webhook events)
     if (totalRevenue === 0 && conversions > 0) {
       try {
         // Try to get conversion value from LinkedIn connection (platform-specific)
@@ -103,6 +148,28 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
           conversionValue = parseFloat(latestSession.conversionValue);
           totalRevenue = parseFloat((conversions * conversionValue).toFixed(2));
         }
+      }
+    }
+
+    // Final fallback: if revenue rows exist (manual/CSV/Sheets/CRM revenue-to-date), use that total.
+    if (totalRevenue === 0) {
+      try {
+        const campaign = await storage.getCampaign(campaignId);
+        let startDate =
+          isoDateUTC((campaign as any)?.startDate) ||
+          isoDateUTC((campaign as any)?.createdAt) ||
+          "2020-01-01";
+        const endDate = yesterdayUTC();
+        if (String(startDate) > String(endDate)) startDate = endDate;
+        const totals = await (storage as any).getRevenueTotalForRange?.(campaignId, startDate, endDate, "linkedin");
+        const importedRevenueToDate = Number(totals?.totalRevenue || 0);
+        if (importedRevenueToDate > 0) {
+          totalRevenue = parseFloat(importedRevenueToDate.toFixed(2));
+          conversionValue = conversions > 0 ? parseFloat((totalRevenue / conversions).toFixed(2)) : 0;
+          console.log(`[KPI Refresh] Using imported revenue-to-date: $${totalRevenue.toFixed(2)} (derived CV: $${conversionValue})`);
+        }
+      } catch (e) {
+        console.warn(`[KPI Refresh] Could not fetch revenue-to-date totals:`, e);
       }
     }
     

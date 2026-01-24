@@ -4396,7 +4396,11 @@ export default function LinkedInAnalytics() {
 
                     {/* KPI Cards */}
                     <div className="grid gap-6 lg:grid-cols-2">
-                      {(kpisData as any[]).map((kpi: any) => (
+                      {(kpisData as any[]).map((kpi: any) => {
+                        const isRevenueBlocked =
+                          isRevenueDependentBenchmarkMetric(String(kpi.metric || kpi.metricKey || '')) &&
+                          aggregated?.hasRevenueTracking !== 1;
+                        return (
                         <Card key={kpi.id} data-testid={`kpi-card-${kpi.id}`}>
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
@@ -4419,7 +4423,6 @@ export default function LinkedInAnalytics() {
                                     )}
                                     {/* Red Dot Indicator for Active Alerts */}
                                     {kpi.alertsEnabled && (() => {
-                                      const isRevenueBlocked = isRevenueDependentBenchmarkMetric(String(kpi.metric || kpi.metricKey || '')) && aggregated?.hasRevenueTracking !== 1;
                                       if (isRevenueBlocked) return null;
                                       const currentValue = parseFloat(kpi.currentValue);
                                       const alertThreshold = kpi.alertThreshold ? parseFloat(kpi.alertThreshold.toString()) : null;
@@ -4559,6 +4562,11 @@ export default function LinkedInAnalytics() {
                             </div>
                           </CardHeader>
                           <CardContent className="space-y-4">
+                            {isRevenueBlocked && (
+                              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                                This metric is unavailable because revenue tracking is disabled (no revenue source / conversion value).
+                              </div>
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                               <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                                 <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
@@ -4566,7 +4574,6 @@ export default function LinkedInAnalytics() {
                                 </div>
                                 <div className="text-xl font-bold text-slate-900 dark:text-white">
                                   {(() => {
-                                    const isRevenueBlocked = isRevenueDependentBenchmarkMetric(String(kpi.metric || kpi.metricKey || '')) && aggregated?.hasRevenueTracking !== 1;
                                     if (isRevenueBlocked) return '—';
                                     const value = parseFloat(kpi.currentValue || '0');
                                     const formatted = value.toLocaleString('en-US', { 
@@ -4596,7 +4603,6 @@ export default function LinkedInAnalytics() {
                             
                             {/* Performance Assessment */}
                             {kpi.targetValue && kpi.currentValue && (() => {
-                              const isRevenueBlocked = isRevenueDependentBenchmarkMetric(String(kpi.metric || kpi.metricKey || '')) && aggregated?.hasRevenueTracking !== 1;
                               if (isRevenueBlocked) return null;
                               const currentVal = parseFloat(kpi.currentValue);
                               const targetVal = parseFloat(kpi.targetValue);
@@ -4754,7 +4760,7 @@ export default function LinkedInAnalytics() {
                             })()}
                           </CardContent>
                         </Card>
-                      ))}
+                      )})}
                     </div>
                   </>
                 ) : (

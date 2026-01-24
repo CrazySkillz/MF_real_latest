@@ -4287,7 +4287,7 @@ export default function LinkedInAnalytics() {
                     {/* KPI Summary Cards */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                       {(() => {
-                        const NEAR_TARGET_BAND_PCT = 10; // Within ±10% of target is considered "near target"
+                        const NEAR_TARGET_BAND_PCT = 5; // Within ±5% of target is considered "on track"
                         let aboveTarget = 0;
                         let nearTarget = 0;
                         let belowTarget = 0;
@@ -4330,7 +4330,8 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Better</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Above target</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">more than +5% above target</p>
                               <p className="text-2xl font-bold text-green-600">
                                 {aboveTarget}
                               </p>
@@ -4345,6 +4346,7 @@ export default function LinkedInAnalytics() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm text-slate-600 dark:text-slate-400">On track</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">within ±5% of target</p>
                               <p className="text-2xl font-bold text-blue-600">
                                 {nearTarget}
                               </p>
@@ -4358,7 +4360,8 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Worse</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Below target</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">more than −5% below target</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {belowTarget}
                               </p>
@@ -4378,6 +4381,14 @@ export default function LinkedInAnalytics() {
                         const isRevenueBlocked =
                           isRevenueDependentBenchmarkMetric(String(kpi.metric || kpi.metricKey || '')) &&
                           aggregated?.hasRevenueTracking !== 1;
+                        const currentVal = parseFloat(kpi.currentValue || '0');
+                        const targetVal = parseFloat(kpi.targetValue || '0');
+                        const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi.metric || kpi.metricKey, name: kpi.name });
+                        const effectiveDeltaPct = computeEffectiveDeltaPct({ current: currentVal, target: targetVal, lowerIsBetter });
+                        const performanceBand =
+                          !isRevenueBlocked && effectiveDeltaPct !== null
+                            ? classifyKpiBand({ effectiveDeltaPct, nearTargetBandPct: 5 })
+                            : null;
                         return (
                         <Card key={kpi.id} data-testid={`kpi-card-${kpi.id}`}>
                           <CardHeader className="pb-3">
@@ -4447,6 +4458,21 @@ export default function LinkedInAnalytics() {
                                   {kpi.metric && (
                                     <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">
                                       {kpi.metric.toUpperCase()}
+                                    </Badge>
+                                  )}
+                                  {/* KPI performance band badge */}
+                                  {performanceBand && (
+                                    <Badge
+                                      variant="outline"
+                                      className={
+                                        performanceBand === 'above'
+                                          ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
+                                          : performanceBand === 'near'
+                                            ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
+                                            : 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:border-amber-800'
+                                      }
+                                    >
+                                      {performanceBand === 'above' ? 'Above target' : performanceBand === 'near' ? 'On track' : 'Below target'}
                                     </Badge>
                                   )}
                                 </div>
@@ -4622,13 +4648,11 @@ export default function LinkedInAnalytics() {
                             {!isRevenueBlocked && (
                               <div className="text-xs text-slate-600 dark:text-slate-400">
                                 {(() => {
-                                  const currentVal = parseFloat(kpi.currentValue || '');
-                                  const targetVal = parseFloat(kpi.targetValue || '');
                                   if (!Number.isFinite(currentVal) || !Number.isFinite(targetVal) || targetVal <= 0) return null;
-                                  const deltaPct = ((currentVal - targetVal) / targetVal) * 100;
-                                  if (Math.abs(deltaPct) < 0.0001) return 'At target';
-                                  const pctText = `${Math.round(Math.abs(deltaPct))}%`;
-                                  return deltaPct > 0 ? `${pctText} above target` : `${pctText} below target`;
+                                  if (effectiveDeltaPct === null) return null;
+                                  if (Math.abs(effectiveDeltaPct) < 0.0001) return 'At target';
+                                  const pctText = `${Math.round(Math.abs(effectiveDeltaPct))}%`;
+                                  return effectiveDeltaPct > 0 ? `${pctText} above target` : `${pctText} below target`;
                                 })()}
                               </div>
                             )}

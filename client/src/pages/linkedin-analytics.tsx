@@ -4601,6 +4601,39 @@ export default function LinkedInAnalytics() {
                                 </div>
                               </div>
                             </div>
+
+                            {/* Progress bar (per-KPI) */}
+                            {!isRevenueBlocked && (
+                              <div className="space-y-2">
+                                {(() => {
+                                  const currentVal = parseFloat(kpi.currentValue || '');
+                                  const targetVal = parseFloat(kpi.targetValue || '');
+                                  if (!Number.isFinite(currentVal) || !Number.isFinite(targetVal) || targetVal <= 0) return null;
+
+                                  const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some((m) =>
+                                    String(kpi.metric || '').toLowerCase().includes(m) || String(kpi.name || '').toLowerCase().includes(m)
+                                  );
+
+                                  // "Attainment" towards target: 100% means meeting target
+                                  // - higher-is-better: current/target
+                                  // - lower-is-better: target/current
+                                  const attainmentRatio = lowerIsBetter
+                                    ? (currentVal > 0 ? (targetVal / currentVal) : 1)
+                                    : (currentVal / targetVal);
+                                  const progress = Math.max(0, Math.min(attainmentRatio * 100, 100));
+
+                                  return (
+                                    <>
+                                      <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                                        <span>Progress</span>
+                                        <span>{Math.round(progress)}%</span>
+                                      </div>
+                                      <Progress value={progress} className="h-2" />
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            )}
                             
                             {/* Delta vs target (keeps the concrete signal; removes heuristic bucket labels) */}
                             {!isRevenueBlocked && (

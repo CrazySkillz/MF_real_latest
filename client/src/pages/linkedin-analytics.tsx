@@ -4305,6 +4305,36 @@ export default function LinkedInAnalytics() {
 
                     {/* KPI Summary Cards */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      {(() => {
+                        const NEAR_TARGET_BAND_PCT = 10; // Within ±10% of target is considered "near target"
+                        let aboveTarget = 0;
+                        let nearTarget = 0;
+                        let belowTarget = 0;
+
+                        for (const k of (kpisData as any[]) || []) {
+                          const isRevenueBlocked =
+                            isRevenueDependentBenchmarkMetric(String(k.metric || k.metricKey || '')) &&
+                            aggregated?.hasRevenueTracking !== 1;
+                          if (isRevenueBlocked) continue;
+
+                          const current = parseFloat(k.currentValue || '0');
+                          const target = parseFloat(k.targetValue || '0');
+                          if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) continue;
+
+                          const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some((m) =>
+                            String(k.metric || '').toLowerCase().includes(m) || String(k.name || '').toLowerCase().includes(m)
+                          );
+
+                          const rawDeltaPct = ((current - target) / target) * 100;
+                          const effectiveDeltaPct = lowerIsBetter ? -rawDeltaPct : rawDeltaPct; // positive = better vs target
+
+                          if (effectiveDeltaPct > NEAR_TARGET_BAND_PCT) aboveTarget += 1;
+                          else if (effectiveDeltaPct < -NEAR_TARGET_BAND_PCT) belowTarget += 1;
+                          else nearTarget += 1;
+                        }
+
+                        return (
+                          <>
                       <Card>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
@@ -4323,18 +4353,9 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Excellent</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Above target</p>
                               <p className="text-2xl font-bold text-green-600">
-                                {(kpisData as any[]).filter((k: any) => {
-                                  const current = parseFloat(k.currentValue || '0');
-                                  const target = parseFloat(k.targetValue || '0');
-                                  if (target === 0) return false;
-                                  const ratio = current / target;
-                                  const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(m => 
-                                    k.metric?.toLowerCase().includes(m) || k.name?.toLowerCase().includes(m)
-                                  );
-                                  return lowerIsBetter ? ratio <= 0.8 : ratio >= 1.2;
-                                }).length}
+                                {aboveTarget}
                               </p>
                             </div>
                             <TrendingUp className="w-8 h-8 text-green-500" />
@@ -4346,20 +4367,9 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Good</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Near target</p>
                               <p className="text-2xl font-bold text-blue-600">
-                                {(kpisData as any[]).filter((k: any) => {
-                                  const current = parseFloat(k.currentValue || '0');
-                                  const target = parseFloat(k.targetValue || '0');
-                                  if (target === 0) return false;
-                                  const ratio = current / target;
-                                  const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(m => 
-                                    k.metric?.toLowerCase().includes(m) || k.name?.toLowerCase().includes(m)
-                                  );
-                                  return lowerIsBetter 
-                                    ? (ratio > 0.8 && ratio <= 1.0)
-                                    : (ratio >= 1.0 && ratio < 1.2);
-                                }).length}
+                                {nearTarget}
                               </p>
                             </div>
                             <CheckCircle2 className="w-8 h-8 text-blue-500" />
@@ -4371,27 +4381,18 @@ export default function LinkedInAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Below target</p>
                               <p className="text-2xl font-bold text-amber-600">
-                                {(kpisData as any[]).filter((k: any) => {
-                                  const current = parseFloat(k.currentValue || '0');
-                                  const target = parseFloat(k.targetValue || '0');
-                                  if (target === 0) return false;
-                                  const ratio = current / target;
-                                  const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(m => 
-                                    k.metric?.toLowerCase().includes(m) || k.name?.toLowerCase().includes(m)
-                                  );
-                                  // Fair or Poor combined
-                                  return lowerIsBetter 
-                                    ? ratio > 1.0
-                                    : ratio < 1.0;
-                                }).length}
+                                {belowTarget}
                               </p>
                             </div>
                             <AlertCircle className="w-8 h-8 text-amber-500" />
                           </div>
                         </CardContent>
                       </Card>
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {/* KPI Cards */}

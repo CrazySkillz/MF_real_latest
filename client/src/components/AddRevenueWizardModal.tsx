@@ -590,15 +590,35 @@ export function AddRevenueWizardModal(props: {
       setSheetsPreview({ headers: json.headers || [], sampleRows: json.sampleRows || [], rowCount: json.rowCount || 0 });
       const headers: string[] = Array.isArray(json.headers) ? json.headers : [];
       const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
+      const guessCv = headers.find((h) => /conversion.?value|value.?per.?conversion|aov|order.?value/i.test(h)) || "";
       const preserve = !!opts?.preserveExisting;
       if (!preserve) {
-        setSheetsRevenueCol(guess);
+        if (platformContext !== 'linkedin') {
+          setSheetsRevenueCol(guess);
+        } else {
+          // LinkedIn: mapping depends on chosen source-of-truth
+          if (sheetsValueSource === 'conversion_value') {
+            setSheetsConversionValueCol(guessCv);
+            setSheetsRevenueCol("");
+          } else {
+            setSheetsRevenueCol(guess);
+            setSheetsConversionValueCol("");
+          }
+        }
         setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
         setSheetsCampaignValues([]);
         setSheetsCampaignQuery("");
       } else {
         // keep existing selections; only fill gaps
-        if (!sheetsRevenueCol) setSheetsRevenueCol(guess);
+        if (platformContext !== 'linkedin') {
+          if (!sheetsRevenueCol) setSheetsRevenueCol(guess);
+        } else {
+          if (sheetsValueSource === 'conversion_value') {
+            if (!sheetsConversionValueCol) setSheetsConversionValueCol(guessCv);
+          } else {
+            if (!sheetsRevenueCol) setSheetsRevenueCol(guess);
+          }
+        }
         if (!sheetsCampaignCol) setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
       }
     } catch (e: any) {
@@ -630,21 +650,26 @@ export function AddRevenueWizardModal(props: {
         return;
       }
     } else {
-      if (!sheetsRevenueCol && !sheetsConversionValueCol) {
-        toast({ title: "Select Revenue or Conversion Value", description: "For LinkedIn, choose at least one value column.", variant: "destructive" });
-        return;
+      // LinkedIn: user must choose ONE source of truth and map the corresponding column.
+      if (sheetsValueSource === 'conversion_value') {
+        if (!sheetsConversionValueCol) {
+          toast({ title: "Select a conversion value column", description: "Conversion Value is required for this mode.", variant: "destructive" });
+          return;
+        }
+      } else {
+        if (!sheetsRevenueCol) {
+          toast({ title: "Select a revenue column", description: "Revenue is required for this mode.", variant: "destructive" });
+          return;
+        }
       }
     }
     setSheetsProcessing(true);
     try {
       const hasCampaignScope = !!sheetsCampaignCol && sheetsCampaignValues.length > 0;
-      const valueSource: 'revenue' | 'conversion_value' =
-        platformContext === 'linkedin'
-          ? (sheetsRevenueCol && sheetsConversionValueCol ? sheetsValueSource : (sheetsConversionValueCol ? 'conversion_value' : 'revenue'))
-          : 'revenue';
+      const valueSource: 'revenue' | 'conversion_value' = platformContext === 'linkedin' ? sheetsValueSource : 'revenue';
       const mapping = {
-        revenueColumn: sheetsRevenueCol || null,
-        conversionValueColumn: platformContext === 'linkedin' ? (sheetsConversionValueCol || null) : null,
+        revenueColumn: (platformContext === 'linkedin' ? (valueSource === 'revenue' ? (sheetsRevenueCol || null) : null) : (sheetsRevenueCol || null)),
+        conversionValueColumn: platformContext === 'linkedin' ? (valueSource === 'conversion_value' ? (sheetsConversionValueCol || null) : null) : null,
         valueSource,
         campaignColumn: hasCampaignScope ? sheetsCampaignCol : null,
         campaignValue: hasCampaignScope && sheetsCampaignValues.length === 1 ? sheetsCampaignValues[0] : null,
@@ -1167,6 +1192,40 @@ export function AddRevenueWizardModal(props: {
                     <CardDescription>Choose the Google Sheet tab that contains your revenue data.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    {platformContext === 'linkedin' && (
+                      <div className="rounded-md border p-3 space-y-2">
+                        <div className="text-sm font-medium">What do you want to import?</div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400">
+                          Choose one source of truth before connecting a sheet. This keeps ROI/ROAS calculations unambiguous.
+                        </div>
+                        <div className="flex items-center gap-4 pt-1">
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="radio"
+                              name="li-sheets-value-source"
+                              checked={sheetsValueSource === 'revenue'}
+                              onChange={() => {
+                                setSheetsValueSource('revenue');
+                                setSheetsConversionValueCol("");
+                              }}
+                            />
+                            Total Revenue (to date)
+                          </label>
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="radio"
+                              name="li-sheets-value-source"
+                              checked={sheetsValueSource === 'conversion_value'}
+                              onChange={() => {
+                                setSheetsValueSource('conversion_value');
+                                setSheetsRevenueCol("");
+                              }}
+                            />
+                            Conversion Value (per conversion)
+                          </label>
+                        </div>
+                      </div>
+                    )}
                     {sheetsConnectionsLoading ? (
                       <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
                         <div className="text-sm text-slate-700 dark:text-slate-300">Loading your connected Google Sheets…</div>
@@ -1326,13 +1385,18 @@ export function AddRevenueWizardModal(props: {
                           </div>
 
                           <div className="space-y-1">
-                            <Label>{platformContext === 'linkedin' ? 'Revenue column (optional)' : 'Revenue column'}</Label>
+                            <Label>
+                              {platformContext === 'linkedin'
+                                ? (sheetsValueSource === 'conversion_value' ? 'Revenue column (disabled)' : 'Revenue column')
+                                : 'Revenue column'}
+                            </Label>
                             <Select
                               value={(sheetsRevenueCol || (platformContext === 'linkedin' ? SELECT_NONE : '')) as any}
                               onValueChange={(v) => setSheetsRevenueCol(v === SELECT_NONE ? "" : v)}
+                              disabled={platformContext === 'linkedin' && sheetsValueSource === 'conversion_value'}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder={platformContext === 'linkedin' ? 'None' : 'Select revenue column'} />
+                                <SelectValue placeholder={platformContext === 'linkedin' && sheetsValueSource === 'conversion_value' ? 'Disabled' : (platformContext === 'linkedin' ? 'Select revenue column' : 'Select revenue column')} />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
                                 {platformContext === 'linkedin' && <SelectItem value={SELECT_NONE}>None</SelectItem>}
@@ -1349,13 +1413,14 @@ export function AddRevenueWizardModal(props: {
 
                           {platformContext === 'linkedin' && (
                             <div className="space-y-1">
-                              <Label>Conversion value column (optional)</Label>
+                              <Label>{sheetsValueSource === 'revenue' ? 'Conversion value column (disabled)' : 'Conversion value column'}</Label>
                               <Select
                                 value={(sheetsConversionValueCol || SELECT_NONE) as any}
                                 onValueChange={(v) => setSheetsConversionValueCol(v === SELECT_NONE ? "" : v)}
+                                disabled={sheetsValueSource === 'revenue'}
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder="None" />
+                                  <SelectValue placeholder={sheetsValueSource === 'revenue' ? 'Disabled' : 'Select conversion value column'} />
                                 </SelectTrigger>
                                 <SelectContent className="z-[10000]">
                                   <SelectItem value={SELECT_NONE}>None</SelectItem>
@@ -1373,32 +1438,9 @@ export function AddRevenueWizardModal(props: {
                           )}
                         </div>
 
-                        {platformContext === 'linkedin' && sheetsRevenueCol && sheetsConversionValueCol && (
-                          <div className="rounded-md border p-3 space-y-2">
-                            <div className="text-sm font-medium">Source of truth</div>
-                            <div className="text-xs text-slate-600 dark:text-slate-400">
-                              You selected both Revenue and Conversion Value. Choose which one MetricMind should use.
-                            </div>
-                            <div className="flex items-center gap-4 pt-1">
-                              <label className="flex items-center gap-2 text-sm">
-                                <input
-                                  type="radio"
-                                  name="li-value-source"
-                                  checked={sheetsValueSource === 'revenue'}
-                                  onChange={() => setSheetsValueSource('revenue')}
-                                />
-                                Use Revenue (derive Conversion Value)
-                              </label>
-                              <label className="flex items-center gap-2 text-sm">
-                                <input
-                                  type="radio"
-                                  name="li-value-source"
-                                  checked={sheetsValueSource === 'conversion_value'}
-                                  onChange={() => setSheetsValueSource('conversion_value')}
-                                />
-                                Use Conversion Value (ignore Revenue)
-                              </label>
-                            </div>
+                        {platformContext === 'linkedin' && (
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Mode: <span className="font-medium">{sheetsValueSource === 'conversion_value' ? 'Conversion Value' : 'Total Revenue'}</span>
                           </div>
                         )}
 
@@ -1496,7 +1538,7 @@ export function AddRevenueWizardModal(props: {
                           !sheetsPreview ||
                           sheetsProcessing ||
                           (platformContext !== 'linkedin' && !sheetsRevenueCol) ||
-                          (platformContext === 'linkedin' && !sheetsRevenueCol && !sheetsConversionValueCol)
+                          (platformContext === 'linkedin' && ((sheetsValueSource === 'revenue' && !sheetsRevenueCol) || (sheetsValueSource === 'conversion_value' && !sheetsConversionValueCol)))
                         }
                       >
                         {sheetsProcessing ? "Processing…" : isEditing ? "Update revenue" : "Import revenue"}

@@ -692,21 +692,27 @@ export function SalesforceRevenueWizard(props: {
             </CardTitle>
 
             {/* Subtle reconnect affordance (keeps first-step layout clean, matches HubSpot-style UX). */}
-            {!statusLoading && isConnected && step !== "complete" && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                {isConnecting ? "Reconnecting…" : "Reconnect"}
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => void openOAuthWindow()}
+              disabled={isConnecting || statusLoading || !isConnected || step === "complete"}
+              className={`${!statusLoading && isConnected && step !== "complete" ? "" : "opacity-0 pointer-events-none"} min-w-[116px]`}
+            >
+              {isConnecting ? "Reconnecting…" : "Reconnect"}
+            </Button>
           </div>
           <CardDescription>
             {/* Reserve space for connection label to avoid layout shift when async status arrives */}
-            <div className="text-xs text-slate-500 mb-1 min-h-[16px]">
+            <div className="text-xs text-slate-500 mb-1 min-h-[16px] flex items-center gap-1">
               {!statusLoading && isConnected && connectedLabel ? (
                 <>
-                  Connected to: <strong>{connectedLabel}</strong>
+                  <span className="whitespace-nowrap">Connected to:</span>
+                  <strong className="min-w-0 flex-1 truncate">{connectedLabel}</strong>
                 </>
               ) : (
-                <span className="opacity-0">Connected to: Placeholder</span>
+                <span className="opacity-0 whitespace-nowrap">Connected to: Placeholder</span>
               )}
             </div>
             {step === "value-source" && isLinkedIn && "Choose whether Salesforce should provide Total Revenue (to date) or a Conversion Value (estimated value per conversion)."}

@@ -666,7 +666,7 @@ export function AddRevenueWizardModal(props: {
     "Add revenue source";
 
   const description = step === "select"
-    ? "Choose where your revenue data comes from. This is used when GA4 revenue is missing."
+    ? "Choose where your revenue data comes from."
     : `Currency: ${currency} • Revenue is treated as “to date” (campaign lifetime)`;
 
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";

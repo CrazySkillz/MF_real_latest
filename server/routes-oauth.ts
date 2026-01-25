@@ -897,6 +897,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (platformContext !== 'linkedin') {
         if (!amountIsValid) return res.status(400).json({ success: false, error: "Amount must be > 0" });
       } else {
+        // Enterprise-grade correctness: manual entry must be unambiguous.
+        // Do not accept both revenue-to-date and conversion value at the same time.
+        if (amountIsValid && cvIsValid) {
+          return res.status(400).json({ success: false, error: "Provide either amount or conversionValue (not both)" });
+        }
         if (!amountIsValid && !cvIsValid) {
           return res.status(400).json({ success: false, error: "amount or conversionValue must be > 0" });
         }

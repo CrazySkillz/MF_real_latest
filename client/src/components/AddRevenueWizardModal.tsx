@@ -401,15 +401,20 @@ export function AddRevenueWizardModal(props: {
         return;
       }
     } else {
+      // Enterprise-grade correctness: manual LinkedIn entry must be unambiguous.
+      // Users must provide EITHER revenue-to-date OR conversion value, never both.
       const hasAmt = Number.isFinite(amt) && amt > 0;
       const hasCv = Number.isFinite(cv) && cv > 0;
-      if (!hasAmt && !hasCv) {
-        toast({ title: "Enter Revenue or Conversion Value", description: "Provide at least one value.", variant: "destructive" });
+      if (manualValueSource === 'revenue' && !hasAmt) {
+        toast({ title: "Enter revenue", description: "Revenue must be > 0.", variant: "destructive" });
         return;
       }
-      // Enforce explicit "source of truth" decision when both are present (enterprise-grade correctness).
-      if (hasAmt && hasCv && (manualValueSource !== 'revenue' && manualValueSource !== 'conversion_value')) {
-        toast({ title: "Choose source of truth", description: "Select whether Revenue or Conversion Value should drive calculations.", variant: "destructive" });
+      if (manualValueSource === 'conversion_value' && !hasCv) {
+        toast({ title: "Enter conversion value", description: "Conversion value must be > 0.", variant: "destructive" });
+        return;
+      }
+      if (hasAmt && hasCv) {
+        toast({ title: "Enter only one value", description: "Choose Revenue or Conversion Value (not both).", variant: "destructive" });
         return;
       }
     }
@@ -417,16 +422,13 @@ export function AddRevenueWizardModal(props: {
     try {
       const hasAmt = Number.isFinite(amt) && amt > 0;
       const hasCv = Number.isFinite(cv) && cv > 0;
-      const valueSource: 'revenue' | 'conversion_value' =
-        platformContext === 'linkedin'
-          ? (hasAmt && hasCv ? manualValueSource : (hasCv ? 'conversion_value' : 'revenue'))
-          : 'revenue';
+      const valueSource: 'revenue' | 'conversion_value' = platformContext === 'linkedin' ? manualValueSource : 'revenue';
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/process/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: Number.isFinite(amt) ? amt : null,
-          conversionValue: platformContext === 'linkedin' && Number.isFinite(cv) ? cv : null,
+          amount: platformContext === 'linkedin' ? (valueSource === 'revenue' && hasAmt ? amt : null) : (Number.isFinite(amt) ? amt : null),
+          conversionValue: platformContext === 'linkedin' ? (valueSource === 'conversion_value' && hasCv ? cv : null) : null,
           valueSource,
           currency,
           dateRange,
@@ -765,60 +767,75 @@ export function AddRevenueWizardModal(props: {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label>Revenue to date ({currency}){platformContext === 'linkedin' ? ' (optional)' : ''}</Label>
-                        <Input
-                          value={manualAmount}
-                          onChange={(e) => setManualAmount(formatCurrencyWhileTyping(e.target.value))}
-                          onBlur={(e) => setManualAmount(formatCurrencyOnBlur(e.target.value))}
-                          placeholder="0.00"
-                          inputMode="decimal"
-                        />
-                      </div>
+                      {platformContext === 'linkedin' ? (
+                        <>
+                          <div className="space-y-2 md:col-span-2">
+                            <div className="text-sm font-medium">What do you have?</div>
+                            <RadioGroup
+                              value={manualValueSource}
+                              onValueChange={(v) => {
+                                const next = v as 'revenue' | 'conversion_value';
+                                setManualValueSource(next);
+                                // Enforce mutual exclusivity for enterprise-grade correctness.
+                                if (next === 'revenue') setManualConversionValue("");
+                                if (next === 'conversion_value') setManualAmount("");
+                              }}
+                              className="flex flex-col md:flex-row gap-3"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="revenue" id="manual-mode-revenue" />
+                                <Label htmlFor="manual-mode-revenue">Total revenue to date</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="conversion_value" id="manual-mode-cv" />
+                                <Label htmlFor="manual-mode-cv">Conversion value (per conversion)</Label>
+                              </div>
+                            </RadioGroup>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              Enter <strong>one</strong> value only. This prevents ambiguous financial reporting.
+                            </p>
+                          </div>
 
-                      {platformContext === 'linkedin' && (
-                        <div className="space-y-1">
-                          <Label>Conversion value ({currency}) (optional)</Label>
+                          {manualValueSource === 'revenue' ? (
+                            <div className="space-y-1 md:col-span-2">
+                              <Label>Revenue to date ({currency})</Label>
+                              <Input
+                                value={manualAmount}
+                                onChange={(e) => setManualAmount(formatCurrencyWhileTyping(e.target.value))}
+                                onBlur={(e) => setManualAmount(formatCurrencyOnBlur(e.target.value))}
+                                placeholder="0.00"
+                                inputMode="decimal"
+                              />
+                            </div>
+                          ) : (
+                            <div className="space-y-1 md:col-span-2">
+                              <Label>Conversion value ({currency})</Label>
+                              <Input
+                                value={manualConversionValue}
+                                onChange={(e) => setManualConversionValue(formatCurrencyWhileTyping(e.target.value))}
+                                onBlur={(e) => setManualConversionValue(formatCurrencyOnBlur(e.target.value))}
+                                placeholder="0.00"
+                                inputMode="decimal"
+                              />
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                Revenue metrics will be calculated as Conversions × Conversion Value.
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="space-y-1 md:col-span-2">
+                          <Label>Revenue to date ({currency})</Label>
                           <Input
-                            value={manualConversionValue}
-                            onChange={(e) => setManualConversionValue(formatCurrencyWhileTyping(e.target.value))}
-                            onBlur={(e) => setManualConversionValue(formatCurrencyOnBlur(e.target.value))}
+                            value={manualAmount}
+                            onChange={(e) => setManualAmount(formatCurrencyWhileTyping(e.target.value))}
+                            onBlur={(e) => setManualAmount(formatCurrencyOnBlur(e.target.value))}
                             placeholder="0.00"
                             inputMode="decimal"
                           />
-                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                            If provided, LinkedIn revenue can be calculated as Conversions × Conversion Value.
-                          </p>
                         </div>
                       )}
                     </div>
-
-                    {platformContext === 'linkedin' && (() => {
-                      const amt = Number(String(manualAmount || "").replace(/,/g, "").trim());
-                      const cv = Number(String(manualConversionValue || "").replace(/,/g, "").trim());
-                      const hasAmt = Number.isFinite(amt) && amt > 0;
-                      const hasCv = Number.isFinite(cv) && cv > 0;
-                      if (!hasAmt || !hasCv) return null;
-                      return (
-                        <div className="rounded-md border p-3 space-y-2">
-                          <div className="text-sm font-medium">Source of truth</div>
-                          <RadioGroup
-                            value={manualValueSource}
-                            onValueChange={(v) => setManualValueSource(v as 'revenue' | 'conversion_value')}
-                            className="flex flex-col space-y-1"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="revenue" id="manual-source-revenue" />
-                              <Label htmlFor="manual-source-revenue">Use Revenue (derive conversion value)</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="conversion_value" id="manual-source-conversion-value" />
-                              <Label htmlFor="manual-source-conversion-value">Use Conversion Value (ignore revenue amount)</Label>
-                            </div>
-                          </RadioGroup>
-                        </div>
-                      );
-                    })()}
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel

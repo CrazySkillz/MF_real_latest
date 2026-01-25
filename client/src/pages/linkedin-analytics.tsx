@@ -581,6 +581,33 @@ export default function LinkedInAnalytics() {
     },
   });
 
+  // Enterprise-grade correctness: keep KPI + Benchmarks in lockstep with Overview.
+  // When the Overview aggregate changes (e.g., new import session data, revenue source changes),
+  // refetch KPIs (server will refresh currentValue) and Benchmarks so all tabs display consistent "current" values.
+  const overviewSyncKey = useMemo(() => {
+    const a: any = (sessionData as any)?.aggregated || {};
+    return [
+      String(sessionId || ''),
+      String(campaignId || ''),
+      String(a?.hasRevenueTracking ?? ''),
+      String(a?.conversionValue ?? ''),
+      String(a?.totalRevenue ?? a?.revenue ?? ''),
+      String(a?.totalSpend ?? ''),
+      String(a?.totalConversions ?? ''),
+      String(a?.totalClicks ?? ''),
+      String(a?.totalImpressions ?? ''),
+    ].join('|');
+  }, [sessionData, sessionId, campaignId]);
+
+  useEffect(() => {
+    if (!campaignId) return;
+    // Always refetch KPIs/Benchmarks in the background; this is cheap and avoids exec-facing staleness.
+    void queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId] });
+    void queryClient.refetchQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId], exact: true });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`], exact: true });
+  }, [overviewSyncKey, campaignId]);
+
   // Extract session payload early (used by helpers/hooks below).
   // Important: this must appear before any useMemo/helpers that reference `aggregated`
   // to avoid temporal-dead-zone runtime crashes ("Cannot access ... before initialization").
@@ -1881,7 +1908,7 @@ export default function LinkedInAnalytics() {
     
     // Helper function to calculate performance level
     const getKPIPerformanceLevel = (kpi: any): { level: string, color: number[] } => {
-      const current = parseFloat(kpi.currentValue || '0');
+      const current = getLiveCurrentForKpi(kpi);
       const target = parseFloat(kpi.targetValue || '0');
       
       if (target === 0) return { level: 'N/A', color: [150, 150, 150] };
@@ -1943,7 +1970,8 @@ export default function LinkedInAnalytics() {
         // Current and Target values
         doc.setFont(undefined, 'normal');
         doc.setFontSize(10);
-        doc.text(`Current: ${formatNumber(parseFloat(kpi.currentValue) || 0)}${kpi.unit || ''}`, 25, y + 18);
+        const liveCurrent = getLiveCurrentForKpi(kpi);
+        doc.text(`Current: ${formatNumber(liveCurrent || 0)}${kpi.unit || ''}`, 25, y + 18);
         doc.text(`Target: ${formatNumber(parseFloat(kpi.targetValue) || 0)}${kpi.unit || ''}`, 100, y + 18);
         
         // Timeframe and Priority
@@ -1954,7 +1982,7 @@ export default function LinkedInAnalytics() {
         doc.setTextColor(50, 50, 50);
         
         // Progress bar
-        const current = parseFloat(kpi.currentValue) || 0;
+        const current = liveCurrent || 0;
         const target = parseFloat(kpi.targetValue) || 100;
         const progress = Math.min((current / target) * 100, 100);
         
@@ -2086,13 +2114,14 @@ export default function LinkedInAnalytics() {
         
         doc.setFont(undefined, 'normal');
         doc.setFontSize(11);
-        doc.text(`${formatNumber(parseFloat(benchmark.currentValue) || 0)}${benchmark.unit || ''}`, 25, valuesY + 8);
+        const liveCurrent = getLiveCurrentForBenchmark(benchmark);
+        doc.text(`${formatNumber(liveCurrent || 0)}${benchmark.unit || ''}`, 25, valuesY + 8);
         doc.text(`${formatNumber(parseFloat(benchmark.benchmarkValue) || 0)}${benchmark.unit || ''}`, 85, valuesY + 8);
         doc.text(benchmark.status === 'active' ? 'Active' : 'Inactive', 145, valuesY + 8);
         
         // Performance vs Benchmark
-        if (benchmark.currentValue && benchmark.benchmarkValue) {
-          const current = parseFloat(benchmark.currentValue);
+        if (benchmark.benchmarkValue) {
+          const current = liveCurrent || 0;
           const benchmarkVal = parseFloat(benchmark.benchmarkValue);
           const diff = current - benchmarkVal;
           const percentDiff = benchmarkVal > 0 ? Math.abs((diff / benchmarkVal) * 100).toFixed(0) : '0';
@@ -3040,6 +3069,24 @@ export default function LinkedInAnalytics() {
       case 'revenueperlead': return Number(aggregated?.revenuePerLead || 0);
       default: return 0;
     }
+  };
+
+  const getLiveCurrentForKpi = (kpi: any): number => {
+    const metric = String(kpi?.metric || kpi?.metricKey || '').trim();
+    if (!metric) return 0;
+    // For KPI "specific", we store the LinkedIn campaign name in specificCampaignId (UI selector uses campaign name).
+    const scopeName =
+      String(kpi?.applyTo || '').toLowerCase() === 'specific' && kpi?.specificCampaignId
+        ? String(kpi.specificCampaignId)
+        : undefined;
+    return getLiveLinkedInMetricValue(metric, scopeName);
+  };
+
+  const getLiveCurrentForBenchmark = (benchmark: any): number => {
+    const metric = String(benchmark?.metric || '').trim();
+    if (!metric) return 0;
+    const scopeName = benchmark?.linkedInCampaignName ? String(benchmark.linkedInCampaignName) : undefined;
+    return getLiveLinkedInMetricValue(metric, scopeName);
   };
 
   const computeBenchmarkProgress = (benchmark: any) => {
@@ -4300,7 +4347,7 @@ export default function LinkedInAnalytics() {
                             aggregated?.hasRevenueTracking !== 1;
                           if (isRevenueBlocked) continue;
 
-                          const current = parseFloat(k.currentValue || '0');
+                          const current = getLiveCurrentForKpi(k);
                           const target = parseFloat(k.targetValue || '0');
                           const lowerIsBetter = isLowerIsBetterKpi({ metric: k.metric || k.metricKey, name: k.name });
                           const effectiveDeltaPct = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
@@ -4383,7 +4430,7 @@ export default function LinkedInAnalytics() {
                         const isRevenueBlocked =
                           isRevenueDependentBenchmarkMetric(String(kpi.metric || kpi.metricKey || '')) &&
                           aggregated?.hasRevenueTracking !== 1;
-                        const currentVal = parseFloat(kpi.currentValue || '0');
+                        const currentVal = getLiveCurrentForKpi(kpi);
                         const targetVal = parseFloat(kpi.targetValue || '0');
                         const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi.metric || kpi.metricKey, name: kpi.name });
                         const effectiveDeltaPct = computeEffectiveDeltaPct({ current: currentVal, target: targetVal, lowerIsBetter });
@@ -4415,7 +4462,7 @@ export default function LinkedInAnalytics() {
                                     {/* Red Dot Indicator for Active Alerts */}
                                     {kpi.alertsEnabled && (() => {
                                       if (isRevenueBlocked) return null;
-                                      const currentValue = parseFloat(kpi.currentValue);
+                                      const currentValue = getLiveCurrentForKpi(kpi);
                                       const alertThreshold = kpi.alertThreshold ? parseFloat(kpi.alertThreshold.toString()) : null;
                                       const alertCondition = kpi.alertCondition || 'below';
                                       
@@ -4446,7 +4493,7 @@ export default function LinkedInAnalytics() {
                                             <div className="space-y-2">
                                               <p className="font-semibold text-red-400">⚠️ Alert Threshold Breached</p>
                                               <div className="text-xs space-y-1">
-                                                <p><span className="text-slate-400">Current:</span> {kpi.currentValue}{kpi.unit}</p>
+                                                <p><span className="text-slate-400">Current:</span> {formatMetricValueForDisplay(String(kpi.metric || kpi.metricKey || ''), currentValue)}</p>
                                                 <p><span className="text-slate-400">Alert Threshold:</span> {alertThreshold}{kpi.unit}</p>
                                                 <p><span className="text-slate-400">Condition:</span> {alertCondition}</p>
                                               </div>
@@ -4516,12 +4563,13 @@ export default function LinkedInAnalytics() {
                                   className="h-8 w-8 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
                                   onClick={() => {
                                     setEditingKPI(kpi);
+                                    const liveForEdit = getLiveCurrentForKpi(kpi);
                                     setKpiForm({
                                       name: kpi.name,
                                       description: kpi.description || '',
                                       metric: kpi.metric || '',
                                       targetValue: kpi.targetValue || '',
-                                      currentValue: kpi.currentValue || '',
+                                      currentValue: formatMetricValueForInput(kpi.metric || kpi.metricKey || '', String(liveForEdit)),
                                       unit: kpi.unit || '',
                                       priority: kpi.priority || 'medium',
                                       status: kpi.status || 'active',
@@ -4946,12 +4994,13 @@ export default function LinkedInAnalytics() {
                                       return '';
                                     };
                                     setEditingBenchmark(benchmark);
+                                    const liveCurrent = getLiveCurrentForBenchmark(benchmark);
                                     setBenchmarkForm({
                                       metric: benchmark.metric || '',
                                       name: benchmark.name || '',
                                       unit: benchmark.unit || inferUnitForBenchmarkMetric(benchmark.metric),
                                       benchmarkValue: formatMetricValueForInput(benchmark.metric, benchmark.benchmarkValue || ''),
-                                      currentValue: formatMetricValueForInput(benchmark.metric, benchmark.currentValue || ''),
+                                      currentValue: formatMetricValueForInput(benchmark.metric, String(liveCurrent)),
                                       benchmarkType: normalizeBenchmarkTypeForUI(benchmark),
                                       industry: benchmark.industry || '',
                                       description: (String(benchmark.description || '').trim() || getDefaultBenchmarkDescription(benchmark.metric)),
@@ -5010,16 +5059,8 @@ export default function LinkedInAnalytics() {
                                 </div>
                                 <div className="text-lg font-bold text-slate-900 dark:text-white">
                                   {(() => {
-                                    // If campaign-specific, show the campaign-specific metric value
-                                    if (benchmark.linkedInCampaignName && benchmark.specificCampaignId) {
-                                      const campaignMetrics = getCampaignSpecificMetrics(benchmark.linkedInCampaignName);
-                                      if (campaignMetrics && campaignMetrics[benchmark.metric] !== undefined) {
-                                        const value = campaignMetrics[benchmark.metric];
-                                        return formatMetricValueForDisplay(benchmark.metric, value);
-                                      }
-                                    }
-                                    // Otherwise use stored currentValue, round if count metric
-                                    const currentVal = parseFloat(benchmark.currentValue || '0');
+                                    // Enterprise-grade: Current Value must always reflect the live Overview aggregates.
+                                    const currentVal = getLiveCurrentForBenchmark(benchmark);
                                     return formatMetricValueForDisplay(benchmark.metric, currentVal);
                                   })()}
                                 </div>

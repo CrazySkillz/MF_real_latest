@@ -161,7 +161,8 @@ export function HubSpotRevenueWizard(props: {
             title: "HubSpot Connected",
             description: "Now select the HubSpot deal field used to attribute deals to this campaign.",
           });
-          setStep("campaign-field");
+          // Mode-first UX: do not skip the source-of-truth selection for LinkedIn.
+          setStep(isLinkedIn ? "value-source" : "campaign-field");
         } else if (data.type === "hubspot_auth_error") {
           window.removeEventListener("message", onMessage);
           toast({
@@ -192,7 +193,8 @@ export function HubSpotRevenueWizard(props: {
         setStatusLoading(true);
         const connected = await fetchStatus();
         if (!mounted) return;
-        if (connected) setStep("campaign-field");
+        // Mode-first UX: keep the user on the source-of-truth step for LinkedIn, even if already connected.
+        if (connected && !isLinkedIn) setStep("campaign-field");
       } catch {
         // ignore
       } finally {

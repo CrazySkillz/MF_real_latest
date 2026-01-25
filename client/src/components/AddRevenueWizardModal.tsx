@@ -463,8 +463,20 @@ export function AddRevenueWizardModal(props: {
       setCsvPreview({ fileName: json.fileName, headers: json.headers || [], sampleRows: json.sampleRows || [], rowCount: json.rowCount || 0 });
       // best-effort default pick
       const headers: string[] = Array.isArray(json.headers) ? json.headers : [];
-      const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
-      setCsvRevenueCol(guess);
+      const guessRevenue = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
+      const guessCv = headers.find((h) => /conversion.?value|value.?per.?conversion|aov|order.?value/i.test(h)) || "";
+      if (platformContext !== 'linkedin') {
+        setCsvRevenueCol(guessRevenue);
+      } else {
+        // LinkedIn: mapping depends on chosen source-of-truth
+        if (csvValueSource === 'conversion_value') {
+          setCsvConversionValueCol(guessCv);
+          setCsvRevenueCol("");
+        } else {
+          setCsvRevenueCol(guessRevenue);
+          setCsvConversionValueCol("");
+        }
+      }
       setCsvCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
       setCsvCampaignValues([]);
       setCsvCampaignQuery("");
@@ -508,20 +520,25 @@ export function AddRevenueWizardModal(props: {
         return;
       }
     } else {
-      if (!csvRevenueCol && !csvConversionValueCol) {
-        toast({ title: "Select Revenue or Conversion Value", description: "For LinkedIn, choose at least one value column.", variant: "destructive" });
-        return;
+      // LinkedIn: user must choose ONE source of truth and map the corresponding column.
+      if (csvValueSource === 'conversion_value') {
+        if (!csvConversionValueCol) {
+          toast({ title: "Select a conversion value column", description: "Conversion Value is required for this mode.", variant: "destructive" });
+          return;
+        }
+      } else {
+        if (!csvRevenueCol) {
+          toast({ title: "Select a revenue column", description: "Revenue is required for this mode.", variant: "destructive" });
+          return;
+        }
       }
     }
     setCsvProcessing(true);
     try {
-      const valueSource: 'revenue' | 'conversion_value' =
-        platformContext === 'linkedin'
-          ? (csvRevenueCol && csvConversionValueCol ? csvValueSource : (csvConversionValueCol ? 'conversion_value' : 'revenue'))
-          : 'revenue';
+      const valueSource: 'revenue' | 'conversion_value' = platformContext === 'linkedin' ? csvValueSource : 'revenue';
       const mapping = {
-        revenueColumn: csvRevenueCol || null,
-        conversionValueColumn: platformContext === 'linkedin' ? (csvConversionValueCol || null) : null,
+        revenueColumn: (platformContext === 'linkedin' ? (valueSource === 'revenue' ? (csvRevenueCol || null) : null) : (csvRevenueCol || null)),
+        conversionValueColumn: platformContext === 'linkedin' ? (valueSource === 'conversion_value' ? (csvConversionValueCol || null) : null) : null,
         valueSource,
         campaignColumn: csvCampaignCol,
         campaignValue: csvCampaignValues.length === 1 ? csvCampaignValues[0] : null,
@@ -860,6 +877,40 @@ export function AddRevenueWizardModal(props: {
                     )}
 
                     <div className="space-y-2">
+                      {platformContext === 'linkedin' && (
+                        <div className="rounded-md border p-3 space-y-2">
+                          <div className="text-sm font-medium">What do you want to import?</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Choose one source of truth. This keeps ROI/ROAS calculations unambiguous.
+                          </div>
+                          <div className="flex items-center gap-4 pt-1">
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="radio"
+                                name="li-csv-value-source"
+                                checked={csvValueSource === 'revenue'}
+                                onChange={() => {
+                                  setCsvValueSource('revenue');
+                                  setCsvConversionValueCol("");
+                                }}
+                              />
+                              Total Revenue (to date)
+                            </label>
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="radio"
+                                name="li-csv-value-source"
+                                checked={csvValueSource === 'conversion_value'}
+                                onChange={() => {
+                                  setCsvValueSource('conversion_value');
+                                  setCsvRevenueCol("");
+                                }}
+                              />
+                              Conversion Value (per conversion)
+                            </label>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between gap-2">
                         <Label>Upload file (CSV)</Label>
                         {csvFile && (
@@ -959,13 +1010,18 @@ export function AddRevenueWizardModal(props: {
                           </div>
 
                           <div className="space-y-1">
-                            <Label>{platformContext === 'linkedin' ? 'Revenue column (optional)' : 'Revenue column'}</Label>
+                            <Label>
+                              {platformContext === 'linkedin'
+                                ? (csvValueSource === 'conversion_value' ? 'Revenue column (disabled)' : 'Revenue column')
+                                : 'Revenue column'}
+                            </Label>
                             <Select
                               value={(csvRevenueCol || (platformContext === 'linkedin' ? SELECT_NONE : '')) as any}
                               onValueChange={(v) => setCsvRevenueCol(v === SELECT_NONE ? "" : v)}
+                              disabled={platformContext === 'linkedin' && csvValueSource === 'conversion_value'}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder={platformContext === 'linkedin' ? 'None' : 'Select revenue column'} />
+                                <SelectValue placeholder={platformContext === 'linkedin' && csvValueSource === 'conversion_value' ? 'Disabled' : (platformContext === 'linkedin' ? 'Select revenue column' : 'Select revenue column')} />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
                                 {platformContext === 'linkedin' && <SelectItem value={SELECT_NONE}>None</SelectItem>}
@@ -982,13 +1038,14 @@ export function AddRevenueWizardModal(props: {
 
                           {platformContext === 'linkedin' && (
                             <div className="space-y-1">
-                              <Label>Conversion value column (optional)</Label>
+                              <Label>{csvValueSource === 'revenue' ? 'Conversion value column (disabled)' : 'Conversion value column'}</Label>
                               <Select
                                 value={(csvConversionValueCol || SELECT_NONE) as any}
                                 onValueChange={(v) => setCsvConversionValueCol(v === SELECT_NONE ? "" : v)}
+                                disabled={csvValueSource === 'revenue'}
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder="None" />
+                                  <SelectValue placeholder={csvValueSource === 'revenue' ? 'Disabled' : 'Select conversion value column'} />
                                 </SelectTrigger>
                                 <SelectContent className="z-[10000]">
                                   <SelectItem value={SELECT_NONE}>None</SelectItem>
@@ -1003,32 +1060,9 @@ export function AddRevenueWizardModal(props: {
                           )}
                         </div>
 
-                        {platformContext === 'linkedin' && csvRevenueCol && csvConversionValueCol && (
-                          <div className="rounded-md border p-3 space-y-2">
-                            <div className="text-sm font-medium">Source of truth</div>
-                            <div className="text-xs text-slate-600 dark:text-slate-400">
-                              You selected both Revenue and Conversion Value. Choose which one MetricMind should use.
-                            </div>
-                            <div className="flex items-center gap-4 pt-1">
-                              <label className="flex items-center gap-2 text-sm">
-                                <input
-                                  type="radio"
-                                  name="li-csv-value-source"
-                                  checked={csvValueSource === 'revenue'}
-                                  onChange={() => setCsvValueSource('revenue')}
-                                />
-                                Use Revenue (derive Conversion Value)
-                              </label>
-                              <label className="flex items-center gap-2 text-sm">
-                                <input
-                                  type="radio"
-                                  name="li-csv-value-source"
-                                  checked={csvValueSource === 'conversion_value'}
-                                  onChange={() => setCsvValueSource('conversion_value')}
-                                />
-                                Use Conversion Value (ignore Revenue)
-                              </label>
-                            </div>
+                        {platformContext === 'linkedin' && (
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Mode: <span className="font-medium">{csvValueSource === 'conversion_value' ? 'Conversion Value' : 'Total Revenue'}</span>
                           </div>
                         )}
 

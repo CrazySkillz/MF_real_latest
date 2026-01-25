@@ -134,13 +134,19 @@ export default function LinkedInAnalytics() {
     setRevenueModalIntent(intent);
     setRevenueWizardInitialStep("select");
     if (intent === 'edit') {
-      try {
-        const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=linkedin`);
-        const json = await resp.json().catch(() => ({}));
-        const sources = Array.isArray(json?.sources) ? json.sources : [];
-        setRevenueWizardInitialSource(sources?.[0] || null);
-      } catch {
-        setRevenueWizardInitialSource(null);
+      // Prefer the already-fetched active source (prevents flashing/mismatches).
+      if (activeLinkedInRevenueSource) {
+        setRevenueWizardInitialSource(activeLinkedInRevenueSource);
+      } else {
+        try {
+          const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=linkedin`);
+          const json = await resp.json().catch(() => ({}));
+          const sources = Array.isArray(json?.sources) ? json.sources : [];
+          const active = sources.find((s: any) => (s as any)?.isActive !== false) || sources[0] || null;
+          setRevenueWizardInitialSource(active);
+        } catch {
+          setRevenueWizardInitialSource(null);
+        }
       }
     } else {
       setRevenueWizardInitialSource(null);
@@ -399,19 +405,23 @@ export default function LinkedInAnalytics() {
     const base =
       type === 'manual' ? 'Manual' :
       type === 'csv' ? 'CSV' :
-      type === 'sheets' ? 'Google Sheets' :
+      type === 'google_sheets' ? 'Google Sheets' :
       type === 'hubspot' ? 'HubSpot' :
       type === 'salesforce' ? 'Salesforce' :
       type === 'shopify' ? 'Shopify' :
+      type === 'connector_derived' ? 'Imported' :
       'Imported';
     try {
       const cfg = src?.mappingConfig ? (typeof src.mappingConfig === 'string' ? JSON.parse(src.mappingConfig) : src.mappingConfig) : null;
       const vs = String(cfg?.valueSource || '').trim().toLowerCase();
       const mode = String(cfg?.mode || '').trim().toLowerCase();
       const isCv = vs === 'conversion_value' || mode === 'conversion_value';
-      return isCv ? `${base} (Conversion Value)` : base;
+      const name = String(src?.displayName || '').trim();
+      const label = name ? name : base;
+      return isCv ? `${label} (Conversion Value)` : label;
     } catch {
-      return base;
+      const name = String(src?.displayName || '').trim();
+      return name ? name : base;
     }
   };
 
@@ -4636,7 +4646,7 @@ export default function LinkedInAnalytics() {
                                 <div className="text-xl font-bold text-slate-900 dark:text-white">
                                   {(() => {
                                     if (isRevenueBlocked) return '—';
-                                    const value = parseFloat(kpi.currentValue || '0');
+                                    const value = Number.isFinite(currentVal) ? currentVal : 0;
                                     const metricKey = String(kpi.metric || kpi.metricKey || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                                     const formatted = value.toLocaleString('en-US', { 
                                       minimumFractionDigits: (String(kpi.unit || '') === '%' && (metricKey === 'roi' || metricKey === 'profitmargin')) ? 1 : 2,
@@ -4674,10 +4684,7 @@ export default function LinkedInAnalytics() {
                             {!isRevenueBlocked && (
                               <div className="space-y-2">
                                 {(() => {
-                                  const currentVal = parseFloat(kpi.currentValue || '');
-                                  const targetVal = parseFloat(kpi.targetValue || '');
                                   if (!Number.isFinite(currentVal) || !Number.isFinite(targetVal) || targetVal <= 0) return null;
-
                                   const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi.metric || kpi.metricKey, name: kpi.name });
                                   const progressPct = computeAttainmentPct({ current: currentVal, target: targetVal, lowerIsBetter });
                                   if (progressPct === null) return null;

@@ -28,6 +28,8 @@ export function SalesforceRevenueWizard(props: {
     campaignField?: string;
     selectedValues?: string[];
     revenueField?: string;
+    conversionValueField?: string;
+    valueSource?: "revenue" | "conversion_value" | string;
     days?: number;
   } | null;
   connectOnly?: boolean;
@@ -154,14 +156,20 @@ export function SalesforceRevenueWizard(props: {
     const cfg = initialMappingConfig || {};
     const nextCampaignField = cfg.campaignField ? String(cfg.campaignField) : "Name";
     const nextRevenueField = cfg.revenueField ? String(cfg.revenueField) : "Amount";
+    const nextConversionValueField = cfg.conversionValueField ? String(cfg.conversionValueField) : "";
     const nextSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v) => String(v)) : [];
     const nextDays = Number.isFinite(Number(cfg.days)) ? Math.min(Math.max(Number(cfg.days), 1), 3650) : days;
+    const nextValueSource: "revenue" | "conversion_value" =
+      String(cfg.valueSource || "").trim().toLowerCase() === "conversion_value" ? "conversion_value" : "revenue";
 
-    setStep("campaign-field");
+    // Always start at the first step for LinkedIn so edits and source switching are consistent.
+    setStep(isLinkedIn ? "value-source" : "campaign-field");
     setFields([]);
     setFieldsError(null);
     setCampaignField(nextCampaignField);
     setRevenueField(nextRevenueField);
+    setConversionValueField(nextConversionValueField);
+    setValueSource(nextValueSource);
     setSelectedValues(nextSelectedValues);
     setUniqueValues([]);
     setDays(nextDays);

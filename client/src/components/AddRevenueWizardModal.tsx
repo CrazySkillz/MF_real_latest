@@ -257,6 +257,8 @@ export function AddRevenueWizardModal(props: {
         campaignField: config?.campaignField ? String(config.campaignField) : undefined,
         selectedValues: Array.isArray(config?.selectedValues) ? config.selectedValues.map(String) : undefined,
         revenueField: config?.revenueField ? String(config.revenueField) : undefined,
+        conversionValueField: config?.conversionValueField ? String(config.conversionValueField) : undefined,
+        valueSource: config?.valueSource ? String(config.valueSource) : undefined,
         days: Number.isFinite(Number(config?.days)) ? Number(config.days) : undefined,
       };
       setSalesforceInitialMappingConfig(next);
@@ -629,6 +631,22 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
+  // UX: remove redundant "Next" on the sheet/tab selection screen.
+  // Once the user selects a tab, we preview automatically and advance to mapping.
+  useEffect(() => {
+    if (!open) return;
+    if (step !== "sheets_choose") return;
+    if (!sheetsConnectionId) return;
+    if (showSheetsConnect) return;
+    if (sheetsPreview) return;
+    void (async () => {
+      await handleSheetsPreview(sheetsConnectionId);
+      // Advance only if preview succeeded
+      setStep((prev) => (prev === "sheets_choose" ? "sheets_map" : prev));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, step, sheetsConnectionId, showSheetsConnect]);
+
   // If opened in edit mode for Sheets, auto-load preview so the user can update mappings immediately.
   useEffect(() => {
     if (!open) return;
@@ -938,26 +956,27 @@ export function AddRevenueWizardModal(props: {
                       )}
                       <div className="flex items-center justify-between gap-2">
                         <Label>Upload file (CSV)</Label>
-                        {csvFile && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setCsvFile(null);
-                              setCsvPreview(null);
-                              setCsvRevenueCol("");
-                              setCsvConversionValueCol("");
-                              setCsvDateCol("");
-                              setCsvCampaignCol("");
-                              setCsvCampaignValues([]);
-                              setCsvCampaignQuery("");
-                              setCsvValueSource('revenue');
-                            }}
-                          >
-                            Remove file
-                          </Button>
-                        )}
+                        {/* Reserve space for the action button to prevent layout shift when a file is selected */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCsvFile(null);
+                            setCsvPreview(null);
+                            setCsvRevenueCol("");
+                            setCsvConversionValueCol("");
+                            setCsvDateCol("");
+                            setCsvCampaignCol("");
+                            setCsvCampaignValues([]);
+                            setCsvCampaignQuery("");
+                            setCsvValueSource('revenue');
+                          }}
+                          disabled={!csvFile}
+                          className={`${csvFile ? "" : "opacity-0 pointer-events-none"} min-w-[104px]`}
+                        >
+                          Remove file
+                        </Button>
                       </div>
                       <Input
                         type="file"
@@ -1330,16 +1349,6 @@ export function AddRevenueWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
                       </Button>
-                      <Button
-                        onClick={async () => {
-                          if (!sheetsConnectionId) return;
-                          await handleSheetsPreview(sheetsConnectionId);
-                          setStep("sheets_map");
-                        }}
-                        disabled={!sheetsConnectionId || sheetsProcessing}
-                      >
-                        {sheetsProcessing ? "Loading…" : "Next"}
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1350,6 +1359,28 @@ export function AddRevenueWizardModal(props: {
               <div className="space-y-4">
                 <Card>
                   <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between gap-2 pt-2">
+                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                        {sheetsConnectionId ? "Selected tab is set. You can change it any time." : ""}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Go back to tab selection (no OAuth). Keep connections; reset preview/mapping state.
+                          setSheetsPreview(null);
+                          setSheetsRevenueCol("");
+                          setSheetsConversionValueCol("");
+                          setSheetsCampaignCol("");
+                          setSheetsCampaignQuery("");
+                          setSheetsCampaignValues([]);
+                          setStep("sheets_choose");
+                        }}
+                      >
+                        Change sheet/tab
+                      </Button>
+                    </div>
                     {!sheetsPreview ? (
                       <div className="rounded-md border p-3 text-sm text-slate-600 dark:text-slate-400">
                         No preview loaded yet. Go back and click Next.

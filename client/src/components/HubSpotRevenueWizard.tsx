@@ -495,16 +495,18 @@ export function HubSpotRevenueWizard(props: {
                   }}
                   className="space-y-2"
                 >
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-2 min-h-[44px]">
                     <RadioGroupItem id="hs-mode-revenue" value="revenue" />
-                    <label htmlFor="hs-mode-revenue" className="text-sm font-medium leading-none cursor-pointer">
-                      Total Revenue (to date) — recommended
+                    <label htmlFor="hs-mode-revenue" className="cursor-pointer">
+                      <div className="text-sm font-medium leading-snug">Total Revenue (to date)</div>
+                      <div className="text-xs text-slate-500 leading-snug">Recommended for executive ROI/ROAS</div>
                     </label>
                   </div>
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-2 min-h-[44px]">
                     <RadioGroupItem id="hs-mode-cv" value="conversion_value" />
-                    <label htmlFor="hs-mode-cv" className="text-sm font-medium leading-none cursor-pointer">
-                      Conversion Value (per conversion) — advanced (estimated mode)
+                    <label htmlFor="hs-mode-cv" className="cursor-pointer">
+                      <div className="text-sm font-medium leading-snug">Conversion Value (per conversion)</div>
+                      <div className="text-xs text-slate-500 leading-snug">Advanced: estimated value mode (LTV/ACV/etc.)</div>
                     </label>
                   </div>
                 </RadioGroup>

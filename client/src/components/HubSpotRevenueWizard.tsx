@@ -36,9 +36,9 @@ export function HubSpotRevenueWizard(props: {
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
 
-  type Step = "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
+  type Step = "value-source" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
   // UX: avoid an intermediate "Connect HubSpot" screen; start at Campaign field.
-  const [step, setStep] = useState<Step>("campaign-field");
+  const [step, setStep] = useState<Step>(isLinkedIn ? "value-source" : "campaign-field");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -67,12 +67,13 @@ export function HubSpotRevenueWizard(props: {
 
   const steps = useMemo(
     () => [
+      ...(isLinkedIn ? [{ id: "value-source" as const, label: "Source", icon: DollarSign }] : []),
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
-      { id: "revenue" as const, label: isLinkedIn ? "Revenue / Conversion Value" : "Revenue", icon: DollarSign },
+      { id: "revenue" as const, label: isLinkedIn ? (valueSource === "conversion_value" ? "Conversion Value" : "Revenue") : "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ],
-    [isLinkedIn]
+    [isLinkedIn, valueSource]
   );
 
   const currentStepIndex = useMemo(() => {
@@ -279,6 +280,18 @@ export function HubSpotRevenueWizard(props: {
   };
 
   const handleNext = async () => {
+    if (step === "value-source") {
+      // Mode-first UX: pick the source of truth before mapping fields.
+      // Also keep values mutually exclusive to reduce confusion.
+      if (valueSource === "revenue") {
+        setConversionValueProperty("");
+      } else {
+        // Conversion value mode: keep revenueProperty as a diagnostic only; user won't be asked for it later.
+        // Do not clear it to preserve the default "amount" if they switch back.
+      }
+      setStep("campaign-field");
+      return;
+    }
     if (step === "campaign-field") {
       if (!isConnected) {
         toast({
@@ -341,7 +354,13 @@ export function HubSpotRevenueWizard(props: {
   };
 
   const handleBackStep = () => {
+    if (step === "value-source") {
+      onBack?.();
+      if (!onBack) onClose?.();
+      return;
+    }
     if (step === "campaign-field") {
+      if (isLinkedIn) return setStep("value-source");
       onBack?.();
       if (!onBack) onClose?.();
       return;
@@ -394,6 +413,12 @@ export function HubSpotRevenueWizard(props: {
       <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
+            {step === "value-source" && (
+              <>
+                <DollarSign className="w-5 h-5 text-green-600" />
+                Choose source of truth
+              </>
+            )}
             {step === "campaign-field" && (
               <>
                 <Target className="w-5 h-5 text-blue-600" />
@@ -409,7 +434,9 @@ export function HubSpotRevenueWizard(props: {
             {step === "revenue" && (
               <>
                 <DollarSign className="w-5 h-5 text-green-600" />
-                {isLinkedIn ? "Select Revenue / Conversion Value Field" : "Select Revenue Field"}
+                {isLinkedIn
+                  ? (valueSource === "conversion_value" ? "Select Conversion Value Field" : "Select Revenue Field")
+                  : "Select Revenue Field"}
               </>
             )}
             {step === "review" && (
@@ -426,6 +453,10 @@ export function HubSpotRevenueWizard(props: {
             )}
           </CardTitle>
           <CardDescription>
+            {step === "value-source" &&
+              (isLinkedIn
+                ? "Choose whether HubSpot should provide Total Revenue (to date) or a Conversion Value (estimated value per conversion)."
+                : "")}
             {step === "campaign-field" &&
               (statusLoading
                 ? "Checking HubSpot connection…"
@@ -434,7 +465,10 @@ export function HubSpotRevenueWizard(props: {
                 : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
-            {step === "revenue" && "Select the HubSpot field that represents revenue (usually Deal amount)."}
+            {step === "revenue" &&
+              (isLinkedIn && valueSource === "conversion_value"
+                ? "Select the HubSpot field that represents conversion value per conversion (estimated value)."
+                : "Select the HubSpot field that represents revenue (usually Deal amount).")}
             {step === "review" && "Review the settings below, then save mappings."}
             {step === "complete" &&
               (isLinkedIn
@@ -446,6 +480,38 @@ export function HubSpotRevenueWizard(props: {
         <CardContent className="flex-1 flex flex-col min-h-0">
           {/* Scrollable step body to keep footer always visible */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-1 space-y-4">
+          {step === "value-source" && isLinkedIn && (
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-2">
+                <div className="text-sm font-medium">What do you want to import from HubSpot?</div>
+                <RadioGroup
+                  value={valueSource}
+                  onValueChange={(v: any) => {
+                    setValueSource(v);
+                    // Keep selections mutually exclusive.
+                    if (String(v) === "revenue") setConversionValueProperty("");
+                  }}
+                  className="space-y-2"
+                >
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem id="hs-mode-revenue" value="revenue" />
+                    <label htmlFor="hs-mode-revenue" className="text-sm font-medium leading-none cursor-pointer">
+                      Total Revenue (to date) — recommended
+                    </label>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem id="hs-mode-cv" value="conversion_value" />
+                    <label htmlFor="hs-mode-cv" className="text-sm font-medium leading-none cursor-pointer">
+                      Conversion Value (per conversion) — advanced (estimated mode)
+                    </label>
+                  </div>
+                </RadioGroup>
+                <div className="text-xs text-slate-500">
+                  Revenue is best for exec ROI/ROAS when you have realized revenue. Conversion Value is best when you intentionally use an estimated value (e.g., LTV/ACV).
+                </div>
+              </div>
+            </div>
+          )}
           {step === "campaign-field" && (
             <div className="space-y-3">
               {!statusLoading && !isConnected ? (
@@ -560,40 +626,10 @@ export function HubSpotRevenueWizard(props: {
 
           {step === "revenue" && (
             <div className="space-y-4">
-              {isLinkedIn && (
-                <div className="space-y-2">
-                  <Label>Source of truth</Label>
-                  <RadioGroup
-                    value={valueSource}
-                    onValueChange={(v: any) => setValueSource(v)}
-                    className="space-y-2"
-                  >
-                    <div className="flex items-start gap-2">
-                      <RadioGroupItem id="hs-vs-revenue" value="revenue" />
-                      <label htmlFor="hs-vs-revenue" className="text-sm font-medium leading-none cursor-pointer">
-                        Use Revenue (to date) — recommended
-                      </label>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <RadioGroupItem id="hs-vs-cv" value="conversion_value" />
-                      <label htmlFor="hs-vs-cv" className="text-sm font-medium leading-none cursor-pointer">
-                        Use Conversion Value (ignore Revenue) — advanced
-                      </label>
-                    </div>
-                  </RadioGroup>
-                  <div className="text-xs text-slate-500">
-                    <div>
-                      <span className="font-medium">Industry standard:</span> use <span className="font-medium">Revenue (Closed Won Deal Amount)</span> for executive ROI/ROAS.
-                    </div>
-                    <div className="mt-1">
-                      Conversion Value is best when you’re intentionally using an <span className="font-medium">estimated value</span> (e.g., LTV/ACV/Expected Value) instead of realized revenue.
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-2">
-                <Label>{isLinkedIn ? (valueSource === "conversion_value" ? "Conversion value field" : "Revenue field") : "Revenue field"}</Label>
+                <Label>
+                  {isLinkedIn && valueSource === "conversion_value" ? "Conversion value field" : "Revenue field"}
+                </Label>
                 <Select
                   value={isLinkedIn && valueSource === "conversion_value" ? conversionValueProperty : revenueProperty}
                   onValueChange={(v) => {

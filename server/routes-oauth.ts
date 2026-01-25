@@ -8162,10 +8162,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/salesforce/save-mappings", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { campaignField, selectedValues, revenueField, days, revenueClassification, platformContext, salesforceCurrencyOverride } = req.body || {};
+      const {
+        campaignField,
+        selectedValues,
+        revenueField,
+        conversionValueField,
+        valueSource,
+        days,
+        revenueClassification,
+        platformContext,
+        salesforceCurrencyOverride,
+      } = req.body || {};
 
       const attribField = String(campaignField || '').trim();
       const revenue = String(revenueField || 'Amount').trim();
+      const convValueField = String(conversionValueField || '').trim();
       const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
       const rangeDays = Math.min(Math.max(parseInt(String(days || '90'), 10) || 90, 1), 3650);
 
@@ -8178,6 +8189,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const platformCtx = String(platformContext || "linkedin").trim().toLowerCase() === "ga4" ? "ga4" : "linkedin";
       const camp = await storage.getCampaign(campaignId);
       const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
+
+      const effectiveValueSource: 'revenue' | 'conversion_value' =
+        platformCtx === 'linkedin' && String(valueSource || '').trim().toLowerCase() === 'conversion_value'
+          ? 'conversion_value'
+          : 'revenue';
+
+      if (platformCtx === 'linkedin' && effectiveValueSource === 'conversion_value' && !convValueField) {
+        return res.status(400).json({ error: 'conversionValueField is required when valueSource=conversion_value' });
+      }
 
       // Helper: read a dynamic (possibly dotted) field from a record.
       const readField = (rec: any, path: string): any => {
@@ -8199,7 +8219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // We'll try with CurrencyIsoCode first, then fall back without it if Salesforce reports INVALID_FIELD.
       const buildSoql = (includeCurrency: boolean) =>
         // Salesforce does not allow aliasing non-aggregate expressions in SOQL.
-        `SELECT Id, CloseDate, ${revenue}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
+        `SELECT Id, CloseDate, ${revenue}${effectiveValueSource === 'conversion_value' ? `, ${convValueField}` : ''}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
         `FROM Opportunity ` +
         // Use IsWon instead of StageName. Stage labels vary per org.
         `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
@@ -8236,6 +8256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalRevenue = 0;
       const currencies = new Set<string>();
       const revenueByDate = new Map<string, number>();
+      const conversionValues: number[] = [];
 
       // Best-effort: if the org doesn't expose CurrencyIsoCode (no multi-currency), attempt to read org default currency.
       const fetchOrgDefaultCurrency = async (): Promise<string | null> => {
@@ -8319,6 +8340,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (closeDate && Number.isFinite(r)) {
           revenueByDate.set(closeDate, (revenueByDate.get(closeDate) || 0) + r);
         }
+        if (platformCtx === 'linkedin' && effectiveValueSource === 'conversion_value') {
+          const cvRaw = readField(rec, convValueField);
+          const cv = cvRaw === undefined || cvRaw === null ? NaN : Number(String(cvRaw).replace(/[^0-9.\-]/g, ''));
+          if (Number.isFinite(cv) && cv > 0) conversionValues.push(cv);
+        }
         if (includeCurrency) {
           const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : '';
           if (c) currencies.add(c);
@@ -8360,6 +8386,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // If Salesforce is being used as a LinkedIn conversion-value source, compute and persist conversion value directly
+      // (do NOT derive it from revenue/conversions, and do not materialize revenue records).
+      if (platformCtx === 'linkedin' && effectiveValueSource === 'conversion_value') {
+        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+        const latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+        if (!latestSession) {
+          return res.status(400).json({ error: 'No LinkedIn import session found. Please import LinkedIn metrics first.' });
+        }
+
+        const sorted = conversionValues.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+        if (sorted.length === 0) {
+          return res.status(400).json({ error: 'No valid conversion value rows found for the selected Salesforce filter.' });
+        }
+        const mid = Math.floor(sorted.length / 2);
+        const median = sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        const convValue = Number(Number(median).toFixed(2));
+
+        // Persist on LinkedIn connection + latest session for deterministic KPI refresh.
+        await storage.updateLinkedInConnection(campaignId, { conversionValue: convValue.toFixed(2) as any } as any);
+        await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: convValue.toFixed(2) as any } as any);
+
+        // Persist mapping config on Salesforce connection for auditability.
+        const sfConn: any = await storage.getSalesforceConnection(campaignId);
+        if (sfConn) {
+          const rcRaw = String(revenueClassification || '').trim();
+          const rc =
+            rcRaw === 'offsite_not_in_ga4' || rcRaw === 'onsite_in_ga4' ? rcRaw : 'offsite_not_in_ga4';
+          const mappingConfig = {
+            objectType: 'opportunity',
+            platformContext: platformCtx,
+            campaignField: attribField,
+            selectedValues: selected,
+            revenueField: revenue,
+            conversionValueField: convValueField,
+            valueSource: 'conversion_value',
+            days: rangeDays,
+            currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+            revenueClassification: rc,
+            lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+          };
+          await storage.updateSalesforceConnection(sfConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
+        }
+
+        // Upsert a revenue_source row (LinkedIn scoped) so the system knows there is an explicit conversion value source.
+        try {
+          await deactivateRevenueSourcesForCampaign(campaignId, { platformContext: platformCtx });
+          const source = await storage.createRevenueSource({
+            campaignId,
+            sourceType: "salesforce",
+            platformContext: platformCtx,
+            displayName: `Salesforce (Opportunities)`,
+            currency: campaignCurrency,
+            mappingConfig: JSON.stringify({
+              provider: "salesforce",
+              platformContext: platformCtx,
+              mode: "conversion_value",
+              valueSource: "conversion_value",
+              campaignField: attribField,
+              selectedValues: selected,
+              revenueField: revenue,
+              conversionValueField: convValueField,
+              days: rangeDays,
+              revenueClassification,
+              lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+            }),
+            isActive: true,
+          } as any);
+          await storage.deleteRevenueRecordsBySource(source.id);
+        } catch (e) {
+          console.warn("[Salesforce Save Mappings] Failed to write conversion-value revenue source:", e);
+        }
+
+        await recomputeCampaignDerivedValues(campaignId);
+
+        return res.json({
+          success: true,
+          mode: "conversion_value",
+          conversionValueCalculated: true,
+          conversionValue: convValue,
+          totalRevenue: Number(totalRevenue.toFixed(2)),
+          totalConversions: 0,
+          currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+          sessionId: latestSession?.id || null,
+        });
+      }
+
       // Compute conversion value only for LinkedIn context (Salesforce revenue ÷ LinkedIn conversions).
       // GA4 context uses imported revenue directly and should not depend on LinkedIn sessions.
       let calculatedConversionValue: number | null = null;
@@ -8396,10 +8508,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Never write campaign-level conversionValue from LinkedIn revenue mappings.
       // Store conversionValue on the LinkedIn connection/session only.
       if (platformCtx === "linkedin") {
-        if (calculatedConversionValue !== null && latestSession) {
-          await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue } as any);
-          await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: calculatedConversionValue } as any);
-        }
+        // In revenue mode, do NOT persist conversionValue as an explicit mapping.
+        // Revenue-to-date should remain the source of truth; conversion value is derived on-the-fly.
+        try {
+          await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);
+        } catch {}
+        try {
+          if (latestSession?.id) await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: null } as any);
+        } catch {}
       }
 
       const sfConn: any = await storage.getSalesforceConnection(campaignId);
@@ -8413,6 +8529,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignField: attribField,
           selectedValues: selected,
           revenueField: revenue,
+          conversionValueField: null,
+          valueSource: 'revenue',
           days: rangeDays,
           currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
           revenueClassification: rc,
@@ -8435,6 +8553,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mappingConfig: JSON.stringify({
             provider: "salesforce",
             platformContext: platformCtx,
+            mode: "revenue_to_date",
+            valueSource: "revenue",
             campaignField: attribField,
             selectedValues: selected,
             revenueField: revenue,

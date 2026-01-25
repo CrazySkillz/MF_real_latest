@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, CheckCircle2, DollarSign, Target, Link2, ClipboardCheck } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 type SalesforceField = {
   name: string;
@@ -47,11 +48,12 @@ export function SalesforceRevenueWizard(props: {
 }) {
   const { campaignId, mode = "connect", initialMappingConfig = null, connectOnly = false, autoStartOAuth = false, onConnected, onBack, onSuccess, onClose, platformContext = "ga4" } = props;
   const { toast } = useToast();
+  const isLinkedIn = platformContext === "linkedin";
 
-  type Step = "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
+  type Step = "value-source" | "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
   // UX: OAuth happens before this wizard opens (from the Connect Additional Data flow),
   // so start at Campaign field (no separate Connect step).
-  const [step, setStep] = useState<Step>("campaign-field");
+  const [step, setStep] = useState<Step>(isLinkedIn ? "value-source" : "campaign-field");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -68,6 +70,8 @@ export function SalesforceRevenueWizard(props: {
   // This is the most universally available field and matches the desired default behavior.
   const [campaignField, setCampaignField] = useState<string>("Name");
   const [revenueField, setRevenueField] = useState<string>("Amount");
+  const [conversionValueField, setConversionValueField] = useState<string>("");
+  const [valueSource, setValueSource] = useState<"revenue" | "conversion_value">("revenue");
   // Internal flag used to avoid double-counting GA4 revenue in campaign totals.
   // We no longer expose this choice in the Salesforce wizard UI; default based on context.
   const [revenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">(
@@ -95,12 +99,13 @@ export function SalesforceRevenueWizard(props: {
 
   const steps = useMemo(
     () => [
+      ...(isLinkedIn ? [{ id: "value-source" as const, label: "Source", icon: DollarSign }] : []),
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
-      { id: "revenue" as const, label: "Revenue", icon: DollarSign },
+      { id: "revenue" as const, label: isLinkedIn ? (valueSource === "conversion_value" ? "Conversion Value" : "Revenue") : "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ],
-    []
+    [isLinkedIn, valueSource]
   );
 
   const currentStepIndex = useMemo(() => {
@@ -129,13 +134,15 @@ export function SalesforceRevenueWizard(props: {
   // - edit mode: prefill from saved mappingConfig and start at campaign-field.
   useEffect(() => {
     if (mode === "connect") {
-      setStep("campaign-field");
+      setStep(isLinkedIn ? "value-source" : "campaign-field");
       setOrgName(null);
       setOrgId(null);
       setFields([]);
       setFieldsError(null);
       setCampaignField("Name");
       setRevenueField("Amount");
+      setConversionValueField("");
+      setValueSource("revenue");
       setUniqueValues([]);
       setSelectedValues([]);
       setLastSaveResult(null);
@@ -491,6 +498,8 @@ export function SalesforceRevenueWizard(props: {
           campaignField,
           selectedValues,
           revenueField,
+          conversionValueField: isLinkedIn ? conversionValueField : null,
+          valueSource: isLinkedIn ? valueSource : "revenue",
           revenueClassification,
           days,
           platformContext,
@@ -517,6 +526,12 @@ export function SalesforceRevenueWizard(props: {
   };
 
   const handleNext = async () => {
+    if (step === "value-source") {
+      // Mode-first UX: pick source of truth before mapping fields.
+      if (valueSource === "revenue") setConversionValueField("");
+      setStep("campaign-field");
+      return;
+    }
     if (step === "campaign-field") {
       if (!isConnected) {
         toast({ title: "Connect Salesforce", description: "Connect Salesforce before continuing.", variant: "destructive" });
@@ -547,13 +562,24 @@ export function SalesforceRevenueWizard(props: {
       return;
     }
     if (step === "revenue") {
-      if (!revenueField) {
-        toast({
-          title: "Select a revenue field",
-          description: "Choose the Opportunity field that represents revenue (usually Amount).",
-          variant: "destructive",
-        });
-        return;
+      if (isLinkedIn && valueSource === "conversion_value") {
+        if (!conversionValueField) {
+          toast({
+            title: "Select a conversion value field",
+            description: "Choose the Opportunity field that represents conversion value per conversion (estimated value).",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        if (!revenueField) {
+          toast({
+            title: "Select a revenue field",
+            description: "Choose the Opportunity field that represents revenue (usually Amount).",
+            variant: "destructive",
+          });
+          return;
+        }
       }
       setStep("review");
       // Best-effort preview on entry so users can sanity-check before processing.
@@ -567,7 +593,13 @@ export function SalesforceRevenueWizard(props: {
   };
 
   const handleBackStep = () => {
+    if (step === "value-source") {
+      onBack?.();
+      if (!onBack) onClose?.();
+      return;
+    }
     if (step === "campaign-field") {
+      if (isLinkedIn) return setStep("value-source");
       onBack?.();
       if (!onBack) onClose?.();
       return;
@@ -620,6 +652,12 @@ export function SalesforceRevenueWizard(props: {
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
+              {step === "value-source" && (
+                <>
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  Choose source of truth
+                </>
+              )}
               {step === "campaign-field" && (
                 <>
                   <Target className="w-5 h-5 text-blue-600" />
@@ -635,7 +673,7 @@ export function SalesforceRevenueWizard(props: {
               {step === "revenue" && (
                 <>
                   <DollarSign className="w-5 h-5 text-green-600" />
-                  Select Revenue Field
+                  {isLinkedIn && valueSource === "conversion_value" ? "Select Conversion Value Field" : "Select Revenue Field"}
                 </>
               )}
               {step === "review" && (
@@ -665,17 +703,56 @@ export function SalesforceRevenueWizard(props: {
                 Connected to: <strong>{connectedLabel}</strong>
               </div>
             )}
+            {step === "value-source" && isLinkedIn && "Choose whether Salesforce should provide Total Revenue (to date) or a Conversion Value (estimated value per conversion)."}
             {step === "campaign-field" &&
               "Select the Salesforce Opportunity field that identifies which deals belong to this MetricMind campaign."}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignFieldLabel}” that should map to this MetricMind campaign.`}
-            {step === "revenue" && "Select the Opportunity field that represents revenue (usually Amount)."}
-            {step === "review" && "Confirm your selections. We'll pull won Opportunities and compute conversion value for this campaign."}
-            {step === "complete" && "Conversion value is saved. Revenue metrics should now be unlocked in Overview."}
+            {step === "revenue" &&
+              (isLinkedIn && valueSource === "conversion_value"
+                ? "Select the Opportunity field that represents conversion value per conversion (estimated value)."
+                : "Select the Opportunity field that represents revenue (usually Amount).")}
+            {step === "review" &&
+              (isLinkedIn && valueSource === "conversion_value"
+                ? "Confirm your selections. We'll compute and save conversion value to unlock LinkedIn revenue metrics."
+                : "Confirm your selections. We'll pull won Opportunities and compute revenue-derived metrics for this campaign.")}
+            {step === "complete" &&
+              (isLinkedIn && valueSource === "conversion_value"
+                ? "Conversion value is saved. Revenue metrics should now be unlocked in Overview."
+                : "Revenue is saved. Revenue metrics should now be unlocked in Overview.")}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {step === "value-source" && isLinkedIn && (
+            <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-2">
+              <div className="text-sm font-medium">What do you want to import from Salesforce?</div>
+              <RadioGroup
+                value={valueSource}
+                onValueChange={(v: any) => {
+                  setValueSource(v);
+                  if (String(v) === "revenue") setConversionValueField("");
+                }}
+                className="space-y-2"
+              >
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem id="sf-mode-revenue" value="revenue" />
+                  <label htmlFor="sf-mode-revenue" className="text-sm font-medium leading-none cursor-pointer">
+                    Total Revenue (to date) — recommended
+                  </label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem id="sf-mode-cv" value="conversion_value" />
+                  <label htmlFor="sf-mode-cv" className="text-sm font-medium leading-none cursor-pointer">
+                    Conversion Value (per conversion) — advanced (estimated mode)
+                  </label>
+                </div>
+              </RadioGroup>
+              <div className="text-xs text-slate-500">
+                Revenue is best for exec ROI/ROAS when you have realized revenue. Conversion Value is best when you intentionally use an estimated value (e.g., ACV/LTV).
+              </div>
+            </div>
+          )}
           {step === "campaign-field" && (
             <div className="space-y-2">
               <div className="space-y-2">
@@ -789,8 +866,14 @@ export function SalesforceRevenueWizard(props: {
           {step === "revenue" && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Revenue field</Label>
-                <Select value={revenueField} onValueChange={(v) => setRevenueField(v)}>
+                <Label>{isLinkedIn && valueSource === "conversion_value" ? "Conversion value field" : "Revenue field"}</Label>
+                <Select
+                  value={isLinkedIn && valueSource === "conversion_value" ? conversionValueField : revenueField}
+                  onValueChange={(v) => {
+                    if (isLinkedIn && valueSource === "conversion_value") setConversionValueField(v);
+                    else setRevenueField(v);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -804,7 +887,9 @@ export function SalesforceRevenueWizard(props: {
                       ))}
                   </SelectContent>
                 </Select>
-                <div className="text-xs text-slate-500">Default: Amount.</div>
+                <div className="text-xs text-slate-500">
+                  {isLinkedIn && valueSource === "conversion_value" ? "Choose a numeric field representing value per conversion." : "Default: Amount."}
+                </div>
               </div>
 
               <div className="flex items-center justify-between gap-3">

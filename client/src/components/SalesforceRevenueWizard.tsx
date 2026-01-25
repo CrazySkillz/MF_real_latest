@@ -699,11 +699,16 @@ export function SalesforceRevenueWizard(props: {
             )}
           </div>
           <CardDescription>
-            {!statusLoading && isConnected && connectedLabel && (
-              <div className="text-xs text-slate-500 mb-1">
-                Connected to: <strong>{connectedLabel}</strong>
-              </div>
-            )}
+            {/* Reserve space for connection label to avoid layout shift when async status arrives */}
+            <div className="text-xs text-slate-500 mb-1 min-h-[16px]">
+              {!statusLoading && isConnected && connectedLabel ? (
+                <>
+                  Connected to: <strong>{connectedLabel}</strong>
+                </>
+              ) : (
+                <span className="opacity-0">Connected to: Placeholder</span>
+              )}
+            </div>
             {step === "value-source" && isLinkedIn && "Choose whether Salesforce should provide Total Revenue (to date) or a Conversion Value (estimated value per conversion)."}
             {step === "campaign-field" &&
               "Select the Salesforce Opportunity field that identifies which deals belong to this MetricMind campaign."}

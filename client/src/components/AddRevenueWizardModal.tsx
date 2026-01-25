@@ -57,11 +57,27 @@ export function AddRevenueWizardModal(props: {
       void queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId], exact: false });
       // LinkedIn Overview tab consumes session-scoped aggregates: refresh any open session views.
       void queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
+
+      // LinkedIn KPI tab caches (ROI/ROAS/etc). Revenue changes must refresh these immediately.
+      // NOTE: LinkedIn KPIs are refreshed server-side on fetch (`GET /api/platforms/linkedin/kpis?campaignId=...`),
+      // so the critical piece is to force a refetch by invalidating the query keys used by the UI.
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/kpis"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
     }
+
+    // GA4 KPI tab caches (revenue-to-date affects financial KPIs when GA4 revenue is missing).
+    void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/kpis"], exact: false });
+    void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/kpis", campaignId], exact: false });
 
     // Best-effort immediate refresh when mounted (keeps Overview feeling instant).
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
     void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
+
+    if (platformContext === 'linkedin') {
+      void queryClient.refetchQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
+    } else {
+      void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_analytics/kpis", campaignId], exact: false });
+    }
   };
 
   const [step, setStep] = useState<Step>("select");

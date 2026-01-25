@@ -102,10 +102,11 @@ export function SalesforceRevenueWizard(props: {
       ...(isLinkedIn ? [{ id: "value-source" as const, label: "Source", icon: DollarSign }] : []),
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
-      { id: "revenue" as const, label: isLinkedIn ? (valueSource === "conversion_value" ? "Conversion Value" : "Revenue") : "Revenue", icon: DollarSign },
+      // Keep the stepper label stable to avoid layout shift (exec-grade UI polish).
+      { id: "revenue" as const, label: "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ],
-    [isLinkedIn, valueSource]
+    [isLinkedIn]
   );
 
   const currentStepIndex = useMemo(() => {
@@ -633,7 +634,7 @@ export function SalesforceRevenueWizard(props: {
                   {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
                 </div>
                 <p
-                  className={`text-xs mt-2 text-center ${
+                  className={`text-xs mt-2 text-center whitespace-nowrap ${
                     isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-slate-400"
                   }`}
                 >

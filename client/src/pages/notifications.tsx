@@ -24,17 +24,12 @@ export default function Notifications() {
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [testEmail, setTestEmail] = useState("");
   const itemsPerPage = 10;
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
-  });
-
-  const { data: alertStatus } = useQuery<{ emailConfigured?: boolean }>({
-    queryKey: ["/api/alerts/status"],
   });
 
   const markAsReadMutation = useMutation({
@@ -83,34 +78,6 @@ export default function Notifications() {
       toast({
         title: "Error",
         description: "Failed to delete notification",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const sendTestEmailMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/alerts/test-email", { to: testEmail });
-      return response.json();
-    },
-    onSuccess: (data: any) => {
-      if (data?.success) {
-        toast({
-          title: "Test email sent",
-          description: `Sent to ${Array.isArray(data.to) ? data.to.join(", ") : String(data.to || "")}`,
-        });
-      } else {
-        toast({
-          title: "Test email failed",
-          description: data?.message || "Failed to send test email",
-          variant: "destructive",
-        });
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Test email failed",
-        description: error?.message || "Failed to send test email",
         variant: "destructive",
       });
     },
@@ -255,47 +222,6 @@ export default function Notifications() {
                 )}
               </div>
             </div>
-
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Email testing</CardTitle>
-                <CardDescription>
-                  Send a test alert email to validate your production email setup end-to-end.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col md:flex-row gap-3 md:items-end">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <Label htmlFor="test-email">Recipient email</Label>
-                      <span className="text-xs text-slate-500">
-                        Email configured: {alertStatus?.emailConfigured === true ? "Yes" : alertStatus?.emailConfigured === false ? "No" : "Checking..."}
-                      </span>
-                    </div>
-                    <Input
-                      id="test-email"
-                      placeholder="you@company.com"
-                      value={testEmail}
-                      onChange={(e) => setTestEmail(e.target.value)}
-                    />
-                    <p className="text-xs text-slate-500">
-                      Enter one or more addresses separated by commas.
-                      {alertStatus?.emailConfigured === false ? " Email sending is disabled until the server is configured." : ""}
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() => sendTestEmailMutation.mutate()}
-                    disabled={
-                      !testEmail.trim() ||
-                      sendTestEmailMutation.isPending ||
-                      alertStatus?.emailConfigured !== true
-                    }
-                  >
-                    Send test email
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Filters */}
             <Card className="mb-6">

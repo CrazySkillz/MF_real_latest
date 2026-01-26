@@ -2088,9 +2088,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NOTE: Render runs `registerRoutes` from this file, so alert endpoints must exist here.
   app.post("/api/alerts/check", async (req, res) => {
     try {
+      // 1) In-app notifications (KPI performance alerts)
+      const before = await storage.getNotifications().catch(() => [] as any[]);
+      try {
+        const { checkPerformanceAlerts } = await import("./kpi-scheduler.js");
+        await checkPerformanceAlerts();
+      } catch (e: any) {
+        console.warn("[Alerts API] In-app KPI alert check failed:", e?.message || e);
+      }
+      const after = await storage.getNotifications().catch(() => [] as any[]);
+      const inAppNotificationsCreated = Math.max(0, (after?.length || 0) - (before?.length || 0));
+
+      // 2) Email alerts (KPI + Benchmark) - respects emailNotifications + alertFrequency
       const { alertMonitoringService } = await import("./services/alert-monitoring.js");
       const results = await alertMonitoringService.runAlertChecks();
-      res.json({ success: true, message: "Alert checks completed", results });
+
+      res.json({
+        success: true,
+        message: "Alert checks completed",
+        inAppNotificationsCreated,
+        results,
+      });
     } catch (error: any) {
       console.error('[Alerts API] check error:', error);
       res.status(500).json({ success: false, message: "Failed to run alert checks", error: error?.message || String(error) });

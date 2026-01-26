@@ -307,6 +307,24 @@ export const linkedinImportMetrics = pgTable("linkedin_import_metrics", {
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// LinkedIn Daily Metrics (persisted daily facts for Insights anomaly detection)
+export const linkedinDailyMetrics = pgTable("linkedin_daily_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(), // MetricMind campaign id
+  date: text("date").notNull(), // YYYY-MM-DD (UTC)
+  impressions: integer("impressions").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  reach: integer("reach").notNull().default(0),
+  engagements: integer("engagements").notNull().default(0),
+  conversions: integer("conversions").notNull().default(0),
+  leads: integer("leads").notNull().default(0),
+  spend: decimal("spend", { precision: 15, scale: 2 }).notNull().default("0"),
+  videoViews: integer("video_views").notNull().default(0),
+  viralImpressions: integer("viral_impressions").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const linkedinAdPerformance = pgTable("linkedin_ad_performance", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: text("session_id").notNull(),
@@ -1293,6 +1311,20 @@ export const insertLinkedInImportMetricSchema = createInsertSchema(linkedinImpor
   metricValue: true,
 });
 
+export const insertLinkedInDailyMetricSchema = createInsertSchema(linkedinDailyMetrics).pick({
+  campaignId: true,
+  date: true,
+  impressions: true,
+  clicks: true,
+  reach: true,
+  engagements: true,
+  conversions: true,
+  leads: true,
+  spend: true,
+  videoViews: true,
+  viralImpressions: true,
+});
+
 export const insertLinkedInAdPerformanceSchema = createInsertSchema(linkedinAdPerformance).pick({
   sessionId: true,
   adId: true,
@@ -1413,6 +1445,8 @@ export type LinkedInImportSession = typeof linkedinImportSessions.$inferSelect;
 export type InsertLinkedInImportSession = z.infer<typeof insertLinkedInImportSessionSchema>;
 export type LinkedInImportMetric = typeof linkedinImportMetrics.$inferSelect;
 export type InsertLinkedInImportMetric = z.infer<typeof insertLinkedInImportMetricSchema>;
+export type LinkedInDailyMetric = typeof linkedinDailyMetrics.$inferSelect;
+export type InsertLinkedInDailyMetric = z.infer<typeof insertLinkedInDailyMetricSchema>;
 export type LinkedInAdPerformance = typeof linkedinAdPerformance.$inferSelect;
 export type InsertLinkedInAdPerformance = z.infer<typeof insertLinkedInAdPerformanceSchema>;
 export type LinkedInReport = typeof linkedinReports.$inferSelect;

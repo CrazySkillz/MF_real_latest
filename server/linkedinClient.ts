@@ -161,6 +161,59 @@ export class LinkedInClient {
     }
   }
 
+  async getCampaignAnalyticsDaily(
+    campaignIds: string[],
+    startDate: string, // YYYY-MM-DD
+    endDate: string    // YYYY-MM-DD
+  ): Promise<any[]> {
+    try {
+      const response = await this.api.get('/adAnalytics', {
+        params: {
+          q: 'analytics',
+          campaigns: `List(${campaignIds.map(id => `urn:li:sponsoredCampaign:${id.replace('urn:li:sponsoredCampaign:', '')}`).join(',')})`,
+          dateRange: {
+            start: {
+              day: parseInt(startDate.split('-')[2]),
+              month: parseInt(startDate.split('-')[1]),
+              year: parseInt(startDate.split('-')[0])
+            },
+            end: {
+              day: parseInt(endDate.split('-')[2]),
+              month: parseInt(endDate.split('-')[1]),
+              year: parseInt(endDate.split('-')[0])
+            }
+          },
+          timeGranularity: 'DAILY',
+          pivot: 'CAMPAIGN',
+          // Include a broad set of fields so we can compute anomalies on CTR/CVR/Spend/etc.
+          fields: [
+            'impressions',
+            'clicks',
+            'costInLocalCurrency',
+            'externalWebsiteConversions',
+            'approximateUniqueImpressions',
+            'likes',
+            'comments',
+            'shares',
+            'reactions',
+            'leadGenerationMailContactInfoShares',
+            'leadGenerationMailInterestedClicks',
+            'videoViews',
+            'videoStarts',
+            'viralImpressions',
+            'dateRange',
+            'pivotValues'
+          ].join(',')
+        }
+      });
+
+      return response.data.elements || [];
+    } catch (error: any) {
+      console.error('LinkedIn get DAILY analytics error:', error.response?.data || error.message);
+      throw new Error(`Failed to fetch daily campaign analytics: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
   async getCreativeAnalytics(
     campaignIds: string[],
     startDate: string,

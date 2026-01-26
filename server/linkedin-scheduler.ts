@@ -234,6 +234,11 @@ async function fetchRealLinkedInData(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30);
 
+    // Daily facts for Insights anomaly detection (90d lookback)
+    const dailyEnd = new Date();
+    const dailyStart = new Date();
+    dailyStart.setDate(dailyStart.getDate() - 90);
+
     const campaignIds = campaignsToRefresh.map(c => c.id);
 
     // Fetch campaign analytics
@@ -242,6 +247,19 @@ async function fetchRealLinkedInData(
       startDate.toISOString().split('T')[0],
       endDate.toISOString().split('T')[0]
     );
+
+    // Fetch DAILY campaign analytics and persist into linkedin_daily_metrics (rolled up per MetricMind campaign per day)
+    try {
+      const dailyElements = await (linkedInClient as any).getCampaignAnalyticsDaily?.(
+        campaignIds,
+        dailyStart.toISOString().split('T')[0],
+        dailyEnd.toISOString().split('T')[0]
+      );
+      const { upsertLinkedInDailyTotals } = await import("./linkedin-daily-metrics");
+      await upsertLinkedInDailyTotals({ campaignId, dailyElements: Array.isArray(dailyElements) ? dailyElements : [] });
+    } catch (e: any) {
+      console.warn(`[LinkedIn Scheduler] Daily metrics upsert failed for ${campaignId}:`, e?.message || e);
+    }
 
     // Fetch creatives (ads) for each campaign
     const creatives = await linkedInClient.getCreatives(campaignIds);

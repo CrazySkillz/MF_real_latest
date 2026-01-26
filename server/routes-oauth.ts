@@ -2158,6 +2158,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // LinkedIn Daily Metrics (persisted facts; used for LinkedIn Insights anomaly detection)
+  app.get("/api/campaigns/:id/linkedin-daily", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.id || "");
+      const days = Math.max(7, Math.min(365, parseInt(String((req.query as any)?.days || "90"), 10) || 90));
+
+      // Default window: last N complete UTC days (end = yesterday to avoid partial today)
+      const now = new Date();
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+      const start = new Date(end.getTime());
+      start.setUTCDate(start.getUTCDate() - (days - 1));
+
+      const startDate = start.toISOString().slice(0, 10);
+      const endDate = end.toISOString().slice(0, 10);
+
+      const rows = await storage.getLinkedInDailyMetrics(campaignId, startDate, endDate).catch(() => []);
+      res.json({ success: true, campaignId, startDate, endDate, days, data: rows });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch LinkedIn daily metrics" });
+    }
+  });
+
   // Send a test alert email (admin/dev utility)
   app.post("/api/alerts/test-email", async (req, res) => {
     try {

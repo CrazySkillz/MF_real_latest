@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
@@ -39,6 +39,10 @@ export interface IStorage {
   upsertGA4DailyMetrics(rows: InsertGA4DailyMetric[]): Promise<{ upserted: number }>;
   getGA4DailyMetrics(campaignId: string, propertyId: string, startDate: string, endDate: string): Promise<GA4DailyMetric[]>;
   getLatestGA4DailyMetric(campaignId: string, propertyId: string): Promise<GA4DailyMetric | undefined>;
+
+  // LinkedIn Daily Metrics (daily facts)
+  upsertLinkedInDailyMetrics(rows: InsertLinkedInDailyMetric[]): Promise<{ upserted: number }>;
+  getLinkedInDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<LinkedInDailyMetric[]>;
 
   // Spend (generic)
   getSpendSources(campaignId: string): Promise<SpendSource[]>;
@@ -315,6 +319,7 @@ export class MemStorage implements IStorage {
   private performanceData: Map<string, PerformanceData>;
   private ga4Connections: Map<string, GA4Connection>;
   private ga4DailyMetrics: Map<string, GA4DailyMetric>;
+  private linkedinDailyMetrics: Map<string, LinkedInDailyMetric>;
   private spendSources: Map<string, SpendSource>;
   private spendRecords: Map<string, SpendRecord>;
   private revenueSources: Map<string, RevenueSource>;
@@ -356,6 +361,7 @@ export class MemStorage implements IStorage {
     this.performanceData = new Map();
     this.ga4Connections = new Map();
     this.ga4DailyMetrics = new Map();
+    this.linkedinDailyMetrics = new Map();
     this.spendSources = new Map();
     this.spendRecords = new Map();
     this.revenueSources = new Map();
@@ -1028,6 +1034,64 @@ export class MemStorage implements IStorage {
     });
     out.sort((a: any, b: any) => String(b?.date || "").localeCompare(String(a?.date || "")));
     return (out[0] as any) || undefined;
+  }
+
+  async upsertLinkedInDailyMetrics(rows: InsertLinkedInDailyMetric[]): Promise<{ upserted: number }> {
+    const items = Array.isArray(rows) ? rows : [];
+    let upserted = 0;
+    for (const r of items) {
+      const cid = String((r as any)?.campaignId || "");
+      const date = String((r as any)?.date || "");
+      if (!cid || !date) continue;
+      const key = `${cid}:${date}`;
+      const now = new Date();
+      const existing = this.linkedinDailyMetrics.get(key);
+      if (!existing) {
+        this.linkedinDailyMetrics.set(key, {
+          id: randomUUID(),
+          campaignId: cid,
+          date,
+          impressions: Number((r as any).impressions || 0),
+          clicks: Number((r as any).clicks || 0),
+          reach: Number((r as any).reach || 0),
+          engagements: Number((r as any).engagements || 0),
+          conversions: Number((r as any).conversions || 0),
+          leads: Number((r as any).leads || 0),
+          spend: String((r as any).spend ?? "0"),
+          videoViews: Number((r as any).videoViews || 0),
+          viralImpressions: Number((r as any).viralImpressions || 0),
+          updatedAt: now,
+          createdAt: now,
+        } as any);
+      } else {
+        this.linkedinDailyMetrics.set(key, {
+          ...(existing as any),
+          impressions: Number((r as any).impressions || 0),
+          clicks: Number((r as any).clicks || 0),
+          reach: Number((r as any).reach || 0),
+          engagements: Number((r as any).engagements || 0),
+          conversions: Number((r as any).conversions || 0),
+          leads: Number((r as any).leads || 0),
+          spend: String((r as any).spend ?? "0"),
+          videoViews: Number((r as any).videoViews || 0),
+          viralImpressions: Number((r as any).viralImpressions || 0),
+          updatedAt: now,
+        } as any);
+      }
+      upserted += 1;
+    }
+    return { upserted };
+  }
+
+  async getLinkedInDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<LinkedInDailyMetric[]> {
+    const cid = String(campaignId || "");
+    const start = String(startDate || "");
+    const end = String(endDate || "");
+    const out = Array.from(this.linkedinDailyMetrics.values()).filter((r) => {
+      return String((r as any)?.campaignId || "") === cid && String((r as any)?.date || "") >= start && String((r as any)?.date || "") <= end;
+    });
+    out.sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+    return out as any;
   }
 
   // Spend methods
@@ -2669,6 +2733,60 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(ga4DailyMetrics.date))
       .limit(1);
     return (rows?.[0] as any) || undefined;
+  }
+
+  async upsertLinkedInDailyMetrics(rows: InsertLinkedInDailyMetric[]): Promise<{ upserted: number }> {
+    const input = Array.isArray(rows) ? rows : [];
+    if (input.length === 0) return { upserted: 0 };
+
+    for (const r of input) {
+      const campaignId = String((r as any)?.campaignId || "");
+      const date = String((r as any)?.date || "");
+      if (!campaignId || !date) continue;
+
+      const impressions = Number((r as any)?.impressions || 0) || 0;
+      const clicks = Number((r as any)?.clicks || 0) || 0;
+      const reach = Number((r as any)?.reach || 0) || 0;
+      const engagements = Number((r as any)?.engagements || 0) || 0;
+      const conversions = Number((r as any)?.conversions || 0) || 0;
+      const leads = Number((r as any)?.leads || 0) || 0;
+      const spend = String((r as any)?.spend ?? "0");
+      const videoViews = Number((r as any)?.videoViews || 0) || 0;
+      const viralImpressions = Number((r as any)?.viralImpressions || 0) || 0;
+
+      await db.execute(sql`
+        INSERT INTO linkedin_daily_metrics
+          (campaign_id, date, impressions, clicks, reach, engagements, conversions, leads, spend, video_views, viral_impressions, updated_at)
+        VALUES
+          (${campaignId}, ${date}, ${impressions}, ${clicks}, ${reach}, ${engagements}, ${conversions}, ${leads}, ${spend}, ${videoViews}, ${viralImpressions}, CURRENT_TIMESTAMP)
+        ON CONFLICT (campaign_id, date)
+        DO UPDATE SET
+          impressions = EXCLUDED.impressions,
+          clicks = EXCLUDED.clicks,
+          reach = EXCLUDED.reach,
+          engagements = EXCLUDED.engagements,
+          conversions = EXCLUDED.conversions,
+          leads = EXCLUDED.leads,
+          spend = EXCLUDED.spend,
+          video_views = EXCLUDED.video_views,
+          viral_impressions = EXCLUDED.viral_impressions,
+          updated_at = CURRENT_TIMESTAMP;
+      `);
+    }
+
+    return { upserted: input.length };
+  }
+
+  async getLinkedInDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<LinkedInDailyMetric[]> {
+    const cid = String(campaignId || "");
+    const start = String(startDate || "");
+    const end = String(endDate || "");
+    const rows = await db
+      .select()
+      .from(linkedinDailyMetrics)
+      .where(and(eq(linkedinDailyMetrics.campaignId, cid), sql`${linkedinDailyMetrics.date} >= ${start} AND ${linkedinDailyMetrics.date} <= ${end}`))
+      .orderBy(linkedinDailyMetrics.date);
+    return rows as any;
   }
 
   // Spend methods

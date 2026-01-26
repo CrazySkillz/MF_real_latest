@@ -198,6 +198,32 @@ process.on('uncaughtException', (error: Error) => {
             ON ga4_daily_metrics(campaign_id, date);
           `);
 
+          // LinkedIn daily metrics (persisted daily facts powering LinkedIn Insights anomaly detection)
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS linkedin_daily_metrics (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              date TEXT NOT NULL,
+              impressions INTEGER NOT NULL DEFAULT 0,
+              clicks INTEGER NOT NULL DEFAULT 0,
+              reach INTEGER NOT NULL DEFAULT 0,
+              engagements INTEGER NOT NULL DEFAULT 0,
+              conversions INTEGER NOT NULL DEFAULT 0,
+              leads INTEGER NOT NULL DEFAULT 0,
+              spend DECIMAL(15, 2) NOT NULL DEFAULT 0,
+              video_views INTEGER NOT NULL DEFAULT 0,
+              viral_impressions INTEGER NOT NULL DEFAULT 0,
+              updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE (campaign_id, date)
+            );
+          `);
+
+          await db.execute(sql`
+            CREATE INDEX IF NOT EXISTS idx_linkedin_daily_metrics_campaign_date
+            ON linkedin_daily_metrics(campaign_id, date);
+          `);
+
           // Spend tables for GA4 financials (generic spend ingestion from any source)
           await db.execute(sql`
             CREATE TABLE IF NOT EXISTS spend_sources (

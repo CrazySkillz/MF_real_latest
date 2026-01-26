@@ -15184,6 +15184,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalAdConversions = (ads || []).reduce((sum: number, ad: any) => sum + parseNum(ad?.conversions), 0);
       const derivedCv = (importedRevenueToDate > 0 && totalAdConversions > 0) ? (importedRevenueToDate / totalAdConversions) : 0;
       const conversionValue = connCv > 0 ? connCv : (derivedCv > 0 ? derivedCv : sessionCv);
+      const conversionValueSource: "explicit" | "derived" | "none" =
+        (connCv > 0 || sessionCv > 0) ? "explicit" : (derivedCv > 0 ? "derived" : "none");
 
       const computeAdRevenue = (conversions: number): number => {
         if (conversionValue > 0) return conversions * conversionValue;
@@ -15210,19 +15212,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           _computed: {
             conversionValue: parseFloat(Number(conversionValue || 0).toFixed(2)),
             importedRevenueToDate: parseFloat(Number(importedRevenueToDate || 0).toFixed(2)),
+            conversionValueSource,
+            revenueIsEstimated:
+              conversionValueSource === "derived" ||
+              (conversionValue <= 0 && importedRevenueToDate > 0 && totalAdConversions > 0),
           },
         };
       });
 
-      // Sort by computed revenue desc; tie-breaker by conversions then spend.
+      // Authoritative sorting:
+      // - If ad-level revenue is attributable (conversionValue > 0), sort by computed revenue
+      // - Otherwise sort by spend (fallback: impressions), which matches the UI's "Top Performer" view.
       const sortedAds = enriched.sort((a: any, b: any) => {
-        const revA = parseNum(a?.revenue);
-        const revB = parseNum(b?.revenue);
-        if (revB !== revA) return revB - revA;
+        if (conversionValue > 0) {
+          const revA = parseNum(a?.revenue);
+          const revB = parseNum(b?.revenue);
+          if (revB !== revA) return revB - revA;
+          const convA = parseNum(a?.conversions);
+          const convB = parseNum(b?.conversions);
+          if (convB !== convA) return convB - convA;
+          return parseNum(b?.spend) - parseNum(a?.spend);
+        }
+        const aSpend = parseNum(a?.spend);
+        const bSpend = parseNum(b?.spend);
+        const aImpr = parseNum(a?.impressions);
+        const bImpr = parseNum(b?.impressions);
+        const aKey = aSpend > 0 ? aSpend : aImpr;
+        const bKey = bSpend > 0 ? bSpend : bImpr;
+        if (bKey !== aKey) return bKey - aKey;
         const convA = parseNum(a?.conversions);
         const convB = parseNum(b?.conversions);
         if (convB !== convA) return convB - convA;
-        return parseNum(b?.spend) - parseNum(a?.spend);
+        return parseNum(b?.clicks) - parseNum(a?.clicks);
       });
 
       res.json(sortedAds);

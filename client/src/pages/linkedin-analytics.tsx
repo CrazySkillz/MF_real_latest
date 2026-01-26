@@ -2251,19 +2251,26 @@ export default function LinkedInAnalytics() {
       return;
     }
     
-    // Sort ads by revenue (top 15 only, matching the UI)
-    const allSortedAds = [...(adsData as any[])].sort((a, b) => parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0'));
-    const totalAds = allSortedAds.length;
+    // Finance-grade correctness:
+    // Treat the backend as the single source of truth for sort order.
+    const allAds = Array.isArray(adsData) ? (adsData as any[]) : [];
+    const totalAds = allAds.length;
     const isLimited = totalAds > 15;
-    const sortedAds = isLimited ? allSortedAds.slice(0, 15) : allSortedAds;
+    const sortedAds = isLimited ? allAds.slice(0, 15) : allAds;
+
+    // Ad-level revenue attribution requires a conversion value
+    const hasAdLevelRevenue = aggregated?.hasRevenueTracking === 1 && Number(aggregated?.conversionValue || 0) > 0;
+    const anyEstimatedRevenue = hasAdLevelRevenue && sortedAds.some((ad: any) => Boolean(ad?._computed?.revenueIsEstimated));
     
     // Summary section
     y = addPDFSection(doc, 'Ad Performance Summary', y, [54, 162, 235]);
     doc.setTextColor(50, 50, 50);
     doc.setFontSize(10);
     
-    const totalRevenue = allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0);
-    const avgRevenue = totalRevenue / totalAds;
+    const totalRevenue = allAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0);
+    const avgRevenue = totalAds > 0 ? (totalRevenue / totalAds) : 0;
+    const totalSpend = allAds.reduce((sum, ad) => sum + parseFloat(ad.spend || '0'), 0);
+    const totalConversions = allAds.reduce((sum, ad) => sum + parseFloat(ad.conversions || '0'), 0);
     
     doc.setFont(undefined, 'bold');
     doc.text('Total Ads:', 25, y);
@@ -2271,17 +2278,42 @@ export default function LinkedInAnalytics() {
     doc.text(`${totalAds}${isLimited ? ' (showing top 15)' : ''}`, 100, y);
     y += 8;
     
-    doc.setFont(undefined, 'bold');
-    doc.text('Total Revenue:', 25, y);
-    doc.setFont(undefined, 'normal');
-    doc.text(formatCurrency(totalRevenue), 100, y);
-    y += 8;
-    
-    doc.setFont(undefined, 'bold');
-    doc.text('Avg Revenue/Ad:', 25, y);
-    doc.setFont(undefined, 'normal');
-    doc.text(formatCurrency(avgRevenue), 100, y);
-    y += 15;
+    if (hasAdLevelRevenue) {
+      doc.setFont(undefined, 'bold');
+      doc.text('Total Revenue:', 25, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(formatCurrency(totalRevenue), 100, y);
+      y += 8;
+      
+      doc.setFont(undefined, 'bold');
+      doc.text('Avg Revenue/Ad:', 25, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(formatCurrency(avgRevenue), 100, y);
+      y += 8;
+
+      if (anyEstimatedRevenue) {
+        doc.setFontSize(9);
+        doc.setTextColor(120, 120, 120);
+        doc.text('Note: Revenue is estimated (derived conversion value).', 25, y);
+        doc.setTextColor(50, 50, 50);
+        doc.setFontSize(10);
+        y += 7;
+      } else {
+        y += 7;
+      }
+    } else {
+      doc.setFont(undefined, 'bold');
+      doc.text('Total Spend:', 25, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(formatCurrency(totalSpend), 100, y);
+      y += 8;
+
+      doc.setFont(undefined, 'bold');
+      doc.text('Total Conversions:', 25, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(formatNumber(totalConversions), 100, y);
+      y += 15;
+    }
     
     // Individual ads section
     y = addPDFSection(doc, 'Individual Ad Performance', y, [54, 162, 235]);
@@ -2289,8 +2321,8 @@ export default function LinkedInAnalytics() {
     
     sortedAds.forEach((ad: any, index: number) => {
       // Check if we need a new page (account for taller boxes with revenue metrics)
-      const hasRevenue = ad.revenue && parseFloat(ad.revenue) > 0;
-      const requiredSpace = hasRevenue ? 84 : 68; // Box height + spacing
+      const showRevenueMetrics = hasAdLevelRevenue;
+      const requiredSpace = showRevenueMetrics ? 84 : 68; // Box height + spacing
       
       if (y + requiredSpace > 270) {
         doc.addPage();
@@ -2300,7 +2332,7 @@ export default function LinkedInAnalytics() {
       // Ad box with ranking indicator - increased height for all metrics
       const isTop = index === 0;
       const borderColor = isTop ? [52, 168, 83] : [200, 200, 200]; // green for top performer
-      const boxHeight = hasRevenue ? 76 : 60; // Taller box when revenue metrics exist
+      const boxHeight = showRevenueMetrics ? 76 : 60; // Taller box when revenue metrics exist
       
       doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
       doc.setLineWidth(isTop ? 0.5 : 0.3);
@@ -2320,6 +2352,16 @@ export default function LinkedInAnalytics() {
       doc.setFont(undefined, 'bold');
       doc.setFontSize(11);
       doc.text(ad.adName || ad.name || 'Unnamed Ad', 35, y + 2);
+
+      // Estimated badge (when derived conversion value is used)
+      if (showRevenueMetrics && ad?._computed?.revenueIsEstimated) {
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.setFont(undefined, 'normal');
+        doc.text('(Estimated)', 180, y + 2, { align: 'right' });
+        doc.setTextColor(50, 50, 50);
+        doc.setFontSize(11);
+      }
       
       // Core Metrics Section
       doc.setFont(undefined, 'normal');
@@ -6170,26 +6212,20 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : adsData && (adsData as any[]).length > 0 ? (
                   (() => {
-                    // Check if revenue tracking is available (conversion value set)
-                    const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
-                    
-                    // Sort ads by appropriate metric based on revenue tracking availability
-                    // If revenue tracking is enabled, sort by revenue; otherwise sort by spend (or impressions if spend not available)
-                    const allSortedAds = [...(adsData as any[])].sort((a, b) => {
-                      if (hasRevenueTracking) {
-                        // Sort by revenue when conversion value is set
-                        return parseFloat(b.revenue || '0') - parseFloat(a.revenue || '0');
-                      } else {
-                        // Sort by spend when no conversion value (fallback to impressions if spend not available)
-                        const aValue = parseFloat(a.spend || '0') || parseFloat(a.impressions || '0');
-                        const bValue = parseFloat(b.spend || '0') || parseFloat(b.impressions || '0');
-                        return bValue - aValue;
-                      }
-                    });
-                    const totalAds = allSortedAds.length;
-                    const sortedAds = allSortedAds.slice(0, 15); // Limit to top 15 ads
+                    // Finance-grade correctness:
+                    // Treat the backend as the single source of truth for sort order.
+                    // The backend sorts by revenue when attributable (conversion value exists),
+                    // otherwise by spend (fallback: impressions).
+                    const allAds = Array.isArray(adsData) ? (adsData as any[]) : [];
+                    const totalAds = allAds.length;
+                    const sortedAds = allAds.slice(0, 15); // Limit to top 15 ads (backend order)
                     const isLimited = totalAds > 15;
                     const topAd = sortedAds[0];
+
+                    // Ad-level revenue attribution requires a conversion value.
+                    // Note: campaign-level revenue can exist without ad-level attribution (e.g., revenue imported but 0 conversions).
+                    const hasAdLevelRevenue = aggregated?.hasRevenueTracking === 1 && Number(aggregated?.conversionValue || 0) > 0;
+                    const anyEstimatedRevenue = hasAdLevelRevenue && sortedAds.some((ad: any) => Boolean(ad?._computed?.revenueIsEstimated));
                     
                     // Get selected metrics from session to ensure consistency with Overview tab
                     const selectedMetricKeys = session?.selectedMetricKeys || [];
@@ -6259,8 +6295,8 @@ export default function LinkedInAnalytics() {
                       availableMetrics.push(allMetricsMap.er);
                     }
                     
-                    // 3. Add revenue metrics if conversion value is set
-                    if (aggregated?.hasRevenueTracking === 1) {
+                    // 3. Add revenue metrics if conversion value is set (required for ad-level revenue attribution)
+                    if (hasAdLevelRevenue) {
                       availableMetrics.push(
                         allMetricsMap.totalRevenue,
                         allMetricsMap.roas,
@@ -6332,22 +6368,39 @@ export default function LinkedInAnalytics() {
                       };
                     });
 
-                    const topMetricValue = hasRevenueTracking 
+                    const topMetricValue = hasAdLevelRevenue 
                       ? formatCurrency(parseFloat(topAd.revenue || '0'))
                       : formatCurrency(parseFloat(topAd.spend || '0')) || formatNumber(parseInt(topAd.impressions || '0'));
-                    const topMetricLabel = hasRevenueTracking ? 'in revenue' : (topAd.spend ? 'in spend' : 'impressions');
+                    const topMetricLabel = hasAdLevelRevenue ? 'in revenue' : (topAd.spend ? 'in spend' : 'impressions');
 
                     return (
                       <div className="space-y-6">
                         {/* Revenue Tracking Notice */}
-                        {!hasRevenueTracking && (
+                        {!hasAdLevelRevenue && (
                           <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
                             <CardContent className="py-4">
                               <div className="flex items-start gap-3">
                                 <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                                 <div className="text-amber-800 dark:text-amber-300">
-                                  <p className="font-semibold mb-1">Revenue metrics require a conversion value.</p>
-                                  <p className="text-sm">Add a conversion value to your campaign to see revenue, ROAS, ROI, and profit metrics in ad comparison.</p>
+                                  <p className="font-semibold mb-1">Ad-level revenue requires a conversion value.</p>
+                                  <p className="text-sm">
+                                    Add a conversion value to attribute revenue, ROAS, ROI, and profit to individual ads. (Campaign-level revenue may still be visible in Overview.)
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {anyEstimatedRevenue && (
+                          <Card className="border-slate-200 bg-slate-50 dark:bg-slate-900/20 dark:border-slate-700">
+                            <CardContent className="py-4">
+                              <div className="flex items-start gap-3">
+                                <AlertCircle className="h-5 w-5 text-slate-600 dark:text-slate-400 mt-0.5 flex-shrink-0" />
+                                <div className="text-slate-700 dark:text-slate-300">
+                                  <p className="font-semibold mb-1">Revenue is marked as Estimated.</p>
+                                  <p className="text-sm">
+                                    Ad-level revenue is derived using an estimated conversion value (total imported revenue ÷ conversions for this window). Use for directional insights, not finance audit.
+                                  </p>
                                 </div>
                               </div>
                             </CardContent>
@@ -6361,7 +6414,7 @@ export default function LinkedInAnalytics() {
                               <div className="flex items-center gap-3">
                                 <Trophy className="w-8 h-8" />
                                 <div>
-                                  <p className="text-sm opacity-90">{hasRevenueTracking ? 'Top Revenue Driver' : 'Top Performer'}</p>
+                                  <p className="text-sm opacity-90">{hasAdLevelRevenue ? 'Top Revenue Driver' : 'Top Performer'}</p>
                                   <p className="text-xl font-bold">{topAd.adName}</p>
                                 </div>
                               </div>
@@ -6380,7 +6433,7 @@ export default function LinkedInAnalytics() {
                               <div className="flex items-start gap-3">
                                 <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                                 <div className="text-blue-800 dark:text-blue-300">
-                                  <p className="font-semibold">Showing top 15 of {totalAds} ads {hasRevenueTracking ? 'by revenue' : 'by spend'}.</p>
+                                  <p className="font-semibold">Showing top 15 of {totalAds} ads {hasAdLevelRevenue ? 'by revenue' : 'by spend'}.</p>
                                   <p className="text-sm mt-1">Focus on optimizing your best performers for maximum ROI!</p>
                                 </div>
                               </div>
@@ -6452,11 +6505,12 @@ export default function LinkedInAnalytics() {
                                 const isTop = index === 0;
                                 const isBottom = index === sortedAds.length - 1 && sortedAds.length > 2;
                                 // Show revenue if available, otherwise show spend or impressions
-                                const displayValue = hasRevenueTracking 
+                                const displayValue = hasAdLevelRevenue 
                                   ? parseFloat(ad.revenue || '0')
                                   : (parseFloat(ad.spend || '0') || parseInt(ad.impressions || '0'));
-                                const displayLabel = hasRevenueTracking ? 'Revenue' : (ad.spend ? 'Spend' : 'Impressions');
-                                const displayFormat = hasRevenueTracking || ad.spend ? formatCurrency : formatNumber;
+                                const displayLabel = hasAdLevelRevenue ? 'Revenue' : (ad.spend ? 'Spend' : 'Impressions');
+                                const displayFormat = hasAdLevelRevenue || ad.spend ? formatCurrency : formatNumber;
+                                const showEstimated = hasAdLevelRevenue && Boolean((ad as any)?._computed?.revenueIsEstimated);
 
                                 return (
                                   <div 
@@ -6479,13 +6533,21 @@ export default function LinkedInAnalytics() {
                                         <div className="flex items-center gap-2">
                                           <h4 className="font-semibold text-slate-900 dark:text-white">{ad.adName}</h4>
                                           {isTop && <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded">TOP</span>}
+                                          {showEstimated && (
+                                            <span
+                                              className="text-xs bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 px-2 py-0.5 rounded"
+                                              title="Estimated: revenue derived using an estimated conversion value"
+                                            >
+                                              Estimated
+                                            </span>
+                                          )}
                                         </div>
                                         <p className="text-sm text-slate-500">{ad.campaignName}</p>
                                       </div>
                                     </div>
                                     <div className="text-right">
                                       <p className="text-sm text-slate-500">{displayLabel}</p>
-                                      <p className={`text-xl font-bold ${hasRevenueTracking ? 'text-green-600 dark:text-green-400' : 'text-slate-900 dark:text-white'}`}>
+                                      <p className={`text-xl font-bold ${hasAdLevelRevenue ? 'text-green-600 dark:text-green-400' : 'text-slate-900 dark:text-white'}`}>
                                         {displayFormat(displayValue)}
                                       </p>
                                     </div>
@@ -6498,13 +6560,13 @@ export default function LinkedInAnalytics() {
 
                         {/* Quick Stats Summary */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {hasRevenueTracking ? (
+                          {hasAdLevelRevenue ? (
                             <>
                               <Card data-testid="total-revenue-stat">
                                 <CardContent className="pt-6">
                                   <p className="text-sm text-slate-500 mb-1">Total Revenue {isLimited && '(All Ads)'}</p>
                                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatCurrency(allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0))}
+                                    {formatCurrency(allAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0))}
                                   </p>
                                 </CardContent>
                               </Card>
@@ -6512,7 +6574,7 @@ export default function LinkedInAnalytics() {
                                 <CardContent className="pt-6">
                                   <p className="text-sm text-slate-500 mb-1">Average Revenue/Ad {isLimited && '(All Ads)'}</p>
                                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatCurrency(allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0) / allSortedAds.length)}
+                                    {formatCurrency(allAds.reduce((sum, ad) => sum + parseFloat(ad.revenue || '0'), 0) / Math.max(1, allAds.length))}
                                   </p>
                                 </CardContent>
                               </Card>
@@ -6523,7 +6585,7 @@ export default function LinkedInAnalytics() {
                                 <CardContent className="pt-6">
                                   <p className="text-sm text-slate-500 mb-1">Total Spend {isLimited && '(All Ads)'}</p>
                                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatCurrency(allSortedAds.reduce((sum, ad) => sum + parseFloat(ad.spend || '0'), 0))}
+                                    {formatCurrency(allAds.reduce((sum, ad) => sum + parseFloat(ad.spend || '0'), 0))}
                                   </p>
                                 </CardContent>
                               </Card>
@@ -6531,7 +6593,7 @@ export default function LinkedInAnalytics() {
                                 <CardContent className="pt-6">
                                   <p className="text-sm text-slate-500 mb-1">Total Conversions {isLimited && '(All Ads)'}</p>
                                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatNumber(allSortedAds.reduce((sum, ad) => sum + parseInt(ad.conversions || '0'), 0))}
+                                    {formatNumber(allAds.reduce((sum, ad) => sum + parseInt(ad.conversions || '0'), 0))}
                                   </p>
                                 </CardContent>
                               </Card>

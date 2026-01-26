@@ -2084,6 +2084,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Alert Monitoring Endpoint - Run alert checks (manual trigger)
+  // NOTE: Render runs `registerRoutes` from this file, so alert endpoints must exist here.
+  app.post("/api/alerts/check", async (req, res) => {
+    try {
+      const { alertMonitoringService } = await import("./services/alert-monitoring.js");
+      const results = await alertMonitoringService.runAlertChecks();
+      res.json({ success: true, message: "Alert checks completed", results });
+    } catch (error: any) {
+      console.error('[Alerts API] check error:', error);
+      res.status(500).json({ success: false, message: "Failed to run alert checks", error: error?.message || String(error) });
+    }
+  });
+
+  // Alert status/configuration (counts + email configured)
+  app.get("/api/alerts/status", async (req, res) => {
+    try {
+      const { db } = await import("./db");
+      const { kpis, benchmarks } = await import("../shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const kpisWithAlerts = await db.select().from(kpis).where(eq(kpis.alertsEnabled, true));
+      const benchmarksWithAlerts = await db.select().from(benchmarks).where(eq(benchmarks.alertsEnabled, true));
+
+      res.json({
+        kpiAlertsEnabled: kpisWithAlerts.length,
+        benchmarkAlertsEnabled: benchmarksWithAlerts.length,
+        totalAlertsEnabled: kpisWithAlerts.length + benchmarksWithAlerts.length,
+        emailConfigured: !!(process.env.EMAIL_SERVICE_API_KEY || process.env.SMTP_PASS),
+      });
+    } catch (error: any) {
+      console.error('[Alerts API] status error:', error);
+      res.status(500).json({ message: "Failed to get alert status", error: error?.message || String(error) });
+    }
+  });
+
   // Industry benchmarks routes
   app.get("/api/industry-benchmarks", async (req, res) => {
     try {

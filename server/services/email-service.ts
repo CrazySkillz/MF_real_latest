@@ -264,13 +264,13 @@ class EmailService {
             </div>
             
             <p style="margin-top: 20px;">
-              <strong>Action Required:</strong> Review this ${data.type} in your PerformanceCore dashboard 
+              <strong>Action Required:</strong> Review this ${data.type} in your MetricMind dashboard 
               and take appropriate action to address the issue.
             </p>
           </div>
           
           <div class="footer">
-            <p>This is an automated alert from PerformanceCore</p>
+            <p>This is an automated alert from MetricMind</p>
             <p>To manage your alert settings, log in to your dashboard</p>
           </div>
         </body>

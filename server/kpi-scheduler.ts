@@ -416,6 +416,14 @@ export async function runDailyKPIJobs(): Promise<void> {
     // Only check for performance alerts (below/above target)
     await checkPerformanceAlerts();
 
+    // In-app Benchmark alerts (same pattern as KPI notifications)
+    try {
+      const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
+      await checkBenchmarkPerformanceAlerts();
+    } catch (e: any) {
+      console.warn("[KPI Scheduler] Benchmark in-app alert check failed:", (e as any)?.message || e);
+    }
+
     // Email alerts (KPI + Benchmark) - respects emailNotifications + alertFrequency.
     try {
       const { alertMonitoringService } = await import("./services/alert-monitoring.js");

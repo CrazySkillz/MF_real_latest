@@ -2097,6 +2097,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e: any) {
         console.warn("[Alerts API] In-app KPI alert check failed:", e?.message || e);
       }
+      // In-app notifications (Benchmark alerts) - same pattern as KPI alerts
+      try {
+        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
+        await checkBenchmarkPerformanceAlerts();
+      } catch (e: any) {
+        console.warn("[Alerts API] In-app Benchmark alert check failed:", e?.message || e);
+      }
       const after = await storage.getNotifications().catch(() => [] as any[]);
       const afterList = Array.isArray(after) ? after : [];
       const inAppNotificationsCreated = afterList.reduce((acc: number, n: any) => {

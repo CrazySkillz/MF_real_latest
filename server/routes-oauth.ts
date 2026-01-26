@@ -2090,6 +2090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // 1) In-app notifications (KPI performance alerts)
       const before = await storage.getNotifications().catch(() => [] as any[]);
+      const beforeIds = new Set((Array.isArray(before) ? before : []).map((n: any) => String(n?.id || "")).filter(Boolean));
       try {
         const { checkPerformanceAlerts } = await import("./kpi-scheduler.js");
         await checkPerformanceAlerts();
@@ -2097,7 +2098,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn("[Alerts API] In-app KPI alert check failed:", e?.message || e);
       }
       const after = await storage.getNotifications().catch(() => [] as any[]);
-      const inAppNotificationsCreated = Math.max(0, (after?.length || 0) - (before?.length || 0));
+      const afterList = Array.isArray(after) ? after : [];
+      const inAppNotificationsCreated = afterList.reduce((acc: number, n: any) => {
+        const id = String(n?.id || "");
+        if (!id) return acc;
+        return beforeIds.has(id) ? acc : acc + 1;
+      }, 0);
 
       // 2) Email alerts (KPI + Benchmark) - respects emailNotifications + alertFrequency
       const { alertMonitoringService } = await import("./services/alert-monitoring.js");
@@ -2107,6 +2113,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         message: "Alert checks completed",
         inAppNotificationsCreated,
+        inAppBeforeCount: Array.isArray(before) ? before.length : 0,
+        inAppAfterCount: afterList.length,
         results,
       });
     } catch (error: any) {

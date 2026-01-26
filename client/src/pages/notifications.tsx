@@ -256,36 +256,46 @@ export default function Notifications() {
               </div>
             </div>
 
-            {alertStatus?.emailConfigured && (
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Email testing</CardTitle>
-                  <CardDescription>Send a test alert email to confirm deliverability</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col md:flex-row gap-3 md:items-end">
-                    <div className="flex-1 space-y-2">
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Email testing</CardTitle>
+                <CardDescription>
+                  Send a test alert email to validate your production email setup end-to-end.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col md:flex-row gap-3 md:items-end">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
                       <Label htmlFor="test-email">Recipient email</Label>
-                      <Input
-                        id="test-email"
-                        placeholder="you@company.com"
-                        value={testEmail}
-                        onChange={(e) => setTestEmail(e.target.value)}
-                      />
-                      <p className="text-xs text-slate-500">
-                        You can enter multiple addresses separated by commas.
-                      </p>
+                      <span className="text-xs text-slate-500">
+                        Email configured: {alertStatus?.emailConfigured === true ? "Yes" : alertStatus?.emailConfigured === false ? "No" : "Checking..."}
+                      </span>
                     </div>
-                    <Button
-                      onClick={() => sendTestEmailMutation.mutate()}
-                      disabled={!testEmail.trim() || sendTestEmailMutation.isPending}
-                    >
-                      Send test email
-                    </Button>
+                    <Input
+                      id="test-email"
+                      placeholder="you@company.com"
+                      value={testEmail}
+                      onChange={(e) => setTestEmail(e.target.value)}
+                    />
+                    <p className="text-xs text-slate-500">
+                      Enter one or more addresses separated by commas.
+                      {alertStatus?.emailConfigured === false ? " Email sending is disabled until the server is configured." : ""}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                  <Button
+                    onClick={() => sendTestEmailMutation.mutate()}
+                    disabled={
+                      !testEmail.trim() ||
+                      sendTestEmailMutation.isPending ||
+                      alertStatus?.emailConfigured !== true
+                    }
+                  >
+                    Send test email
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Filters */}
             <Card className="mb-6">

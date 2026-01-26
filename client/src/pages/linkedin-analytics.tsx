@@ -96,7 +96,7 @@ export default function LinkedInAnalytics() {
   const sessionId = new URLSearchParams(window.location.search).get('session');
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
-  const validTabs = useMemo(() => new Set(['overview', 'kpis', 'benchmarks', 'ads', 'reports']), []);
+  const validTabs = useMemo(() => new Set(['overview', 'insights', 'kpis', 'benchmarks', 'ads', 'reports']), []);
   const normalizeTab = (t: string | null | undefined) => (t && validTabs.has(t) ? t : 'overview');
   const [activeTab, setActiveTab] = useState<string>(normalizeTab(tabParam));
   const [selectedMetric, setSelectedMetric] = useState<string>('impressions');
@@ -3194,6 +3194,147 @@ export default function LinkedInAnalytics() {
     return { total: items.length, scored, onTrack, needsAttention, behind, blocked, avgPct };
   }, [benchmarksData, aggregated, adsData]);
 
+  type InsightItem = {
+    id: string;
+    severity: "high" | "medium" | "low";
+    title: string;
+    description: string;
+    recommendation?: string;
+  };
+
+  const linkedInInsights = useMemo<InsightItem[]>(() => {
+    const out: InsightItem[] = [];
+    const a: any = aggregated || {};
+
+    const hasRevenueTracking = a?.hasRevenueTracking === 1 || a?.hasRevenueTracking === true;
+    const spend = Number(a?.totalSpend || 0) || 0;
+    const conversions = Number(a?.totalConversions || 0) || 0;
+    const revenue = Number(a?.totalRevenue || 0) || 0;
+    const roas = Number(a?.roas || 0) || 0;
+    const roi = Number(a?.roi || 0) || 0;
+
+    // 0) Data integrity checks (enterprise-grade: distinguish "missing config" from true zeros)
+    if (spend > 0 && !hasRevenueTracking) {
+      out.push({
+        id: "financial:revenue_missing",
+        severity: "high",
+        title: "Revenue is not connected",
+        description: "Spend exists, but revenue tracking is not configured for this LinkedIn campaign, so ROI/ROAS and revenue-based KPIs/Benchmarks are blocked.",
+        recommendation: "Open Add revenue and connect Total Revenue or Conversion Value (manual, CSV, Google Sheets, HubSpot, Salesforce, Shopify).",
+      });
+    }
+
+    if (hasRevenueTracking && spend > 0 && revenue <= 0) {
+      out.push({
+        id: "financial:spend_no_revenue",
+        severity: "high",
+        title: "Spend recorded, but revenue is $0",
+        description: `Spend is ${formatCurrency(spend)}, but Total Revenue is ${formatCurrency(0)}. This can indicate missing/incorrect conversion value mapping or zero conversions.`,
+        recommendation: "Verify the connected revenue source and ensure Conversion Value/Total Revenue is correctly mapped and active for this campaign.",
+      });
+    }
+
+    if (hasRevenueTracking && spend <= 0 && revenue > 0) {
+      out.push({
+        id: "financial:revenue_no_spend",
+        severity: "medium",
+        title: "Revenue exists, but spend is $0",
+        description: `Total Revenue is ${formatCurrency(revenue)}, but Spend is ${formatCurrency(0)}. ROI/ROAS may be misleading until spend exists.`,
+        recommendation: "Verify LinkedIn spend is being imported for the same campaign set and session.",
+      });
+    }
+
+    if (hasRevenueTracking && spend > 0 && revenue > 0) {
+      if (Number.isFinite(roi) && roi < 0) {
+        out.push({
+          id: "financial:negative_roi",
+          severity: roi <= -20 ? "high" : "medium",
+          title: "ROI is negative",
+          description: `ROI is ${formatPercentage(roi)} for the current imported totals.`,
+          recommendation: "Review conversion rate, conversion value assumptions, and spend allocation. Validate that the revenue source is tied to the correct conversion definition.",
+        });
+      }
+      if (Number.isFinite(roas) && roas > 0 && roas < 1) {
+        out.push({
+          id: "financial:roas_below_1",
+          severity: "medium",
+          title: "ROAS is below 1.0x",
+          description: `ROAS is ${roas.toFixed(2)}x for the current imported totals.`,
+          recommendation: "Audit targeting/creative and landing page funnel. If conversion value is assumed, confirm it reflects actual value.",
+        });
+      }
+    }
+
+    // 1) Blocked KPI/Benchmarks (revenue-dependent)
+    const blockedKpis = (Array.isArray(kpisData) ? (kpisData as any[]) : [])
+      .filter((k: any) => isRevenueDependentBenchmarkMetric(String(k?.metric || k?.metricKey || "")) && !hasRevenueTracking);
+    for (const k of blockedKpis) {
+      const name = String(k?.name || k?.metric || "KPI");
+      out.push({
+        id: `integrity:kpi_blocked:${String(k?.id || name)}`,
+        severity: "high",
+        title: `KPI paused: missing Revenue`,
+        description: `"${name}" depends on Revenue, but Revenue is not connected for this campaign. Showing 0 would be misleading, so this KPI is effectively blocked until Revenue is restored.`,
+        recommendation: "Connect Revenue (Total Revenue or Conversion Value) in Add revenue, then return to KPIs.",
+      });
+    }
+
+    const blockedBenchmarks = (Array.isArray(benchmarksData) ? (benchmarksData as any[]) : [])
+      .filter((b: any) => isRevenueDependentBenchmarkMetric(String(b?.metric || "")) && !hasRevenueTracking);
+    for (const b of blockedBenchmarks) {
+      const name = String(b?.name || b?.metric || "Benchmark");
+      out.push({
+        id: `integrity:bench_blocked:${String(b?.id || name)}`,
+        severity: "high",
+        title: `Benchmark paused: missing Revenue`,
+        description: `"${name}" depends on Revenue, but Revenue is not connected for this campaign. Restore Revenue to resume accurate benchmark tracking.`,
+        recommendation: "Connect Revenue (Total Revenue or Conversion Value) in Add revenue, then return to Benchmarks.",
+      });
+    }
+
+    // 2) Actionable insights from KPI performance (below target / near target)
+    const NEAR_TARGET_BAND_PCT = 5;
+    for (const k of Array.isArray(kpisData) ? (kpisData as any[]) : []) {
+      const metricKey = String(k?.metric || k?.metricKey || "");
+      if (isRevenueDependentBenchmarkMetric(metricKey) && !hasRevenueTracking) continue;
+
+      const current = getLiveCurrentForKpi(k);
+      const target = parseFloat(String(k?.targetValue || "0"));
+      const lowerIsBetter = isLowerIsBetterKpi({ metric: k?.metric || k?.metricKey, name: k?.name });
+      const effectiveDeltaPct = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
+      if (effectiveDeltaPct === null) continue;
+
+      const band = classifyKpiBand({ effectiveDeltaPct, nearTargetBandPct: NEAR_TARGET_BAND_PCT });
+      if (band === "above") continue;
+
+      out.push({
+        id: `kpi:${String(k?.id || metricKey)}`,
+        severity: band === "below" ? "high" : "medium",
+        title: `${String(k?.name || metricKey)} is ${band === "below" ? "Below target" : "Near target"}`,
+        description: `Current ${formatMetricValueForInput(metricKey, current)} vs target ${formatMetricValueForInput(metricKey, target)}.`,
+        recommendation: "Review the primary drivers for this KPI and adjust targeting/creative/budget allocation accordingly.",
+      });
+    }
+
+    // 3) Actionable insights from Benchmark performance (behind / needs attention)
+    for (const b of Array.isArray(benchmarksData) ? (benchmarksData as any[]) : []) {
+      const p = computeBenchmarkProgress(b);
+      if (p.status !== "behind" && p.status !== "needs_attention") continue;
+      out.push({
+        id: `bench:${String((b as any)?.id || (b as any)?.metric || (b as any)?.name || "bench")}`,
+        severity: p.status === "behind" ? "high" : "medium",
+        title: `${String((b as any)?.name || (b as any)?.metric || "Benchmark")} is ${p.status === "behind" ? "Behind benchmark" : "Below benchmark"}`,
+        description: `Current ${formatMetricValueForInput(String((b as any)?.metric || ""), getLiveCurrentForBenchmark(b))} vs benchmark ${String((b as any)?.benchmarkValue || (b as any)?.targetValue || "0")}.`,
+        recommendation: "Identify which ads/campaigns are driving underperformance and iterate targeting, creative, and landing page.",
+      });
+    }
+
+    // Stable ordering: high -> medium -> low
+    const order = { high: 0, medium: 1, low: 2 } as const;
+    out.sort((x, y) => order[x.severity] - order[y.severity]);
+    return out;
+  }, [aggregated, kpisData, benchmarksData]);
+
   const getTrendIcon = (direction: 'up' | 'down' | 'neutral') => {
     if (direction === 'up') return <TrendingUp className="w-4 h-4 text-green-500" />;
     if (direction === 'down') return <TrendingDown className="w-4 h-4 text-red-500" />;
@@ -3263,8 +3404,9 @@ export default function LinkedInAnalytics() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5" data-testid="tabs-list">
+              <TabsList className="grid w-full grid-cols-6" data-testid="tabs-list">
                 <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+                <TabsTrigger value="insights" data-testid="tab-insights">Insights</TabsTrigger>
                 <TabsTrigger value="kpis" data-testid="tab-kpis">KPIs</TabsTrigger>
                 <TabsTrigger value="benchmarks" data-testid="tab-benchmarks">Benchmarks</TabsTrigger>
                 <TabsTrigger value="ads" data-testid="tab-ads">Ad Comparison</TabsTrigger>
@@ -4347,6 +4489,167 @@ export default function LinkedInAnalytics() {
                     </CardContent>
                   </Card>
                 )}
+              </TabsContent>
+
+              {/* Insights Tab */}
+              <TabsContent value="insights" className="space-y-6" data-testid="content-insights">
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                      Actionable insights from financial integrity checks plus KPI + Benchmark performance.
+                    </p>
+                  </div>
+
+                  <Card className="border-slate-200 dark:border-slate-700">
+                    <CardHeader>
+                      <CardTitle>Executive financials (current imported totals)</CardTitle>
+                      <CardDescription>
+                        Spend comes from LinkedIn imports. Revenue metrics appear only when a LinkedIn revenue source is connected.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4 md:grid-cols-4">
+                        <Card>
+                          <CardContent className="p-5">
+                            <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</div>
+                            <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatCurrency(Number((aggregated as any)?.totalSpend || 0))}
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Source: LinkedIn Ads</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</div>
+                            <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatCurrency(Number((aggregated as any)?.totalRevenue || 0))}
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              {(aggregated as any)?.hasRevenueTracking === 1 ? "From connected revenue source" : "Not connected"}
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</div>
+                            <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {Number((aggregated as any)?.roas || 0).toFixed(2)}x
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</div>
+                            <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {formatPercentage(Number((aggregated as any)?.roi || 0))}
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">(\(Revenue - Spend\)) ÷ Spend</div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
+                        <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Sources used</div>
+                        <div className="grid gap-1">
+                          <div>
+                            <span className="font-medium">Spend</span>: LinkedIn import session
+                          </div>
+                          <div>
+                            <span className="font-medium">Revenue</span>: {(aggregated as any)?.hasRevenueTracking === 1 ? "Connected revenue source" : "Not connected"}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total insights</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{linkedInInsights.length}</p>
+                          </div>
+                          <BarChart3 className="w-7 h-7 text-slate-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">High priority</p>
+                            <p className="text-2xl font-bold text-red-600">
+                              {linkedInInsights.filter((i) => i.severity === "high").length}
+                            </p>
+                          </div>
+                          <AlertTriangle className="w-7 h-7 text-red-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs attention</p>
+                            <p className="text-2xl font-bold text-amber-600">
+                              {linkedInInsights.filter((i) => i.severity === "medium").length}
+                            </p>
+                          </div>
+                          <TrendingDown className="w-7 h-7 text-amber-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card className="border-slate-200 dark:border-slate-700">
+                    <CardHeader>
+                      <CardTitle>What changed, what to do next</CardTitle>
+                      <CardDescription>
+                        Insights are generated from current imported totals plus KPI/Benchmark evaluations.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {linkedInInsights.length === 0 ? (
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          No issues detected. Create KPIs/Benchmarks to unlock more insights.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {linkedInInsights.slice(0, 12).map((i) => {
+                            const badgeClass =
+                              i.severity === "high"
+                                ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
+                                : i.severity === "medium"
+                                  ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
+                                  : "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
+                            const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : "Low";
+                            return (
+                              <div key={i.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <div className="font-semibold text-slate-900 dark:text-white">{i.title}</div>
+                                      <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
+                                    </div>
+                                    <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{i.description}</div>
+                                    {i.recommendation ? (
+                                      <div className="text-sm text-slate-700 dark:text-slate-300 mt-2">
+                                        <span className="font-medium">Next step:</span> {i.recommendation}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
 
               {/* Connected Data Sources tab removed */}

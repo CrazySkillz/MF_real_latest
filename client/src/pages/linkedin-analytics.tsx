@@ -102,6 +102,10 @@ export default function LinkedInAnalytics() {
   const [selectedMetric, setSelectedMetric] = useState<string>('impressions');
   const [sortBy, setSortBy] = useState<string>('name');
   const [filterBy, setFilterBy] = useState<string>('all');
+  const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d">("7d");
+  const [insightsTrendMetric, setInsightsTrendMetric] = useState<
+    "spend" | "conversions" | "ctr" | "cvr" | "impressions" | "clicks" | "revenue" | "roas"
+  >("spend");
 
   // Update active tab when URL changes
   useEffect(() => {
@@ -3218,11 +3222,18 @@ export default function LinkedInAnalytics() {
     title: string;
     description: string;
     recommendation?: string;
+    confidence?: "high" | "medium" | "low";
+    evidence?: string[];
+    actions?: Array<{ label: string; kind: "go"; tab: "overview" | "kpis" | "benchmarks" | "ads" | "reports" | "insights" } | { label: string; kind: "openRevenueModal" }>;
   };
 
   const linkedInInsights = useMemo<InsightItem[]>(() => {
     const out: InsightItem[] = [];
     const a: any = aggregated || {};
+    const buildTabUrl = (tab: string) => {
+      const sid = sessionId ? `&session=${encodeURIComponent(String(sessionId))}` : "";
+      return `/campaigns/${encodeURIComponent(String(campaignId || ""))}/linkedin-analytics?tab=${encodeURIComponent(String(tab))}${sid}`;
+    };
 
     const hasRevenueTracking = a?.hasRevenueTracking === 1 || a?.hasRevenueTracking === true;
     const spend = Number(a?.totalSpend || 0) || 0;
@@ -3253,7 +3264,10 @@ export default function LinkedInAnalytics() {
         severity: "high",
         title: "Revenue is not connected",
         description: "Spend exists, but revenue tracking is not configured for this LinkedIn campaign, so ROI/ROAS and revenue-based KPIs/Benchmarks are blocked.",
-        recommendation: "Open Add revenue and connect Total Revenue or Conversion Value (manual, CSV, Google Sheets, HubSpot, Salesforce, Shopify).",
+        confidence: "high",
+        evidence: [`Spend: ${formatCurrency(spend)}`, "Revenue tracking: Not connected"],
+        recommendation: "Connect Total Revenue or Conversion Value for this campaign to unlock ROI/ROAS and revenue-based metrics.",
+        actions: [{ label: "Add revenue", kind: "openRevenueModal" }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
       });
     }
 
@@ -3263,7 +3277,16 @@ export default function LinkedInAnalytics() {
         severity: "high",
         title: "Spend recorded, but revenue is $0",
         description: `Spend is ${formatCurrency(spend)}, but Total Revenue is ${formatCurrency(0)}. This can indicate missing/incorrect conversion value mapping or zero conversions.`,
-        recommendation: "Verify the connected revenue source and ensure Conversion Value/Total Revenue is correctly mapped and active for this campaign.",
+        confidence: conversions > 0 ? "high" : "medium",
+        evidence: [
+          `Spend: ${formatCurrency(spend)}`,
+          `Conversions: ${formatNumber(conversions, "conversions")}`,
+          `Conversion value: ${formatCurrency(conversionValue)}`,
+        ],
+        recommendation: conversions > 0
+          ? "Conversions exist, but revenue is $0. Verify the connected revenue mapping (Conversion Value / Total Revenue) and ensure the source is active."
+          : "If conversions are truly 0, revenue will be $0. If conversions exist, verify the connected revenue mapping and ensure the source is active.",
+        actions: [{ label: "Review revenue setup", kind: "openRevenueModal" }, { label: "Open Overview", kind: "go", tab: "overview" }],
       });
     }
 
@@ -3273,7 +3296,10 @@ export default function LinkedInAnalytics() {
         severity: "medium",
         title: "Revenue exists, but spend is $0",
         description: `Total Revenue is ${formatCurrency(revenue)}, but Spend is ${formatCurrency(0)}. ROI/ROAS may be misleading until spend exists.`,
-        recommendation: "Verify LinkedIn spend is being imported for the same campaign set and session.",
+        confidence: "medium",
+        evidence: [`Revenue: ${formatCurrency(revenue)}`, `Spend: ${formatCurrency(0)}`],
+        recommendation: "Verify spend is being imported for the same LinkedIn campaigns and time window. If spend is truly $0, treat ROI/ROAS carefully.",
+        actions: [{ label: "Open Ad Comparison", kind: "go", tab: "ads" }],
       });
     }
 
@@ -3284,7 +3310,10 @@ export default function LinkedInAnalytics() {
           severity: roi <= -20 ? "high" : "medium",
           title: "ROI is negative",
           description: `ROI is ${formatPercentage(roi)} for the current imported totals.`,
-          recommendation: "Review conversion rate, conversion value assumptions, and spend allocation. Validate that the revenue source is tied to the correct conversion definition.",
+          confidence: "medium",
+          evidence: [`ROI: ${formatPercentage(roi)}`, `Spend: ${formatCurrency(spend)}`, `Revenue: ${formatCurrency(revenue)}`],
+          recommendation: "Validate conversion value assumptions and attribution, then review ad efficiency (CTR/CVR) and spend allocation.",
+          actions: [{ label: "Open Ad Comparison", kind: "go", tab: "ads" }, { label: "Open Trends", kind: "go", tab: "insights" }],
         });
       }
       if (Number.isFinite(roas) && roas > 0 && roas < 1) {
@@ -3293,7 +3322,10 @@ export default function LinkedInAnalytics() {
           severity: "medium",
           title: "ROAS is below 1.0x",
           description: `ROAS is ${roas.toFixed(2)}x for the current imported totals.`,
-          recommendation: "Audit targeting/creative and landing page funnel. If conversion value is assumed, confirm it reflects actual value.",
+          confidence: "medium",
+          evidence: [`ROAS: ${roas.toFixed(2)}x`, `Spend: ${formatCurrency(spend)}`, `Revenue: ${formatCurrency(revenue)}`],
+          recommendation: "Audit which ads/campaigns are inefficient, then validate conversion value assumptions and funnel drop-offs.",
+          actions: [{ label: "Open Ad Comparison", kind: "go", tab: "ads" }],
         });
       }
     }
@@ -3308,7 +3340,10 @@ export default function LinkedInAnalytics() {
         severity: "high",
         title: `KPI paused: missing Revenue`,
         description: `"${name}" depends on Revenue, but Revenue is not connected for this campaign. Showing 0 would be misleading, so this KPI is effectively blocked until Revenue is restored.`,
-        recommendation: "Connect Revenue (Total Revenue or Conversion Value) in Add revenue, then return to KPIs.",
+        confidence: "high",
+        evidence: [`KPI: ${name}`, "Revenue tracking: Not connected"],
+        recommendation: "Connect Revenue, then return to KPIs (values will refresh automatically).",
+        actions: [{ label: "Add revenue", kind: "openRevenueModal" }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
       });
     }
 
@@ -3321,7 +3356,10 @@ export default function LinkedInAnalytics() {
         severity: "high",
         title: `Benchmark paused: missing Revenue`,
         description: `"${name}" depends on Revenue, but Revenue is not connected for this campaign. Restore Revenue to resume accurate benchmark tracking.`,
-        recommendation: "Connect Revenue (Total Revenue or Conversion Value) in Add revenue, then return to Benchmarks.",
+        confidence: "high",
+        evidence: [`Benchmark: ${name}`, "Revenue tracking: Not connected"],
+        recommendation: "Connect Revenue, then return to Benchmarks (values will refresh automatically).",
+        actions: [{ label: "Add revenue", kind: "openRevenueModal" }, { label: "Open Benchmarks", kind: "go", tab: "benchmarks" }],
       });
     }
 
@@ -3345,7 +3383,10 @@ export default function LinkedInAnalytics() {
         severity: band === "below" ? "high" : "medium",
         title: `${String(k?.name || metricKey)} is ${band === "below" ? "Below target" : "Near target"}`,
         description: `Current ${formatMetricValueForInput(metricKey, current)} vs target ${formatMetricValueForInput(metricKey, target)}.`,
-        recommendation: "Review the primary drivers for this KPI and adjust targeting/creative/budget allocation accordingly.",
+        confidence: "high",
+        evidence: [`Current: ${formatMetricValueForInput(metricKey, current)}`, `Target: ${formatMetricValueForInput(metricKey, target)}`],
+        recommendation: "Identify the main drivers (creative relevance, audience quality, landing page) and use Ad Comparison to find the biggest contributors.",
+        actions: [{ label: "Open KPIs", kind: "go", tab: "kpis" }, { label: "Open Ad Comparison", kind: "go", tab: "ads" }],
       });
     }
 
@@ -3358,7 +3399,10 @@ export default function LinkedInAnalytics() {
         severity: p.status === "behind" ? "high" : "medium",
         title: `${String((b as any)?.name || (b as any)?.metric || "Benchmark")} is ${p.status === "behind" ? "Behind benchmark" : "Below benchmark"}`,
         description: `Current ${formatMetricValueForInput(String((b as any)?.metric || ""), getLiveCurrentForBenchmark(b))} vs benchmark ${String((b as any)?.benchmarkValue || (b as any)?.targetValue || "0")}.`,
-        recommendation: "Identify which ads/campaigns are driving underperformance and iterate targeting, creative, and landing page.",
+        confidence: "high",
+        evidence: [`Metric: ${String((b as any)?.metric || "")}`, `Status: ${String(p.status)}`],
+        recommendation: "Use Ad Comparison to identify what’s dragging performance, then iterate targeting/creative/landing page.",
+        actions: [{ label: "Open Benchmarks", kind: "go", tab: "benchmarks" }, { label: "Open Ad Comparison", kind: "go", tab: "ads" }],
       });
     }
 
@@ -3396,7 +3440,10 @@ export default function LinkedInAnalytics() {
           severity: "high",
           title: `Conversion rate dropped ${Math.abs(cvrDelta).toFixed(1)}% week-over-week`,
           description: `Last 7d ${a7.cvr.toFixed(2)}% vs prior 7d ${b7.cvr.toFixed(2)}% (from persisted LinkedIn daily facts).`,
-          recommendation: "Audit landing page/conversion flow changes and verify conversion tracking. Also check traffic mix shifts and recent creative/targeting changes.",
+          confidence: "high",
+          evidence: [`Last 7d CVR: ${a7.cvr.toFixed(2)}%`, `Prior 7d CVR: ${b7.cvr.toFixed(2)}%`],
+          recommendation: "Check conversion tracking + landing page first, then review traffic quality and recent creative/targeting changes.",
+          actions: [{ label: "Open Trends", kind: "go", tab: "insights" }, { label: "Open Ad Comparison", kind: "go", tab: "ads" }],
         });
       }
 
@@ -3407,7 +3454,10 @@ export default function LinkedInAnalytics() {
           severity: "medium",
           title: `CTR dropped ${Math.abs(ctrDelta).toFixed(1)}% week-over-week`,
           description: `Last 7d ${a7.ctr.toFixed(2)}% vs prior 7d ${b7.ctr.toFixed(2)}%.`,
-          recommendation: "Review creative fatigue, audience targeting, and ad relevance. Consider refreshing creatives and tightening targeting.",
+          confidence: "medium",
+          evidence: [`Last 7d CTR: ${a7.ctr.toFixed(2)}%`, `Prior 7d CTR: ${b7.ctr.toFixed(2)}%`],
+          recommendation: "Review creative fatigue and targeting relevance; refresh creatives and refine audiences.",
+          actions: [{ label: "Open Ad Comparison", kind: "go", tab: "ads" }],
         });
       }
 
@@ -3418,7 +3468,10 @@ export default function LinkedInAnalytics() {
           severity: "high",
           title: "Spend increased, but conversions did not improve",
           description: `Spend is up ${spendDelta.toFixed(1)}% WoW while conversions are flat/down.`,
-          recommendation: "Check budget changes, bids, and placements; validate that the conversion event is still firing. Review which campaigns/ads drove the spend increase.",
+          confidence: "high",
+          evidence: [`Spend WoW: +${spendDelta.toFixed(1)}%`, `Conversions WoW: ${deltaPct(a7.conversions, b7.conversions).toFixed(1)}%`],
+          recommendation: "Validate tracking, then review budget/bid changes and identify which ads/campaigns drove the spend increase.",
+          actions: [{ label: "Open Trends", kind: "go", tab: "insights" }, { label: "Open Ad Comparison", kind: "go", tab: "ads" }],
         });
       }
 
@@ -3430,7 +3483,10 @@ export default function LinkedInAnalytics() {
             severity: "medium",
             title: `ROAS dropped ${Math.abs(roasDelta).toFixed(1)}% week-over-week`,
             description: `Last 7d ${a7.roas.toFixed(2)}x vs prior 7d ${b7.roas.toFixed(2)}x (using current conversion value).`,
-            recommendation: "Review which campaigns/ads lost efficiency and whether conversion value assumptions still reflect reality.",
+            confidence: "medium",
+            evidence: [`Last 7d ROAS: ${a7.roas.toFixed(2)}x`, `Prior 7d ROAS: ${b7.roas.toFixed(2)}x`],
+            recommendation: "Review which ads/campaigns lost efficiency and validate conversion value assumptions.",
+            actions: [{ label: "Open Ad Comparison", kind: "go", tab: "ads" }, { label: "Review revenue setup", kind: "openRevenueModal" }],
           });
         }
       }
@@ -3440,6 +3496,9 @@ export default function LinkedInAnalytics() {
         severity: "low",
         title: "Anomaly detection needs more history",
         description: `Need at least 14 days of daily data to compute week-over-week deltas. Available days: ${dates.length}.`,
+        confidence: "high",
+        evidence: [`Available days: ${dates.length}`],
+        recommendation: "Let the scheduler collect more daily history, then Insights will unlock week-over-week comparisons.",
       });
     }
 
@@ -3522,6 +3581,71 @@ export default function LinkedInAnalytics() {
         revenue30: deltaPct(last30.revenue, prior30.revenue),
         roas30: prior30.roas > 0 ? ((last30.roas - prior30.roas) / prior30.roas) * 100 : 0,
       },
+    };
+  }, [aggregated, linkedInDailyResp]);
+
+  const linkedInDailySeries = useMemo(() => {
+    const a: any = aggregated || {};
+    const hasRevenueTracking = a?.hasRevenueTracking === 1 || a?.hasRevenueTracking === true;
+    const conversionValue = Number(a?.conversionValue || 0) || 0;
+
+    const rows = Array.isArray((linkedInDailyResp as any)?.data) ? (linkedInDailyResp as any).data : [];
+    const byDate = rows
+      .map((r: any) => {
+        const date = String(r?.date || "").trim();
+        const impressions = Number(r?.impressions || 0) || 0;
+        const clicks = Number(r?.clicks || 0) || 0;
+        const conversions = Number(r?.conversions || 0) || 0;
+        const spend = Number(r?.spend || 0) || 0;
+        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+        const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+        const revenue = hasRevenueTracking && conversionValue > 0 ? conversions * conversionValue : 0;
+        const roas = spend > 0 ? revenue / spend : 0;
+        return { date, impressions, clicks, conversions, spend, ctr, cvr, revenue, roas };
+      })
+      .filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(r.date))
+      .sort((x: any, y: any) => String(x.date).localeCompare(String(y.date)));
+
+    const rolling = (windowDays: number) => {
+      const out: any[] = [];
+      for (let i = 0; i < byDate.length; i++) {
+        const startIdx = Math.max(0, i - windowDays + 1);
+        const slice = byDate.slice(startIdx, i + 1);
+        if (slice.length < windowDays) continue;
+        const sums = slice.reduce(
+          (acc: any, r: any) => {
+            acc.impressions += r.impressions;
+            acc.clicks += r.clicks;
+            acc.conversions += r.conversions;
+            acc.spend += r.spend;
+            acc.revenue += r.revenue;
+            return acc;
+          },
+          { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 }
+        );
+        const ctr = sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : 0;
+        const cvr = sums.clicks > 0 ? (sums.conversions / sums.clicks) * 100 : 0;
+        const roas = sums.spend > 0 ? sums.revenue / sums.spend : 0;
+        out.push({
+          date: byDate[i].date,
+          impressions: sums.impressions,
+          clicks: sums.clicks,
+          conversions: sums.conversions,
+          spend: sums.spend,
+          ctr,
+          cvr,
+          revenue: sums.revenue,
+          roas,
+        });
+      }
+      return out;
+    };
+
+    return {
+      daily: byDate,
+      rolling7: rolling(7),
+      rolling30: rolling(30),
+      hasRevenueTracking,
     };
   }, [aggregated, linkedInDailyResp]);
 
@@ -4756,89 +4880,214 @@ export default function LinkedInAnalytics() {
 
                   <Card className="border-slate-200 dark:border-slate-700">
                     <CardHeader>
-                      <CardTitle>Performance rollups (derived from persisted daily facts)</CardTitle>
-                      <CardDescription>
-                        7-day and 30-day summaries compare the last window vs the prior window when enough daily history exists.
-                      </CardDescription>
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div>
+                          <CardTitle>Trends</CardTitle>
+                          <CardDescription>
+                            Toggle between Daily, 7‑day rolling, and 30‑day rolling views. The table and chart always use the same math.
+                          </CardDescription>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant={insightsTrendMode === "daily" ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setInsightsTrendMode("daily")}
+                            >
+                              Daily
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={insightsTrendMode === "7d" ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setInsightsTrendMode("7d")}
+                            >
+                              7d
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={insightsTrendMode === "30d" ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setInsightsTrendMode("30d")}
+                            >
+                              30d
+                            </Button>
+                          </div>
+                          <div className="min-w-[220px]">
+                            <Select value={insightsTrendMetric} onValueChange={(v: any) => setInsightsTrendMetric(v)}>
+                              <SelectTrigger className="h-9">
+                                <SelectValue placeholder="Metric" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="spend">Spend</SelectItem>
+                                <SelectItem value="conversions">Conversions</SelectItem>
+                                <SelectItem value="cvr">CVR</SelectItem>
+                                <SelectItem value="ctr">CTR</SelectItem>
+                                <SelectItem value="clicks">Clicks</SelectItem>
+                                <SelectItem value="impressions">Impressions</SelectItem>
+                                {linkedInDailySeries?.hasRevenueTracking ? <SelectItem value="revenue">Revenue</SelectItem> : null}
+                                {linkedInDailySeries?.hasRevenueTracking ? <SelectItem value="roas">ROAS</SelectItem> : null}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-4">
                       {linkedInDailyLoading ? (
                         <div className="text-sm text-slate-600 dark:text-slate-400">Loading daily history…</div>
-                      ) : Number(linkedInInsightsRollups?.availableDays || 0) < 7 ? (
-                        <div className="text-sm text-slate-600 dark:text-slate-400">
-                          Need at least 7 days of LinkedIn daily history to show rollups. Available days: {Number(linkedInInsightsRollups?.availableDays || 0)}.
-                        </div>
                       ) : (
-                        <div className="overflow-hidden border rounded-md">
-                          <table className="w-full text-sm table-fixed">
-                            <thead className="bg-slate-50 dark:bg-slate-800 border-b">
-                              <tr>
-                                <th className="text-left p-3 w-[22%]">Window</th>
-                                <th className="text-right p-3">Impr.</th>
-                                <th className="text-right p-3">Clicks</th>
-                                <th className="text-right p-3">CTR</th>
-                                <th className="text-right p-3">Conv.</th>
-                                <th className="text-right p-3">CVR</th>
-                                <th className="text-right p-3">Spend</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {[
-                                { key: "7d", cur: linkedInInsightsRollups.last7, prev: linkedInInsightsRollups.prior7, d: linkedInInsightsRollups.deltas, label: "Last 7d vs prior 7d" },
-                                { key: "30d", cur: linkedInInsightsRollups.last30, prev: linkedInInsightsRollups.prior30, d: linkedInInsightsRollups.deltas, label: "Last 30d vs prior 30d" },
-                              ].map((row: any) => {
-                                const ok =
-                                  row.key === "7d"
-                                    ? Number(linkedInInsightsRollups?.availableDays || 0) >= 14
-                                    : Number(linkedInInsightsRollups?.availableDays || 0) >= 60;
-                                if (!ok) return null;
-                                const deltaColor = (n: number) =>
-                                  n >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300";
-                                const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
-                                const imprDelta = row.key === "7d" ? row.d.impressions7 : row.d.impressions30;
-                                const clicksDelta = row.key === "7d" ? row.d.clicks7 : row.d.clicks30;
-                                const ctrDelta = row.key === "7d" ? row.d.ctr7 : row.d.ctr30;
-                                const convDelta = row.key === "7d" ? row.d.conversions7 : row.d.conversions30;
-                                const cvrDelta = row.key === "7d" ? row.d.cvr7 : row.d.cvr30;
-                                const spendDelta = row.key === "7d" ? row.d.spend7 : row.d.spend30;
-                                return (
-                                  <tr key={row.key} className="border-b">
-                                    <td className="p-3">
-                                      <div className="font-medium text-slate-900 dark:text-white">{row.label}</div>
-                                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        {row.cur.startDate} → {row.cur.endDate}
-                                      </div>
-                                    </td>
-                                    <td className="p-3 text-right">
-                                      <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.impressions || 0, "impressions")}</div>
-                                      <div className={`text-xs ${deltaColor(imprDelta)}`}>{fmtDelta(imprDelta)}</div>
-                                    </td>
-                                    <td className="p-3 text-right">
-                                      <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.clicks || 0, "clicks")}</div>
-                                      <div className={`text-xs ${deltaColor(clicksDelta)}`}>{fmtDelta(clicksDelta)}</div>
-                                    </td>
-                                    <td className="p-3 text-right">
-                                      <div className="font-medium text-slate-900 dark:text-white">{row.cur.ctr.toFixed(2)}%</div>
-                                      <div className={`text-xs ${deltaColor(ctrDelta)}`}>{fmtDelta(ctrDelta)}</div>
-                                    </td>
-                                    <td className="p-3 text-right">
-                                      <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.conversions || 0, "conversions")}</div>
-                                      <div className={`text-xs ${deltaColor(convDelta)}`}>{fmtDelta(convDelta)}</div>
-                                    </td>
-                                    <td className="p-3 text-right">
-                                      <div className="font-medium text-slate-900 dark:text-white">{row.cur.cvr.toFixed(2)}%</div>
-                                      <div className={`text-xs ${deltaColor(cvrDelta)}`}>{fmtDelta(cvrDelta)}</div>
-                                    </td>
-                                    <td className="p-3 text-right">
-                                      <div className="font-medium text-slate-900 dark:text-white">{formatCurrency(Number(row.cur.spend || 0))}</div>
-                                      <div className={`text-xs ${deltaColor(spendDelta)}`}>{fmtDelta(spendDelta)}</div>
-                                    </td>
+                        <>
+                          {(() => {
+                            const series =
+                              insightsTrendMode === "daily"
+                                ? linkedInDailySeries.daily
+                                : insightsTrendMode === "7d"
+                                  ? linkedInDailySeries.rolling7
+                                  : linkedInDailySeries.rolling30;
+
+                            const minRequired = insightsTrendMode === "daily" ? 2 : insightsTrendMode === "7d" ? 14 : 60;
+                            const available = Number(linkedInInsightsRollups?.availableDays || 0);
+                            if (available < minRequired) {
+                              return (
+                                <div className="text-sm text-slate-600 dark:text-slate-400">
+                                  Need at least {minRequired} days of LinkedIn daily history for this view. Available days: {available}.
+                                </div>
+                              );
+                            }
+
+                            const formatChartValue = (v: any) => {
+                              const n = Number(v || 0) || 0;
+                              if (insightsTrendMetric === "spend" || insightsTrendMetric === "revenue") return formatCurrency(n);
+                              if (insightsTrendMetric === "ctr" || insightsTrendMetric === "cvr") return `${n.toFixed(2)}%`;
+                              if (insightsTrendMetric === "roas") return `${n.toFixed(2)}x`;
+                              return formatNumber(n, insightsTrendMetric);
+                            };
+
+                            return (
+                              <div className="h-[280px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={series}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                                    <YAxis tick={{ fontSize: 12 }} />
+                                    <Tooltip formatter={(value: any) => formatChartValue(value)} />
+                                    <Legend />
+                                    <Line
+                                      type="monotone"
+                                      dataKey={insightsTrendMetric}
+                                      stroke="#7c3aed"
+                                      strokeWidth={2}
+                                      dot={false}
+                                      name={insightsTrendMetric.toUpperCase()}
+                                    />
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Table view */}
+                          <div className="overflow-hidden border rounded-md">
+                            {insightsTrendMode === "daily" ? (
+                              <table className="w-full text-sm table-fixed">
+                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                  <tr>
+                                    <th className="text-left p-3 w-[22%]">Date</th>
+                                    <th className="text-right p-3">Spend</th>
+                                    <th className="text-right p-3">Impr.</th>
+                                    <th className="text-right p-3">Clicks</th>
+                                    <th className="text-right p-3">CTR</th>
+                                    <th className="text-right p-3">Conv.</th>
+                                    <th className="text-right p-3">CVR</th>
                                   </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                                </thead>
+                                <tbody>
+                                  {(linkedInDailySeries?.daily || []).slice(-14).map((r: any) => (
+                                    <tr key={r.date} className="border-b">
+                                      <td className="p-3">
+                                        <div className="font-medium text-slate-900 dark:text-white">{r.date}</div>
+                                      </td>
+                                      <td className="p-3 text-right">{formatCurrency(Number(r.spend || 0))}</td>
+                                      <td className="p-3 text-right">{formatNumber(r.impressions || 0, "impressions")}</td>
+                                      <td className="p-3 text-right">{formatNumber(r.clicks || 0, "clicks")}</td>
+                                      <td className="p-3 text-right">{Number(r.ctr || 0).toFixed(2)}%</td>
+                                      <td className="p-3 text-right">{formatNumber(r.conversions || 0, "conversions")}</td>
+                                      <td className="p-3 text-right">{Number(r.cvr || 0).toFixed(2)}%</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <table className="w-full text-sm table-fixed">
+                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                  <tr>
+                                    <th className="text-left p-3 w-[22%]">Window</th>
+                                    <th className="text-right p-3">Impr.</th>
+                                    <th className="text-right p-3">Clicks</th>
+                                    <th className="text-right p-3">CTR</th>
+                                    <th className="text-right p-3">Conv.</th>
+                                    <th className="text-right p-3">CVR</th>
+                                    <th className="text-right p-3">Spend</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(() => {
+                                    const is7 = insightsTrendMode === "7d";
+                                    const ok = is7 ? Number(linkedInInsightsRollups?.availableDays || 0) >= 14 : Number(linkedInInsightsRollups?.availableDays || 0) >= 60;
+                                    if (!ok) return null;
+                                    const row = is7
+                                      ? { key: "7d", cur: linkedInInsightsRollups.last7, prev: linkedInInsightsRollups.prior7, d: linkedInInsightsRollups.deltas, label: "Last 7d vs prior 7d" }
+                                      : { key: "30d", cur: linkedInInsightsRollups.last30, prev: linkedInInsightsRollups.prior30, d: linkedInInsightsRollups.deltas, label: "Last 30d vs prior 30d" };
+                                    const deltaColor = (n: number) => (n >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300");
+                                    const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+                                    const imprDelta = is7 ? row.d.impressions7 : row.d.impressions30;
+                                    const clicksDelta = is7 ? row.d.clicks7 : row.d.clicks30;
+                                    const ctrDelta = is7 ? row.d.ctr7 : row.d.ctr30;
+                                    const convDelta = is7 ? row.d.conversions7 : row.d.conversions30;
+                                    const cvrDelta = is7 ? row.d.cvr7 : row.d.cvr30;
+                                    const spendDelta = is7 ? row.d.spend7 : row.d.spend30;
+                                    return (
+                                      <tr key={row.key} className="border-b">
+                                        <td className="p-3">
+                                          <div className="font-medium text-slate-900 dark:text-white">{row.label}</div>
+                                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                            {row.cur.startDate} → {row.cur.endDate}
+                                          </div>
+                                        </td>
+                                        <td className="p-3 text-right">
+                                          <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.impressions || 0, "impressions")}</div>
+                                          <div className={`text-xs ${deltaColor(imprDelta)}`}>{fmtDelta(imprDelta)}</div>
+                                        </td>
+                                        <td className="p-3 text-right">
+                                          <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.clicks || 0, "clicks")}</div>
+                                          <div className={`text-xs ${deltaColor(clicksDelta)}`}>{fmtDelta(clicksDelta)}</div>
+                                        </td>
+                                        <td className="p-3 text-right">
+                                          <div className="font-medium text-slate-900 dark:text-white">{row.cur.ctr.toFixed(2)}%</div>
+                                          <div className={`text-xs ${deltaColor(ctrDelta)}`}>{fmtDelta(ctrDelta)}</div>
+                                        </td>
+                                        <td className="p-3 text-right">
+                                          <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.conversions || 0, "conversions")}</div>
+                                          <div className={`text-xs ${deltaColor(convDelta)}`}>{fmtDelta(convDelta)}</div>
+                                        </td>
+                                        <td className="p-3 text-right">
+                                          <div className="font-medium text-slate-900 dark:text-white">{row.cur.cvr.toFixed(2)}%</div>
+                                          <div className={`text-xs ${deltaColor(cvrDelta)}`}>{fmtDelta(cvrDelta)}</div>
+                                        </td>
+                                        <td className="p-3 text-right">
+                                          <div className="font-medium text-slate-900 dark:text-white">{formatCurrency(Number(row.cur.spend || 0))}</div>
+                                          <div className={`text-xs ${deltaColor(spendDelta)}`}>{fmtDelta(spendDelta)}</div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })()}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        </>
                       )}
                     </CardContent>
                   </Card>
@@ -4905,6 +5154,7 @@ export default function LinkedInAnalytics() {
                                   ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
                                   : "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
                             const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : "Low";
+                            const confText = i.confidence ? (i.confidence === "high" ? "High confidence" : i.confidence === "medium" ? "Medium confidence" : "Low confidence") : null;
                             return (
                               <div key={i.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
                                 <div className="flex items-start justify-between gap-3">
@@ -4914,9 +5164,50 @@ export default function LinkedInAnalytics() {
                                       <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
                                     </div>
                                     <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{i.description}</div>
+                                    {confText ? (
+                                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                        {confText}
+                                      </div>
+                                    ) : null}
+                                    {Array.isArray(i.evidence) && i.evidence.length > 0 ? (
+                                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                                        <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{" "}
+                                        {i.evidence.join(" • ")}
+                                      </div>
+                                    ) : null}
                                     {i.recommendation ? (
                                       <div className="text-sm text-slate-700 dark:text-slate-300 mt-2">
                                         <span className="font-medium">Next step:</span> {i.recommendation}
+                                      </div>
+                                    ) : null}
+                                    {Array.isArray(i.actions) && i.actions.length > 0 ? (
+                                      <div className="flex flex-wrap gap-2 mt-3">
+                                        {i.actions.slice(0, 3).map((a, idx) => {
+                                          if (a.kind === "openRevenueModal") {
+                                            return (
+                                              <Button
+                                                key={`${i.id}:a:${idx}`}
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => openAddRevenueModal('add')}
+                                              >
+                                                {a.label}
+                                              </Button>
+                                            );
+                                          }
+                                          const tab = a.tab;
+                                          const url = `/campaigns/${encodeURIComponent(String(campaignId || ""))}/linkedin-analytics?tab=${encodeURIComponent(String(tab))}${sessionId ? `&session=${encodeURIComponent(String(sessionId))}` : ""}`;
+                                          return (
+                                            <Button
+                                              key={`${i.id}:a:${idx}`}
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => setLocation(url)}
+                                            >
+                                              {a.label}
+                                            </Button>
+                                          );
+                                        })}
                                       </div>
                                     ) : null}
                                   </div>

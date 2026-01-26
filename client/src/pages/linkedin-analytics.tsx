@@ -928,7 +928,9 @@ export default function LinkedInAnalytics() {
       category: '',
       timeframe: 'monthly',
       trackingPeriod: '30',
+      alertsEnabled: false,
       emailNotifications: false,
+      alertFrequency: 'daily',
       alertThreshold: '',
       alertCondition: 'below',
       emailRecipients: ''
@@ -944,6 +946,20 @@ export default function LinkedInAnalytics() {
 
   // Handle create KPI
   const handleCreateKPI = () => {
+    if (kpiForm.alertsEnabled) {
+      const threshold = String(kpiForm.alertThreshold || '').trim();
+      if (!threshold) {
+        toast({ title: "Alert Threshold required", description: "Enter an alert threshold to enable alerts.", variant: "destructive" });
+        return;
+      }
+      if (kpiForm.emailNotifications) {
+        const recipients = String(kpiForm.emailRecipients || '').trim();
+        if (!recipients) {
+          toast({ title: "Email recipients required", description: "Enter at least one email address to enable email notifications.", variant: "destructive" });
+          return;
+        }
+      }
+    }
     const kpiData = {
       // platformType is extracted from URL by backend, don't send it
       campaignId: campaignId, // Include campaignId for data isolation
@@ -959,11 +975,12 @@ export default function LinkedInAnalytics() {
       status: 'active',
       rollingAverage: '7day',
       alertsEnabled: kpiForm.alertsEnabled || false, // Use form value instead of hardcoded true
-      emailNotifications: false,
+      emailNotifications: !!kpiForm.emailNotifications,
       slackNotifications: false,
-      alertFrequency: 'daily',
-      alertThreshold: kpiForm.alertThreshold || null, // Include alert threshold
+      alertFrequency: kpiForm.alertFrequency || 'daily',
+      alertThreshold: (kpiForm.alertsEnabled ? (kpiForm.alertThreshold || null) : null), // Include alert threshold
       alertCondition: kpiForm.alertCondition || 'below', // Include alert condition
+      emailRecipients: kpiForm.emailNotifications ? (String(kpiForm.emailRecipients || '').trim() || null) : null,
       applyTo: kpiForm.applyTo,
       specificCampaignId: kpiForm.applyTo === 'specific' ? kpiForm.specificCampaignId : null
     };
@@ -1008,6 +1025,8 @@ export default function LinkedInAnalytics() {
         applyTo: 'all',
         specificCampaignId: '',
         alertsEnabled: false,
+        emailNotifications: false,
+        alertFrequency: 'daily',
         alertThreshold: '',
         alertCondition: 'below',
         emailRecipients: ''
@@ -1059,6 +1078,8 @@ export default function LinkedInAnalytics() {
         applyTo: 'all',
         specificCampaignId: '',
         alertsEnabled: false,
+        emailNotifications: false,
+        alertFrequency: 'daily',
         alertThreshold: '',
         alertCondition: 'below',
         emailRecipients: ''
@@ -1162,6 +1183,20 @@ export default function LinkedInAnalytics() {
 
   // Handle create Benchmark
   const handleCreateBenchmark = () => {
+    if (benchmarkForm.alertsEnabled) {
+      const threshold = String(benchmarkForm.alertThreshold || '').trim();
+      if (!threshold) {
+        toast({ title: "Alert Threshold required", description: "Enter an alert threshold to enable alerts.", variant: "destructive" });
+        return;
+      }
+      if (benchmarkForm.emailNotifications) {
+        const recipients = String(benchmarkForm.emailRecipients || '').trim();
+        if (!recipients) {
+          toast({ title: "Email recipients required", description: "Enter at least one email address to enable email notifications.", variant: "destructive" });
+          return;
+        }
+      }
+    }
     // For campaign-specific benchmarks, convert LinkedIn campaign name to database campaign ID
     let finalSpecificCampaignId = null;
     if (benchmarkForm.applyTo === 'specific') {
@@ -1225,9 +1260,11 @@ export default function LinkedInAnalytics() {
       specificCampaignId: finalSpecificCampaignId, // Use the converted campaign ID
       linkedInCampaignName: benchmarkForm.applyTo === 'specific' ? benchmarkForm.specificCampaignId : null, // Store LinkedIn campaign name for display
       alertsEnabled: benchmarkForm.alertsEnabled,
-      alertThreshold: benchmarkForm.alertThreshold,
+      alertThreshold: benchmarkForm.alertsEnabled ? benchmarkForm.alertThreshold : null,
       alertCondition: benchmarkForm.alertCondition,
-      emailRecipients: benchmarkForm.emailRecipients,
+      emailNotifications: !!benchmarkForm.emailNotifications,
+      alertFrequency: benchmarkForm.alertFrequency || 'daily',
+      emailRecipients: benchmarkForm.emailNotifications ? (String(benchmarkForm.emailRecipients || '').trim() || null) : null,
       status: 'active',
       platformType: 'linkedin' // Specify platform
     };
@@ -5784,7 +5821,9 @@ export default function LinkedInAnalytics() {
             category: '',
             timeframe: 'monthly',
             trackingPeriod: '30',
+            alertsEnabled: false,
             emailNotifications: false,
+            alertFrequency: 'daily',
             alertThreshold: '',
             alertCondition: 'below',
             emailRecipients: '',
@@ -6501,7 +6540,7 @@ export default function LinkedInAnalytics() {
                     data-testid="checkbox-kpi-alerts"
                   />
                   <Label htmlFor="kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
-                    Enable Alerts & Reminders
+                    Enable alerts for this KPI
                   </Label>
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 pl-6">
@@ -6546,6 +6585,58 @@ export default function LinkedInAnalytics() {
                           <SelectItem value="equals">Value Equals</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="kpi-alert-frequency">Alert Frequency</Label>
+                      <Select
+                        value={kpiForm.alertFrequency || 'daily'}
+                        onValueChange={(value) => setKpiForm({ ...kpiForm, alertFrequency: value })}
+                      >
+                        <SelectTrigger id="kpi-alert-frequency" data-testid="select-kpi-alert-frequency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="immediate">Immediate</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Controls how often you’re notified while the alert condition stays true.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2 pt-1">
+                        <Checkbox
+                          id="kpi-email-notifications"
+                          checked={!!kpiForm.emailNotifications}
+                          onCheckedChange={(checked) => setKpiForm({ ...kpiForm, emailNotifications: checked as boolean })}
+                          data-testid="checkbox-kpi-email-notifications"
+                        />
+                        <Label htmlFor="kpi-email-notifications" className="cursor-pointer font-medium">
+                          Send email notifications
+                        </Label>
+                      </div>
+                      {kpiForm.emailNotifications && (
+                        <div className="space-y-2">
+                          <Label htmlFor="kpi-email-recipients">Email addresses *</Label>
+                          <Input
+                            id="kpi-email-recipients"
+                            type="text"
+                            placeholder="email1@example.com, email2@example.com"
+                            value={kpiForm.emailRecipients}
+                            onChange={(e) => setKpiForm({ ...kpiForm, emailRecipients: e.target.value })}
+                            data-testid="input-kpi-email-recipients"
+                          />
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Comma-separated. Best for execs who want alerts outside the app.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -7120,7 +7211,7 @@ export default function LinkedInAnalytics() {
                   data-testid="checkbox-benchmark-alerts"
                 />
                 <Label htmlFor="benchmark-alerts-enabled" className="text-base cursor-pointer font-semibold">
-                  Enable Email Alerts
+                  Enable alerts for this KPI
                 </Label>
               </div>
 
@@ -7164,19 +7255,56 @@ export default function LinkedInAnalytics() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="benchmark-email-recipients">Email Recipients *</Label>
-                    <Input
-                      id="benchmark-email-recipients"
-                      type="text"
-                      placeholder="email1@example.com, email2@example.com"
-                      value={benchmarkForm.emailRecipients}
-                      onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
-                      data-testid="input-benchmark-email-recipients"
-                    />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Comma-separated email addresses for alert notifications
-                    </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="benchmark-alert-frequency">Alert Frequency</Label>
+                      <Select
+                        value={benchmarkForm.alertFrequency || 'daily'}
+                        onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, alertFrequency: value })}
+                      >
+                        <SelectTrigger id="benchmark-alert-frequency" data-testid="select-benchmark-alert-frequency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="immediate">Immediate</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Controls how often you’re notified while the alert condition stays true.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2 pt-1">
+                        <Checkbox
+                          id="benchmark-email-notifications"
+                          checked={!!benchmarkForm.emailNotifications}
+                          onCheckedChange={(checked) => setBenchmarkForm({ ...benchmarkForm, emailNotifications: checked as boolean })}
+                          data-testid="checkbox-benchmark-email-notifications"
+                        />
+                        <Label htmlFor="benchmark-email-notifications" className="cursor-pointer font-medium">
+                          Send email notifications
+                        </Label>
+                      </div>
+                      {benchmarkForm.emailNotifications && (
+                        <div className="space-y-2">
+                          <Label htmlFor="benchmark-email-recipients">Email addresses *</Label>
+                          <Input
+                            id="benchmark-email-recipients"
+                            type="text"
+                            placeholder="email1@example.com, email2@example.com"
+                            value={benchmarkForm.emailRecipients}
+                            onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
+                            data-testid="input-benchmark-email-recipients"
+                          />
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Comma-separated email addresses for alerts.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -7200,6 +7328,8 @@ export default function LinkedInAnalytics() {
                     applyTo: 'all',
                     specificCampaignId: '',
                     alertsEnabled: false,
+                    emailNotifications: false,
+                    alertFrequency: 'daily',
                     alertThreshold: '',
                     alertCondition: 'below',
                     emailRecipients: ''

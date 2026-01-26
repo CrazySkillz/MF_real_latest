@@ -57,7 +57,7 @@ class AlertMonitoringService {
       const kpisToCheck = await db
         .select()
         .from(kpis)
-        .where(eq(kpis.alertsEnabled, true));
+        .where(and(eq(kpis.alertsEnabled, true), eq(kpis.emailNotifications, true)));
 
       let alertsSent = 0;
 
@@ -65,8 +65,14 @@ class AlertMonitoringService {
         // Skip if no email recipients configured
         if (!kpi.emailRecipients) continue;
 
-        // Skip if alert was sent recently
-        if (this.shouldThrottleAlert(kpi.lastAlertSent)) {
+        const frequency = (kpi.alertFrequency || 'daily') as any;
+        const frequencyHours =
+          frequency === 'immediate' ? 1 : // at most once per hour to avoid spam
+          frequency === 'weekly' ? 24 * 7 :
+          24;
+
+        // Skip if alert was sent recently (based on chosen frequency)
+        if (this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) {
           console.log(`Throttling alert for KPI ${kpi.name} (last sent: ${kpi.lastAlertSent})`);
           continue;
         }
@@ -132,7 +138,7 @@ class AlertMonitoringService {
       const benchmarksToCheck = await db
         .select()
         .from(benchmarks)
-        .where(eq(benchmarks.alertsEnabled, true));
+        .where(and(eq(benchmarks.alertsEnabled, true), eq(benchmarks.emailNotifications, true)));
 
       let alertsSent = 0;
 
@@ -140,8 +146,14 @@ class AlertMonitoringService {
         // Skip if no email recipients configured
         if (!benchmark.emailRecipients) continue;
 
-        // Skip if alert was sent recently
-        if (this.shouldThrottleAlert(benchmark.lastAlertSent)) {
+        const frequency = (benchmark.alertFrequency || 'daily') as any;
+        const frequencyHours =
+          frequency === 'immediate' ? 1 :
+          frequency === 'weekly' ? 24 * 7 :
+          24;
+
+        // Skip if alert was sent recently (based on chosen frequency)
+        if (this.shouldThrottleAlert(benchmark.lastAlertSent, frequencyHours)) {
           console.log(`Throttling alert for Benchmark ${benchmark.name} (last sent: ${benchmark.lastAlertSent})`);
           continue;
         }

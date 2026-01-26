@@ -1,4 +1,4 @@
-import { db } from "../db/index.js";
+import { db } from "../db";
 import { kpis, benchmarks, kpiAlerts } from "../../shared/schema.js";
 import { eq, and, sql } from "drizzle-orm";
 import { emailService } from "./email-service.js";

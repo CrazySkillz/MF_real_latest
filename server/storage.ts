@@ -2383,12 +2383,6 @@ export class MemStorage implements IStorage {
     });
     return true;
   }
-
-  async getNotifications(): Promise<Notification[]> {
-    return Array.from(this.notifications_.values()).sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }
 }
 
 export class DatabaseStorage implements IStorage {

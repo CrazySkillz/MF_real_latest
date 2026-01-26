@@ -106,6 +106,7 @@ export default function LinkedInAnalytics() {
   const [insightsTrendMetric, setInsightsTrendMetric] = useState<
     "spend" | "conversions" | "ctr" | "cvr" | "impressions" | "clicks" | "revenue" | "roas"
   >("spend");
+  const [showDayOverDayDeltas, setShowDayOverDayDeltas] = useState<boolean>(false);
 
   // Update active tab when URL changes
   useEffect(() => {
@@ -4914,6 +4915,18 @@ export default function LinkedInAnalytics() {
                               30d
                             </Button>
                           </div>
+                          {insightsTrendMode === "daily" ? (
+                            <div className="flex items-center gap-2 px-2">
+                              <Checkbox
+                                checked={showDayOverDayDeltas}
+                                onCheckedChange={(v: any) => setShowDayOverDayDeltas(Boolean(v))}
+                                id="dod-deltas"
+                              />
+                              <Label htmlFor="dod-deltas" className="text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                                Show day-over-day deltas
+                              </Label>
+                            </div>
+                          ) : null}
                           <div className="min-w-[220px]">
                             <Select value={insightsTrendMetric} onValueChange={(v: any) => setInsightsTrendMetric(v)}>
                               <SelectTrigger className="h-9">
@@ -5001,10 +5014,31 @@ export default function LinkedInAnalytics() {
                                     <th className="text-right p-3">CTR</th>
                                     <th className="text-right p-3">Conv.</th>
                                     <th className="text-right p-3">CVR</th>
+                                    {showDayOverDayDeltas ? (
+                                      <th className="text-right p-3">{`Δ ${String(insightsTrendMetric || "").toUpperCase()}`}</th>
+                                    ) : null}
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {(linkedInDailySeries?.daily || []).slice(-14).map((r: any) => (
+                                  {(linkedInDailySeries?.daily || []).slice(-14).map((r: any, idx: number, arr: any[]) => {
+                                    const prev = idx > 0 ? arr[idx - 1] : null;
+                                    const metricKey = String(insightsTrendMetric || "");
+                                    const curVal = Number((r as any)?.[metricKey] ?? 0) || 0;
+                                    const prevVal = Number((prev as any)?.[metricKey] ?? 0) || 0;
+                                    const deltaPct = prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : 0;
+
+                                    const polarity: "neutral" | "directional" =
+                                      metricKey === "spend" || metricKey === "impressions" || metricKey === "clicks" ? "neutral" : "directional";
+                                    const deltaClass =
+                                      polarity === "neutral"
+                                        ? "text-slate-600 dark:text-slate-400"
+                                        : deltaPct >= 0
+                                          ? "text-emerald-700 dark:text-emerald-300"
+                                          : "text-red-700 dark:text-red-300";
+                                    const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+                                    const showDelta = !!prev && prevVal > 0;
+
+                                    return (
                                     <tr key={r.date} className="border-b">
                                       <td className="p-3">
                                         <div className="font-medium text-slate-900 dark:text-white">{r.date}</div>
@@ -5015,8 +5049,16 @@ export default function LinkedInAnalytics() {
                                       <td className="p-3 text-right">{Number(r.ctr || 0).toFixed(2)}%</td>
                                       <td className="p-3 text-right">{formatNumber(r.conversions || 0, "conversions")}</td>
                                       <td className="p-3 text-right">{Number(r.cvr || 0).toFixed(2)}%</td>
+                                      {showDayOverDayDeltas ? (
+                                        <td className="p-3 text-right">
+                                          <div className={`text-xs ${showDelta ? deltaClass : "text-slate-400"}`}>
+                                            {showDelta ? fmtDelta(deltaPct) : "—"}
+                                          </div>
+                                        </td>
+                                      ) : null}
                                     </tr>
-                                  ))}
+                                    );
+                                  })}
                                 </tbody>
                               </table>
                             ) : (

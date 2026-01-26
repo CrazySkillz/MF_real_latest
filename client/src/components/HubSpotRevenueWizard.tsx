@@ -23,6 +23,16 @@ type UniqueValue = {
 
 export function HubSpotRevenueWizard(props: {
   campaignId: string;
+  mode?: "connect" | "edit";
+  initialMappingConfig?: {
+    campaignProperty?: string;
+    selectedValues?: string[];
+    revenueProperty?: string;
+    conversionValueProperty?: string;
+    valueSource?: string;
+    days?: number;
+    revenueClassification?: string;
+  } | null;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
   onClose?: () => void;
@@ -32,7 +42,7 @@ export function HubSpotRevenueWizard(props: {
    */
   platformContext?: "ga4" | "linkedin";
 }) {
-  const { campaignId, onBack, onSuccess, onClose, platformContext = "ga4" } = props;
+  const { campaignId, mode = "connect", initialMappingConfig = null, onBack, onSuccess, onClose, platformContext = "ga4" } = props;
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
 
@@ -64,6 +74,30 @@ export function HubSpotRevenueWizard(props: {
   const [valuesLoading, setValuesLoading] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Edit mode: prefill from the saved mappingConfig and always start at Source (LinkedIn) for consistency.
+  useEffect(() => {
+    if (mode !== "edit") return;
+    const cfg: any = initialMappingConfig || {};
+    const nextCampaignProperty = cfg.campaignProperty ? String(cfg.campaignProperty) : "";
+    const nextSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
+    const nextRevenueProperty = cfg.revenueProperty ? String(cfg.revenueProperty) : "amount";
+    const nextConversionValueProperty = cfg.conversionValueProperty ? String(cfg.conversionValueProperty) : "";
+    const nextValueSource: "revenue" | "conversion_value" =
+      String(cfg.valueSource || "").trim().toLowerCase() === "conversion_value" ? "conversion_value" : "revenue";
+    const nextRevenueClassification: any = cfg.revenueClassification ? String(cfg.revenueClassification) : null;
+
+    setStep(isLinkedIn ? "value-source" : "campaign-field");
+    setCampaignProperty(nextCampaignProperty);
+    setSelectedValues(nextSelectedValues);
+    setRevenueProperty(nextRevenueProperty);
+    setConversionValueProperty(nextConversionValueProperty);
+    setValueSource(nextValueSource);
+    if (nextRevenueClassification === "onsite_in_ga4" || nextRevenueClassification === "offsite_not_in_ga4") {
+      setRevenueClassification(nextRevenueClassification);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId, mode, initialMappingConfig, isLinkedIn]);
 
   const steps = useMemo(
     () => [

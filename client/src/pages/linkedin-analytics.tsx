@@ -4689,6 +4689,8 @@ export default function LinkedInAnalytics() {
                                   const progressPct = computeAttainmentPct({ current: currentVal, target: targetVal, lowerIsBetter });
                                   if (progressPct === null) return null;
                                   const progressFill = computeAttainmentFillPct(progressPct);
+                                  const progressColor =
+                                    progressPct >= 100 ? "bg-green-500" : progressPct >= 90 ? "bg-amber-500" : "bg-red-500";
 
                                   return (
                                     <>
@@ -4696,7 +4698,7 @@ export default function LinkedInAnalytics() {
                                         <span>Progress</span>
                                         <span>{Math.round(progressPct)}%</span>
                                       </div>
-                                      <Progress value={progressFill} className="h-2" />
+                                      <Progress value={progressFill} className="h-2" indicatorClassName={progressColor} />
                                     </>
                                   );
                                 })()}
@@ -4940,6 +4942,8 @@ export default function LinkedInAnalytics() {
                           const p = computeBenchmarkProgress(benchmark);
                           const progressPct = Math.max(0, (p.ratio || 0) * 100);
                           const progressFill = Math.min(progressPct, 100);
+                          const progressColor =
+                            p.status === 'on_track' ? 'bg-green-500' : p.status === 'needs_attention' ? 'bg-amber-500' : p.status === 'behind' ? 'bg-red-500' : 'bg-slate-300';
                           return (
                         <Card key={benchmark.id} data-testid={`benchmark-card-${benchmark.id}`}>
                           <CardContent className="p-6">
@@ -5114,7 +5118,7 @@ export default function LinkedInAnalytics() {
                                     <span>Progress</span>
                                     <span>{Math.round(progressPct)}%</span>
                                   </div>
-                                  <Progress value={progressFill} className="mt-2 h-2" />
+                                <Progress value={progressFill} className="mt-2 h-2" indicatorClassName={progressColor} />
                                 </div>
                               );
                             })()}

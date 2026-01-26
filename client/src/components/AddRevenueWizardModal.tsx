@@ -87,7 +87,18 @@ export function AddRevenueWizardModal(props: {
     campaignField?: string;
     selectedValues?: string[];
     revenueField?: string;
+    conversionValueField?: string;
+    valueSource?: string;
     days?: number;
+  }>(null);
+  const [hubspotInitialMappingConfig, setHubspotInitialMappingConfig] = useState<null | {
+    campaignProperty?: string;
+    selectedValues?: string[];
+    revenueProperty?: string;
+    conversionValueProperty?: string;
+    valueSource?: string;
+    days?: number;
+    revenueClassification?: string;
   }>(null);
 
   // Manual
@@ -181,6 +192,7 @@ export function AddRevenueWizardModal(props: {
     setShopifyWizardStep("campaign-field");
     setShopifyExternalStep(null);
     setShopifyExternalNonce(0);
+    setHubspotInitialMappingConfig(null);
     setSalesforceInitialMappingConfig(null);
   };
 
@@ -263,6 +275,21 @@ export function AddRevenueWizardModal(props: {
       };
       setSalesforceInitialMappingConfig(next);
       setStep("salesforce");
+      return;
+    }
+
+    if (type === "hubspot") {
+      const next = {
+        campaignProperty: config?.campaignProperty ? String(config.campaignProperty) : undefined,
+        selectedValues: Array.isArray(config?.selectedValues) ? config.selectedValues.map(String) : undefined,
+        revenueProperty: config?.revenueProperty ? String(config.revenueProperty) : undefined,
+        conversionValueProperty: config?.conversionValueProperty ? String(config.conversionValueProperty) : undefined,
+        valueSource: config?.valueSource ? String(config.valueSource) : undefined,
+        days: Number.isFinite(Number(config?.days)) ? Number(config.days) : undefined,
+        revenueClassification: config?.revenueClassification ? String(config.revenueClassification) : undefined,
+      };
+      setHubspotInitialMappingConfig(next);
+      setStep("hubspot");
       return;
     }
 
@@ -630,22 +657,6 @@ export function AddRevenueWizardModal(props: {
       setSheetsProcessing(false);
     }
   };
-
-  // UX: remove redundant "Next" on the sheet/tab selection screen.
-  // Once the user selects a tab, we preview automatically and advance to mapping.
-  useEffect(() => {
-    if (!open) return;
-    if (step !== "sheets_choose") return;
-    if (!sheetsConnectionId) return;
-    if (showSheetsConnect) return;
-    if (sheetsPreview) return;
-    void (async () => {
-      await handleSheetsPreview(sheetsConnectionId);
-      // Advance only if preview succeeded
-      setStep((prev) => (prev === "sheets_choose" ? "sheets_map" : prev));
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, step, sheetsConnectionId, showSheetsConnect]);
 
   // If opened in edit mode for Sheets, auto-load preview so the user can update mappings immediately.
   useEffect(() => {
@@ -1328,6 +1339,11 @@ export function AddRevenueWizardModal(props: {
                             setSheetsCampaignCol("");
                             setSheetsCampaignQuery("");
                             setSheetsCampaignValues([]);
+                            // Auto-advance: selecting a tab should preview and move to mapping (no redundant Next button).
+                            void (async () => {
+                              await handleSheetsPreview(v);
+                              setStep("sheets_map");
+                            })();
                           }}
                         >
                           <SelectTrigger>
@@ -1359,31 +1375,9 @@ export function AddRevenueWizardModal(props: {
               <div className="space-y-4">
                 <Card>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between gap-2 pt-2">
-                      <div className="text-xs text-slate-600 dark:text-slate-400">
-                        {sheetsConnectionId ? "Selected tab is set. You can change it any time." : ""}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // Go back to tab selection (no OAuth). Keep connections; reset preview/mapping state.
-                          setSheetsPreview(null);
-                          setSheetsRevenueCol("");
-                          setSheetsConversionValueCol("");
-                          setSheetsCampaignCol("");
-                          setSheetsCampaignQuery("");
-                          setSheetsCampaignValues([]);
-                          setStep("sheets_choose");
-                        }}
-                      >
-                        Change sheet/tab
-                      </Button>
-                    </div>
                     {!sheetsPreview ? (
                       <div className="rounded-md border p-3 text-sm text-slate-600 dark:text-slate-400">
-                        No preview loaded yet. Go back and click Next.
+                        No preview loaded yet. Go back and select a Google Sheet tab.
                       </div>
                     ) : (
                       <>
@@ -1585,6 +1579,12 @@ export function AddRevenueWizardModal(props: {
                 <HubSpotRevenueWizard
                   campaignId={campaignId}
                   platformContext={platformContext}
+                  mode={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "hubspot" ? "edit" : "connect"}
+                  initialMappingConfig={
+                    isEditing && String(initialSource?.sourceType || "").toLowerCase() === "hubspot"
+                      ? (hubspotInitialMappingConfig || null)
+                      : null
+                  }
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {
@@ -1602,8 +1602,12 @@ export function AddRevenueWizardModal(props: {
                   campaignId={campaignId}
                   platformContext={platformContext}
                   autoStartOAuth={!isEditing}
-                  mode={isEditing ? "edit" : "connect"}
-                  initialMappingConfig={isEditing ? (salesforceInitialMappingConfig || null) : null}
+                  mode={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? "edit" : "connect"}
+                  initialMappingConfig={
+                    isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce"
+                      ? (salesforceInitialMappingConfig || null)
+                      : null
+                  }
                   onBack={() => setStep("select")}
                   onClose={() => setStep("select")}
                   onSuccess={() => {

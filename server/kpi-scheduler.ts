@@ -416,6 +416,14 @@ export async function runDailyKPIJobs(): Promise<void> {
     // Only check for performance alerts (below/above target)
     await checkPerformanceAlerts();
 
+    // Email alerts (KPI + Benchmark) - respects emailNotifications + alertFrequency.
+    try {
+      const { alertMonitoringService } = await import("./services/alert-monitoring.js");
+      await alertMonitoringService.runAlertChecks();
+    } catch (e: any) {
+      console.warn("[KPI Scheduler] Email alert monitoring failed:", (e as any)?.message || e);
+    }
+
     console.log('[KPI Scheduler] Daily KPI jobs completed successfully');
   } catch (error) {
     console.error('[KPI Scheduler] Error running daily KPI jobs:', error);

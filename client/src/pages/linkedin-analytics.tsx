@@ -7211,7 +7211,7 @@ export default function LinkedInAnalytics() {
                   data-testid="checkbox-benchmark-alerts"
                 />
                 <Label htmlFor="benchmark-alerts-enabled" className="text-base cursor-pointer font-semibold">
-                  Enable alerts for this KPI
+                  Enable alerts for this Benchmark
                 </Label>
               </div>
 

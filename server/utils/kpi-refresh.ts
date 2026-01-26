@@ -158,14 +158,19 @@ async function getLatestLinkedInMetrics(campaignId: string): Promise<Record<stri
       hasLinkedInConversionValueSource = false;
     }
 
-    // 2) Imported revenue-to-date (manual/CSV/Sheets/CRM revenue rows)
+    // 2) Imported revenue over the same analytics window (last 30 complete UTC days)
     try {
       const campaign = await storage.getCampaign(campaignId);
-      let startDate =
+      const endDate = yesterdayUTC();
+      const end = new Date(`${endDate}T00:00:00.000Z`);
+      const start = new Date(end.getTime());
+      start.setUTCDate(start.getUTCDate() - 29);
+      let startDate = start.toISOString().slice(0, 10);
+      const campStart =
         isoDateUTC((campaign as any)?.startDate) ||
         isoDateUTC((campaign as any)?.createdAt) ||
-        "2020-01-01";
-      const endDate = yesterdayUTC();
+        null;
+      if (campStart && String(campStart) > String(startDate)) startDate = String(campStart);
       if (String(startDate) > String(endDate)) startDate = endDate;
       const totals = await (storage as any).getRevenueTotalForRange?.(campaignId, startDate, endDate, "linkedin");
       importedRevenueToDate = Number(totals?.totalRevenue || 0);

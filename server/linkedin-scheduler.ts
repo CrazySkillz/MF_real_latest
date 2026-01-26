@@ -276,15 +276,20 @@ async function fetchRealLinkedInData(
       return;
     }
 
-    // Get date range (last 30 days)
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 30);
+    // Finance-grade correctness:
+    // Use the same window everywhere (imports, KPIs, revenue rollups) to avoid mixing
+    // "lifetime revenue" with "last-30d conversions/spend".
+    //
+    // Window = last 30 *complete* UTC days (end = yesterday UTC) to avoid partial-today volatility.
+    const now = new Date();
+    const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+    const startDate = new Date(endDate.getTime());
+    startDate.setUTCDate(startDate.getUTCDate() - 29);
 
-    // Daily facts for Insights anomaly detection (90d lookback)
-    const dailyEnd = new Date();
-    const dailyStart = new Date();
-    dailyStart.setDate(dailyStart.getDate() - 90);
+    // Daily facts for Insights anomaly detection (90d lookback, complete UTC days)
+    const dailyEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+    const dailyStart = new Date(dailyEnd.getTime());
+    dailyStart.setUTCDate(dailyStart.getUTCDate() - 89);
 
     const campaignIds = campaignsToRefresh.map(c => c.id);
 

@@ -14350,11 +14350,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let importedRevenueToDate = 0;
       try {
         const camp = await storage.getCampaign(campaignId);
-        let startDate =
+        // Align revenue window to LinkedIn analytics window (last 30 complete UTC days)
+        const endDate = yesterdayUTC();
+        const end = new Date(`${endDate}T00:00:00.000Z`);
+        const start = new Date(end.getTime());
+        start.setUTCDate(start.getUTCDate() - 29);
+        let startDate = start.toISOString().slice(0, 10);
+        const campStart =
           isoDateUTC((camp as any)?.startDate) ||
           isoDateUTC((camp as any)?.createdAt) ||
-          "2020-01-01";
-        const endDate = yesterdayUTC();
+          null;
+        if (campStart && String(campStart) > String(startDate)) startDate = String(campStart);
         if (String(startDate) > String(endDate)) startDate = endDate;
         const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, 'linkedin');
         importedRevenueToDate = Number(totals?.totalRevenue || 0);
@@ -14919,11 +14925,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let importedRevenueToDate = 0;
       try {
-        let startDate =
+        // Align revenue window to LinkedIn analytics window (last 30 complete UTC days)
+        const endDate = yesterdayUTC();
+        const end = new Date(`${endDate}T00:00:00.000Z`);
+        const start = new Date(end.getTime());
+        start.setUTCDate(start.getUTCDate() - 29);
+        let startDate = start.toISOString().slice(0, 10);
+        const campStart =
           isoDateUTC((campaign as any)?.startDate) ||
           isoDateUTC((campaign as any)?.createdAt) ||
-          "2020-01-01";
-        const endDate = yesterdayUTC();
+          null;
+        if (campStart && String(campStart) > String(startDate)) startDate = String(campStart);
         if (String(startDate) > String(endDate)) startDate = endDate;
         const totals = await storage.getRevenueTotalForRange(session.campaignId, startDate, endDate, 'linkedin');
         importedRevenueToDate = Number(totals?.totalRevenue || 0);
@@ -15146,14 +15158,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return y.toISOString().slice(0, 10);
       };
 
-      // Determine LinkedIn-scoped imported revenue-to-date (lifetime bounds).
+      // Determine LinkedIn-scoped imported revenue over the *same window* as analytics (last 30 complete UTC days).
       let importedRevenueToDate = 0;
       try {
-        let startDate =
+        const endDate = yesterdayUTC();
+        const end = new Date(`${endDate}T00:00:00.000Z`);
+        const start = new Date(end.getTime());
+        start.setUTCDate(start.getUTCDate() - 29);
+        let startDate = start.toISOString().slice(0, 10);
+        const campStart =
           isoDateUTC((campaign as any)?.startDate) ||
           isoDateUTC((campaign as any)?.createdAt) ||
-          "2020-01-01";
-        const endDate = yesterdayUTC();
+          null;
+        if (campStart && String(campStart) > String(startDate)) startDate = String(campStart);
         if (String(startDate) > String(endDate)) startDate = endDate;
         const totals = await storage.getRevenueTotalForRange(String(session.campaignId), startDate, endDate, 'linkedin');
         importedRevenueToDate = parseNum((totals as any)?.totalRevenue);

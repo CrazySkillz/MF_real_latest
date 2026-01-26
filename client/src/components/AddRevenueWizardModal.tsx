@@ -1276,10 +1276,13 @@ export function AddRevenueWizardModal(props: {
                             if (preferredId) {
                               setSheetsConnectionId(preferredId);
                               await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Click Next to preview and map your columns." });
+                              // No "Next" in this flow: go straight to mapping.
+                              await handleSheetsPreview(preferredId);
+                              setStep("sheets_map");
+                              toast({ title: "Google Sheets connected", description: "Loading preview…" });
                             } else {
                               await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Now select a tab and click Next." });
+                              toast({ title: "Google Sheets connected", description: "Select a tab to continue." });
                             }
                           }}
                           onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
@@ -1301,10 +1304,13 @@ export function AddRevenueWizardModal(props: {
                             if (preferredId) {
                               setSheetsConnectionId(preferredId);
                               await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Click Next to preview and map your columns." });
+                              // No "Next" in this flow: go straight to mapping.
+                              await handleSheetsPreview(preferredId);
+                              setStep("sheets_map");
+                              toast({ title: "Google Sheets connected", description: "Loading preview…" });
                             } else {
                               await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Now select a tab and click Next." });
+                              toast({ title: "Google Sheets connected", description: "Select a tab to continue." });
                             }
                           }}
                           onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}

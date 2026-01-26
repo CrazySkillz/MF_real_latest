@@ -55,6 +55,30 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     setIsConnecting(false);
   }, []);
 
+  // If the campaign already has valid server-side tokens, we can jump straight to "Select Your Spreadsheet"
+  // without forcing the user through OAuth again (fixes "Change sheet/tab" UX).
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // Only attempt the fast path when not already authenticated in this component.
+        if (authCompleted) return;
+        const response = await apiRequest("GET", `/api/google-sheets/${campaignId}/spreadsheets?purpose=${encodeURIComponent(purpose)}`);
+        const data = await response.json().catch(() => ({}));
+        if (!mounted) return;
+        if (Array.isArray(data?.spreadsheets) && data.spreadsheets.length > 0) {
+          setAuthCompleted(true);
+          setSpreadsheets(data.spreadsheets);
+        }
+      } catch {
+        // Silent: if tokens aren't available, the user can OAuth normally.
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [campaignId, purpose, authCompleted]);
+
   useEffect(() => {
     const handlePopupMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;

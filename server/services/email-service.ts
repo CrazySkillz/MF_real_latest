@@ -1,10 +1,21 @@
 import nodemailer from 'nodemailer';
+import { db } from "../db";
+import { emailAlertEvents } from "../../shared/schema.js";
+
+interface EmailAuditContext {
+  kind: 'alert' | 'report' | 'test' | 'generic';
+  entityType?: 'kpi' | 'benchmark' | 'report' | 'test' | string;
+  entityId?: string;
+  campaignId?: string;
+  campaignName?: string;
+}
 
 interface EmailOptions {
   to: string | string[];
   subject: string;
   html: string;
   text?: string;
+  auditContext?: EmailAuditContext;
 }
 
 interface AlertEmailData {
@@ -89,35 +100,65 @@ class EmailService {
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
-    try {
-      const from = process.env.EMAIL_FROM_ADDRESS || 'alerts@performancecore.app';
-      
-      // Try Mailgun HTTP API first if configured (more reliable than SMTP)
-      if (process.env.EMAIL_PROVIDER === 'mailgun' && process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) {
-        console.log('[Email Service] Using Mailgun HTTP API');
-        return await this.sendViaMailgunAPI(from, options);
-      }
-      
-      // Fall back to SMTP
-      console.log('[Email Service] Using SMTP transport');
-      const mailOptions = {
-        from,
-        to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
-        subject: options.subject,
-        html: options.html,
-        text: options.text || this.stripHtml(options.html),
-      };
+    const from = process.env.EMAIL_FROM_ADDRESS || 'alerts@metricmind.app';
+    const toText = Array.isArray(options.to) ? options.to.join(', ') : options.to;
 
-      await this.transporter.sendMail(mailOptions);
+    // Try Mailgun HTTP API first if configured (more reliable than SMTP)
+    if (process.env.EMAIL_PROVIDER === 'mailgun' && process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) {
+      console.log('[Email Service] Using Mailgun HTTP API');
+      const result = await this.sendViaMailgunAPI(from, options);
+      await this.logEmailAuditEvent({
+        options,
+        provider: 'mailgun-api',
+        toText,
+        success: result.success,
+        error: result.error,
+        providerResponseId: result.id,
+      });
+      return result.success;
+    }
+
+    // Fall back to SMTP
+    console.log('[Email Service] Using SMTP transport');
+    const mailOptions = {
+      from,
+      to: toText,
+      subject: options.subject,
+      html: options.html,
+      text: options.text || this.stripHtml(options.html),
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      const provider = (process.env.EMAIL_PROVIDER || '').toLowerCase() === 'sendgrid'
+        ? 'sendgrid-smtp'
+        : (process.env.EMAIL_PROVIDER || '').toLowerCase() === 'mailgun'
+          ? 'mailgun-smtp'
+          : 'smtp';
+
       console.log(`[Email Service] ✅ Email sent successfully to ${mailOptions.to}`);
+      await this.logEmailAuditEvent({
+        options,
+        provider,
+        toText,
+        success: true,
+        providerResponseId: (info && (info.messageId || info.response)) ? String(info.messageId || info.response) : undefined,
+      });
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Email Service] ❌ Error sending email:', error);
+      await this.logEmailAuditEvent({
+        options,
+        provider: 'smtp',
+        toText,
+        success: false,
+        error: error?.message || String(error),
+      });
       return false;
     }
   }
 
-  private async sendViaMailgunAPI(from: string, options: EmailOptions): Promise<boolean> {
+  private async sendViaMailgunAPI(from: string, options: EmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
       const domain = process.env.MAILGUN_DOMAIN;
       const apiKey = process.env.MAILGUN_API_KEY;
@@ -147,19 +188,23 @@ class EmailService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[Email Service] Mailgun HTTP API error:', response.status, errorText);
-        return false;
+        return { success: false, error: errorText };
       }
 
       const result = await response.json();
       console.log(`[Email Service] ✅ Email sent via Mailgun HTTP API:`, result.id);
-      return true;
+      return { success: true, id: result?.id ? String(result.id) : undefined };
     } catch (error) {
       console.error('[Email Service] ❌ Mailgun HTTP API error:', error);
-      return false;
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
 
-  async sendAlertEmail(recipients: string | string[], data: AlertEmailData): Promise<boolean> {
+  async sendAlertEmail(
+    recipients: string | string[],
+    data: AlertEmailData,
+    auditContext?: Pick<EmailAuditContext, "entityId" | "campaignId" | "campaignName">,
+  ): Promise<boolean> {
     const conditionText = {
       below: 'fallen below',
       above: 'exceeded',
@@ -281,11 +326,53 @@ class EmailService {
       to: recipients,
       subject,
       html,
+      auditContext: {
+        kind: 'alert',
+        entityType: data.type,
+        entityId: auditContext?.entityId,
+        campaignId: auditContext?.campaignId,
+        campaignName: auditContext?.campaignName,
+      }
     });
   }
 
   private stripHtml(html: string): string {
     return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  private async logEmailAuditEvent(args: {
+    options: EmailOptions;
+    provider: string;
+    toText: string;
+    success: boolean;
+    error?: string;
+    providerResponseId?: string;
+  }): Promise<void> {
+    try {
+      if (!db) return;
+
+      const ctx = args.options.auditContext;
+      const metadata = JSON.stringify({
+        providerResponseId: args.providerResponseId,
+      });
+
+      await db.insert(emailAlertEvents).values({
+        kind: ctx?.kind || 'generic',
+        entityType: ctx?.entityType,
+        entityId: ctx?.entityId,
+        campaignId: ctx?.campaignId,
+        campaignName: ctx?.campaignName,
+        to: args.toText,
+        subject: args.options.subject,
+        provider: args.provider,
+        success: args.success,
+        error: args.error,
+        metadata,
+      });
+    } catch (e: any) {
+      // Never block email sending on audit logging
+      console.warn('[Email Service] Audit log insert failed:', e?.message || e);
+    }
   }
 }
 

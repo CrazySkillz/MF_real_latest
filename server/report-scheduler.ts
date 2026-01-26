@@ -309,7 +309,14 @@ async function sendReportEmail(report: ReportWithCampaign, recipients: string[])
     const sent = await emailService.sendEmail({
       to: recipients,
       subject,
-      html
+      html,
+      auditContext: {
+        kind: 'report',
+        entityType: 'report',
+        entityId: String((report as any)?.id || ''),
+        campaignId: String((report as any)?.campaignId || ''),
+        campaignName: String((report as any)?.campaignName || ''),
+      }
     });
 
     if (sent) {

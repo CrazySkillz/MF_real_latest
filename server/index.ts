@@ -147,6 +147,25 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS metadata TEXT;
           `);
 
+          // Migration: Email audit events (production-grade observability for alert/report/test sends)
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS email_alert_events (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              kind TEXT NOT NULL DEFAULT 'generic',
+              entity_type TEXT,
+              entity_id TEXT,
+              campaign_id TEXT,
+              campaign_name TEXT,
+              "to" TEXT NOT NULL,
+              subject TEXT NOT NULL,
+              provider TEXT,
+              success BOOLEAN NOT NULL DEFAULT false,
+              error TEXT,
+              metadata TEXT,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
           // Migration: Add GA4 campaign filter to campaigns (so each MetricMind campaign maps to one GA4 campaign)
           await db.execute(sql`
             ALTER TABLE campaigns

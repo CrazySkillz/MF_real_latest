@@ -96,6 +96,10 @@ class AlertMonitoringService {
             condition,
             targetValue: parseFloat(kpi.targetValue?.toString() || '0'),
             unit: kpi.unit || undefined,
+          }, {
+            entityId: kpi.id,
+            campaignId: (kpi as any).campaignId || undefined,
+            campaignName: (kpi as any).campaignName || undefined,
           });
 
           if (emailSent) {
@@ -176,6 +180,10 @@ class AlertMonitoringService {
             thresholdValue,
             condition,
             unit: benchmark.unit || undefined,
+          }, {
+            entityId: benchmark.id,
+            campaignId: (benchmark as any).campaignId || undefined,
+            campaignName: (benchmark as any).campaignName || undefined,
           });
 
           if (emailSent) {

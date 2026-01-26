@@ -2158,6 +2158,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send a test alert email (admin/dev utility)
+  app.post("/api/alerts/test-email", async (req, res) => {
+    try {
+      const { emailService } = await import("./services/email-service.js");
+      const configured = !!(
+        (process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) ||
+        (process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS) ||
+        process.env.SENDGRID_API_KEY ||
+        process.env.EMAIL_SERVICE_API_KEY ||
+        process.env.SMTP_PASS
+      );
+      if (!configured) {
+        return res.status(400).json({ success: false, message: "Email is not configured on the server." });
+      }
+
+      const body = (req.body || {}) as any;
+      const toRaw = body.to || body.recipients;
+      const to = Array.isArray(toRaw)
+        ? toRaw.map((x: any) => String(x).trim()).filter(Boolean)
+        : String(toRaw || '').split(',').map(s => s.trim()).filter(Boolean);
+
+      if (!to || to.length === 0) {
+        return res.status(400).json({ success: false, message: "Missing 'to' email address(es)." });
+      }
+
+      const now = new Date();
+      const subject = body.subject || `✅ MetricMind test alert email (${now.toISOString()})`;
+      const html = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #111827;">
+          <h2 style="margin: 0 0 8px 0;">MetricMind Test Email</h2>
+          <p style="margin: 0 0 12px 0;">If you received this, your email configuration is working end-to-end.</p>
+          <div style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;">
+            <div><strong>Sent at:</strong> ${now.toUTCString()}</div>
+            <div><strong>Environment:</strong> ${process.env.NODE_ENV || 'unknown'}</div>
+          </div>
+          <p style="margin-top: 12px; color: #6b7280; font-size: 12px;">
+            This is an automated test email from MetricMind.
+          </p>
+        </div>
+      `;
+
+      const sent = await emailService.sendEmail({
+        to,
+        subject,
+        html,
+        auditContext: { kind: 'test', entityType: 'test', entityId: 'alerts-test-email' }
+      } as any);
+
+      res.json({ success: sent, to, subject });
+    } catch (error: any) {
+      console.error("[Alerts API] test-email error:", error);
+      res.status(500).json({ success: false, message: "Failed to send test email", error: error?.message || String(error) });
+    }
+  });
+
   // Industry benchmarks routes
   app.get("/api/industry-benchmarks", async (req, res) => {
     try {

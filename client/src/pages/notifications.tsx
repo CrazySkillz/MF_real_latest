@@ -24,12 +24,17 @@ export default function Notifications() {
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [testEmail, setTestEmail] = useState("");
   const itemsPerPage = 10;
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
+  });
+
+  const { data: alertStatus } = useQuery<{ emailConfigured?: boolean }>({
+    queryKey: ["/api/alerts/status"],
   });
 
   const markAsReadMutation = useMutation({
@@ -78,6 +83,34 @@ export default function Notifications() {
       toast({
         title: "Error",
         description: "Failed to delete notification",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendTestEmailMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/alerts/test-email", { to: testEmail });
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      if (data?.success) {
+        toast({
+          title: "Test email sent",
+          description: `Sent to ${Array.isArray(data.to) ? data.to.join(", ") : String(data.to || "")}`,
+        });
+      } else {
+        toast({
+          title: "Test email failed",
+          description: data?.message || "Failed to send test email",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Test email failed",
+        description: error?.message || "Failed to send test email",
         variant: "destructive",
       });
     },
@@ -209,17 +242,50 @@ export default function Notifications() {
                 </div>
               </div>
               
-              {unreadCount > 0 && (
-                <Button
-                  onClick={() => markAllAsReadMutation.mutate()}
-                  disabled={markAllAsReadMutation.isPending}
-                  data-testid="button-mark-all-read"
-                >
-                  <Check className="w-4 h-4 mr-2" />
-                  Mark All as Read
-                </Button>
-              )}
+              <div className="flex items-center gap-3">
+                {unreadCount > 0 && (
+                  <Button
+                    onClick={() => markAllAsReadMutation.mutate()}
+                    disabled={markAllAsReadMutation.isPending}
+                    data-testid="button-mark-all-read"
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Mark All as Read
+                  </Button>
+                )}
+              </div>
             </div>
+
+            {alertStatus?.emailConfigured && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>Email testing</CardTitle>
+                  <CardDescription>Send a test alert email to confirm deliverability</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col md:flex-row gap-3 md:items-end">
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="test-email">Recipient email</Label>
+                      <Input
+                        id="test-email"
+                        placeholder="you@company.com"
+                        value={testEmail}
+                        onChange={(e) => setTestEmail(e.target.value)}
+                      />
+                      <p className="text-xs text-slate-500">
+                        You can enter multiple addresses separated by commas.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => sendTestEmailMutation.mutate()}
+                      disabled={!testEmail.trim() || sendTestEmailMutation.isPending}
+                    >
+                      Send test email
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Filters */}
             <Card className="mb-6">

@@ -156,6 +156,23 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Email audit events (for production-grade observability of alert/report/test email sends)
+export const emailAlertEvents = pgTable("email_alert_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  kind: text("kind").notNull().default("generic"), // 'alert' | 'report' | 'test' | 'generic'
+  entityType: text("entity_type"), // 'kpi' | 'benchmark' | 'report' | 'test'
+  entityId: text("entity_id"),
+  campaignId: text("campaign_id"),
+  campaignName: text("campaign_name"),
+  to: text("to").notNull(), // comma-separated
+  subject: text("subject").notNull(),
+  provider: text("provider"), // 'smtp' | 'mailgun-api' | 'mailgun-smtp' | 'sendgrid-smtp' | etc.
+  success: boolean("success").notNull().default(false),
+  error: text("error"),
+  metadata: text("metadata"), // JSON string (provider response IDs, etc.)
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const googleSheetsConnections = pgTable("google_sheets_connections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
@@ -1105,6 +1122,20 @@ export const insertNotificationSchema = createInsertSchema(notifications).pick({
   metadata: true,
 });
 
+export const insertEmailAlertEventSchema = createInsertSchema(emailAlertEvents).pick({
+  kind: true,
+  entityType: true,
+  entityId: true,
+  campaignId: true,
+  campaignName: true,
+  to: true,
+  subject: true,
+  provider: true,
+  success: true,
+  error: true,
+  metadata: true,
+});
+
 export const insertKPIPeriodSchema = createInsertSchema(kpiPeriods).pick({
   kpiId: true,
   periodStart: true,
@@ -1352,6 +1383,8 @@ export type Benchmark = typeof benchmarks.$inferSelect;
 export type InsertBenchmark = z.infer<typeof insertBenchmarkSchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type EmailAlertEvent = typeof emailAlertEvents.$inferSelect;
+export type InsertEmailAlertEvent = z.infer<typeof insertEmailAlertEventSchema>;
 export type KPIPeriod = typeof kpiPeriods.$inferSelect;
 export type InsertKPIPeriod = z.infer<typeof insertKPIPeriodSchema>;
 export type BenchmarkHistory = typeof benchmarkHistory.$inferSelect;

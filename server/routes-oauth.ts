@@ -2181,6 +2181,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual trigger: refresh LinkedIn data + persist daily facts (useful for testing).
+  app.post("/api/campaigns/:id/linkedin/refresh", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.id || "");
+      const { refreshLinkedInDataForCampaign } = await import("./linkedin-scheduler.js");
+      await refreshLinkedInDataForCampaign(campaignId);
+      res.json({ success: true, message: "LinkedIn refresh completed" });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to refresh LinkedIn data" });
+    }
+  });
+
   // Send a test alert email (admin/dev utility)
   app.post("/api/alerts/test-email", async (req, res) => {
     try {

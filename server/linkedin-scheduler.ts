@@ -156,6 +156,53 @@ async function generateMockLinkedInData(
   }
 
   console.log(`[LinkedIn Scheduler] ✅ Mock data generated for campaign ${campaignId}`);
+
+  // Also persist mock daily facts so Insights (Trends + anomalies) can be tested without waiting days.
+  try {
+    const days = 90;
+    const now = new Date();
+    const endUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)); // yesterday UTC
+    const startUTC = new Date(endUTC.getTime());
+    startUTC.setUTCDate(startUTC.getUTCDate() - (days - 1));
+
+    let impressions = 20000 + Math.floor(Math.random() * 8000);
+    let clicks = Math.max(50, Math.floor(impressions * (0.008 + Math.random() * 0.01)));
+    let conversions = Math.max(0, Math.floor(clicks * (0.01 + Math.random() * 0.03)));
+    let spend = 300 + Math.random() * 700;
+
+    const drift = () => 0.9 + Math.random() * 0.2; // ±10%
+    const rows: any[] = [];
+
+    for (let i = 0; i < days; i++) {
+      const d = new Date(startUTC.getTime());
+      d.setUTCDate(startUTC.getUTCDate() + i);
+      const date = d.toISOString().slice(0, 10);
+
+      impressions = Math.max(1000, Math.floor(impressions * drift()));
+      clicks = Math.max(1, Math.floor(clicks * drift()));
+      conversions = Math.max(0, Math.floor(conversions * drift()));
+      spend = Math.max(10, spend * drift());
+
+      rows.push({
+        campaignId,
+        date,
+        impressions,
+        clicks,
+        reach: Math.max(0, Math.floor(impressions * (0.6 + Math.random() * 0.2))),
+        engagements: Math.max(0, Math.floor(clicks + impressions * (0.002 + Math.random() * 0.004))),
+        conversions,
+        leads: Math.max(0, Math.floor(conversions * (0.4 + Math.random() * 0.4))),
+        spend: spend.toFixed(2),
+        videoViews: Math.max(0, Math.floor(impressions * (0.01 + Math.random() * 0.02))),
+        viralImpressions: Math.max(0, Math.floor(impressions * (0.05 + Math.random() * 0.1))),
+      });
+    }
+
+    await storage.upsertLinkedInDailyMetrics(rows as any);
+    console.log(`[LinkedIn Scheduler] ✅ Mock daily metrics upserted: ${rows.length} days for campaign ${campaignId}`);
+  } catch (e: any) {
+    console.warn(`[LinkedIn Scheduler] Mock daily metrics upsert failed for ${campaignId}:`, e?.message || e);
+  }
 }
 
 /**
@@ -415,7 +462,7 @@ async function fetchRealLinkedInData(
 /**
  * Refresh LinkedIn data for a single campaign
  */
-async function refreshLinkedInDataForCampaign(
+export async function refreshLinkedInDataForCampaign(
   campaignId: string,
   connection?: any
 ): Promise<void> {
@@ -430,8 +477,15 @@ async function refreshLinkedInDataForCampaign(
       return;
     }
 
-    // Detect test mode: connection.method === 'test' or global env variable
-    const isTestMode = connection.method === 'test' || process.env.LINKEDIN_TEST_MODE === 'true';
+    // Detect test mode (robust): explicit method, explicit env, or known test tokens.
+    const method = String(connection.method || '').toLowerCase();
+    const token = String(connection.accessToken || '');
+    const isTestMode =
+      method.includes('test') ||
+      process.env.LINKEDIN_TEST_MODE === 'true' ||
+      token === 'test-mode-token' ||
+      token.startsWith('test_') ||
+      token.startsWith('test-');
 
     if (isTestMode) {
       await generateMockLinkedInData(campaignId, connection);

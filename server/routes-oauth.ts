@@ -2137,7 +2137,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         kpiAlertsEnabled: kpisWithAlerts.length,
         benchmarkAlertsEnabled: benchmarksWithAlerts.length,
         totalAlertsEnabled: kpisWithAlerts.length + benchmarksWithAlerts.length,
-        emailConfigured: !!(process.env.EMAIL_SERVICE_API_KEY || process.env.SMTP_PASS),
+        emailConfigured: !!(
+          (process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) ||
+          (process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS) ||
+          process.env.SENDGRID_API_KEY ||
+          process.env.EMAIL_SERVICE_API_KEY ||
+          process.env.SMTP_PASS
+        ),
       });
     } catch (error: any) {
       console.error('[Alerts API] status error:', error);

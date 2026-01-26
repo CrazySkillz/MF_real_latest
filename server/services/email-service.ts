@@ -26,7 +26,12 @@ class EmailService {
   }
 
   private initializeTransporter() {
-    const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
+    // Auto-detect provider if EMAIL_PROVIDER isn't explicitly set (prevents "configured but not used" confusion).
+    const autoProvider =
+      (process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) || (process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS)
+        ? 'mailgun'
+        : (process.env.SENDGRID_API_KEY ? 'sendgrid' : 'smtp');
+    const emailProvider = (process.env.EMAIL_PROVIDER || autoProvider || 'smtp').trim();
     
     console.log(`[Email Service] Initializing with provider: ${emailProvider}`);
     

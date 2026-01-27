@@ -87,48 +87,86 @@ async function buildPdfAttachmentForReport(args: {
   campaignName: string | null;
   isTest?: boolean;
 }): Promise<Buffer | null> {
-  const { report, windowStart, windowEnd, campaignName, isTest } = args;
+  const { report, windowStart, windowEnd, campaignName } = args;
   try {
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
 
+    // Layout constants
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    const left = margin;
+    const right = pageW - margin;
+    const pageBottom = pageH - 16;
     let y = 18;
-    const left = 14;
-    const pageBottom = 285;
 
-    const addLine = (text: string, fontSize = 10) => {
-      if (y > pageBottom) {
+    const safeText = (t: any) => String(t ?? "").replace(/[^\x20-\x7E]/g, " ").trim();
+    const setFont = (style: "normal" | "bold" = "normal") => {
+      try {
+        doc.setFont("helvetica", style);
+      } catch {
+        // ignore if font/style not supported
+      }
+    };
+    const line = (x1: number, y1: number, x2: number, y2: number) => {
+      doc.setDrawColor(226, 232, 240);
+      doc.line(x1, y1, x2, y2);
+    };
+    const ensureSpace = (needed: number) => {
+      if (y + needed > pageBottom) {
         doc.addPage();
         y = 18;
       }
+    };
+    const text = (t: any, x: number, yy: number, fontSize = 10, style: "normal" | "bold" = "normal", color?: [number, number, number]) => {
+      setFont(style);
       doc.setFontSize(fontSize);
-      // Keep to ASCII to avoid font/encoding quirks in jsPDF default fonts.
-      const safe = String(text || "").replace(/[^\x20-\x7E]/g, " ");
-      doc.text(safe, left, y);
-      y += Math.max(6, fontSize + 2);
+      if (color) doc.setTextColor(color[0], color[1], color[2]);
+      else doc.setTextColor(15, 23, 42); // slate-900
+      doc.text(safeText(t), x, yy);
+    };
+    const addLabelValue = (label: string, value: string, yy: number) => {
+      text(label, left, yy, 9, "bold", [71, 85, 105]); // slate-600
+      text(value, left + 36, yy, 9, "normal", [71, 85, 105]);
     };
 
-    const reportName = String(report?.name || "MetricMind Report");
-    const reportType = String(report?.reportType || "");
+    const reportName = safeText(report?.name || "MetricMind Report");
+    const reportType = safeText(report?.reportType || "report");
+    const campaignLabel = campaignName ? safeText(campaignName) : "(platform-level)";
 
-    doc.setFontSize(16);
-    doc.text(isTest ? "MetricMind Report (Test Send)" : "MetricMind Report", left, y);
-    y += 10;
+    // Header band
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, pageW, 30, "F");
+    text("MetricMind", left, 18, 16, "bold", [255, 255, 255]);
+    text("Executive Report", left + 62, 18, 10, "normal", [203, 213, 225]); // slate-300
 
-    addLine(reportName, 12);
-    addLine(campaignName ? `Campaign: ${campaignName}` : "Campaign: (platform-level)", 10);
-    addLine(`Type: ${reportType || "report"}`, 10);
-    addLine(`Window: ${windowStart} to ${windowEnd} (UTC)`, 10);
-    addLine(`Generated: ${new Date().toUTCString()}`, 10);
-    y += 4;
+    // Title + metadata card
+    y = 42;
+    text(reportName, left, y, 16, "bold");
+    y += 8;
+    doc.setFillColor(248, 250, 252); // slate-50
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.roundedRect(left, y, right - left, 26, 3, 3, "FD");
+    addLabelValue("Campaign", campaignLabel, y + 8);
+    addLabelValue("Type", reportType.toLowerCase(), y + 16);
+    // Right column
+    text("Window", left + 110, y + 8, 9, "bold", [71, 85, 105]);
+    text(`${safeText(windowStart)} to ${safeText(windowEnd)} (UTC)`, left + 145, y + 8, 9, "normal", [71, 85, 105]);
+    text("Generated", left + 110, y + 16, 9, "bold", [71, 85, 105]);
+    text(new Date().toUTCString(), left + 145, y + 16, 9, "normal", [71, 85, 105]);
+    y += 38;
 
     const platformType = String((report as any)?.platformType || "linkedin");
     const campaignId = (report as any)?.campaignId ? String((report as any).campaignId) : undefined;
 
     // Content by report type (start with high-signal types; fall back gracefully).
     if (reportType.toLowerCase() === "kpis") {
-      addLine("KPIs", 12);
-      y += 2;
+      ensureSpace(24);
+      text("KPIs", left, y, 12, "bold");
+      y += 8;
+      line(left, y, right, y);
+      y += 8;
 
       let kpis: any[] = [];
       try {
@@ -138,25 +176,55 @@ async function buildPdfAttachmentForReport(args: {
       }
 
       if (!kpis || kpis.length === 0) {
-        addLine("No KPIs found for this scope.", 10);
+        text("No KPIs found for this scope.", left, y, 10, "normal", [71, 85, 105]);
+        y += 10;
       } else {
-        // Simple readable list format (email-friendly PDF).
-        for (const kpi of kpis) {
-          const name = String(kpi?.name || "KPI");
-          const metric = String(kpi?.metricKey || kpi?.metric || "").trim();
-          const status = String(kpi?.status || "").trim();
-          const cur = formatWithUnit(kpi?.currentValue, kpi?.unit);
-          const tgt = formatWithUnit(kpi?.targetValue, kpi?.unit);
-          const metricPart = metric ? ` • ${metric}` : "";
-          const statusPart = status ? ` • ${status}` : "";
-          addLine(`${name}${metricPart}${statusPart}`, 10);
-          addLine(`Current: ${cur}   Target: ${tgt}`, 10);
-          y += 2;
+        // Table header
+        const cols = {
+          name: left,
+          metric: left + 62,
+          status: left + 105,
+          cur: left + 132,
+          tgt: left + 160,
+        };
+        doc.setFillColor(241, 245, 249); // slate-100
+        doc.rect(left, y - 5, right - left, 10, "F");
+        text("Name", cols.name, y + 2, 9, "bold", [51, 65, 85]);
+        text("Metric", cols.metric, y + 2, 9, "bold", [51, 65, 85]);
+        text("Status", cols.status, y + 2, 9, "bold", [51, 65, 85]);
+        text("Current", cols.cur, y + 2, 9, "bold", [51, 65, 85]);
+        text("Target", cols.tgt, y + 2, 9, "bold", [51, 65, 85]);
+        y += 14;
+
+        for (let i = 0; i < kpis.length; i++) {
+          const kpi = kpis[i];
+          ensureSpace(12);
+          if (i % 2 === 0) {
+            doc.setFillColor(248, 250, 252); // subtle zebra
+            doc.rect(left, y - 6, right - left, 10, "F");
+          }
+          const name = safeText(kpi?.name || "KPI");
+          const metric = safeText(kpi?.metricKey || kpi?.metric || "");
+          const status = safeText(kpi?.status || "");
+          const cur = safeText(formatWithUnit(kpi?.currentValue, kpi?.unit));
+          const tgt = safeText(formatWithUnit(kpi?.targetValue, kpi?.unit));
+
+          // Truncate long names so columns don't collide
+          const nameShort = name.length > 24 ? `${name.slice(0, 23)}…` : name;
+          text(nameShort, cols.name, y, 9, "normal", [15, 23, 42]);
+          text(metric, cols.metric, y, 9, "normal", [71, 85, 105]);
+          text(status, cols.status, y, 9, "normal", [71, 85, 105]);
+          text(cur, cols.cur, y, 9, "normal", [15, 23, 42]);
+          text(tgt, cols.tgt, y, 9, "normal", [15, 23, 42]);
+          y += 12;
         }
       }
     } else if (reportType.toLowerCase() === "benchmarks") {
-      addLine("Benchmarks", 12);
-      y += 2;
+      ensureSpace(24);
+      text("Benchmarks", left, y, 12, "bold");
+      y += 8;
+      line(left, y, right, y);
+      y += 8;
 
       let benchmarks: any[] = [];
       try {
@@ -168,28 +236,58 @@ async function buildPdfAttachmentForReport(args: {
       }
 
       if (!benchmarks || benchmarks.length === 0) {
-        addLine("No benchmarks found for this scope.", 10);
+        text("No benchmarks found for this scope.", left, y, 10, "normal", [71, 85, 105]);
+        y += 10;
       } else {
-        for (const b of benchmarks) {
-          const name = String(b?.name || "Benchmark");
-          const metric = String(b?.metric || "").trim();
-          const cur = formatWithUnit(b?.currentValue, b?.unit);
-          const tgt = formatWithUnit(b?.benchmarkValue, b?.unit);
-          const metricPart = metric ? ` • ${metric}` : "";
-          addLine(`${name}${metricPart}`, 10);
-          addLine(`Current: ${cur}   Benchmark: ${tgt}`, 10);
-          y += 2;
+        const cols = {
+          name: left,
+          metric: left + 78,
+          cur: left + 120,
+          bm: left + 160,
+        };
+        doc.setFillColor(241, 245, 249);
+        doc.rect(left, y - 5, right - left, 10, "F");
+        text("Name", cols.name, y + 2, 9, "bold", [51, 65, 85]);
+        text("Metric", cols.metric, y + 2, 9, "bold", [51, 65, 85]);
+        text("Current", cols.cur, y + 2, 9, "bold", [51, 65, 85]);
+        text("Benchmark", cols.bm, y + 2, 9, "bold", [51, 65, 85]);
+        y += 14;
+
+        for (let i = 0; i < benchmarks.length; i++) {
+          const b = benchmarks[i];
+          ensureSpace(12);
+          if (i % 2 === 0) {
+            doc.setFillColor(248, 250, 252);
+            doc.rect(left, y - 6, right - left, 10, "F");
+          }
+          const name = safeText(b?.name || "Benchmark");
+          const metric = safeText(b?.metric || "");
+          const cur = safeText(formatWithUnit(b?.currentValue, b?.unit));
+          const tgt = safeText(formatWithUnit(b?.benchmarkValue, b?.unit));
+          const nameShort = name.length > 30 ? `${name.slice(0, 29)}…` : name;
+
+          text(nameShort, cols.name, y, 9, "normal", [15, 23, 42]);
+          text(metric, cols.metric, y, 9, "normal", [71, 85, 105]);
+          text(cur, cols.cur, y, 9, "normal", [15, 23, 42]);
+          text(tgt, cols.bm, y, 9, "normal", [15, 23, 42]);
+          y += 12;
         }
       }
     } else {
       // For other types (overview/ads/custom) we still attach a useful cover page.
-      addLine("This PDF includes the report header only.", 10);
-      addLine("For full interactive content, open the dashboard Reports tab.", 10);
+      text("Summary", left, y, 12, "bold");
+      y += 10;
+      text("This PDF includes the report header only.", left, y, 10, "normal", [71, 85, 105]);
+      y += 8;
+      text("For full interactive content, open the dashboard Reports tab.", left, y, 10, "normal", [71, 85, 105]);
+      y += 10;
     }
 
-    y += 6;
-    doc.setFontSize(9);
-    doc.text("Note: For interactive drilldowns, open the dashboard Reports tab.", left, Math.min(y, pageBottom));
+    // Footer
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.setFontSize(8);
+    doc.text("Generated by MetricMind", left, pageH - 10);
+    doc.text(`${new Date().toISOString().slice(0, 10)} (UTC)`, right - 38, pageH - 10);
 
     return coercePdfBufferFromDoc(doc);
   } catch (e) {

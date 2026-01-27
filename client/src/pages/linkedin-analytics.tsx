@@ -362,6 +362,7 @@ export default function LinkedInAnalytics() {
     benchmarks: [] as string[],
     includeAdComparison: false,
     includeCampaignBreakdown: false,
+    campaignBreakdownMetrics: [] as string[],
   });
 
   // Detect user's time zone
@@ -1520,6 +1521,7 @@ export default function LinkedInAnalytics() {
         benchmarks: [],
         includeAdComparison: false,
         includeCampaignBreakdown: false,
+        campaignBreakdownMetrics: [],
       });
     },
     onError: (error: any) => {
@@ -1590,13 +1592,17 @@ export default function LinkedInAnalytics() {
     
     // Set custom report config if it's a custom report
     if (report.reportType === 'custom' && config?.customReportConfig) {
+      const cbd = config.customReportConfig.campaignBreakdownMetrics;
+      const legacyInclude = !!config.customReportConfig.includeCampaignBreakdown;
+      const inferred = Array.isArray(cbd) ? cbd : (legacyInclude ? ['spend', 'impressions', 'clicks', 'conversions', 'leads', 'ctr', 'cpc', 'cpa', 'cvr'] : []);
       setCustomReportConfig({
         coreMetrics: config.customReportConfig.coreMetrics || [],
         derivedMetrics: config.customReportConfig.derivedMetrics || [],
         kpis: config.customReportConfig.kpis || [],
         benchmarks: config.customReportConfig.benchmarks || [],
         includeAdComparison: config.customReportConfig.includeAdComparison || false,
-        includeCampaignBreakdown: config.customReportConfig.includeCampaignBreakdown || false,
+        includeCampaignBreakdown: legacyInclude,
+        campaignBreakdownMetrics: inferred,
       });
     }
     
@@ -1932,6 +1938,7 @@ export default function LinkedInAnalytics() {
       benchmarks: [],
       includeAdComparison: false,
       includeCampaignBreakdown: false,
+      campaignBreakdownMetrics: [],
     });
 
     toast({
@@ -1982,7 +1989,12 @@ export default function LinkedInAnalytics() {
     return y + 15;
   };
 
-  const addCampaignBreakdownPDF = (doc: any, y: number, aggregated: any) => {
+  const addCampaignBreakdownPDF = (
+    doc: any,
+    y: number,
+    aggregated: any,
+    opts?: { selectedKeys?: string[] }
+  ) => {
     if (!metrics || !Array.isArray(metrics) || metrics.length === 0) return y;
 
     if (y > 250) {
@@ -2006,6 +2018,114 @@ export default function LinkedInAnalytics() {
         return acc;
       }, {})
     ) as any[];
+
+    const conversionValue = Number((aggregated as any)?.conversionValue || (aggregated as any)?.conversionvalue || 0);
+    const hasRevenue = (aggregated as any)?.hasRevenueTracking === 1 && Number.isFinite(conversionValue) && conversionValue > 0;
+    const selectedKeys = Array.isArray(opts?.selectedKeys) ? opts!.selectedKeys : null;
+
+    // If a metric list is provided (custom report), render a per-campaign “details” layout.
+    if (selectedKeys && selectedKeys.length > 0) {
+      const label: Record<string, string> = {
+        spend: "Spend",
+        impressions: "Impr",
+        clicks: "Clicks",
+        conversions: "Conv",
+        leads: "Leads",
+        ctr: "CTR",
+        cpc: "CPC",
+        cvr: "CVR",
+        cpa: "CPA",
+        revenue: "Revenue",
+        roas: "ROAS",
+        roi: "ROI",
+        profit: "Profit",
+        profitmargin: "Margin",
+        revenueperlead: "Rev/Lead",
+      };
+
+      const fmt = (k: string, v: number, aux?: any) => {
+        const kk = k.toLowerCase();
+        if (["ctr", "cvr", "roi", "profitmargin"].includes(kk)) return `${v.toFixed(2)}%`;
+        if (kk === "roas") return `${v.toFixed(2)}x`;
+        if (["spend", "cpc", "cpa", "revenue", "profit", "revenueperlead"].includes(kk)) return formatCurrency(v);
+        return formatNumber(v);
+      };
+
+      campaigns.forEach((c: any) => {
+        if (y > 265) {
+          doc.addPage();
+          y = 20;
+        }
+
+        const impressions = Number(c?.metrics?.impressions || 0);
+        const clicks = Number(c?.metrics?.clicks || 0);
+        const spend = Number(c?.metrics?.spend || 0);
+        const conversions = Number(c?.metrics?.conversions || 0);
+        const leads = Number(c?.metrics?.leads || 0);
+
+        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+        const cpc = clicks > 0 ? spend / clicks : 0;
+        const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+        const cpa = conversions > 0 ? spend / conversions : 0;
+
+        const revenue = hasRevenue ? conversions * conversionValue : 0;
+        const profit = hasRevenue ? (revenue - spend) : 0;
+        const roi = hasRevenue && spend > 0 ? (profit / spend) * 100 : 0;
+        const roas = hasRevenue && spend > 0 ? (revenue / spend) : 0;
+        const profitMargin = hasRevenue && revenue > 0 ? (profit / revenue) * 100 : 0;
+        const revenuePerLead = hasRevenue && leads > 0 ? (revenue / leads) : 0;
+
+        const valueByKey: Record<string, number> = {
+          spend,
+          impressions,
+          clicks,
+          conversions,
+          leads,
+          ctr,
+          cpc,
+          cvr,
+          cpa,
+          revenue,
+          roas,
+          roi,
+          profit,
+          profitmargin: profitMargin,
+          revenueperlead: revenuePerLead,
+        };
+
+        const name = String(c?.name || 'Campaign');
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(50, 50, 50);
+        doc.text(name.length > 60 ? `${name.slice(0, 59)}…` : name, 20, y);
+        y += 8;
+
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(90, 90, 90);
+
+        // Render key/value pairs, 3 per line.
+        const keys = selectedKeys.filter((k) => hasRevenue || !["revenue", "roas", "roi", "profit", "profitmargin", "revenueperlead"].includes(String(k).toLowerCase()));
+        for (let i = 0; i < keys.length; i += 3) {
+          const row = keys.slice(i, i + 3).map((k) => {
+            const kk = String(k).toLowerCase();
+            const v = valueByKey[kk];
+            return `${label[kk] || kk}: ${fmt(kk, Number(v || 0))}`;
+          }).join("   ");
+          doc.text(row, 22, y);
+          y += 7;
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+        }
+
+        y += 3;
+      });
+
+      doc.setTextColor(50, 50, 50);
+      return y + 6;
+    }
 
     // Table header
     doc.setFillColor(240, 240, 240);
@@ -2041,6 +2161,10 @@ export default function LinkedInAnalytics() {
       const cpc = clicks > 0 ? spend / clicks : 0;
       const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
       const cpa = conversions > 0 ? spend / conversions : 0;
+      const revenue = hasRevenue ? conversions * conversionValue : 0;
+      const profit = hasRevenue ? (revenue - spend) : 0;
+      const roi = hasRevenue && spend > 0 ? (profit / spend) * 100 : 0;
+      const roas = hasRevenue && spend > 0 ? (revenue / spend) : 0;
 
       const name = String(c?.name || 'Campaign');
       const nameShort = name.length > 30 ? `${name.slice(0, 29)}…` : name;
@@ -2056,7 +2180,9 @@ export default function LinkedInAnalytics() {
 
       doc.setTextColor(110, 110, 110);
       doc.setFontSize(7);
-      doc.text(`CPC ${formatCurrency(cpc)}  CPA ${formatCurrency(cpa)}  CVR ${cvr.toFixed(2)}%`, 22, y + 4);
+      const baseLine = `CPC ${formatCurrency(cpc)}  CPA ${formatCurrency(cpa)}  CVR ${cvr.toFixed(2)}%`;
+      const revLine = hasRevenue ? `  Rev ${formatCurrency(revenue)}  ROAS ${roas.toFixed(2)}x  ROI ${roi.toFixed(1)}%` : '';
+      doc.text(`${baseLine}${revLine}`, 22, y + 4);
       doc.setTextColor(50, 50, 50);
 
       y += 12;
@@ -2847,9 +2973,13 @@ export default function LinkedInAnalytics() {
       }
     }
 
-    // Campaign Breakdown section (per-campaign table)
-    if (customReportConfig.includeCampaignBreakdown) {
-      y = addCampaignBreakdownPDF(doc, y, aggregated);
+    // Campaign Breakdown section (per-campaign)
+    const cbdKeys = Array.isArray((customReportConfig as any).campaignBreakdownMetrics)
+      ? (customReportConfig as any).campaignBreakdownMetrics
+      : [];
+    const showCbd = (cbdKeys.length > 0) || !!(customReportConfig as any).includeCampaignBreakdown;
+    if (showCbd) {
+      y = addCampaignBreakdownPDF(doc, y, aggregated, { selectedKeys: cbdKeys.length > 0 ? cbdKeys : undefined });
     }
 
     // KPIs Section
@@ -6892,6 +7022,7 @@ export default function LinkedInAnalytics() {
                         benchmarks: [],
                         includeAdComparison: false,
                         includeCampaignBreakdown: false,
+                        campaignBreakdownMetrics: [],
                       });
                       setIsReportModalOpen(true);
                     }}
@@ -9390,36 +9521,6 @@ export default function LinkedInAnalytics() {
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Select Metrics</h3>
                   
                   <Accordion type="multiple" className="w-full">
-                    {/* Overview / Campaign Breakdown */}
-                    <AccordionItem value="overview-campaign-breakdown">
-                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                        Overview / Campaign Breakdown
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-3 pt-2">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="include-campaign-breakdown"
-                              checked={!!customReportConfig.includeCampaignBreakdown}
-                              onCheckedChange={(checked) => {
-                                setCustomReportConfig({
-                                  ...customReportConfig,
-                                  includeCampaignBreakdown: checked as boolean,
-                                });
-                              }}
-                              data-testid="checkbox-include-campaign-breakdown"
-                            />
-                            <Label htmlFor="include-campaign-breakdown" className="text-sm cursor-pointer">
-                              Include Campaign Breakdown section
-                            </Label>
-                          </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 pl-6">
-                            Adds a per-campaign table (spend, impressions, clicks, conversions, leads, CTR, CPC) to the PDF.
-                          </p>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-
                     {/* LinkedIn Core Metrics */}
                     <AccordionItem value="linkedin-core-metrics">
                       <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -9563,6 +9664,65 @@ export default function LinkedInAnalytics() {
                         </AccordionContent>
                       </AccordionItem>
                     )}
+
+                    {/* Campaign Breakdown (per-campaign) */}
+                    <AccordionItem value="campaign-breakdown">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Campaign Breakdown
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          {[
+                            ['spend', 'Spend'],
+                            ['impressions', 'Impressions'],
+                            ['clicks', 'Clicks'],
+                            ['conversions', 'Conversions'],
+                            ['leads', 'Leads'],
+                            ['ctr', 'CTR'],
+                            ['cpc', 'CPC'],
+                            ['cvr', 'CVR'],
+                            ['cpa', 'CPA'],
+                            ['revenue', 'Revenue'],
+                            ['roas', 'ROAS'],
+                            ['roi', 'ROI'],
+                            ['profit', 'Profit'],
+                            ['profitmargin', 'Profit Margin'],
+                            ['revenueperlead', 'Revenue Per Lead'],
+                          ].map(([key, label]) => {
+                            const k = String(key);
+                            const revenueOnly = ['revenue', 'roas', 'roi', 'profit', 'profitmargin', 'revenueperlead'].includes(k);
+                            if (revenueOnly && aggregated?.hasRevenueTracking !== 1) return null;
+                            const checked = Array.isArray((customReportConfig as any).campaignBreakdownMetrics)
+                              ? (customReportConfig as any).campaignBreakdownMetrics.includes(k)
+                              : false;
+                            return (
+                              <div key={k} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`cbd-${k}`}
+                                  checked={checked}
+                                  onCheckedChange={(v) => {
+                                    const next = new Set<string>(Array.isArray((customReportConfig as any).campaignBreakdownMetrics) ? (customReportConfig as any).campaignBreakdownMetrics : []);
+                                    if (v) next.add(k); else next.delete(k);
+                                    setCustomReportConfig({
+                                      ...customReportConfig,
+                                      campaignBreakdownMetrics: Array.from(next),
+                                      includeCampaignBreakdown: Array.from(next).length > 0,
+                                    } as any);
+                                  }}
+                                  data-testid={`checkbox-campaign-breakdown-${k}`}
+                                />
+                                <Label htmlFor={`cbd-${k}`} className="text-sm cursor-pointer">
+                                  {label}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                          Select which per-campaign metrics to include in the PDF.
+                        </p>
+                      </AccordionContent>
+                    </AccordionItem>
 
                     {/* KPIs */}
                     <AccordionItem value="kpis">
@@ -9919,7 +10079,7 @@ export default function LinkedInAnalytics() {
               </Button>
               
               <div className="flex items-center gap-2">
-                {reportForm.reportType && reportForm.reportType !== 'custom' && (
+                {reportModalStep === 'standard' && reportForm.reportType && reportForm.reportType !== 'custom' && (
                   <Button
                     onClick={editingReportId ? handleUpdateReport : handleCreateReport}
                     disabled={!reportForm.name || createReportMutation.isPending || updateReportMutation.isPending}

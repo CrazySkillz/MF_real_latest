@@ -335,11 +335,7 @@ export default function LinkedInAnalytics() {
   });
   const [reportModalStep, setReportModalStep] = useState<'standard' | 'custom' | 'type' | 'configuration'>('standard');
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
-  const [showArchivedReports, setShowArchivedReports] = useState(false);
-  const [snapshotsModalOpen, setSnapshotsModalOpen] = useState(false);
-  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
-  const [snapshotsReport, setSnapshotsReport] = useState<any | null>(null);
-  const [reportSnapshots, setReportSnapshots] = useState<any[]>([]);
+  // History + archive features removed for a simpler exec workflow.
   
   // Custom Report Configuration State
   const [customReportConfig, setCustomReportConfig] = useState({
@@ -1455,40 +1451,7 @@ export default function LinkedInAnalytics() {
     }
   });
 
-  const archiveReportMutation = useMutation({
-    mutationFn: async (reportId: string) => {
-      const res = await apiRequest('PATCH', `/api/platforms/linkedin/reports/${reportId}`, {
-        status: 'archived',
-        scheduleEnabled: false,
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/reports', campaignId] });
-      toast({ title: "Report archived", description: "The report was archived and scheduling was disabled." });
-    },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to archive report", variant: "destructive" });
-    },
-  });
-
-  const handleOpenReportHistory = async (report: any) => {
-    try {
-      setSnapshotsReport(report);
-      setReportSnapshots([]);
-      setSnapshotsLoading(true);
-      setSnapshotsModalOpen(true);
-      const resp = await fetch(`/api/platforms/linkedin/reports/${encodeURIComponent(String(report?.id))}/snapshots`);
-      const json = await resp.json().catch(() => ({}));
-      setReportSnapshots(Array.isArray(json?.snapshots) ? json.snapshots : []);
-    } catch {
-      setReportSnapshots([]);
-    } finally {
-      setSnapshotsLoading(false);
-    }
-  };
-
-  // Send test report email mutation
+  // Update Report mutation
   // Update Report mutation
   const updateReportMutation = useMutation({
     mutationFn: async ({ reportId, reportData }: { reportId: string, reportData: any }) => {
@@ -6784,16 +6747,6 @@ export default function LinkedInAnalytics() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="toggle-archived-reports"
-                        checked={showArchivedReports}
-                        onCheckedChange={(v: any) => setShowArchivedReports(Boolean(v))}
-                      />
-                      <Label htmlFor="toggle-archived-reports" className="text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
-                        Show archived
-                      </Label>
-                    </div>
                   <Button 
                     data-testid="button-create-report" 
                     className="gap-2"
@@ -6838,9 +6791,7 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : reportsData && Array.isArray(reportsData) && reportsData.length > 0 ? (
                   <div className="grid grid-cols-1 gap-4">
-                    {(reportsData as any[])
-                      .filter((r: any) => showArchivedReports || String(r?.status || "active") !== "archived")
-                      .map((report: any) => (
+                    {(reportsData as any[]).map((report: any) => (
                       <Card key={report.id} data-testid={`report-${report.id}`}>
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between">
@@ -6866,24 +6817,12 @@ export default function LinkedInAnalytics() {
                                     Last sent {new Date(report.lastSentAt).toLocaleDateString()}
                                   </span>
                                 )}
-                                {String(report?.status || 'active') === 'archived' && (
-                                  <Badge variant="secondary">Archived</Badge>
-                                )}
                                 <span className="text-slate-400">
                                   Created {new Date(report.createdAt).toLocaleDateString()}
                                 </span>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                data-testid={`button-history-${report.id}`}
-                                onClick={() => handleOpenReportHistory(report)}
-                              >
-                                <Clock className="w-4 h-4 mr-2" />
-                                History
-                              </Button>
                               <Button 
                                 variant="outline" 
                                 size="sm" 
@@ -6910,16 +6849,6 @@ export default function LinkedInAnalytics() {
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              {String(report?.status || "active") !== "archived" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  data-testid={`button-archive-${report.id}`}
-                                  onClick={() => archiveReportMutation.mutate(report.id)}
-                                >
-                                  Archive
-                                </Button>
-                              )}
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button 
@@ -9877,76 +9806,6 @@ export default function LinkedInAnalytics() {
                 )}
               </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Report History (Snapshots) */}
-      <Dialog open={snapshotsModalOpen} onOpenChange={(open) => setSnapshotsModalOpen(open)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Report history</DialogTitle>
-            <DialogDescription>
-              Immutable snapshots of what was generated/sent.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="text-sm text-slate-600 dark:text-slate-400">
-              <span className="font-medium text-slate-900 dark:text-white">{snapshotsReport?.name || 'Report'}</span>
-              {snapshotsReport?.reportType ? <span className="ml-2">({snapshotsReport.reportType})</span> : null}
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-slate-500">
-                Generate a snapshot to create an auditable PDF artifact.
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!snapshotsReport?.id || snapshotsLoading}
-                onClick={async () => {
-                  if (!snapshotsReport?.id) return;
-                  try {
-                    setSnapshotsLoading(true);
-                    await fetch(`/api/platforms/linkedin/reports/${encodeURIComponent(String(snapshotsReport.id))}/snapshots`, { method: 'POST' });
-                    await handleOpenReportHistory(snapshotsReport);
-                  } finally {
-                    setSnapshotsLoading(false);
-                  }
-                }}
-              >
-                Generate snapshot
-              </Button>
-            </div>
-            {snapshotsLoading ? (
-              <div className="text-sm text-slate-500">Loading…</div>
-            ) : reportSnapshots.length === 0 ? (
-              <div className="text-sm text-slate-500">No snapshots yet.</div>
-            ) : (
-              <div className="space-y-2">
-                {reportSnapshots.map((s: any) => (
-                  <div key={s.id} className="flex items-center justify-between border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2">
-                    <div className="text-sm">
-                      <div className="font-medium text-slate-900 dark:text-white">
-                        {new Date(s.generatedAt || s.generated_at || s.createdAt || s.created_at || Date.now()).toLocaleString()}
-                      </div>
-                      {(s.windowStart || s.window_start) && (s.windowEnd || s.window_end) ? (
-                        <div className="text-xs text-slate-500">
-                          Window {(s.windowStart || s.window_start)} → {(s.windowEnd || s.window_end)} (UTC)
-                        </div>
-                      ) : null}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(`/api/report-snapshots/${encodeURIComponent(String(s.id))}/pdf`, '_blank')}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      PDF
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>

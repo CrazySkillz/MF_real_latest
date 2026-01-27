@@ -528,9 +528,16 @@ export async function checkScheduledReports(): Promise<void> {
           doc.text(`Generated: ${new Date(snapshotPayload.generatedAt).toUTCString()}`, 14, 54);
           doc.setFontSize(9);
           doc.text("Note: For interactive drilldowns, open the dashboard Reports tab.", 14, 64);
-          const ab = doc.output("arraybuffer");
-          pdfBuffer = Buffer.from(ab as any);
+          // Use data URI -> base64 decode (more reliable in Node runtimes than arraybuffer output).
+          const dataUri = doc.output("datauristring");
+          const base64 = String(dataUri || "").split(",")[1] || "";
+          pdfBuffer = base64 ? Buffer.from(base64, "base64") : null;
+          if (!pdfBuffer || pdfBuffer.length < 100) {
+            console.warn("[Report Scheduler] PDF attachment generation produced an empty buffer; sending without attachment.");
+            pdfBuffer = null;
+          }
         } catch (e) {
+          console.warn("[Report Scheduler] PDF attachment generation failed; sending without attachment.", e);
           pdfBuffer = null;
         }
 
@@ -686,9 +693,16 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       doc.text(`Generated: ${now.toUTCString()}`, 14, 54);
       doc.setFontSize(9);
       doc.text("Note: For interactive drilldowns, open the dashboard Reports tab.", 14, 64);
-      const ab = doc.output("arraybuffer");
-      pdfBuffer = Buffer.from(ab as any);
+      // Use data URI -> base64 decode (more reliable in Node runtimes than arraybuffer output).
+      const dataUri = doc.output("datauristring");
+      const base64 = String(dataUri || "").split(",")[1] || "";
+      pdfBuffer = base64 ? Buffer.from(base64, "base64") : null;
+      if (!pdfBuffer || pdfBuffer.length < 100) {
+        console.warn("[Report Scheduler] PDF attachment generation produced an empty buffer; sending without attachment.");
+        pdfBuffer = null;
+      }
     } catch (e) {
+      console.warn("[Report Scheduler] PDF attachment generation failed; sending without attachment.", e);
       pdfBuffer = null;
     }
 

@@ -523,9 +523,6 @@ export default function Reports() {
                         Cancel
                       </Button>
                       <div className="flex items-center space-x-3">
-                        <Button variant="outline" onClick={resetForm}>
-                          Reset
-                        </Button>
                         <Button 
                           onClick={createReport}
                           disabled={!reportName.trim() || (scheduleEnabled && !recipients.trim())}

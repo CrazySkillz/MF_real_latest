@@ -18,6 +18,16 @@ interface ReportWithCampaign extends LinkedInReport {
 function coercePdfBufferFromDoc(doc: any): Buffer | null {
   // Try the most reliable forms across Node runtimes and bundlers.
   try {
+    const nb = doc.output("nodebuffer");
+    if (nb) {
+      const buf = Buffer.isBuffer(nb) ? nb : Buffer.from(nb as any);
+      if (buf.length > 100) return buf;
+    }
+  } catch {
+    // fallthrough
+  }
+
+  try {
     const ab = doc.output("arraybuffer");
     const byteLen = (ab && (ab.byteLength ?? (ab as any).length)) || 0;
     if (byteLen && byteLen > 100) {

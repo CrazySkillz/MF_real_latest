@@ -107,6 +107,10 @@ class EmailService {
   async sendEmail(options: EmailOptions): Promise<boolean> {
     const from = process.env.EMAIL_FROM_ADDRESS || 'alerts@metricmind.app';
     const toText = Array.isArray(options.to) ? options.to.join(', ') : options.to;
+    const attachmentSummary = Array.isArray(options.attachments)
+      ? options.attachments.map(a => `${a.filename}(${a.content?.length || 0}b)`).join(", ")
+      : "";
+    console.log(`[Email Service] Attachments: ${Array.isArray(options.attachments) ? options.attachments.length : 0}${attachmentSummary ? ` → ${attachmentSummary}` : ""}`);
 
     // Try Mailgun HTTP API first if configured (more reliable than SMTP)
     if (process.env.EMAIL_PROVIDER === 'mailgun' && process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) {
@@ -183,6 +187,7 @@ class EmailService {
 
       // If attachments exist, use multipart/form-data (Mailgun requires multipart for attachments).
       if (Array.isArray(options.attachments) && options.attachments.length > 0) {
+        console.log(`[Email Service] Mailgun API: sending multipart with ${options.attachments.length} attachment(s)`);
         const fd = new FormData();
         fd.append('from', from);
         fd.append('to', toValue);
@@ -193,6 +198,7 @@ class EmailService {
         for (const att of options.attachments) {
           const type = att.contentType || 'application/octet-stream';
           const blob = new Blob([att.content], { type });
+          console.log(`[Email Service] Mailgun API attachment: ${att.filename} bytes=${att.content?.length || 0} type=${type}`);
           fd.append('attachment', blob, att.filename);
         }
 

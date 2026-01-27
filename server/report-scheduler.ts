@@ -15,6 +15,39 @@ interface ReportWithCampaign extends LinkedInReport {
   platformType?: string;
 }
 
+function coercePdfBufferFromDoc(doc: any): Buffer | null {
+  // Try the most reliable forms across Node runtimes and bundlers.
+  try {
+    const ab = doc.output("arraybuffer");
+    const byteLen = (ab && (ab.byteLength ?? (ab as any).length)) || 0;
+    if (byteLen && byteLen > 100) {
+      // Node supports Buffer.from(ArrayBuffer) and Buffer.from(Uint8Array)
+      try {
+        return Buffer.from(ab as any);
+      } catch {
+        try {
+          return Buffer.from(new Uint8Array(ab));
+        } catch {
+          // fallthrough
+        }
+      }
+    }
+  } catch {
+    // fallthrough
+  }
+
+  try {
+    const dataUri = doc.output("datauristring");
+    const base64 = String(dataUri || "").split(",")[1] || "";
+    const buf = base64 ? Buffer.from(base64, "base64") : null;
+    if (buf && buf.length > 100) return buf;
+  } catch {
+    // fallthrough
+  }
+
+  return null;
+}
+
 /**
  * Scheduling helpers (timezone-aware, idempotent).
  */
@@ -528,14 +561,8 @@ export async function checkScheduledReports(): Promise<void> {
           doc.text(`Generated: ${new Date(snapshotPayload.generatedAt).toUTCString()}`, 14, 54);
           doc.setFontSize(9);
           doc.text("Note: For interactive drilldowns, open the dashboard Reports tab.", 14, 64);
-          // Use data URI -> base64 decode (more reliable in Node runtimes than arraybuffer output).
-          const dataUri = doc.output("datauristring");
-          const base64 = String(dataUri || "").split(",")[1] || "";
-          pdfBuffer = base64 ? Buffer.from(base64, "base64") : null;
-          if (!pdfBuffer || pdfBuffer.length < 100) {
-            console.warn("[Report Scheduler] PDF attachment generation produced an empty buffer; sending without attachment.");
-            pdfBuffer = null;
-          }
+          pdfBuffer = coercePdfBufferFromDoc(doc);
+          console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
         } catch (e) {
           console.warn("[Report Scheduler] PDF attachment generation failed; sending without attachment.", e);
           pdfBuffer = null;
@@ -693,14 +720,8 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       doc.text(`Generated: ${now.toUTCString()}`, 14, 54);
       doc.setFontSize(9);
       doc.text("Note: For interactive drilldowns, open the dashboard Reports tab.", 14, 64);
-      // Use data URI -> base64 decode (more reliable in Node runtimes than arraybuffer output).
-      const dataUri = doc.output("datauristring");
-      const base64 = String(dataUri || "").split(",")[1] || "";
-      pdfBuffer = base64 ? Buffer.from(base64, "base64") : null;
-      if (!pdfBuffer || pdfBuffer.length < 100) {
-        console.warn("[Report Scheduler] PDF attachment generation produced an empty buffer; sending without attachment.");
-        pdfBuffer = null;
-      }
+      pdfBuffer = coercePdfBufferFromDoc(doc);
+      console.log(`[Report Scheduler] PDF attachment bytes (test): ${pdfBuffer ? pdfBuffer.length : 0}`);
     } catch (e) {
       console.warn("[Report Scheduler] PDF attachment generation failed; sending without attachment.", e);
       pdfBuffer = null;

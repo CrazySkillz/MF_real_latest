@@ -13077,9 +13077,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms/:platformType/reports", async (req, res) => {
     try {
       const { platformType } = req.params;
+      const body = (req.body || {}) as any;
+
+      // Soft caps to prevent report-library bloat (enterprise hygiene)
+      const MAX_ACTIVE_REPORTS_PER_CAMPAIGN = 50;
+      const MAX_SCHEDULED_ACTIVE_REPORTS_PER_CAMPAIGN = 10;
+
+      const campaignId = body?.campaignId ? String(body.campaignId) : null;
+      if (campaignId) {
+        try {
+          const existing = await storage.getPlatformReports(platformType, campaignId as any);
+          const active = (existing || []).filter((r: any) => String(r?.status || "active") !== "archived");
+          const scheduledActive = active.filter((r: any) => !!r?.scheduleEnabled && String(r?.status || "") === "active");
+          if (active.length >= MAX_ACTIVE_REPORTS_PER_CAMPAIGN) {
+            return res.status(400).json({
+              success: false,
+              message: `Report limit reached (${MAX_ACTIVE_REPORTS_PER_CAMPAIGN}). Archive older reports to keep the library clean.`,
+              code: "REPORT_LIMIT_REACHED",
+            });
+          }
+          if (scheduledActive.length >= MAX_SCHEDULED_ACTIVE_REPORTS_PER_CAMPAIGN && !!body?.scheduleEnabled) {
+            return res.status(400).json({
+              success: false,
+              message: `Scheduled report limit reached (${MAX_SCHEDULED_ACTIVE_REPORTS_PER_CAMPAIGN}). Archive/disable an existing scheduled report first.`,
+              code: "SCHEDULED_REPORT_LIMIT_REACHED",
+            });
+          }
+        } catch {
+          // Don't block on count failures
+        }
+      }
+
+      // Validate schedule fields (finance-grade correctness)
+      if (body?.scheduleEnabled) {
+        const freq = String(body?.scheduleFrequency || "").toLowerCase();
+        const tz = String(body?.scheduleTimeZone || "").trim();
+        const time = String(body?.scheduleTime || "").trim();
+        const recipients = Array.isArray(body?.scheduleRecipients) ? body.scheduleRecipients : null;
+
+        if (!freq) return res.status(400).json({ success: false, message: "scheduleFrequency is required when scheduleEnabled=true" });
+        if (!tz) return res.status(400).json({ success: false, message: "scheduleTimeZone is required when scheduleEnabled=true" });
+        if (!/^\d{1,2}:\d{2}$/.test(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
+        if (!recipients || recipients.length === 0) return res.status(400).json({ success: false, message: "scheduleRecipients is required when scheduleEnabled=true" });
+
+        if (freq === "weekly") {
+          const dow = Number(body?.scheduleDayOfWeek);
+          if (!Number.isFinite(dow) || dow < 0 || dow > 6) {
+            return res.status(400).json({ success: false, message: "scheduleDayOfWeek must be 0-6 for weekly schedules" });
+          }
+        }
+        if (freq === "monthly") {
+          const dom = Number(body?.scheduleDayOfMonth);
+          if (!Number.isFinite(dom) || dom < 0 || dom > 31) {
+            return res.status(400).json({ success: false, message: "scheduleDayOfMonth must be 0 (last) or 1-31 for monthly schedules" });
+          }
+        }
+        if (freq === "quarterly") {
+          const qt = String(body?.quarterTiming || "").toLowerCase();
+          if (qt !== "start" && qt !== "end") {
+            return res.status(400).json({ success: false, message: "quarterTiming must be 'start' or 'end' for quarterly schedules" });
+          }
+          const dom = Number(body?.scheduleDayOfMonth);
+          if (!Number.isFinite(dom) || dom < 0 || dom > 31) {
+            return res.status(400).json({ success: false, message: "scheduleDayOfMonth must be 0 (last) or 1-31 for quarterly schedules" });
+          }
+        }
+      }
       
       const report = await storage.createPlatformReport({
-        ...req.body,
+        ...body,
         platformType
       });
       
@@ -13094,8 +13160,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/platforms/:platformType/reports/:reportId", async (req, res) => {
     try {
       const { reportId } = req.params;
-      
-      const report = await storage.updatePlatformReport(reportId, req.body);
+      const body = (req.body || {}) as any;
+
+      // Validate schedule fields (finance-grade correctness)
+      if (body?.scheduleEnabled) {
+        const freq = String(body?.scheduleFrequency || "").toLowerCase();
+        const tz = String(body?.scheduleTimeZone || "").trim();
+        const time = String(body?.scheduleTime || "").trim();
+        const recipients = Array.isArray(body?.scheduleRecipients) ? body.scheduleRecipients : null;
+
+        if (!freq) return res.status(400).json({ success: false, message: "scheduleFrequency is required when scheduleEnabled=true" });
+        if (!tz) return res.status(400).json({ success: false, message: "scheduleTimeZone is required when scheduleEnabled=true" });
+        if (!/^\d{1,2}:\d{2}$/.test(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
+        if (!recipients || recipients.length === 0) return res.status(400).json({ success: false, message: "scheduleRecipients is required when scheduleEnabled=true" });
+      }
+
+      const report = await storage.updatePlatformReport(reportId, body);
       if (!report) {
         return res.status(404).json({ message: "Report not found" });
       }
@@ -13169,6 +13249,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Error: ${error instanceof Error ? error.message : 'Failed to send test report'}`,
         success: false
       });
+    }
+  });
+
+  // Report snapshots (immutable history)
+  app.get("/api/platforms/:platformType/reports/:reportId/snapshots", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const { reportId } = req.params;
+      const { db } = await import("./db");
+      const { reportSnapshots } = await import("../shared/schema");
+      const { eq, desc } = await import("drizzle-orm");
+      const rows = await db
+        .select()
+        .from(reportSnapshots as any)
+        .where(eq((reportSnapshots as any).reportId, String(reportId)))
+        .orderBy(desc((reportSnapshots as any).generatedAt))
+        .limit(50);
+      res.json({ success: true, snapshots: rows });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch report snapshots" });
+    }
+  });
+
+  app.post("/api/platforms/:platformType/reports/:reportId/snapshots", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const { platformType, reportId } = req.params;
+      const { db } = await import("./db");
+      const { reportSnapshots, linkedinReports, campaigns } = await import("../shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const [report] = await db.select().from(linkedinReports as any).where(eq((linkedinReports as any).id, String(reportId)));
+      if (!report) return res.status(404).json({ success: false, error: "Report not found" });
+
+      let campaignName: string | null = null;
+      if ((report as any).campaignId) {
+        const [c] = await db.select().from(campaigns as any).where(eq((campaigns as any).id, String((report as any).campaignId)));
+        campaignName = (c as any)?.name || null;
+      }
+
+      const now = new Date();
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+      const start = new Date(end.getTime());
+      start.setUTCDate(start.getUTCDate() - 29);
+      const windowStart = start.toISOString().slice(0, 10);
+      const windowEnd = end.toISOString().slice(0, 10);
+
+      const payload = {
+        reportId: String((report as any).id),
+        reportName: String((report as any).name || ""),
+        reportType: String((report as any).reportType || ""),
+        platformType: String((report as any).platformType || platformType || "linkedin"),
+        campaignId: (report as any).campaignId || null,
+        campaignName,
+        windowStart,
+        windowEnd,
+        generatedAt: now.toISOString(),
+        source: "manual",
+      };
+
+      const [snap] = await db
+        .insert(reportSnapshots as any)
+        .values({
+          reportId: payload.reportId,
+          campaignId: payload.campaignId,
+          platformType: payload.platformType,
+          reportType: payload.reportType,
+          windowStart,
+          windowEnd,
+          snapshotJson: JSON.stringify(payload),
+          hasEstimated: false,
+        } as any)
+        .returning();
+
+      res.json({ success: true, snapshot: snap });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to generate snapshot" });
+    }
+  });
+
+  app.get("/api/report-snapshots/:snapshotId", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const { snapshotId } = req.params;
+      const { db } = await import("./db");
+      const { reportSnapshots } = await import("../shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const [row] = await db
+        .select()
+        .from(reportSnapshots as any)
+        .where(eq((reportSnapshots as any).id, String(snapshotId)));
+      if (!row) return res.status(404).json({ success: false, error: "Snapshot not found" });
+      res.json({ success: true, snapshot: row });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch snapshot" });
+    }
+  });
+
+  // Download a snapshot PDF (server-generated, deterministic)
+  app.get("/api/report-snapshots/:snapshotId/pdf", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const { snapshotId } = req.params;
+      const { db } = await import("./db");
+      const { reportSnapshots } = await import("../shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const [row] = await db
+        .select()
+        .from(reportSnapshots as any)
+        .where(eq((reportSnapshots as any).id, String(snapshotId)));
+      if (!row) return res.status(404).json({ success: false, error: "Snapshot not found" });
+
+      let payload: any = {};
+      try {
+        payload = JSON.parse(String((row as any).snapshotJson || (row as any).snapshot_json || "{}"));
+      } catch {
+        payload = {};
+      }
+
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("MetricMind Report Snapshot", 14, 18);
+      doc.setFontSize(12);
+      doc.text(String(payload?.reportName || "Report"), 14, 28);
+      doc.setFontSize(10);
+      if (payload?.campaignName) doc.text(`Campaign: ${payload.campaignName}`, 14, 36);
+      doc.text(`Type: ${String(payload?.reportType || (row as any)?.reportType || "")}`, 14, 42);
+      doc.text(`Window: ${String((row as any).windowStart || "")} → ${String((row as any).windowEnd || "")} (UTC)`, 14, 48);
+      doc.text(`Generated: ${new Date((row as any).generatedAt || (row as any).generated_at || Date.now()).toUTCString()}`, 14, 54);
+      doc.setFontSize(9);
+      doc.text("This PDF is generated from an immutable snapshot.", 14, 64);
+      const ab = doc.output("arraybuffer");
+      const buf = Buffer.from(ab as any);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="metricmind_report_${snapshotId}.pdf"`);
+      res.send(buf);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to generate snapshot PDF" });
     }
   });
 

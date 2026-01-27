@@ -758,12 +758,46 @@ export const linkedinReports = pgTable("linkedin_reports", {
   scheduleDayOfWeek: integer("schedule_day_of_week"), // 0-6 for weekly
   scheduleDayOfMonth: integer("schedule_day_of_month"), // 1-31 for monthly
   scheduleTime: text("schedule_time"), // HH:MM format
+  scheduleTimeZone: text("schedule_time_zone"), // IANA tz (e.g. Europe/London). Required for correct scheduling.
+  quarterTiming: text("quarter_timing"), // 'start' | 'end' (quarterly only)
   scheduleRecipients: text("schedule_recipients").array(), // Email addresses
   lastSentAt: timestamp("last_sent_at"),
   nextScheduledAt: timestamp("next_scheduled_at"),
   status: text("status").notNull().default("active"), // 'active', 'archived', 'draft'
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Immutable report snapshots (what was sent / downloaded at a point in time)
+export const reportSnapshots = pgTable("report_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reportId: text("report_id").notNull(),
+  campaignId: text("campaign_id"),
+  platformType: text("platform_type").notNull().default("linkedin"),
+  reportType: text("report_type").notNull(),
+  // Window bounds (ISO date strings, UTC)
+  windowStart: text("window_start"),
+  windowEnd: text("window_end"),
+  // Snapshot payload (JSON string)
+  snapshotJson: text("snapshot_json").notNull(),
+  hasEstimated: boolean("has_estimated").notNull().default(false),
+  generatedAt: timestamp("generated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Report send events (idempotency + audit trail for scheduled sends)
+export const reportSendEvents = pgTable("report_send_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reportId: text("report_id").notNull(),
+  snapshotId: text("snapshot_id"),
+  // Unique key representing the intended local schedule slot, e.g. "2026-01-27T09:00@Europe/London"
+  scheduledKey: text("scheduled_key").notNull(),
+  timeZone: text("time_zone"),
+  recipients: text("recipients").array(),
+  status: text("status").notNull().default("pending"), // 'pending' | 'sent' | 'failed' | 'skipped'
+  error: text("error"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const kpiReports = pgTable("kpi_reports", {
@@ -1111,6 +1145,8 @@ export const insertLinkedInReportSchema = createInsertSchema(linkedinReports).pi
   scheduleDayOfWeek: true,
   scheduleDayOfMonth: true,
   scheduleTime: true,
+  scheduleTimeZone: true,
+  quarterTiming: true,
   scheduleRecipients: true,
   status: true,
 });

@@ -1,6 +1,8 @@
 import { db } from "./db";
 import { emailService } from "./services/email-service";
 import { storage } from "./storage";
+import { campaigns, linkedinReports, reportSendEvents, reportSnapshots } from "../shared/schema";
+import { and, eq } from "drizzle-orm";
 import type { LinkedInReport } from "../shared/schema";
 
 /**
@@ -14,87 +16,124 @@ interface ReportWithCampaign extends LinkedInReport {
 }
 
 /**
- * Check if today matches the report schedule
+ * Scheduling helpers (timezone-aware, idempotent).
  */
-function shouldSendReport(report: ReportWithCampaign): boolean {
-  if (!report.scheduleEnabled || report.status !== 'active') {
-    return false;
-  }
+function getZonedParts(now: Date, timeZone: string): {
+  year: number;
+  month: number; // 1-12
+  day: number; // 1-31
+  weekday: number; // 0-6 (Sun-Sat)
+  hour: number; // 0-23
+  minute: number; // 0-59
+  localDate: string; // YYYY-MM-DD
+} {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    weekday: "short",
+  });
+  const parts = dtf.formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value;
+  const year = parseInt(get("year") || "0", 10);
+  const month = parseInt(get("month") || "0", 10);
+  const day = parseInt(get("day") || "0", 10);
+  const hour = parseInt(get("hour") || "0", 10);
+  const minute = parseInt(get("minute") || "0", 10);
+  const wd = String(get("weekday") || "").toLowerCase();
+  const weekday =
+    wd.startsWith("sun") ? 0 :
+    wd.startsWith("mon") ? 1 :
+    wd.startsWith("tue") ? 2 :
+    wd.startsWith("wed") ? 3 :
+    wd.startsWith("thu") ? 4 :
+    wd.startsWith("fri") ? 5 :
+    wd.startsWith("sat") ? 6 : now.getUTCDay();
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return { year, month, day, weekday, hour, minute, localDate: `${year}-${mm}-${dd}` };
+}
 
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  const dayOfMonth = today.getDate();
-  const month = today.getMonth();
+function parseHHMM(s: any): { hh: number; mm: number } | null {
+  const raw = String(s || "").trim();
+  const m = raw.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const hh = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  return { hh, mm };
+}
 
-  switch (report.scheduleFrequency) {
-    case 'daily':
-      return true;
+function lastDayOfMonth(year: number, month1to12: number): number {
+  return new Date(Date.UTC(year, month1to12, 0)).getUTCDate();
+}
 
-    case 'weekly':
-      const scheduledDay = report.scheduleDayOfWeek || 'monday';
-      const dayMap: Record<string, number> = {
-        sunday: 0,
-        monday: 1,
-        tuesday: 2,
-        wednesday: 3,
-        thursday: 4,
-        friday: 5,
-        saturday: 6
-      };
-      return dayOfWeek === dayMap[scheduledDay.toLowerCase()];
+function isReportDueNow(report: ReportWithCampaign, now: Date): { due: boolean; scheduledKey?: string; tz?: string; scheduleTime?: string } {
+  if (!report.scheduleEnabled || report.status !== "active") return { due: false };
+  if (!report.scheduleFrequency) return { due: false };
 
-    case 'monthly':
-      const scheduledDayOfMonth = report.scheduleDayOfMonth || 'first';
-      
-      if (scheduledDayOfMonth === 'first') {
-        return dayOfMonth === 1;
-      } else if (scheduledDayOfMonth === 'last') {
-        const lastDay = new Date(today.getFullYear(), month + 1, 0).getDate();
-        return dayOfMonth === lastDay;
-      } else if (scheduledDayOfMonth === 'mid') {
-        return dayOfMonth === 15;
+  const tz = String((report as any).scheduleTimeZone || "UTC").trim() || "UTC";
+  const scheduleTime = String(report.scheduleTime || "09:00").trim();
+  const hhmm = parseHHMM(scheduleTime) || { hh: 9, mm: 0 };
+
+  const zp = getZonedParts(now, tz);
+  if (zp.hour !== hhmm.hh || zp.minute !== hhmm.mm) return { due: false };
+
+  const monthLast = lastDayOfMonth(zp.year, zp.month);
+  const dayOfMonth = zp.day;
+  const month = zp.month - 1; // 0-11
+
+  let matches = false;
+  switch (String(report.scheduleFrequency).toLowerCase()) {
+    case "daily":
+      matches = true;
+      break;
+    case "weekly": {
+      const target = typeof report.scheduleDayOfWeek === "number" ? report.scheduleDayOfWeek : null;
+      matches = target === null ? false : zp.weekday === target;
+      break;
+    }
+    case "monthly": {
+      const raw = typeof report.scheduleDayOfMonth === "number" ? report.scheduleDayOfMonth : null;
+      if (raw === null) { matches = false; break; }
+      const target = raw === 0 ? monthLast : Math.min(Math.max(raw, 1), monthLast);
+      matches = dayOfMonth === target;
+      break;
+    }
+    case "quarterly": {
+      const quarterTiming = String((report as any).quarterTiming || "end").toLowerCase();
+      const isQuarterStartMonth = [0, 3, 6, 9].includes(month);
+      const isQuarterEndMonth = [2, 5, 8, 11].includes(month);
+      if (quarterTiming === "start") {
+        matches = isQuarterStartMonth && dayOfMonth === 1;
       } else {
-        // Specific day number (1-31)
-        const targetDay = parseInt(scheduledDayOfMonth);
-        return dayOfMonth === targetDay;
+        // End of quarter month, default to last day unless scheduleDayOfMonth overrides
+        if (!isQuarterEndMonth) { matches = false; break; }
+        const raw = typeof report.scheduleDayOfMonth === "number" ? report.scheduleDayOfMonth : 0;
+        const target = raw === 0 ? monthLast : Math.min(Math.max(raw, 1), monthLast);
+        matches = dayOfMonth === target;
       }
-
-    case 'quarterly':
-      const quarterTiming = report.quarterTiming || 'end';
-      const isQuarterEnd = [2, 5, 8, 11].includes(month); // March, June, September, December
-      
-      if (!isQuarterEnd) return false;
-
-      const lastDayOfMonth = new Date(today.getFullYear(), month + 1, 0).getDate();
-      
-      if (quarterTiming === 'start') {
-        // First day of first month of quarter
-        const isQuarterStart = [0, 3, 6, 9].includes(month); // January, April, July, October
-        return isQuarterStart && dayOfMonth === 1;
-      } else {
-        // End of quarter logic
-        const scheduledDay = report.scheduleDayOfMonth || 'last';
-        
-        if (scheduledDay === 'last') {
-          return dayOfMonth === lastDayOfMonth;
-        } else if (scheduledDay === 'first') {
-          return dayOfMonth === 1;
-        } else if (scheduledDay === 'mid') {
-          return dayOfMonth === 15;
-        }
-      }
-      return false;
-
+      break;
+    }
     default:
-      return false;
+      matches = false;
   }
+
+  if (!matches) return { due: false };
+  const scheduledKey = `${zp.localDate}T${String(hhmm.hh).padStart(2, "0")}:${String(hhmm.mm).padStart(2, "0")}@${tz}`;
+  return { due: true, scheduledKey, tz, scheduleTime: `${String(hhmm.hh).padStart(2, "0")}:${String(hhmm.mm).padStart(2, "0")}` };
 }
 
 /**
  * Generate report data URL for email link
  */
 function getReportViewUrl(report: ReportWithCampaign): string {
-  const baseUrl = process.env.APP_URL || 'https://performancecore.app';
+  const baseUrl = process.env.APP_URL || 'https://metricmind.app';
   if (report.campaignId) {
     return `${baseUrl}/campaigns/${report.campaignId}/linkedin-analytics?tab=reports`;
   }
@@ -104,13 +143,23 @@ function getReportViewUrl(report: ReportWithCampaign): string {
 /**
  * Send report email
  */
-async function sendReportEmail(report: ReportWithCampaign, recipients: string[]): Promise<boolean> {
+async function sendReportEmail(
+  report: ReportWithCampaign,
+  recipients: string[],
+  meta?: {
+    windowStart?: string;
+    windowEnd?: string;
+    campaignName?: string | null;
+    snapshotId?: string;
+    attachment?: { filename: string; content: Buffer } | null;
+  }
+): Promise<boolean> {
   try {
     console.log(`[Report Scheduler] Preparing to send report: ${report.name} to ${recipients.length} recipients`);
 
-    // Get report configuration
-    const config = typeof report.configuration === 'string' 
-      ? JSON.parse(report.configuration) 
+    // Get report configuration (optional)
+    const config = typeof report.configuration === 'string'
+      ? JSON.parse(report.configuration)
       : report.configuration;
 
     const reportTypeLabels: Record<string, string> = {
@@ -123,7 +172,7 @@ async function sendReportEmail(report: ReportWithCampaign, recipients: string[])
 
     const reportLabel = reportTypeLabels[report.reportType] || 'LinkedIn Analytics Report';
     const viewUrl = getReportViewUrl(report);
-    const baseUrl = process.env.APP_URL || 'https://performancecore.app';
+    const baseUrl = process.env.APP_URL || 'https://metricmind.app';
 
     const frequencyLabels: Record<string, string> = {
       daily: 'Daily',
@@ -243,18 +292,27 @@ async function sendReportEmail(report: ReportWithCampaign, recipients: string[])
             
             <div class="content">
               <p>Hello,</p>
-              
-              <p>Your scheduled LinkedIn Analytics report is ready for review.</p>
+              <p>Your scheduled MetricMind report is ready.</p>
               
               <div class="report-info">
                 <h2>${report.name}</h2>
                 ${report.description ? `<p style="color: #6b7280; margin: 10px 0;">${report.description}</p>` : ''}
                 
                 <div style="margin-top: 20px;">
+                  ${meta?.campaignName ? `
+                  <div class="info-row">
+                    <span class="info-label">Campaign:</span>
+                    <span class="info-value">${meta.campaignName}</span>
+                  </div>` : ''}
                   <div class="info-row">
                     <span class="info-label">Report Type:</span>
                     <span class="info-value">${reportLabel}</span>
                   </div>
+                  ${(meta?.windowStart && meta?.windowEnd) ? `
+                  <div class="info-row">
+                    <span class="info-label">Window:</span>
+                    <span class="info-value">${meta.windowStart} → ${meta.windowEnd} (UTC)</span>
+                  </div>` : ''}
                   <div class="info-row">
                     <span class="info-label">Frequency:</span>
                     <span class="info-value">${frequencyLabels[report.scheduleFrequency] || report.scheduleFrequency}</span>
@@ -289,7 +347,7 @@ async function sendReportEmail(report: ReportWithCampaign, recipients: string[])
             </div>
             
             <div class="footer">
-              <p><strong>PerformanceCore</strong> – Enterprise LinkedIn Analytics</p>
+              <p><strong>MetricMind</strong> – Executive Marketing Analytics</p>
               <p style="margin: 10px 0;">
                 <a href="${baseUrl}">Dashboard</a> · 
                 <a href="${baseUrl}/linkedin-analytics?tab=reports">Manage Reports</a>
@@ -310,12 +368,13 @@ async function sendReportEmail(report: ReportWithCampaign, recipients: string[])
       to: recipients,
       subject,
       html,
+      attachments: meta?.attachment ? [{ filename: meta.attachment.filename, content: meta.attachment.content, contentType: 'application/pdf' }] : undefined,
       auditContext: {
         kind: 'report',
         entityType: 'report',
         entityId: String((report as any)?.id || ''),
         campaignId: String((report as any)?.campaignId || ''),
-        campaignName: String((report as any)?.campaignName || ''),
+        campaignName: String(meta?.campaignName || (report as any)?.campaignName || ''),
       }
     });
 
@@ -337,7 +396,8 @@ async function sendReportEmail(report: ReportWithCampaign, recipients: string[])
  */
 export async function checkScheduledReports(): Promise<void> {
   try {
-    console.log('[Report Scheduler] Checking for scheduled reports...');
+    console.log('[Report Scheduler] Checking for due scheduled reports...');
+    const now = new Date();
 
     // Get all active reports with schedules - try both storage methods
     let allReports: any[] = [];
@@ -375,8 +435,27 @@ export async function checkScheduledReports(): Promise<void> {
     console.log(`[Report Scheduler] Found ${scheduledReports.length} scheduled reports`);
 
     for (const report of scheduledReports) {
-      if (shouldSendReport(report)) {
-        console.log(`[Report Scheduler] Report "${report.name}" is due today`);
+      const due = isReportDueNow(report, now);
+      if (!due.due || !due.scheduledKey) continue;
+
+      // Idempotency: ensure we only send once per scheduled slot.
+      const inserted = await db
+        .insert(reportSendEvents)
+        .values({
+          reportId: String((report as any).id),
+          scheduledKey: due.scheduledKey,
+          timeZone: due.tz || null,
+          recipients: (report as any).scheduleRecipients || null,
+          status: "pending",
+        } as any)
+        .onConflictDoNothing()
+        .returning()
+        .catch(() => []);
+      if (!inserted || inserted.length === 0) {
+        continue; // already processed
+      }
+
+      console.log(`[Report Scheduler] Report "${report.name}" is due now (${due.scheduledKey})`);
 
         // Get recipients
         const recipients = report.scheduleRecipients || [];
@@ -386,15 +465,109 @@ export async function checkScheduledReports(): Promise<void> {
           continue;
         }
 
-        // Send email
-        await sendReportEmail(report, recipients);
+        // Compute report window (align to LinkedIn analytics: last 30 complete UTC days)
+        const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+        const start = new Date(end.getTime());
+        start.setUTCDate(start.getUTCDate() - 29);
+        const windowStart = start.toISOString().slice(0, 10);
+        const windowEnd = end.toISOString().slice(0, 10);
+
+        // Snapshot (what was sent)
+        let campaignName: string | null = null;
+        try {
+          if ((report as any).campaignId) {
+            const [c] = await db.select().from(campaigns).where(eq(campaigns.id, String((report as any).campaignId)));
+            campaignName = (c as any)?.name || null;
+          }
+        } catch {
+          campaignName = null;
+        }
+
+        const snapshotPayload = {
+          reportId: String((report as any).id),
+          reportName: String((report as any).name || ""),
+          reportType: String((report as any).reportType || ""),
+          platformType: String((report as any).platformType || "linkedin"),
+          campaignId: (report as any).campaignId || null,
+          campaignName,
+          windowStart,
+          windowEnd,
+          generatedAt: now.toISOString(),
+          scheduledKey: due.scheduledKey,
+        };
+
+        const [snap] = await db
+          .insert(reportSnapshots)
+          .values({
+            reportId: snapshotPayload.reportId,
+            campaignId: snapshotPayload.campaignId,
+            platformType: snapshotPayload.platformType,
+            reportType: snapshotPayload.reportType,
+            windowStart,
+            windowEnd,
+            snapshotJson: JSON.stringify(snapshotPayload),
+            hasEstimated: false,
+          } as any)
+          .returning()
+          .catch(() => []);
+
+        // Generate a simple PDF attachment (server-side) so execs get a real artifact.
+        let pdfBuffer: Buffer | null = null;
+        try {
+          const { jsPDF } = await import("jspdf");
+          const doc = new jsPDF();
+          doc.setFontSize(16);
+          doc.text("MetricMind Report", 14, 18);
+          doc.setFontSize(12);
+          doc.text(`${snapshotPayload.reportName}`, 14, 28);
+          doc.setFontSize(10);
+          const cLine = snapshotPayload.campaignName ? `Campaign: ${snapshotPayload.campaignName}` : "Campaign: (platform-level)";
+          doc.text(cLine, 14, 36);
+          doc.text(`Type: ${snapshotPayload.reportType}`, 14, 42);
+          doc.text(`Window: ${windowStart} → ${windowEnd} (UTC)`, 14, 48);
+          doc.text(`Generated: ${new Date(snapshotPayload.generatedAt).toUTCString()}`, 14, 54);
+          doc.setFontSize(9);
+          doc.text("Note: For interactive drilldowns, open the dashboard Reports tab.", 14, 64);
+          const ab = doc.output("arraybuffer");
+          pdfBuffer = Buffer.from(ab as any);
+        } catch (e) {
+          pdfBuffer = null;
+        }
+
+        // Send email (with PDF attachment when possible)
+        const sent = await sendReportEmail(report, recipients, {
+          windowStart,
+          windowEnd,
+          campaignName,
+          snapshotId: (snap as any)?.id ? String((snap as any).id) : undefined,
+          attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\s+/g, "_")}_${windowEnd}.pdf`, content: pdfBuffer } : null,
+        });
+
+        await db
+          .update(reportSendEvents)
+          .set({
+            status: sent ? "sent" : "failed",
+            error: sent ? null : "Email send failed",
+            sentAt: sent ? new Date() : null,
+            snapshotId: (snap as any)?.id ? String((snap as any).id) : null,
+          } as any)
+          .where(and(eq(reportSendEvents.reportId, snapshotPayload.reportId), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .catch(() => {});
+
+        if (sent) {
+          // Update report book-keeping
+          await db
+            .update(linkedinReports)
+            .set({ lastSentAt: new Date() } as any)
+            .where(eq(linkedinReports.id, snapshotPayload.reportId))
+            .catch(() => {});
+        }
 
         // Add a small delay between emails to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
-      }
     }
 
-    console.log('[Report Scheduler] ✅ Scheduled reports check completed');
+    console.log('[Report Scheduler] ✅ Due reports check completed');
   } catch (error) {
     console.error('[Report Scheduler] Error in checkScheduledReports:', error);
   }
@@ -492,37 +665,19 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
  */
 export function startReportScheduler(): void {
   console.log('[Report Scheduler] Starting report scheduler...');
+  // Production-grade scheduling: check due reports frequently (per-report timezone + HH:MM).
+  // We rely on idempotent send-events to prevent duplicate sends.
+  const intervalMs = Math.max(15000, parseInt(process.env.REPORT_SCHEDULER_POLL_MS || "60000", 10) || 60000);
 
-  // Get configured time from environment or default to 9:00 AM
-  const scheduledHour = parseInt(process.env.REPORT_SCHEDULE_HOUR || '9');
-  const scheduledMinute = parseInt(process.env.REPORT_SCHEDULE_MINUTE || '0');
-
-  // Run immediately on startup for testing (optional - can be disabled in production)
-  if (process.env.RUN_REPORT_SCHEDULER_ON_STARTUP === 'true') {
-    checkScheduledReports();
+  // Optionally run immediately on startup
+  if (process.env.RUN_REPORT_SCHEDULER_ON_STARTUP === "true") {
+    void checkScheduledReports();
   }
 
-  // Calculate time until next scheduled run
-  const now = new Date();
-  const nextRun = new Date(now);
-  nextRun.setHours(scheduledHour, scheduledMinute, 0, 0);
+  setInterval(() => {
+    void checkScheduledReports();
+  }, intervalMs);
 
-  // If the scheduled time has already passed today, schedule for tomorrow
-  if (nextRun <= now) {
-    nextRun.setDate(nextRun.getDate() + 1);
-  }
-
-  const timeUntilNextRun = nextRun.getTime() - now.getTime();
-
-  console.log(`[Report Scheduler] Next scheduled check: ${nextRun.toLocaleString()}`);
-
-  setTimeout(() => {
-    checkScheduledReports();
-    
-    // Then run every 24 hours
-    setInterval(checkScheduledReports, 24 * 60 * 60 * 1000);
-  }, timeUntilNextRun);
-
-  console.log('[Report Scheduler] ✅ Report scheduler started successfully');
+  console.log(`[Report Scheduler] ✅ Report scheduler started (poll=${intervalMs}ms)`);
 }
 

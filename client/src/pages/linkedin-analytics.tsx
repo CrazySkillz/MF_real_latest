@@ -335,6 +335,11 @@ export default function LinkedInAnalytics() {
   });
   const [reportModalStep, setReportModalStep] = useState<'standard' | 'custom' | 'type' | 'configuration'>('standard');
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
+  const [showArchivedReports, setShowArchivedReports] = useState(false);
+  const [snapshotsModalOpen, setSnapshotsModalOpen] = useState(false);
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
+  const [snapshotsReport, setSnapshotsReport] = useState<any | null>(null);
+  const [reportSnapshots, setReportSnapshots] = useState<any[]>([]);
   
   // Custom Report Configuration State
   const [customReportConfig, setCustomReportConfig] = useState({
@@ -381,6 +386,74 @@ export default function LinkedInAnalytics() {
       case 3: return 'rd';
       default: return 'th';
     }
+  };
+
+  // Finance-grade scheduling normalization (server expects canonical values)
+  const dayOfWeekKeyToInt = (v: any): number | null => {
+    const key = String(v || '').trim().toLowerCase();
+    const map: Record<string, number> = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
+    };
+    return typeof map[key] === 'number' ? map[key] : null;
+  };
+  const dayOfWeekIntToKey = (v: any): string => {
+    const n = Number(v);
+    const map: Record<number, string> = {
+      0: 'sunday',
+      1: 'monday',
+      2: 'tuesday',
+      3: 'wednesday',
+      4: 'thursday',
+      5: 'friday',
+      6: 'saturday',
+    };
+    return map[n] || 'monday';
+  };
+  const dayOfMonthToInt = (v: any): number | null => {
+    const raw = String(v || '').trim().toLowerCase();
+    if (!raw) return null;
+    if (raw === 'last') return 0; // 0 = last day of month
+    if (raw === 'first') return 1;
+    if (raw === 'mid') return 15;
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n)) return null;
+    return Math.max(0, Math.min(31, n));
+  };
+  const to24HourHHMM = (v: any): string => {
+    const s = String(v || '').trim();
+    const m = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!m) {
+      // If already HH:MM, keep it
+      const m2 = s.match(/^(\d{1,2}):(\d{2})$/);
+      if (m2) return `${String(parseInt(m2[1], 10)).padStart(2, '0')}:${m2[2]}`;
+      return '09:00';
+    }
+    let hh = parseInt(m[1], 10);
+    const mm = m[2];
+    const ampm = String(m[3] || '').toUpperCase();
+    if (ampm === 'AM') {
+      if (hh === 12) hh = 0;
+    } else {
+      if (hh !== 12) hh += 12;
+    }
+    return `${String(hh).padStart(2, '0')}:${mm}`;
+  };
+  const from24HourTo12Hour = (v: any): string => {
+    const s = String(v || '').trim();
+    const m = s.match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return '9:00 AM';
+    let hh = parseInt(m[1], 10);
+    const mm = m[2];
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    if (hh === 0) hh = 12;
+    if (hh > 12) hh -= 12;
+    return `${hh}:${mm} ${ampm}`;
   };
 
   // Fetch connected platforms to determine conversion value source
@@ -1304,7 +1377,8 @@ export default function LinkedInAnalytics() {
   // Create Report mutation
   const createReportMutation = useMutation({
     mutationFn: async (reportData: any) => {
-      const res = await apiRequest('POST', '/api/linkedin/reports', reportData);
+      // Canonical reports API: platform-scoped routes
+      const res = await apiRequest('POST', '/api/platforms/linkedin/reports', reportData);
       return { data: await res.json(), reportData };
     },
     onSuccess: ({ data, reportData }) => {
@@ -1362,7 +1436,7 @@ export default function LinkedInAnalytics() {
   // Delete Report mutation
   const deleteReportMutation = useMutation({
     mutationFn: async (reportId: string) => {
-      const res = await apiRequest('DELETE', `/api/linkedin/reports/${reportId}`);
+      const res = await apiRequest('DELETE', `/api/platforms/linkedin/reports/${reportId}`);
       return res.json();
     },
     onSuccess: () => {
@@ -1381,11 +1455,44 @@ export default function LinkedInAnalytics() {
     }
   });
 
+  const archiveReportMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const res = await apiRequest('PATCH', `/api/platforms/linkedin/reports/${reportId}`, {
+        status: 'archived',
+        scheduleEnabled: false,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/reports', campaignId] });
+      toast({ title: "Report archived", description: "The report was archived and scheduling was disabled." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to archive report", variant: "destructive" });
+    },
+  });
+
+  const handleOpenReportHistory = async (report: any) => {
+    try {
+      setSnapshotsReport(report);
+      setReportSnapshots([]);
+      setSnapshotsLoading(true);
+      setSnapshotsModalOpen(true);
+      const resp = await fetch(`/api/platforms/linkedin/reports/${encodeURIComponent(String(report?.id))}/snapshots`);
+      const json = await resp.json().catch(() => ({}));
+      setReportSnapshots(Array.isArray(json?.snapshots) ? json.snapshots : []);
+    } catch {
+      setReportSnapshots([]);
+    } finally {
+      setSnapshotsLoading(false);
+    }
+  };
+
   // Send test report email mutation
   // Update Report mutation
   const updateReportMutation = useMutation({
     mutationFn: async ({ reportId, reportData }: { reportId: string, reportData: any }) => {
-      const res = await apiRequest('PUT', `/api/linkedin/reports/${reportId}`, reportData);
+      const res = await apiRequest('PATCH', `/api/platforms/linkedin/reports/${reportId}`, reportData);
       return { data: await res.json(), reportData };
     },
     onSuccess: ({ data, reportData }) => {
@@ -1470,8 +1577,8 @@ export default function LinkedInAnalytics() {
       ? report.scheduleRecipients.join(', ')
       : '';
     
-    // Check if scheduling is enabled
-    const scheduleEnabled = report.scheduleFrequency !== null && report.scheduleFrequency !== undefined;
+    // Check if scheduling is enabled (canonical field)
+    const scheduleEnabled = !!report.scheduleEnabled;
     
     // Determine the modal step based on report type FIRST
     const modalStep = report.reportType === 'custom' ? 'custom' : 'standard';
@@ -1490,10 +1597,10 @@ export default function LinkedInAnalytics() {
       configuration: config,
       scheduleEnabled: scheduleEnabled,
       scheduleFrequency: report.scheduleFrequency || 'weekly',
-      scheduleDayOfWeek: config?.scheduleDayOfWeek || report.scheduleDayOfWeek || 'monday',
-      scheduleDayOfMonth: config?.scheduleDayOfMonth || report.scheduleDayOfMonth || 'first',
+      scheduleDayOfWeek: config?.scheduleDayOfWeek || dayOfWeekIntToKey(report.scheduleDayOfWeek) || 'monday',
+      scheduleDayOfMonth: config?.scheduleDayOfMonth || (report.scheduleDayOfMonth === 0 ? 'last' : String(report.scheduleDayOfMonth || 'first')),
       quarterTiming: config?.quarterTiming || report.quarterTiming || 'end',
-      scheduleTime: config?.scheduleTime || report.scheduleTime || '9:00 AM',
+      scheduleTime: config?.scheduleTime || from24HourTo12Hour(report.scheduleTime) || '9:00 AM',
       emailRecipients: emailRecipientsString,
       status: report.status || 'draft'
     };
@@ -1539,6 +1646,11 @@ export default function LinkedInAnalytics() {
           scheduleTime: reportForm.scheduleTime
         },
         scheduleFrequency: reportForm.scheduleFrequency,
+        scheduleDayOfWeek: reportForm.scheduleFrequency === 'weekly' ? dayOfWeekKeyToInt(reportForm.scheduleDayOfWeek) : null,
+        scheduleDayOfMonth: (reportForm.scheduleFrequency === 'monthly' || reportForm.scheduleFrequency === 'quarterly') ? dayOfMonthToInt(reportForm.scheduleDayOfMonth) : null,
+        scheduleTime: to24HourHHMM(reportForm.scheduleTime),
+        scheduleTimeZone: userTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        quarterTiming: reportForm.scheduleFrequency === 'quarterly' ? (reportForm.quarterTiming || 'end') : null,
         scheduleRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
         scheduleEnabled: reportForm.scheduleEnabled, // Add at top level for toast logic
         status: 'active'
@@ -1588,6 +1700,11 @@ export default function LinkedInAnalytics() {
               scheduleTime: reportForm.scheduleTime
             },
         scheduleFrequency: reportForm.scheduleFrequency,
+        scheduleDayOfWeek: reportForm.scheduleFrequency === 'weekly' ? dayOfWeekKeyToInt(reportForm.scheduleDayOfWeek) : null,
+        scheduleDayOfMonth: (reportForm.scheduleFrequency === 'monthly' || reportForm.scheduleFrequency === 'quarterly') ? dayOfMonthToInt(reportForm.scheduleDayOfMonth) : null,
+        scheduleTime: to24HourHHMM(reportForm.scheduleTime),
+        scheduleTimeZone: userTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        quarterTiming: reportForm.scheduleFrequency === 'quarterly' ? (reportForm.quarterTiming || 'end') : null,
         scheduleRecipients: emailRecipientsArray.length > 0 ? emailRecipientsArray : null,
         scheduleEnabled: reportForm.scheduleEnabled, // Add at top level for toast logic
         status: reportForm.status || 'active'
@@ -1780,6 +1897,8 @@ export default function LinkedInAnalytics() {
       scheduleEnabled: false,
       scheduleFrequency: 'weekly',
       scheduleDayOfWeek: 'monday',
+      scheduleDayOfMonth: 'first',
+      quarterTiming: 'end',
       scheduleTime: '9:00 AM',
       emailRecipients: '',
       status: 'draft'
@@ -6631,6 +6750,17 @@ export default function LinkedInAnalytics() {
                       Create, schedule, and manage analytics reports
                     </p>
                   </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="toggle-archived-reports"
+                        checked={showArchivedReports}
+                        onCheckedChange={(v: any) => setShowArchivedReports(Boolean(v))}
+                      />
+                      <Label htmlFor="toggle-archived-reports" className="text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
+                        Show archived
+                      </Label>
+                    </div>
                   <Button 
                     data-testid="button-create-report" 
                     className="gap-2"
@@ -6664,6 +6794,7 @@ export default function LinkedInAnalytics() {
                     <Plus className="w-4 h-4" />
                     Create Report
                   </Button>
+                  </div>
                 </div>
 
                 {/* Reports List */}
@@ -6674,7 +6805,9 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : reportsData && Array.isArray(reportsData) && reportsData.length > 0 ? (
                   <div className="grid grid-cols-1 gap-4">
-                    {reportsData.map((report: any) => (
+                    {(reportsData as any[])
+                      .filter((r: any) => showArchivedReports || String(r?.status || "active") !== "archived")
+                      .map((report: any) => (
                       <Card key={report.id} data-testid={`report-${report.id}`}>
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between">
@@ -6689,11 +6822,19 @@ export default function LinkedInAnalytics() {
                               )}
                               <div className="flex items-center gap-4 text-sm">
                                 <Badge variant="outline">{report.reportType}</Badge>
-                                {report.scheduleFrequency && (
+                                {report.scheduleEnabled && report.scheduleFrequency && (
                                   <span className="text-slate-500 flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
                                     {report.scheduleFrequency}
                                   </span>
+                                )}
+                                {report.lastSentAt && (
+                                  <span className="text-slate-500">
+                                    Last sent {new Date(report.lastSentAt).toLocaleDateString()}
+                                  </span>
+                                )}
+                                {String(report?.status || 'active') === 'archived' && (
+                                  <Badge variant="secondary">Archived</Badge>
                                 )}
                                 <span className="text-slate-400">
                                   Created {new Date(report.createdAt).toLocaleDateString()}
@@ -6701,6 +6842,15 @@ export default function LinkedInAnalytics() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                data-testid={`button-history-${report.id}`}
+                                onClick={() => handleOpenReportHistory(report)}
+                              >
+                                <Clock className="w-4 h-4 mr-2" />
+                                History
+                              </Button>
                               <Button 
                                 variant="outline" 
                                 size="sm" 
@@ -6718,6 +6868,16 @@ export default function LinkedInAnalytics() {
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>
+                              {String(report?.status || "active") !== "archived" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  data-testid={`button-archive-${report.id}`}
+                                  onClick={() => archiveReportMutation.mutate(report.id)}
+                                >
+                                  Archive
+                                </Button>
+                              )}
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button 
@@ -9675,6 +9835,76 @@ export default function LinkedInAnalytics() {
                 )}
               </div>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Report History (Snapshots) */}
+      <Dialog open={snapshotsModalOpen} onOpenChange={(open) => setSnapshotsModalOpen(open)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Report history</DialogTitle>
+            <DialogDescription>
+              Immutable snapshots of what was generated/sent.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              <span className="font-medium text-slate-900 dark:text-white">{snapshotsReport?.name || 'Report'}</span>
+              {snapshotsReport?.reportType ? <span className="ml-2">({snapshotsReport.reportType})</span> : null}
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-slate-500">
+                Generate a snapshot to create an auditable PDF artifact.
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!snapshotsReport?.id || snapshotsLoading}
+                onClick={async () => {
+                  if (!snapshotsReport?.id) return;
+                  try {
+                    setSnapshotsLoading(true);
+                    await fetch(`/api/platforms/linkedin/reports/${encodeURIComponent(String(snapshotsReport.id))}/snapshots`, { method: 'POST' });
+                    await handleOpenReportHistory(snapshotsReport);
+                  } finally {
+                    setSnapshotsLoading(false);
+                  }
+                }}
+              >
+                Generate snapshot
+              </Button>
+            </div>
+            {snapshotsLoading ? (
+              <div className="text-sm text-slate-500">Loading…</div>
+            ) : reportSnapshots.length === 0 ? (
+              <div className="text-sm text-slate-500">No snapshots yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {reportSnapshots.map((s: any) => (
+                  <div key={s.id} className="flex items-center justify-between border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2">
+                    <div className="text-sm">
+                      <div className="font-medium text-slate-900 dark:text-white">
+                        {new Date(s.generatedAt || s.generated_at || s.createdAt || s.created_at || Date.now()).toLocaleString()}
+                      </div>
+                      {(s.windowStart || s.window_start) && (s.windowEnd || s.window_end) ? (
+                        <div className="text-xs text-slate-500">
+                          Window {(s.windowStart || s.window_start)} → {(s.windowEnd || s.window_end)} (UTC)
+                        </div>
+                      ) : null}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/api/report-snapshots/${encodeURIComponent(String(s.id))}/pdf`, '_blank')}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      PDF
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

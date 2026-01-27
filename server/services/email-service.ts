@@ -15,6 +15,11 @@ interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType?: string;
+  }>;
   auditContext?: EmailAuditContext;
 }
 
@@ -120,13 +125,20 @@ class EmailService {
 
     // Fall back to SMTP
     console.log('[Email Service] Using SMTP transport');
-    const mailOptions = {
+    const mailOptions: any = {
       from,
       to: toText,
       subject: options.subject,
       html: options.html,
       text: options.text || this.stripHtml(options.html),
     };
+    if (Array.isArray(options.attachments) && options.attachments.length > 0) {
+      mailOptions.attachments = options.attachments.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      }));
+    }
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
@@ -167,14 +179,49 @@ class EmailService {
         ? 'https://api.eu.mailgun.net/v3'
         : 'https://api.mailgun.net/v3';
 
+      const toValue = Array.isArray(options.to) ? options.to.join(',') : options.to;
+
+      // If attachments exist, use multipart/form-data (Mailgun requires multipart for attachments).
+      if (Array.isArray(options.attachments) && options.attachments.length > 0) {
+        const fd = new FormData();
+        fd.append('from', from);
+        fd.append('to', toValue);
+        fd.append('subject', options.subject);
+        fd.append('html', options.html);
+        if (options.text) fd.append('text', options.text);
+
+        for (const att of options.attachments) {
+          const type = att.contentType || 'application/octet-stream';
+          const blob = new Blob([att.content], { type });
+          fd.append('attachment', blob, att.filename);
+        }
+
+        const response = await fetch(`${baseUrl}/${domain}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${Buffer.from(`api:${apiKey}`).toString('base64')}`,
+          },
+          body: fd as any
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[Email Service] Mailgun HTTP API error:', response.status, errorText);
+          return { success: false, error: errorText };
+        }
+
+        const result = await response.json();
+        console.log(`[Email Service] ✅ Email sent via Mailgun HTTP API:`, result.id);
+        return { success: true, id: result?.id ? String(result.id) : undefined };
+      }
+
+      // No attachments: use x-www-form-urlencoded (simple + reliable).
       const formData = new URLSearchParams();
       formData.append('from', from);
-      formData.append('to', Array.isArray(options.to) ? options.to.join(',') : options.to);
+      formData.append('to', toValue);
       formData.append('subject', options.subject);
       formData.append('html', options.html);
-      if (options.text) {
-        formData.append('text', options.text);
-      }
+      if (options.text) formData.append('text', options.text);
 
       const response = await fetch(`${baseUrl}/${domain}/messages`, {
         method: 'POST',

@@ -224,6 +224,49 @@ process.on('uncaughtException', (error: Error) => {
             ON linkedin_daily_metrics(campaign_id, date);
           `);
 
+          // Reports: ensure schedule fields exist + add snapshots/send-events tables (production-grade auditability)
+          await db.execute(sql`
+            ALTER TABLE linkedin_reports
+            ADD COLUMN IF NOT EXISTS schedule_time_zone TEXT,
+            ADD COLUMN IF NOT EXISTS quarter_timing TEXT;
+          `);
+
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS report_snapshots (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              report_id TEXT NOT NULL,
+              campaign_id TEXT,
+              platform_type TEXT NOT NULL DEFAULT 'linkedin',
+              report_type TEXT NOT NULL,
+              window_start TEXT,
+              window_end TEXT,
+              snapshot_json TEXT NOT NULL,
+              has_estimated BOOLEAN NOT NULL DEFAULT false,
+              generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS report_send_events (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              report_id TEXT NOT NULL,
+              snapshot_id TEXT,
+              scheduled_key TEXT NOT NULL,
+              time_zone TEXT,
+              recipients TEXT[],
+              status TEXT NOT NULL DEFAULT 'pending',
+              error TEXT,
+              sent_at TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          await db.execute(sql`
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_report_send_events_report_scheduled_key
+            ON report_send_events(report_id, scheduled_key);
+          `);
+
           // Spend tables for GA4 financials (generic spend ingestion from any source)
           await db.execute(sql`
             CREATE TABLE IF NOT EXISTS spend_sources (

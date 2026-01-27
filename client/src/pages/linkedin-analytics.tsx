@@ -333,6 +333,23 @@ export default function LinkedInAnalytics() {
     emailRecipients: '',
     status: 'draft' as const
   });
+  const [reportFormErrors, setReportFormErrors] = useState<{ emailRecipients?: string }>({});
+
+  const validateScheduledReportFields = (): boolean => {
+    if (!reportForm.scheduleEnabled) {
+      setReportFormErrors({});
+      return true;
+    }
+
+    const recipients = String(reportForm.emailRecipients || "").trim();
+    if (!recipients) {
+      setReportFormErrors({ emailRecipients: "Email recipients are required when scheduling is enabled." });
+      return false;
+    }
+
+    setReportFormErrors({});
+    return true;
+  };
   const [reportModalStep, setReportModalStep] = useState<'standard' | 'custom' | 'type' | 'configuration'>('standard');
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
   // History + archive features removed for a simpler exec workflow.
@@ -343,7 +360,8 @@ export default function LinkedInAnalytics() {
     derivedMetrics: [] as string[],
     kpis: [] as string[],
     benchmarks: [] as string[],
-    includeAdComparison: false
+    includeAdComparison: false,
+    includeCampaignBreakdown: false,
   });
 
   // Detect user's time zone
@@ -1500,7 +1518,8 @@ export default function LinkedInAnalytics() {
         derivedMetrics: [],
         kpis: [],
         benchmarks: [],
-        includeAdComparison: false
+        includeAdComparison: false,
+        includeCampaignBreakdown: false,
       });
     },
     onError: (error: any) => {
@@ -1576,7 +1595,8 @@ export default function LinkedInAnalytics() {
         derivedMetrics: config.customReportConfig.derivedMetrics || [],
         kpis: config.customReportConfig.kpis || [],
         benchmarks: config.customReportConfig.benchmarks || [],
-        includeAdComparison: config.customReportConfig.includeAdComparison || false
+        includeAdComparison: config.customReportConfig.includeAdComparison || false,
+        includeCampaignBreakdown: config.customReportConfig.includeCampaignBreakdown || false,
       });
     }
     
@@ -1589,6 +1609,8 @@ export default function LinkedInAnalytics() {
   // Handle create report
   const handleCreateReport = () => {
     if (reportForm.scheduleEnabled) {
+      if (!validateScheduledReportFields()) return;
+
       // Convert email recipients string to array
       const emailRecipientsArray = reportForm.emailRecipients
         ? reportForm.emailRecipients.split(',').map(email => email.trim()).filter(email => email.length > 0)
@@ -1635,6 +1657,8 @@ export default function LinkedInAnalytics() {
     if (!editingReportId) return;
     
     if (reportForm.scheduleEnabled) {
+      if (!validateScheduledReportFields()) return;
+
       // Convert email recipients string to array
       const emailRecipientsArray = reportForm.emailRecipients
         ? reportForm.emailRecipients.split(',').map(email => email.trim()).filter(email => email.length > 0)
@@ -1833,6 +1857,8 @@ export default function LinkedInAnalytics() {
   // Handle custom report creation/download
   const handleCustomReport = () => {
     if (reportForm.scheduleEnabled) {
+      if (!validateScheduledReportFields()) return;
+
       // Convert email recipients string to array
       const emailRecipientsArray = reportForm.emailRecipients
         ? reportForm.emailRecipients.split(',').map(email => email.trim()).filter(email => email.length > 0)
@@ -1904,7 +1930,8 @@ export default function LinkedInAnalytics() {
       derivedMetrics: [],
       kpis: [],
       benchmarks: [],
-      includeAdComparison: false
+      includeAdComparison: false,
+      includeCampaignBreakdown: false,
     });
 
     toast({
@@ -1953,6 +1980,89 @@ export default function LinkedInAnalytics() {
     doc.setFont(undefined, 'bold');
     doc.text(title, 20, y + 7);
     return y + 15;
+  };
+
+  const addCampaignBreakdownPDF = (doc: any, y: number, aggregated: any) => {
+    if (!metrics || !Array.isArray(metrics) || metrics.length === 0) return y;
+
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+
+    y = addPDFSection(doc, 'Campaign Breakdown', y, [54, 162, 235]);
+
+    // Build campaign groups similar to the UI breakdown
+    const campaigns = Object.values(
+      (metrics as any[]).reduce((acc: any, metric: any) => {
+        if (!acc[metric.campaignUrn]) {
+          acc[metric.campaignUrn] = {
+            name: metric.campaignName,
+            status: metric.campaignStatus,
+            metrics: {}
+          };
+        }
+        acc[metric.campaignUrn].metrics[metric.metricKey] = parseFloat(metric.metricValue);
+        return acc;
+      }, {})
+    ) as any[];
+
+    // Table header
+    doc.setFillColor(240, 240, 240);
+    doc.rect(20, y - 6, 170, 8, 'F');
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'bold');
+    doc.text('Campaign', 22, y);
+    doc.text('Spend', 92, y);
+    doc.text('Impr', 112, y);
+    doc.text('Clicks', 130, y);
+    doc.text('Conv', 147, y);
+    doc.text('Leads', 160, y);
+    doc.text('CTR', 175, y);
+
+    y += 10;
+
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(50, 50, 50);
+
+    campaigns.forEach((c: any) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+
+      const impressions = Number(c?.metrics?.impressions || 0);
+      const clicks = Number(c?.metrics?.clicks || 0);
+      const spend = Number(c?.metrics?.spend || 0);
+      const conversions = Number(c?.metrics?.conversions || 0);
+      const leads = Number(c?.metrics?.leads || 0);
+      const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+      const cpc = clicks > 0 ? spend / clicks : 0;
+      const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+      const cpa = conversions > 0 ? spend / conversions : 0;
+
+      const name = String(c?.name || 'Campaign');
+      const nameShort = name.length > 30 ? `${name.slice(0, 29)}…` : name;
+
+      doc.setFontSize(8);
+      doc.text(nameShort, 22, y);
+      doc.text(formatCurrency(spend), 92, y);
+      doc.text(formatNumber(impressions), 112, y);
+      doc.text(formatNumber(clicks), 130, y);
+      doc.text(formatNumber(conversions), 147, y);
+      doc.text(formatNumber(leads), 160, y);
+      doc.text(`${ctr.toFixed(2)}%`, 175, y);
+
+      doc.setTextColor(110, 110, 110);
+      doc.setFontSize(7);
+      doc.text(`CPC ${formatCurrency(cpc)}  CPA ${formatCurrency(cpa)}  CVR ${cvr.toFixed(2)}%`, 22, y + 4);
+      doc.setTextColor(50, 50, 50);
+
+      y += 12;
+    });
+
+    return y + 6;
   };
 
   // Generate Overview PDF
@@ -2074,6 +2184,9 @@ export default function LinkedInAnalytics() {
         y += 8;
       });
     }
+
+    // Campaign Breakdown (per-campaign metrics)
+    y = addCampaignBreakdownPDF(doc, y, aggregated);
     
     // Footer
     doc.setFontSize(8);
@@ -2732,6 +2845,11 @@ export default function LinkedInAnalytics() {
         
         y += 10;
       }
+    }
+
+    // Campaign Breakdown section (per-campaign table)
+    if (customReportConfig.includeCampaignBreakdown) {
+      y = addCampaignBreakdownPDF(doc, y, aggregated);
     }
 
     // KPIs Section
@@ -6772,7 +6890,8 @@ export default function LinkedInAnalytics() {
                         derivedMetrics: [],
                         kpis: [],
                         benchmarks: [],
-                        includeAdComparison: false
+                        includeAdComparison: false,
+                        includeCampaignBreakdown: false,
                       });
                       setIsReportModalOpen(true);
                     }}
@@ -8989,9 +9108,11 @@ export default function LinkedInAnalytics() {
                         <Checkbox
                           id="schedule-reports"
                           checked={reportForm.scheduleEnabled}
-                          onCheckedChange={(checked) => 
-                            setReportForm({ ...reportForm, scheduleEnabled: checked as boolean })
-                          }
+                          onCheckedChange={(checked) => {
+                            const enabled = checked as boolean;
+                            setReportForm({ ...reportForm, scheduleEnabled: enabled });
+                            if (!enabled) setReportFormErrors({});
+                          }}
                           data-testid="checkbox-schedule-reports"
                         />
                         <Label 
@@ -9172,19 +9293,32 @@ export default function LinkedInAnalytics() {
 
                           {/* Email Recipients */}
                           <div className="space-y-2">
-                            <Label htmlFor="email-recipients">Email Recipients</Label>
+                            <Label htmlFor="email-recipients">
+                              Email Recipients{reportForm.scheduleEnabled ? " *" : ""}
+                            </Label>
                             <Input
                               id="email-recipients"
                               value={reportForm.emailRecipients}
-                              onChange={(e) => 
-                                setReportForm({ ...reportForm, emailRecipients: e.target.value })
-                              }
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setReportForm({ ...reportForm, emailRecipients: v });
+                                if (reportFormErrors.emailRecipients && String(v || "").trim()) {
+                                  setReportFormErrors((prev) => ({ ...prev, emailRecipients: undefined }));
+                                }
+                              }}
                               placeholder="Enter email addresses (comma-separated)"
+                              className={reportFormErrors.emailRecipients ? "border-red-500 focus-visible:ring-red-500" : undefined}
                               data-testid="input-email-recipients"
                             />
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                              Reports will be automatically generated and sent to these email addresses
-                            </p>
+                            {reportFormErrors.emailRecipients ? (
+                              <p className="text-sm text-red-600 dark:text-red-400">
+                                {reportFormErrors.emailRecipients}
+                              </p>
+                            ) : (
+                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                                Reports will be automatically generated and sent to these email addresses
+                              </p>
+                            )}
                           </div>
                         </div>
                       )}
@@ -9256,6 +9390,36 @@ export default function LinkedInAnalytics() {
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Select Metrics</h3>
                   
                   <Accordion type="multiple" className="w-full">
+                    {/* Overview / Campaign Breakdown */}
+                    <AccordionItem value="overview-campaign-breakdown">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Overview / Campaign Breakdown
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 pt-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="include-campaign-breakdown"
+                              checked={!!customReportConfig.includeCampaignBreakdown}
+                              onCheckedChange={(checked) => {
+                                setCustomReportConfig({
+                                  ...customReportConfig,
+                                  includeCampaignBreakdown: checked as boolean,
+                                });
+                              }}
+                              data-testid="checkbox-include-campaign-breakdown"
+                            />
+                            <Label htmlFor="include-campaign-breakdown" className="text-sm cursor-pointer">
+                              Include Campaign Breakdown section
+                            </Label>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 pl-6">
+                            Adds a per-campaign table (spend, impressions, clicks, conversions, leads, CTR, CPC) to the PDF.
+                          </p>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+
                     {/* LinkedIn Core Metrics */}
                     <AccordionItem value="linkedin-core-metrics">
                       <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -9519,10 +9683,12 @@ export default function LinkedInAnalytics() {
                       id="schedule-reports"
                       checked={reportForm.scheduleEnabled}
                       onCheckedChange={(checked) => {
+                        const enabled = checked as boolean;
                         setReportForm({
                           ...reportForm,
-                          scheduleEnabled: checked as boolean
+                          scheduleEnabled: enabled
                         });
+                        if (!enabled) setReportFormErrors({});
                       }}
                       data-testid="checkbox-schedule-reports"
                     />
@@ -9693,17 +9859,32 @@ export default function LinkedInAnalytics() {
 
                       {/* Email Recipients */}
                       <div className="space-y-2">
-                        <Label htmlFor="email-recipients">Email Recipients</Label>
+                        <Label htmlFor="email-recipients">
+                          Email Recipients{reportForm.scheduleEnabled ? " *" : ""}
+                        </Label>
                         <Input
                           id="email-recipients"
                           value={reportForm.emailRecipients}
-                          onChange={(e) => setReportForm({ ...reportForm, emailRecipients: e.target.value })}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setReportForm({ ...reportForm, emailRecipients: v });
+                            if (reportFormErrors.emailRecipients && String(v || "").trim()) {
+                              setReportFormErrors((prev) => ({ ...prev, emailRecipients: undefined }));
+                            }
+                          }}
                           placeholder="Enter email addresses (comma-separated)"
+                          className={reportFormErrors.emailRecipients ? "border-red-500 focus-visible:ring-red-500" : undefined}
                           data-testid="input-email-recipients"
                         />
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          Reports will be automatically generated and sent to these email addresses
-                        </p>
+                        {reportFormErrors.emailRecipients ? (
+                          <p className="text-sm text-red-600 dark:text-red-400">
+                            {reportFormErrors.emailRecipients}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Reports will be automatically generated and sent to these email addresses
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -9738,29 +9919,6 @@ export default function LinkedInAnalytics() {
               </Button>
               
               <div className="flex items-center gap-2">
-                <Button
-                  variant="link"
-                  onClick={() => {
-                    setReportModalStep('standard');
-                    setEditingReportId(null);
-                    setReportForm({
-                      name: '',
-                      description: '',
-                      reportType: '',
-                      configuration: null,
-                      scheduleEnabled: false,
-                      scheduleFrequency: 'weekly',
-                      scheduleDayOfWeek: 'monday',
-                      scheduleTime: '9:00 AM',
-                      emailRecipients: '',
-                      status: 'draft'
-                    });
-                  }}
-                  data-testid="button-reset-report"
-                >
-                  Reset
-                </Button>
-                
                 {reportForm.reportType && reportForm.reportType !== 'custom' && (
                   <Button
                     onClick={editingReportId ? handleUpdateReport : handleCreateReport}

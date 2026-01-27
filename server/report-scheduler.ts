@@ -649,7 +649,56 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
     }
 
     console.log(`[Report Scheduler] Attempting to send test email to: ${recipients.join(', ')}`);
-    const result = await sendReportEmail(report, recipients);
+
+    // Match production behavior: include window + best-effort PDF attachment.
+    const now = new Date();
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+    const start = new Date(end.getTime());
+    start.setUTCDate(start.getUTCDate() - 29);
+    const windowStart = start.toISOString().slice(0, 10);
+    const windowEnd = end.toISOString().slice(0, 10);
+
+    // Snapshot meta (optional, best-effort campaign name)
+    let campaignName: string | null = null;
+    try {
+      if ((report as any)?.campaignId) {
+        const [c] = await db.select().from(campaigns).where(eq(campaigns.id, String((report as any).campaignId)));
+        campaignName = (c as any)?.name || null;
+      }
+    } catch {
+      campaignName = null;
+    }
+
+    // Generate a simple PDF attachment (server-side) so "Send test" matches scheduled sends.
+    let pdfBuffer: Buffer | null = null;
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("MetricMind Report (Test Send)", 14, 18);
+      doc.setFontSize(12);
+      doc.text(`${String((report as any)?.name || "Report")}`, 14, 28);
+      doc.setFontSize(10);
+      const cLine = campaignName ? `Campaign: ${campaignName}` : ((report as any)?.campaignId ? "Campaign: (unknown)" : "Campaign: (platform-level)");
+      doc.text(cLine, 14, 36);
+      doc.text(`Type: ${String((report as any)?.reportType || "")}`, 14, 42);
+      doc.text(`Window: ${windowStart} → ${windowEnd} (UTC)`, 14, 48);
+      doc.text(`Generated: ${now.toUTCString()}`, 14, 54);
+      doc.setFontSize(9);
+      doc.text("Note: For interactive drilldowns, open the dashboard Reports tab.", 14, 64);
+      const ab = doc.output("arraybuffer");
+      pdfBuffer = Buffer.from(ab as any);
+    } catch (e) {
+      pdfBuffer = null;
+    }
+
+    const safeName = String((report as any)?.name || "MetricMind_Report").replace(/\s+/g, "_");
+    const result = await sendReportEmail(report, recipients, {
+      windowStart,
+      windowEnd,
+      campaignName,
+      attachment: pdfBuffer ? { filename: `${safeName}_${windowEnd}.pdf`, content: pdfBuffer } : null,
+    });
     console.log(`[Report Scheduler] Send result: ${result ? 'SUCCESS ✅' : 'FAILED ❌'}`);
     
     return result;

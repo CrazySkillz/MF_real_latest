@@ -58,6 +58,146 @@ function coercePdfBufferFromDoc(doc: any): Buffer | null {
   return null;
 }
 
+function formatNumberLike(v: any): string {
+  if (v === null || v === undefined) return "";
+  const s = String(v).trim();
+  if (!s) return "";
+  const n = Number(s);
+  if (!Number.isFinite(n)) return s;
+  // Keep 0-2 decimals, avoid trailing ".00" unless needed.
+  const rounded = Math.round(n * 100) / 100;
+  const str = String(rounded);
+  return str.includes(".") ? str.replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1") : str;
+}
+
+function formatWithUnit(value: any, unit: any): string {
+  const v = formatNumberLike(value);
+  const u = String(unit || "").trim();
+  if (!v) return u ? `0${u}` : "0";
+  if (!u) return v;
+  if (u === "$") return `$${v}`;
+  if (u === "%") return `${v}%`;
+  return `${v}${u}`;
+}
+
+async function buildPdfAttachmentForReport(args: {
+  report: any;
+  windowStart: string;
+  windowEnd: string;
+  campaignName: string | null;
+  isTest?: boolean;
+}): Promise<Buffer | null> {
+  const { report, windowStart, windowEnd, campaignName, isTest } = args;
+  try {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF();
+
+    let y = 18;
+    const left = 14;
+    const pageBottom = 285;
+
+    const addLine = (text: string, fontSize = 10) => {
+      if (y > pageBottom) {
+        doc.addPage();
+        y = 18;
+      }
+      doc.setFontSize(fontSize);
+      // Keep to ASCII to avoid font/encoding quirks in jsPDF default fonts.
+      const safe = String(text || "").replace(/[^\x20-\x7E]/g, " ");
+      doc.text(safe, left, y);
+      y += Math.max(6, fontSize + 2);
+    };
+
+    const reportName = String(report?.name || "MetricMind Report");
+    const reportType = String(report?.reportType || "");
+
+    doc.setFontSize(16);
+    doc.text(isTest ? "MetricMind Report (Test Send)" : "MetricMind Report", left, y);
+    y += 10;
+
+    addLine(reportName, 12);
+    addLine(campaignName ? `Campaign: ${campaignName}` : "Campaign: (platform-level)", 10);
+    addLine(`Type: ${reportType || "report"}`, 10);
+    addLine(`Window: ${windowStart} to ${windowEnd} (UTC)`, 10);
+    addLine(`Generated: ${new Date().toUTCString()}`, 10);
+    y += 4;
+
+    const platformType = String((report as any)?.platformType || "linkedin");
+    const campaignId = (report as any)?.campaignId ? String((report as any).campaignId) : undefined;
+
+    // Content by report type (start with high-signal types; fall back gracefully).
+    if (reportType.toLowerCase() === "kpis") {
+      addLine("KPIs", 12);
+      y += 2;
+
+      let kpis: any[] = [];
+      try {
+        kpis = await storage.getPlatformKPIs(platformType, campaignId);
+      } catch {
+        kpis = [];
+      }
+
+      if (!kpis || kpis.length === 0) {
+        addLine("No KPIs found for this scope.", 10);
+      } else {
+        // Simple readable list format (email-friendly PDF).
+        for (const kpi of kpis) {
+          const name = String(kpi?.name || "KPI");
+          const metric = String(kpi?.metricKey || kpi?.metric || "").trim();
+          const status = String(kpi?.status || "").trim();
+          const cur = formatWithUnit(kpi?.currentValue, kpi?.unit);
+          const tgt = formatWithUnit(kpi?.targetValue, kpi?.unit);
+          const metricPart = metric ? ` • ${metric}` : "";
+          const statusPart = status ? ` • ${status}` : "";
+          addLine(`${name}${metricPart}${statusPart}`, 10);
+          addLine(`Current: ${cur}   Target: ${tgt}`, 10);
+          y += 2;
+        }
+      }
+    } else if (reportType.toLowerCase() === "benchmarks") {
+      addLine("Benchmarks", 12);
+      y += 2;
+
+      let benchmarks: any[] = [];
+      try {
+        benchmarks = campaignId
+          ? await storage.getCampaignBenchmarks(campaignId)
+          : await storage.getPlatformBenchmarks(platformType);
+      } catch {
+        benchmarks = [];
+      }
+
+      if (!benchmarks || benchmarks.length === 0) {
+        addLine("No benchmarks found for this scope.", 10);
+      } else {
+        for (const b of benchmarks) {
+          const name = String(b?.name || "Benchmark");
+          const metric = String(b?.metric || "").trim();
+          const cur = formatWithUnit(b?.currentValue, b?.unit);
+          const tgt = formatWithUnit(b?.benchmarkValue, b?.unit);
+          const metricPart = metric ? ` • ${metric}` : "";
+          addLine(`${name}${metricPart}`, 10);
+          addLine(`Current: ${cur}   Benchmark: ${tgt}`, 10);
+          y += 2;
+        }
+      }
+    } else {
+      // For other types (overview/ads/custom) we still attach a useful cover page.
+      addLine("This PDF includes the report header only.", 10);
+      addLine("For full interactive content, open the dashboard Reports tab.", 10);
+    }
+
+    y += 6;
+    doc.setFontSize(9);
+    doc.text("Note: For interactive drilldowns, open the dashboard Reports tab.", left, Math.min(y, pageBottom));
+
+    return coercePdfBufferFromDoc(doc);
+  } catch (e) {
+    console.warn("[Report Scheduler] buildPdfAttachmentForReport failed:", e);
+    return null;
+  }
+}
+
 /**
  * Scheduling helpers (timezone-aware, idempotent).
  */
@@ -554,29 +694,14 @@ export async function checkScheduledReports(): Promise<void> {
           .returning()
           .catch(() => []);
 
-        // Generate a simple PDF attachment (server-side) so execs get a real artifact.
-        let pdfBuffer: Buffer | null = null;
-        try {
-          const { jsPDF } = await import("jspdf");
-          const doc = new jsPDF();
-          doc.setFontSize(16);
-          doc.text("MetricMind Report", 14, 18);
-          doc.setFontSize(12);
-          doc.text(`${snapshotPayload.reportName}`, 14, 28);
-          doc.setFontSize(10);
-          const cLine = snapshotPayload.campaignName ? `Campaign: ${snapshotPayload.campaignName}` : "Campaign: (platform-level)";
-          doc.text(cLine, 14, 36);
-          doc.text(`Type: ${snapshotPayload.reportType}`, 14, 42);
-          doc.text(`Window: ${windowStart} → ${windowEnd} (UTC)`, 14, 48);
-          doc.text(`Generated: ${new Date(snapshotPayload.generatedAt).toUTCString()}`, 14, 54);
-          doc.setFontSize(9);
-          doc.text("Note: For interactive drilldowns, open the dashboard Reports tab.", 14, 64);
-          pdfBuffer = coercePdfBufferFromDoc(doc);
-          console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
-        } catch (e) {
-          console.warn("[Report Scheduler] PDF attachment generation failed; sending without attachment.", e);
-          pdfBuffer = null;
-        }
+        const pdfBuffer = await buildPdfAttachmentForReport({
+          report,
+          windowStart,
+          windowEnd,
+          campaignName,
+          isTest: false,
+        });
+        console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
 
         // Send email (with PDF attachment when possible)
         const sent = await sendReportEmail(report, recipients, {
@@ -713,29 +838,14 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       campaignName = null;
     }
 
-    // Generate a simple PDF attachment (server-side) so "Send test" matches scheduled sends.
-    let pdfBuffer: Buffer | null = null;
-    try {
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.text("MetricMind Report (Test Send)", 14, 18);
-      doc.setFontSize(12);
-      doc.text(`${String((report as any)?.name || "Report")}`, 14, 28);
-      doc.setFontSize(10);
-      const cLine = campaignName ? `Campaign: ${campaignName}` : ((report as any)?.campaignId ? "Campaign: (unknown)" : "Campaign: (platform-level)");
-      doc.text(cLine, 14, 36);
-      doc.text(`Type: ${String((report as any)?.reportType || "")}`, 14, 42);
-      doc.text(`Window: ${windowStart} → ${windowEnd} (UTC)`, 14, 48);
-      doc.text(`Generated: ${now.toUTCString()}`, 14, 54);
-      doc.setFontSize(9);
-      doc.text("Note: For interactive drilldowns, open the dashboard Reports tab.", 14, 64);
-      pdfBuffer = coercePdfBufferFromDoc(doc);
-      console.log(`[Report Scheduler] PDF attachment bytes (test): ${pdfBuffer ? pdfBuffer.length : 0}`);
-    } catch (e) {
-      console.warn("[Report Scheduler] PDF attachment generation failed; sending without attachment.", e);
-      pdfBuffer = null;
-    }
+    const pdfBuffer = await buildPdfAttachmentForReport({
+      report,
+      windowStart,
+      windowEnd,
+      campaignName,
+      isTest: true,
+    });
+    console.log(`[Report Scheduler] PDF attachment bytes (test): ${pdfBuffer ? pdfBuffer.length : 0}`);
 
     const safeName = String((report as any)?.name || "MetricMind_Report").replace(/\s+/g, "_");
     const result = await sendReportEmail(report, recipients, {

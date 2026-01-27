@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, AlertTriangle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent, Info, Calculator } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, AlertTriangle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent, Info, Calculator, Send } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -1829,6 +1829,39 @@ export default function LinkedInAnalytics() {
       toast({
         title: "Error",
         description: "Failed to download report.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Send a test email for a saved (scheduled) report
+  const handleSendTestReportEmail = async (report: any) => {
+    try {
+      if (!report?.id) {
+        toast({ title: "Error", description: "Missing report id.", variant: "destructive" });
+        return;
+      }
+
+      const res = await apiRequest("POST", `/api/platforms/linkedin/reports/${encodeURIComponent(String(report.id))}/send-test`);
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || json?.success === false) {
+        toast({
+          title: "Couldn't send test email",
+          description: json?.message || "Check server email configuration and recipients.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Test email sent",
+        description: "If you don't see it, check spam/promotions.",
+      });
+    } catch (e: any) {
+      toast({
+        title: "Couldn't send test email",
+        description: e?.message || "Unexpected error.",
         variant: "destructive",
       });
     }
@@ -6859,6 +6892,15 @@ export default function LinkedInAnalytics() {
                               >
                                 <Download className="w-4 h-4 mr-2" />
                                 Download
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                data-testid={`button-send-test-${report.id}`}
+                                onClick={() => handleSendTestReportEmail(report)}
+                              >
+                                <Send className="w-4 h-4 mr-2" />
+                                Send test
                               </Button>
                               <Button 
                                 variant="ghost" 

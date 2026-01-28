@@ -106,7 +106,6 @@ export default function LinkedInAnalytics() {
   const [insightsTrendMetric, setInsightsTrendMetric] = useState<
     "spend" | "conversions" | "ctr" | "cvr" | "impressions" | "clicks" | "revenue" | "roas"
   >("spend");
-  const [showDayOverDayDeltas, setShowDayOverDayDeltas] = useState<boolean>(false);
 
   // Update active tab when URL changes
   useEffect(() => {
@@ -5413,25 +5412,7 @@ export default function LinkedInAnalytics() {
                               30d
                             </Button>
                           </div>
-                          {/* Keep layout stable across Daily/7d/30d (no UI jumping) */}
-                          <div
-                            className={`flex items-center gap-2 px-2 min-w-[220px] flex-none ${
-                              insightsTrendMode === "daily" ? "" : "invisible"
-                            }`}
-                          >
-                            <Checkbox
-                              checked={showDayOverDayDeltas}
-                              onCheckedChange={(v: any) => setShowDayOverDayDeltas(Boolean(v))}
-                              id="dod-deltas"
-                            />
-                            <Label
-                              htmlFor="dod-deltas"
-                              className="text-xs text-slate-600 dark:text-slate-400 cursor-pointer whitespace-nowrap"
-                              title="Shows percent change vs the previous day for the selected metric"
-                            >
-                              Day-over-day deltas
-                            </Label>
-                          </div>
+                          {/* Daily mode always shows day-over-day deltas in the table */}
                           <div className="min-w-[220px]">
                             <Select value={insightsTrendMetric} onValueChange={(v: any) => setInsightsTrendMetric(v)}>
                               <SelectTrigger className="h-9">
@@ -5529,7 +5510,7 @@ export default function LinkedInAnalytics() {
                                         return labels[k] || "Metric";
                                       })()}
                                     </th>
-                                    {showDayOverDayDeltas ? <th className="text-right p-3">Δ vs prior day</th> : null}
+                                    <th className="text-right p-3">Δ vs prior day</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -5568,13 +5549,11 @@ export default function LinkedInAnalytics() {
                                           {formatValue(metricKey, curVal)}
                                         </div>
                                       </td>
-                                      {showDayOverDayDeltas ? (
-                                        <td className="p-3 text-right">
-                                          <div className={`text-xs ${showDelta ? deltaClass : "text-slate-400"}`}>
-                                            {showDelta ? fmtDelta(deltaPct) : "—"}
-                                          </div>
-                                        </td>
-                                      ) : null}
+                                      <td className="p-3 text-right">
+                                        <div className={`text-xs ${showDelta ? deltaClass : "text-slate-400"}`}>
+                                          {showDelta ? fmtDelta(deltaPct) : "—"}
+                                        </div>
+                                      </td>
                                     </tr>
                                     );
                                   })}

@@ -5413,18 +5413,25 @@ export default function LinkedInAnalytics() {
                               30d
                             </Button>
                           </div>
-                          {insightsTrendMode === "daily" ? (
-                            <div className="flex items-center gap-2 px-2">
-                              <Checkbox
-                                checked={showDayOverDayDeltas}
-                                onCheckedChange={(v: any) => setShowDayOverDayDeltas(Boolean(v))}
-                                id="dod-deltas"
-                              />
-                              <Label htmlFor="dod-deltas" className="text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
-                                Show day-over-day deltas
-                              </Label>
-                            </div>
-                          ) : null}
+                          {/* Keep layout stable across Daily/7d/30d (no UI jumping) */}
+                          <div
+                            className={`flex items-center gap-2 px-2 min-w-[220px] flex-none ${
+                              insightsTrendMode === "daily" ? "" : "invisible"
+                            }`}
+                          >
+                            <Checkbox
+                              checked={showDayOverDayDeltas}
+                              onCheckedChange={(v: any) => setShowDayOverDayDeltas(Boolean(v))}
+                              id="dod-deltas"
+                            />
+                            <Label
+                              htmlFor="dod-deltas"
+                              className="text-xs text-slate-600 dark:text-slate-400 cursor-pointer whitespace-nowrap"
+                              title="Shows percent change vs the previous day for the selected metric"
+                            >
+                              Day-over-day deltas
+                            </Label>
+                          </div>
                           <div className="min-w-[220px]">
                             <Select value={insightsTrendMetric} onValueChange={(v: any) => setInsightsTrendMetric(v)}>
                               <SelectTrigger className="h-9">

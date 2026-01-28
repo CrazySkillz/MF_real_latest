@@ -609,7 +609,7 @@ export default function Reports() {
                             <div className="flex items-center space-x-2">
                               <Button variant="outline" size="sm">
                                 <Download className="w-4 h-4 mr-2" />
-                                Download Latest
+                                Download last sent report
                               </Button>
                               <Button variant="outline" size="sm">
                                 <Edit className="w-4 h-4 mr-2" />
@@ -940,7 +940,7 @@ export default function Reports() {
                                     {report.status === 'Generated' ? (
                                       <Button variant="outline" size="sm">
                                         <Download className="w-4 h-4 mr-2" />
-                                        Download
+                                        Download last sent report
                                       </Button>
                                     ) : (
                                       <div className="flex items-center space-x-2">

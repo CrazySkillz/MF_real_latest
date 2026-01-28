@@ -6981,7 +6981,7 @@ export default function LinkedInAnalytics() {
                                 onClick={() => handleDownloadSavedReport(report)}
                               >
                                 <Download className="w-4 h-4 mr-2" />
-                                Download
+                                Download last sent report
                               </Button>
                               <Button
                                 variant="outline"

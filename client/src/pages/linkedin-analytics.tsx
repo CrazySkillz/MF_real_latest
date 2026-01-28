@@ -7225,7 +7225,12 @@ export default function LinkedInAnalytics() {
                                 {report.scheduleEnabled && report.scheduleFrequency && (
                                   <span className="text-slate-500 flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
-                                    {report.scheduleFrequency}
+                                    {(() => {
+                                      const time = report.scheduleTime ? from24HourTo12Hour(report.scheduleTime) : '';
+                                      const tz = String(report.scheduleTimeZone || '').trim();
+                                      const timeLabel = time ? ` at ${time}${tz ? ` ${tz}` : ''}` : '';
+                                      return `${report.scheduleFrequency}${timeLabel}`;
+                                    })()}
                                   </span>
                                 )}
                                 {report.lastSentAt && (
@@ -7247,15 +7252,6 @@ export default function LinkedInAnalytics() {
                               >
                                 <Download className="w-4 h-4 mr-2" />
                                 Download
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                data-testid={`button-send-test-${report.id}`}
-                                onClick={() => handleSendTestReportEmail(report)}
-                              >
-                                <Send className="w-4 h-4 mr-2" />
-                                Send test
                               </Button>
                               <Button 
                                 variant="ghost" 

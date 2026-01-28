@@ -1548,6 +1548,7 @@ export default function LinkedInAnalytics() {
       'kpis': 'KPIs Report',
       'benchmarks': 'Benchmarks Report',
       'ads': 'Ad Comparison Report',
+      'insights': 'Insights Report',
       'custom': 'Custom Report'
     };
     
@@ -1745,6 +1746,9 @@ export default function LinkedInAnalytics() {
       case 'ads':
         generateAdComparisonPDF(doc, { title: reportForm.name, configuration: reportForm.configuration });
         break;
+      case 'insights':
+        generateInsightsPDF(doc, { title: reportForm.name, configuration: reportForm.configuration });
+        break;
     }
 
     // Download the PDF
@@ -1801,6 +1805,9 @@ export default function LinkedInAnalytics() {
           break;
         case 'ads':
           generateAdComparisonPDF(doc, { title: report.name, configuration });
+          break;
+        case 'insights':
+          generateInsightsPDF(doc, { title: report.name, configuration });
           break;
         case 'custom':
           // For custom reports, use the stored configuration
@@ -2819,7 +2826,7 @@ export default function LinkedInAnalytics() {
       doc.text(`ER: ${(parseFloat(ad.er || 0)).toFixed(2)}%`, 25, y + 52);
       
       // Revenue Metrics Section (if available)
-      if (hasRevenue) {
+      if (showRevenueMetrics) {
         // Revenue metrics - Row 7
         doc.setFont(undefined, 'bold');
         doc.text(`Revenue: ${formatCurrency(parseFloat(ad.revenue || 0))}`, 25, y + 60);
@@ -2840,6 +2847,19 @@ export default function LinkedInAnalytics() {
     if ((configuration as any)?.includeInsights) {
       y = appendInsightsPDF(doc, y, { executiveFinancials: true, trends: true, whatChanged: true });
     }
+
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
+  };
+
+  // Generate Insights PDF (Standard Template)
+  const generateInsightsPDF = (doc: any, opts?: { title?: string; configuration?: any }) => {
+    const title = String(opts?.title || reportForm.name || 'Insights Report');
+    addPDFHeader(doc, title, 'LinkedIn Metrics');
+
+    let y = 70;
+    y = appendInsightsPDF(doc, y, { executiveFinancials: true, trends: true, whatChanged: true });
 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
@@ -9387,6 +9407,32 @@ export default function LinkedInAnalytics() {
                       </div>
                     </div>
 
+                    {/* Insights Template */}
+                    <div
+                      className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
+                        reportForm.reportType === 'insights'
+                          ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30'
+                          : 'border-slate-200 dark:border-slate-700'
+                      }`}
+                      onClick={() => handleReportTypeSelect('insights')}
+                      data-testid="template-insights"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Info className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Insights</h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Executive financials, trends, and “what changed / what to do next”
+                          </p>
+                          <div className="flex gap-2 mt-3">
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Executive</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Trends</span>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Actions</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Schedule Automated Reports */}
                     <div className="pt-4 border-t mt-4">
                       <div className="flex items-center gap-2 mb-4">
@@ -9614,36 +9660,6 @@ export default function LinkedInAnalytics() {
                 {/* Report Configuration */}
                 {reportForm.reportType && reportForm.reportType !== 'custom' && (
                   <div className="space-y-4 pt-4 border-t">
-                    <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <Label className="text-base font-semibold">Insights</Label>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                            Optionally include an Insights section (executive financials, trends, and recommended actions).
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id="standard-include-insights"
-                            checked={!!(reportForm.configuration as any)?.includeInsights}
-                            onCheckedChange={(checked) => {
-                              setReportForm({
-                                ...reportForm,
-                                configuration: {
-                                  ...(reportForm.configuration || {}),
-                                  includeInsights: checked as boolean,
-                                },
-                              });
-                            }}
-                            data-testid="checkbox-standard-include-insights"
-                          />
-                          <Label htmlFor="standard-include-insights" className="cursor-pointer">
-                            Include Insights
-                          </Label>
-                        </div>
-                      </div>
-                    </div>
-
                     <div className="space-y-2">
                       <Label htmlFor="report-name">Report Name</Label>
                       <Input

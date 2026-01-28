@@ -361,6 +361,7 @@ export default function LinkedInAnalytics() {
     kpis: [] as string[],
     benchmarks: [] as string[],
     includeAdComparison: false,
+    adComparisonMetrics: [] as string[],
     includeCampaignBreakdown: false,
     campaignBreakdownCampaigns: [] as string[],
   });
@@ -1520,6 +1521,7 @@ export default function LinkedInAnalytics() {
         kpis: [],
         benchmarks: [],
         includeAdComparison: false,
+        adComparisonMetrics: [],
         includeCampaignBreakdown: false,
         campaignBreakdownCampaigns: [],
       });
@@ -1601,6 +1603,7 @@ export default function LinkedInAnalytics() {
         kpis: config.customReportConfig.kpis || [],
         benchmarks: config.customReportConfig.benchmarks || [],
         includeAdComparison: config.customReportConfig.includeAdComparison || false,
+        adComparisonMetrics: config.customReportConfig.adComparisonMetrics || [],
         includeCampaignBreakdown: legacyInclude,
         campaignBreakdownCampaigns: inferredCampaigns,
       });
@@ -1937,6 +1940,7 @@ export default function LinkedInAnalytics() {
       kpis: [],
       benchmarks: [],
       includeAdComparison: false,
+      adComparisonMetrics: [],
       includeCampaignBreakdown: false,
       campaignBreakdownCampaigns: [],
     });
@@ -2089,6 +2093,199 @@ export default function LinkedInAnalytics() {
       y += 12;
     });
 
+    return y + 6;
+  };
+
+  const addTopPerformanceAdsPDF = (doc: any, y: number, aggregated: any) => {
+    const allAds = Array.isArray(adsData) ? (adsData as any[]) : [];
+    if (allAds.length === 0) return y;
+
+    if (y > 245) {
+      doc.addPage();
+      y = 20;
+    }
+
+    const hasAdLevelRevenue = aggregated?.hasRevenueTracking === 1 && Number(aggregated?.conversionValue || 0) > 0;
+    const selected = Array.isArray((customReportConfig as any).adComparisonMetrics)
+      ? (customReportConfig as any).adComparisonMetrics
+      : [];
+
+    const defaultPrimary = hasAdLevelRevenue ? "revenue" : "spend";
+    const metrics = selected.length > 0 ? selected : [defaultPrimary];
+    const primary = (hasAdLevelRevenue && metrics.includes("revenue")) ? "revenue" : (metrics[0] || defaultPrimary);
+    const topAds = allAds.slice(0, Math.min(5, allAds.length));
+
+    const anyEstimatedRevenue =
+      hasAdLevelRevenue && topAds.some((ad: any) => Boolean(ad?._computed?.revenueIsEstimated));
+
+    const getMetricLabelLocal = (k: string) => {
+      const kk = String(k || "").toLowerCase();
+      const labels: Record<string, string> = {
+        revenue: "Revenue",
+        spend: "Spend",
+        clicks: "Clicks",
+        impressions: "Impressions",
+        conversions: "Conversions",
+        leads: "Leads",
+        ctr: "CTR",
+        cpc: "CPC",
+        cvr: "CVR",
+        cpa: "CPA",
+        roas: "ROAS",
+        roi: "ROI",
+      };
+      return labels[kk] || kk;
+    };
+
+    const getMetricValue = (ad: any, k: string) => {
+      const kk = String(k || "").toLowerCase();
+      const raw = (ad as any)?.[kk] ?? (ad as any)?.[k] ?? (ad as any)?._computed?.[kk] ?? 0;
+      const n = typeof raw === "string" ? parseFloat(raw) : Number(raw);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const formatAdMetric = (k: string, v: number) => {
+      const kk = String(k || "").toLowerCase();
+      if (["revenue", "spend", "cpc", "cpa"].includes(kk)) return formatCurrency(v);
+      if (["ctr", "cvr", "roi"].includes(kk)) return `${v.toFixed(2)}%`;
+      if (kk === "roas") return `${v.toFixed(2)}x`;
+      return formatNumber(v);
+    };
+
+    // Section header
+    y = addPDFSection(doc, "Top Performance Ads", y, [54, 162, 235]);
+
+    // Summary tiles (match screenshot intent)
+    const totalAds = allAds.length;
+    const totalRevenue = allAds.reduce((sum, ad: any) => sum + getMetricValue(ad, "revenue"), 0);
+    const totalSpend = allAds.reduce((sum, ad: any) => sum + getMetricValue(ad, "spend"), 0);
+    const avgRevenue = totalAds > 0 ? totalRevenue / totalAds : 0;
+    const avgSpend = totalAds > 0 ? totalSpend / totalAds : 0;
+
+    const tileY = y;
+    const tileW = 54;
+    const tileH = 18;
+    const gap = 6;
+    const x0 = 20;
+
+    const drawTile = (x: number, title: string, value: string) => {
+      doc.setDrawColor(220, 220, 220);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(x, tileY, tileW, tileH, 3, 3, "FD");
+      doc.setTextColor(90, 90, 90);
+      doc.setFontSize(8);
+      doc.setFont(undefined, "normal");
+      doc.text(title, x + 4, tileY + 6);
+      doc.setTextColor(20, 20, 20);
+      doc.setFontSize(14);
+      doc.setFont(undefined, "bold");
+      doc.text(value, x + 4, tileY + 14);
+    };
+
+    if (hasAdLevelRevenue) {
+      drawTile(x0, "Total Revenue", formatCurrency(totalRevenue));
+      drawTile(x0 + tileW + gap, "Average Revenue/Ad", formatCurrency(avgRevenue));
+    } else {
+      drawTile(x0, "Total Spend", formatCurrency(totalSpend));
+      drawTile(x0 + tileW + gap, "Average Spend/Ad", formatCurrency(avgSpend));
+    }
+    drawTile(x0 + (tileW + gap) * 2, "Total Ads Compared", `${totalAds}`);
+
+    y = tileY + tileH + 10;
+
+    if (anyEstimatedRevenue) {
+      doc.setFontSize(8);
+      doc.setFont(undefined, "normal");
+      doc.setTextColor(120, 120, 120);
+      doc.text("Note: Revenue is estimated (derived conversion value).", 20, y);
+      doc.setTextColor(50, 50, 50);
+      y += 8;
+    }
+
+    // Top ads list
+    topAds.forEach((ad: any, index: number) => {
+      const required = 18;
+      if (y + required > 275) {
+        doc.addPage();
+        y = 20;
+      }
+
+      const isTop = index === 0;
+      const borderColor = isTop ? [34, 197, 94] : [226, 232, 240];
+      doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+      doc.setLineWidth(isTop ? 0.6 : 0.4);
+      doc.roundedRect(20, y, 170, 18, 3, 3, "S");
+      doc.setLineWidth(0.3);
+
+      // Rank circle
+      doc.setFillColor(isTop ? 34 : 59, isTop ? 197 : 130, isTop ? 94 : 246);
+      doc.circle(28, y + 9, 5, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont(undefined, "bold");
+      doc.setFontSize(9);
+      doc.text(`${index + 1}`, 28, y + 12, { align: "center" });
+
+      // Ad title + subtitle
+      const title = String(ad.adName || ad.name || "Unnamed Ad");
+      const subtitle = String(ad.campaignName || ad.campaign || ad.campaignGroupName || "").trim();
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont(undefined, "bold");
+      doc.setFontSize(10);
+      doc.text(title.length > 48 ? `${title.slice(0, 47)}…` : title, 36, y + 7);
+
+      if (subtitle) {
+        doc.setFont(undefined, "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(subtitle.length > 48 ? `${subtitle.slice(0, 47)}…` : subtitle, 36, y + 13);
+      }
+
+      // Badges
+      if (isTop) {
+        doc.setFontSize(7);
+        doc.setTextColor(34, 197, 94);
+        doc.setFont(undefined, "bold");
+        doc.text("TOP", 122, y + 7);
+      }
+      if (hasAdLevelRevenue && ad?._computed?.revenueIsEstimated) {
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.setFont(undefined, "normal");
+        doc.text("Estimated", 137, y + 7);
+      }
+
+      // Primary metric on right
+      const primaryKey = primary === "revenue" && !hasAdLevelRevenue ? "spend" : primary;
+      const metricLabel = getMetricLabelLocal(primaryKey);
+      const metricValue = getMetricValue(ad, primaryKey);
+      doc.setFont(undefined, "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(metricLabel, 188, y + 7, { align: "right" });
+      doc.setFont(undefined, "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(22, 163, 74);
+      doc.text(formatAdMetric(primaryKey, metricValue), 188, y + 14, { align: "right" });
+
+      // Optional compare metrics line under box (excluding primary)
+      const extra = metrics
+        .map((m: string) => String(m || "").toLowerCase())
+        .filter((m: string) => m && m !== primaryKey.toLowerCase())
+        .slice(0, 3);
+      if (extra.length > 0) {
+        const parts = extra.map((m: string) => `${getMetricLabelLocal(m)} ${formatAdMetric(m, getMetricValue(ad, m))}`);
+        doc.setFont(undefined, "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.text(parts.join("  •  "), 22, y + 26);
+        y += 34;
+      } else {
+        y += 24;
+      }
+    });
+
+    doc.setTextColor(50, 50, 50);
     return y + 6;
   };
 
@@ -3057,33 +3254,8 @@ export default function LinkedInAnalytics() {
         doc.addPage();
         y = 20;
       }
-      
-      y = addPDFSection(doc, 'Ad Performance Comparison', y, [54, 162, 235]);
-      
-      adsData.forEach((ad: any, index: number) => {
-        if (y > 250) {
-          doc.addPage();
-          y = 20;
-        }
-        
-        doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(20, y - 5, 170, 42, 3, 3, 'S');
-        
-        doc.setFont(undefined, 'bold');
-        doc.setFontSize(12);
-        doc.setTextColor(50, 50, 50);
-        doc.text(`Ad #${index + 1}: ${ad.adName || ad.name || 'Unnamed Ad'}`, 25, y + 2);
-        
-        doc.setFont(undefined, 'normal');
-        doc.setFontSize(10);
-        doc.text(`Impressions: ${ad.impressions || 0}`, 25, y + 12);
-        doc.text(`Clicks: ${ad.clicks || 0}`, 100, y + 12);
-        doc.text(`CTR: ${ad.ctr || 0}%`, 25, y + 20);
-        doc.text(`Spend: $${ad.spend || 0}`, 100, y + 20);
-        doc.text(`Conversions: ${ad.conversions || 0}`, 25, y + 28);
-        
-        y += 50;
-      });
+
+      y = addTopPerformanceAdsPDF(doc, y, aggregated);
     }
 
     // Footer
@@ -6922,6 +7094,7 @@ export default function LinkedInAnalytics() {
                         kpis: [],
                         benchmarks: [],
                         includeAdComparison: false,
+                        adComparisonMetrics: [],
                         includeCampaignBreakdown: false,
                         campaignBreakdownCampaigns: [],
                       });
@@ -6960,7 +7133,13 @@ export default function LinkedInAnalytics() {
                                 {report.scheduleEnabled && report.scheduleFrequency && (
                                   <span className="text-slate-500 flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
-                                    {report.scheduleFrequency}
+                                    {String(report.scheduleFrequency)}
+                                    {report.scheduleTime ? (
+                                      <span className="text-slate-500">
+                                        {" "}at {from24HourTo12Hour(report.scheduleTime)}
+                                        {report.scheduleTimeZone ? ` (${String(report.scheduleTimeZone)})` : ""}
+                                      </span>
+                                    ) : null}
                                   </span>
                                 )}
                                 {report.lastSentAt && (
@@ -6982,15 +7161,6 @@ export default function LinkedInAnalytics() {
                               >
                                 <Download className="w-4 h-4 mr-2" />
                                 Download last sent report
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                data-testid={`button-send-test-${report.id}`}
-                                onClick={() => handleSendTestReportEmail(report)}
-                              >
-                                <Send className="w-4 h-4 mr-2" />
-                                Send test
                               </Button>
                               <Button 
                                 variant="ghost" 
@@ -9726,7 +9896,7 @@ export default function LinkedInAnalytics() {
                         <div className="space-y-3 pt-2">
                           <div className="flex items-center space-x-2">
                             <Checkbox
-                              id="include-ad-comparison"
+                              id="ad-comparison-top-performance"
                               checked={customReportConfig.includeAdComparison}
                               onCheckedChange={(checked) => {
                                 setCustomReportConfig({
@@ -9736,13 +9906,68 @@ export default function LinkedInAnalytics() {
                               }}
                               data-testid="checkbox-ad-comparison"
                             />
-                            <Label htmlFor="include-ad-comparison" className="text-sm cursor-pointer">
-                              Include Ad Performance Breakdown
+                            <Label htmlFor="ad-comparison-top-performance" className="text-sm cursor-pointer">
+                              Top Performance
                             </Label>
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400 pl-6">
-                            Shows individual ad details (top 15 by revenue) with core metrics and revenue data to identify your best-performing creative
+                            Ranks your top ads and shows a summary (mirrors the Ad Comparison “Top Performance” download).
                           </p>
+
+                          {customReportConfig.includeAdComparison && (
+                            <div className="pl-6 pt-2 space-y-2">
+                              <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                                Compare ads by
+                              </p>
+                              <div className="grid grid-cols-2 gap-3">
+                                {[
+                                  ["revenue", "Revenue"],
+                                  ["spend", "Spend"],
+                                  ["clicks", "Clicks"],
+                                  ["impressions", "Impressions"],
+                                  ["conversions", "Conversions"],
+                                  ["leads", "Leads"],
+                                  ["ctr", "CTR"],
+                                  ["cpc", "CPC"],
+                                  ["cvr", "CVR"],
+                                  ["cpa", "CPA"],
+                                  ["roas", "ROAS"],
+                                  ["roi", "ROI"],
+                                ].map(([key, label]) => {
+                                  const k = String(key);
+                                  const selected = Array.isArray((customReportConfig as any).adComparisonMetrics)
+                                    ? (customReportConfig as any).adComparisonMetrics.includes(k)
+                                    : false;
+                                  return (
+                                    <div key={k} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`adcmp-${k}`}
+                                        checked={selected}
+                                        onCheckedChange={(v) => {
+                                          const curr = Array.isArray((customReportConfig as any).adComparisonMetrics)
+                                            ? (customReportConfig as any).adComparisonMetrics
+                                            : [];
+                                          const next = new Set<string>(curr);
+                                          if (v) next.add(k); else next.delete(k);
+                                          setCustomReportConfig({
+                                            ...customReportConfig,
+                                            adComparisonMetrics: Array.from(next),
+                                          } as any);
+                                        }}
+                                        data-testid={`checkbox-ad-comparison-metric-${k}`}
+                                      />
+                                      <Label htmlFor={`adcmp-${k}`} className="text-sm cursor-pointer">
+                                        {label}
+                                      </Label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                If no metrics are selected, the report defaults to Revenue (when available) or Spend.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </AccordionContent>
                     </AccordionItem>

@@ -2322,6 +2322,239 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DEV/MVP utility: seed a full LinkedIn mock dataset for a campaign (Overview + Insights).
+  // - Overview tab reads: GET /api/linkedin/imports/:sessionId (linkedin_import_sessions + linkedin_import_metrics + linkedin_ad_performance)
+  // - Insights tab reads:  GET /api/campaigns/:id/linkedin-daily (linkedin_daily_metrics) and GET /api/linkedin/insights/:sessionId
+  // Safety: disabled in production unless explicitly allowed.
+  app.post("/api/campaigns/:id/linkedin/mock-seed", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const allowInProd = String(process.env.ALLOW_MOCK_DATA || "").toLowerCase() === "true";
+      if (process.env.NODE_ENV === "production" && !allowInProd) {
+        return res.status(403).json({ success: false, message: "Mock data is disabled in production." });
+      }
+
+      const campaignId = String(req.params.id || "").trim();
+      if (!campaignId) return res.status(400).json({ success: false, message: "Missing campaign id." });
+
+      const body = (req.body || {}) as any;
+      const scenario = String(body.scenario || "landing_page_regression").trim();
+      const days = Math.max(2, Math.min(90, parseInt(String(body.days || "14"), 10) || 14));
+      const seed = parseInt(String(body.seed || "1"), 10) || 1;
+
+      const allowed = ["landing_page_regression", "cvr_drop", "cpc_spike", "engagement_decay", "flat"];
+      if (!allowed.includes(scenario)) {
+        return res.status(400).json({
+          success: false,
+          message: `Unknown scenario "${scenario}".`,
+          allowed,
+        });
+      }
+
+      // Window: last N complete UTC days (end = yesterday)
+      const now = new Date();
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+      const start = new Date(end.getTime());
+      start.setUTCDate(start.getUTCDate() - (days - 1));
+      const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+      // Deterministic pseudo-random jitter for realism (seeded, no external deps)
+      let s = seed;
+      const rand = () => {
+        s = (s * 1664525 + 1013904223) % 4294967296;
+        return s / 4294967296;
+      };
+      const jitter = (base: number, pct: number) => {
+        const r = (rand() * 2 - 1) * pct;
+        return base * (1 + r);
+      };
+
+      // Base weekly totals (chosen to pass volume gates)
+      const prev = {
+        impressions: 120000,
+        clicks: 1200, // CTR ~1.0%
+        conversions: 60, // CVR ~5.0%
+        spend: 12000, // CPC $10.00
+        engagements: 6000, // ER 5.0%
+      };
+      const cur = { ...prev };
+
+      if (scenario === "landing_page_regression") {
+        // CTR stable (±5%), CVR down >= 20%
+        cur.clicks = 1230;
+        cur.conversions = 40;
+      } else if (scenario === "cvr_drop") {
+        cur.clicks = 900;
+        cur.conversions = 35;
+      } else if (scenario === "cpc_spike") {
+        cur.spend = 16800; // +40% spend at same clicks => CPC spike
+      } else if (scenario === "engagement_decay") {
+        cur.engagements = 4000; // -33% engagements at same impressions
+      }
+
+      const rows: any[] = [];
+      const makeDay = (totals: any) => {
+        const impressions = Math.max(0, Math.round(jitter(totals.impressions / 7, 0.06)));
+        const clicks = Math.max(0, Math.round(jitter(totals.clicks / 7, 0.08)));
+        const conversions = Math.max(0, Math.round(jitter(totals.conversions / 7, 0.12)));
+        const engagements = Math.max(0, Math.round(jitter(totals.engagements / 7, 0.10)));
+        const spend = Math.max(0, jitter(totals.spend / 7, 0.07));
+        return { impressions, clicks, conversions, engagements, spend: spend.toFixed(2) };
+      };
+
+      for (let i = 0; i < days; i++) {
+        const d = new Date(start.getTime());
+        d.setUTCDate(d.getUTCDate() + i);
+        const date = iso(d);
+
+        let totals = cur;
+        if (days >= 14) {
+          if (i < 7) totals = prev;
+          else if (i >= days - 7) totals = cur;
+          else totals = prev;
+        }
+
+        const v = makeDay(totals);
+        rows.push({
+          campaignId,
+          date,
+          impressions: v.impressions,
+          clicks: v.clicks,
+          reach: Math.max(0, Math.round(v.impressions * 0.6)),
+          engagements: v.engagements,
+          conversions: v.conversions,
+          leads: Math.max(0, Math.round(v.conversions * 0.7)),
+          spend: v.spend,
+          videoViews: 0,
+          viralImpressions: 0,
+        });
+      }
+
+      // 1) Seed Insights daily facts (powers Trends + server-side signals)
+      const dailyUpsert = await storage.upsertLinkedInDailyMetrics(rows as any);
+
+      // Totals for Overview session (derived directly from the seeded daily facts)
+      const sum = (key: string) =>
+        rows.reduce((acc, r) => acc + (key === "spend" ? parseFloat(String(r?.spend || "0")) : Number(r?.[key] || 0)), 0);
+
+      const totals = {
+        impressions: Math.round(sum("impressions")),
+        clicks: Math.round(sum("clicks")),
+        reach: Math.round(sum("reach")),
+        engagements: Math.round(sum("engagements")),
+        conversions: Math.round(sum("conversions")),
+        leads: Math.round(sum("leads")),
+        spend: Number(sum("spend").toFixed(2)),
+      };
+
+      const campaign = await storage.getCampaign(campaignId).catch(() => undefined as any);
+      const campaignName = String((campaign as any)?.name || (campaign as any)?.campaignName || `Mock LinkedIn Campaign ${campaignId}`);
+      const campaignUrn = `urn:li:sponsoredCampaign:${campaignId}`;
+      const adAccountId = `mock_ad_account_${campaignId}`;
+
+      // 2) Create a LinkedIn import session (powers Overview)
+      const selectedMetricKeys = ["impressions", "clicks", "spend", "conversions", "engagements", "leads", "reach"];
+      const session = await storage.createLinkedInImportSession({
+        campaignId,
+        adAccountId,
+        adAccountName: "Mock LinkedIn Ad Account",
+        selectedCampaignsCount: 1,
+        selectedMetricsCount: selectedMetricKeys.length,
+        selectedMetricKeys,
+      } as any);
+
+      // 3) Create import metrics for the session (campaign totals)
+      const metricPairs: Array<[string, number]> = [
+        ["impressions", totals.impressions],
+        ["clicks", totals.clicks],
+        ["spend", totals.spend],
+        ["conversions", totals.conversions],
+        ["engagements", totals.engagements],
+        ["leads", totals.leads],
+        ["reach", totals.reach],
+      ];
+      for (const [metricKey, metricValue] of metricPairs) {
+        await storage.createLinkedInImportMetric({
+          sessionId: session.id,
+          campaignUrn,
+          campaignName,
+          campaignStatus: "active",
+          metricKey,
+          metricValue: Number(metricValue.toFixed?.(2) ?? metricValue),
+        } as any);
+      }
+
+      // 4) Create a small amount of ad-level performance (so Ads/Ad Comparison have something)
+      const adCount = 3;
+      for (let i = 0; i < adCount; i++) {
+        const share = 1 / adCount;
+        const impressions = Math.max(0, Math.round(totals.impressions * share));
+        const clicks = Math.max(0, Math.round(totals.clicks * share));
+        const engagements = Math.max(0, Math.round(totals.engagements * share));
+        const conversions = Math.max(0, Math.round(totals.conversions * share));
+        const leads = Math.max(0, Math.round(totals.leads * share));
+        const spend = Math.max(0, totals.spend * share);
+
+        const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : "0";
+        const cpc = clicks > 0 ? (spend / clicks).toFixed(2) : "0";
+        const cvr = clicks > 0 ? ((conversions / clicks) * 100).toFixed(2) : "0";
+        const er = impressions > 0 ? ((engagements / impressions) * 100).toFixed(2) : "0";
+        const cpa = conversions > 0 ? (spend / conversions).toFixed(2) : "0";
+        const cpl = leads > 0 ? (spend / leads).toFixed(2) : "0";
+        const cpm = impressions > 0 ? ((spend / impressions) * 1000).toFixed(2) : "0";
+
+        await storage.createLinkedInAdPerformance({
+          sessionId: session.id,
+          adId: `mock_ad_${campaignId}_${i + 1}`,
+          adName: `Mock Ad ${i + 1}`,
+          campaignUrn,
+          campaignName,
+          campaignSelectedMetrics: selectedMetricKeys,
+          impressions,
+          reach: Math.max(0, Math.round(impressions * 0.6)),
+          clicks,
+          engagements,
+          spend: spend.toFixed(2),
+          conversions,
+          leads,
+          videoViews: 0,
+          viralImpressions: 0,
+          ctr,
+          cpc,
+          cpm,
+          cvr,
+          cpa,
+          cpl,
+          er,
+          roi: "0",
+          roas: "0",
+          revenue: "0",
+          conversionRate: cvr,
+        } as any);
+      }
+
+      const analyticsUrl = `/campaigns/${encodeURIComponent(campaignId)}/linkedin-analytics?session=${encodeURIComponent(
+        String(session.id)
+      )}&tab=overview`;
+
+      return res.json({
+        success: true,
+        campaignId,
+        sessionId: session.id,
+        scenario,
+        days,
+        startDate: iso(start),
+        endDate: iso(end),
+        upsertedDaily: (dailyUpsert as any)?.upserted ?? rows.length,
+        overviewTotals: totals,
+        analyticsUrl,
+        note: "This overwrites linkedin_daily_metrics for the generated dates and creates a new import session for Overview.",
+      });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e?.message || "Failed to seed full LinkedIn mock dataset" });
+    }
+  });
+
   // Send a test alert email (admin/dev utility)
   app.post("/api/alerts/test-email", async (req, res) => {
     try {

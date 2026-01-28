@@ -10,6 +10,7 @@ import multer from "multer";
 import { parsePDFMetrics } from "./services/pdf-parser";
 import axios from "axios";
 import { getIndustryBenchmarks } from "./data/industry-benchmarks";
+import { computeExecWowSignals, DEFAULT_EXEC_WOW_THRESHOLDS, type LinkedInDailyFact } from "./linkedin-insights-engine";
 
 // Simulate professional platform authentication (like Supermetrics)
 async function simulateProfessionalAuth(email: string, password: string, propertyId: string, campaignId: string) {
@@ -3676,6 +3677,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('LinkedIn import session fetch error:', error);
       res.status(500).json({ message: "Failed to fetch import session" });
+    }
+  });
+
+  // Server-side exec-friendly Insights (WoW anomaly signals) for a LinkedIn import session.
+  // MVP goal: one consistent computation path; UI renders server-provided signals + evidence.
+  app.get("/api/linkedin/insights/:sessionId", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const { sessionId } = req.params as any;
+      const days = Math.max(7, Math.min(365, parseInt(String((req.query as any)?.days || "90"), 10) || 90));
+
+      const session = await storage.getLinkedInImportSession(String(sessionId || ""));
+      if (!session) return res.status(404).json({ success: false, message: "Import session not found" });
+
+      const campaignId = String((session as any)?.campaignId || "");
+      if (!campaignId) return res.status(400).json({ success: false, message: "Missing campaignId for session" });
+
+      // Window: last N complete UTC days (end = yesterday to avoid partial today)
+      const now = new Date();
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+      const start = new Date(end.getTime());
+      start.setUTCDate(start.getUTCDate() - (days - 1));
+      const startDate = start.toISOString().slice(0, 10);
+      const endDate = end.toISOString().slice(0, 10);
+
+      const rows = await storage.getLinkedInDailyMetrics(campaignId, startDate, endDate).catch(() => []);
+
+      const facts: LinkedInDailyFact[] = (Array.isArray(rows) ? rows : []).map((r: any) => ({
+        date: String(r?.date || ""),
+        impressions: Number(r?.impressions || 0) || 0,
+        clicks: Number(r?.clicks || 0) || 0,
+        conversions: Number(r?.conversions || 0) || 0,
+        spend: typeof r?.spend === "string" ? parseFloat(r.spend) : Number(r?.spend || 0) || 0,
+        engagements: Number(r?.engagements || 0) || 0,
+      }));
+
+      const computed = computeExecWowSignals({ dailyFacts: facts });
+
+      return res.json({
+        success: true,
+        sessionId: String(sessionId),
+        campaignId,
+        window: { startDate, endDate, days },
+        availableDays: computed.availableDays,
+        signals: computed.signals,
+        rollups: computed.cur7 && computed.prev7 ? { last7: computed.cur7, prior7: computed.prev7 } : null,
+        thresholds: DEFAULT_EXEC_WOW_THRESHOLDS,
+      });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e?.message || "Failed to compute LinkedIn insights" });
     }
   });
   

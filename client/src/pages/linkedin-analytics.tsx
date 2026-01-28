@@ -748,6 +748,23 @@ export default function LinkedInAnalytics() {
     },
   });
 
+  // Server-side Insights signals (single source of truth for exec-facing guidance)
+  const { data: linkedInInsightsResp, isLoading: linkedInInsightsLoading } = useQuery<any>({
+    queryKey: ["/api/linkedin/insights", sessionId, LINKEDIN_DAILY_LOOKBACK_DAYS],
+    enabled: activeTab === "insights" && !!sessionId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    queryFn: async () => {
+      const resp = await fetch(
+        `/api/linkedin/insights/${encodeURIComponent(String(sessionId))}?days=${encodeURIComponent(String(LINKEDIN_DAILY_LOOKBACK_DAYS))}`
+      );
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) return { success: false, signals: [], availableDays: 0 };
+      return json;
+    },
+  });
+
   // Extract unique campaigns from sessionData.metrics (each metric is separate entry)
   const availableCampaigns = useMemo(() => {
     const { metrics: rawMetrics } = (sessionData as any) || {};
@@ -3977,160 +3994,18 @@ export default function LinkedInAnalytics() {
       });
     }
 
-    // 4) Anomaly detection (exec-friendly WoW signals) using persisted LinkedIn daily facts (requires >= 14 days)
-    if (dates.length >= 14) {
-      const last7 = new Set(dates.slice(-7));
-      const prev7 = new Set(dates.slice(-14, -7));
-
-      const sum = (set: Set<string>) => {
-        let impressions = 0;
-        let clicks = 0;
-        let conversions = 0;
-        let spend = 0;
-        let engagements = 0;
-        Array.from(set).forEach((d) => {
-          const v = daily.get(d);
-          if (!v) return;
-          impressions += v.impressions;
-          clicks += v.clicks;
-          conversions += v.conversions;
-          spend += v.spend;
-          engagements += (v as any).engagements || 0;
-        });
-        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-        const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
-        const cpc = clicks > 0 ? spend / clicks : 0;
-        const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
-        return { impressions, clicks, conversions, spend, engagements, ctr, cvr, cpc, er };
-      };
-
-      const cur = sum(last7);
-      const prev = sum(prev7);
-      const pct = (curVal: number, prevVal: number) => (prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : null);
-      const fmtPct = (n: number | null) => (n === null ? "n/a" : `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`);
-      const fmtPctAbs = (n: number | null) => (n === null ? "n/a" : `${Math.abs(n).toFixed(1)}%`);
-
-      // Reliability gates (avoid noisy exec alerts)
-      const MIN_CLICKS = 100;
-      const MIN_IMPRESSIONS = 5000;
-      const MIN_CONVERSIONS = 20;
-
-      const CVR_DROP_PCT = 20;
-      const CPC_SPIKE_PCT = 20;
-      const ER_DECAY_PCT = 20;
-      const CTR_STABLE_BAND_PCT = 5;
-
-      const ctrDelta = pct(cur.ctr, prev.ctr);
-      const cvrDelta = pct(cur.cvr, prev.cvr);
-      const cpcDelta = pct(cur.cpc, prev.cpc);
-      const erDelta = pct(cur.er, prev.er);
-
-      const ctrStable =
-        prev.impressions >= MIN_IMPRESSIONS &&
-        prev.ctr > 0 &&
-        ctrDelta !== null &&
-        Math.abs(ctrDelta) <= CTR_STABLE_BAND_PCT;
-
-      const cvrReliable =
-        prev.clicks >= MIN_CLICKS &&
-        prev.conversions >= MIN_CONVERSIONS &&
-        prev.cvr > 0 &&
-        cvrDelta !== null;
-
-      const cpcReliable = prev.clicks >= MIN_CLICKS && prev.cpc > 0 && cpcDelta !== null;
-      const erReliable = prev.impressions >= MIN_IMPRESSIONS && prev.er > 0 && erDelta !== null;
-
-      // Landing page regression: CVR down materially while CTR stays stable.
-      if (cvrReliable && ctrStable && cvrDelta! <= -CVR_DROP_PCT) {
-        out.push({
-          id: "anomaly:landing_page_regression:wow",
-          severity: "high",
-          title: `Likely landing page regression (CVR down ${fmtPctAbs(cvrDelta)} WoW, CTR stable)`,
-          description: `Conversion rate from LinkedIn traffic dropped ${fmtPctAbs(cvrDelta)} week-over-week while click-through rate remained stable. This pattern most often points to a landing page/form/tracking regression.`,
-          confidence: "high",
-          evidence: [
-            `CTR: ${prev.ctr.toFixed(2)}% → ${cur.ctr.toFixed(2)}% (${fmtPct(ctrDelta)})`,
-            `CVR: ${prev.cvr.toFixed(2)}% → ${cur.cvr.toFixed(2)}% (${fmtPct(cvrDelta)})`,
-            `Clicks: ${formatNumber(prev.clicks, "clicks")} → ${formatNumber(cur.clicks, "clicks")} (${fmtPct(pct(cur.clicks, prev.clicks))})`,
-            `Conversions: ${formatNumber(prev.conversions, "conversions")} → ${formatNumber(cur.conversions, "conversions")} (${fmtPct(pct(cur.conversions, prev.conversions))})`,
-          ],
-          recommendation:
-            "Check landing page availability, load time, form errors, routing/UTMs, and recent page changes. Then review lead quality and audience/creative changes if the page is healthy.",
-          actions: [{ label: "Open Trends", kind: "go", tab: "insights" }, { label: "Open Ad Comparison", kind: "go", tab: "ads" }],
-        });
-      } else if (cvrReliable && cvrDelta! <= -CVR_DROP_PCT) {
-        // CVR drop (generic)
-        out.push({
-          id: "anomaly:cvr_drop:wow",
-          severity: "high",
-          title: `Conversion rate dropped ${fmtPctAbs(cvrDelta)} week-over-week`,
-          description: `CVR fell materially week-over-week. When CTR is stable, this usually indicates a landing page/form issue; otherwise it may be traffic quality.`,
-          confidence: ctrDelta !== null ? "medium" : "medium",
-          evidence: [
-            `CVR: ${prev.cvr.toFixed(2)}% → ${cur.cvr.toFixed(2)}% (${fmtPct(cvrDelta)})`,
-            `CTR: ${prev.ctr.toFixed(2)}% → ${cur.ctr.toFixed(2)}% (${fmtPct(ctrDelta)})`,
-            `Clicks: ${formatNumber(prev.clicks, "clicks")} → ${formatNumber(cur.clicks, "clicks")}`,
-          ],
-          recommendation:
-            "If CTR is flat, check landing page/form/tracking. If CTR also dropped, prioritize creative fatigue and audience fit.",
-          actions: [{ label: "Open Trends", kind: "go", tab: "insights" }, { label: "Open Ad Comparison", kind: "go", tab: "ads" }],
-        });
-      }
-
-      // CPC spike
-      if (cpcReliable && cpcDelta! >= CPC_SPIKE_PCT) {
-        out.push({
-          id: "anomaly:cpc_spike:wow",
-          severity: cpcDelta! >= 40 ? "high" : "medium",
-          title: `CPC spiked ${fmtPctAbs(cpcDelta)} week-over-week`,
-          description: `Cost per click increased materially week-over-week, which can indicate auction pressure, audience saturation, or creative relevance decline.`,
-          confidence: "medium",
-          evidence: [
-            `CPC: ${formatCurrency(prev.cpc)} → ${formatCurrency(cur.cpc)} (${fmtPct(cpcDelta)})`,
-            `CTR: ${prev.ctr.toFixed(2)}% → ${cur.ctr.toFixed(2)}% (${fmtPct(ctrDelta)})`,
-            `Spend: ${formatCurrency(prev.spend)} → ${formatCurrency(cur.spend)} (${fmtPct(pct(cur.spend, prev.spend))})`,
-          ],
-          recommendation:
-            "Check bidding/budget changes, audience size/frequency, and creative relevance. Consider refreshing creatives or widening targeting to reduce auction pressure.",
-          actions: [{ label: "Open Ad Comparison", kind: "go", tab: "ads" }],
-        });
-      }
-
-      // Engagement decay (only if daily facts include engagements)
-      if (erReliable && erDelta! <= -ER_DECAY_PCT) {
-        out.push({
-          id: "anomaly:engagement_decay:wow",
-          severity: "medium",
-          title: `Engagement rate declined ${fmtPctAbs(erDelta)} week-over-week`,
-          description: `Engagement per impression declined week-over-week—often a sign of creative fatigue or weaker audience-message fit.`,
-          confidence: "medium",
-          evidence: [
-            `Engagement rate: ${prev.er.toFixed(2)}% → ${cur.er.toFixed(2)}% (${fmtPct(erDelta)})`,
-            `Engagements: ${formatNumber(prev.engagements, "engagements")} → ${formatNumber(cur.engagements, "engagements")} (${fmtPct(pct(cur.engagements, prev.engagements))})`,
-            `Impressions: ${formatNumber(prev.impressions, "impressions")} → ${formatNumber(cur.impressions, "impressions")} (${fmtPct(pct(cur.impressions, prev.impressions))})`,
-          ],
-          recommendation:
-            "Refresh creative, tighten to best-performing segments, and review recent messaging changes. If engagement drops while CPC rises, prioritize creative relevance.",
-          actions: [{ label: "Open Ad Comparison", kind: "go", tab: "ads" }],
-        });
-      }
-    } else if (dates.length > 0) {
-      out.push({
-        id: "anomaly:not-enough-history",
-        severity: "low",
-        title: "Anomaly detection needs more history",
-        description: `Need at least 14 days of daily data to compute week-over-week deltas. Available days: ${dates.length}.`,
-        confidence: "high",
-        evidence: [`Available days: ${dates.length}`],
-        recommendation: "Let the scheduler collect more daily history, then Insights will unlock week-over-week comparisons.",
-      });
+    // 4) Anomaly detection (server-side; UI renders server-provided signals for consistency)
+    const serverSignals = Array.isArray((linkedInInsightsResp as any)?.signals) ? (linkedInInsightsResp as any).signals : [];
+    for (const s of serverSignals) {
+      if (!s || !s.id) continue;
+      out.push(s);
     }
 
     // Stable ordering: high -> medium -> low
     const order = { high: 0, medium: 1, low: 2 } as const;
     out.sort((x, y) => order[x.severity] - order[y.severity]);
     return out;
-  }, [aggregated, kpisData, benchmarksData, linkedInDailyResp]);
+  }, [aggregated, kpisData, benchmarksData, linkedInDailyResp, linkedInInsightsResp]);
 
   const linkedInInsightsRollups = useMemo(() => {
     const a: any = aggregated || {};

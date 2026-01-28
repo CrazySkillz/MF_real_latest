@@ -5512,16 +5512,24 @@ export default function LinkedInAnalytics() {
                               <table className="w-full text-sm table-fixed">
                                 <thead className="bg-slate-50 dark:bg-slate-800 border-b">
                                   <tr>
-                                    <th className="text-left p-3 w-[22%]">Date</th>
-                                    <th className="text-right p-3">Spend</th>
-                                    <th className="text-right p-3">Impr.</th>
-                                    <th className="text-right p-3">Clicks</th>
-                                    <th className="text-right p-3">CTR</th>
-                                    <th className="text-right p-3">Conv.</th>
-                                    <th className="text-right p-3">CVR</th>
-                                    {showDayOverDayDeltas ? (
-                                      <th className="text-right p-3">{`Δ ${String(insightsTrendMetric || "").toUpperCase()}`}</th>
-                                    ) : null}
+                                    <th className="text-left p-3 w-[38%]">Date</th>
+                                    <th className="text-right p-3">
+                                      {(() => {
+                                        const k = String(insightsTrendMetric || "");
+                                        const labels: Record<string, string> = {
+                                          spend: "Spend",
+                                          conversions: "Conversions",
+                                          cvr: "CVR",
+                                          ctr: "CTR",
+                                          clicks: "Clicks",
+                                          impressions: "Impressions",
+                                          revenue: "Revenue",
+                                          roas: "ROAS",
+                                        };
+                                        return labels[k] || "Metric";
+                                      })()}
+                                    </th>
+                                    {showDayOverDayDeltas ? <th className="text-right p-3">Δ vs prior day</th> : null}
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -5543,17 +5551,23 @@ export default function LinkedInAnalytics() {
                                     const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
                                     const showDelta = !!prev && prevVal > 0;
 
+                                    const formatValue = (key: string, v: number) => {
+                                      if (key === "spend" || key === "revenue") return formatCurrency(v);
+                                      if (key === "ctr" || key === "cvr") return `${v.toFixed(2)}%`;
+                                      if (key === "roas") return `${v.toFixed(2)}x`;
+                                      return formatNumber(v, key);
+                                    };
+
                                     return (
                                     <tr key={r.date} className="border-b">
                                       <td className="p-3">
                                         <div className="font-medium text-slate-900 dark:text-white">{r.date}</div>
                                       </td>
-                                      <td className="p-3 text-right">{formatCurrency(Number(r.spend || 0))}</td>
-                                      <td className="p-3 text-right">{formatNumber(r.impressions || 0, "impressions")}</td>
-                                      <td className="p-3 text-right">{formatNumber(r.clicks || 0, "clicks")}</td>
-                                      <td className="p-3 text-right">{Number(r.ctr || 0).toFixed(2)}%</td>
-                                      <td className="p-3 text-right">{formatNumber(r.conversions || 0, "conversions")}</td>
-                                      <td className="p-3 text-right">{Number(r.cvr || 0).toFixed(2)}%</td>
+                                      <td className="p-3 text-right">
+                                        <div className="font-medium text-slate-900 dark:text-white">
+                                          {formatValue(metricKey, curVal)}
+                                        </div>
+                                      </td>
                                       {showDayOverDayDeltas ? (
                                         <td className="p-3 text-right">
                                           <div className={`text-xs ${showDelta ? deltaClass : "text-slate-400"}`}>
@@ -5570,13 +5584,9 @@ export default function LinkedInAnalytics() {
                               <table className="w-full text-sm table-fixed">
                                 <thead className="bg-slate-50 dark:bg-slate-800 border-b">
                                   <tr>
-                                    <th className="text-left p-3 w-[22%]">Window</th>
-                                    <th className="text-right p-3">Impr.</th>
-                                    <th className="text-right p-3">Clicks</th>
-                                    <th className="text-right p-3">CTR</th>
-                                    <th className="text-right p-3">Conv.</th>
-                                    <th className="text-right p-3">CVR</th>
-                                    <th className="text-right p-3">Spend</th>
+                                    <th className="text-left p-3 w-[55%]">Window</th>
+                                    <th className="text-right p-3">Value</th>
+                                    <th className="text-right p-3">Δ vs prior</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -5589,12 +5599,40 @@ export default function LinkedInAnalytics() {
                                       : { key: "30d", cur: linkedInInsightsRollups.last30, prev: linkedInInsightsRollups.prior30, d: linkedInInsightsRollups.deltas, label: "Last 30d vs prior 30d" };
                                     const deltaColor = (n: number) => (n >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300");
                                     const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
-                                    const imprDelta = is7 ? row.d.impressions7 : row.d.impressions30;
-                                    const clicksDelta = is7 ? row.d.clicks7 : row.d.clicks30;
-                                    const ctrDelta = is7 ? row.d.ctr7 : row.d.ctr30;
-                                    const convDelta = is7 ? row.d.conversions7 : row.d.conversions30;
-                                    const cvrDelta = is7 ? row.d.cvr7 : row.d.cvr30;
-                                    const spendDelta = is7 ? row.d.spend7 : row.d.spend30;
+
+                                    const metricKey = String(insightsTrendMetric || "");
+                                    const valueFor = (obj: any) => {
+                                      const v = Number(obj?.[metricKey] ?? 0) || 0;
+                                      if (metricKey === "spend" || metricKey === "revenue") return formatCurrency(v);
+                                      if (metricKey === "ctr" || metricKey === "cvr") return `${v.toFixed(2)}%`;
+                                      if (metricKey === "roas") return `${v.toFixed(2)}x`;
+                                      return formatNumber(v, metricKey);
+                                    };
+                                    const deltaFor = () => {
+                                      const map7: Record<string, number> = {
+                                        impressions: row.d.impressions7,
+                                        clicks: row.d.clicks7,
+                                        ctr: row.d.ctr7,
+                                        conversions: row.d.conversions7,
+                                        cvr: row.d.cvr7,
+                                        spend: row.d.spend7,
+                                        revenue: row.d.revenue7,
+                                        roas: row.d.roas7,
+                                      };
+                                      const map30: Record<string, number> = {
+                                        impressions: row.d.impressions30,
+                                        clicks: row.d.clicks30,
+                                        ctr: row.d.ctr30,
+                                        conversions: row.d.conversions30,
+                                        cvr: row.d.cvr30,
+                                        spend: row.d.spend30,
+                                        revenue: row.d.revenue30,
+                                        roas: row.d.roas30,
+                                      };
+                                      const v = (is7 ? map7 : map30)[metricKey];
+                                      return Number.isFinite(v) ? v : 0;
+                                    };
+                                    const delta = deltaFor();
                                     return (
                                       <tr key={row.key} className="border-b">
                                         <td className="p-3">
@@ -5604,28 +5642,10 @@ export default function LinkedInAnalytics() {
                                           </div>
                                         </td>
                                         <td className="p-3 text-right">
-                                          <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.impressions || 0, "impressions")}</div>
-                                          <div className={`text-xs ${deltaColor(imprDelta)}`}>{fmtDelta(imprDelta)}</div>
+                                          <div className="font-medium text-slate-900 dark:text-white">{valueFor(row.cur)}</div>
                                         </td>
                                         <td className="p-3 text-right">
-                                          <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.clicks || 0, "clicks")}</div>
-                                          <div className={`text-xs ${deltaColor(clicksDelta)}`}>{fmtDelta(clicksDelta)}</div>
-                                        </td>
-                                        <td className="p-3 text-right">
-                                          <div className="font-medium text-slate-900 dark:text-white">{row.cur.ctr.toFixed(2)}%</div>
-                                          <div className={`text-xs ${deltaColor(ctrDelta)}`}>{fmtDelta(ctrDelta)}</div>
-                                        </td>
-                                        <td className="p-3 text-right">
-                                          <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.conversions || 0, "conversions")}</div>
-                                          <div className={`text-xs ${deltaColor(convDelta)}`}>{fmtDelta(convDelta)}</div>
-                                        </td>
-                                        <td className="p-3 text-right">
-                                          <div className="font-medium text-slate-900 dark:text-white">{row.cur.cvr.toFixed(2)}%</div>
-                                          <div className={`text-xs ${deltaColor(cvrDelta)}`}>{fmtDelta(cvrDelta)}</div>
-                                        </td>
-                                        <td className="p-3 text-right">
-                                          <div className="font-medium text-slate-900 dark:text-white">{formatCurrency(Number(row.cur.spend || 0))}</div>
-                                          <div className={`text-xs ${deltaColor(spendDelta)}`}>{fmtDelta(spendDelta)}</div>
+                                          <div className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</div>
                                         </td>
                                       </tr>
                                     );

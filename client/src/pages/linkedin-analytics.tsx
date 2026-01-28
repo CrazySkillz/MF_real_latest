@@ -9016,26 +9016,6 @@ export default function LinkedInAnalytics() {
                   } else if (!String(reportForm.name || '').trim()) {
                     setReportForm({ ...reportForm, name: 'Custom Report' });
                   }
-
-                  // Default Campaign Breakdown selection to "all campaigns" (so users can untick).
-                  try {
-                    const all = Array.from(
-                      new Set(
-                        (Array.isArray(metrics) ? metrics : [])
-                          .map((m: any) => String(m?.campaignUrn || ''))
-                          .filter(Boolean)
-                      )
-                    );
-                    if (all.length > 0 && Array.isArray((customReportConfig as any).campaignBreakdownCampaigns) && (customReportConfig as any).campaignBreakdownCampaigns.length === 0) {
-                      setCustomReportConfig({
-                        ...customReportConfig,
-                        includeCampaignBreakdown: true,
-                        campaignBreakdownCampaigns: all,
-                      } as any);
-                    }
-                  } catch {
-                    // ignore
-                  }
                 }}
                 data-testid="section-custom-report"
               >

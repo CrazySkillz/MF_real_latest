@@ -2194,6 +2194,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DEV/MVP utility: generate mock LinkedIn daily facts for a campaign (for UI/testing).
+  // Safety: disabled in production unless explicitly allowed.
+  app.post("/api/campaigns/:id/linkedin-daily/mock", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const allowInProd = String(process.env.ALLOW_MOCK_DATA || "").toLowerCase() === "true";
+      if (process.env.NODE_ENV === "production" && !allowInProd) {
+        return res.status(403).json({ success: false, message: "Mock data is disabled in production." });
+      }
+
+      const campaignId = String(req.params.id || "").trim();
+      if (!campaignId) return res.status(400).json({ success: false, message: "Missing campaign id." });
+
+      const body = (req.body || {}) as any;
+      const scenario = String(body.scenario || "landing_page_regression").trim();
+      const days = Math.max(2, Math.min(90, parseInt(String(body.days || "14"), 10) || 14));
+      const seed = parseInt(String(body.seed || "1"), 10) || 1;
+
+      // Window: last N complete UTC days (end = yesterday)
+      const now = new Date();
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+      const start = new Date(end.getTime());
+      start.setUTCDate(start.getUTCDate() - (days - 1));
+
+      const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+      // Deterministic pseudo-random jitter for realism (seeded, no external deps)
+      let s = seed;
+      const rand = () => {
+        // LCG
+        s = (s * 1664525 + 1013904223) % 4294967296;
+        return s / 4294967296;
+      };
+      const jitter = (base: number, pct: number) => {
+        const r = (rand() * 2 - 1) * pct;
+        return base * (1 + r);
+      };
+
+      // Base weekly totals (chosen to pass volume gates)
+      // Prev week baseline
+      const prev = {
+        impressions: 120000,
+        clicks: 1200, // CTR ~1.0%
+        conversions: 60, // CVR ~5.0%
+        spend: 12000, // CPC $10.00
+        engagements: 6000, // ER 5.0%
+      };
+      // Current week starts as baseline; scenario modifies it
+      const cur = { ...prev };
+
+      if (scenario === "landing_page_regression") {
+        // CTR stable (±5%), CVR down >= 20%
+        cur.clicks = 1230;
+        cur.conversions = 40;
+      } else if (scenario === "cvr_drop") {
+        cur.clicks = 900;
+        cur.conversions = 35;
+      } else if (scenario === "cpc_spike") {
+        cur.spend = 16800; // +40% spend at same clicks => CPC spike
+      } else if (scenario === "engagement_decay") {
+        cur.engagements = 4000; // -33% engagements at same impressions
+      } else if (scenario === "flat") {
+        // no-op
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: `Unknown scenario "${scenario}".`,
+          allowed: ["landing_page_regression", "cvr_drop", "cpc_spike", "engagement_decay", "flat"],
+        });
+      }
+
+      const rows: any[] = [];
+      const makeDay = (totals: any, dayIndex: number) => {
+        // Spread totals across 7 days with slight jitter, then round to integers where appropriate.
+        const impressions = Math.max(0, Math.round(jitter(totals.impressions / 7, 0.06)));
+        const clicks = Math.max(0, Math.round(jitter(totals.clicks / 7, 0.08)));
+        const conversions = Math.max(0, Math.round(jitter(totals.conversions / 7, 0.12)));
+        const engagements = Math.max(0, Math.round(jitter(totals.engagements / 7, 0.10)));
+        const spend = Math.max(0, jitter(totals.spend / 7, 0.07));
+        return { impressions, clicks, conversions, engagements, spend: spend.toFixed(2) };
+      };
+
+      for (let i = 0; i < days; i++) {
+        const d = new Date(start.getTime());
+        d.setUTCDate(d.getUTCDate() + i);
+        const date = iso(d);
+
+        // For <=7 days, just use "cur" so the Daily view has something.
+        // For >=14 days, first 7 are prev, last 7 are cur, middle (if any) interpolates.
+        let totals = cur;
+        if (days >= 14) {
+          if (i < 7) totals = prev;
+          else if (i >= days - 7) totals = cur;
+          else totals = prev;
+        }
+
+        const v = makeDay(totals, i);
+        rows.push({
+          campaignId,
+          date,
+          impressions: v.impressions,
+          clicks: v.clicks,
+          reach: Math.max(0, Math.round(v.impressions * 0.6)),
+          engagements: v.engagements,
+          conversions: v.conversions,
+          leads: Math.max(0, Math.round(v.conversions * 0.7)),
+          spend: v.spend,
+          videoViews: 0,
+          viralImpressions: 0,
+        });
+      }
+
+      const result = await storage.upsertLinkedInDailyMetrics(rows as any);
+      return res.json({
+        success: true,
+        campaignId,
+        scenario,
+        days,
+        startDate: iso(start),
+        endDate: iso(end),
+        upserted: (result as any)?.upserted ?? rows.length,
+        note: "This overwrites daily facts for the generated dates for this campaign.",
+      });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e?.message || "Failed to generate mock LinkedIn daily data" });
+    }
+  });
+
   // Send a test alert email (admin/dev utility)
   app.post("/api/alerts/test-email", async (req, res) => {
     try {

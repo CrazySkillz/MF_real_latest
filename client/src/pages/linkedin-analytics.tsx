@@ -106,6 +106,7 @@ export default function LinkedInAnalytics() {
   const [insightsTrendMetric, setInsightsTrendMetric] = useState<
     "spend" | "conversions" | "ctr" | "cvr" | "impressions" | "clicks" | "revenue" | "roas"
   >("spend");
+  const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
 
   // Update active tab when URL changes
   useEffect(() => {
@@ -5382,7 +5383,7 @@ export default function LinkedInAnalytics() {
                         <div>
                           <CardTitle>Trends</CardTitle>
                           <CardDescription>
-                            Toggle between Daily, 7‑day rolling, and 30‑day rolling views. The table and chart always use the same math.
+                            Daily shows day-by-day values. 7d/30d smooth the chart with rolling windows; the table summarizes the latest window vs the prior window using the same math.
                           </CardDescription>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -5391,7 +5392,10 @@ export default function LinkedInAnalytics() {
                               type="button"
                               variant={insightsTrendMode === "daily" ? "default" : "outline"}
                               size="sm"
-                              onClick={() => setInsightsTrendMode("daily")}
+                              onClick={() => {
+                                setInsightsDailyShowMore(false);
+                                setInsightsTrendMode("daily");
+                              }}
                             >
                               Daily
                             </Button>
@@ -5448,6 +5452,13 @@ export default function LinkedInAnalytics() {
 
                             const minRequired = insightsTrendMode === "daily" ? 2 : insightsTrendMode === "7d" ? 14 : 60;
                             const available = Number(linkedInInsightsRollups?.availableDays || 0);
+                            if (available <= 0) {
+                              return (
+                                <div className="text-sm text-slate-600 dark:text-slate-400">
+                                  No LinkedIn daily history is available yet. Import LinkedIn data and wait for daily history to populate.
+                                </div>
+                              );
+                            }
                             if (available < minRequired) {
                               return (
                                 <div className="text-sm text-slate-600 dark:text-slate-400">
@@ -5490,75 +5501,107 @@ export default function LinkedInAnalytics() {
                           {/* Table view */}
                           <div className="overflow-hidden border rounded-md">
                             {insightsTrendMode === "daily" ? (
-                              <table className="w-full text-sm table-fixed">
-                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
-                                  <tr>
-                                    <th className="text-left p-3 w-[38%]">Date</th>
-                                    <th className="text-right p-3">
-                                      {(() => {
-                                        const k = String(insightsTrendMetric || "");
-                                        const labels: Record<string, string> = {
-                                          spend: "Spend",
-                                          conversions: "Conversions",
-                                          cvr: "CVR",
-                                          ctr: "CTR",
-                                          clicks: "Clicks",
-                                          impressions: "Impressions",
-                                          revenue: "Revenue",
-                                          roas: "ROAS",
-                                        };
-                                        return labels[k] || "Metric";
-                                      })()}
-                                    </th>
-                                    <th className="text-right p-3">Δ vs prior day</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {(linkedInDailySeries?.daily || []).slice(-14).map((r: any, idx: number, arr: any[]) => {
-                                    const prev = idx > 0 ? arr[idx - 1] : null;
-                                    const metricKey = String(insightsTrendMetric || "");
-                                    const curVal = Number((r as any)?.[metricKey] ?? 0) || 0;
-                                    const prevVal = Number((prev as any)?.[metricKey] ?? 0) || 0;
-                                    const deltaPct = prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : 0;
-
-                                    const polarity: "neutral" | "directional" =
-                                      metricKey === "spend" || metricKey === "impressions" || metricKey === "clicks" ? "neutral" : "directional";
-                                    const deltaClass =
-                                      polarity === "neutral"
-                                        ? "text-slate-600 dark:text-slate-400"
-                                        : deltaPct >= 0
-                                          ? "text-emerald-700 dark:text-emerald-300"
-                                          : "text-red-700 dark:text-red-300";
-                                    const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
-                                    const showDelta = !!prev && prevVal > 0;
-
-                                    const formatValue = (key: string, v: number) => {
-                                      if (key === "spend" || key === "revenue") return formatCurrency(v);
-                                      if (key === "ctr" || key === "cvr") return `${v.toFixed(2)}%`;
-                                      if (key === "roas") return `${v.toFixed(2)}x`;
-                                      return formatNumber(v, key);
-                                    };
-
-                                    return (
-                                    <tr key={r.date} className="border-b">
-                                      <td className="p-3">
-                                        <div className="font-medium text-slate-900 dark:text-white">{r.date}</div>
-                                      </td>
-                                      <td className="p-3 text-right">
-                                        <div className="font-medium text-slate-900 dark:text-white">
-                                          {formatValue(metricKey, curVal)}
-                                        </div>
-                                      </td>
-                                      <td className="p-3 text-right">
-                                        <div className={`text-xs ${showDelta ? deltaClass : "text-slate-400"}`}>
-                                          {showDelta ? fmtDelta(deltaPct) : "—"}
-                                        </div>
-                                      </td>
+                              <div>
+                                <table className="w-full text-sm table-fixed">
+                                  <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                    <tr>
+                                      <th className="text-left p-3 w-[38%]">Date</th>
+                                      <th className="text-right p-3">
+                                        {(() => {
+                                          const k = String(insightsTrendMetric || "");
+                                          const labels: Record<string, string> = {
+                                            spend: "Spend",
+                                            conversions: "Conversions",
+                                            cvr: "CVR",
+                                            ctr: "CTR",
+                                            clicks: "Clicks",
+                                            impressions: "Impressions",
+                                            revenue: "Revenue",
+                                            roas: "ROAS",
+                                          };
+                                          return labels[k] || "Metric";
+                                        })()}
+                                      </th>
+                                      <th className="text-right p-3">Δ vs prior day</th>
                                     </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
+                                  </thead>
+                                  <tbody>
+                                    {(() => {
+                                      const daily = Array.isArray(linkedInDailySeries?.daily) ? (linkedInDailySeries as any).daily : [];
+                                      const visibleDays = insightsDailyShowMore ? 14 : 7;
+                                      const rows = daily.slice(-visibleDays);
+
+                                      if (rows.length === 0) {
+                                        return (
+                                          <tr>
+                                            <td colSpan={3} className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                                              No daily records are available yet.
+                                            </td>
+                                          </tr>
+                                        );
+                                      }
+
+                                      return rows.map((r: any, idx: number, arr: any[]) => {
+                                        const prev = idx > 0 ? arr[idx - 1] : null;
+                                        const metricKey = String(insightsTrendMetric || "");
+                                        const curVal = Number((r as any)?.[metricKey] ?? 0) || 0;
+                                        const prevVal = Number((prev as any)?.[metricKey] ?? 0) || 0;
+                                        const deltaPct = prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : 0;
+
+                                        const polarity: "neutral" | "directional" =
+                                          metricKey === "spend" || metricKey === "impressions" || metricKey === "clicks" ? "neutral" : "directional";
+                                        const deltaClass =
+                                          polarity === "neutral"
+                                            ? "text-slate-600 dark:text-slate-400"
+                                            : deltaPct >= 0
+                                              ? "text-emerald-700 dark:text-emerald-300"
+                                              : "text-red-700 dark:text-red-300";
+                                        const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+                                        const showDelta = !!prev && prevVal > 0;
+
+                                        const formatValue = (key: string, v: number) => {
+                                          if (key === "spend" || key === "revenue") return formatCurrency(v);
+                                          if (key === "ctr" || key === "cvr") return `${v.toFixed(2)}%`;
+                                          if (key === "roas") return `${v.toFixed(2)}x`;
+                                          return formatNumber(v, key);
+                                        };
+
+                                        return (
+                                          <tr key={r.date} className="border-b">
+                                            <td className="p-3">
+                                              <div className="font-medium text-slate-900 dark:text-white">{r.date}</div>
+                                            </td>
+                                            <td className="p-3 text-right">
+                                              <div className="font-medium text-slate-900 dark:text-white">
+                                                {formatValue(metricKey, curVal)}
+                                              </div>
+                                            </td>
+                                            <td className="p-3 text-right">
+                                              <div className={`text-xs ${showDelta ? deltaClass : "text-slate-400"}`}>
+                                                {showDelta ? fmtDelta(deltaPct) : "—"}
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        );
+                                      });
+                                    })()}
+                                  </tbody>
+                                </table>
+
+                                {!insightsDailyShowMore && (linkedInDailySeries?.daily || []).length > 7 ? (
+                                  <div className="flex justify-end px-3 py-2 bg-white dark:bg-slate-950">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setInsightsDailyShowMore(true)}
+                                      className="h-8 text-xs"
+                                    >
+                                      View more
+                                    </Button>
+                                  </div>
+                                ) : null}
+                              </div>
                             ) : (
                               <table className="w-full text-sm table-fixed">
                                 <thead className="bg-slate-50 dark:bg-slate-800 border-b">
@@ -5571,8 +5614,20 @@ export default function LinkedInAnalytics() {
                                 <tbody>
                                   {(() => {
                                     const is7 = insightsTrendMode === "7d";
-                                    const ok = is7 ? Number(linkedInInsightsRollups?.availableDays || 0) >= 14 : Number(linkedInInsightsRollups?.availableDays || 0) >= 60;
-                                    if (!ok) return null;
+                                    const available = Number(linkedInInsightsRollups?.availableDays || 0);
+                                    const ok = is7 ? available >= 14 : available >= 60;
+                                    if (!ok) {
+                                      const minRequired = is7 ? 14 : 60;
+                                      return (
+                                        <tr>
+                                          <td colSpan={3} className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                                            {available <= 0
+                                              ? "No records are available yet for this view."
+                                              : `Need at least ${minRequired} days of daily history for this view. Available days: ${available}.`}
+                                          </td>
+                                        </tr>
+                                      );
+                                    }
                                     const row = is7
                                       ? { key: "7d", cur: linkedInInsightsRollups.last7, prev: linkedInInsightsRollups.prior7, d: linkedInInsightsRollups.deltas, label: "Last 7d vs prior 7d" }
                                       : { key: "30d", cur: linkedInInsightsRollups.last30, prev: linkedInInsightsRollups.prior30, d: linkedInInsightsRollups.deltas, label: "Last 30d vs prior 30d" };

@@ -12841,6 +12841,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get latest period for a KPI (production route)
+  // NOTE: The client calls this endpoint from the LinkedIn KPIs tab.
+  app.get("/api/kpis/:kpiId/latest-period", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const { kpiId } = req.params;
+      const latestPeriod = await storage.getLatestKPIPeriod(kpiId);
+      return res.json(latestPeriod || null);
+    } catch (error) {
+      console.error("Latest KPI period fetch error:", error);
+      return res.status(500).json({ message: "Failed to fetch latest KPI period" });
+    }
+  });
+
   // Platform-level KPI routes
   app.get("/api/platforms/:platformType/kpis", async (req, res) => {
     try {

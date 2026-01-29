@@ -3736,6 +3736,13 @@ export default function LinkedInAnalytics() {
   };
 
   const getLiveCurrentForKpi = (kpi: any): number => {
+    // Canonical source-of-truth for KPI current values: use server-computed `currentValue` (refreshed on KPI fetch).
+    // Fall back to local aggregates only if `currentValue` is missing.
+    if (kpi && kpi.currentValue !== undefined && kpi.currentValue !== null) {
+      const raw = String(kpi.currentValue);
+      const n = parseFloat(stripNumeric(raw));
+      if (Number.isFinite(n)) return n;
+    }
     const metric = String(kpi?.metric || kpi?.metricKey || '').trim();
     if (!metric) return 0;
     // For KPI "specific", we store the LinkedIn campaign name in specificCampaignId (UI selector uses campaign name).

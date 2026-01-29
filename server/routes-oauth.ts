@@ -13129,6 +13129,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Campaign-level Benchmarks (server-evaluated current value + status)
+  // This is the canonical source of truth for exec-facing benchmark evaluation.
+  app.get("/api/campaigns/:id/benchmarks/evaluated", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.id || "").trim();
+      const sessionId = String((req.query as any)?.session || "").trim();
+
+      const benchmarks = await storage.getCampaignBenchmarks(campaignId);
+
+      // Resolve which LinkedIn import session to evaluate against.
+      let resolvedSession: any | undefined = undefined;
+      if (sessionId) {
+        const s = await storage.getLinkedInImportSession(sessionId);
+        if (s && String((s as any)?.campaignId || "") === campaignId) {
+          resolvedSession = s;
+        }
+      }
+      if (!resolvedSession) {
+        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+        resolvedSession =
+          Array.isArray(sessions) && sessions.length > 0
+            ? sessions.sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0]
+            : undefined;
+      }
+
+      const metrics = resolvedSession ? await storage.getLinkedInImportMetrics(String(resolvedSession.id)) : [];
+
+      // Revenue tracking (LinkedIn context) gates revenue-dependent benchmark metrics.
+      const revenueSources = await storage.getRevenueSources(campaignId, "linkedin").catch(() => []);
+      const hasRevenueTracking = Array.isArray(revenueSources) ? revenueSources.some((s: any) => (s as any)?.isActive !== false) : false;
+
+      const campaign = await storage.getCampaign(campaignId).catch(() => undefined as any);
+      const conversionValue =
+        parseFloat(String((resolvedSession as any)?.conversionValue || "0")) ||
+        parseFloat(String((campaign as any)?.conversionValue || "0")) ||
+        0;
+
+      const isRevenueDependent = (metricKey: string) => {
+        const k = String(metricKey || "").toLowerCase();
+        return ["roi", "roas", "totalrevenue", "profit", "profitmargin", "revenueperlead"].includes(k);
+      };
+      const isLowerBetter = (metricKey: string) => {
+        const k = String(metricKey || "").toLowerCase();
+        return ["spend", "cpc", "cpm", "cpa", "cpl"].includes(k);
+      };
+
+      const sumMetrics = (campaignName?: string) => {
+        const out: Record<string, number> = {
+          impressions: 0,
+          clicks: 0,
+          spend: 0,
+          conversions: 0,
+          leads: 0,
+          engagements: 0,
+          reach: 0,
+          videoViews: 0,
+          viralImpressions: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+        };
+        for (const m of Array.isArray(metrics) ? (metrics as any[]) : []) {
+          if (campaignName && String(m?.campaignName || "") !== campaignName) continue;
+          const key = String(m?.metricKey || "").toLowerCase();
+          const value = parseFloat(String(m?.metricValue ?? "0"));
+          if (!key) continue;
+          if (!Number.isFinite(value)) continue;
+          if (Object.prototype.hasOwnProperty.call(out, key)) out[key] += value;
+          // normalize a few legacy keys
+          if (key === "videoviews") out["videoViews"] += value;
+          if (key === "viralimpressions") out["viralImpressions"] += value;
+          if (key === "totalengagements") out["engagements"] += value;
+        }
+        return out;
+      };
+
+      const computeDerived = (base: Record<string, number>) => {
+        const impressions = Number(base.impressions || 0);
+        const clicks = Number(base.clicks || 0);
+        const spend = Number(base.spend || 0);
+        const conversions = Number(base.conversions || 0);
+        const leads = Number(base.leads || 0);
+        const engagements = Number(base.engagements || 0);
+
+        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+        const cpc = clicks > 0 ? spend / clicks : 0;
+        const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+        const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+        const cpa = conversions > 0 ? spend / conversions : 0;
+        const cpl = leads > 0 ? spend / leads : 0;
+        const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
+
+        const totalRevenue = hasRevenueTracking && conversionValue > 0 ? conversions * conversionValue : 0;
+        const profit = totalRevenue - spend;
+        const roi = spend > 0 ? (profit / spend) * 100 : 0;
+        const roas = spend > 0 ? totalRevenue / spend : 0;
+        const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+        const revenuePerLead = leads > 0 ? totalRevenue / leads : 0;
+
+        return { ctr, cpc, cpm, cvr, cpa, cpl, er, totalRevenue, profit, roi, roas, profitMargin, revenuePerLead };
+      };
+
+      const getMetricValue = (metricKeyRaw: string, campaignName?: string) => {
+        const metricKey = String(metricKeyRaw || "").trim();
+        if (!metricKey) return 0;
+        const k = metricKey.toLowerCase();
+        const base = sumMetrics(campaignName);
+        const derived = computeDerived(base);
+
+        // base keys
+        if (k in base) return Number((base as any)[k] || 0);
+        // derived keys
+        if (k in derived) return Number((derived as any)[k] || 0);
+        // handle camelCase variants
+        if (k === "videoviews") return Number((base as any).videoViews || 0);
+        if (k === "viralimpressions") return Number((base as any).viralImpressions || 0);
+        if (k === "profitmargin") return Number((derived as any).profitMargin || 0);
+        if (k === "revenueperlead") return Number((derived as any).revenuePerLead || 0);
+        if (k === "totalrevenue") return Number((derived as any).totalRevenue || 0);
+        return 0;
+      };
+
+      const evaluated = (benchmarks as any[]).map((b: any) => {
+        const metric = String(b?.metric || "").trim();
+        const scopeName = b?.linkedInCampaignName ? String(b.linkedInCampaignName) : undefined;
+        const currentValue = getMetricValue(metric, scopeName);
+        const benchVal = parseFloat(String(b?.benchmarkValue ?? b?.targetValue ?? "0")) || 0;
+        const metricKey = String(metric || "").toLowerCase();
+
+        const blocked = isRevenueDependent(metricKey) && !hasRevenueTracking;
+        if (blocked) {
+          return {
+            ...b,
+            evaluation: {
+              status: "blocked",
+              ratio: 0,
+              pct: 0,
+              deltaPct: 0,
+              currentValue,
+              benchmarkValue: benchVal,
+              lowerIsBetter: isLowerBetter(metricKey),
+              hasRevenueTracking,
+              conversionValueUsed: conversionValue,
+              sessionIdUsed: resolvedSession ? String(resolvedSession.id) : null,
+              reason: "Requires revenue tracking (conversion value / revenue source).",
+            },
+          };
+        }
+
+        const safeBench = Number.isFinite(benchVal) ? benchVal : 0;
+        const safeCurrent = Number.isFinite(currentValue) ? currentValue : 0;
+        if (!(safeBench > 0)) {
+          return {
+            ...b,
+            evaluation: {
+              status: "blocked",
+              ratio: 0,
+              pct: 0,
+              deltaPct: 0,
+              currentValue: safeCurrent,
+              benchmarkValue: safeBench,
+              lowerIsBetter: isLowerBetter(metricKey),
+              hasRevenueTracking,
+              conversionValueUsed: conversionValue,
+              sessionIdUsed: resolvedSession ? String(resolvedSession.id) : null,
+              reason: "Benchmark value is missing or 0.",
+            },
+          };
+        }
+
+        const lower = isLowerBetter(metricKey);
+        const ratio = lower ? (safeCurrent > 0 ? safeBench / safeCurrent : 0) : safeCurrent / safeBench;
+        const pct = Math.max(0, Math.min(ratio * 100, 100));
+        const status = ratio >= 0.9 ? "on_track" : ratio >= 0.7 ? "needs_attention" : "behind";
+        const deltaPct = lower ? ((safeBench - safeCurrent) / safeBench) * 100 : ((safeCurrent - safeBench) / safeBench) * 100;
+
+        return {
+          ...b,
+          evaluation: {
+            status,
+            ratio,
+            pct,
+            deltaPct: Number.isFinite(deltaPct) ? deltaPct : 0,
+            currentValue: safeCurrent,
+            benchmarkValue: safeBench,
+            lowerIsBetter: lower,
+            hasRevenueTracking,
+            conversionValueUsed: conversionValue,
+            sessionIdUsed: resolvedSession ? String(resolvedSession.id) : null,
+          },
+        };
+      });
+
+      return res.json({
+        success: true,
+        campaignId,
+        sessionIdUsed: resolvedSession ? String(resolvedSession.id) : null,
+        hasRevenueTracking,
+        benchmarks: evaluated,
+      });
+    } catch (error: any) {
+      console.error("Benchmark evaluation error:", error);
+      return res.status(500).json({ success: false, message: error?.message || "Failed to evaluate benchmarks" });
+    }
+  });
+
   app.post("/api/campaigns/:id/benchmarks", async (req, res) => {
     console.log('=== CREATE CAMPAIGN BENCHMARK ===');
     console.log('Request body:', JSON.stringify(req.body, null, 2));

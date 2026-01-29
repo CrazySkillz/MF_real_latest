@@ -110,6 +110,7 @@ export default function LinkedInAnalytics() {
   const [insightsExpanded, setInsightsExpanded] = useState<Record<string, boolean>>({});
   const [linkedInDailyRefreshedAt, setLinkedInDailyRefreshedAt] = useState<number | null>(null);
   const [linkedInSignalsRefreshedAt, setLinkedInSignalsRefreshedAt] = useState<number | null>(null);
+  const [benchmarksRefreshedAt, setBenchmarksRefreshedAt] = useState<number | null>(null);
 
   // Update active tab when URL changes
   useEffect(() => {
@@ -597,12 +598,21 @@ export default function LinkedInAnalytics() {
 
   // Fetch campaign benchmarks
   const { data: benchmarks = [], refetch: refetchBenchmarks } = useQuery<any[]>({
-    queryKey: [`/api/campaigns/${campaignId}/benchmarks`],
+    queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId],
     enabled: !!campaignId,
     staleTime: 0, // Always fetch fresh data
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     cacheTime: 0, // Don't cache at all
+    queryFn: async () => {
+      const url = `/api/campaigns/${encodeURIComponent(String(campaignId))}/benchmarks/evaluated${
+        sessionId ? `?session=${encodeURIComponent(String(sessionId))}` : ""
+      }`;
+      const resp = await fetch(url);
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || json?.success === false) return [];
+      return Array.isArray(json?.benchmarks) ? json.benchmarks : [];
+    },
   });
   // Helper function to get benchmark for a metric
   const getBenchmarkForMetric = (metricName: string) => {
@@ -716,8 +726,8 @@ export default function LinkedInAnalytics() {
     // Always refetch KPIs/Benchmarks in the background; this is cheap and avoids exec-facing staleness.
     void queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId] });
     void queryClient.refetchQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId], exact: true });
-    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
-    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`], exact: true });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId] });
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId], exact: true });
   }, [overviewSyncKey, campaignId]);
 
   // Extract session payload early (used by helpers/hooks below).
@@ -1141,7 +1151,7 @@ export default function LinkedInAnalytics() {
     onSuccess: async (createdBenchmark) => {
       console.log('Benchmark created successfully:', createdBenchmark);
       
-      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId] });
       
       // Force immediate refetch for both Overview and Benchmarks tab
       await refetchBenchmarks();
@@ -1191,7 +1201,7 @@ export default function LinkedInAnalytics() {
       console.log('Benchmark updated successfully:', updatedBenchmark);
       console.log('Invalidating queries to refresh UI...');
       
-      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId] });
       
       // Force immediate refetch for both Overview and Benchmarks tab
       await refetchBenchmarks();
@@ -1244,7 +1254,7 @@ export default function LinkedInAnalytics() {
     onSuccess: async () => {
       console.log('Benchmark deleted successfully');
       
-      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId] });
       
       // Force immediate refetch for both Overview and Benchmarks tab
       await refetchBenchmarks();
@@ -3452,30 +3462,23 @@ export default function LinkedInAnalytics() {
 
   // Fetch platform-level LinkedIn Benchmarks filtered by campaignId
   const { data: benchmarksData, isLoading: benchmarksLoading, refetch: refetchBenchmarksTab } = useQuery({
-    queryKey: [`/api/campaigns/${campaignId}/benchmarks`],
+    queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId],
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     cacheTime: 0, // Don't cache at all
+    onSuccess: () => setBenchmarksRefreshedAt(Date.now()),
+    queryFn: async () => {
+      const url = `/api/campaigns/${encodeURIComponent(String(campaignId))}/benchmarks/evaluated${
+        sessionId ? `?session=${encodeURIComponent(String(sessionId))}` : ""
+      }`;
+      const resp = await fetch(url);
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || json?.success === false) return [];
+      return Array.isArray(json?.benchmarks) ? json.benchmarks : [];
+    },
   });
-
-  // Debug logging for benchmarks - VERSION 2025-11-28-20:00
-  console.log('[Benchmarks Tab V2] Campaign ID:', campaignId);
-  console.log('[Benchmarks Tab V2] Benchmarks loading:', benchmarksLoading);
-  console.log('[Benchmarks Tab V2] Benchmarks data:', benchmarksData);
-  console.log('[Benchmarks Tab V2] Number of benchmarks:', Array.isArray(benchmarksData) ? benchmarksData.length : 'not an array');
-  
-  if (Array.isArray(benchmarksData) && benchmarksData.length > 0) {
-    console.log('[Benchmarks Tab] Benchmark details:');
-    benchmarksData.forEach((b: any, index: number) => {
-      console.log(`  ${index + 1}. ${b.name}`);
-      console.log(`     - ID: ${b.id}`);
-      console.log(`     - Metric: ${b.metric}`);
-      console.log(`     - Apply To: ${b.applyTo}`);
-      console.log(`     - Specific Campaign ID: ${b.specificCampaignId}`);
-    });
-  }
 
   // Helper to identify count-based metrics that should always be whole numbers
   const isCountMetric = (metricKey: string): boolean => {
@@ -3744,6 +3747,11 @@ export default function LinkedInAnalytics() {
   };
 
   const getLiveCurrentForBenchmark = (benchmark: any): number => {
+    const ev = (benchmark as any)?.evaluation;
+    if (ev && typeof ev === "object" && ev.currentValue !== undefined && ev.currentValue !== null) {
+      const n = typeof ev.currentValue === "string" ? parseFloat(String(ev.currentValue)) : Number(ev.currentValue);
+      return Number.isFinite(n) ? n : 0;
+    }
     const metric = String(benchmark?.metric || '').trim();
     if (!metric) return 0;
     const scopeName = benchmark?.linkedInCampaignName ? String(benchmark.linkedInCampaignName) : undefined;
@@ -3751,6 +3759,24 @@ export default function LinkedInAnalytics() {
   };
 
   const computeBenchmarkProgress = (benchmark: any) => {
+    // Prefer server-evaluated results (canonical source of truth).
+    const ev = (benchmark as any)?.evaluation;
+    if (ev && typeof ev === "object" && ev.status) {
+      const status = String(ev.status);
+      const ratio = Number(ev.ratio || 0) || 0;
+      const pct = Number(ev.pct || 0) || 0;
+      const deltaPct = Number(ev.deltaPct || 0) || 0;
+      const color =
+        status === "on_track"
+          ? "bg-green-500"
+          : status === "needs_attention"
+            ? "bg-yellow-500"
+            : status === "behind"
+              ? "bg-red-500"
+              : "bg-slate-300";
+      return { status, ratio, pct, color, deltaPct };
+    }
+
     const metricRaw = String((benchmark as any)?.metric || '');
     const metricKey = metricRaw.toLowerCase();
     const isBlocked = isRevenueDependentBenchmarkMetric(metricKey) && !aggregated?.hasRevenueTracking;
@@ -6667,6 +6693,30 @@ export default function LinkedInAnalytics() {
                   </Button>
                 </div>
 
+                {(() => {
+                  const daily = Array.isArray((linkedInDailySeries as any)?.daily) ? (linkedInDailySeries as any).daily : [];
+                  const dataThrough = daily.length > 0 ? String(daily[daily.length - 1]?.date || "") : null;
+                  const lastRefreshAt = Number(benchmarksRefreshedAt || 0) || 0;
+                  const lastRefreshText = lastRefreshAt > 0 ? new Date(lastRefreshAt).toLocaleString() : "—";
+                  const total = Array.isArray(benchmarksData) ? (benchmarksData as any[]).length : 0;
+                  return (
+                    <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        <div>
+                          <span className="font-medium text-slate-700 dark:text-slate-300">Benchmarks:</span> {total}
+                        </div>
+                        <div>
+                          <span className="font-medium text-slate-700 dark:text-slate-300">LinkedIn data through:</span>{" "}
+                          {dataThrough ? `${dataThrough} (UTC)` : "—"}
+                        </div>
+                        <div>
+                          <span className="font-medium text-slate-700 dark:text-slate-300">Last refresh:</span> {lastRefreshText}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Benchmarks performance tracker (exec snapshot) - show even when there are 0 benchmarks */}
                 {!benchmarksLoading ? (
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -6746,13 +6796,6 @@ export default function LinkedInAnalytics() {
                   </div>
                 )}
 
-                {/* DEBUG: Force show condition check */}
-                {console.log('[RENDER CHECK] benchmarksLoading:', benchmarksLoading)}
-                {console.log('[RENDER CHECK] benchmarksData:', benchmarksData)}
-                {console.log('[RENDER CHECK] Is Array:', Array.isArray(benchmarksData))}
-                {console.log('[RENDER CHECK] Length:', Array.isArray(benchmarksData) ? benchmarksData.length : 'N/A')}
-                {console.log('[RENDER CHECK] Condition result:', benchmarksData && Array.isArray(benchmarksData) && (benchmarksData as any[]).length > 0)}
-                
                 {benchmarksLoading ? (
                   <div className="animate-pulse space-y-4">
                     <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
@@ -6762,9 +6805,7 @@ export default function LinkedInAnalytics() {
                   <>
                     {/* Benchmark Cards */}
                     <div className="grid gap-6 lg:grid-cols-2">
-                      {console.log('[MAPPING] About to map benchmarks:', benchmarksData.length)}
                       {(benchmarksData as any[]).map((benchmark: any, index: number) => {
-                        console.log(`[MAPPING] Rendering benchmark ${index + 1}:`, benchmark.name);
                         try {
                           const p = computeBenchmarkProgress(benchmark);
                           const progressPct = Math.max(0, (p.ratio || 0) * 100);
@@ -7011,9 +7052,6 @@ export default function LinkedInAnalytics() {
                   </>
                 ) : (
                   <>
-                    {console.log('[ELSE BLOCK] Showing empty state')}
-                    {console.log('[ELSE BLOCK] benchmarksData:', benchmarksData)}
-                    {console.log('[ELSE BLOCK] benchmarksLoading:', benchmarksLoading)}
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">

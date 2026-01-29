@@ -5,6 +5,9 @@ import { z } from "zod";
 
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // Authorization: campaigns are owned by the caller identity (mmUserId session).
+  // Nullable for backward compatibility; the first authorized access will "claim" it.
+  ownerId: text("owner_id"),
   name: text("name").notNull(),
   clientWebsite: text("client_website"),
   label: text("label"),

@@ -286,13 +286,13 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                 description: "Select an ad account to import campaign data from."
               });
             } else {
-              throw new Error(data.error || 'OAuth exchange failed');
+              throw new Error(data.message || data.error || 'Connection failed');
             }
           } catch (error: any) {
             console.error('LinkedIn OAuth error:', error);
             toast({
               title: "Connection Failed",
-              description: error.message || "Failed to connect to LinkedIn",
+              description: error?.message || "Failed to connect to LinkedIn",
               variant: "destructive"
             });
             setStep('credentials');
@@ -409,7 +409,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
           description: `Found ${data.length} campaigns. Select which ones to import.`
         });
       } else {
-        throw new Error(data.error || 'Failed to fetch campaigns');
+        throw new Error(data.message || data.error || 'Failed to fetch campaigns');
       }
     } catch (error: any) {
       console.error('Campaign fetch error:', error);
@@ -507,12 +507,12 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
           window.location.href = `/campaigns/${campaignId}/linkedin-analytics?session=${data.sessionId}`;
         }
       } else {
-        throw new Error(data.error || 'Failed to create import session');
+        throw new Error(data.message || data.error || 'Failed to create import session');
       }
     } catch (error: any) {
       toast({
         title: "Import Failed",
-        description: error.message || "Failed to import campaign metrics",
+        description: error?.message || "Failed to import campaign metrics",
         variant: "destructive"
       });
       setIsConnecting(false);

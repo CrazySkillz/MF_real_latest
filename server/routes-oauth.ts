@@ -2669,10 +2669,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Campaign routes
+  const campaignIdSchema = z.string().min(1, "Campaign ID is required");
+  const sessionIdSchema = z.string().uuid("Invalid session ID");
+
+  const getActorId = (req: any): string => {
+    const id = String(req?.session?.mmUserId || "").trim();
+    return id;
+  };
+
+  const ensureCampaignAccess = async (
+    req: any,
+    res: any,
+    campaignIdRaw: unknown
+  ): Promise<any | null> => {
+    const actorId = getActorId(req);
+    if (!actorId) {
+      res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      return null;
+    }
+
+    const parsed = campaignIdSchema.safeParse(String(campaignIdRaw || "").trim());
+    if (!parsed.success) {
+      res.status(400).json({ success: false, message: parsed.error.errors?.[0]?.message || "Invalid campaignId" });
+      return null;
+    }
+
+    const campaignId = parsed.data;
+    const campaign = await storage.getCampaign(campaignId);
+    if (!campaign) {
+      res.status(404).json({ success: false, message: "Campaign not found" });
+      return null;
+    }
+
+    const ownerId = String((campaign as any).ownerId || "").trim();
+    if (!ownerId) {
+      // Backward compatibility: claim un-owned campaigns to the first active session that accesses them.
+      try {
+        await storage.updateCampaign(campaignId, { ownerId: actorId } as any);
+        return { ...campaign, ownerId: actorId };
+      } catch {
+        // If we can't persist (e.g. in-memory), still allow within this process.
+        return { ...campaign, ownerId: actorId };
+      }
+    }
+
+    if (ownerId !== actorId) {
+      // Return 404 to avoid leaking existence across sessions.
+      res.status(404).json({ success: false, message: "Campaign not found" });
+      return null;
+    }
+
+    return campaign;
+  };
+
+  const ensureLinkedInSessionAccess = async (req: any, res: any, sessionIdRaw: unknown) => {
+    const actorId = getActorId(req);
+    if (!actorId) {
+      res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      return null;
+    }
+
+    const parsed = sessionIdSchema.safeParse(String(sessionIdRaw || "").trim());
+    if (!parsed.success) {
+      res.status(400).json({ success: false, message: parsed.error.errors?.[0]?.message || "Invalid sessionId" });
+      return null;
+    }
+
+    const sessionId = parsed.data;
+    const sess = await storage.getLinkedInImportSession(sessionId);
+    if (!sess) {
+      res.status(404).json({ success: false, message: "Import session not found" });
+      return null;
+    }
+
+    const okCampaign = await ensureCampaignAccess(req, res, (sess as any).campaignId);
+    if (!okCampaign) return null;
+    return sess;
+  };
+
   app.get("/api/campaigns", async (req, res) => {
     try {
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
+
       const campaigns = await storage.getCampaigns();
-      res.json(campaigns);
+      const visible = (Array.isArray(campaigns) ? campaigns : []).filter((c: any) => {
+        const ownerId = String(c?.ownerId || "").trim();
+        return !ownerId || ownerId === actorId;
+      });
+
+      // Backward compatibility: claim any un-owned campaigns shown to this session.
+      const toClaim = visible.filter((c: any) => !String(c?.ownerId || "").trim());
+      if (toClaim.length > 0) {
+        await Promise.all(
+          toClaim.map((c: any) =>
+            storage.updateCampaign(String(c?.id || ""), { ownerId: actorId } as any).catch(() => null)
+          )
+        );
+      }
+
+      // Return with ownerId populated for consistency.
+      res.json(
+        visible.map((c: any) => ({
+          ...c,
+          ownerId: String(c?.ownerId || "").trim() ? c.ownerId : actorId,
+        }))
+      );
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch campaigns" });
     }
@@ -2680,6 +2784,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/campaigns", async (req, res) => {
     try {
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
       console.log('[Campaign Creation] Received data:', JSON.stringify(req.body, null, 2));
       
       // Sanitize numeric fields to strings for decimal columns
@@ -2697,7 +2805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('[Campaign Creation] Converted spend from number to string:', sanitizedData.spend);
       }
       
-      const validatedData = insertCampaignSchema.parse(sanitizedData);
+      const validatedData = insertCampaignSchema.parse({ ...sanitizedData, ownerId: actorId });
       console.log('[Campaign Creation] Validated data:', JSON.stringify(validatedData, null, 2));
       const campaign = await storage.createCampaign(validatedData);
       console.log('[Campaign Creation] Campaign created successfully:', campaign.id);
@@ -2767,8 +2875,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update a campaign by ID
   app.patch("/api/campaigns/:id", async (req, res) => {
     try {
+      const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
       const validatedData = insertCampaignSchema.partial().parse(req.body);
-      const campaign = await storage.updateCampaign(req.params.id, validatedData);
+      // Never allow ownership to be modified by the client.
+      delete (validatedData as any).ownerId;
+      const campaign = await storage.updateCampaign(campaignId, validatedData);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
@@ -2786,11 +2900,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const campaign = await storage.getCampaign(campaignId);
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       
-      if (!campaign) {
-        return res.status(404).json({ message: "Campaign not found" });
-      }
+      if (!campaign) return;
       
       res.json(campaign);
     } catch (error) {
@@ -2802,6 +2914,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/campaigns/:id", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const success = await storage.deleteCampaign(campaignId);
       
       if (!success) {
@@ -11649,9 +11763,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/linkedin/connect", oauthRateLimiter, async (req, res) => {
     try {
       const { campaignId } = req.body;
-      if (!campaignId) {
-        return res.status(400).json({ message: "Campaign ID is required" });
+      const parsedCampaignId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedCampaignId.success) {
+        return res.status(400).json({ success: false, message: "Campaign ID is required" });
       }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedCampaignId.data);
+      if (!ok) return;
 
       console.log(`[LinkedIn OAuth] Starting flow for campaign ${campaignId}`);
 
@@ -11690,7 +11808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ authUrl, message: "LinkedIn OAuth flow initiated" });
     } catch (error) {
       console.error('[LinkedIn OAuth] Initiation error:', error);
-      res.status(500).json({ message: "Failed to initiate authentication" });
+      res.status(500).json({ success: false, message: "Failed to initiate authentication" });
     }
   });
 
@@ -11765,6 +11883,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaignId = verified.campaignId;
       console.log(`[LinkedIn OAuth] Processing callback for campaign ${campaignId}`);
+
+      const accessOk = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!accessOk) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>Session expired or campaign access denied.</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'linkedin_auth_error', error: 'Session expired or access denied' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
 
       // Get centralized credentials
       const clientId = process.env.LINKEDIN_CLIENT_ID;
@@ -11898,12 +12035,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.body;
       
       if (!campaignId) {
-        return res.status(400).json({ error: 'Campaign ID is required' });
+        return res.status(400).json({ success: false, error: 'Campaign ID is required', message: 'Campaign ID is required' });
       }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       const connection = await storage.getLinkedInConnection(String(campaignId));
       if (!connection?.accessToken) {
-        return res.status(404).json({ error: "LinkedIn is not connected for this campaign" });
+        return res.status(404).json({ success: false, error: "LinkedIn is not connected for this campaign", message: "LinkedIn is not connected for this campaign" });
       }
 
       console.log('[LinkedIn] Fetching ad accounts');
@@ -11929,7 +12069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('[LinkedIn] Fetch ad accounts error:', error);
-      res.status(500).json({ error: error.message || 'Failed to fetch ad accounts' });
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch ad accounts', message: error.message || 'Failed to fetch ad accounts' });
     }
   });
 
@@ -11942,14 +12082,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { adAccountId } = req.body;
 
       if (!adAccountId) {
-        return res.status(400).json({ error: 'Ad account ID is required' });
+        return res.status(400).json({ success: false, error: 'Ad account ID is required', message: 'Ad account ID is required' });
       }
 
       console.log(`[LinkedIn] Selecting ad account ${adAccountId} for campaign ${campaignId}`);
 
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
       const connection = await storage.getLinkedInConnection(String(campaignId));
       if (!connection?.accessToken) {
-        return res.status(404).json({ error: "LinkedIn is not connected for this campaign" });
+        return res.status(404).json({ success: false, error: "LinkedIn is not connected for this campaign", message: "LinkedIn is not connected for this campaign" });
       }
 
       // Fetch ad account details to get the name
@@ -11959,7 +12102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedAccount = adAccounts.find(acc => acc.id === adAccountId);
 
       if (!selectedAccount) {
-        return res.status(404).json({ error: 'Ad account not found' });
+        return res.status(404).json({ success: false, error: 'Ad account not found', message: 'Ad account not found' });
       }
 
       // Update the connection with ad account details
@@ -11988,7 +12131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: 'Ad account connected' });
     } catch (error: any) {
       console.error('[LinkedIn] Select ad account error:', error);
-      res.status(500).json({ error: error.message || 'Failed to select ad account' });
+      res.status(500).json({ success: false, error: error.message || 'Failed to select ad account', message: error.message || 'Failed to select ad account' });
     }
   });
 
@@ -12000,12 +12143,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId, adAccountId } = req.body;
 
       if (!campaignId || !adAccountId) {
-        return res.status(400).json({ error: "Missing campaignId or adAccountId" });
+        return res.status(400).json({ success: false, error: "Missing campaignId or adAccountId", message: "Missing campaignId or adAccountId" });
       }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       const connection = await storage.getLinkedInConnection(String(campaignId));
       if (!connection?.accessToken) {
-        return res.status(404).json({ error: "LinkedIn is not connected for this campaign" });
+        return res.status(404).json({ success: false, error: "LinkedIn is not connected for this campaign", message: "LinkedIn is not connected for this campaign" });
       }
 
       const { LinkedInClient } = await import("./linkedinClient");
@@ -12055,7 +12201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(campaignsWithMetrics);
     } catch (error: any) {
       console.error("LinkedIn campaigns fetch error:", error);
-      res.status(500).json({ error: error.message || "Failed to fetch campaigns" });
+      res.status(500).json({ success: false, error: error.message || "Failed to fetch campaigns", message: error.message || "Failed to fetch campaigns" });
     }
   });
 
@@ -14946,6 +15092,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignId || !adAccountId || !adAccountName || !campaigns || !Array.isArray(campaigns)) {
         return res.status(400).json({ message: "Invalid request body" });
       }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       
       // Count selected campaigns and metrics
       const selectedCampaignsCount = campaigns.length;
@@ -15166,6 +15315,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/linkedin/import-sessions/:campaignId", async (req, res) => {
     try {
       const { campaignId } = req.params;
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
       res.json(sessions);
     } catch (error) {
@@ -15178,6 +15330,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/linkedin/metrics/:campaignId", async (req, res) => {
     try {
       const { campaignId } = req.params;
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       
       // Get the latest import session for this campaign
       const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
@@ -15559,6 +15714,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/linkedin/imports/:sessionId", async (req, res) => {
     try {
       const { sessionId } = req.params;
+
+      const okSession = await ensureLinkedInSessionAccess(req as any, res as any, sessionId);
+      if (!okSession) return;
       
       const session = await storage.getLinkedInImportSession(sessionId);
       if (!session) {
@@ -16097,6 +16255,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/linkedin/imports/:sessionId/ads", async (req, res) => {
     try {
       const { sessionId } = req.params;
+
+      const okSession = await ensureLinkedInSessionAccess(req as any, res as any, sessionId);
+      if (!okSession) return;
 
       // Enterprise-grade correctness:
       // Ad-level revenue must be derived from the *current* conversion value / revenue source-of-truth,

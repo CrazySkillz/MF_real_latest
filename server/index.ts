@@ -10,6 +10,11 @@ import { startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
 import { startGA4DailyScheduler } from "./ga4-daily-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
+import { randomBytes } from "crypto";
 
 const app = express();
 
@@ -18,6 +23,66 @@ app.set("env", process.env.NODE_ENV || "development");
 // Trust proxy headers on platforms like Render so req.protocol reflects X-Forwarded-Proto (https)
 // This prevents OAuth redirect_uri mismatches (http vs https).
 app.set("trust proxy", 1);
+
+// ----------------------------------------------------------------------------
+// Minimal app-auth identity (production-grade access control foundation)
+// ----------------------------------------------------------------------------
+const SESSION_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const sessionSecret =
+  process.env.SESSION_SECRET || process.env.APP_SECRET || "dev-session-secret-change-me";
+
+// Use Postgres-backed sessions when DATABASE_URL is available; fall back to memory in dev/no-DB.
+let sessionStore: any = undefined;
+try {
+  if (process.env.DATABASE_URL) {
+    const PgSession = connectPgSimple(session);
+    const pool = new pg.Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+    });
+    sessionStore = new PgSession({
+      pool,
+      tableName: "app_sessions",
+      createTableIfMissing: true,
+    });
+  } else {
+    const MemoryStore = createMemoryStore(session);
+    sessionStore = new MemoryStore({
+      checkPeriod: SESSION_COOKIE_MAX_AGE_MS,
+    });
+  }
+} catch (e) {
+  console.error("Failed to initialize session store; falling back to memory store.", e);
+  const MemoryStore = createMemoryStore(session);
+  sessionStore = new MemoryStore({
+    checkPeriod: SESSION_COOKIE_MAX_AGE_MS,
+  });
+}
+
+app.use(
+  session({
+    name: "mm.sid",
+    secret: sessionSecret,
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: (process.env.NODE_ENV || "development") === "production",
+      maxAge: SESSION_COOKIE_MAX_AGE_MS,
+    },
+  })
+);
+
+// Ensure every caller has a stable per-browser identity for authorization checks.
+app.use((req, _res, next) => {
+  const s: any = (req as any).session;
+  if (s && !s.mmUserId) {
+    s.mmUserId = randomBytes(16).toString("hex");
+  }
+  next();
+});
 
 // Conditionally apply body parsing - skip for webhook routes that use multer
 app.use((req, res, next) => {
@@ -112,6 +177,15 @@ process.on('uncaughtException', (error: Error) => {
             return;
           }
           log('Running database migrations...');
+
+          // Migration: Campaign ownership (authorization)
+          await db.execute(sql`
+            ALTER TABLE campaigns
+            ADD COLUMN IF NOT EXISTS owner_id TEXT;
+          `);
+          await db.execute(sql`
+            CREATE INDEX IF NOT EXISTS idx_campaigns_owner_id ON campaigns(owner_id);
+          `);
           
           // Migration 1: Add KPI campaign scope columns
           await db.execute(sql`

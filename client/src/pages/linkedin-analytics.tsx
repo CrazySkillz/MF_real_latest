@@ -107,6 +107,9 @@ export default function LinkedInAnalytics() {
     "spend" | "conversions" | "ctr" | "cvr" | "impressions" | "clicks" | "revenue" | "roas"
   >("spend");
   const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
+  const [insightsExpanded, setInsightsExpanded] = useState<Record<string, boolean>>({});
+  const [linkedInDailyRefreshedAt, setLinkedInDailyRefreshedAt] = useState<number | null>(null);
+  const [linkedInSignalsRefreshedAt, setLinkedInSignalsRefreshedAt] = useState<number | null>(null);
 
   // Update active tab when URL changes
   useEffect(() => {
@@ -738,6 +741,7 @@ export default function LinkedInAnalytics() {
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+    onSuccess: () => setLinkedInDailyRefreshedAt(Date.now()),
     queryFn: async () => {
       const resp = await fetch(
         `/api/campaigns/${encodeURIComponent(String(campaignId))}/linkedin-daily?days=${encodeURIComponent(String(LINKEDIN_DAILY_LOOKBACK_DAYS))}`
@@ -755,6 +759,7 @@ export default function LinkedInAnalytics() {
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+    onSuccess: () => setLinkedInSignalsRefreshedAt(Date.now()),
     queryFn: async () => {
       const resp = await fetch(
         `/api/linkedin/insights/${encodeURIComponent(String(sessionId))}?days=${encodeURIComponent(String(LINKEDIN_DAILY_LOOKBACK_DAYS))}`
@@ -3811,7 +3816,51 @@ export default function LinkedInAnalytics() {
     recommendation?: string;
     confidence?: "high" | "medium" | "low";
     evidence?: string[];
+    group?: "integrity" | "performance";
+    reliability?: "high" | "medium" | "low";
+    explain?: {
+      title?: string;
+      lines: string[];
+    };
     actions?: Array<{ label: string; kind: "go"; tab: "overview" | "kpis" | "benchmarks" | "ads" | "reports" | "insights" } | { label: string; kind: "openRevenueModal" }>;
+  };
+
+  const execWowThresholds = useMemo(() => {
+    const t = (linkedInInsightsResp as any)?.thresholds || {};
+    return {
+      minClicks: Number(t?.minClicks ?? 100) || 100,
+      minImpressions: Number(t?.minImpressions ?? 5000) || 5000,
+      minConversions: Number(t?.minConversions ?? 20) || 20,
+      cvrDropPct: Number(t?.cvrDropPct ?? 20) || 20,
+      cpcSpikePct: Number(t?.cpcSpikePct ?? 20) || 20,
+      erDecayPct: Number(t?.erDecayPct ?? 20) || 20,
+      ctrStableBandPct: Number(t?.ctrStableBandPct ?? 5) || 5,
+    };
+  }, [linkedInInsightsResp]);
+
+  const computeInsightReliability = (metricKey: string | null | undefined): "high" | "medium" | "low" => {
+    const key = String(metricKey || "").toLowerCase();
+    const prior = (linkedInInsightsRollups as any)?.prior7 || {};
+    const clicks = Number(prior?.clicks || 0) || 0;
+    const impressions = Number(prior?.impressions || 0) || 0;
+    const conversions = Number(prior?.conversions || 0) || 0;
+
+    const hasCtrVolume = clicks >= execWowThresholds.minClicks && impressions >= execWowThresholds.minImpressions;
+    const hasCvrVolume = clicks >= execWowThresholds.minClicks && conversions >= execWowThresholds.minConversions;
+
+    // Revenue-derived signals hinge on conversion volume (and mapping quality).
+    if (["cvr"].includes(key)) return hasCvrVolume ? "high" : clicks >= execWowThresholds.minClicks ? "medium" : "low";
+    if (["roi", "roas", "revenue", "totalrevenue", "profit", "profitmargin", "revenueperlead"].includes(key)) {
+      return hasCvrVolume ? "medium" : "low";
+    }
+
+    if (["ctr", "cpc", "clicks", "impressions", "spend", "cpm"].includes(key)) return hasCtrVolume ? "high" : clicks > 0 || impressions > 0 ? "medium" : "low";
+    if (["engagements", "er", "likes", "comments", "shares"].includes(key)) return impressions >= execWowThresholds.minImpressions ? "high" : impressions > 0 ? "medium" : "low";
+    if (["conversions", "leads"].includes(key)) return hasCvrVolume ? "high" : conversions > 0 ? "medium" : "low";
+
+    // Default: rely on existence of any daily history.
+    const availableDays = Number((linkedInInsightsRollups as any)?.availableDays || 0);
+    return availableDays >= 14 ? "medium" : availableDays > 0 ? "low" : "low";
   };
 
   const linkedInInsights = useMemo<InsightItem[]>(() => {
@@ -3853,8 +3902,17 @@ export default function LinkedInAnalytics() {
         title: "Revenue is not connected",
         description: "Spend exists, but revenue tracking is not configured for this LinkedIn campaign, so ROI/ROAS and revenue-based KPIs/Benchmarks are blocked.",
         confidence: "high",
+        group: "integrity",
+        reliability: "high",
         evidence: [`Spend: ${formatCurrency(spend)}`, "Revenue tracking: Not connected"],
         recommendation: "Connect Total Revenue or Conversion Value for this campaign to unlock ROI/ROAS and revenue-based metrics.",
+        explain: {
+          title: "How this was determined",
+          lines: [
+            "Spend is imported from LinkedIn and is > $0.",
+            "Revenue tracking is not connected for this campaign, so revenue-based metrics would be misleading.",
+          ],
+        },
         actions: [{ label: "Add revenue", kind: "openRevenueModal" }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
       });
     }
@@ -3866,6 +3924,8 @@ export default function LinkedInAnalytics() {
         title: "Spend recorded, but revenue is $0",
         description: `Spend is ${formatCurrency(spend)}, but Total Revenue is ${formatCurrency(0)}. This can indicate missing/incorrect conversion value mapping or zero conversions.`,
         confidence: conversions > 0 ? "high" : "medium",
+        group: "integrity",
+        reliability: "medium",
         evidence: [
           `Spend: ${formatCurrency(spend)}`,
           `Conversions: ${formatNumber(conversions, "conversions")}`,
@@ -3874,6 +3934,13 @@ export default function LinkedInAnalytics() {
         recommendation: conversions > 0
           ? "Conversions exist, but revenue is $0. Verify the connected revenue mapping (Conversion Value / Total Revenue) and ensure the source is active."
           : "If conversions are truly 0, revenue will be $0. If conversions exist, verify the connected revenue mapping and ensure the source is active.",
+        explain: {
+          title: "How this was determined",
+          lines: [
+            "Revenue is computed from your connected conversion value / revenue source.",
+            "If conversions exist but revenue is $0, the mapping is likely missing or incorrect.",
+          ],
+        },
         actions: [{ label: "Review revenue setup", kind: "openRevenueModal" }, { label: "Open Overview", kind: "go", tab: "overview" }],
       });
     }
@@ -3885,8 +3952,17 @@ export default function LinkedInAnalytics() {
         title: "Revenue exists, but spend is $0",
         description: `Total Revenue is ${formatCurrency(revenue)}, but Spend is ${formatCurrency(0)}. ROI/ROAS may be misleading until spend exists.`,
         confidence: "medium",
+        group: "integrity",
+        reliability: "low",
         evidence: [`Revenue: ${formatCurrency(revenue)}`, `Spend: ${formatCurrency(0)}`],
         recommendation: "Verify spend is being imported for the same LinkedIn campaigns and time window. If spend is truly $0, treat ROI/ROAS carefully.",
+        explain: {
+          title: "How this was determined",
+          lines: [
+            "ROI/ROAS depend on both revenue and spend being present for the same time window.",
+            "With spend at $0, ratio metrics can be misleading.",
+          ],
+        },
         actions: [{ label: "Open Ad Comparison", kind: "go", tab: "ads" }],
       });
     }
@@ -3899,8 +3975,17 @@ export default function LinkedInAnalytics() {
           title: "ROI is negative",
           description: `ROI is ${formatPercentage(roi)} for the current imported totals.`,
           confidence: "medium",
+          group: "performance",
+          reliability: computeInsightReliability("roi"),
           evidence: [`ROI: ${formatPercentage(roi)}`, `Spend: ${formatCurrency(spend)}`, `Revenue: ${formatCurrency(revenue)}`],
           recommendation: "Validate conversion value assumptions and attribution, then review ad efficiency (CTR/CVR) and spend allocation.",
+          explain: {
+            title: "Calculation",
+            lines: [
+              "ROI = ((Revenue - Spend) ÷ Spend) × 100",
+              `Revenue: ${formatCurrency(revenue)}; Spend: ${formatCurrency(spend)}.`,
+            ],
+          },
           actions: [{ label: "Open Ad Comparison", kind: "go", tab: "ads" }, { label: "Open Trends", kind: "go", tab: "insights" }],
         });
       }
@@ -3911,8 +3996,17 @@ export default function LinkedInAnalytics() {
           title: "ROAS is below 1.0x",
           description: `ROAS is ${roas.toFixed(2)}x for the current imported totals.`,
           confidence: "medium",
+          group: "performance",
+          reliability: computeInsightReliability("roas"),
           evidence: [`ROAS: ${roas.toFixed(2)}x`, `Spend: ${formatCurrency(spend)}`, `Revenue: ${formatCurrency(revenue)}`],
           recommendation: "Audit which ads/campaigns are inefficient, then validate conversion value assumptions and funnel drop-offs.",
+          explain: {
+            title: "Calculation",
+            lines: [
+              "ROAS = Revenue ÷ Spend",
+              `Revenue: ${formatCurrency(revenue)}; Spend: ${formatCurrency(spend)}.`,
+            ],
+          },
           actions: [{ label: "Open Ad Comparison", kind: "go", tab: "ads" }],
         });
       }
@@ -3929,8 +4023,17 @@ export default function LinkedInAnalytics() {
         title: `KPI paused: missing Revenue`,
         description: `"${name}" depends on Revenue, but Revenue is not connected for this campaign. Showing 0 would be misleading, so this KPI is effectively blocked until Revenue is restored.`,
         confidence: "high",
+        group: "integrity",
+        reliability: "high",
         evidence: [`KPI: ${name}`, "Revenue tracking: Not connected"],
         recommendation: "Connect Revenue, then return to KPIs (values will refresh automatically).",
+        explain: {
+          title: "Why this is blocked",
+          lines: [
+            "This KPI uses a revenue-dependent metric.",
+            "Revenue tracking is not connected, so the KPI cannot be computed reliably.",
+          ],
+        },
         actions: [{ label: "Add revenue", kind: "openRevenueModal" }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
       });
     }
@@ -3945,8 +4048,17 @@ export default function LinkedInAnalytics() {
         title: `Benchmark paused: missing Revenue`,
         description: `"${name}" depends on Revenue, but Revenue is not connected for this campaign. Restore Revenue to resume accurate benchmark tracking.`,
         confidence: "high",
+        group: "integrity",
+        reliability: "high",
         evidence: [`Benchmark: ${name}`, "Revenue tracking: Not connected"],
         recommendation: "Connect Revenue, then return to Benchmarks (values will refresh automatically).",
+        explain: {
+          title: "Why this is blocked",
+          lines: [
+            "This Benchmark uses a revenue-dependent metric.",
+            "Revenue tracking is not connected, so the Benchmark cannot be computed reliably.",
+          ],
+        },
         actions: [{ label: "Add revenue", kind: "openRevenueModal" }, { label: "Open Benchmarks", kind: "go", tab: "benchmarks" }],
       });
     }
@@ -3972,8 +4084,17 @@ export default function LinkedInAnalytics() {
         title: `${String(k?.name || metricKey)} is ${band === "below" ? "Below target" : "Near target"}`,
         description: `Current ${formatMetricValueForInput(metricKey, current)} vs target ${formatMetricValueForInput(metricKey, target)}.`,
         confidence: "high",
+        group: "performance",
+        reliability: computeInsightReliability(metricKey),
         evidence: [`Current: ${formatMetricValueForInput(metricKey, current)}`, `Target: ${formatMetricValueForInput(metricKey, target)}`],
         recommendation: "Identify the main drivers (creative relevance, audience quality, landing page) and use Ad Comparison to find the biggest contributors.",
+        explain: {
+          title: "How this was evaluated",
+          lines: [
+            "This compares the KPI current value to the target value.",
+            "Status is based on the percent delta vs target, with special handling for metrics where lower is better.",
+          ],
+        },
         actions: [{ label: "Open KPIs", kind: "go", tab: "kpis" }, { label: "Open Ad Comparison", kind: "go", tab: "ads" }],
       });
     }
@@ -3988,8 +4109,17 @@ export default function LinkedInAnalytics() {
         title: `${String((b as any)?.name || (b as any)?.metric || "Benchmark")} is ${p.status === "behind" ? "Behind benchmark" : "Below benchmark"}`,
         description: `Current ${formatMetricValueForInput(String((b as any)?.metric || ""), getLiveCurrentForBenchmark(b))} vs benchmark ${String((b as any)?.benchmarkValue || (b as any)?.targetValue || "0")}.`,
         confidence: "high",
+        group: "performance",
+        reliability: computeInsightReliability(String((b as any)?.metric || "")),
         evidence: [`Metric: ${String((b as any)?.metric || "")}`, `Status: ${String(p.status)}`],
         recommendation: "Use Ad Comparison to identify what’s dragging performance, then iterate targeting/creative/landing page.",
+        explain: {
+          title: "How this was evaluated",
+          lines: [
+            "This compares the current metric value to the benchmark value.",
+            "Status is based on how far current performance is from the benchmark, using the same rules as the Benchmarks tab.",
+          ],
+        },
         actions: [{ label: "Open Benchmarks", kind: "go", tab: "benchmarks" }, { label: "Open Ad Comparison", kind: "go", tab: "ads" }],
       });
     }
@@ -3998,7 +4128,33 @@ export default function LinkedInAnalytics() {
     const serverSignals = Array.isArray((linkedInInsightsResp as any)?.signals) ? (linkedInInsightsResp as any).signals : [];
     for (const s of serverSignals) {
       if (!s || !s.id) continue;
-      out.push(s);
+      const normalized: InsightItem = {
+        id: String(s.id),
+        severity: (s as any).severity || "low",
+        title: String((s as any).title || "Insight"),
+        description: String((s as any).description || ""),
+        recommendation: (s as any).recommendation,
+        confidence: (s as any).confidence,
+        evidence: Array.isArray((s as any).evidence) ? (s as any).evidence : [],
+        actions: Array.isArray((s as any).actions) ? (s as any).actions : undefined,
+        group: "performance",
+        reliability: (() => {
+          const id = String((s as any)?.id || "");
+          if (id.includes("cvr")) return computeInsightReliability("cvr");
+          if (id.includes("cpc")) return computeInsightReliability("cpc");
+          if (id.includes("engagement")) return computeInsightReliability("er");
+          return computeInsightReliability("ctr");
+        })(),
+        explain: {
+          title: "How this was computed",
+          lines: [
+            "Signals are computed week-over-week from persisted daily history.",
+            "Comparison: last 7 complete UTC days vs prior 7 complete UTC days.",
+            "Δ% = ((current - prior) ÷ prior) × 100",
+          ],
+        },
+      };
+      out.push(normalized);
     }
 
     // Stable ordering: high -> medium -> low
@@ -5737,67 +5893,103 @@ export default function LinkedInAnalytics() {
                     <CardHeader>
                       <CardTitle>What changed, what to do next</CardTitle>
                       <CardDescription>
-                        Insights are generated from current imported totals plus KPI/Benchmark evaluations.
+                        Exec-safe summary of integrity checks, KPI/Benchmark evaluations, and anomaly signals from daily history.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {linkedInInsights.length === 0 ? (
-                        <div className="text-sm text-slate-600 dark:text-slate-400">
-                          No issues detected. Create KPIs/Benchmarks to unlock more insights.
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {linkedInInsights.slice(0, 12).map((i) => {
-                            const badgeClass =
-                              i.severity === "high"
-                                ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
-                                : i.severity === "medium"
-                                  ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
-                                  : "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
-                            const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : "Low";
-                            const confText = i.confidence ? (i.confidence === "high" ? "High confidence" : i.confidence === "medium" ? "Medium confidence" : "Low confidence") : null;
-                            return (
-                              <div key={i.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <div className="font-semibold text-slate-900 dark:text-white">{i.title}</div>
-                                      <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
+                      {(() => {
+                        const availableDays = Number((linkedInInsightsRollups as any)?.availableDays || 0);
+                        const hasRevenueTracking = (aggregated as any)?.hasRevenueTracking === 1 || (aggregated as any)?.hasRevenueTracking === true;
+                        const daily = Array.isArray(linkedInDailySeries?.daily) ? (linkedInDailySeries as any).daily : [];
+                        const dataThrough = daily.length > 0 ? String(daily[daily.length - 1]?.date || "") : null;
+                        const wowWindow =
+                          (linkedInInsightsRollups as any)?.last7?.startDate && (linkedInInsightsRollups as any)?.last7?.endDate
+                            ? `${(linkedInInsightsRollups as any).last7.startDate} → ${(linkedInInsightsRollups as any).last7.endDate} (last 7d)`
+                            : null;
+                        const lastRefreshAt = Math.max(Number(linkedInDailyRefreshedAt || 0), Number(linkedInSignalsRefreshedAt || 0)) || 0;
+                        const lastRefreshText = lastRefreshAt > 0 ? new Date(lastRefreshAt).toLocaleString() : "—";
+
+                        const all = Array.isArray(linkedInInsights) ? linkedInInsights : [];
+                        const integrity = all.filter((x) => (x as any)?.group === "integrity");
+                        const performance = all.filter((x) => (x as any)?.group !== "integrity");
+
+                        const renderInsightCard = (i: any) => {
+                          const badgeClass =
+                            i.severity === "high"
+                              ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
+                              : i.severity === "medium"
+                                ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
+                                : "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
+                          const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : "Low";
+                          const reliability = String(i.reliability || "").toLowerCase();
+                          const reliabilityClass =
+                            reliability === "high"
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900"
+                              : reliability === "medium"
+                                ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900"
+                                : "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
+                          const reliabilityText = reliability ? `Reliability: ${reliability.charAt(0).toUpperCase()}${reliability.slice(1)}` : null;
+
+                          const isExpanded = !!insightsExpanded?.[i.id];
+                          const canExplain = Array.isArray(i?.explain?.lines) && i.explain.lines.length > 0;
+
+                          return (
+                            <div key={i.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="font-semibold text-slate-900 dark:text-white">{i.title}</div>
+                                    <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
+                                    {reliabilityText ? (
+                                      <Badge className={`text-xs border ${reliabilityClass}`}>{reliabilityText}</Badge>
+                                    ) : null}
+                                  </div>
+                                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{i.description}</div>
+                                  {Array.isArray(i.evidence) && i.evidence.length > 0 ? (
+                                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                                      <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{" "}
+                                      {i.evidence.join(" • ")}
                                     </div>
-                                    <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{i.description}</div>
-                                    {confText ? (
-                                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                                        {confText}
-                                      </div>
+                                  ) : null}
+                                  {i.recommendation ? (
+                                    <div className="text-sm text-slate-700 dark:text-slate-300 mt-2">
+                                      <span className="font-medium">Next step:</span> {i.recommendation}
+                                    </div>
+                                  ) : null}
+
+                                  <div className="flex flex-wrap gap-2 mt-3">
+                                    {canExplain ? (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          setInsightsExpanded((prev) => ({
+                                            ...(prev || {}),
+                                            [String(i.id)]: !prev?.[String(i.id)],
+                                          }))
+                                        }
+                                      >
+                                        {isExpanded ? "Hide explanation" : "Explain"}
+                                      </Button>
                                     ) : null}
-                                    {Array.isArray(i.evidence) && i.evidence.length > 0 ? (
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-                                        <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{" "}
-                                        {i.evidence.join(" • ")}
-                                      </div>
-                                    ) : null}
-                                    {i.recommendation ? (
-                                      <div className="text-sm text-slate-700 dark:text-slate-300 mt-2">
-                                        <span className="font-medium">Next step:</span> {i.recommendation}
-                                      </div>
-                                    ) : null}
-                                    {Array.isArray(i.actions) && i.actions.length > 0 ? (
-                                      <div className="flex flex-wrap gap-2 mt-3">
-                                        {i.actions.slice(0, 3).map((a, idx) => {
+                                    {Array.isArray(i.actions) && i.actions.length > 0
+                                      ? i.actions.slice(0, 3).map((a: any, idx: number) => {
                                           if (a.kind === "openRevenueModal") {
                                             return (
                                               <Button
                                                 key={`${i.id}:a:${idx}`}
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => openAddRevenueModal('add')}
+                                                onClick={() => openAddRevenueModal("add")}
                                               >
                                                 {a.label}
                                               </Button>
                                             );
                                           }
                                           const tab = a.tab;
-                                          const url = `/campaigns/${encodeURIComponent(String(campaignId || ""))}/linkedin-analytics?tab=${encodeURIComponent(String(tab))}${sessionId ? `&session=${encodeURIComponent(String(sessionId))}` : ""}`;
+                                          const url = `/campaigns/${encodeURIComponent(String(campaignId || ""))}/linkedin-analytics?tab=${encodeURIComponent(
+                                            String(tab)
+                                          )}${sessionId ? `&session=${encodeURIComponent(String(sessionId))}` : ""}`;
                                           return (
                                             <Button
                                               key={`${i.id}:a:${idx}`}
@@ -5808,16 +6000,113 @@ export default function LinkedInAnalytics() {
                                               {a.label}
                                             </Button>
                                           );
-                                        })}
-                                      </div>
-                                    ) : null}
+                                        })
+                                      : null}
                                   </div>
+
+                                  {isExpanded && canExplain ? (
+                                    <div className="mt-3 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-3">
+                                      {i?.explain?.title ? (
+                                        <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                          {i.explain.title}
+                                        </div>
+                                      ) : null}
+                                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-disc pl-4">
+                                        {i.explain.lines.map((line: string, idx: number) => (
+                                          <li key={`${i.id}:ex:${idx}`}>{line}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                            </div>
+                          );
+                        };
+
+                        const thresholdsPopover = (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 px-2">
+                                <Info className="w-4 h-4 mr-1" />
+                                Thresholds
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80">
+                              <div className="text-sm font-medium mb-1">Signal thresholds</div>
+                              <div className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                                <div><span className="font-medium">Min clicks</span>: {execWowThresholds.minClicks}</div>
+                                <div><span className="font-medium">Min impressions</span>: {execWowThresholds.minImpressions}</div>
+                                <div><span className="font-medium">Min conversions</span>: {execWowThresholds.minConversions}</div>
+                                <div><span className="font-medium">CVR drop</span>: ≥ {execWowThresholds.cvrDropPct}% WoW</div>
+                                <div><span className="font-medium">CPC spike</span>: ≥ {execWowThresholds.cpcSpikePct}% WoW</div>
+                                <div><span className="font-medium">Engagement decay</span>: ≥ {execWowThresholds.erDecayPct}% WoW</div>
+                                <div><span className="font-medium">CTR stable band</span>: ± {execWowThresholds.ctrStableBandPct}%</div>
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                                Signals compare the last 7 complete UTC days vs the prior 7 complete UTC days.
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        );
+
+                        return (
+                          <>
+                            <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">
+                              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                <div><span className="font-medium text-slate-700 dark:text-slate-300">Data through:</span> {dataThrough ? `${dataThrough} (UTC)` : "—"}</div>
+                                <div><span className="font-medium text-slate-700 dark:text-slate-300">Available days:</span> {availableDays}</div>
+                                <div><span className="font-medium text-slate-700 dark:text-slate-300">WoW window:</span> {wowWindow || "Needs 14+ days"}</div>
+                                <div><span className="font-medium text-slate-700 dark:text-slate-300">Revenue:</span> {hasRevenueTracking ? "Connected" : "Not connected"}</div>
+                                <div><span className="font-medium text-slate-700 dark:text-slate-300">Last refresh:</span> {lastRefreshText}</div>
+                              </div>
+                            </div>
+
+                            {availableDays > 0 && availableDays < 14 ? (
+                              <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-700 dark:text-amber-300">
+                                Need at least 14 days of daily history to compute week-over-week anomaly signals. Available days: {availableDays}.
+                              </div>
+                            ) : null}
+
+                            {all.length === 0 ? (
+                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                                No insights available yet. Import LinkedIn data, then create KPIs/Benchmarks to unlock more insights.
+                              </div>
+                            ) : (
+                              <>
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Data integrity & setup</div>
+                                    <Badge variant="outline" className="text-xs">{integrity.length}</Badge>
+                                  </div>
+                                  {integrity.length === 0 ? (
+                                    <div className="text-sm text-slate-600 dark:text-slate-400">No integrity issues detected.</div>
+                                  ) : (
+                                    integrity.slice(0, 12).map(renderInsightCard)
+                                  )}
+                                </div>
+
+                                <div className="space-y-3 pt-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Performance & anomalies</div>
+                                      {thresholdsPopover}
+                                    </div>
+                                    <Badge variant="outline" className="text-xs">{performance.length}</Badge>
+                                  </div>
+                                  {performance.length === 0 ? (
+                                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                                      No performance issues detected. Add KPIs/Benchmarks to unlock more evaluations.
+                                    </div>
+                                  ) : (
+                                    performance.slice(0, 12).map(renderInsightCard)
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 </div>

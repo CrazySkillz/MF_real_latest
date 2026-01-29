@@ -32,6 +32,7 @@ import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
+import { LinkedInErrorBoundary, LinkedInTabEmptyState, LinkedInTabErrorState } from "@/components/LinkedInUiStates";
 
 // Helper: Derive category from metric
 const getCategoryFromMetric = (metric: string): string => {
@@ -91,6 +92,13 @@ const LINKEDIN_KPI_TEMPLATES = [
 ];
 
 export default function LinkedInAnalytics() {
+  const devLog = (...args: any[]) => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(...args);
+    }
+  };
+
   const [, params] = useRoute("/campaigns/:id/linkedin-analytics");
   const [location, setLocation] = useLocation();
   const sessionId = new URLSearchParams(window.location.search).get('session');
@@ -118,7 +126,7 @@ export default function LinkedInAnalytics() {
     const tab = urlParams.get('tab');
     if (tab) {
       const next = normalizeTab(tab);
-      console.log('[Tab Navigation] Setting active tab to:', next);
+      devLog('[Tab Navigation] Setting active tab to:', next);
       setActiveTab(next);
     }
   }, [location]);
@@ -616,15 +624,15 @@ export default function LinkedInAnalytics() {
   });
   // Helper function to get benchmark for a metric
   const getBenchmarkForMetric = (metricName: string) => {
-    console.log('[getBenchmarkForMetric] Looking for benchmark:', metricName);
-    console.log('[getBenchmarkForMetric] Available benchmarks:', benchmarks);
-    console.log('[getBenchmarkForMetric] Type:', typeof benchmarks);
-    console.log('[getBenchmarkForMetric] Is array?', Array.isArray(benchmarks));
-    console.log('[getBenchmarkForMetric] Length:', benchmarks?.length);
+    devLog('[getBenchmarkForMetric] Looking for benchmark:', metricName);
+    devLog('[getBenchmarkForMetric] Available benchmarks:', benchmarks);
+    devLog('[getBenchmarkForMetric] Type:', typeof benchmarks);
+    devLog('[getBenchmarkForMetric] Is array?', Array.isArray(benchmarks));
+    devLog('[getBenchmarkForMetric] Length:', benchmarks?.length);
     
     // CRITICAL: Check if benchmarks exists and is an array first to prevent undefined errors
     if (!benchmarks || !Array.isArray(benchmarks) || benchmarks.length === 0) {
-      console.log('[getBenchmarkForMetric] Benchmarks is not valid, returning null');
+      devLog('[getBenchmarkForMetric] Benchmarks is not valid, returning null');
       return null;
     }
     
@@ -632,25 +640,25 @@ export default function LinkedInAnalytics() {
     // This prevents wrong benchmarks from being used
     const found = benchmarks.find((b: any) => {
       const metricMatch = b.metric?.toLowerCase() === metricName.toLowerCase();
-      console.log(`Checking benchmark: metric="${b.metric}", name="${b.name}", metricMatch=${metricMatch}`);
+      devLog(`Checking benchmark: metric="${b.metric}", name="${b.name}", metricMatch=${metricMatch}`);
       return metricMatch; // Only return if metric field matches exactly
     });
     
-    console.log('Found benchmark:', found);
+    devLog('Found benchmark:', found);
     return found;
   };
 
   // Helper function to calculate performance level based on benchmark
   const getPerformanceLevel = (currentValue: number, benchmarkValue: number, metricType: 'higher-better' | 'lower-better' = 'higher-better'): 'excellent' | 'good' | 'fair' | 'poor' => {
-    console.log(`getPerformanceLevel: current=${currentValue}, benchmark=${benchmarkValue}, type=${metricType}`);
+    devLog(`getPerformanceLevel: current=${currentValue}, benchmark=${benchmarkValue}, type=${metricType}`);
     
     if (!benchmarkValue || benchmarkValue === 0) {
-      console.log('No benchmark value, returning fair');
+      devLog('No benchmark value, returning fair');
       return 'fair';
     }
     
     const ratio = currentValue / benchmarkValue;
-    console.log(`Ratio: ${ratio} (${currentValue} / ${benchmarkValue})`);
+    devLog(`Ratio: ${ratio} (${currentValue} / ${benchmarkValue})`);
     
     let result: 'excellent' | 'good' | 'fair' | 'poor';
     
@@ -660,14 +668,14 @@ export default function LinkedInAnalytics() {
       else if (ratio >= 1.0) result = 'good';
       else if (ratio >= 0.8) result = 'fair';
       else result = 'poor';
-      console.log(`Higher-better logic: ratio ${ratio} >= 1.2? ${ratio >= 1.2}, >= 1.0? ${ratio >= 1.0}, >= 0.8? ${ratio >= 0.8} → ${result}`);
+      devLog(`Higher-better logic: ratio ${ratio} >= 1.2? ${ratio >= 1.2}, >= 1.0? ${ratio >= 1.0}, >= 0.8? ${ratio >= 0.8} → ${result}`);
     } else {
       // For metrics where lower is better (CPC, CPM, CPA, CPL)
       if (ratio <= 0.8) result = 'excellent';
       else if (ratio <= 1.0) result = 'good';
       else if (ratio <= 1.2) result = 'fair';
       else result = 'poor';
-      console.log(`Lower-better logic: ratio ${ratio} <= 0.8? ${ratio <= 0.8}, <= 1.0? ${ratio <= 1.0}, <= 1.2? ${ratio <= 1.2} → ${result}`);
+      devLog(`Lower-better logic: ratio ${ratio} <= 0.8? ${ratio <= 0.8}, <= 1.0? ${ratio <= 1.0}, <= 1.2? ${ratio <= 1.2} → ${result}`);
     }
     
     return result;
@@ -680,7 +688,7 @@ export default function LinkedInAnalytics() {
   };
 
   // Fetch import session data
-  const { data: sessionData, isLoading: sessionLoading, refetch: refetchSessionData } = useQuery({
+  const { data: sessionData, isLoading: sessionLoading, isError: sessionIsError, error: sessionError, refetch: refetchSessionData } = useQuery({
     queryKey: ['/api/linkedin/imports', sessionId],
     enabled: !!sessionId,
     refetchOnMount: 'always',
@@ -695,7 +703,7 @@ export default function LinkedInAnalytics() {
       const response = await fetch(`/api/linkedin/imports/${sessionId}?t=${Date.now()}`);
       if (!response.ok) throw new Error('Failed to fetch session data');
       const data = await response.json();
-      console.log('[LinkedIn Analytics] Session data fetched:', {
+      devLog('[LinkedIn Analytics] Session data fetched:', {
         hasRevenueTracking: data?.aggregated?.hasRevenueTracking,
         conversionValue: data?.aggregated?.conversionValue
       });
@@ -738,14 +746,14 @@ export default function LinkedInAnalytics() {
   const aggregated = (sessionData as any)?.aggregated;
 
   // Fetch ad performance data
-  const { data: adsData, isLoading: adsLoading } = useQuery({
+  const { data: adsData, isLoading: adsLoading, isError: adsIsError, error: adsError, refetch: refetchAds } = useQuery({
     queryKey: ['/api/linkedin/imports', sessionId, 'ads'],
     enabled: !!sessionId,
   });
 
   // LinkedIn daily facts (persisted) for Insights anomaly/delta detection
   const LINKEDIN_DAILY_LOOKBACK_DAYS = 90;
-  const { data: linkedInDailyResp, isLoading: linkedInDailyLoading } = useQuery<any>({
+  const { data: linkedInDailyResp, isLoading: linkedInDailyLoading, refetch: refetchLinkedInDaily } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "linkedin-daily", LINKEDIN_DAILY_LOOKBACK_DAYS],
     enabled: activeTab === "insights" && !!campaignId,
     staleTime: 0,
@@ -763,7 +771,7 @@ export default function LinkedInAnalytics() {
   });
 
   // Server-side Insights signals (single source of truth for exec-facing guidance)
-  const { data: linkedInInsightsResp, isLoading: linkedInInsightsLoading } = useQuery<any>({
+  const { data: linkedInInsightsResp, isLoading: linkedInInsightsLoading, refetch: refetchLinkedInSignals } = useQuery<any>({
     queryKey: ["/api/linkedin/insights", sessionId, LINKEDIN_DAILY_LOOKBACK_DAYS],
     enabled: activeTab === "insights" && !!sessionId,
     staleTime: 0,
@@ -943,7 +951,7 @@ export default function LinkedInAnalytics() {
   };
 
   // Fetch LinkedIn reports filtered by campaignId
-  const { data: reportsData, isLoading: reportsLoading } = useQuery({
+  const { data: reportsData, isLoading: reportsLoading, isError: reportsIsError, error: reportsError, refetch: refetchReports } = useQuery({
     queryKey: ['/api/platforms/linkedin/reports', campaignId],
     queryFn: async () => {
       const response = await fetch(`/api/platforms/linkedin/reports?campaignId=${campaignId}`);
@@ -1144,12 +1152,12 @@ export default function LinkedInAnalytics() {
   // Create Benchmark mutation
   const createBenchmarkMutation = useMutation({
     mutationFn: async (benchmarkData: any) => {
-      console.log('Creating benchmark with data:', benchmarkData);
+      devLog('Creating benchmark with data:', benchmarkData);
       const res = await apiRequest('POST', `/api/campaigns/${campaignId}/benchmarks`, benchmarkData);
       return res.json();
     },
     onSuccess: async (createdBenchmark) => {
-      console.log('Benchmark created successfully:', createdBenchmark);
+      devLog('Benchmark created successfully:', createdBenchmark);
       
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId] });
       
@@ -1193,13 +1201,13 @@ export default function LinkedInAnalytics() {
   // Update Benchmark mutation
   const updateBenchmarkMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      console.log('Updating benchmark:', id, 'with data:', data);
+      devLog('Updating benchmark:', id, 'with data:', data);
       const res = await apiRequest('PATCH', `/api/campaigns/${campaignId}/benchmarks/${id}`, data);
       return res.json();
     },
     onSuccess: async (updatedBenchmark) => {
-      console.log('Benchmark updated successfully:', updatedBenchmark);
-      console.log('Invalidating queries to refresh UI...');
+      devLog('Benchmark updated successfully:', updatedBenchmark);
+      devLog('Invalidating queries to refresh UI...');
       
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId] });
       
@@ -1207,7 +1215,7 @@ export default function LinkedInAnalytics() {
       await refetchBenchmarks();
       await refetchBenchmarksTab();
       
-      console.log('Queries invalidated, UI should update now');
+      devLog('Queries invalidated, UI should update now');
       
       toast({
         title: "Benchmark Updated",
@@ -1247,12 +1255,12 @@ export default function LinkedInAnalytics() {
   // Delete Benchmark mutation
   const deleteBenchmarkMutation = useMutation({
     mutationFn: async (benchmarkId: string) => {
-      console.log('Deleting benchmark:', benchmarkId);
+      devLog('Deleting benchmark:', benchmarkId);
       const res = await apiRequest('DELETE', `/api/campaigns/${campaignId}/benchmarks/${benchmarkId}`);
       return res.json();
     },
     onSuccess: async () => {
-      console.log('Benchmark deleted successfully');
+      devLog('Benchmark deleted successfully');
       
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId] });
       
@@ -1279,7 +1287,7 @@ export default function LinkedInAnalytics() {
         emailRecipients: ''
       });
       
-      console.log('Benchmark queries refetched, badge should disappear now');
+      devLog('Benchmark queries refetched, badge should disappear now');
       
       toast({
         title: "Benchmark Deleted",
@@ -1351,7 +1359,7 @@ export default function LinkedInAnalytics() {
     if (benchmarkForm.applyTo === 'specific') {
       // If a LinkedIn campaign name was selected, use the parent database campaign ID
       finalSpecificCampaignId = campaignId; // Always use the current database campaign ID
-      console.log('[Create] Campaign-specific benchmark:', {
+      devLog('[Create] Campaign-specific benchmark:', {
         selectedLinkedInCampaign: benchmarkForm.specificCampaignId,
         savingDatabaseCampaignId: finalSpecificCampaignId
       });
@@ -1367,7 +1375,7 @@ export default function LinkedInAnalytics() {
         ? String(b.linkedInCampaignName || '') === String(benchmarkForm.specificCampaignId || '')
         : (!b.linkedInCampaignName && (b.applyTo === 'all' || !b.specificCampaignId));
       
-      console.log('Checking duplicate:', {
+      devLog('Checking duplicate:', {
         benchmark: b,
         metricMatch,
         scopeMatch,
@@ -1418,7 +1426,7 @@ export default function LinkedInAnalytics() {
       platformType: 'linkedin' // Specify platform
     };
     
-    console.log('Creating benchmark with data:', benchmarkData);
+    devLog('Creating benchmark with data:', benchmarkData);
     
     if (editingBenchmark) {
       updateBenchmarkMutation.mutate({ id: editingBenchmark.id, data: benchmarkData });
@@ -1438,9 +1446,9 @@ export default function LinkedInAnalytics() {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/reports', campaignId] });
       
       // Debug logging
-      console.log('[Report Creation] scheduleEnabled:', reportData.scheduleEnabled);
-      console.log('[Report Creation] scheduleRecipients:', reportData.scheduleRecipients);
-      console.log('[Report Creation] scheduleFrequency:', reportData.scheduleFrequency);
+      devLog('[Report Creation] scheduleEnabled:', reportData.scheduleEnabled);
+      devLog('[Report Creation] scheduleRecipients:', reportData.scheduleRecipients);
+      devLog('[Report Creation] scheduleFrequency:', reportData.scheduleFrequency);
       
       // Check if scheduling is enabled
       if (reportData.scheduleEnabled && reportData.scheduleRecipients && reportData.scheduleRecipients.length > 0) {
@@ -1690,9 +1698,9 @@ export default function LinkedInAnalytics() {
         status: 'active'
       };
       
-      console.log('[Report Creation - Before Mutation] reportData:', reportData);
-      console.log('[Report Creation - Before Mutation] emailRecipientsArray:', emailRecipientsArray);
-      console.log('[Report Creation - Before Mutation] scheduleEnabled:', reportForm.scheduleEnabled);
+      devLog('[Report Creation - Before Mutation] reportData:', reportData);
+      devLog('[Report Creation - Before Mutation] emailRecipientsArray:', emailRecipientsArray);
+      devLog('[Report Creation - Before Mutation] scheduleEnabled:', reportForm.scheduleEnabled);
       
       createReportMutation.mutate(reportData);
     } else {
@@ -1746,8 +1754,8 @@ export default function LinkedInAnalytics() {
         status: reportForm.status || 'active'
       };
       
-      console.log('[Report Update - Before Mutation] reportData:', reportData);
-      console.log('[Report Update - Before Mutation] emailRecipientsArray:', emailRecipientsArray);
+      devLog('[Report Update - Before Mutation] reportData:', reportData);
+      devLog('[Report Update - Before Mutation] emailRecipientsArray:', emailRecipientsArray);
       
       updateReportMutation.mutate({ reportId: editingReportId, reportData });
     } else {
@@ -1944,8 +1952,8 @@ export default function LinkedInAnalytics() {
         status: 'active'
       };
       
-      console.log('[Custom Report Creation - Before Mutation] reportData:', reportData);
-      console.log('[Custom Report Creation - Before Mutation] emailRecipientsArray:', emailRecipientsArray);
+      devLog('[Custom Report Creation - Before Mutation] reportData:', reportData);
+      devLog('[Custom Report Creation - Before Mutation] emailRecipientsArray:', emailRecipientsArray);
       
       createReportMutation.mutate(reportData);
     } else {
@@ -3422,7 +3430,7 @@ export default function LinkedInAnalytics() {
   };
 
   // Fetch platform-level LinkedIn KPIs filtered by campaignId
-  const { data: kpisData, isLoading: kpisLoading } = useQuery({
+  const { data: kpisData, isLoading: kpisLoading, isError: kpisIsError, error: kpisError, refetch: refetchKpis } = useQuery({
     queryKey: ['/api/platforms/linkedin/kpis', campaignId],
     queryFn: async () => {
       const response = await fetch(`/api/platforms/linkedin/kpis?campaignId=${campaignId}`);
@@ -3461,7 +3469,7 @@ export default function LinkedInAnalytics() {
   });
 
   // Fetch platform-level LinkedIn Benchmarks filtered by campaignId
-  const { data: benchmarksData, isLoading: benchmarksLoading, refetch: refetchBenchmarksTab } = useQuery({
+  const { data: benchmarksData, isLoading: benchmarksLoading, isError: benchmarksIsError, error: benchmarksError, refetch: refetchBenchmarksTab } = useQuery({
     queryKey: [`/api/campaigns/${campaignId}/benchmarks/evaluated`, sessionId],
     enabled: !!campaignId,
     staleTime: 0,
@@ -4393,6 +4401,7 @@ export default function LinkedInAnalytics() {
   const campaign = campaignData as any;
 
   return (
+    <LinkedInErrorBoundary>
     <TooltipProvider>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
         <Navigation />
@@ -4459,6 +4468,13 @@ export default function LinkedInAnalytics() {
                     </div>
                     <div className="h-96 bg-slate-200 dark:bg-slate-800 rounded"></div>
                   </div>
+                ) : sessionIsError ? (
+                  <LinkedInTabErrorState
+                    title="Overview"
+                    description="LinkedIn campaign overview"
+                    message={(sessionError as any)?.message || "Failed to load LinkedIn overview."}
+                    onRetry={() => void refetchSessionData()}
+                  />
                 ) : sessionData && aggregated ? (
                   <>
                     {/* Conversion Value Missing Notification - Show when NO conversion values are available */}
@@ -4469,7 +4485,7 @@ export default function LinkedInAnalytics() {
                       const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
                       const shouldShowWarning = !hasRevenueTracking;
                       
-                      console.log('[LinkedIn Analytics] 🚨 Notification check:', {
+                      devLog('[LinkedIn Analytics] 🚨 Notification check:', {
                         hasRevenueTracking,
                         hasRevenueTrackingValue: aggregated?.hasRevenueTracking,
                         shouldShowWarning,
@@ -4743,7 +4759,7 @@ export default function LinkedInAnalytics() {
                         // This prevents race conditions and flickering caused by checking multiple data sources
                         const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
                         
-                        console.log('[LinkedIn Analytics] 💰 Revenue Metrics check:', {
+                        devLog('[LinkedIn Analytics] 💰 Revenue Metrics check:', {
                           hasRevenueTracking,
                           hasRevenueTrackingValue: aggregated?.hasRevenueTracking,
                           shouldShowRevenueMetrics: hasRevenueTracking,
@@ -5522,6 +5538,34 @@ export default function LinkedInAnalytics() {
 
               {/* Insights Tab */}
               <TabsContent value="insights" className="space-y-6" data-testid="content-insights">
+                {sessionLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  </div>
+                ) : sessionIsError ? (
+                  <LinkedInTabErrorState
+                    title="Insights"
+                    description="Exec-safe insights from your LinkedIn data"
+                    message={(sessionError as any)?.message || "Failed to load LinkedIn insights."}
+                    onRetry={() => void refetchSessionData()}
+                  />
+                ) : linkedInDailyLoading || linkedInInsightsLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  </div>
+                ) : linkedInDailyResp?.success === false || linkedInInsightsResp?.success === false ? (
+                  <LinkedInTabErrorState
+                    title="Insights"
+                    description="Exec-safe insights from your LinkedIn data"
+                    message="We couldn’t load LinkedIn insights yet. Please try again."
+                    onRetry={() => {
+                      void refetchLinkedInDaily();
+                      void refetchLinkedInSignals();
+                    }}
+                  />
+                ) : (
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
@@ -6170,6 +6214,7 @@ export default function LinkedInAnalytics() {
                     </CardContent>
                   </Card>
                 </div>
+                )}
               </TabsContent>
 
               {/* Connected Data Sources tab removed */}
@@ -6181,6 +6226,13 @@ export default function LinkedInAnalytics() {
                     <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
                     <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
                   </div>
+                ) : kpisIsError ? (
+                  <LinkedInTabErrorState
+                    title="KPIs"
+                    description="Key Performance Indicators for this campaign"
+                    message={(kpisError as any)?.message || "Failed to load KPIs."}
+                    onRetry={() => void refetchKpis()}
+                  />
                 ) : kpisData && (kpisData as any[]).length > 0 ? (
                   <>
                     {/* Header with Create Button */}
@@ -6663,6 +6715,14 @@ export default function LinkedInAnalytics() {
 
               {/* Benchmarks Tab */}
               <TabsContent value="benchmarks" className="space-y-6" data-testid="content-benchmarks">
+                {benchmarksIsError ? (
+                  <LinkedInTabErrorState
+                    title="Benchmarks"
+                    description="Compare your performance against benchmarks"
+                    message={(benchmarksError as any)?.message || "Failed to load benchmarks."}
+                    onRetry={() => void refetchBenchmarksTab()}
+                  />
+                ) : null}
                 {/* Header with Create Button */}
                 <div className="flex items-center justify-between">
                   <div>
@@ -7088,6 +7148,13 @@ export default function LinkedInAnalytics() {
                     <div className="h-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
                     <div className="h-96 bg-slate-200 dark:bg-slate-800 rounded"></div>
                   </div>
+                ) : adsIsError ? (
+                  <LinkedInTabErrorState
+                    title="Ad comparison"
+                    description="Compare creatives and ad performance"
+                    message={(adsError as any)?.message || "Failed to load ad performance."}
+                    onRetry={() => void refetchAds()}
+                  />
                 ) : adsData && (adsData as any[]).length > 0 ? (
                   (() => {
                     // Finance-grade correctness:
@@ -7556,6 +7623,13 @@ export default function LinkedInAnalytics() {
                     <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
                     <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
                   </div>
+                ) : reportsIsError ? (
+                  <LinkedInTabErrorState
+                    title="Reports"
+                    description="Create, schedule, and manage analytics reports"
+                    message={(reportsError as any)?.message || "Failed to load reports."}
+                    onRetry={() => void refetchReports()}
+                  />
                 ) : reportsData && Array.isArray(reportsData) && reportsData.length > 0 ? (
                   <div className="grid grid-cols-1 gap-4">
                     {(reportsData as any[]).map((report: any) => (
@@ -8615,7 +8689,7 @@ export default function LinkedInAnalytics() {
                       const campaignMetrics = getCampaignSpecificMetrics(benchmarkForm.specificCampaignId);
                       if (campaignMetrics) {
                         metricsSource = campaignMetrics;
-                        console.log('[Metric Selection] Using campaign-specific metrics for:', benchmarkForm.specificCampaignId);
+                        devLog('[Metric Selection] Using campaign-specific metrics for:', benchmarkForm.specificCampaignId);
                       }
                     }
                     
@@ -8706,7 +8780,7 @@ export default function LinkedInAnalytics() {
                           break;
                       }
                     }
-                    console.log('[Metric Selection] Auto-filled currentValue:', currentValue, unit);
+                    devLog('[Metric Selection] Auto-filled currentValue:', currentValue, unit);
                     
                     // Update form with metric, currentValue, and unit (format for correct decimals/integers)
                     const prevDefaultDesc = getDefaultBenchmarkDescription(benchmarkForm.metric);
@@ -8725,13 +8799,13 @@ export default function LinkedInAnalytics() {
                     
                     // If industry is already selected, also auto-fill benchmark value
                     if (benchmarkForm.industry && benchmarkForm.industry !== 'none' && benchmarkForm.industry !== 'other') {
-                      console.log('[Metric Selection] Industry already selected, fetching benchmark value...');
+                      devLog('[Metric Selection] Industry already selected, fetching benchmark value...');
                       (async () => {
                         try {
                           const response = await fetch(`/api/industry-benchmarks/${benchmarkForm.industry}/${value}`);
                           if (response.ok) {
                             const data = await response.json();
-                            console.log('[Metric Selection] Benchmark data from API:', data);
+                            devLog('[Metric Selection] Benchmark data from API:', data);
                             setBenchmarkForm(prev => ({
                               ...prev,
                               benchmarkValue: formatNumberAsYouType(String(data.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
@@ -8743,7 +8817,7 @@ export default function LinkedInAnalytics() {
                             // Fallback to hardcoded values
                             const fallbackData = getBenchmarkValueFallback(benchmarkForm.industry, value);
                             if (fallbackData) {
-                              console.log('[Metric Selection] Using fallback benchmark data:', fallbackData);
+                              devLog('[Metric Selection] Using fallback benchmark data:', fallbackData);
                               setBenchmarkForm(prev => ({
                                 ...prev,
                                 benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
@@ -8757,7 +8831,7 @@ export default function LinkedInAnalytics() {
                           console.error('[Metric Selection] Failed to fetch benchmark value:', error);
                           const fallbackData = getBenchmarkValueFallback(benchmarkForm.industry, value);
                           if (fallbackData) {
-                            console.log('[Metric Selection] Using fallback benchmark data after error:', fallbackData);
+                            devLog('[Metric Selection] Using fallback benchmark data after error:', fallbackData);
                             setBenchmarkForm(prev => ({
                               ...prev,
                               benchmarkValue: formatNumberAsYouType(String(fallbackData.value), { maxDecimals: getMaxDecimalsForMetric(value) }),
@@ -8893,7 +8967,7 @@ export default function LinkedInAnalytics() {
                   <Select
                     value={benchmarkForm.specificCampaignId}
                     onValueChange={(value) => {
-                      console.log('[Dropdown] Selected campaign:', value);
+                      devLog('[Dropdown] Selected campaign:', value);
                       
                       if (!benchmarkForm.metric) {
                         setBenchmarkForm({ ...benchmarkForm, specificCampaignId: value });
@@ -11369,5 +11443,6 @@ export default function LinkedInAnalytics() {
       )}
       </div>
     </TooltipProvider>
+    </LinkedInErrorBoundary>
   );
 }

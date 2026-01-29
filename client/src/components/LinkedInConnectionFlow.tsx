@@ -197,6 +197,13 @@ const AVAILABLE_METRICS: MetricOption[] = [
 ];
 
 export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode = 'existing', onImportComplete }: LinkedInConnectionFlowProps) {
+  const devLog = (...args: any[]) => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(...args);
+    }
+  };
+
   const [step, setStep] = useState<'credentials' | 'connecting' | 'select-account' | 'select-campaigns' | 'connected'>('credentials');
   const [isConnecting, setIsConnecting] = useState(false);
   const [isTestMode, setIsTestMode] = useState(false);
@@ -255,14 +262,14 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
         return;
       }
       
-      console.log('OAuth popup opened successfully');
+      devLog('OAuth popup opened successfully');
       
       const handleMessage = async (event: MessageEvent) => {
-        console.log('Received message:', event.data, 'from origin:', event.origin);
+        devLog('Received message:', event.data, 'from origin:', event.origin);
         
         const currentOrigin = window.location.origin;
         if (event.origin !== currentOrigin) {
-          console.log(`Rejecting message from ${event.origin}, expected ${currentOrigin}`);
+          devLog(`Rejecting message from ${event.origin}, expected ${currentOrigin}`);
           return;
         }
         
@@ -332,7 +339,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
       }, 1000);
       
       const timeoutId = setTimeout(() => {
-        console.log('OAuth flow timed out');
+        devLog('OAuth flow timed out');
         toast({
           title: "Connection Timeout",
           description: "The connection process timed out. Please try again.",

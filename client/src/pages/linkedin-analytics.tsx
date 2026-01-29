@@ -3840,10 +3840,38 @@ export default function LinkedInAnalytics() {
 
   const computeInsightReliability = (metricKey: string | null | undefined): "high" | "medium" | "low" => {
     const key = String(metricKey || "").toLowerCase();
-    const prior = (linkedInInsightsRollups as any)?.prior7 || {};
-    const clicks = Number(prior?.clicks || 0) || 0;
-    const impressions = Number(prior?.impressions || 0) || 0;
-    const conversions = Number(prior?.conversions || 0) || 0;
+    // IMPORTANT: This must not reference variables declared later in the component (TDZ risk).
+    // Compute sample-size reliability directly from the persisted daily history payload.
+    const rows = Array.isArray((linkedInDailyResp as any)?.data) ? (linkedInDailyResp as any).data : [];
+    const byDate = rows
+      .map((r: any) => ({
+        date: String(r?.date || "").trim(),
+        impressions: Number(r?.impressions || 0) || 0,
+        clicks: Number(r?.clicks || 0) || 0,
+        conversions: Number(r?.conversions || 0) || 0,
+      }))
+      .filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(r.date))
+      .sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+
+    const availableDays = byDate.length;
+    if (availableDays <= 0) return "low";
+
+    // Prefer the prior-7d window for a conservative reliability estimate.
+    // If we don't have 14+ days yet, fall back to the most recent 7 days.
+    const slice = availableDays >= 14 ? byDate.slice(-14, -7) : byDate.slice(-7);
+    const sums = slice.reduce(
+      (acc: any, r: any) => {
+        acc.impressions += r.impressions;
+        acc.clicks += r.clicks;
+        acc.conversions += r.conversions;
+        return acc;
+      },
+      { impressions: 0, clicks: 0, conversions: 0 }
+    );
+
+    const clicks = Number(sums.clicks || 0) || 0;
+    const impressions = Number(sums.impressions || 0) || 0;
+    const conversions = Number(sums.conversions || 0) || 0;
 
     const hasCtrVolume = clicks >= execWowThresholds.minClicks && impressions >= execWowThresholds.minImpressions;
     const hasCvrVolume = clicks >= execWowThresholds.minClicks && conversions >= execWowThresholds.minConversions;
@@ -3859,8 +3887,7 @@ export default function LinkedInAnalytics() {
     if (["conversions", "leads"].includes(key)) return hasCvrVolume ? "high" : conversions > 0 ? "medium" : "low";
 
     // Default: rely on existence of any daily history.
-    const availableDays = Number((linkedInInsightsRollups as any)?.availableDays || 0);
-    return availableDays >= 14 ? "medium" : availableDays > 0 ? "low" : "low";
+    return availableDays >= 14 ? "medium" : "low";
   };
 
   const linkedInInsights = useMemo<InsightItem[]>(() => {

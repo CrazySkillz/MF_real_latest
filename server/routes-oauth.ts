@@ -11962,8 +11962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update the connection with ad account details
-      const connection = await storage.getLinkedInConnection(campaignId);
-      
+      // (We already fetched `connection` above for the token.)
       if (connection) {
         // Update existing connection
         await storage.updateLinkedInConnection(campaignId, {

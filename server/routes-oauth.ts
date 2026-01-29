@@ -1988,6 +1988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import rate limiters
   const { 
     oauthRateLimiter, 
+    linkedInApiRateLimiter,
     googleSheetsRateLimiter,
     ga4RateLimiter 
   } = await import('./middleware/rateLimiter');

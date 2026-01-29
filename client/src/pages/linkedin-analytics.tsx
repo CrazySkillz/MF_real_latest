@@ -5316,7 +5316,7 @@ export default function LinkedInAnalytics() {
 
                   <Card className="border-slate-200 dark:border-slate-700">
                     <CardHeader>
-                      <CardTitle>Executive financials (current imported totals)</CardTitle>
+                      <CardTitle>Executive financials</CardTitle>
                       <CardDescription>
                         Spend comes from LinkedIn imports. Revenue metrics appear only when a LinkedIn revenue source is connected.
                       </CardDescription>
@@ -5588,16 +5588,16 @@ export default function LinkedInAnalytics() {
                                   </tbody>
                                 </table>
 
-                                {!insightsDailyShowMore && (linkedInDailySeries?.daily || []).length > 7 ? (
+                                {(linkedInDailySeries?.daily || []).length > 7 ? (
                                   <div className="flex justify-end px-3 py-2 bg-white dark:bg-slate-950">
                                     <Button
                                       type="button"
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => setInsightsDailyShowMore(true)}
+                                      onClick={() => setInsightsDailyShowMore((v) => !v)}
                                       className="h-8 text-xs"
                                     >
-                                      View more
+                                      {insightsDailyShowMore ? "View less" : "View more"}
                                     </Button>
                                   </div>
                                 ) : null}

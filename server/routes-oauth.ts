@@ -11588,6 +11588,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // CENTRALIZED LINKEDIN OAUTH (mirrors Google Analytics pattern)
   // ============================================================================
+  const LINKEDIN_OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+  const signLinkedInOAuthState = (campaignId: string): string => {
+    const secret =
+      process.env.LINKEDIN_OAUTH_STATE_SECRET ||
+      process.env.SESSION_SECRET ||
+      process.env.APP_SECRET ||
+      "dev-linkedin-oauth-state-secret";
+
+    // Stateless, tamper-proof state payload to prevent callback spoofing/replays.
+    const payload = {
+      c: String(campaignId || "").trim(),
+      t: Date.now(),
+      n: randomBytes(12).toString("hex"),
+    };
+    const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+    const sig = createHmac("sha256", secret).update(payloadB64).digest();
+    const sigB64 = Buffer.from(sig).toString("base64url");
+    return `${payloadB64}.${sigB64}`;
+  };
+
+  const verifyLinkedInOAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
+    const secret =
+      process.env.LINKEDIN_OAUTH_STATE_SECRET ||
+      process.env.SESSION_SECRET ||
+      process.env.APP_SECRET ||
+      "dev-linkedin-oauth-state-secret";
+
+    const state = String(stateRaw || "").trim();
+    const parts = state.split(".");
+    if (parts.length !== 2) return { ok: false, error: "Invalid state" };
+    const [payloadB64, sigB64] = parts;
+    if (!payloadB64 || !sigB64) return { ok: false, error: "Invalid state" };
+
+    const expectedSig = createHmac("sha256", secret).update(payloadB64).digest();
+    const providedSig = Buffer.from(sigB64, "base64url");
+    if (providedSig.length !== expectedSig.length || !timingSafeEqual(providedSig, expectedSig)) {
+      return { ok: false, error: "Invalid state" };
+    }
+
+    try {
+      const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")) as any;
+      const campaignId = String(payload?.c || "").trim();
+      const t = Number(payload?.t || 0);
+      if (!campaignId) return { ok: false, error: "Invalid state" };
+      if (!Number.isFinite(t) || t <= 0) return { ok: false, error: "Invalid state" };
+      if (Date.now() - t > LINKEDIN_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
+      return { ok: true, campaignId };
+    } catch {
+      return { ok: false, error: "Invalid state" };
+    }
+  };
   
   /**
    * Initiate LinkedIn OAuth flow with centralized credentials
@@ -11624,13 +11676,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[LinkedIn OAuth] Using redirect URI: ${redirectUri}`);
 
+      const state = signLinkedInOAuthState(String(campaignId));
+
       // Build LinkedIn OAuth URL
       const authUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
         `client_id=${encodeURIComponent(clientId)}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `response_type=code&` +
         `scope=${encodeURIComponent('r_ads_reporting rw_ads r_organization_admin')}&` +
-        `state=${encodeURIComponent(campaignId)}`;
+        `state=${encodeURIComponent(state)}`;
 
       res.json({ authUrl, message: "LinkedIn OAuth flow initiated" });
     } catch (error) {
@@ -11688,7 +11742,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       }
 
-      const campaignId = state as string;
+      const verified = verifyLinkedInOAuthState(state);
+      if (!verified.ok) {
+        console.error(`[LinkedIn OAuth] Invalid state: ${verified.error}`);
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>${verified.error}</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'linkedin_auth_error', error: '${verified.error}' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      const campaignId = verified.campaignId;
       console.log(`[LinkedIn OAuth] Processing callback for campaign ${campaignId}`);
 
       // Get centralized credentials
@@ -11742,17 +11816,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Store connection temporarily (will be moved to real campaign later)
-      await storage.createLinkedInConnection({
-        campaignId,
-        adAccountId: '', // Will be set when user selects ad account
-        adAccountName: '',
-        accessToken: tokenResponse.access_token,
-        expiresAt: tokenResponse.expires_in 
+      const expiresAt =
+        tokenResponse.expires_in
           ? new Date(Date.now() + tokenResponse.expires_in * 1000)
-          : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // Default 60 days
-        isPrimary: true,
-        isActive: true,
-      });
+          : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // Default 60 days
+
+      const existing = await storage.getLinkedInConnection(campaignId);
+      if (existing) {
+        await storage.updateLinkedInConnection(campaignId, {
+          accessToken: tokenResponse.access_token,
+          expiresAt,
+          isActive: true,
+          method: "oauth",
+        } as any);
+      } else {
+        await storage.createLinkedInConnection({
+          campaignId,
+          adAccountId: "", // Will be set when user selects ad account
+          adAccountName: "",
+          accessToken: tokenResponse.access_token,
+          refreshToken: (tokenResponse as any).refresh_token || null,
+          clientId: null,
+          clientSecret: null,
+          method: "oauth",
+          expiresAt,
+          isPrimary: true,
+          isActive: true,
+        } as any);
+      }
 
       console.log(`[LinkedIn OAuth] Connection stored for campaign ${campaignId}`);
 
@@ -11767,7 +11858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (window.opener) {
                 window.opener.postMessage({ 
                   type: 'linkedin_auth_success',
-                  accessToken: '${tokenResponse.access_token}'
+                  campaignId: '${String(campaignId).replace(/'/g, "\\'")}'
                 }, window.location.origin);
               }
               setTimeout(() => window.close(), 1500);
@@ -11799,14 +11890,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
-   * Fetch LinkedIn ad accounts using access token
+   * Fetch LinkedIn ad accounts using stored server-side token
    */
   app.post("/api/linkedin/ad-accounts", async (req, res) => {
     try {
-      const { accessToken } = req.body;
+      const { campaignId } = req.body;
       
-      if (!accessToken) {
-        return res.status(400).json({ error: 'Access token is required' });
+      if (!campaignId) {
+        return res.status(400).json({ error: 'Campaign ID is required' });
+      }
+
+      const connection = await storage.getLinkedInConnection(String(campaignId));
+      if (!connection?.accessToken) {
+        return res.status(404).json({ error: "LinkedIn is not connected for this campaign" });
       }
 
       console.log('[LinkedIn] Fetching ad accounts');
@@ -11814,7 +11910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { LinkedInClient } = await import('./linkedinClient');
       const { retryApiCall } = await import('./utils/retry');
       
-      const linkedInClient = new LinkedInClient(accessToken);
+      const linkedInClient = new LinkedInClient(String(connection.accessToken));
       
       const adAccounts = await retryApiCall(
         async () => await linkedInClient.getAdAccounts(),
@@ -11824,6 +11920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[LinkedIn] Found ${adAccounts.length} ad accounts`);
 
       res.json({ 
+        success: true,
         adAccounts: adAccounts.map(account => ({
           id: account.id,
           name: account.name
@@ -11841,17 +11938,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/linkedin/:campaignId/select-ad-account", async (req, res) => {
     try {
       const { campaignId } = req.params;
-      const { adAccountId, accessToken } = req.body;
+      const { adAccountId } = req.body;
 
-      if (!adAccountId || !accessToken) {
-        return res.status(400).json({ error: 'Ad account ID and access token are required' });
+      if (!adAccountId) {
+        return res.status(400).json({ error: 'Ad account ID is required' });
       }
 
       console.log(`[LinkedIn] Selecting ad account ${adAccountId} for campaign ${campaignId}`);
 
+      const connection = await storage.getLinkedInConnection(String(campaignId));
+      if (!connection?.accessToken) {
+        return res.status(404).json({ error: "LinkedIn is not connected for this campaign" });
+      }
+
       // Fetch ad account details to get the name
       const { LinkedInClient } = await import('./linkedinClient');
-      const linkedInClient = new LinkedInClient(accessToken);
+      const linkedInClient = new LinkedInClient(String(connection.accessToken));
       const adAccounts = await linkedInClient.getAdAccounts();
       const selectedAccount = adAccounts.find(acc => acc.id === adAccountId);
 
@@ -11874,7 +11976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignId,
           adAccountId,
           adAccountName: selectedAccount.name,
-          accessToken,
+          accessToken: String(connection.accessToken),
           expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
           isPrimary: true,
           isActive: true,
@@ -11887,6 +11989,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[LinkedIn] Select ad account error:', error);
       res.status(500).json({ error: error.message || 'Failed to select ad account' });
+    }
+  });
+
+  /**
+   * Fetch campaigns for a specific ad account using stored server-side token
+   */
+  app.post("/api/linkedin/campaigns", linkedInApiRateLimiter, async (req, res) => {
+    try {
+      const { campaignId, adAccountId } = req.body;
+
+      if (!campaignId || !adAccountId) {
+        return res.status(400).json({ error: "Missing campaignId or adAccountId" });
+      }
+
+      const connection = await storage.getLinkedInConnection(String(campaignId));
+      if (!connection?.accessToken) {
+        return res.status(404).json({ error: "LinkedIn is not connected for this campaign" });
+      }
+
+      const { LinkedInClient } = await import("./linkedinClient");
+      const linkedInClient = new LinkedInClient(String(connection.accessToken));
+
+      const campaigns = await linkedInClient.getCampaigns(String(adAccountId));
+
+      // Get analytics for campaigns (last 30 days)
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
+
+      const campaignIds = campaigns.map((c: any) => c.id);
+
+      let analytics: any[] = [];
+      if (campaignIds.length > 0) {
+        analytics = await linkedInClient.getCampaignAnalytics(
+          campaignIds,
+          startDate.toISOString().split("T")[0],
+          endDate.toISOString().split("T")[0]
+        );
+      }
+
+      // Merge campaign data with analytics
+      const campaignsWithMetrics = campaigns.map((campaign: any) => {
+        const campaignAnalytics =
+          analytics.find((a: any) => a.pivotValues?.includes(campaign.id)) || {};
+
+        const impressions = campaignAnalytics.impressions || 0;
+        const clicks = campaignAnalytics.clicks || 0;
+        const cost = parseFloat(String(campaignAnalytics.costInLocalCurrency || "0"));
+        const conversions = campaignAnalytics.externalWebsiteConversions || 0;
+
+        return {
+          id: campaign.id,
+          name: campaign.name,
+          status: String(campaign.status || "").toLowerCase() || "unknown",
+          impressions,
+          clicks,
+          spend: cost,
+          conversions,
+          ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+          cpc: clicks > 0 ? cost / clicks : 0,
+        };
+      });
+
+      res.json(campaignsWithMetrics);
+    } catch (error: any) {
+      console.error("LinkedIn campaigns fetch error:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch campaigns" });
     }
   });
 

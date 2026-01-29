@@ -197,15 +197,9 @@ const AVAILABLE_METRICS: MetricOption[] = [
 ];
 
 export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode = 'existing', onImportComplete }: LinkedInConnectionFlowProps) {
-  const hasEnvCredentials = import.meta.env.VITE_LINKEDIN_CLIENT_ID && import.meta.env.VITE_LINKEDIN_CLIENT_SECRET;
-  
   const [step, setStep] = useState<'credentials' | 'connecting' | 'select-account' | 'select-campaigns' | 'connected'>('credentials');
-  const [clientId, setClientId] = useState(import.meta.env.VITE_LINKEDIN_CLIENT_ID || '');
-  const [clientSecret, setClientSecret] = useState(import.meta.env.VITE_LINKEDIN_CLIENT_SECRET || '');
-  const [showClientIdInput, setShowClientIdInput] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isTestMode, setIsTestMode] = useState(false);
-  const [accessToken, setAccessToken] = useState<string>('');
   const [adAccounts, setAdAccounts] = useState<AdAccount[]>([]);
   const [selectedAdAccount, setSelectedAdAccount] = useState<string>('');
   const [campaigns, setCampaigns] = useState<LinkedInCampaign[]>([]);
@@ -233,32 +227,22 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
       return;
     }
 
-    if (!clientId || !clientSecret) {
-      setShowClientIdInput(true);
-      toast({
-        title: "OAuth Credentials Required",
-        description: "Please enter both your LinkedIn OAuth Client ID and Client Secret to continue.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsConnecting(true);
     setStep('connecting');
 
     try {
-      const redirectUri = `${window.location.origin}/oauth-callback.html`;
-      const scope = 'r_ads_reporting rw_ads r_organization_admin';
-      
-      console.log('OAuth redirect URI:', redirectUri);
-      const authUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
-        `client_id=${encodeURIComponent(clientId)}&` +
-        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `response_type=code&` +
-        `scope=${encodeURIComponent(scope)}&` +
-        `state=campaign_${campaignId}`;
+      // Server-driven OAuth: the client never sees or enters a Client Secret.
+      const connectResp = await fetch("/api/auth/linkedin/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      });
+      const connectData = await connectResp.json().catch(() => ({}));
+      if (!connectResp.ok || !connectData?.authUrl) {
+        throw new Error(connectData?.message || "Failed to start LinkedIn connection");
+      }
 
-      const popup = window.open(authUrl, 'linkedin-oauth', 'width=500,height=600');
+      const popup = window.open(connectData.authUrl, 'linkedin-oauth', 'width=500,height=600');
       
       if (!popup) {
         toast({
@@ -282,26 +266,19 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
           return;
         }
         
-        if (event.data.type === 'OAUTH_SUCCESS') {
-          const authCode = event.data.code;
-          
+        if (event.data.type === 'linkedin_auth_success') {
           try {
-            const response = await fetch('/api/linkedin/oauth/callback', {
+            const response = await fetch('/api/linkedin/ad-accounts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                campaignId,
-                authCode,
-                clientId,
-                clientSecret,
-                redirectUri
+                campaignId
               })
             });
 
             const data = await response.json();
             
             if (data.success) {
-              setAccessToken(data.accessToken);
               setAdAccounts(data.adAccounts || []);
               setStep('select-account');
               toast({
@@ -320,7 +297,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
             });
             setStep('credentials');
           }
-        } else if (event.data.type === 'OAUTH_ERROR') {
+        } else if (event.data.type === 'linkedin_auth_error') {
           toast({
             title: "OAuth Error",
             description: event.data.error || "Authentication failed",
@@ -409,7 +386,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          accessToken,
+          campaignId,
           adAccountId: selectedAdAccount
         })
       });
@@ -495,7 +472,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
           campaignId,
           adAccountId: selectedAdAccount,
           adAccountName: adAccounts.find(a => a.id === selectedAdAccount)?.name || '',
-          accessToken: isTestMode ? undefined : accessToken,
           isTestMode,
           campaigns: selectedCampaigns.map(c => ({
             id: c.id,
@@ -873,46 +849,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
           />
         </div>
 
-        {!showClientIdInput && !hasEnvCredentials && !isTestMode ? (
-          <div className="space-y-4">
-            <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-              <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Connect Your Ad Account</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
-                Access your LinkedIn Ads data to automatically import campaign metrics, budgets, and performance data using secure OAuth authentication.
-              </p>
-            </div>
-            
-            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <ExternalLink className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                <div className="space-y-2">
-                  <h4 className="font-medium text-blue-900 dark:text-blue-100 text-sm">Need OAuth Credentials?</h4>
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    Get your Client ID and Client Secret from the LinkedIn Developer Portal:
-                  </p>
-                  <ol className="text-xs text-blue-700 dark:text-blue-300 space-y-1 list-decimal list-inside">
-                    <li>Go to <a href="https://developer.linkedin.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">developer.linkedin.com</a></li>
-                    <li>Create a new app or select an existing one</li>
-                    <li>Go to the "Auth" tab to find your credentials</li>
-                    <li>Add your redirect URL in OAuth 2.0 settings</li>
-                  </ol>
-                </div>
-              </div>
-            </div>
-            
-            <Button 
-              onClick={() => setShowClientIdInput(true)} 
-              className="w-full bg-blue-600 hover:bg-blue-700"
-              data-testid="button-connect-oauth"
-            >
-              <SiLinkedin className="w-4 h-4 mr-2" />
-              Connect with LinkedIn OAuth
-            </Button>
-          </div>
-        ) : isTestMode ? (
+        {isTestMode ? (
           <div className="space-y-4">
             <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
               <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />
@@ -938,16 +875,16 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
               {isConnecting ? "Connecting..." : "Start Test Connection"}
             </Button>
           </div>
-        ) : hasEnvCredentials && !showClientIdInput ? (
+        ) : (
           <div className="space-y-4">
             <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
               <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="text-center">
-              <Badge variant="outline" className="mb-3">Platform Configured</Badge>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Ready to Connect</h3>
+              <Badge variant="outline" className="mb-3">Secure sign-in</Badge>
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Connect LinkedIn Ads</h3>
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
-                OAuth credentials are already configured. Click below to connect your LinkedIn ad account securely.
+                Click below to sign in with LinkedIn in a popup window. You’ll come back here automatically and then pick your ad account.
               </p>
             </div>
             
@@ -960,60 +897,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
               <SiLinkedin className="w-4 h-4 mr-2" />
               {isConnecting ? "Connecting..." : "Connect with LinkedIn"}
             </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <Badge variant="outline" className="mb-3">OAuth Setup</Badge>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Enter your LinkedIn OAuth credentials from the Developer Portal
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="linkedin-client-id">Client ID</Label>
-              <Input
-                id="linkedin-client-id"
-                type="text"
-                placeholder="Your LinkedIn OAuth Client ID"
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                className="font-mono text-sm"
-                data-testid="input-client-id"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="linkedin-client-secret">Client Secret</Label>
-              <Input
-                id="linkedin-client-secret"
-                type="password"
-                placeholder="Your LinkedIn OAuth Client Secret"
-                value={clientSecret}
-                onChange={(e) => setClientSecret(e.target.value)}
-                className="font-mono text-sm"
-                data-testid="input-client-secret"
-              />
-            </div>
-            
-            <div className="flex gap-3 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowClientIdInput(false)}
-                className="flex-1"
-                data-testid="button-cancel-oauth"
-              >
-                Back
-              </Button>
-              <Button 
-                onClick={handleLinkedInOAuth}
-                disabled={isConnecting || !clientId || !clientSecret}
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
-                data-testid="button-continue-oauth"
-              >
-                {isConnecting ? "Connecting..." : "Continue"}
-              </Button>
-            </div>
           </div>
         )}
       </CardContent>

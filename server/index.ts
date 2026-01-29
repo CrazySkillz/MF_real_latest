@@ -186,6 +186,36 @@ process.on('uncaughtException', (error: Error) => {
           await db.execute(sql`
             CREATE INDEX IF NOT EXISTS idx_campaigns_owner_id ON campaigns(owner_id);
           `);
+
+          // Migration: encrypted token storage for integrations (tokens/secrets at rest)
+          await db.execute(sql`
+            ALTER TABLE ga4_connections
+            ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;
+          `);
+          await db.execute(sql`
+            ALTER TABLE google_sheets_connections
+            ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;
+          `);
+          await db.execute(sql`
+            ALTER TABLE linkedin_connections
+            ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;
+          `);
+          await db.execute(sql`
+            ALTER TABLE hubspot_connections
+            ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;
+          `);
+          await db.execute(sql`
+            ALTER TABLE salesforce_connections
+            ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;
+          `);
+          await db.execute(sql`
+            ALTER TABLE shopify_connections
+            ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;
+          `);
+          await db.execute(sql`
+            ALTER TABLE meta_connections
+            ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;
+          `);
           
           // Migration 1: Add KPI campaign scope columns
           await db.execute(sql`

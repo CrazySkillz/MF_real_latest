@@ -521,7 +521,7 @@ export async function refreshAllLinkedInData(): Promise<void> {
 
   try {
     // Get all LinkedIn connections from database
-    const allConnections = await db.select().from(linkedinConnections);
+    const allConnections = await db.select({ campaignId: linkedinConnections.campaignId }).from(linkedinConnections);
     
     if (!allConnections || allConnections.length === 0) {
       console.log('[LinkedIn Scheduler] No LinkedIn connections found');
@@ -531,8 +531,12 @@ export async function refreshAllLinkedInData(): Promise<void> {
     console.log(`[LinkedIn Scheduler] Found ${allConnections.length} LinkedIn connection(s) to refresh`);
 
     // Refresh data for each campaign
-    for (const connection of allConnections) {
-      await refreshLinkedInDataForCampaign(connection.campaignId, connection);
+    for (const row of allConnections) {
+      const campaignId = String((row as any).campaignId || "").trim();
+      if (!campaignId) continue;
+      // IMPORTANT: Fetch via storage so tokens are decrypted (and legacy plaintext can be backfilled).
+      const connection = await storage.getLinkedInConnection(campaignId);
+      await refreshLinkedInDataForCampaign(campaignId, connection);
     }
     
     console.log('[LinkedIn Scheduler] ✅ LinkedIn data refresh completed for all campaigns');

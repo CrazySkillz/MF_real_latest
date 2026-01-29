@@ -2,6 +2,17 @@ import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, typ
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
+import { buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
+
+function hydrateDecryptedTokens<T extends Record<string, any>>(row: T): T {
+  const enc = (row as any)?.encryptedTokens as EncryptedTokens | undefined;
+  const dec = decryptTokens(enc);
+  const merged = { ...row } as any;
+  if (dec.accessToken !== undefined && dec.accessToken !== null) merged.accessToken = dec.accessToken;
+  if (dec.refreshToken !== undefined && dec.refreshToken !== null) merged.refreshToken = dec.refreshToken;
+  if (dec.clientSecret !== undefined && dec.clientSecret !== null) merged.clientSecret = dec.clientSecret;
+  return merged;
+}
 
 export interface IStorage {
   // Campaigns
@@ -2539,9 +2550,34 @@ export class DatabaseStorage implements IStorage {
 
   // GA4 Connection methods
   async getGA4Connections(campaignId: string): Promise<GA4Connection[]> {
-    return db.select().from(ga4Connections)
+    const rows = await db
+      .select()
+      .from(ga4Connections)
       .where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)))
       .orderBy(ga4Connections.connectedAt);
+    // Lazy backfill: encrypt legacy plaintext tokens.
+    await Promise.all(
+      rows.map(async (r: any) => {
+        const hasPlain = Boolean(r?.accessToken) || Boolean(r?.refreshToken) || Boolean(r?.clientSecret);
+        const hasEnc = Boolean(r?.encryptedTokens);
+        if (!hasPlain || hasEnc || !r?.id) return;
+        try {
+          const nextEnc = buildEncryptedTokens({
+            accessToken: r.accessToken,
+            refreshToken: r.refreshToken,
+            clientSecret: r.clientSecret,
+          });
+          await db
+            .update(ga4Connections)
+            .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
+            .where(eq(ga4Connections.id, String(r.id)));
+        } catch {
+          // ignore
+        }
+      })
+    );
+
+    return rows.map((r: any) => hydrateDecryptedTokens(r)) as any;
   }
 
   async getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined> {
@@ -2552,7 +2588,7 @@ export class DatabaseStorage implements IStorage {
           eq(ga4Connections.propertyId, propertyId),
           eq(ga4Connections.isActive, true)
         ));
-      return connection || undefined;
+      return connection ? (hydrateDecryptedTokens(connection) as any) : undefined;
     }
     
     // Return the primary connection if no propertyId specified
@@ -2563,7 +2599,7 @@ export class DatabaseStorage implements IStorage {
         eq(ga4Connections.isActive, true)
       ));
     
-    if (primary) return primary;
+    if (primary) return hydrateDecryptedTokens(primary) as any;
     
     // If no primary, return the first active connection
     const [first] = await db.select().from(ga4Connections)
@@ -2573,7 +2609,7 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(ga4Connections.connectedAt)
       .limit(1);
-    return first || undefined;
+    return first ? (hydrateDecryptedTokens(first) as any) : undefined;
   }
 
   async getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined> {
@@ -2584,7 +2620,7 @@ export class DatabaseStorage implements IStorage {
         eq(ga4Connections.isActive, true)
       ));
     
-    if (primary) return primary;
+    if (primary) return hydrateDecryptedTokens(primary) as any;
     
     // If no primary, return the first active connection
     const [first] = await db.select().from(ga4Connections)
@@ -2594,7 +2630,7 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(ga4Connections.connectedAt)
       .limit(1);
-    return first || undefined;
+    return first ? (hydrateDecryptedTokens(first) as any) : undefined;
   }
 
   async createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection> {
@@ -2602,8 +2638,19 @@ export class DatabaseStorage implements IStorage {
     const existingConnections = await this.getGA4Connections(connection.campaignId);
     const isFirstConnection = existingConnections.length === 0;
     
-    const connectionData = {
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+      clientSecret: (connection as any).clientSecret,
+    });
+
+    const connectionData: any = {
       ...connection,
+      // Never store plaintext tokens/secrets at rest.
+      accessToken: null,
+      refreshToken: null,
+      clientSecret: null,
+      encryptedTokens: enc,
       isPrimary: connection.isPrimary !== undefined ? connection.isPrimary : isFirstConnection,
       isActive: connection.isActive !== undefined ? connection.isActive : true,
       displayName: connection.displayName || connection.propertyName || null,
@@ -2613,29 +2660,65 @@ export class DatabaseStorage implements IStorage {
       .insert(ga4Connections)
       .values(connectionData)
       .returning();
-    return ga4Connection;
+    return hydrateDecryptedTokens(ga4Connection) as any;
   }
 
   async updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined> {
+    const [existing] = await db.select().from(ga4Connections).where(eq(ga4Connections.id, connectionId));
+    if (!existing) return undefined;
+
+    const tokenFieldsProvided =
+      Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "refreshToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "clientSecret");
+
+    const setObj: any = { ...connection };
+
+    if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+      setObj.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        clientSecret: (connection as any).clientSecret,
+        prev: (existing as any).encryptedTokens,
+      });
+      // Clear plaintext if we are maintaining encrypted tokens.
+      setObj.accessToken = null;
+      setObj.refreshToken = null;
+      setObj.clientSecret = null;
+    }
+
     const [updated] = await db
       .update(ga4Connections)
-      .set(connection)
+      .set(setObj)
       .where(eq(ga4Connections.id, connectionId))
       .returning();
-    return updated || undefined;
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
   }
 
   async updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined> {
+    const [existing] = await db.select().from(ga4Connections).where(eq(ga4Connections.id, connectionId));
+    if (!existing) return undefined;
+
+    const nextEnc = buildEncryptedTokens({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      clientSecret: undefined, // preserve
+      prev: (existing as any).encryptedTokens,
+    });
+
     const [updated] = await db
       .update(ga4Connections)
       .set({
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
+        encryptedTokens: nextEnc,
+        accessToken: null,
+        refreshToken: null,
+        // keep clientSecret plaintext null once encryptedTokens is in use
+        clientSecret: null as any,
         expiresAt: tokens.expiresAt,
-      })
+      } as any)
       .where(eq(ga4Connections.id, connectionId))
       .returning();
-    return updated || undefined;
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
   }
 
   async setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean> {
@@ -2985,7 +3068,7 @@ export class DatabaseStorage implements IStorage {
             : eq(purposeCol, purpose))
         : undefined;
 
-      return await db.select({
+      const rows = await db.select({
         id: googleSheetsConnections.id,
         campaignId: googleSheetsConnections.campaignId,
         spreadsheetId: googleSheetsConnections.spreadsheetId,
@@ -2996,6 +3079,7 @@ export class DatabaseStorage implements IStorage {
         refreshToken: googleSheetsConnections.refreshToken,
         clientId: googleSheetsConnections.clientId,
         clientSecret: googleSheetsConnections.clientSecret,
+        encryptedTokens: (googleSheetsConnections as any).encryptedTokens,
         expiresAt: googleSheetsConnections.expiresAt,
         isPrimary: googleSheetsConnections.isPrimary,
         isActive: googleSheetsConnections.isActive,
@@ -3009,12 +3093,35 @@ export class DatabaseStorage implements IStorage {
         ...(purposeFilter ? [purposeFilter] : [])
       ))
       .orderBy(googleSheetsConnections.connectedAt);
+      // Lazy backfill: encrypt legacy plaintext tokens.
+      await Promise.all(
+        rows.map(async (r: any) => {
+          const hasPlain = Boolean(r?.accessToken) || Boolean(r?.refreshToken) || Boolean(r?.clientSecret);
+          const hasEnc = Boolean(r?.encryptedTokens);
+          if (!hasPlain || hasEnc || !r?.id) return;
+          try {
+            const nextEnc = buildEncryptedTokens({
+              accessToken: r.accessToken,
+              refreshToken: r.refreshToken,
+              clientSecret: r.clientSecret,
+            });
+            await db
+              .update(googleSheetsConnections)
+              .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
+              .where(eq(googleSheetsConnections.id, String(r.id)));
+          } catch {
+            // ignore
+          }
+        })
+      );
+
+      return rows.map((r: any) => hydrateDecryptedTokens(r)) as any;
     } catch (error: any) {
       // If sheet_name/purpose column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('purpose') || error.message?.includes('column') || error.code === '42703') {
         console.log('[Storage] sheet_name/purpose column not found, using fallback query');
         const result = await db.execute(sql`
-          SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token,
+          SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, encrypted_tokens,
                  client_id, client_secret, expires_at, is_primary, is_active, column_mappings, 
                  connected_at, created_at
           FROM google_sheets_connections
@@ -3022,7 +3129,7 @@ export class DatabaseStorage implements IStorage {
           ORDER BY connected_at
         `);
         // Map raw results to GoogleSheetsConnection format
-        const all = result.rows.map((row: any) => ({
+        const all = result.rows.map((row: any) => hydrateDecryptedTokens({
           id: row.id,
           campaignId: row.campaign_id,
           spreadsheetId: row.spreadsheet_id,
@@ -3033,6 +3140,7 @@ export class DatabaseStorage implements IStorage {
           refreshToken: row.refresh_token,
           clientId: row.client_id,
           clientSecret: row.client_secret,
+          encryptedTokens: row.encrypted_tokens,
           expiresAt: row.expires_at,
           isPrimary: row.is_primary,
           isActive: row.is_active,
@@ -3058,7 +3166,7 @@ export class DatabaseStorage implements IStorage {
           eq(googleSheetsConnections.spreadsheetId, spreadsheetId),
           eq(googleSheetsConnections.isActive, true)
         ));
-      return connection || undefined;
+      return connection ? (hydrateDecryptedTokens(connection) as any) : undefined;
     }
     
     // Return the primary connection if no spreadsheetId specified
@@ -3069,7 +3177,7 @@ export class DatabaseStorage implements IStorage {
         eq(googleSheetsConnections.isActive, true)
       ));
     
-    if (primary) return primary;
+    if (primary) return hydrateDecryptedTokens(primary) as any;
     
     // Fallback to first active connection if no primary
     const [first] = await db.select().from(googleSheetsConnections)
@@ -3079,7 +3187,7 @@ export class DatabaseStorage implements IStorage {
       ))
       .limit(1);
     
-    return first || undefined;
+    return first ? (hydrateDecryptedTokens(first) as any) : undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -3087,7 +3195,7 @@ export class DatabaseStorage implements IStorage {
         let query;
         if (spreadsheetId) {
           query = sql`
-            SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, 
+            SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, encrypted_tokens,
                    client_id, client_secret, expires_at, is_primary, is_active, column_mappings, 
                    connected_at, created_at
             FROM google_sheets_connections
@@ -3097,7 +3205,7 @@ export class DatabaseStorage implements IStorage {
         } else {
           // Try primary first
           query = sql`
-            SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, 
+            SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, encrypted_tokens,
                    client_id, client_secret, expires_at, is_primary, is_active, column_mappings, 
                    connected_at, created_at
             FROM google_sheets_connections
@@ -3109,7 +3217,7 @@ export class DatabaseStorage implements IStorage {
         if (result.rows.length === 0 && !spreadsheetId) {
           // Fallback to first active
           const fallbackResult = await db.execute(sql`
-            SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, 
+            SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, encrypted_tokens,
                    client_id, client_secret, expires_at, is_primary, is_active, column_mappings, 
                    connected_at, created_at
             FROM google_sheets_connections
@@ -3118,7 +3226,7 @@ export class DatabaseStorage implements IStorage {
           `);
           if (fallbackResult.rows.length === 0) return undefined;
           const row = fallbackResult.rows[0] as any;
-          return {
+          return hydrateDecryptedTokens({
             id: row.id,
             campaignId: row.campaign_id,
             spreadsheetId: row.spreadsheet_id,
@@ -3128,17 +3236,18 @@ export class DatabaseStorage implements IStorage {
             refreshToken: row.refresh_token,
             clientId: row.client_id,
             clientSecret: row.client_secret,
+            encryptedTokens: row.encrypted_tokens,
             expiresAt: row.expires_at,
             isPrimary: row.is_primary,
             isActive: row.is_active,
             columnMappings: row.column_mappings,
             connectedAt: row.connected_at,
             createdAt: row.created_at
-          } as GoogleSheetsConnection;
+          } as any) as any;
         }
         if (result.rows.length === 0) return undefined;
         const row = result.rows[0] as any;
-        return {
+        return hydrateDecryptedTokens({
           id: row.id,
           campaignId: row.campaign_id,
           spreadsheetId: row.spreadsheet_id,
@@ -3148,13 +3257,14 @@ export class DatabaseStorage implements IStorage {
           refreshToken: row.refresh_token,
           clientId: row.client_id,
           clientSecret: row.client_secret,
+          encryptedTokens: row.encrypted_tokens,
           expiresAt: row.expires_at,
           isPrimary: row.is_primary,
           isActive: row.is_active,
           columnMappings: row.column_mappings,
           connectedAt: row.connected_at,
           createdAt: row.created_at
-        } as GoogleSheetsConnection;
+        } as any) as any;
       }
       throw error;
     }
@@ -3212,39 +3322,55 @@ export class DatabaseStorage implements IStorage {
     
     try {
       // Try to insert - Drizzle will include all fields from schema, which may fail if sheet_name doesn't exist
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+      clientSecret: (connection as any).clientSecret,
+    });
+
     const [sheetsConnection] = await db
       .insert(googleSheetsConnections)
       .values({
         ...connection,
+        accessToken: null,
+        refreshToken: null,
+        clientSecret: null,
+        encryptedTokens: enc,
         isPrimary: isPrimary,
         isActive: true
       })
       .returning();
-    return sheetsConnection;
+    return hydrateDecryptedTokens(sheetsConnection) as any;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL insert
       if (error.message?.includes('sheet_name') || error.message?.includes('purpose') || error.message?.includes('column') || error.code === '42703') {
         console.log('[Storage] sheet_name/purpose column not found, using fallback insert for createGoogleSheetsConnection');
+        const enc = buildEncryptedTokens({
+          accessToken: (connection as any).accessToken,
+          refreshToken: (connection as any).refreshToken,
+          clientSecret: (connection as any).clientSecret,
+        });
         const result = await db.execute(sql`
           INSERT INTO google_sheets_connections (
             campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token,
-            client_id, client_secret, expires_at, is_primary, is_active, column_mappings,
+            client_id, client_secret, encrypted_tokens, expires_at, is_primary, is_active, column_mappings,
             connected_at, created_at
           )
           VALUES (
             ${connection.campaignId}, ${connection.spreadsheetId}, ${connection.spreadsheetName || null},
-            ${connection.accessToken || null}, ${connection.refreshToken || null},
-            ${connection.clientId || null}, ${connection.clientSecret || null},
+            ${null}, ${null},
+            ${connection.clientId || null}, ${null},
+            ${JSON.stringify(enc)}::jsonb,
             ${connection.expiresAt || null}, ${isPrimary}, true,
             ${(connection as any).columnMappings || null},
             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
           )
           RETURNING id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token,
-                    client_id, client_secret, expires_at, is_primary, is_active, column_mappings,
+                    client_id, client_secret, encrypted_tokens, expires_at, is_primary, is_active, column_mappings,
                     connected_at, created_at
         `);
         const row = result.rows[0] as any;
-        return {
+        return hydrateDecryptedTokens({
           id: row.id,
           campaignId: row.campaign_id,
           spreadsheetId: row.spreadsheet_id,
@@ -3255,13 +3381,14 @@ export class DatabaseStorage implements IStorage {
           refreshToken: row.refresh_token,
           clientId: row.client_id,
           clientSecret: row.client_secret,
+          encryptedTokens: row.encrypted_tokens,
           expiresAt: row.expires_at,
           isPrimary: row.is_primary,
           isActive: row.is_active,
           columnMappings: row.column_mappings,
           connectedAt: row.connected_at,
           createdAt: row.created_at
-        } as GoogleSheetsConnection;
+        } as any) as any;
       }
       throw error;
     }
@@ -3269,16 +3396,32 @@ export class DatabaseStorage implements IStorage {
 
   async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
     try {
+    const [existing] = await db.select().from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
+    if (!existing) return undefined;
+
     // Build the set object with explicit field mapping for columnMappings
     const setData: any = {};
     if (connection.spreadsheetId !== undefined) setData.spreadsheetId = connection.spreadsheetId;
     if (connection.spreadsheetName !== undefined) setData.spreadsheetName = connection.spreadsheetName;
     if ((connection as any).sheetName !== undefined) setData.sheetName = (connection as any).sheetName;
     if ((connection as any).purpose !== undefined) setData.purpose = (connection as any).purpose;
-    if (connection.accessToken !== undefined) setData.accessToken = connection.accessToken;
-    if (connection.refreshToken !== undefined) setData.refreshToken = connection.refreshToken;
+    const tokenFieldsProvided =
+      Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "refreshToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "clientSecret");
+
+    if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+      setData.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        clientSecret: (connection as any).clientSecret,
+        prev: (existing as any).encryptedTokens,
+      });
+      setData.accessToken = null;
+      setData.refreshToken = null;
+      setData.clientSecret = null;
+    }
     if (connection.clientId !== undefined) setData.clientId = connection.clientId;
-    if (connection.clientSecret !== undefined) setData.clientSecret = connection.clientSecret;
     if (connection.expiresAt !== undefined) setData.expiresAt = connection.expiresAt;
     if (connection.isPrimary !== undefined) setData.isPrimary = connection.isPrimary;
     if (connection.isActive !== undefined) setData.isActive = connection.isActive;
@@ -3302,6 +3445,7 @@ export class DatabaseStorage implements IStorage {
         refreshToken: googleSheetsConnections.refreshToken,
         clientId: googleSheetsConnections.clientId,
         clientSecret: googleSheetsConnections.clientSecret,
+        encryptedTokens: (googleSheetsConnections as any).encryptedTokens,
         expiresAt: googleSheetsConnections.expiresAt,
         isPrimary: googleSheetsConnections.isPrimary,
         isActive: googleSheetsConnections.isActive,
@@ -3309,7 +3453,7 @@ export class DatabaseStorage implements IStorage {
         connectedAt: googleSheetsConnections.connectedAt,
         createdAt: googleSheetsConnections.createdAt,
       });
-    return updated || undefined;
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL update
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -3492,11 +3636,32 @@ export class DatabaseStorage implements IStorage {
 
   // HubSpot Connection methods
   async getHubspotConnections(campaignId: string): Promise<HubspotConnection[]> {
-    return await db
+    const rows = await db
       .select()
       .from(hubspotConnections)
       .where(and(eq(hubspotConnections.campaignId, campaignId), eq(hubspotConnections.isActive, true)))
       .orderBy(hubspotConnections.connectedAt);
+    await Promise.all(
+      rows.map(async (r: any) => {
+        const hasPlain = Boolean(r?.accessToken) || Boolean(r?.refreshToken) || Boolean(r?.clientSecret);
+        const hasEnc = Boolean(r?.encryptedTokens);
+        if (!hasPlain || hasEnc || !r?.id) return;
+        try {
+          const nextEnc = buildEncryptedTokens({
+            accessToken: r.accessToken,
+            refreshToken: r.refreshToken,
+            clientSecret: r.clientSecret,
+          });
+          await db
+            .update(hubspotConnections)
+            .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
+            .where(eq(hubspotConnections.id, String(r.id)));
+        } catch {
+          // ignore
+        }
+      })
+    );
+    return rows.map((r: any) => hydrateDecryptedTokens(r)) as any;
   }
 
   async getHubspotConnection(campaignId: string): Promise<HubspotConnection | undefined> {
@@ -3506,27 +3671,75 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(hubspotConnections.campaignId, campaignId), eq(hubspotConnections.isActive, true)))
       .orderBy(desc(hubspotConnections.connectedAt))
       .limit(1);
-    return latest || undefined;
+    if (!latest) return undefined;
+    const hydrated = hydrateDecryptedTokens(latest) as any;
+    const hasPlain = Boolean((latest as any).accessToken) || Boolean((latest as any).refreshToken) || Boolean((latest as any).clientSecret);
+    const hasEnc = Boolean((latest as any).encryptedTokens);
+    if (hasPlain && !hasEnc) {
+      try {
+        const nextEnc = buildEncryptedTokens({
+          accessToken: (latest as any).accessToken,
+          refreshToken: (latest as any).refreshToken,
+          clientSecret: (latest as any).clientSecret,
+        });
+        await db
+          .update(hubspotConnections)
+          .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
+          .where(eq(hubspotConnections.id, String((latest as any).id)));
+      } catch {
+        // ignore
+      }
+    }
+    return hydrated;
   }
 
   async createHubspotConnection(connection: InsertHubspotConnection): Promise<HubspotConnection> {
-    const connectionData = {
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+      clientSecret: (connection as any).clientSecret,
+    });
+    const connectionData: any = {
       ...connection,
       isActive: connection.isActive !== undefined ? connection.isActive : true,
       clientId: connection.clientId || null,
-      clientSecret: connection.clientSecret || null,
+      clientSecret: null,
+      accessToken: null,
+      refreshToken: null,
+      encryptedTokens: enc as any,
     };
     const [created] = await db.insert(hubspotConnections).values(connectionData).returning();
-    return created;
+    return hydrateDecryptedTokens(created) as any;
   }
 
   async updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>): Promise<HubspotConnection | undefined> {
+    const [existing] = await db.select().from(hubspotConnections).where(eq(hubspotConnections.id, connectionId));
+    if (!existing) return undefined;
+
+    const tokenFieldsProvided =
+      Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "refreshToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "clientSecret");
+
+    const setObj: any = { ...connection };
+    if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+      setObj.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        clientSecret: (connection as any).clientSecret,
+        prev: (existing as any).encryptedTokens,
+      });
+      setObj.accessToken = null;
+      setObj.refreshToken = null;
+      setObj.clientSecret = null;
+    }
+
     const [updated] = await db
       .update(hubspotConnections)
-      .set(connection)
+      .set(setObj)
       .where(eq(hubspotConnections.id, connectionId))
       .returning();
-    return updated || undefined;
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
   }
 
   async deleteHubspotConnection(connectionId: string): Promise<boolean> {
@@ -3539,11 +3752,32 @@ export class DatabaseStorage implements IStorage {
 
   // Salesforce Connection methods
   async getSalesforceConnections(campaignId: string): Promise<SalesforceConnection[]> {
-    return await db
+    const rows = await db
       .select()
       .from(salesforceConnections)
       .where(and(eq(salesforceConnections.campaignId, campaignId), eq(salesforceConnections.isActive, true)))
       .orderBy(salesforceConnections.connectedAt);
+    await Promise.all(
+      rows.map(async (r: any) => {
+        const hasPlain = Boolean(r?.accessToken) || Boolean(r?.refreshToken) || Boolean(r?.clientSecret);
+        const hasEnc = Boolean(r?.encryptedTokens);
+        if (!hasPlain || hasEnc || !r?.id) return;
+        try {
+          const nextEnc = buildEncryptedTokens({
+            accessToken: r.accessToken,
+            refreshToken: r.refreshToken,
+            clientSecret: r.clientSecret,
+          });
+          await db
+            .update(salesforceConnections)
+            .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
+            .where(eq(salesforceConnections.id, String(r.id)));
+        } catch {
+          // ignore
+        }
+      })
+    );
+    return rows.map((r: any) => hydrateDecryptedTokens(r)) as any;
   }
 
   async getSalesforceConnection(campaignId: string): Promise<SalesforceConnection | undefined> {
@@ -3553,27 +3787,75 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(salesforceConnections.campaignId, campaignId), eq(salesforceConnections.isActive, true)))
       .orderBy(desc(salesforceConnections.connectedAt))
       .limit(1);
-    return latest || undefined;
+    if (!latest) return undefined;
+    const hydrated = hydrateDecryptedTokens(latest) as any;
+    const hasPlain = Boolean((latest as any).accessToken) || Boolean((latest as any).refreshToken) || Boolean((latest as any).clientSecret);
+    const hasEnc = Boolean((latest as any).encryptedTokens);
+    if (hasPlain && !hasEnc) {
+      try {
+        const nextEnc = buildEncryptedTokens({
+          accessToken: (latest as any).accessToken,
+          refreshToken: (latest as any).refreshToken,
+          clientSecret: (latest as any).clientSecret,
+        });
+        await db
+          .update(salesforceConnections)
+          .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
+          .where(eq(salesforceConnections.id, String((latest as any).id)));
+      } catch {
+        // ignore
+      }
+    }
+    return hydrated;
   }
 
   async createSalesforceConnection(connection: InsertSalesforceConnection): Promise<SalesforceConnection> {
-    const connectionData = {
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+      clientSecret: (connection as any).clientSecret,
+    });
+    const connectionData: any = {
       ...connection,
       isActive: connection.isActive !== undefined ? connection.isActive : true,
       clientId: connection.clientId || null,
-      clientSecret: connection.clientSecret || null,
+      clientSecret: null,
+      accessToken: null,
+      refreshToken: null,
+      encryptedTokens: enc as any,
     };
     const [created] = await db.insert(salesforceConnections).values(connectionData).returning();
-    return created;
+    return hydrateDecryptedTokens(created) as any;
   }
 
   async updateSalesforceConnection(connectionId: string, connection: Partial<InsertSalesforceConnection>): Promise<SalesforceConnection | undefined> {
+    const [existing] = await db.select().from(salesforceConnections).where(eq(salesforceConnections.id, connectionId));
+    if (!existing) return undefined;
+
+    const tokenFieldsProvided =
+      Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "refreshToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "clientSecret");
+
+    const setObj: any = { ...connection };
+    if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+      setObj.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        clientSecret: (connection as any).clientSecret,
+        prev: (existing as any).encryptedTokens,
+      });
+      setObj.accessToken = null;
+      setObj.refreshToken = null;
+      setObj.clientSecret = null;
+    }
+
     const [updated] = await db
       .update(salesforceConnections)
-      .set(connection)
+      .set(setObj)
       .where(eq(salesforceConnections.id, connectionId))
       .returning();
-    return updated || undefined;
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
   }
 
   async deleteSalesforceConnection(connectionId: string): Promise<boolean> {
@@ -3586,11 +3868,28 @@ export class DatabaseStorage implements IStorage {
 
   // Shopify Connection methods
   async getShopifyConnections(campaignId: string): Promise<ShopifyConnection[]> {
-    return await db
+    const rows = await db
       .select()
       .from(shopifyConnections)
       .where(and(eq(shopifyConnections.campaignId, campaignId), eq(shopifyConnections.isActive, true)))
       .orderBy(shopifyConnections.connectedAt);
+    await Promise.all(
+      rows.map(async (r: any) => {
+        const hasPlain = Boolean(r?.accessToken);
+        const hasEnc = Boolean(r?.encryptedTokens);
+        if (!hasPlain || hasEnc || !r?.id) return;
+        try {
+          const nextEnc = buildEncryptedTokens({ accessToken: r.accessToken });
+          await db
+            .update(shopifyConnections)
+            .set({ encryptedTokens: nextEnc as any, accessToken: null } as any)
+            .where(eq(shopifyConnections.id, String(r.id)));
+        } catch {
+          // ignore
+        }
+      })
+    );
+    return rows.map((r: any) => hydrateDecryptedTokens(r)) as any;
   }
 
   async getShopifyConnection(campaignId: string): Promise<ShopifyConnection | undefined> {
@@ -3600,28 +3899,58 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(shopifyConnections.campaignId, campaignId), eq(shopifyConnections.isActive, true)))
       .orderBy(desc(shopifyConnections.connectedAt))
       .limit(1);
-    return latest || undefined;
+    if (!latest) return undefined;
+    const hydrated = hydrateDecryptedTokens(latest) as any;
+    const hasPlain = Boolean((latest as any).accessToken);
+    const hasEnc = Boolean((latest as any).encryptedTokens);
+    if (hasPlain && !hasEnc) {
+      try {
+        const nextEnc = buildEncryptedTokens({ accessToken: (latest as any).accessToken });
+        await db
+          .update(shopifyConnections)
+          .set({ encryptedTokens: nextEnc as any, accessToken: null } as any)
+          .where(eq(shopifyConnections.id, String((latest as any).id)));
+      } catch {
+        // ignore
+      }
+    }
+    return hydrated;
   }
 
   async createShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection> {
-    const connectionData = {
+    const enc = buildEncryptedTokens({ accessToken: (connection as any).accessToken });
+    const connectionData: any = {
       ...connection,
       isActive: connection.isActive !== undefined ? connection.isActive : true,
       shopName: connection.shopName || null,
-      accessToken: connection.accessToken || null,
+      accessToken: null,
+      encryptedTokens: enc as any,
       mappingConfig: connection.mappingConfig || null,
     };
     const [created] = await db.insert(shopifyConnections).values(connectionData).returning();
-    return created;
+    return hydrateDecryptedTokens(created) as any;
   }
 
   async updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>): Promise<ShopifyConnection | undefined> {
+    const [existing] = await db.select().from(shopifyConnections).where(eq(shopifyConnections.id, connectionId));
+    if (!existing) return undefined;
+
+    const tokenProvided = Object.prototype.hasOwnProperty.call(connection, "accessToken");
+    const setObj: any = { ...connection };
+    if (tokenProvided || (existing as any).encryptedTokens) {
+      setObj.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        prev: (existing as any).encryptedTokens,
+      } as any);
+      setObj.accessToken = null;
+    }
+
     const [updated] = await db
       .update(shopifyConnections)
-      .set(connection)
+      .set(setObj)
       .where(eq(shopifyConnections.id, connectionId))
       .returning();
-    return updated || undefined;
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
   }
 
   async deleteShopifyConnection(connectionId: string): Promise<boolean> {
@@ -3635,24 +3964,87 @@ export class DatabaseStorage implements IStorage {
   // LinkedIn Connection methods
   async getLinkedInConnection(campaignId: string): Promise<LinkedInConnection | undefined> {
     const [connection] = await db.select().from(linkedinConnections).where(eq(linkedinConnections.campaignId, campaignId));
-    return connection || undefined;
+    if (!connection) return undefined;
+
+    const hydrated = hydrateDecryptedTokens(connection) as any;
+
+    // Lazy backfill: encrypt legacy plaintext tokens and clear them.
+    const hasPlain =
+      Boolean((connection as any).accessToken) ||
+      Boolean((connection as any).refreshToken) ||
+      Boolean((connection as any).clientSecret);
+    const hasEnc = Boolean((connection as any).encryptedTokens);
+    if (hasPlain && !hasEnc) {
+      try {
+        const nextEnc = buildEncryptedTokens({
+          accessToken: (connection as any).accessToken,
+          refreshToken: (connection as any).refreshToken,
+          clientSecret: (connection as any).clientSecret,
+        });
+        await db
+          .update(linkedinConnections)
+          .set({
+            encryptedTokens: nextEnc as any,
+            accessToken: null,
+            refreshToken: null,
+            clientSecret: null,
+          } as any)
+          .where(eq(linkedinConnections.campaignId, campaignId));
+      } catch {
+        // ignore
+      }
+    }
+
+    return hydrated;
   }
 
   async createLinkedInConnection(connection: InsertLinkedInConnection): Promise<LinkedInConnection> {
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+      clientSecret: (connection as any).clientSecret,
+    });
     const [linkedinConnection] = await db
       .insert(linkedinConnections)
-      .values(connection)
+      .values({
+        ...connection,
+        accessToken: null,
+        refreshToken: null,
+        clientSecret: null,
+        encryptedTokens: enc as any,
+      } as any)
       .returning();
-    return linkedinConnection;
+    return hydrateDecryptedTokens(linkedinConnection) as any;
   }
 
   async updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined> {
+    const [existing] = await db.select().from(linkedinConnections).where(eq(linkedinConnections.campaignId, campaignId));
+    if (!existing) return undefined;
+
+    const tokenFieldsProvided =
+      Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "refreshToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "clientSecret");
+
+    const setObj: any = { ...connection };
+    if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+      setObj.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        clientSecret: (connection as any).clientSecret,
+        prev: (existing as any).encryptedTokens,
+      });
+      setObj.accessToken = null;
+      setObj.refreshToken = null;
+      setObj.clientSecret = null;
+    }
+
     const [updated] = await db
       .update(linkedinConnections)
-      .set(connection)
+      .set(setObj)
       .where(eq(linkedinConnections.campaignId, campaignId))
       .returning();
-    return updated || undefined;
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
   }
 
   async deleteLinkedInConnection(campaignId: string): Promise<boolean> {
@@ -3665,24 +4057,69 @@ export class DatabaseStorage implements IStorage {
   // Meta Connection methods
   async getMetaConnection(campaignId: string): Promise<MetaConnection | undefined> {
     const [connection] = await db.select().from(metaConnections).where(eq(metaConnections.campaignId, campaignId));
-    return connection || undefined;
+    if (!connection) return undefined;
+    const hydrated = hydrateDecryptedTokens(connection) as any;
+    const hasPlain = Boolean((connection as any).accessToken) || Boolean((connection as any).refreshToken);
+    const hasEnc = Boolean((connection as any).encryptedTokens);
+    if (hasPlain && !hasEnc) {
+      try {
+        const nextEnc = buildEncryptedTokens({
+          accessToken: (connection as any).accessToken,
+          refreshToken: (connection as any).refreshToken,
+        } as any);
+        await db
+          .update(metaConnections)
+          .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null } as any)
+          .where(eq(metaConnections.campaignId, campaignId));
+      } catch {
+        // ignore
+      }
+    }
+    return hydrated;
   }
 
   async createMetaConnection(connection: InsertMetaConnection): Promise<MetaConnection> {
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+    } as any);
     const [metaConnection] = await db
       .insert(metaConnections)
-      .values(connection)
+      .values({
+        ...connection,
+        accessToken: null,
+        refreshToken: null,
+        encryptedTokens: enc as any,
+      } as any)
       .returning();
-    return metaConnection;
+    return hydrateDecryptedTokens(metaConnection) as any;
   }
 
   async updateMetaConnection(campaignId: string, connection: Partial<InsertMetaConnection>): Promise<MetaConnection | undefined> {
+    const [existing] = await db.select().from(metaConnections).where(eq(metaConnections.campaignId, campaignId));
+    if (!existing) return undefined;
+
+    const tokenFieldsProvided =
+      Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "refreshToken");
+
+    const setObj: any = { ...connection };
+    if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+      setObj.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        prev: (existing as any).encryptedTokens,
+      } as any);
+      setObj.accessToken = null;
+      setObj.refreshToken = null;
+    }
+
     const [updated] = await db
       .update(metaConnections)
-      .set(connection)
+      .set(setObj)
       .where(eq(metaConnections.campaignId, campaignId))
       .returning();
-    return updated || undefined;
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
   }
 
   async deleteMetaConnection(campaignId: string): Promise<boolean> {

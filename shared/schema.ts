@@ -71,6 +71,8 @@ export const ga4Connections = pgTable("ga4_connections", {
   isActive: boolean("is_active").notNull().default(true), // Whether this connection is active
   clientId: text("client_id"), // OAuth client ID for automatic refresh
   clientSecret: text("client_secret"), // OAuth client secret for automatic refresh  
+  // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
+  encryptedTokens: jsonb("encrypted_tokens"),
   expiresAt: timestamp("expires_at"), // Token expiration time
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -189,6 +191,8 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
   refreshToken: text("refresh_token"),
   clientId: text("client_id"),
   clientSecret: text("client_secret"),
+  // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
+  encryptedTokens: jsonb("encrypted_tokens"),
   expiresAt: timestamp("expires_at"),
   isPrimary: boolean("is_primary").notNull().default(false), // Primary sheet for this campaign
   isActive: boolean("is_active").notNull().default(true), // Whether this connection is active
@@ -206,6 +210,8 @@ export const hubspotConnections = pgTable("hubspot_connections", {
   refreshToken: text("refresh_token"),
   clientId: text("client_id"),
   clientSecret: text("client_secret"),
+  // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
+  encryptedTokens: jsonb("encrypted_tokens"),
   expiresAt: timestamp("expires_at"),
   isActive: boolean("is_active").notNull().default(true),
   mappingConfig: text("mapping_config"), // JSON string
@@ -223,6 +229,8 @@ export const salesforceConnections = pgTable("salesforce_connections", {
   refreshToken: text("refresh_token"),
   clientId: text("client_id"),
   clientSecret: text("client_secret"),
+  // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
+  encryptedTokens: jsonb("encrypted_tokens"),
   expiresAt: timestamp("expires_at"),
   isActive: boolean("is_active").notNull().default(true),
   mappingConfig: text("mapping_config"), // JSON string
@@ -237,6 +245,8 @@ export const shopifyConnections = pgTable("shopify_connections", {
   shopDomain: text("shop_domain").notNull(), // e.g. mystore.myshopify.com
   shopName: text("shop_name"),
   accessToken: text("access_token"),
+  // Encrypted tokens/secrets at rest (preferred). Plaintext column above is legacy/backward compatible.
+  encryptedTokens: jsonb("encrypted_tokens"),
   isActive: boolean("is_active").notNull().default(true),
   mappingConfig: text("mapping_config"), // JSON string
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -267,6 +277,8 @@ export const linkedinConnections = pgTable("linkedin_connections", {
   clientId: text("client_id"),
   clientSecret: text("client_secret"),
   method: text("method").notNull(), // 'oauth' or 'manual_token'
+  // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
+  encryptedTokens: jsonb("encrypted_tokens"),
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Platform-specific conversion value from Google Sheets/webhook
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -280,6 +292,8 @@ export const metaConnections = pgTable("meta_connections", {
   adAccountName: text("ad_account_name"),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
+  // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
+  encryptedTokens: jsonb("encrypted_tokens"),
   method: text("method").notNull(), // 'oauth' or 'test_mode'
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Platform-specific conversion value from Google Sheets/webhook
   expiresAt: timestamp("expires_at"),

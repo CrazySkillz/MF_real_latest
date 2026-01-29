@@ -13018,6 +13018,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/linkedin/connect - Manual token connection
   app.post("/api/linkedin/connect", async (req, res) => {
     try {
+      // Production hardening: do not accept long-lived tokens from the browser.
+      if (String(process.env.NODE_ENV || "").toLowerCase() === "production") {
+        return res.status(404).json({ success: false, message: "Not found" });
+      }
+
       const validatedData = insertLinkedInConnectionSchema.parse(req.body);
       const connection = await storage.createLinkedInConnection(validatedData);
       
@@ -13053,6 +13058,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/linkedin/check-connection/:campaignId", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const connection = await storage.getLinkedInConnection(campaignId);
       
       if (!connection || !connection.adAccountId) {
@@ -13079,6 +13086,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/linkedin/disconnect/:campaignId", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const deleted = await storage.deleteLinkedInConnection(campaignId);
       
       if (!deleted) {
@@ -13105,6 +13114,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/linkedin/update/:campaignId", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      // Production hardening: never accept long-lived tokens/secrets from the browser.
+      if (String(process.env.NODE_ENV || "").toLowerCase() === "production") {
+        const body: any = req.body || {};
+        if (body.accessToken || body.refreshToken || body.clientSecret) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid request",
+          });
+        }
+      }
       const validatedData = insertLinkedInConnectionSchema.partial().parse(req.body);
       
       const updatedConnection = await storage.updateLinkedInConnection(campaignId, validatedData);

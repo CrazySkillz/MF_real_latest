@@ -753,6 +753,21 @@ export default function LinkedInAnalytics() {
 
   // LinkedIn daily facts (persisted) for Insights anomaly/delta detection
   const LINKEDIN_DAILY_LOOKBACK_DAYS = 90;
+  const { data: linkedInCoverageResp, isLoading: linkedInCoverageLoading, isError: linkedInCoverageIsError, error: linkedInCoverageError, refetch: refetchLinkedInCoverage } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "linkedin-coverage", LINKEDIN_DAILY_LOOKBACK_DAYS],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    queryFn: async () => {
+      const resp = await fetch(
+        `/api/campaigns/${encodeURIComponent(String(campaignId))}/linkedin/coverage?days=${encodeURIComponent(String(LINKEDIN_DAILY_LOOKBACK_DAYS))}`
+      );
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) return { success: false };
+      return json;
+    },
+  });
   const { data: linkedInDailyResp, isLoading: linkedInDailyLoading, refetch: refetchLinkedInDaily } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "linkedin-daily", LINKEDIN_DAILY_LOOKBACK_DAYS],
     enabled: activeTab === "insights" && !!campaignId,
@@ -4440,6 +4455,60 @@ export default function LinkedInAnalytics() {
               </div>
             </div>
 
+            {/* Data coverage (canonical; shared across tabs) */}
+            {campaignId ? (
+              <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">
+                {(() => {
+                  const dataThrough = String((linkedInCoverageResp as any)?.dataThroughUtc || "").trim() || "—";
+                  const availableDays = Number((linkedInCoverageResp as any)?.availableDays || 0) || 0;
+                  const latestImportAtRaw = (linkedInCoverageResp as any)?.latestImportAt;
+                  const lastRefreshAtRaw = (linkedInCoverageResp as any)?.lastRefreshAt;
+                  const latestImportText = latestImportAtRaw ? new Date(latestImportAtRaw).toLocaleString() : "—";
+                  const lastRefreshText = lastRefreshAtRaw ? new Date(lastRefreshAtRaw).toLocaleString() : "—";
+                  const coverageErrorText = (linkedInCoverageError as any)?.message || "Failed to load coverage.";
+
+                  return (
+                    <>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          <div>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">Data through:</span>{" "}
+                            {dataThrough !== "—" ? `${dataThrough} (UTC)` : "—"}
+                          </div>
+                          <div>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">Available days:</span>{" "}
+                            {linkedInCoverageLoading ? "Loading…" : availableDays}
+                          </div>
+                          <div>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">Latest import:</span>{" "}
+                            {linkedInCoverageLoading ? "Loading…" : latestImportText}
+                          </div>
+                          <div>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">Last refresh:</span>{" "}
+                            {linkedInCoverageLoading ? "Loading…" : lastRefreshText}
+                          </div>
+                        </div>
+
+                        {linkedInCoverageIsError ? (
+                          <Button
+                            variant="outline"
+                            onClick={() => void refetchLinkedInCoverage()}
+                            className="h-7 px-2 text-xs"
+                          >
+                            Retry
+                          </Button>
+                        ) : null}
+                      </div>
+
+                      {linkedInCoverageIsError ? (
+                        <div className="mt-2 text-xs text-red-600 dark:text-red-400">{coverageErrorText}</div>
+                      ) : null}
+                    </>
+                  );
+                })()}
+              </div>
+            ) : null}
+
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-6" data-testid="tabs-list">
@@ -6004,13 +6073,14 @@ export default function LinkedInAnalytics() {
                       {(() => {
                         const availableDays = Number((linkedInInsightsRollups as any)?.availableDays || 0);
                         const hasRevenueTracking = (aggregated as any)?.hasRevenueTracking === 1 || (aggregated as any)?.hasRevenueTracking === true;
-                        const daily = Array.isArray(linkedInDailySeries?.daily) ? (linkedInDailySeries as any).daily : [];
-                        const dataThrough = daily.length > 0 ? String(daily[daily.length - 1]?.date || "") : null;
+                        const dataThrough = String((linkedInCoverageResp as any)?.dataThroughUtc || "").trim() || null;
                         const wowWindow =
                           (linkedInInsightsRollups as any)?.last7?.startDate && (linkedInInsightsRollups as any)?.last7?.endDate
                             ? `${(linkedInInsightsRollups as any).last7.startDate} → ${(linkedInInsightsRollups as any).last7.endDate} (last 7d)`
                             : null;
-                        const lastRefreshAt = Math.max(Number(linkedInDailyRefreshedAt || 0), Number(linkedInSignalsRefreshedAt || 0)) || 0;
+                        const coverageLastRefreshAtRaw = (linkedInCoverageResp as any)?.lastRefreshAt;
+                        const fallbackLastRefreshAt = Math.max(Number(linkedInDailyRefreshedAt || 0), Number(linkedInSignalsRefreshedAt || 0)) || 0;
+                        const lastRefreshAt = coverageLastRefreshAtRaw ? new Date(coverageLastRefreshAtRaw).getTime() : fallbackLastRefreshAt;
                         const lastRefreshText = lastRefreshAt > 0 ? new Date(lastRefreshAt).toLocaleString() : "—";
 
                         const all = Array.isArray(linkedInInsights) ? linkedInInsights : [];
@@ -6761,10 +6831,9 @@ export default function LinkedInAnalytics() {
                 </div>
 
                 {(() => {
-                  const daily = Array.isArray((linkedInDailySeries as any)?.daily) ? (linkedInDailySeries as any).daily : [];
-                  const dataThrough = daily.length > 0 ? String(daily[daily.length - 1]?.date || "") : null;
-                  const lastRefreshAt = Number(benchmarksRefreshedAt || 0) || 0;
-                  const lastRefreshText = lastRefreshAt > 0 ? new Date(lastRefreshAt).toLocaleString() : "—";
+                  const dataThrough = String((linkedInCoverageResp as any)?.dataThroughUtc || "").trim() || null;
+                  const lastRefreshAtRaw = (linkedInCoverageResp as any)?.lastRefreshAt;
+                  const lastRefreshText = lastRefreshAtRaw ? new Date(lastRefreshAtRaw).toLocaleString() : "—";
                   const total = Array.isArray(benchmarksData) ? (benchmarksData as any[]).length : 0;
                   return (
                     <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">

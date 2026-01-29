@@ -120,6 +120,7 @@ export interface IStorage {
   // LinkedIn Import Sessions
   getLinkedInImportSession(sessionId: string): Promise<LinkedInImportSession | undefined>;
   getCampaignLinkedInImportSessions(campaignId: string): Promise<LinkedInImportSession[]>;
+  getLatestLinkedInImportSession(campaignId: string): Promise<LinkedInImportSession | undefined>;
   createLinkedInImportSession(session: InsertLinkedInImportSession): Promise<LinkedInImportSession>;
   updateLinkedInImportSession(sessionId: string, updates: Partial<InsertLinkedInImportSession>): Promise<LinkedInImportSession | undefined>;
   
@@ -1735,7 +1736,18 @@ export class MemStorage implements IStorage {
   async getCampaignLinkedInImportSessions(campaignId: string): Promise<LinkedInImportSession[]> {
     return Array.from(this.linkedinImportSessions.values())
       .filter(session => session.campaignId === campaignId)
-      .sort((a, b) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime());
+      .sort((a: any, b: any) => {
+        const ta = new Date((a as any).importedAt).getTime();
+        const tb = new Date((b as any).importedAt).getTime();
+        if (tb !== ta) return tb - ta;
+        // Deterministic tie-break to avoid "random" latest selection when timestamps match
+        return String((b as any).id || "").localeCompare(String((a as any).id || ""));
+      });
+  }
+
+  async getLatestLinkedInImportSession(campaignId: string): Promise<LinkedInImportSession | undefined> {
+    const sessions = await this.getCampaignLinkedInImportSessions(campaignId);
+    return sessions && sessions.length > 0 ? sessions[0] : undefined;
   }
 
   async createLinkedInImportSession(session: InsertLinkedInImportSession): Promise<LinkedInImportSession> {
@@ -4139,7 +4151,17 @@ export class DatabaseStorage implements IStorage {
     return await db.select()
       .from(linkedinImportSessions)
       .where(eq(linkedinImportSessions.campaignId, campaignId))
-      .orderBy(linkedinImportSessions.importedAt);
+      .orderBy(desc(linkedinImportSessions.importedAt), desc(linkedinImportSessions.id));
+  }
+
+  async getLatestLinkedInImportSession(campaignId: string): Promise<LinkedInImportSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(linkedinImportSessions)
+      .where(eq(linkedinImportSessions.campaignId, campaignId))
+      .orderBy(desc(linkedinImportSessions.importedAt), desc(linkedinImportSessions.id))
+      .limit(1);
+    return session || undefined;
   }
 
   async createLinkedInImportSession(session: InsertLinkedInImportSession): Promise<LinkedInImportSession> {

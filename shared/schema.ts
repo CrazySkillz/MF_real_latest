@@ -280,6 +280,8 @@ export const linkedinConnections = pgTable("linkedin_connections", {
   // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
   encryptedTokens: jsonb("encrypted_tokens"),
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Platform-specific conversion value from Google Sheets/webhook
+  // Canonical "last successful data refresh" timestamp (used for exec-safe coverage across tabs).
+  lastRefreshAt: timestamp("last_refresh_at"),
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),

@@ -328,6 +328,12 @@ process.on('uncaughtException', (error: Error) => {
             ON linkedin_daily_metrics(campaign_id, date);
           `);
 
+          // LinkedIn connections: track last successful refresh (used for data coverage UI across tabs)
+          await db.execute(sql`
+            ALTER TABLE linkedin_connections
+            ADD COLUMN IF NOT EXISTS last_refresh_at TIMESTAMP;
+          `);
+
           // Reports: ensure schedule fields exist + add snapshots/send-events tables (production-grade auditability)
           await db.execute(sql`
             ALTER TABLE linkedin_reports

@@ -54,15 +54,11 @@ async function generateMockLinkedInData(
   console.log(`[LinkedIn Scheduler] TEST MODE: Generating mock data for campaign ${campaignId}`);
 
   // Get the latest import session to reuse selected campaigns and metrics
-  const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-  if (!sessions || sessions.length === 0) {
+  const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+  if (!latestSession) {
     console.log(`[LinkedIn Scheduler] No previous import sessions found for test mode campaign ${campaignId}`);
     return;
   }
-
-  const latestSession = sessions.sort((a: any, b: any) => 
-    new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-  )[0];
 
   // Create a new import session with the same configuration
   const newSession = await storage.createLinkedInImportSession({
@@ -200,6 +196,13 @@ async function generateMockLinkedInData(
 
     await storage.upsertLinkedInDailyMetrics(rows as any);
     console.log(`[LinkedIn Scheduler] ✅ Mock daily metrics upserted: ${rows.length} days for campaign ${campaignId}`);
+
+    // Persist canonical last refresh timestamp for coverage UI.
+    try {
+      await storage.updateLinkedInConnection(campaignId, { lastRefreshAt: new Date() } as any);
+    } catch {
+      // ignore
+    }
   } catch (e: any) {
     console.warn(`[LinkedIn Scheduler] Mock daily metrics upsert failed for ${campaignId}:`, e?.message || e);
   }
@@ -222,15 +225,11 @@ async function fetchRealLinkedInData(
 
   try {
     // Get the latest import session to know which campaigns and metrics were selected
-    const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-    if (!sessions || sessions.length === 0) {
+    const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+    if (!latestSession) {
       console.log(`[LinkedIn Scheduler] No previous import sessions found for campaign ${campaignId} - skipping scheduled refresh`);
       return;
     }
-
-    const latestSession = sessions.sort((a: any, b: any) => 
-      new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-    )[0];
 
     // Get the campaigns that were previously imported
     const previousMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
@@ -458,6 +457,13 @@ async function fetchRealLinkedInData(
     }
 
     console.log(`[LinkedIn Scheduler] ✅ Real data fetched and stored for campaign ${campaignId}`);
+
+    // Persist canonical last refresh timestamp for coverage UI.
+    try {
+      await storage.updateLinkedInConnection(campaignId, { lastRefreshAt: new Date() } as any);
+    } catch {
+      // ignore
+    }
   } catch (error: any) {
     console.error(`[LinkedIn Scheduler] Error fetching real LinkedIn data for campaign ${campaignId}:`, error);
     // Don't throw - log and continue with other campaigns

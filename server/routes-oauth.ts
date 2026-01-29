@@ -857,8 +857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // session-level conversion value; otherwise some endpoints may incorrectly prefer stale sessionCv.
   const clearLatestLinkedInImportSessionConversionValue = async (campaignId: string) => {
     try {
-      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-      const latest = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+      const latest = await storage.getLatestLinkedInImportSession(campaignId);
       if (latest && (latest as any).conversionValue) {
         await storage.updateLinkedInImportSession(String((latest as any).id), { conversionValue: null } as any);
       }
@@ -871,8 +870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // so KPI refresh (which reads sessions) can compute ROI/ROAS immediately even if a LinkedIn connection row is absent.
   const setLatestLinkedInImportSessionConversionValue = async (campaignId: string, conversionValue: string) => {
     try {
-      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-      const latest = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+      const latest = await storage.getLatestLinkedInImportSession(campaignId);
       if (latest) {
         await storage.updateLinkedInImportSession(String((latest as any).id), { conversionValue } as any);
       }
@@ -2164,6 +2162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = String(req.params.id || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const days = Math.max(7, Math.min(365, parseInt(String((req.query as any)?.days || "90"), 10) || 90));
 
       // Default window: last N complete UTC days (end = yesterday to avoid partial today)
@@ -2179,6 +2179,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, campaignId, startDate, endDate, days, data: rows });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch LinkedIn daily metrics" });
+    }
+  });
+
+  // LinkedIn coverage (exec-safe freshness metadata; canonical across tabs)
+  app.get("/api/campaigns/:id/linkedin/coverage", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.id || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      const days = Math.max(7, Math.min(365, parseInt(String((req.query as any)?.days || "90"), 10) || 90));
+
+      // Window: last N complete UTC days (end = yesterday)
+      const now = new Date();
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+      const start = new Date(end.getTime());
+      start.setUTCDate(start.getUTCDate() - (days - 1));
+      const startDate = start.toISOString().slice(0, 10);
+      const endDate = end.toISOString().slice(0, 10);
+
+      const daily = await storage.getLinkedInDailyMetrics(campaignId, startDate, endDate).catch(() => []);
+      const dataThroughUtc = daily && daily.length > 0 ? String((daily as any[])[(daily as any[]).length - 1]?.date || "") : null;
+      const availableDays = Array.isArray(daily) ? daily.length : 0;
+
+      const latestSession = await storage.getLatestLinkedInImportSession(campaignId).catch(() => undefined);
+      const latestImportAt = latestSession ? (latestSession as any).importedAt : null;
+
+      const connection = await storage.getLinkedInConnection(campaignId).catch(() => undefined);
+      const lastRefreshAt = connection ? (connection as any).lastRefreshAt : null;
+
+      return res.json({
+        success: true,
+        campaignId,
+        days,
+        startDate,
+        endDate,
+        dataThroughUtc,
+        availableDays,
+        latestImportAt,
+        lastRefreshAt,
+      });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: e?.message || "Failed to fetch LinkedIn coverage" });
     }
   });
 
@@ -15298,10 +15342,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           clientId: null,
           clientSecret: null,
           method: 'test',
+          lastRefreshAt: new Date(),
           expiresAt: null
         });
         
         console.log('Created LinkedIn test mode connection for campaign:', campaignId);
+      } else {
+        // Keep refresh metadata current for coverage UI.
+        try {
+          await storage.updateLinkedInConnection(campaignId, { lastRefreshAt: new Date() } as any);
+        } catch {
+          // ignore
+        }
       }
       
       // Stage 1: Automatically refresh KPIs after LinkedIn import
@@ -15356,16 +15408,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       
-      // Get the latest import session for this campaign
-      const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-      if (!sessions || sessions.length === 0) {
-        return res.json(null);
-      }
-      
-      // Get the most recent session
-      const latestSession = sessions.sort((a: any, b: any) => 
-        new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-      )[0];
+      // Canonical "latest session" selection: DB-ordered, deterministic.
+      const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+      if (!latestSession) return res.json(null);
       
       // Get metrics for this session
       const metrics = await storage.getLinkedInImportMetrics(latestSession.id);

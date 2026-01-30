@@ -6299,12 +6299,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get LinkedIn analytics path with latest session ID
       let linkedInAnalyticsPath = null;
       if (linkedInConnection) {
-        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-        if (sessions && sessions.length > 0) {
-          // Sort by importedAt descending to get the most recent session
-          const latestSession = sessions.sort((a: any, b: any) => 
-            new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-          )[0];
+        // Canonical "latest session" selection (DB-ordered, deterministic)
+        const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+        if (latestSession) {
           linkedInAnalyticsPath = `/campaigns/${campaignId}/linkedin-analytics?session=${latestSession.id}`;
           console.log(`[Connected Platforms] LinkedIn latest session: ${latestSession.id}`);
         } else {

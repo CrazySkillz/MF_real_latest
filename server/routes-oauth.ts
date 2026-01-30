@@ -13540,24 +13540,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       if (!resolvedSession) {
-        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-        resolvedSession =
-          Array.isArray(sessions) && sessions.length > 0
-            ? sessions.sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0]
-            : undefined;
+        resolvedSession = await storage.getLatestLinkedInImportSession(campaignId);
       }
 
       const metrics = resolvedSession ? await storage.getLinkedInImportMetrics(String(resolvedSession.id)) : [];
 
-      // Revenue tracking (LinkedIn context) gates revenue-dependent benchmark metrics.
-      const revenueSources = await storage.getRevenueSources(campaignId, "linkedin").catch(() => []);
-      const hasRevenueTracking = Array.isArray(revenueSources) ? revenueSources.some((s: any) => (s as any)?.isActive !== false) : false;
-
-      const campaign = await storage.getCampaign(campaignId).catch(() => undefined as any);
-      const conversionValue =
-        parseFloat(String((resolvedSession as any)?.conversionValue || "0")) ||
-        parseFloat(String((campaign as any)?.conversionValue || "0")) ||
-        0;
+      // Canonical LinkedIn revenue rules (shared across tabs/endpoints)
+      const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
 
       const isRevenueDependent = (metricKey: string) => {
         const k = String(metricKey || "").toLowerCase();
@@ -13598,6 +13587,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return out;
       };
 
+      // Canonical revenue context for this campaign/session (used consistently across all benchmarks).
+      const baseAll = sumMetrics();
+      const revAll = await resolveLinkedInRevenueContext({
+        campaignId,
+        conversionsTotal: Number(baseAll.conversions || 0),
+        sessionConversionValue: (resolvedSession as any)?.conversionValue,
+      });
+      const hasRevenueTracking = revAll.hasRevenueTracking;
+      const conversionValueUsed = Number(revAll.conversionValue || 0) || 0;
+      const importedRevenueToDate = Number(revAll.importedRevenueToDate || 0) || 0;
+      const totalConversionsAll = Number(baseAll.conversions || 0) || 0;
+
+      const computeRevenueForConversions = (conversions: number): number => {
+        const conv = Number(conversions || 0) || 0;
+        if (!hasRevenueTracking) return 0;
+        if (conversionValueUsed > 0) return conv * conversionValueUsed;
+        if (importedRevenueToDate > 0 && totalConversionsAll > 0) return importedRevenueToDate * (conv / totalConversionsAll);
+        return 0;
+      };
+
       const computeDerived = (base: Record<string, number>) => {
         const impressions = Number(base.impressions || 0);
         const clicks = Number(base.clicks || 0);
@@ -13614,28 +13623,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const cpl = leads > 0 ? spend / leads : 0;
         const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
 
-        const totalRevenue = hasRevenueTracking && conversionValue > 0 ? conversions * conversionValue : 0;
-        const profit = totalRevenue - spend;
-        const roi = spend > 0 ? (profit / spend) * 100 : 0;
-        const roas = spend > 0 ? totalRevenue / spend : 0;
-        const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
-        const revenuePerLead = leads > 0 ? totalRevenue / leads : 0;
+        const totalRevenue = Number(Number(computeRevenueForConversions(conversions)).toFixed(2));
+        const profit = Number(Number(totalRevenue - spend).toFixed(2));
+        const roi = spend > 0 ? Number(((profit / spend) * 100).toFixed(2)) : 0;
+        const roas = spend > 0 ? Number((totalRevenue / spend).toFixed(2)) : 0;
+        const profitMargin = totalRevenue > 0 ? Number(((profit / totalRevenue) * 100).toFixed(2)) : 0;
+        const revenuePerLead = leads > 0 ? Number((totalRevenue / leads).toFixed(2)) : 0;
 
         return { ctr, cpc, cpm, cvr, cpa, cpl, er, totalRevenue, profit, roi, roas, profitMargin, revenuePerLead };
       };
 
-      const getMetricValue = (metricKeyRaw: string, campaignName?: string) => {
+      const metricValueFor = (metricKeyRaw: string, base: Record<string, number>, derived: any): number => {
         const metricKey = String(metricKeyRaw || "").trim();
         if (!metricKey) return 0;
         const k = metricKey.toLowerCase();
-        const base = sumMetrics(campaignName);
-        const derived = computeDerived(base);
-
-        // base keys
         if (k in base) return Number((base as any)[k] || 0);
-        // derived keys
         if (k in derived) return Number((derived as any)[k] || 0);
-        // handle camelCase variants
         if (k === "videoviews") return Number((base as any).videoViews || 0);
         if (k === "viralimpressions") return Number((base as any).viralImpressions || 0);
         if (k === "profitmargin") return Number((derived as any).profitMargin || 0);
@@ -13644,10 +13647,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return 0;
       };
 
-      const evaluated = (benchmarks as any[]).map((b: any) => {
+      const evaluated = await Promise.all((benchmarks as any[]).map(async (b: any) => {
         const metric = String(b?.metric || "").trim();
         const scopeName = b?.linkedInCampaignName ? String(b.linkedInCampaignName) : undefined;
-        const currentValue = getMetricValue(metric, scopeName);
+
+        const base = sumMetrics(scopeName);
+        const derived = computeDerived(base);
+        const currentValue = metricValueFor(metric, base, derived);
+
         const benchVal = parseFloat(String(b?.benchmarkValue ?? b?.targetValue ?? "0")) || 0;
         const metricKey = String(metric || "").toLowerCase();
 
@@ -13664,7 +13671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               benchmarkValue: benchVal,
               lowerIsBetter: isLowerBetter(metricKey),
               hasRevenueTracking,
-              conversionValueUsed: conversionValue,
+              conversionValueUsed,
               sessionIdUsed: resolvedSession ? String(resolvedSession.id) : null,
               reason: "Requires revenue tracking (conversion value / revenue source).",
             },
@@ -13685,7 +13692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               benchmarkValue: safeBench,
               lowerIsBetter: isLowerBetter(metricKey),
               hasRevenueTracking,
-              conversionValueUsed: conversionValue,
+              conversionValueUsed,
               sessionIdUsed: resolvedSession ? String(resolvedSession.id) : null,
               reason: "Benchmark value is missing or 0.",
             },
@@ -13709,11 +13716,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             benchmarkValue: safeBench,
             lowerIsBetter: lower,
             hasRevenueTracking,
-            conversionValueUsed: conversionValue,
+            conversionValueUsed,
             sessionIdUsed: resolvedSession ? String(resolvedSession.id) : null,
           },
         };
-      });
+      }));
 
       return res.json({
         success: true,
@@ -16355,33 +16362,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Determine LinkedIn-scoped imported revenue over the *same window* as analytics (last 30 complete UTC days).
-      let importedRevenueToDate = 0;
-      try {
-        const endDate = yesterdayUTC();
-        const end = new Date(`${endDate}T00:00:00.000Z`);
-        const start = new Date(end.getTime());
-        start.setUTCDate(start.getUTCDate() - 29);
-        let startDate = start.toISOString().slice(0, 10);
-        const campStart =
-          isoDateUTC((campaign as any)?.startDate) ||
-          isoDateUTC((campaign as any)?.createdAt) ||
-          null;
-        if (campStart && String(campStart) > String(startDate)) startDate = String(campStart);
-        if (String(startDate) > String(endDate)) startDate = endDate;
-        const totals = await storage.getRevenueTotalForRange(String(session.campaignId), startDate, endDate, 'linkedin');
-        importedRevenueToDate = parseNum((totals as any)?.totalRevenue);
-      } catch {
-        importedRevenueToDate = 0;
-      }
-
-      const connCv = linkedInConn?.conversionValue ? parseNum((linkedInConn as any).conversionValue) : 0;
-      const sessionCv = (session as any)?.conversionValue ? parseNum((session as any).conversionValue) : 0;
-
+      const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
       const totalAdConversions = (ads || []).reduce((sum: number, ad: any) => sum + parseNum(ad?.conversions), 0);
-      const derivedCv = (importedRevenueToDate > 0 && totalAdConversions > 0) ? (importedRevenueToDate / totalAdConversions) : 0;
-      const conversionValue = connCv > 0 ? connCv : (derivedCv > 0 ? derivedCv : sessionCv);
+      const rev = await resolveLinkedInRevenueContext({
+        campaignId: String(session.campaignId),
+        conversionsTotal: totalAdConversions,
+        sessionConversionValue: (session as any)?.conversionValue,
+      });
+      const importedRevenueToDate = parseNum((rev as any)?.importedRevenueToDate);
+      const conversionValue = parseNum((rev as any)?.conversionValue);
+      const conversionValueSourceRaw = String((rev as any)?.conversionValueSource || "none").toLowerCase();
       const conversionValueSource: "explicit" | "derived" | "none" =
-        (connCv > 0 || sessionCv > 0) ? "explicit" : (derivedCv > 0 ? "derived" : "none");
+        conversionValueSourceRaw === "derived" ? "derived" : (conversionValue > 0 ? "explicit" : "none");
 
       const computeAdRevenue = (conversions: number): number => {
         if (conversionValue > 0) return conversions * conversionValue;

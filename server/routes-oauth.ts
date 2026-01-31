@@ -6555,56 +6555,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             linkedInSpend = parseNum(canonSpend);
 
-            // IMPORTANT: LinkedIn conversion value can be updated independently of import sessions
-            // (e.g. via manual/CSV/Sheets "conversion value" sources). For campaign Overview correctness,
-            // prefer the LinkedIn connection's conversionValue and fall back to session conversionValue.
-            const connCv = linkedInConn?.conversionValue ? parseNum((linkedInConn as any).conversionValue) : 0;
-            const sessionCvRaw = latestSession.conversionValue ? parseNum(latestSession.conversionValue) : 0;
-
-            // Pull LinkedIn-scoped imported revenue as "to date" (campaign lifetime) to avoid dateRange skew.
-            let importedRevenueToDate = 0;
-            try {
-              const isoDateUTC = (d: any) => {
-                try {
-                  const dt = d instanceof Date ? d : new Date(d);
-                  if (Number.isNaN(dt.getTime())) return null;
-                  return dt.toISOString().slice(0, 10);
-                } catch {
-                  return null;
-                }
-              };
-              const yesterdayUTC = () => {
-                const now = new Date();
-                const y = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
-                return y.toISOString().slice(0, 10);
-              };
-              let startDateRevenue =
-                isoDateUTC((campaign as any)?.startDate) ||
-                isoDateUTC((campaign as any)?.createdAt) ||
-                "2020-01-01";
-              const endDateRevenue = yesterdayUTC();
-              if (String(startDateRevenue) > String(endDateRevenue)) startDateRevenue = endDateRevenue;
-              const totals = await storage.getRevenueTotalForRange(campaignId, startDateRevenue, endDateRevenue, 'linkedin');
-              importedRevenueToDate = parseNum((totals as any)?.totalRevenue);
-            } catch {
-              importedRevenueToDate = 0;
-            }
-
             const conversions = parseNum(canonConversions);
-            const derivedCv = (importedRevenueToDate > 0 && conversions > 0) ? (importedRevenueToDate / conversions) : 0;
-            // If revenue-to-date exists and we do not have an explicit connection conversion value, do NOT prefer
-            // a stale session conversion value (it may reflect an old configuration).
-            const sessionCv = (connCv <= 0 && importedRevenueToDate > 0) ? 0 : sessionCvRaw;
-            const conversionValue = connCv > 0 ? connCv : (sessionCv > 0 ? sessionCv : derivedCv);
+            const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
+            const rev = await resolveLinkedInRevenueContext({
+              campaignId,
+              conversionsTotal: conversions,
+              sessionConversionValue: (latestSession as any)?.conversionValue,
+            });
 
-            // If imported revenue exists and no explicit conversion value is set, prefer imported revenue.
-            // Otherwise derive revenue from conversions × conversion value.
-            const attributedRevenueRaw =
-              (importedRevenueToDate > 0 && connCv <= 0)
-                ? importedRevenueToDate
-                : (conversionValue > 0 ? conversions * conversionValue : 0);
-
-            const attributedRevenue = parseFloat(Number(attributedRevenueRaw || 0).toFixed(2));
+            const attributedRevenue = parseFloat(Number(rev.totalRevenue || 0).toFixed(2));
             const roas = linkedInSpend > 0 ? parseFloat((attributedRevenue / linkedInSpend).toFixed(2)) : 0;
             const roi = linkedInSpend > 0 ? parseFloat((((attributedRevenue - linkedInSpend) / linkedInSpend) * 100).toFixed(2)) : 0;
 
@@ -6615,7 +6574,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               impressions: parseNum(canonImpressions),
               conversions: parseNum(canonConversions),
               leads: parseNum(canonLeads),
-              conversionValue: conversionValue > 0 ? parseFloat(Number(conversionValue).toFixed(2)) : 0,
+              hasRevenueTracking: !!rev.hasRevenueTracking,
+              conversionValue: parseFloat(Number(rev.conversionValue || 0).toFixed(2)),
               attributedRevenue,
               roas,
               roi,
@@ -15587,99 +15547,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (Array.isArray(hubspotConns) ? hubspotConns : []).some((c: any) => (c as any)?.isActive !== false && isLinkedInTaggedMapping((c as any)?.mappingConfig)) ||
         (Array.isArray(salesforceConns) ? salesforceConns : []).some((c: any) => (c as any)?.isActive !== false && isLinkedInTaggedMapping((c as any)?.mappingConfig));
 
-      // Also allow LinkedIn-scoped revenue sources (CSV/manual/Sheets/CRM) to enable revenue metrics.
-      const isoDateUTC = (d: any) => {
-        try {
-          const dt = d instanceof Date ? d : new Date(d);
-          if (Number.isNaN(dt.getTime())) return null;
-          return dt.toISOString().slice(0, 10);
-        } catch {
-          return null;
-        }
-      };
-      const yesterdayUTC = () => {
-        const now = new Date();
-        const y = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
-        return y.toISOString().slice(0, 10);
-      };
+      // Canonical LinkedIn revenue rules (single source of truth).
+      const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
+      const rev = await resolveLinkedInRevenueContext({
+        campaignId,
+        conversionsTotal: conversions,
+        sessionConversionValue: (latestSession as any)?.conversionValue,
+      });
 
-      let importedRevenueToDate = 0;
-      try {
-        const camp = await storage.getCampaign(campaignId);
-        // Align revenue window to LinkedIn analytics window (last 30 complete UTC days)
-        const endDate = yesterdayUTC();
-        const end = new Date(`${endDate}T00:00:00.000Z`);
-        const start = new Date(end.getTime());
-        start.setUTCDate(start.getUTCDate() - 29);
-        let startDate = start.toISOString().slice(0, 10);
-        const campStart =
-          isoDateUTC((camp as any)?.startDate) ||
-          isoDateUTC((camp as any)?.createdAt) ||
-          null;
-        if (campStart && String(campStart) > String(startDate)) startDate = String(campStart);
-        if (String(startDate) > String(endDate)) startDate = endDate;
-        const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, 'linkedin');
-        importedRevenueToDate = Number(totals?.totalRevenue || 0);
-      } catch {
-        importedRevenueToDate = 0;
-      }
-      const hasLinkedInRevenueSources = importedRevenueToDate > 0;
-
-      // LinkedIn conversion-value-only sources should also enable revenue metrics.
-      let hasLinkedInConversionValueSource = false;
-      try {
-        const sources = await storage.getRevenueSources(campaignId, 'linkedin');
-        hasLinkedInConversionValueSource = (Array.isArray(sources) ? sources : []).some((s: any) => {
-          if (!s || (s as any)?.isActive === false) return false;
-          const raw = (s as any)?.mappingConfig;
-          if (!raw) return false;
-          try {
-            const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
-            const vs = String(cfg?.valueSource || '').trim().toLowerCase();
-            const mode = String(cfg?.mode || '').trim().toLowerCase();
-            return vs === 'conversion_value' || mode === 'conversion_value';
-          } catch {
-            return false;
-          }
-        });
-      } catch {
-        hasLinkedInConversionValueSource = false;
-      }
-
-      // Prefer LinkedIn-specific conversionValue (connection/session), never campaign-level
-      const linkedInConn = await storage.getLinkedInConnection(campaignId);
-      const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
-      const sessionCvRaw = latestSession.conversionValue ? parseFloat(String(latestSession.conversionValue)) : 0;
-      // If revenue-to-date exists and we do not have an explicit connection conversion value, do NOT fall back
-      // to a stale session conversion value (it may have been computed in a prior configuration).
-      const sessionCv = (connCv <= 0 && hasLinkedInRevenueSources && !hasLinkedInConversionValueSource) ? 0 : sessionCvRaw;
-      const mappedConversionValue = connCv > 0 ? connCv : sessionCv;
-      // If conversion value is not explicitly provided, calculate it from imported revenue and conversions.
-      // This keeps the UI populated and consistent for execs: Conversion Value = Revenue-to-date ÷ Conversions.
-      const derivedConversionValue = (hasLinkedInRevenueSources && conversions > 0)
-        ? (importedRevenueToDate / conversions)
-        : 0;
-      const conversionValue = mappedConversionValue > 0 ? mappedConversionValue : derivedConversionValue;
-
-      // If imported revenue exists, show revenue metrics even when conversions are 0.
-      // (Conversion value cannot be derived without conversions; that's OK.)
-      const shouldEnableRevenue =
-        (hasLinkedInRevenueTrackingSource || hasLinkedInRevenueSources || hasLinkedInConversionValueSource) &&
-        (conversionValue > 0 || hasLinkedInRevenueSources);
-      if (shouldEnableRevenue) {
-        // If we have imported revenue-to-date and no explicit conversion value, use imported revenue directly.
-        const revenueTotal = hasLinkedInRevenueSources && mappedConversionValue <= 0
-          ? importedRevenueToDate
-          : (conversions * conversionValue);
-        aggregated.revenue = parseFloat(Number(revenueTotal).toFixed(2));
-        aggregated.conversionValue = conversionValue;
-        aggregated.hasRevenueTracking = 1;
-        if (spend > 0) {
-          aggregated.roas = parseFloat(((aggregated.revenue as any) / spend).toFixed(2));
-          aggregated.roi = parseFloat(((((aggregated.revenue as any) - spend) / spend) * 100).toFixed(2));
-        }
+      aggregated.hasRevenueTracking = rev.hasRevenueTracking ? 1 : 0;
+      aggregated.conversionValue = parseFloat(Number(rev.conversionValue || 0).toFixed(2));
+      aggregated.revenue = parseFloat(Number(rev.totalRevenue || 0).toFixed(2));
+      if (rev.hasRevenueTracking && spend > 0) {
+        aggregated.roas = parseFloat(((aggregated.revenue as any) / spend).toFixed(2));
+        aggregated.roi = parseFloat(((((aggregated.revenue as any) - spend) / spend) * 100).toFixed(2));
       } else {
-        aggregated.hasRevenueTracking = 0;
+        aggregated.roas = 0;
+        aggregated.roi = 0;
       }
       
       // CTR: (Clicks / Impressions) * 100
@@ -16424,11 +16308,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             linkedinMetrics[key] = (linkedinMetrics[key] || 0) + value;
           });
 
-          // Calculate LinkedIn revenue from conversion value
-          if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
-            const conversionValue = parseFloat(latestSession.conversionValue);
-            linkedinMetrics.revenue = linkedinMetrics.conversions * conversionValue;
-          }
+          // Canonical LinkedIn revenue rules (single source of truth).
+          const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
+          const rev = await resolveLinkedInRevenueContext({
+            campaignId: id,
+            conversionsTotal: parseNum(linkedinMetrics.conversions),
+            sessionConversionValue: (latestSession as any)?.conversionValue,
+          });
+          linkedinMetrics.revenue = parseNum((rev as any)?.totalRevenue);
+          (linkedinMetrics as any).hasRevenueTracking = !!(rev as any)?.hasRevenueTracking;
         }
       } catch (err) {
         console.log('No LinkedIn metrics found for campaign', id);

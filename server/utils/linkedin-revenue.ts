@@ -80,6 +80,29 @@ export async function resolveLinkedInRevenueContext(opts: {
     importedRevenueToDate = 0;
   }
 
+  // If the user explicitly configured a LinkedIn conversion-value source, we can trust conversionValue.
+  // Otherwise, a legacy/stale session conversionValue may exist from older configs and should not override
+  // imported revenue-to-date (we'll derive CV from revenue ÷ conversions instead).
+  let hasExplicitLinkedInConversionValueSource = false;
+  try {
+    const sources = await (storage as any).getRevenueSources?.(campaignId, "linkedin");
+    hasExplicitLinkedInConversionValueSource = (Array.isArray(sources) ? sources : []).some((s: any) => {
+      if (!s || (s as any)?.isActive === false) return false;
+      const raw = (s as any)?.mappingConfig;
+      if (!raw) return false;
+      try {
+        const cfg = typeof raw === "string" ? JSON.parse(raw) : raw;
+        const vs = String(cfg?.valueSource || "").trim().toLowerCase();
+        const mode = String(cfg?.mode || "").trim().toLowerCase();
+        return vs === "conversion_value" || mode === "conversion_value";
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    hasExplicitLinkedInConversionValueSource = false;
+  }
+
   let connCv = 0;
   try {
     const conn = await storage.getLinkedInConnection(campaignId);
@@ -88,7 +111,10 @@ export async function resolveLinkedInRevenueContext(opts: {
     connCv = 0;
   }
 
-  const sessionCv = parseNum(opts.sessionConversionValue);
+  const sessionCvRaw = parseNum(opts.sessionConversionValue);
+  const shouldIgnoreSessionCv =
+    importedRevenueToDate > 0 && connCv <= 0 && !hasExplicitLinkedInConversionValueSource;
+  const sessionCv = shouldIgnoreSessionCv ? 0 : sessionCvRaw;
 
   let conversionValue = 0;
   let conversionValueSource: LinkedInRevenueContext["conversionValueSource"] = "none";

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertKPIReportSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -13543,7 +13543,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         targetDate: req.body.targetDate ? new Date(req.body.targetDate) : req.body.targetDate === null ? null : undefined
       };
       
-      const updatedKPI = await storage.updateKPI(kpiId, updateData);
+      // Validate update payload to prevent invalid/inconsistent KPI rows.
+      // Force campaignId/platformType from the existing KPI (never editable via patch).
+      const validated = insertKPISchema.partial().parse({
+        ...updateData,
+        campaignId: (okKpi as any).campaignId,
+        platformType: (okKpi as any).platformType,
+      }) as any;
+      delete validated.campaignId;
+      delete validated.platformType;
+
+      const updatedKPI = await storage.updateKPI(kpiId, validated);
       if (!updatedKPI) {
         return res.status(404).json({ message: "KPI not found" });
       }
@@ -14048,11 +14058,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: req.body.notes
       };
       
-      const progress = await storage.recordKPIProgress(progressData);
+      const validated = insertKPIProgressSchema.parse(progressData);
+      const progress = await storage.recordKPIProgress(validated);
       res.json(progress);
     } catch (error) {
       console.error('KPI progress recording error:', error);
-      res.status(500).json({ message: "Failed to record KPI progress" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid KPI progress data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to record KPI progress" });
+      }
     }
   });
 
@@ -14075,11 +14090,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const ok = await ensureCampaignAccess(req as any, res as any, id);
       if (!ok) return;
-      const report = await storage.createKPIReport({ ...req.body, campaignId: id });
+      const validated = insertKPIReportSchema.parse({ ...(req.body || {}), campaignId: id });
+      const report = await storage.createKPIReport(validated);
       res.json(report);
     } catch (error) {
       console.error('KPI report creation error:', error);
-      res.status(500).json({ message: "Failed to create KPI report" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid KPI report data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create KPI report" });
+      }
     }
   });
 
@@ -14089,14 +14109,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, id);
       if (!ok) return;
       const { reportId } = req.params;
-      const report = await storage.updateKPIReport(reportId, req.body);
+      const validated = insertKPIReportSchema.partial().parse(req.body || {}) as any;
+      delete validated.campaignId;
+      const report = await storage.updateKPIReport(reportId, validated);
       if (!report) {
         return res.status(404).json({ message: "Report not found" });
       }
       res.json(report);
     } catch (error) {
       console.error('KPI report update error:', error);
-      res.status(500).json({ message: "Failed to update KPI report" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid KPI report data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update KPI report" });
+      }
     }
   });
 
@@ -14333,15 +14359,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const report = await storage.createPlatformReport({
+      const allowedReportTypes = new Set(["overview", "kpis", "benchmarks", "ads", "insights", "custom"]);
+      const reportType = String(body?.reportType || "").toLowerCase();
+      if (!reportType || !allowedReportTypes.has(reportType)) {
+        return res.status(400).json({
+          success: false,
+          message: "reportType must be one of: overview, kpis, benchmarks, ads, insights, custom",
+        });
+      }
+
+      // Normalize configuration to string for DB safety
+      const configuration =
+        typeof body?.configuration === "undefined" || body?.configuration === null
+          ? null
+          : typeof body.configuration === "string"
+            ? body.configuration
+            : JSON.stringify(body.configuration);
+
+      const requestData = {
         ...body,
-        platformType
-      });
+        campaignId,
+        platformType,
+        reportType,
+        configuration,
+      };
+
+      const validated = insertLinkedInReportSchema.parse(requestData);
+      const report = await storage.createPlatformReport(validated);
       
       res.status(201).json(report);
     } catch (error) {
       console.error('Platform report creation error:', error);
-      res.status(500).json({ message: "Failed to create platform report" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid report data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create platform report" });
+      }
     }
   });
 
@@ -14366,7 +14419,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!recipients || recipients.length === 0) return res.status(400).json({ success: false, message: "scheduleRecipients is required when scheduleEnabled=true" });
       }
 
-      const report = await storage.updatePlatformReport(reportId, body);
+      const allowedReportTypes = new Set(["overview", "kpis", "benchmarks", "ads", "insights", "custom"]);
+      if (typeof body?.reportType !== "undefined") {
+        const reportType = String(body?.reportType || "").toLowerCase();
+        if (!reportType || !allowedReportTypes.has(reportType)) {
+          return res.status(400).json({
+            success: false,
+            message: "reportType must be one of: overview, kpis, benchmarks, ads, insights, custom",
+          });
+        }
+        body.reportType = reportType;
+      }
+
+      if (typeof body?.configuration !== "undefined") {
+        body.configuration =
+          body.configuration === null
+            ? null
+            : typeof body.configuration === "string"
+              ? body.configuration
+              : JSON.stringify(body.configuration);
+      }
+
+      const validated = insertLinkedInReportSchema.partial().parse({
+        ...body,
+        // never editable via patch
+        campaignId: (existing as any).campaignId ?? null,
+        platformType: (existing as any).platformType ?? "linkedin",
+      }) as any;
+      delete validated.campaignId;
+      delete validated.platformType;
+
+      const report = await storage.updatePlatformReport(reportId, validated);
       if (!report) {
         return res.status(404).json({ message: "Report not found" });
       }
@@ -14374,7 +14457,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(report);
     } catch (error) {
       console.error('Platform report update error:', error);
-      res.status(500).json({ message: "Failed to update platform report" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid report data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update platform report" });
+      }
     }
   });
 
@@ -14710,11 +14797,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: req.body.notes
       };
       
-      const history = await storage.recordBenchmarkHistory(historyData);
+      const validated = insertBenchmarkHistorySchema.parse(historyData);
+      const history = await storage.recordBenchmarkHistory(validated);
       res.json(history);
     } catch (error) {
       console.error('Benchmark history recording error:', error);
-      res.status(500).json({ message: "Failed to record benchmark history" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid benchmark history data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to record benchmark history" });
+      }
     }
   });
 

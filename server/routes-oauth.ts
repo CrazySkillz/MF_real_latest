@@ -657,6 +657,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return today.toISOString().slice(0, 10);
   };
 
+  // Request validation helpers (enterprise-grade consistency)
+  const zPlatformContext = z.enum(["ga4", "linkedin"]);
+  const zValueSource = z.enum(["revenue", "conversion_value"]);
+
+  const zNumberLike = z.preprocess((v) => {
+    if (v === null) return null;
+    if (typeof v === "undefined") return undefined;
+    if (typeof v === "number") return v;
+    if (typeof v === "string") {
+      const s = v.trim();
+      if (!s) return undefined;
+      const n = Number(s.replace(/,/g, ""));
+      return Number.isFinite(n) ? n : v;
+    }
+    return v;
+  }, z.union([z.number(), z.null()]));
+
+  const sendBadRequest = (res: any, error: string, issues?: any) => {
+    return res.status(400).json({
+      success: false,
+      error,
+      ...(issues ? { issues } : {}),
+    });
+  };
+
+  const parsePlatformContext = (
+    raw: any,
+    fallback: "ga4" | "linkedin",
+    res: any
+  ): "ga4" | "linkedin" | null => {
+    const s = raw === null || typeof raw === "undefined" ? "" : String(raw).trim().toLowerCase();
+    if (!s) return fallback;
+    const parsed = zPlatformContext.safeParse(s);
+    if (!parsed.success) {
+      sendBadRequest(res, "Invalid platformContext", parsed.error.errors);
+      return null;
+    }
+    return parsed.data;
+  };
+
+  const parseValueSource = (raw: any, fallback: "revenue" | "conversion_value"): "revenue" | "conversion_value" => {
+    const s = raw === null || typeof raw === "undefined" ? "" : String(raw).trim().toLowerCase();
+    if (!s) return fallback;
+    const parsed = zValueSource.safeParse(s);
+    return parsed.success ? parsed.data : fallback;
+  };
+
+  const zRevenueMapping = z
+    .object({
+      revenueColumn: z.string().trim().min(1).nullable().optional(),
+      conversionValueColumn: z.string().trim().min(1).nullable().optional(),
+      valueSource: zValueSource.optional(),
+      campaignColumn: z.string().trim().min(1).nullable().optional(),
+      campaignValue: z.string().trim().min(1).nullable().optional(),
+      campaignValues: z.array(z.string().trim().min(1)).nullable().optional(),
+      currency: z.string().trim().min(1).optional(),
+      displayName: z.string().trim().optional(),
+      mode: z.string().trim().optional(),
+    })
+    .passthrough();
+
+  const zManualRevenueBody = z
+    .object({
+      amount: zNumberLike.optional().nullable(),
+      conversionValue: zNumberLike.optional().nullable(),
+      valueSource: zValueSource.optional(),
+      currency: z.string().trim().min(1).optional(),
+      dateRange: z.string().trim().optional(),
+      platformContext: zPlatformContext.optional(),
+    })
+    .passthrough();
+
   // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).
 
   // Imported revenue "to date" (campaign lifetime). Used as fallback when GA4 has no revenue metric configured.
@@ -664,8 +736,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
-      const ctxRaw = String((req.query as any)?.platformContext || "ga4").trim().toLowerCase();
-      const platformContext = (ctxRaw === "linkedin" ? "linkedin" : "ga4") as "ga4" | "linkedin";
+      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      if (!platformContext) return;
       const campaign = await storage.getCampaign(campaignId);
       if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
@@ -702,8 +774,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const ctxRaw = String((req.query as any)?.platformContext || "ga4").trim().toLowerCase();
-      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
+      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      if (!platformContext) return;
       const sources = await storage.getRevenueSources(campaignId, platformContext);
       res.json({ success: true, sources });
     } catch (e: any) {
@@ -785,8 +857,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const ctxRaw = String((req.query as any)?.platformContext || "ga4").trim().toLowerCase();
-      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
+      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      if (!platformContext) return;
       const existing = await storage.getRevenueSources(campaignId, platformContext);
       for (const s of existing || []) {
         if (!s) continue;
@@ -807,8 +879,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || "30days");
       const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const ctxRaw = String((req.query as any)?.platformContext || "ga4").trim().toLowerCase();
-      const platformContext = (ctxRaw === "linkedin" ? "linkedin" : "ga4") as "ga4" | "linkedin";
+      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      if (!platformContext) return;
       const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext);
       res.json({ success: true, platformContext, dateRange, startDate, endDate, ...totals });
     } catch (e: any) {
@@ -825,8 +897,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
       const date = String(req.query.date || "").trim();
-      const ctxRaw = String((req.query as any)?.platformContext || "ga4").trim().toLowerCase();
-      const platformContext = (ctxRaw === "linkedin" ? "linkedin" : "ga4") as "ga4" | "linkedin";
+      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      if (!platformContext) return;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
       }
@@ -901,13 +973,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/revenue/process/manual", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const amount = parseNum((req.body as any)?.amount);
-      const conversionValueRaw = parseNum((req.body as any)?.conversionValue);
-      const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
-      const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
-      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
-      const valueSourceRaw = String((req.body as any)?.valueSource || 'revenue').trim().toLowerCase();
-      const valueSource: 'revenue' | 'conversion_value' = valueSourceRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
+      const parsedBody = zManualRevenueBody.safeParse(req.body || {});
+      if (!parsedBody.success) {
+        return sendBadRequest(res, "Invalid revenue payload", parsedBody.error.errors);
+      }
+      const platformContext = parsedBody.data.platformContext || "ga4";
+      const valueSource = parsedBody.data.valueSource || "revenue";
+      const amount = parseNum(parsedBody.data.amount);
+      const conversionValueRaw = parseNum(parsedBody.data.conversionValue);
+      const currency = parsedBody.data.currency ? String(parsedBody.data.currency) : undefined;
 
       const amountIsValid = amount > 0;
       const cvIsValid = conversionValueRaw > 0;
@@ -1039,18 +1113,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
       const file = (req as any).file as any;
-      const mapping = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
-      const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
-      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
+      const platformContext = parsePlatformContext((req.body as any)?.platformContext, "ga4", res);
+      if (!platformContext) return;
+
+      let mappingRaw: any = null;
+      try {
+        mappingRaw = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
+      } catch {
+        return sendBadRequest(res, "Invalid mapping JSON");
+      }
+      const parsedMapping = zRevenueMapping.safeParse(mappingRaw || {});
+      if (!parsedMapping.success) {
+        return sendBadRequest(res, "Invalid mapping", parsedMapping.error.errors);
+      }
+      const mapping = parsedMapping.data as any;
+
+      const valueSource: "revenue" | "conversion_value" =
+        platformContext === "linkedin" ? parseValueSource(mapping?.valueSource, "revenue") : "revenue";
       const revenueColumn = mapping?.revenueColumn ? String(mapping.revenueColumn) : "";
       const conversionValueColumn = mapping?.conversionValueColumn ? String(mapping.conversionValueColumn) : "";
-      const valueSourceRaw = String(mapping?.valueSource || 'revenue').trim().toLowerCase();
-      const valueSource: 'revenue' | 'conversion_value' = valueSourceRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
-      if (platformContext !== 'linkedin') {
-        if (!revenueColumn) return res.status(400).json({ success: false, error: "revenueColumn is required" });
+      if (platformContext === "ga4") {
+        if (!revenueColumn) return sendBadRequest(res, "revenueColumn is required");
       } else {
-        if (!revenueColumn && !conversionValueColumn) {
-          return res.status(400).json({ success: false, error: "revenueColumn or conversionValueColumn is required" });
+        if (valueSource === "conversion_value") {
+          if (!conversionValueColumn) return sendBadRequest(res, "conversionValueColumn is required when valueSource=conversion_value");
+        } else {
+          if (!revenueColumn) return sendBadRequest(res, "revenueColumn is required when valueSource=revenue");
         }
       }
 
@@ -1177,11 +1265,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/revenue/sheets/preview", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const connectionId = String((req.body as any)?.connectionId || "").trim();
-      if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
-
-      const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
-      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
+      const body = z.object({
+        connectionId: z.string().trim().min(1),
+        platformContext: zPlatformContext.optional(),
+      }).passthrough().safeParse(req.body || {});
+      if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
+      const connectionId = body.data.connectionId;
+      const platformContext = body.data.platformContext || "ga4";
       const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : 'revenue';
 
       const connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
@@ -1271,20 +1361,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/revenue/sheets/process", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const connectionId = String((req.body as any)?.connectionId || "").trim();
-      const mapping = (req.body as any)?.mapping || null;
-      const ctxRaw = String((req.body as any)?.platformContext || "ga4").trim().toLowerCase();
-      const platformContext = (ctxRaw === 'linkedin' ? 'linkedin' : 'ga4') as 'ga4' | 'linkedin';
-      if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
+      const body = z.object({
+        connectionId: z.string().trim().min(1),
+        mapping: z.unknown(),
+        platformContext: zPlatformContext.optional(),
+      }).passthrough().safeParse(req.body || {});
+      if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
+      const connectionId = body.data.connectionId;
+      const platformContext = body.data.platformContext || "ga4";
+
+      const parsedMapping = zRevenueMapping.safeParse(body.data.mapping || {});
+      if (!parsedMapping.success) return sendBadRequest(res, "Invalid mapping", parsedMapping.error.errors);
+      const mapping = parsedMapping.data as any;
+
+      const valueSource: "revenue" | "conversion_value" =
+        platformContext === "linkedin" ? parseValueSource(mapping?.valueSource, "revenue") : "revenue";
       const revenueColumn = mapping?.revenueColumn ? String(mapping.revenueColumn) : "";
       const conversionValueColumn = mapping?.conversionValueColumn ? String(mapping.conversionValueColumn) : "";
-      const valueSourceRaw = String(mapping?.valueSource || "").trim().toLowerCase();
-      const valueSource = valueSourceRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
-      if (platformContext === 'ga4') {
-        if (!revenueColumn) return res.status(400).json({ success: false, error: "revenueColumn is required" });
+      if (platformContext === "ga4") {
+        if (!revenueColumn) return sendBadRequest(res, "revenueColumn is required");
       } else {
-        if (!revenueColumn && !conversionValueColumn) {
-          return res.status(400).json({ success: false, error: "revenueColumn or conversionValueColumn is required" });
+        if (valueSource === "conversion_value") {
+          if (!conversionValueColumn) return sendBadRequest(res, "conversionValueColumn is required when valueSource=conversion_value");
+        } else {
+          if (!revenueColumn) return sendBadRequest(res, "revenueColumn is required when valueSource=revenue");
         }
       }
 
@@ -9063,27 +9163,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/salesforce/save-mappings", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const {
-        campaignField,
-        selectedValues,
-        revenueField,
-        conversionValueField,
-        valueSource,
-        days,
-        revenueClassification,
-        platformContext,
-        salesforceCurrencyOverride,
-      } = req.body || {};
+      const body = z
+        .object({
+          campaignField: z.string().trim().min(1),
+          selectedValues: z.array(z.string().trim().min(1)).min(1),
+          revenueField: z.string().trim().min(1).optional(),
+          conversionValueField: z.string().trim().optional(),
+          valueSource: zValueSource.optional(),
+          days: zNumberLike.optional(),
+          revenueClassification: z.string().trim().optional(),
+          platformContext: zPlatformContext.optional(),
+          salesforceCurrencyOverride: z.string().trim().optional(),
+        })
+        .passthrough()
+        .safeParse(req.body || {});
+      if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
 
-      const attribField = String(campaignField || '').trim();
-      const revenue = String(revenueField || 'Amount').trim();
-      const convValueField = String(conversionValueField || '').trim();
-      const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
-      const rangeDays = Math.min(Math.max(parseInt(String(days || '90'), 10) || 90, 1), 3650);
-
-      if (!attribField) return res.status(400).json({ error: 'campaignField is required' });
-      if (selected.length === 0) return res.status(400).json({ error: 'selectedValues is required' });
-      if (!revenue) return res.status(400).json({ error: 'revenueField is required' });
+      const attribField = body.data.campaignField;
+      const revenue = String(body.data.revenueField || "Amount").trim();
+      const convValueField = String(body.data.conversionValueField || "").trim();
+      const selected = body.data.selectedValues;
+      const rangeDays = Math.min(Math.max(parseInt(String(body.data.days ?? 90), 10) || 90, 1), 3650);
+      const valueSource = body.data.valueSource;
+      const revenueClassification = body.data.revenueClassification;
+      const platformContext = body.data.platformContext;
+      const salesforceCurrencyOverride = body.data.salesforceCurrencyOverride;
 
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
@@ -9681,29 +9785,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/hubspot/save-mappings", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const {
-        campaignProperty,
-        selectedValues,
-        revenueProperty,
-        conversionValueProperty,
-        valueSource,
-        revenueClassification,
-        days,
-        stageIds,
-        platformContext,
-      } = req.body || {};
+      const body = z
+        .object({
+          campaignProperty: z.string().trim().min(1),
+          selectedValues: z.array(z.string().trim().min(1)).min(1),
+          revenueProperty: z.string().trim().min(1).optional(),
+          conversionValueProperty: z.string().trim().optional().nullable(),
+          valueSource: zValueSource.optional(),
+          revenueClassification: z.string().trim().optional(),
+          days: zNumberLike.optional(),
+          stageIds: z.array(z.string().trim().min(1)).optional(),
+          platformContext: zPlatformContext.optional(),
+        })
+        .passthrough()
+        .safeParse(req.body || {});
+      if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
 
-      const campaignProp = String(campaignProperty || '').trim();
-      const revenueProp = String(revenueProperty || 'amount').trim();
-      const convValueProp = String(conversionValueProperty || '').trim();
-      const valueSourceRaw = String(valueSource || '').trim().toLowerCase();
-      const parsedValueSource: 'revenue' | 'conversion_value' = valueSourceRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
-      const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
-      const rangeDays = Math.min(Math.max(parseInt(String(days || '90'), 10) || 90, 1), 3650);
-
-      if (!campaignProp) return res.status(400).json({ error: 'campaignProperty is required' });
-      if (selected.length === 0) return res.status(400).json({ error: 'selectedValues is required' });
-      if (!revenueProp) return res.status(400).json({ error: 'revenueProperty is required' });
+      const campaignProp = body.data.campaignProperty;
+      const revenueProp = String(body.data.revenueProperty || "amount").trim();
+      const convValueProp = String(body.data.conversionValueProperty || "").trim();
+      const parsedValueSource: "revenue" | "conversion_value" = body.data.valueSource || "revenue";
+      const selected = body.data.selectedValues;
+      const rangeDays = Math.min(Math.max(parseInt(String(body.data.days ?? 90), 10) || 90, 1), 3650);
+      const stageIds = body.data.stageIds;
+      const platformContext = body.data.platformContext;
+      const revenueClassification = body.data.revenueClassification;
 
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
@@ -19517,19 +19623,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/shopify/save-mappings", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { campaignField, selectedValues, revenueMetric, revenueClassification, days, platformContext, valueSource, dryRun } = req.body || {};
-      const field = String(campaignField || "").trim();
-      const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
-      const metric = String(revenueMetric || "total_price").trim();
-      const rangeDays = Math.min(Math.max(parseInt(String(days || "90"), 10) || 90, 1), 3650);
-      const platformCtx = String(platformContext || "").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
+      const body = z
+        .object({
+          campaignField: z.string().trim().min(1),
+          selectedValues: z.array(z.string().trim().min(1)).min(1),
+          revenueMetric: z.string().trim().optional(),
+          revenueClassification: z.string().trim().optional(),
+          days: zNumberLike.optional(),
+          platformContext: zPlatformContext.optional(),
+          dryRun: z.boolean().optional(),
+        })
+        .passthrough()
+        .safeParse(req.body || {});
+      if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
+
+      const field = body.data.campaignField;
+      const selected = body.data.selectedValues;
+      const metric = String(body.data.revenueMetric || "total_price").trim();
+      const rangeDays = Math.min(Math.max(parseInt(String(body.data.days ?? 90), 10) || 90, 1), 3650);
+      const platformCtx = body.data.platformContext || "ga4";
       // Shopify is revenue-only. We intentionally do NOT support "conversion_value" as a source of truth here,
       // because Shopify orders do not contain a native conversion value field.
       const effectiveValueSource: "revenue" = "revenue";
-      const isDryRun = Boolean(dryRun);
-
-      if (!field) return res.status(400).json({ error: "campaignField is required" });
-      if (selected.length === 0) return res.status(400).json({ error: "selectedValues is required" });
+      const isDryRun = Boolean(body.data.dryRun);
 
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";

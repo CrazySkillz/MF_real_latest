@@ -809,6 +809,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const zSelectedValues = z.array(z.string().trim().min(1)).min(1).max(MAX_SELECTED_VALUES);
 
+  // --------------------------------------------------------------------------
+  // Campaign-scoped authorization
+  // - Ensures every campaignId route enforces: "caller can access this campaign"
+  // - Keep this block near the top so it can be used by all routes.
+  // - IMPORTANT (OOM hygiene): place auth middleware BEFORE heavy body/file parsing.
+  // --------------------------------------------------------------------------
+  const campaignIdSchema = z.string().min(1, "Campaign ID is required");
+  const sessionIdSchema = z.string().uuid("Invalid session ID");
+
+  const getActorId = (req: any): string => {
+    const id = String(req?.session?.mmUserId || "").trim();
+    return id;
+  };
+
+  const ensureCampaignAccess = async (
+    req: any,
+    res: any,
+    campaignIdRaw: unknown
+  ): Promise<any | null> => {
+    const actorId = getActorId(req);
+    if (!actorId) {
+      res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      return null;
+    }
+
+    const parsed = campaignIdSchema.safeParse(String(campaignIdRaw || "").trim());
+    if (!parsed.success) {
+      res.status(400).json({ success: false, message: parsed.error.errors?.[0]?.message || "Invalid campaignId" });
+      return null;
+    }
+
+    const campaignId = parsed.data;
+    const campaign = await storage.getCampaign(campaignId);
+    if (!campaign) {
+      res.status(404).json({ success: false, message: "Campaign not found" });
+      return null;
+    }
+
+    const ownerId = String((campaign as any).ownerId || "").trim();
+    if (!ownerId) {
+      // Backward compatibility: claim un-owned campaigns to the first active session that accesses them.
+      try {
+        await storage.updateCampaign(campaignId, { ownerId: actorId } as any);
+        return { ...campaign, ownerId: actorId };
+      } catch {
+        // If we can't persist (e.g. in-memory), still allow within this process.
+        return { ...campaign, ownerId: actorId };
+      }
+    }
+
+    if (ownerId !== actorId) {
+      // Return 404 to avoid leaking existence across sessions.
+      res.status(404).json({ success: false, message: "Campaign not found" });
+      return null;
+    }
+
+    return campaign;
+  };
+
+  const requireCampaignAccessParamId = async (req: any, res: any, next: any) => {
+    const campaign = await ensureCampaignAccess(req, res, req.params?.id);
+    if (!campaign) return;
+    (req as any)._campaign = campaign;
+    return next();
+  };
+
+  const requireCampaignAccessCampaignIdParam = async (req: any, res: any, next: any) => {
+    const campaign = await ensureCampaignAccess(req, res, req.params?.campaignId);
+    if (!campaign) return;
+    (req as any)._campaign = campaign;
+    return next();
+  };
+
+  const requireCampaignAccessBodyCampaignId = async (req: any, res: any, next: any) => {
+    const campaign = await ensureCampaignAccess(req, res, req.body?.campaignId);
+    if (!campaign) return;
+    (req as any)._campaign = campaign;
+    return next();
+  };
+
+  const requireCampaignAccessQueryCampaignId = async (req: any, res: any, next: any) => {
+    const campaign = await ensureCampaignAccess(req, res, (req.query as any)?.campaignId);
+    if (!campaign) return;
+    (req as any)._campaign = campaign;
+    return next();
+  };
+
   // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).
 
   // Imported revenue "to date" (campaign lifetime). Used as fallback when GA4 has no revenue metric configured.
@@ -818,8 +905,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
-      const campaign = await storage.getCampaign(campaignId);
-      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
 
       const startDate =
         toISODateUTC((campaign as any)?.startDate) ||
@@ -835,7 +922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Daily spend total (strict daily values; avoids UI windowing)
-  app.get("/api/campaigns/:id/spend-daily", async (req, res) => {
+  app.get("/api/campaigns/:id/spend-daily", requireCampaignAccessParamId, async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
@@ -856,6 +943,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const sources = await storage.getRevenueSources(campaignId, platformContext);
       res.json({ success: true, sources });
     } catch (e: any) {
@@ -866,6 +955,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/campaigns/:id/linkedin/revenue-source", async (req, res) => {
     try {
       const campaignId = String(req.params.id);
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       // 1) Remove LinkedIn-scoped imported revenue sources (CSV/manual/Sheets/CRM) + their revenue rows
       try {
         const existing = await storage.getRevenueSources(campaignId, 'linkedin');
@@ -939,6 +1030,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const existing = await storage.getRevenueSources(campaignId, platformContext);
       for (const s of existing || []) {
         if (!s) continue;
@@ -961,6 +1054,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate } = getDateRangeBounds(dateRange);
       const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext);
       res.json({ success: true, platformContext, dateRange, startDate, endDate, ...totals });
     } catch (e: any) {
@@ -979,6 +1074,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const date = String(req.query.date || "").trim();
       const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
       }
@@ -1053,6 +1150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/revenue/process/manual", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const parsedBody = zManualRevenueBody.safeParse(req.body || {});
       if (!parsedBody.success) {
         return sendBadRequest(res, "Invalid revenue payload", parsedBody.error.errors);
@@ -1077,7 +1176,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ success: false, error: "amount or conversionValue must be > 0" });
         }
       }
-      const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
 
       await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
@@ -1170,7 +1268,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/revenue/csv/preview", importRateLimiter, uploadCsv.single("file"), async (req, res) => {
+  app.post(
+    "/api/campaigns/:id/revenue/csv/preview",
+    importRateLimiter,
+    requireCampaignAccessParamId,
+    uploadCsv.single("file"),
+    async (req, res) => {
     try {
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
       const file = (req as any).file as any;
@@ -1197,7 +1300,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/revenue/csv/process", importRateLimiter, uploadCsv.single("file"), async (req, res) => {
+  app.post(
+    "/api/campaigns/:id/revenue/csv/process",
+    importRateLimiter,
+    requireCampaignAccessParamId,
+    uploadCsv.single("file"),
+    async (req, res) => {
     try {
       const campaignId = req.params.id;
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
@@ -1362,6 +1470,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/revenue/sheets/preview", googleSheetsRateLimiter, async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const body = z.object({
         connectionId: z.string().trim().min(1),
         platformContext: zPlatformContext.optional(),
@@ -1458,6 +1568,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/revenue/sheets/process", importRateLimiter, googleSheetsRateLimiter, async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const body = z.object({
         connectionId: z.string().trim().min(1),
         mapping: z.unknown(),
@@ -3097,59 +3209,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Campaign routes
-  const campaignIdSchema = z.string().min(1, "Campaign ID is required");
-  const sessionIdSchema = z.string().uuid("Invalid session ID");
-
-  const getActorId = (req: any): string => {
-    const id = String(req?.session?.mmUserId || "").trim();
-    return id;
-  };
-
-  const ensureCampaignAccess = async (
-    req: any,
-    res: any,
-    campaignIdRaw: unknown
-  ): Promise<any | null> => {
-    const actorId = getActorId(req);
-    if (!actorId) {
-      res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
-      return null;
-    }
-
-    const parsed = campaignIdSchema.safeParse(String(campaignIdRaw || "").trim());
-    if (!parsed.success) {
-      res.status(400).json({ success: false, message: parsed.error.errors?.[0]?.message || "Invalid campaignId" });
-      return null;
-    }
-
-    const campaignId = parsed.data;
-    const campaign = await storage.getCampaign(campaignId);
-    if (!campaign) {
-      res.status(404).json({ success: false, message: "Campaign not found" });
-      return null;
-    }
-
-    const ownerId = String((campaign as any).ownerId || "").trim();
-    if (!ownerId) {
-      // Backward compatibility: claim un-owned campaigns to the first active session that accesses them.
-      try {
-        await storage.updateCampaign(campaignId, { ownerId: actorId } as any);
-        return { ...campaign, ownerId: actorId };
-      } catch {
-        // If we can't persist (e.g. in-memory), still allow within this process.
-        return { ...campaign, ownerId: actorId };
-      }
-    }
-
-    if (ownerId !== actorId) {
-      // Return 404 to avoid leaking existence across sessions.
-      res.status(404).json({ success: false, message: "Campaign not found" });
-      return null;
-    }
-
-    return campaign;
-  };
-
   const ensureLinkedInSessionAccess = async (req: any, res: any, sessionIdRaw: unknown) => {
     const actorId = getActorId(req);
     if (!actorId) {
@@ -4046,7 +4105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Google Sheets OAuth - Start connection
-  app.post("/api/auth/google-sheets/connect", oauthRateLimiter, async (req, res) => {
+  app.post("/api/auth/google-sheets/connect", oauthRateLimiter, requireCampaignAccessBodyCampaignId, async (req, res) => {
     try {
       const { campaignId, purpose } = req.body;
       const sheetsPurpose =
@@ -4140,6 +4199,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? sheetsPurpose
           : null;
       devLog(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
+
+      // Campaign access check (HTML-friendly for popup). This avoids creating/attaching tokens to campaigns
+      // the current user doesn't own, and short-circuits before token exchange work.
+      const sendPopupError = (message: string) => {
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>${message}</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'sheets_auth_error', error: ${JSON.stringify(message)} }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      };
+
+      const actorId = String((req as any)?.session?.mmUserId || "").trim();
+      if (!actorId) {
+        return sendPopupError("Your session expired. Please refresh and try again.");
+      }
+      const campaign = await storage.getCampaign(String(campaignId));
+      if (!campaign) {
+        return sendPopupError("Campaign not found.");
+      }
+      const ownerId = String((campaign as any).ownerId || "").trim();
+      if (!ownerId) {
+        // Backward compatibility: claim un-owned campaigns to the first active session that accesses them.
+        try {
+          await storage.updateCampaign(String(campaignId), { ownerId: actorId } as any);
+        } catch {
+          // ignore
+        }
+      } else if (ownerId !== actorId) {
+        // Avoid leaking existence across sessions.
+        return sendPopupError("Campaign not found.");
+      }
 
       // Exchange code for tokens - use same base URL logic
       const rawBaseUrl = process.env.APP_BASE_URL ||
@@ -4930,11 +5030,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get spreadsheets for campaign
-  app.get("/api/google-sheets/:campaignId/spreadsheets", googleSheetsRateLimiter, async (req, res) => {
+  app.get("/api/google-sheets/:campaignId/spreadsheets", googleSheetsRateLimiter, requireCampaignAccessCampaignIdParam, async (req, res) => {
     try {
       const { campaignId } = req.params;
       const purpose = (req.query as any)?.purpose ? String((req.query as any).purpose) : undefined;
       devLog(`[Google Sheets] Fetching spreadsheets for campaign ${campaignId}`);
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       const conns = await storage.getGoogleSheetsConnections(campaignId, purpose);
       let connection: any = conns.find((c: any) => c && c.accessToken) || conns[0];
@@ -5059,12 +5162,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete/reset Google Sheets connection (for re-authentication)
-  app.delete("/api/google-sheets/:campaignId/connection", async (req, res) => {
+  app.delete("/api/google-sheets/:campaignId/connection", requireCampaignAccessCampaignIdParam, async (req, res) => {
     try {
       const { campaignId } = req.params;
       const { connectionId } = req.query; // Optional: delete specific connection
       
       devLog(`[Google Sheets] Deleting connection for campaign ${campaignId}${connectionId ? ` (connectionId: ${connectionId})` : ''}`);
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       // Helper: identify whether a connection's mappings are used for revenue tracking (identifier + value source).
       const isRevenueTrackingConnection = (conn: any): boolean => {
@@ -5457,7 +5563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Select spreadsheet for campaign
-  app.post("/api/google-sheets/:campaignId/select-spreadsheet", async (req, res) => {
+  app.post("/api/google-sheets/:campaignId/select-spreadsheet", requireCampaignAccessCampaignIdParam, async (req, res) => {
     try {
       const { campaignId } = req.params;
       const { spreadsheetId } = req.body;
@@ -5467,6 +5573,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       devLog(`[Google Sheets] Selecting spreadsheet ${spreadsheetId} for campaign ${campaignId}`);
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       // Find existing connection with 'pending' spreadsheetId or create new one
       let connection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
@@ -7630,7 +7739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Sheets OAuth endpoints
   
   // OAuth code exchange for Google Sheets
-  app.post("/api/google-sheets/oauth-exchange", async (req, res) => {
+  app.post("/api/google-sheets/oauth-exchange", requireCampaignAccessBodyCampaignId, async (req, res) => {
     try {
       const { campaignId, authCode, clientId, clientSecret, redirectUri } = req.body;
       
@@ -7640,6 +7749,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "Missing required fields: campaignId, authCode, clientId, clientSecret, redirectUri"
         });
       }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       // Exchange authorization code for tokens
       const tokenParams = {
@@ -7772,7 +7884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get available sheets/tabs from a spreadsheet
-  app.get("/api/google-sheets/:spreadsheetId/sheets", async (req, res) => {
+  app.get("/api/google-sheets/:spreadsheetId/sheets", requireCampaignAccessQueryCampaignId, async (req, res) => {
     try {
       const { spreadsheetId } = req.params;
       const { campaignId, purpose } = req.query as any;
@@ -7780,6 +7892,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignId) {
         return res.status(400).json({ error: 'campaignId is required' });
       }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, String(campaignId));
+      if (!ok) return;
       
       // Get connection to access token
       const conns = await storage.getGoogleSheetsConnections(String(campaignId), purpose ? String(purpose) : undefined);
@@ -7831,11 +7946,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Select specific spreadsheet and sheet/tab
-  app.post("/api/google-sheets/select-spreadsheet", async (req, res) => {
+  app.post("/api/google-sheets/select-spreadsheet", requireCampaignAccessBodyCampaignId, async (req, res) => {
     try {
       const { campaignId, spreadsheetId, sheetName } = req.body;
       
       devLog('Spreadsheet selection request:', { campaignId, spreadsheetId, sheetName });
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       
       // First, try to find connection in database (more reliable than global map)
       let dbConnection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
@@ -7930,7 +8048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Select multiple spreadsheet sheets/tabs in one call
-  app.post("/api/google-sheets/select-spreadsheet-multiple", async (req, res) => {
+  app.post("/api/google-sheets/select-spreadsheet-multiple", requireCampaignAccessBodyCampaignId, async (req, res) => {
     try {
       const { campaignId, spreadsheetId, sheetNames, selectionMode, purpose } = req.body;
       const mode: 'replace' | 'append' = (selectionMode === 'append' || selectionMode === 'replace') ? selectionMode : 'replace';
@@ -7946,6 +8064,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         selectionMode: mode,
         purpose: sheetsPurpose,
       });
+
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       
       if (!Array.isArray(sheetNames) || sheetNames.length === 0) {
         return res.status(400).json({ error: 'Sheet names array is required and must not be empty' });
@@ -8870,6 +8991,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/google-sheets/check-connection/:campaignId", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const connections = await storage.getGoogleSheetsConnections(campaignId);
       const primaryConnection = connections.find(c => c.isPrimary) || connections[0];
       
@@ -9273,9 +9396,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Salesforce save mappings (compute conversion value and unlock LinkedIn revenue metrics)
-  app.post("/api/campaigns/:id/salesforce/save-mappings", importRateLimiter, async (req, res) => {
+  app.post("/api/campaigns/:id/salesforce/save-mappings", importRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const body = z
         .object({
           campaignField: z.string().trim().min(1),
@@ -9901,9 +10026,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // HubSpot save mappings (standalone revenue import; no dependency on LinkedIn)
-  app.post("/api/campaigns/:id/hubspot/save-mappings", importRateLimiter, async (req, res) => {
+  app.post("/api/campaigns/:id/hubspot/save-mappings", importRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const body = z
         .object({
           campaignProperty: z.string().trim().min(1),
@@ -17632,6 +17759,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { fromCampaignId, toCampaignId } = req.body;
       console.log(`[Sheets Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
 
+      const okFrom = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
+      if (!okFrom) return;
+      const okTo = await ensureCampaignAccess(req as any, res as any, toCampaignId);
+      if (!okTo) return;
+
       const existingConnection = await storage.getGoogleSheetsConnection(fromCampaignId);
       
       if (!existingConnection) {
@@ -19748,9 +19880,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/shopify/save-mappings", importRateLimiter, async (req, res) => {
+  app.post("/api/campaigns/:id/shopify/save-mappings", importRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const body = z
         .object({
           campaignField: z.string().trim().min(1),

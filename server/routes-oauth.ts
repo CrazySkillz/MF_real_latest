@@ -2007,10 +2007,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Notifications routes
   app.get("/api/notifications", async (req, res) => {
     try {
-      console.log('[Notifications API] Fetching all notifications...');
-      const allNotifications = await storage.getNotifications();
-      console.log(`[Notifications API] Found ${allNotifications.length} notifications`);
-      res.json(allNotifications);
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
+
+      // Production-grade privacy: only return notifications tied to campaigns owned by this session.
+      // Notifications without a campaignId are not returned (no ownership column exists on notifications).
+      const { db } = await import("./db");
+      if (db) {
+        const { notifications, campaigns } = await import("../shared/schema");
+        const { eq, desc } = await import("drizzle-orm");
+
+        const rows = await db
+          .select({ n: notifications })
+          .from(notifications)
+          .innerJoin(campaigns as any, eq((notifications as any).campaignId, (campaigns as any).id))
+          .where(eq((campaigns as any).ownerId, actorId))
+          .orderBy(desc((notifications as any).createdAt));
+
+        return res.json(rows.map((r: any) => r.n));
+      }
+
+      // In-memory fallback (dev/no-DB): filter using campaign ownership in memory.
+      const campaignsAll = await storage.getCampaigns().catch(() => [] as any[]);
+      const ownedIds = (Array.isArray(campaignsAll) ? campaignsAll : [])
+        .filter((c: any) => {
+          const ownerId = String(c?.ownerId || "").trim();
+          return !ownerId || ownerId === actorId;
+        })
+        .map((c: any) => String(c?.id || ""))
+        .filter(Boolean);
+
+      const allNotifications = await storage.getNotifications().catch(() => [] as any[]);
+      const list = (Array.isArray(allNotifications) ? allNotifications : []).filter((n: any) =>
+        ownedIds.includes(String((n as any)?.campaignId || ""))
+      );
+      list.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return res.json(list);
     } catch (error) {
       console.error('[Notifications API] Error:', error);
       res.status(500).json({ 
@@ -2023,24 +2057,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete ALL notifications (for cleanup/reset)
   app.delete("/api/notifications/all/clear", async (req, res) => {
     try {
-      console.log(`[Notifications API] Deleting ALL notifications...`);
-      
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
+
       const { db } = await import("./db");
-      const { notifications } = await import("../shared/schema");
-      
-      // Count before deletion
-      const before = await db.select().from(notifications);
-      const beforeCount = before.length;
-      
-      // Delete all notifications
-      await db.delete(notifications);
-      
-      console.log(`[Notifications API] ✅ Deleted ${beforeCount} notifications`);
-      
+      if (!db) return res.status(503).json({ success: false, message: "Database not configured" });
+      const { notifications, campaigns } = await import("../shared/schema");
+      const { eq, inArray } = await import("drizzle-orm");
+
+      const owned = await db
+        .select({ id: (campaigns as any).id })
+        .from(campaigns as any)
+        .where(eq((campaigns as any).ownerId, actorId));
+      const ownedCampaignIds = (owned || []).map((r: any) => String(r?.id || "")).filter(Boolean);
+
+      if (ownedCampaignIds.length === 0) {
+        return res.json({ success: true, message: "Deleted 0 notifications", deletedCount: 0 });
+      }
+
+      // Delete only notifications tied to caller-owned campaigns.
+      const result = await db
+        .delete(notifications as any)
+        .where(inArray((notifications as any).campaignId, ownedCampaignIds));
+
       res.json({ 
         success: true, 
-        message: `Deleted ${beforeCount} notifications`,
-        deletedCount: beforeCount
+        message: `Deleted ${(result as any)?.rowCount ?? 0} notifications`,
+        deletedCount: (result as any)?.rowCount ?? 0
       });
     } catch (error) {
       console.error('[Notifications API] Error deleting all notifications:', error);
@@ -2051,16 +2096,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/notifications/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      console.log(`[Notifications API] Deleting notification: ${id}`);
-      
-      // Use storage layer instead of direct DB access
+
+      // Enforce ownership via campaign access.
       const { db } = await import("./db");
+      if (!db) return res.status(503).json({ success: false, message: "Database not configured" });
       const { notifications } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
-      
+
+      const [existing] = await db.select().from(notifications as any).where(eq((notifications as any).id, String(id)));
+      const campaignId = String((existing as any)?.campaignId || "").trim();
+      if (!campaignId) return res.status(404).json({ success: false, message: "Notification not found" });
+      const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!okCampaign) return;
+
       const result = await db.delete(notifications).where(eq(notifications.id, id));
       
-      console.log(`[Notifications API] Deleted notification: ${id}`, result);
       res.json({ success: true, message: "Notification deleted" });
     } catch (error) {
       console.error('[Notifications API] Delete error:', error);
@@ -2075,17 +2125,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { read } = req.body;
-      console.log(`[Notifications API] Updating notification: ${id}, read: ${read}`);
-      
+
+      // Enforce ownership via campaign access.
       const { db } = await import("./db");
+      if (!db) return res.status(503).json({ success: false, message: "Database not configured" });
       const { notifications } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
+
+      const [existing] = await db.select().from(notifications as any).where(eq((notifications as any).id, String(id)));
+      const campaignId = String((existing as any)?.campaignId || "").trim();
+      if (!campaignId) return res.status(404).json({ success: false, message: "Notification not found" });
+      const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!okCampaign) return;
       
       const result = await db.update(notifications)
         .set({ read: read })
         .where(eq(notifications.id, id));
       
-      console.log(`[Notifications API] Updated notification: ${id}`, result);
       res.json({ success: true, message: "Notification updated" });
     } catch (error) {
       console.error('[Notifications API] Update error:', error);
@@ -2100,6 +2156,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NOTE: Render runs `registerRoutes` from this file, so alert endpoints must exist here.
   app.post("/api/alerts/check", async (req, res) => {
     try {
+      // Production hardening: this endpoint triggers global alert jobs and should not be publicly callable.
+      if (String(process.env.NODE_ENV || "").toLowerCase() === "production") {
+        return res.status(404).json({ success: false, message: "Not found" });
+      }
+
       // 1) In-app notifications (KPI performance alerts)
       const before = await storage.getNotifications().catch(() => [] as any[]);
       const beforeIds = new Set((Array.isArray(before) ? before : []).map((n: any) => String(n?.id || "")).filter(Boolean));
@@ -2145,7 +2206,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Alert status/configuration (counts + email configured)
   app.get("/api/alerts/status", async (req, res) => {
     try {
+      // Production hardening: avoid exposing global alert configuration to unauthenticated callers.
+      if (String(process.env.NODE_ENV || "").toLowerCase() === "production") {
+        return res.status(404).json({ message: "Not found" });
+      }
+
       const { db } = await import("./db");
+      if (!db) return res.status(503).json({ message: "Database not configured" });
       const { kpis, benchmarks } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
 
@@ -2857,6 +2924,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const okCampaign = await ensureCampaignAccess(req, res, (sess as any).campaignId);
     if (!okCampaign) return null;
     return sess;
+  };
+
+  // KPI/Benchmark/Report ownership helpers (campaign-scoped authorization)
+  const ensureKpiAccess = async (req: any, res: any, kpiIdRaw: unknown) => {
+    const actorId = getActorId(req);
+    if (!actorId) {
+      res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      return null;
+    }
+    const kpiId = String(kpiIdRaw || "").trim();
+    if (!kpiId) {
+      res.status(400).json({ success: false, message: "Invalid kpiId" });
+      return null;
+    }
+    const kpi = await storage.getKPI(kpiId).catch(() => undefined as any);
+    if (!kpi) {
+      res.status(404).json({ success: false, message: "KPI not found" });
+      return null;
+    }
+    const campaignId = String((kpi as any)?.campaignId || "").trim();
+    if (!campaignId) {
+      // Do not allow access to unscoped (platform-level) KPIs in multi-tenant mode.
+      res.status(404).json({ success: false, message: "KPI not found" });
+      return null;
+    }
+    const ok = await ensureCampaignAccess(req, res, campaignId);
+    if (!ok) return null;
+    return kpi;
+  };
+
+  const ensureBenchmarkAccess = async (req: any, res: any, benchmarkIdRaw: unknown) => {
+    const actorId = getActorId(req);
+    if (!actorId) {
+      res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      return null;
+    }
+    const benchmarkId = String(benchmarkIdRaw || "").trim();
+    if (!benchmarkId) {
+      res.status(400).json({ success: false, message: "Invalid benchmarkId" });
+      return null;
+    }
+    const benchmark = await storage.getBenchmark(benchmarkId).catch(() => undefined as any);
+    if (!benchmark) {
+      res.status(404).json({ success: false, message: "Benchmark not found" });
+      return null;
+    }
+    const campaignId = String((benchmark as any)?.campaignId || "").trim();
+    if (!campaignId) {
+      res.status(404).json({ success: false, message: "Benchmark not found" });
+      return null;
+    }
+    const ok = await ensureCampaignAccess(req, res, campaignId);
+    if (!ok) return null;
+    return benchmark;
+  };
+
+  const ensurePlatformReportAccess = async (req: any, res: any, reportIdRaw: unknown) => {
+    const actorId = getActorId(req);
+    if (!actorId) {
+      res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      return null;
+    }
+    const reportId = String(reportIdRaw || "").trim();
+    if (!reportId) {
+      res.status(400).json({ success: false, message: "Invalid reportId" });
+      return null;
+    }
+    // Platform reports are stored in the shared LinkedIn reports table for now.
+    const report = await storage.getLinkedInReport(reportId).catch(() => undefined as any);
+    if (!report) {
+      res.status(404).json({ success: false, message: "Report not found" });
+      return null;
+    }
+    const campaignId = String((report as any)?.campaignId || "").trim();
+    if (!campaignId) {
+      res.status(404).json({ success: false, message: "Report not found" });
+      return null;
+    }
+    const ok = await ensureCampaignAccess(req, res, campaignId);
+    if (!ok) return null;
+    return report;
   };
 
   app.get("/api/campaigns", async (req, res) => {
@@ -13230,6 +13378,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, id);
+      if (!ok) return;
       const kpis = await storage.getCampaignKPIs(id);
       res.json(kpis);
     } catch (error) {
@@ -13244,6 +13394,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const { kpiId } = req.params;
+      const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
+      if (!okKpi) return;
       const latestPeriod = await storage.getLatestKPIPeriod(kpiId);
       return res.json(latestPeriod || null);
     } catch (error) {
@@ -13257,6 +13409,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       const { campaignId } = req.query;
+      if (!campaignId) return res.json([]);
+      const ok = await ensureCampaignAccess(req as any, res as any, String(campaignId));
+      if (!ok) return;
 
       // Enterprise-grade correctness: ensure KPI currentValue is refreshed from latest LinkedIn metrics
       // whenever KPIs are fetched for a LinkedIn campaign. This prevents stale ROI/ROAS values even if
@@ -13280,6 +13435,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms/:platformType/kpis", async (req, res) => {
     try {
       const { platformType } = req.params;
+      if (!req.body?.campaignId) {
+        return res.status(400).json({ message: "campaignId is required" });
+      }
+      const ok = await ensureCampaignAccess(req as any, res as any, String(req.body.campaignId));
+      if (!ok) return;
 
       const toDecimalString = (v: any, fallback: string) => {
         if (v === '' || v === null || typeof v === 'undefined') return fallback;
@@ -13320,12 +13480,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.patch("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
-    console.log('=== PATCH KPI ENDPOINT ===');
-    console.log('KPI ID:', req.params.kpiId);
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
     try {
       const { kpiId } = req.params;
+      const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
+      if (!okKpi) return;
       
       const toDecimalStringOrUndefined = (v: any): string | undefined => {
         if (typeof v === 'undefined') return undefined;
@@ -13347,23 +13505,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         targetDate: req.body.targetDate ? new Date(req.body.targetDate) : req.body.targetDate === null ? null : undefined
       };
       
-      console.log('Update data after processing:', JSON.stringify(updateData, null, 2));
-      
       const updatedKPI = await storage.updateKPI(kpiId, updateData);
-      
-      console.log('Updated KPI result:', updatedKPI ? 'Found' : 'Not found');
-      
       if (!updatedKPI) {
-        console.log('KPI not found, returning 404');
         return res.status(404).json({ message: "KPI not found" });
       }
-      
-      console.log('Returning updated KPI');
       res.json(updatedKPI);
     } catch (error) {
       console.error('Platform KPI update error:', error);
       if (error instanceof z.ZodError) {
-        console.error('Zod validation errors:', error.errors);
         res.status(400).json({ message: "Invalid KPI data", errors: error.errors });
       } else {
         res.status(500).json({ message: "Failed to update platform KPI" });
@@ -13372,31 +13521,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
-    console.log(`=== DELETE KPI ENDPOINT CALLED ===`);
-    console.log(`Request params:`, req.params);
-    console.log(`Platform Type: ${req.params.platformType}`);
-    console.log(`KPI ID: ${req.params.kpiId}`);
-    
     try {
       const { kpiId } = req.params;
-      
-      console.log(`About to call storage.deleteKPI with ID: ${kpiId}`);
+      const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
+      if (!okKpi) return;
       const deleted = await storage.deleteKPI(kpiId);
-      console.log(`storage.deleteKPI returned: ${deleted}`);
       
       if (!deleted) {
-        console.log(`KPI ${kpiId} not found or not deleted`);
         return res.status(404).json({ message: "KPI not found" });
       }
       
-      console.log(`KPI ${kpiId} successfully deleted from storage`);
       res.setHeader('Content-Type', 'application/json');
       const response = { message: "KPI deleted successfully", success: true };
-      console.log(`Sending response:`, response);
       res.json(response);
     } catch (error) {
-      console.error('=== Platform KPI deletion error ===:', error);
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('Platform KPI deletion error:', error);
       res.status(500).json({ message: "Failed to delete KPI", error: error instanceof Error ? error.message : String(error) });
     }
   });
@@ -13404,6 +13543,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, id);
+      if (!ok) return;
 
       // Ensure DB has the column for user-selected input configs (deployed environments may not have run migrations yet).
       if (db) {
@@ -13755,11 +13896,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/campaigns/:id/benchmarks", async (req, res) => {
-    console.log('=== CREATE CAMPAIGN BENCHMARK ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
     try {
       const { id } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, id);
+      if (!ok) return;
       
       // Convert numeric values to strings for decimal fields
       const cleanedData = {
@@ -13773,17 +13913,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const validatedBenchmark = insertBenchmarkSchema.parse(cleanedData);
-      
-      console.log('Validated benchmark:', JSON.stringify(validatedBenchmark, null, 2));
-      
       const benchmark = await storage.createBenchmark(validatedBenchmark);
-      console.log('Created benchmark:', JSON.stringify(benchmark, null, 2));
       
       res.json(benchmark);
     } catch (error) {
       console.error('Campaign Benchmark creation error:', error);
       if (error instanceof z.ZodError) {
-        console.error('Zod validation errors:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid benchmark data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create campaign benchmark" });
@@ -13791,11 +13926,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.patch("/api/campaigns/:campaignId/benchmarks/:benchmarkId", async (req, res) => {
-    console.log('=== UPDATE CAMPAIGN BENCHMARK ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
     try {
       const { benchmarkId } = req.params;
+      const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
+      if (!existing) return;
       
       // Convert numeric values to strings for decimal fields
       const cleanedData = { ...req.body };
@@ -13810,19 +13944,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const validatedBenchmark = insertBenchmarkSchema.partial().parse(cleanedData);
-      console.log('Validated benchmark update:', JSON.stringify(validatedBenchmark, null, 2));
       
       const benchmark = await storage.updateBenchmark(benchmarkId, validatedBenchmark);
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
       
-      console.log('Updated benchmark:', JSON.stringify(benchmark, null, 2));
       res.json(benchmark);
     } catch (error) {
       console.error('Campaign Benchmark update error:', error);
       if (error instanceof z.ZodError) {
-        console.error('Zod validation errors:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid benchmark data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update campaign benchmark" });
@@ -13830,18 +13961,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/campaigns/:campaignId/benchmarks/:benchmarkId", async (req, res) => {
-    console.log('=== DELETE CAMPAIGN BENCHMARK ===');
-    console.log('Benchmark ID:', req.params.benchmarkId);
-    
     try {
       const { benchmarkId } = req.params;
+      const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
+      if (!existing) return;
       
       const deleted = await storage.deleteBenchmark(benchmarkId);
       if (!deleted) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
       
-      console.log(`Benchmark ${benchmarkId} successfully deleted`);
       res.json({ message: "Benchmark deleted successfully", success: true });
     } catch (error) {
       console.error('Campaign Benchmark deletion error:', error);
@@ -13853,6 +13982,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/kpis/:id/analytics", async (req, res) => {
     try {
       const { id } = req.params;
+      const okKpi = await ensureKpiAccess(req as any, res as any, id);
+      if (!okKpi) return;
       const timeframe = req.query.timeframe as string || "30d";
       
       const analytics = await storage.getKPIAnalytics(id, timeframe);
@@ -13867,6 +13998,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/kpis/:id/progress", async (req, res) => {
     try {
       const { id } = req.params;
+      const okKpi = await ensureKpiAccess(req as any, res as any, id);
+      if (!okKpi) return;
       
       const progressData = {
         kpiId: id,
@@ -13889,6 +14022,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/kpi-reports", async (req, res) => {
     try {
       const { id } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, id);
+      if (!ok) return;
       const reports = await storage.getCampaignKPIReports(id);
       res.json(reports);
     } catch (error) {
@@ -13900,6 +14035,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/kpi-reports", async (req, res) => {
     try {
       const { id } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, id);
+      if (!ok) return;
       const report = await storage.createKPIReport({ ...req.body, campaignId: id });
       res.json(report);
     } catch (error) {
@@ -13910,6 +14047,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/campaigns/:id/kpi-reports/:reportId", async (req, res) => {
     try {
+      const { id } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, id);
+      if (!ok) return;
       const { reportId } = req.params;
       const report = await storage.updateKPIReport(reportId, req.body);
       if (!report) {
@@ -13924,6 +14064,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/campaigns/:id/kpi-reports/:reportId", async (req, res) => {
     try {
+      const { id } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, id);
+      if (!ok) return;
       const { reportId } = req.params;
       const deleted = await storage.deleteKPIReport(reportId);
       if (!deleted) {
@@ -13941,6 +14084,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:campaignId/benchmarks", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const benchmarks = await storage.getCampaignBenchmarks(campaignId);
       res.json(benchmarks);
     } catch (error) {
@@ -13954,6 +14099,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       const { campaignId } = req.query;
+      if (!campaignId) return res.json([]);
+      const ok = await ensureCampaignAccess(req as any, res as any, String(campaignId));
+      if (!ok) return;
       const benchmarks = await storage.getPlatformBenchmarks(platformType, campaignId as string | undefined);
       res.json(benchmarks);
     } catch (error) {
@@ -13966,6 +14114,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms/:platformType/benchmarks", async (req, res) => {
     try {
       const { platformType } = req.params;
+      if (!req.body?.campaignId) {
+        return res.status(400).json({ message: "campaignId is required" });
+      }
+      const ok = await ensureCampaignAccess(req as any, res as any, String(req.body.campaignId));
+      if (!ok) return;
       
       // Convert empty strings to null for numeric fields
       const cleanedData = {
@@ -14002,6 +14155,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/platforms/:platformType/benchmarks/:benchmarkId", async (req, res) => {
     try {
       const { benchmarkId } = req.params;
+      const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
+      if (!existing) return;
       
       const validatedData = insertBenchmarkSchema.partial().parse(req.body);
       
@@ -14032,6 +14187,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId", async (req, res) => {
     try {
       const { benchmarkId } = req.params;
+      const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
+      if (!existing) return;
       
       const deleted = await storage.deleteBenchmark(benchmarkId);
       if (!deleted) {
@@ -14051,6 +14208,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platformType } = req.params;
       const { campaignId } = req.query;
+      if (!campaignId) return res.json([]);
+      const ok = await ensureCampaignAccess(req as any, res as any, String(campaignId));
+      if (!ok) return;
       const reports = await storage.getPlatformReports(platformType, campaignId as string | undefined);
       res.json(reports);
     } catch (error) {
@@ -14070,6 +14230,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const MAX_SCHEDULED_ACTIVE_REPORTS_PER_CAMPAIGN = 10;
 
       const campaignId = body?.campaignId ? String(body.campaignId) : null;
+      if (!campaignId) {
+        return res.status(400).json({ success: false, message: "campaignId is required" });
+      }
+      const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!okCampaign) return;
       if (campaignId) {
         try {
           const existing = await storage.getPlatformReports(platformType, campaignId as any);
@@ -14147,6 +14312,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { reportId } = req.params;
       const body = (req.body || {}) as any;
+      const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
+      if (!existing) return;
 
       // Validate schedule fields (finance-grade correctness)
       if (body?.scheduleEnabled) {
@@ -14177,6 +14344,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/platforms/:platformType/reports/:reportId", async (req, res) => {
     try {
       const { reportId } = req.params;
+      const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
+      if (!existing) return;
       
       const deleted = await storage.deletePlatformReport(reportId);
       if (!deleted) {
@@ -14194,8 +14363,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms/:platformType/reports/:reportId/send-test", async (req, res) => {
     try {
       const { reportId } = req.params;
-      
-      console.log(`[API] Test report email requested for: ${reportId}`);
+      const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
+      if (!existing) return;
       
       // Check email configuration first
       const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
@@ -14217,13 +14386,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sent = await sendTestReport(reportId);
       
       if (sent) {
-        console.log(`[API] ✅ Test email sent successfully for report: ${reportId}`);
         res.json({ 
           message: "Test report email sent successfully! Check your inbox.", 
           success: true 
         });
       } else {
-        console.error(`[API] ❌ Failed to send test email for report: ${reportId}`);
         res.status(500).json({ 
           message: "Failed to send test report email. Check server logs for details.", 
           success: false 
@@ -14243,7 +14410,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const { reportId } = req.params;
+      const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
+      if (!existing) return;
       const { db } = await import("./db");
+      if (!db) return res.status(503).json({ success: false, error: "Database not configured" });
       const { reportSnapshots } = await import("../shared/schema");
       const { eq, desc } = await import("drizzle-orm");
       const rows = await db
@@ -14262,18 +14432,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const { platformType, reportId } = req.params;
+      const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
+      if (!existing) return;
       const { db } = await import("./db");
-      const { reportSnapshots, linkedinReports, campaigns } = await import("../shared/schema");
-      const { eq } = await import("drizzle-orm");
+      if (!db) return res.status(503).json({ success: false, error: "Database not configured" });
+      const { reportSnapshots } = await import("../shared/schema");
 
-      const [report] = await db.select().from(linkedinReports as any).where(eq((linkedinReports as any).id, String(reportId)));
-      if (!report) return res.status(404).json({ success: false, error: "Report not found" });
-
-      let campaignName: string | null = null;
-      if ((report as any).campaignId) {
-        const [c] = await db.select().from(campaigns as any).where(eq((campaigns as any).id, String((report as any).campaignId)));
-        campaignName = (c as any)?.name || null;
-      }
+      const campaignId = String((existing as any)?.campaignId || "").trim();
+      const campaignName = campaignId ? String((await storage.getCampaign(campaignId).catch(() => null) as any)?.name || "") : "";
 
       const now = new Date();
       const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
@@ -14283,12 +14449,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const windowEnd = end.toISOString().slice(0, 10);
 
       const payload = {
-        reportId: String((report as any).id),
-        reportName: String((report as any).name || ""),
-        reportType: String((report as any).reportType || ""),
-        platformType: String((report as any).platformType || platformType || "linkedin"),
-        campaignId: (report as any).campaignId || null,
-        campaignName,
+        reportId: String((existing as any).id),
+        reportName: String((existing as any).name || ""),
+        reportType: String((existing as any).reportType || ""),
+        platformType: String((existing as any).platformType || platformType || "linkedin"),
+        campaignId: campaignId || null,
+        campaignName: campaignName || null,
         windowStart,
         windowEnd,
         generatedAt: now.toISOString(),
@@ -14320,6 +14486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Cache-Control", "no-store");
       const { snapshotId } = req.params;
       const { db } = await import("./db");
+      if (!db) return res.status(503).json({ success: false, error: "Database not configured" });
       const { reportSnapshots } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       const [row] = await db
@@ -14327,6 +14494,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(reportSnapshots as any)
         .where(eq((reportSnapshots as any).id, String(snapshotId)));
       if (!row) return res.status(404).json({ success: false, error: "Snapshot not found" });
+      const okReport = await ensurePlatformReportAccess(req as any, res as any, String((row as any).reportId || ""));
+      if (!okReport) return;
       res.json({ success: true, snapshot: row });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch snapshot" });
@@ -14339,6 +14508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Cache-Control", "no-store");
       const { snapshotId } = req.params;
       const { db } = await import("./db");
+      if (!db) return res.status(503).json({ success: false, error: "Database not configured" });
       const { reportSnapshots } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       const [row] = await db
@@ -14346,6 +14516,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(reportSnapshots as any)
         .where(eq((reportSnapshots as any).id, String(snapshotId)));
       if (!row) return res.status(404).json({ success: false, error: "Snapshot not found" });
+      const okReport = await ensurePlatformReportAccess(req as any, res as any, String((row as any).reportId || ""));
+      if (!okReport) return;
 
       let payload: any = {};
       try {
@@ -14382,12 +14554,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/benchmarks/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const benchmark = await storage.getBenchmark(id);
-      
-      if (!benchmark) {
-        return res.status(404).json({ message: "Benchmark not found" });
-      }
-      
+      const benchmark = await ensureBenchmarkAccess(req as any, res as any, id);
+      if (!benchmark) return;
       res.json(benchmark);
     } catch (error) {
       console.error('Benchmark fetch error:', error);
@@ -14398,6 +14566,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create benchmark
   app.post("/api/benchmarks", async (req, res) => {
     try {
+      const campaignId = String((req.body as any)?.campaignId || "").trim();
+      if (!campaignId) {
+        return res.status(400).json({ message: "campaignId is required" });
+      }
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
       const validatedData = insertBenchmarkSchema.parse(req.body);
       
       // Calculate initial variance if current value exists
@@ -14423,6 +14598,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/benchmarks/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      const existing = await ensureBenchmarkAccess(req as any, res as any, id);
+      if (!existing) return;
       const updateData = req.body;
       
       // Recalculate variance if values are updated
@@ -14450,6 +14627,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/benchmarks/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      const existing = await ensureBenchmarkAccess(req as any, res as any, id);
+      if (!existing) return;
       const success = await storage.deleteBenchmark(id);
       
       if (!success) {
@@ -14467,6 +14646,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/benchmarks/:id/history", async (req, res) => {
     try {
       const { id } = req.params;
+      const existing = await ensureBenchmarkAccess(req as any, res as any, id);
+      if (!existing) return;
       const history = await storage.getBenchmarkHistory(id);
       res.json(history);
     } catch (error) {
@@ -14479,6 +14660,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/benchmarks/:id/history", async (req, res) => {
     try {
       const { id } = req.params;
+      const existing = await ensureBenchmarkAccess(req as any, res as any, id);
+      if (!existing) return;
       
       const historyData = {
         benchmarkId: id,
@@ -14501,6 +14684,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/benchmarks/:id/analytics", async (req, res) => {
     try {
       const { id } = req.params;
+      const existing = await ensureBenchmarkAccess(req as any, res as any, id);
+      if (!existing) return;
       const analytics = await storage.getBenchmarkAnalytics(id);
       res.json(analytics);
     } catch (error) {

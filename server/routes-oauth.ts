@@ -15962,278 +15962,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       aggregated.cpl = sanitizeCalculatedMetric('cpl', computeCpl(totalSpend, totalLeads));
       aggregated.er = sanitizeCalculatedMetric('er', computeErPercent(totalEngagements, totalImpressions));
       
-      // Revenue sources (Google Sheets + HubSpot + Salesforce)
-      // IMPORTANT: Revenue metrics should only be enabled when there is at least one ACTIVE *revenue-tracking* source.
-      // View-only sources ("Just connect for viewing / later use") must NOT keep revenue metrics enabled.
-      const googleSheetsConnections = await storage.getGoogleSheetsConnections(session.campaignId);
-      const hubspotConnections = await storage.getHubspotConnections(session.campaignId);
-      const salesforceConnections = await storage.getSalesforceConnections(session.campaignId);
-
-      const isRevenueTrackingConnection = (conn: any): boolean => {
-        const mappingsRaw = conn?.columnMappings || conn?.column_mappings;
-        if (!mappingsRaw) return false;
-        try {
-          const mappings = typeof mappingsRaw === 'string' ? JSON.parse(mappingsRaw) : mappingsRaw;
-          if (!Array.isArray(mappings) || mappings.length === 0) return false;
-          const hasIdentifier =
-            mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
-            mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
-          const hasValueSource =
-            mappings.some((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value') ||
-            mappings.some((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
-          return hasIdentifier && hasValueSource;
-        } catch {
-          return false;
-        }
-      };
-      
-      // Filter to only connections WITH MAPPINGS
-      // Handle both camelCase (Drizzle) and snake_case (raw SQL) field names
-      const connectionsWithMappings = googleSheetsConnections.filter((conn: any) => {
-        const columnMappings = conn.columnMappings || conn.column_mappings;
-        if (!columnMappings || (typeof columnMappings === 'string' && columnMappings.trim() === '')) {
-          return false;
-        }
-        try {
-          const mappings = typeof columnMappings === 'string' ? JSON.parse(columnMappings) : columnMappings;
-          return Array.isArray(mappings) && mappings.length > 0;
-        } catch {
-          return false;
-        }
+      // Canonical LinkedIn revenue rules (shared across Overview/KPIs/Benchmarks/Ads)
+      const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
+      const rev = await resolveLinkedInRevenueContext({
+        campaignId: String(session.campaignId),
+        conversionsTotal: Number(totalConversions || 0),
+        sessionConversionValue: (session as any)?.conversionValue,
       });
-      
-      const hasAnyActiveGoogleSheetsConnection = googleSheetsConnections.length > 0;
-      const hasAnyActiveRevenueTrackingGoogleSheetsConnection =
-        googleSheetsConnections.some((c: any) => (c as any)?.isActive !== false && isRevenueTrackingConnection(c));
-      let hasActiveGoogleSheetsWithMappings = connectionsWithMappings.length > 0;
 
-      const isRevenueTrackingHubspotConnection = (conn: any): boolean => {
-        const raw = conn?.mappingConfig;
-        if (!raw) return false;
-        try {
-          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          return !!cfg?.campaignProperty && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0 && !!cfg?.revenueProperty;
-        } catch {
-          return false;
-        }
-      };
+      const hasRevenueTracking = !!(rev as any)?.hasRevenueTracking;
+      const effectiveTotalRevenue = Number((rev as any)?.totalRevenue || 0) || 0;
+      const conversionValueUsed = Number((rev as any)?.conversionValue || 0) || 0;
 
-      const hasAnyActiveHubspotConnection = (hubspotConnections || []).some((c: any) => (c as any)?.isActive !== false && !!(c as any)?.accessToken);
-      const hasAnyActiveRevenueTrackingHubspotConnection = (hubspotConnections || []).some((c: any) => (c as any)?.isActive !== false && isRevenueTrackingHubspotConnection(c));
-      
-      const isRevenueTrackingSalesforceConnection = (conn: any): boolean => {
-        const raw = conn?.mappingConfig;
-        if (!raw) return false;
-        try {
-          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          return !!cfg?.campaignField && Array.isArray(cfg?.selectedValues) && cfg.selectedValues.length > 0 && !!cfg?.revenueField;
-        } catch {
-          return false;
-        }
-      };
+      aggregated.hasRevenueTracking = hasRevenueTracking ? 1 : 0;
+      aggregated.conversionValue = parseFloat(Number(conversionValueUsed).toFixed(2));
+      aggregated.totalRevenue = parseFloat(Number(effectiveTotalRevenue).toFixed(2));
+      aggregated.revenue = aggregated.totalRevenue; // stable alias
 
-      const hasAnyActiveSalesforceConnection = (salesforceConnections || []).some((c: any) => (c as any)?.isActive !== false && !!(c as any)?.accessToken && !!(c as any)?.instanceUrl);
-      const hasAnyActiveRevenueTrackingSalesforceConnection = (salesforceConnections || []).some((c: any) => (c as any)?.isActive !== false && isRevenueTrackingSalesforceConnection(c));
+      const profit = effectiveTotalRevenue - totalSpend;
+      aggregated.profit = parseFloat(Number(profit).toFixed(2));
 
-      const hasAnyActiveSourceConnection =
-        hasAnyActiveGoogleSheetsConnection || hasAnyActiveHubspotConnection || hasAnyActiveSalesforceConnection;
-      const hasAnyActiveRevenueTrackingSourceConnection =
-        hasAnyActiveRevenueTrackingGoogleSheetsConnection ||
-        hasAnyActiveRevenueTrackingHubspotConnection ||
-        hasAnyActiveRevenueTrackingSalesforceConnection;
-      
-      // CRITICAL: Refetch campaign to get the latest conversion value (it might have just been updated by save-mappings)
-      // The campaign was fetched earlier, but conversion value might have been updated since then
-      const latestCampaign = await storage.getCampaign(session.campaignId);
-      
-      // CRITICAL: If we have a conversion value but no mappings detected, do a recheck immediately
-      // This handles race conditions where mappings were just saved but not yet visible
-      const hasConversionValue = latestCampaign?.conversionValue && parseFloat(latestCampaign.conversionValue.toString()) > 0;
-      if (hasConversionValue && !hasActiveGoogleSheetsWithMappings) {
-        // Recheck connections - mappings might have just been saved
-        const recheckConnections = await storage.getGoogleSheetsConnections(session.campaignId);
-        const recheckMappings = recheckConnections.filter((conn: any) => {
-          const cm = conn.columnMappings || conn.column_mappings;
-          if (!cm || (typeof cm === 'string' && cm.trim() === '')) return false;
-          try {
-            const m = typeof cm === 'string' ? JSON.parse(cm) : cm;
-            return Array.isArray(m) && m.length > 0;
-          } catch { return false; }
-        });
-        if (recheckMappings.length > 0) {
-          hasActiveGoogleSheetsWithMappings = true;
-          connectionsWithMappings.push(...recheckMappings);
-        }
-      }
-      
-      // STRICT PLATFORM ISOLATION:
-      // LinkedIn revenue metrics must NOT be enabled by GA4 revenue sources or campaign-level conversionValue.
-      // Only LinkedIn-scoped revenue sources can unlock revenue metrics.
-      const isLinkedInRevenueTrackingSheetsConnection = (conn: any): boolean => {
-        const purpose = String((conn as any)?.purpose || '').trim().toLowerCase();
-        if (purpose !== 'general') return false;
-        const mappingsRaw = (conn as any)?.columnMappings || (conn as any)?.column_mappings;
-        if (!mappingsRaw) return false;
-        try {
-          const mappings = typeof mappingsRaw === 'string' ? JSON.parse(mappingsRaw) : mappingsRaw;
-          if (!Array.isArray(mappings) || mappings.length === 0) return false;
-          const hasIdentifier =
-            mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
-            mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');
-          const hasValueSource =
-            mappings.some((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value') ||
-            mappings.some((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
-          return hasIdentifier && hasValueSource;
-        } catch {
-          return false;
-        }
-      };
-
-      const isLinkedInTaggedMapping = (raw: any): boolean => {
-        if (!raw) return false;
-        try {
-          const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          const platform = String(cfg?.platformContext || cfg?.platform || '').trim().toLowerCase();
-          return platform === 'linkedin';
-        } catch {
-          return false;
-        }
-      };
-
-      const linkedInSheetsConns = (googleSheetsConnections || []).filter((c: any) => (c as any)?.isActive !== false && isLinkedInRevenueTrackingSheetsConnection(c));
-      const linkedInHubspotConns = (hubspotConnections || []).filter((c: any) => (c as any)?.isActive !== false && isLinkedInTaggedMapping((c as any)?.mappingConfig));
-      const linkedInSalesforceConns = (salesforceConnections || []).filter((c: any) => (c as any)?.isActive !== false && isLinkedInTaggedMapping((c as any)?.mappingConfig));
-
-      const hasAnyLinkedInRevenueTrackingSourceConnection =
-        linkedInSheetsConns.length > 0 || linkedInHubspotConns.length > 0 || linkedInSalesforceConns.length > 0;
-
-      // Also allow LinkedIn-scoped imported revenue sources (CSV/manual/Sheets/CRM) to enable revenue metrics.
-      const isoDateUTC = (d: any) => {
-        try {
-          const dt = d instanceof Date ? d : new Date(d);
-          if (Number.isNaN(dt.getTime())) return null;
-          return dt.toISOString().slice(0, 10);
-        } catch {
-          return null;
-        }
-      };
-      const yesterdayUTC = () => {
-        const now = new Date();
-        const y = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
-        return y.toISOString().slice(0, 10);
-      };
-
-      let importedRevenueToDate = 0;
-      try {
-        // Align revenue window to LinkedIn analytics window (last 30 complete UTC days)
-        const endDate = yesterdayUTC();
-        const end = new Date(`${endDate}T00:00:00.000Z`);
-        const start = new Date(end.getTime());
-        start.setUTCDate(start.getUTCDate() - 29);
-        let startDate = start.toISOString().slice(0, 10);
-        const campStart =
-          isoDateUTC((campaign as any)?.startDate) ||
-          isoDateUTC((campaign as any)?.createdAt) ||
-          null;
-        if (campStart && String(campStart) > String(startDate)) startDate = String(campStart);
-        if (String(startDate) > String(endDate)) startDate = endDate;
-        const totals = await storage.getRevenueTotalForRange(session.campaignId, startDate, endDate, 'linkedin');
-        importedRevenueToDate = Number(totals?.totalRevenue || 0);
-      } catch {
-        importedRevenueToDate = 0;
-      }
-      const hasImportedRevenue = importedRevenueToDate > 0;
-
-      // LinkedIn conversion-value-only sources should also enable revenue metrics.
-      let hasLinkedInConversionValueSource = false;
-      try {
-        const sources = await storage.getRevenueSources(session.campaignId, 'linkedin');
-        hasLinkedInConversionValueSource = (Array.isArray(sources) ? sources : []).some((s: any) => {
-          if (!s || (s as any)?.isActive === false) return false;
-          const raw = (s as any)?.mappingConfig;
-          if (!raw) return false;
-          try {
-            const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
-            const vs = String(cfg?.valueSource || '').trim().toLowerCase();
-            const mode = String(cfg?.mode || '').trim().toLowerCase();
-            return vs === 'conversion_value' || mode === 'conversion_value';
-          } catch {
-            return false;
-          }
-        });
-      } catch {
-        hasLinkedInConversionValueSource = false;
-      }
-
-      // Determine conversion value (LinkedIn connection → session). Never use campaign-level conversionValue.
-      const linkedInConn = await storage.getLinkedInConnection(session.campaignId);
-      const connCv = linkedInConn?.conversionValue ? parseFloat(String(linkedInConn.conversionValue)) : 0;
-      const sessionCv = parseFloat(session.conversionValue || '0');
-      const mappedConversionValue = hasAnyLinkedInRevenueTrackingSourceConnection ? (connCv > 0 ? connCv : sessionCv) : connCv;
-      // If conversion value is not explicitly provided, calculate it from imported revenue and conversions.
-      // This keeps the UI populated and consistent for execs: Conversion Value = Revenue-to-date ÷ Conversions.
-      const derivedConversionValue = (hasImportedRevenue && totalConversions > 0)
-        ? (importedRevenueToDate / totalConversions)
-        : 0;
-      const conversionValue = mappedConversionValue > 0 ? mappedConversionValue : derivedConversionValue;
-
-      // Only clear stale conversion values if there is neither a mapped revenue-tracking connection nor imported revenue sources.
-      if (!hasAnyLinkedInRevenueTrackingSourceConnection && !hasImportedRevenue && !hasLinkedInConversionValueSource) {
-        if (session.conversionValue) {
-          await storage.updateLinkedInImportSession(session.id, { conversionValue: null });
-        }
-        if (linkedInConn?.conversionValue) {
-          await storage.updateLinkedInConnection(session.campaignId, { conversionValue: null });
-        }
-      }
-
-      // Enable revenue tracking if either:
-      // - mapped conversion value exists, or
-      // - imported revenue exists (even if conversions=0).
-      const shouldEnableRevenueTracking =
-        ((hasAnyLinkedInRevenueTrackingSourceConnection || hasLinkedInConversionValueSource) && conversionValue > 0) ||
-        hasImportedRevenue;
-      if (shouldEnableRevenueTracking) {
-        aggregated.hasRevenueTracking = 1;
-        aggregated.conversionValue = parseFloat(Number(conversionValue || 0).toFixed(2));
-        const effectiveTotalRevenue =
-          hasImportedRevenue && (!hasAnyLinkedInRevenueTrackingSourceConnection || mappedConversionValue <= 0)
-            ? importedRevenueToDate
-            : (totalConversions * conversionValue);
-        const profit = effectiveTotalRevenue - totalSpend;
-        aggregated.totalRevenue = parseFloat(Number(effectiveTotalRevenue).toFixed(2));
-        aggregated.profit = parseFloat(Number(profit).toFixed(2));
-        
-        // ROI - Return on Investment: ((Revenue - Spend) / Spend) × 100
-        if (totalSpend > 0) {
-          const roi = ((effectiveTotalRevenue - totalSpend) / totalSpend) * 100;
-          aggregated.roi = sanitizeCalculatedMetric('roi', parseFloat(roi.toFixed(2)));
-        }
-        
-        // ROAS - Return on Ad Spend: Revenue / Spend
-        if (totalSpend > 0) {
-          const roas = effectiveTotalRevenue / totalSpend;
-          aggregated.roas = sanitizeCalculatedMetric('roas', parseFloat(roas.toFixed(2)));
-        }
-        
-        // Profit Margin: (Profit / Revenue) × 100
-        if (effectiveTotalRevenue > 0) {
-          const profitMargin = (profit / effectiveTotalRevenue) * 100;
-          aggregated.profitMargin = sanitizeCalculatedMetric('profitMargin', parseFloat(profitMargin.toFixed(2)));
-        }
-        
-        // Revenue Per Lead: Revenue / Leads
-        if (totalLeads > 0) {
-          aggregated.revenuePerLead = parseFloat((effectiveTotalRevenue / totalLeads).toFixed(2));
-        }
+      // ROI - Return on Investment: ((Revenue - Spend) / Spend) × 100
+      if (hasRevenueTracking && totalSpend > 0) {
+        const roi = ((effectiveTotalRevenue - totalSpend) / totalSpend) * 100;
+        aggregated.roi = sanitizeCalculatedMetric('roi', parseFloat(roi.toFixed(2)));
       } else {
-        aggregated.hasRevenueTracking = 0;
-        aggregated.conversionValue = 0;
-        aggregated.totalRevenue = 0;
-        aggregated.profit = 0;
         aggregated.roi = 0;
+      }
+
+      // ROAS - Return on Ad Spend: Revenue / Spend
+      if (hasRevenueTracking && totalSpend > 0) {
+        const roas = effectiveTotalRevenue / totalSpend;
+        aggregated.roas = sanitizeCalculatedMetric('roas', parseFloat(roas.toFixed(2)));
+      } else {
         aggregated.roas = 0;
+      }
+
+      // Profit Margin: (Profit / Revenue) × 100
+      if (hasRevenueTracking && effectiveTotalRevenue > 0) {
+        const profitMargin = (profit / effectiveTotalRevenue) * 100;
+        aggregated.profitMargin = sanitizeCalculatedMetric('profitMargin', parseFloat(profitMargin.toFixed(2)));
+      } else {
         aggregated.profitMargin = 0;
+      }
+
+      // Revenue Per Lead: Revenue / Leads
+      if (hasRevenueTracking && totalLeads > 0) {
+        aggregated.revenuePerLead = parseFloat((effectiveTotalRevenue / totalLeads).toFixed(2));
+      } else {
         aggregated.revenuePerLead = 0;
       }
       

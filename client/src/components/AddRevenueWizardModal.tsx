@@ -717,7 +717,18 @@ export function AddRevenueWizardModal(props: {
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process sheet");
-      toast({ title: "Revenue imported", description: `Imported ${Number(json.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.` });
+
+      if (platformContext === 'linkedin' && String(json?.mode || '') === 'conversion_value') {
+        toast({
+          title: "Conversion value imported",
+          description: `Conversion Value set to ${Number(json?.conversionValue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency} per conversion.`,
+        });
+      } else {
+        toast({
+          title: "Revenue imported",
+          description: `Imported ${Number(json?.totalRevenue || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}.`,
+        });
+      }
       invalidateAfterRevenueChange();
       onSuccess?.();
       onOpenChange(false);

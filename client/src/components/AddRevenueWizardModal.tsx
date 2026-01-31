@@ -46,12 +46,15 @@ export function AddRevenueWizardModal(props: {
     void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
 
-    // Revenue-derived endpoints used across GA4 + LinkedIn screens.
+    // Revenue-derived endpoints used across screens.
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
 
     if (platformContext === 'linkedin') {
+      // LinkedIn revenue totals must always be scoped (never fall back to GA4 totals).
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date?platformContext=linkedin`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=linkedin`], exact: false });
       // LinkedIn-specific caches (some pages use array-shaped keys).
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "linkedin"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId], exact: false });

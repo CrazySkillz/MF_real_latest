@@ -664,6 +664,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
+      const ctxRaw = String((req.query as any)?.platformContext || "ga4").trim().toLowerCase();
+      const platformContext = (ctxRaw === "linkedin" ? "linkedin" : "ga4") as "ga4" | "linkedin";
       const campaign = await storage.getCampaign(campaignId);
       if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
@@ -673,8 +675,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "2020-01-01";
       const endDate = yesterdayUTC();
 
-      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate);
-      res.json({ success: true, startDate, endDate, ...totals });
+      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext);
+      res.json({ success: true, platformContext, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue-to-date" });
     }
@@ -805,8 +807,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || "30days");
       const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate);
-      res.json({ success: true, dateRange, startDate, endDate, ...totals });
+      const ctxRaw = String((req.query as any)?.platformContext || "ga4").trim().toLowerCase();
+      const platformContext = (ctxRaw === "linkedin" ? "linkedin" : "ga4") as "ga4" | "linkedin";
+      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext);
+      res.json({ success: true, platformContext, dateRange, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue totals" });
     }
@@ -821,11 +825,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
       const date = String(req.query.date || "").trim();
+      const ctxRaw = String((req.query as any)?.platformContext || "ga4").trim().toLowerCase();
+      const platformContext = (ctxRaw === "linkedin" ? "linkedin" : "ga4") as "ga4" | "linkedin";
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
       }
-      const totals = await storage.getRevenueTotalForRange(campaignId, date, date);
-      res.json({ success: true, date, ...totals });
+      const totals = await storage.getRevenueTotalForRange(campaignId, date, date, platformContext);
+      res.json({ success: true, platformContext, date, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch daily revenue" });
     }

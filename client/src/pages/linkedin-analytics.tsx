@@ -146,7 +146,7 @@ export default function LinkedInAnalytics() {
   // LinkedIn revenue metrics are unlocked by connecting a revenue/conversion-value source.
   const [revenueModalIntent, setRevenueModalIntent] = useState<'add' | 'edit'>('add');
 
-  // LinkedIn Add revenue now uses GA4-parity wizard flow (select source -> Google Sheets -> choose tab -> map columns)
+  // LinkedIn Add revenue uses the standard wizard flow (select source -> Google Sheets -> choose tab -> map columns)
   const openAddRevenueModal = async (intent: 'add' | 'edit' = 'add') => {
     setRevenueModalIntent(intent);
     setRevenueWizardInitialStep("select");
@@ -7127,7 +7127,7 @@ export default function LinkedInAnalytics() {
                               );
                             })()}
                             
-                            {/* Performance vs Benchmark (GA4-parity logic + thresholds) */}
+                            {/* Performance vs Benchmark (parity logic + thresholds) */}
                             {(() => {
                               const benchVal = parseFloat(stripNumeric(String(benchmark.benchmarkValue || benchmark.targetValue || '0'))) || 0;
                               if (!Number.isFinite(benchVal) || benchVal <= 0) return null;
@@ -11411,7 +11411,7 @@ export default function LinkedInAnalytics() {
         </DialogContent>
       </Dialog>
 
-      {/* LinkedIn revenue CSV wizard (GA4-parity flow) */}
+      {/* LinkedIn revenue CSV wizard (standard flow) */}
       {campaignId && (
         <AddRevenueWizardModal
           open={isRevenueWizardOpen}

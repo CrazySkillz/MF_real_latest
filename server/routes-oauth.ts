@@ -90,6 +90,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // --------------------------------------------------------------------------
+  // Production-safe logging
+  // - Avoid noisy console logs in production endpoints (exec-grade reliability).
+  // - Keep warnings/errors visible; keep verbose logs dev-only.
+  // --------------------------------------------------------------------------
+  const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  const devLog = (...args: any[]) => {
+    if (!isProd) {
+      // eslint-disable-next-line no-console
+      console.log(...args);
+    }
+  };
+
   // ============================================================================
   // Deterministic GA4 simulation (for demo/testing properties like "yesop")
   // - Used when ?mock=1 OR propertyId matches a known mock property id.
@@ -15771,7 +15784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalConversions = parseNum(linkedinMetrics.conversions) + parseNum(customIntegrationData.conversions);
       const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend);
       
-      console.log('Snapshot metrics:', { totalImpressions, totalEngagements, totalClicks, totalConversions, totalSpend });
+      devLog('Snapshot metrics:', { totalImpressions, totalEngagements, totalClicks, totalConversions, totalSpend });
       
       const snapshot = await storage.createMetricSnapshot({
         campaignId: id,
@@ -15782,7 +15795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalSpend: totalSpend.toFixed(2)
       });
       
-      console.log(`Snapshot created for campaign ${id}:`, snapshot);
+      devLog(`Snapshot created for campaign ${id}:`, snapshot);
       res.json(snapshot);
     } catch (error) {
       console.error('Metric snapshot creation error:', error);
@@ -15851,10 +15864,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get campaign to access conversion value
       const campaign = await storage.getCampaign(session.campaignId);
-      console.log('=== LINKEDIN ANALYTICS DEBUG ===');
-      console.log('Campaign ID:', session.campaignId);
-      console.log('Campaign found:', campaign ? 'YES' : 'NO');
-      console.log('Campaign conversion value:', campaign?.conversionValue);
+      devLog('=== LINKEDIN ANALYTICS DEBUG ===');
+      devLog('Campaign ID:', session.campaignId);
+      devLog('Campaign found:', campaign ? 'YES' : 'NO');
+      devLog('Campaign conversion value:', campaign?.conversionValue);
       
       const rawMetrics = await storage.getLinkedInImportMetrics(sessionId);
       const ads = await storage.getLinkedInAdPerformance(sessionId);
@@ -15919,7 +15932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         0 // Will add relationship errors later
       );
       
-      console.log(`[Data Quality] Score: ${dataQuality.score.toFixed(1)}% (${dataQuality.grade}) - ${dataQuality.message}`);
+      devLog(`[Data Quality] Score: ${dataQuality.score.toFixed(1)}% (${dataQuality.grade}) - ${dataQuality.message}`);
       
       // Get unique selected metrics from the imported data
       const selectedMetrics = Array.from(new Set(metrics.map((m: any) => m.metricKey)));
@@ -16073,7 +16086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const campaignBenchmarks = await storage.getCampaignBenchmarks(session.campaignId);
         
         if (campaignBenchmarks && campaignBenchmarks.length > 0) {
-          console.log(`[Performance Indicators] Found ${campaignBenchmarks.length} benchmarks for campaign`);
+          devLog(`[Performance Indicators] Found ${campaignBenchmarks.length} benchmarks for campaign`);
           
           // Helper function to calculate performance level
           const getPerformanceLevel = (actualValue: number, benchmark: any): string | null => {
@@ -16114,9 +16127,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           aggregated.performanceIndicators = performanceIndicators;
-          console.log('[Performance Indicators] Calculated:', performanceIndicators);
+          devLog('[Performance Indicators] Calculated:', performanceIndicators);
         } else {
-          console.log('[Performance Indicators] No benchmarks found for campaign');
+          devLog('[Performance Indicators] No benchmarks found for campaign');
           aggregated.performanceIndicators = {};
         }
       } catch (benchmarkError) {

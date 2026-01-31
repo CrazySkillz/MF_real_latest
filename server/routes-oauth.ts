@@ -2196,7 +2196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Server-side exec-friendly Insights (WoW anomaly signals) for a LinkedIn import session.
-  // Production source of truth (mirrors /server/routes.ts but with session access control).
+  // Production source of truth (single implementation with session access control).
   app.get("/api/linkedin/insights/:sessionId", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
@@ -6526,8 +6526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let linkedInSpend = 0;
       try {
         if (linkedInConn && linkedInConn.adAccountId) {
-          const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-          const latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+          const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
           if (latestSession) {
             const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
             const aggregated: Record<string, number> = {};
@@ -9139,8 +9138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If Salesforce is being used as a LinkedIn conversion-value source, compute and persist conversion value directly
       // (do NOT derive it from revenue/conversions, and do not materialize revenue records).
       if (platformCtx === 'linkedin' && effectiveValueSource === 'conversion_value') {
-        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-        const latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+        const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
         if (!latestSession) {
           return res.status(400).json({ error: 'No LinkedIn import session found. Please import LinkedIn metrics first.' });
         }
@@ -9228,8 +9226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalConversions: number | null = null;
       let latestSession: any = null;
       if (platformCtx === 'linkedin') {
-        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-        latestSession = (sessions || []).sort((a: any, b: any) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime())[0];
+        latestSession = await storage.getLatestLinkedInImportSession(campaignId);
         if (!latestSession) {
           return res.status(400).json({ error: 'No LinkedIn import session found. Please import LinkedIn metrics first.' });
         }
@@ -11299,11 +11296,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Helper function to get LinkedIn API conversions for a campaign
         const getLinkedInApiConversions = async (campaignId: string): Promise<number | null> => {
           try {
-            const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-            if (sessions && sessions.length > 0) {
-              const latestSession = sessions.sort((a: any, b: any) => 
-                new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-              )[0];
+            const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+            if (latestSession) {
               const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
               
               const normalizeMetricKey = (key: any) =>
@@ -11605,11 +11599,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Also update LinkedIn import sessions if they exist AND campaign is LinkedIn (for consistency)
             if (campaignPlatform && campaignPlatform.toLowerCase() === 'linkedin') {
               try {
-                const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-                if (linkedInSessions && linkedInSessions.length > 0) {
-                  const latestSession = linkedInSessions.sort((a, b) => 
-                    new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-                  )[0];
+                const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+                if (latestSession) {
                   
                   await storage.updateLinkedInImportSession(latestSession.id, {
                     conversionValue: calculatedConversionValue
@@ -15749,13 +15740,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch LinkedIn metrics
       let linkedinMetrics: any = {};
       try {
-        const sessions = await storage.getCampaignLinkedInImportSessions(id);
-        if (sessions && sessions.length > 0) {
-          const latestSession = sessions.sort((a: any, b: any) => 
-            new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-          )[0];
+        const latestSession = await storage.getLatestLinkedInImportSession(id);
+        if (latestSession) {
           const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
-          
+
           metrics.forEach((m: any) => {
             const value = parseFloat(m.metricValue || '0');
             const key = m.metricKey.toLowerCase();
@@ -16424,22 +16412,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let linkedinLastUpdate: string | null = null;
       
       try {
-        const sessions = await storage.getCampaignLinkedInImportSessions(id);
-        if (sessions && sessions.length > 0) {
-          const latestSession = sessions.sort((a: any, b: any) => 
-            new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-          )[0];
-          
+        const latestSession = await storage.getLatestLinkedInImportSession(id);
+        if (latestSession) {
           linkedinLastUpdate = latestSession.importedAt;
-          
+
           const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
-          
+
           metrics.forEach((m: any) => {
             const value = parseFloat(m.metricValue || '0');
             const key = m.metricKey.toLowerCase();
             linkedinMetrics[key] = (linkedinMetrics[key] || 0) + value;
           });
-          
+
           // Calculate LinkedIn revenue from conversion value
           if (latestSession.conversionValue && parseFloat(latestSession.conversionValue) > 0) {
             const conversionValue = parseFloat(latestSession.conversionValue);
@@ -18468,9 +18452,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (mappedConnections.length > 0) {
             // Get LinkedIn conversions from API
             let totalConversions = 0;
-            const latestSession = linkedInSessions.sort((a, b) => 
-              new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-            )[0];
+            const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+            if (!latestSession) {
+              throw new Error('No LinkedIn import session found. Please import LinkedIn metrics first.');
+            }
             
             console.log(`[Save Mappings] Using latest session: ${latestSession.id}`);
             

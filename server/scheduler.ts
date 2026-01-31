@@ -18,11 +18,8 @@ async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMet
   // Fetch LinkedIn metrics
   let linkedinMetrics: any = {};
   try {
-    const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-    if (sessions && sessions.length > 0) {
-      const latestSession = sessions.sort((a: any, b: any) => 
-        new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
-      )[0];
+    const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+    if (latestSession) {
       const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
       
       metrics.forEach((m: any) => {

@@ -4458,22 +4458,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteKPI(id: string): Promise<boolean> {
-    console.log(`=== DatabaseStorage.deleteKPI called with ID: ${id} ===`);
-    
     try {
       // Delete related progress records first
-      console.log(`Deleting KPI progress records for KPI: ${id}`);
       const progressResult = await db.delete(kpiProgress).where(eq(kpiProgress.kpiId, id));
-      console.log(`Deleted ${progressResult.rowCount || 0} progress records`);
       
       // Delete the KPI itself
-      console.log(`Deleting KPI with ID: ${id}`);
       const result = await db
         .delete(kpis)
         .where(eq(kpis.id, id));
       
       const deleted = (result.rowCount || 0) > 0;
-      console.log(`KPI deletion result - rowCount: ${result.rowCount}, deleted: ${deleted}`);
       
       return deleted;
     } catch (error) {
@@ -4609,8 +4603,6 @@ export class DatabaseStorage implements IStorage {
 
   // Benchmark methods for DatabaseStorage
   async getCampaignBenchmarks(campaignId: string): Promise<Benchmark[]> {
-    console.log(`[Storage] Getting benchmarks for campaign: ${campaignId}`);
-    
     // Get benchmarks that are either:
     // 1. Created in this campaign AND scoped to all campaigns (applyTo = 'all')
     // 2. Scoped specifically to this campaign (specificCampaignId = campaignId), regardless of where created
@@ -4630,11 +4622,6 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(benchmarks.category, benchmarks.name);
-    
-    console.log(`[Storage] Found ${results.length} benchmarks for campaign ${campaignId}`);
-    results.forEach(b => {
-      console.log(`  - ${b.name} (metric: ${b.metric}, applyTo: ${b.applyTo}, specificCampaignId: ${b.specificCampaignId})`);
-    });
     
     return results;
   }

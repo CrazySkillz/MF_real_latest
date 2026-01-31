@@ -52,7 +52,6 @@ export default function Reports() {
   useEffect(() => {
     const loadReports = () => {
       const allReports = reportStorage.getReports();
-      console.log('Loading reports:', allReports);
       
       // Add mock data if no reports exist
       if (allReports.length === 0) {

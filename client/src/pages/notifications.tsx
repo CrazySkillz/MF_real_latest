@@ -58,14 +58,11 @@ export default function Notifications() {
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (notificationId: string) => {
-      console.log('[Delete] Deleting notification:', notificationId);
       const response = await apiRequest("DELETE", `/api/notifications/${notificationId}`);
       const result = await response.json();
-      console.log('[Delete] Result:', result);
       return result;
     },
     onSuccess: async () => {
-      console.log('[Delete] Success, refetching notifications');
       await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       await queryClient.refetchQueries({ queryKey: ["/api/notifications"] });
       toast({
@@ -74,7 +71,6 @@ export default function Notifications() {
       });
     },
     onError: (error) => {
-      console.error('[Delete] Error:', error);
       toast({
         title: "Error",
         description: "Failed to delete notification",
@@ -406,7 +402,6 @@ export default function Notifications() {
                           {(() => {
                             try {
                               const metadata = notification.metadata ? JSON.parse(notification.metadata) : null;
-                              console.log('[View KPI] Notification:', notification.id, 'Metadata:', metadata, 'CampaignId:', notification.campaignId);
                               if (metadata?.kpiId) {
                                 return (
                                   <Button
@@ -415,26 +410,19 @@ export default function Notifications() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      console.log('[View KPI] ===== BUTTON CLICKED =====');
-                                      console.log('[View KPI] Notification ID:', notification.id);
-                                      console.log('[View KPI] Campaign ID:', notification.campaignId);
-                                      console.log('[View KPI] Metadata:', metadata);
                                       
                                       markAsReadMutation.mutate(notification.id);
                                       
                                       // Use actionUrl from metadata if available, otherwise fallback
                                       if (metadata?.actionUrl) {
-                                        console.log('[View KPI] Navigating to:', metadata.actionUrl);
                                         setLocation(metadata.actionUrl);
                                       } else {
                                         // Fallback to campaign-based navigation
                                         const campaignId = notification.campaignId;
                                         if (campaignId) {
                                           const url = `/campaigns/${campaignId}/linkedin-analytics?tab=kpis&highlight=${metadata?.kpiId || ''}`;
-                                          console.log('[View KPI] Fallback navigation to:', url);
                                           setLocation(url);
                                         } else {
-                                          console.error('[View KPI] No actionUrl or campaignId found!');
                                           toast({
                                             title: "Error",
                                             description: "Cannot navigate to KPI - link not available",
@@ -451,7 +439,7 @@ export default function Notifications() {
                                 );
                               }
                             } catch (e) {
-                              console.error('[View KPI] Error parsing metadata:', e);
+                              // Ignore malformed metadata
                             }
                             return null;
                           })()}

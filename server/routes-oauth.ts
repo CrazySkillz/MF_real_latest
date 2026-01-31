@@ -657,6 +657,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return today.toISOString().slice(0, 10);
   };
 
+  // Limits + timeouts (DoS protection / reliability)
+  const EXTERNAL_API_TIMEOUT_MS = 15_000;
+  const MAX_CSV_ROWS_PREVIEW = 5_000; // header + sample rows (keeps preview fast)
+  const MAX_CSV_ROWS_PROCESS = 50_000; // hard cap for processing (prevents runaway memory/CPU)
+  const MAX_HUBSPOT_RESULTS = 5_000;
+  const MAX_SALESFORCE_RESULTS = 5_000;
+  const MAX_SELECTED_VALUES = 200; // caps IN filters (prevents runaway queries)
+  const MAX_HUBSPOT_PAGES = 25; // 25 * 100 = 2,500 deals max per request (hard stop)
+  const MAX_SALESFORCE_PAGES = 10; // paging guardrail for large orgs
+
+  const countLinesUpTo = (text: string, limit: number): number => {
+    const s = String(text || "");
+    let lines = 1;
+    for (let i = 0; i < s.length; i++) {
+      if (s.charCodeAt(i) === 10) { // '\n'
+        lines++;
+        if (lines > limit) return lines;
+      }
+    }
+    return lines;
+  };
+
+  const fetchWithTimeout = async (url: string, options: any, timeoutMs = EXTERNAL_API_TIMEOUT_MS) => {
+    if (typeof AbortController !== "undefined") {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } finally {
+        clearTimeout(id);
+      }
+    }
+    // Fallback: no abort support
+    return await fetch(url, options);
+  };
+
   // Request validation helpers (enterprise-grade consistency)
   const zPlatformContext = z.enum(["ga4", "linkedin"]);
   const zValueSource = z.enum(["revenue", "conversion_value"]);
@@ -711,7 +747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       valueSource: zValueSource.optional(),
       campaignColumn: z.string().trim().min(1).nullable().optional(),
       campaignValue: z.string().trim().min(1).nullable().optional(),
-      campaignValues: z.array(z.string().trim().min(1)).nullable().optional(),
+      campaignValues: z.array(z.string().trim().min(1)).max(500).nullable().optional(),
       currency: z.string().trim().min(1).optional(),
       displayName: z.string().trim().optional(),
       mode: z.string().trim().optional(),
@@ -728,6 +764,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       platformContext: zPlatformContext.optional(),
     })
     .passthrough();
+
+  const zSelectedValues = z.array(z.string().trim().min(1)).min(1).max(MAX_SELECTED_VALUES);
 
   // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).
 
@@ -1090,12 +1128,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/revenue/csv/preview", uploadCsv.single("file"), async (req, res) => {
+  app.post("/api/campaigns/:id/revenue/csv/preview", importRateLimiter, uploadCsv.single("file"), async (req, res) => {
     try {
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
       const file = (req as any).file as any;
       const csvText = Buffer.from(file.buffer).toString("utf-8");
-      const parsed = parseCsvText(csvText, 5000);
+      // Hard cap lines up-front to avoid expensive parsing of huge files.
+      const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PREVIEW + 5);
+      if (approxLines > MAX_CSV_ROWS_PREVIEW + 5) {
+        return res.status(413).json({
+          success: false,
+          error: `CSV too large. Please upload a smaller file (max ~${MAX_CSV_ROWS_PREVIEW.toLocaleString()} rows for preview).`,
+          code: "CSV_TOO_LARGE",
+        });
+      }
+      const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PREVIEW);
       res.json({
         success: true,
         fileName: file.originalname,
@@ -1108,7 +1155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/revenue/csv/process", uploadCsv.single("file"), async (req, res) => {
+  app.post("/api/campaigns/:id/revenue/csv/process", importRateLimiter, uploadCsv.single("file"), async (req, res) => {
     try {
       const campaignId = req.params.id;
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
@@ -1143,7 +1190,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const csvText = Buffer.from(file.buffer).toString("utf-8");
-      const parsed = parseCsvText(csvText);
+      const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
+      if (approxLines > MAX_CSV_ROWS_PROCESS + 5) {
+        return res.status(413).json({
+          success: false,
+          error: `CSV too large. Please reduce rows (max ~${MAX_CSV_ROWS_PROCESS.toLocaleString()} rows).`,
+          code: "CSV_TOO_LARGE",
+        });
+      }
+      const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS);
 
       const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
       const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
@@ -1262,7 +1317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/revenue/sheets/preview", async (req, res) => {
+  app.post("/api/campaigns/:id/revenue/sheets/preview", googleSheetsRateLimiter, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const body = z.object({
@@ -1304,7 +1359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
-      let resp = await fetch(
+      let resp = await fetchWithTimeout(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
         { headers: { "Authorization": `Bearer ${accessToken}` } }
       );
@@ -1312,7 +1367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!resp.ok && resp.status === 401 && conn.refreshToken) {
         try {
           accessToken = await refreshGoogleSheetsToken(conn);
-          resp = await fetch(
+          resp = await fetchWithTimeout(
             `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
             { headers: { "Authorization": `Bearer ${accessToken}` } }
           );
@@ -1358,7 +1413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/revenue/sheets/process", async (req, res) => {
+  app.post("/api/campaigns/:id/revenue/sheets/process", importRateLimiter, googleSheetsRateLimiter, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const body = z.object({
@@ -1419,7 +1474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
-      let resp = await fetch(
+      let resp = await fetchWithTimeout(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
         { headers: { "Authorization": `Bearer ${accessToken}` } }
       );
@@ -1427,7 +1482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!resp.ok && resp.status === 401 && conn.refreshToken) {
         try {
           accessToken = await refreshGoogleSheetsToken(conn);
-          resp = await fetch(
+          resp = await fetchWithTimeout(
             `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
             { headers: { "Authorization": `Bearer ${accessToken}` } }
           );
@@ -1708,12 +1763,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Backwards-compatible alias (older clients may still call this)
   app.post("/api/campaigns/:id/spend/process/ad-platforms", processConnectorDerivedSpend);
 
-  app.post("/api/campaigns/:id/spend/csv/preview", uploadCsv.single("file"), async (req, res) => {
+  app.post("/api/campaigns/:id/spend/csv/preview", importRateLimiter, uploadCsv.single("file"), async (req, res) => {
     try {
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
       const file = (req as any).file as any;
       const csvText = Buffer.from(file.buffer).toString("utf-8");
-      const parsed = parseCsvText(csvText, 5000);
+      const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PREVIEW + 5);
+      if (approxLines > MAX_CSV_ROWS_PREVIEW + 5) {
+        return res.status(413).json({
+          success: false,
+          error: `CSV too large. Please upload a smaller file (max ~${MAX_CSV_ROWS_PREVIEW.toLocaleString()} rows for preview).`,
+          code: "CSV_TOO_LARGE",
+        });
+      }
+      const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PREVIEW);
       res.json({
         success: true,
         fileName: file.originalname,
@@ -1726,7 +1789,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/spend/csv/process", uploadCsv.single("file"), async (req, res) => {
+  app.post("/api/campaigns/:id/spend/csv/process", importRateLimiter, uploadCsv.single("file"), async (req, res) => {
     try {
       const campaignId = req.params.id;
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
@@ -1737,7 +1800,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const csvText = Buffer.from(file.buffer).toString("utf-8");
-      const parsed = parseCsvText(csvText);
+      const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
+      if (approxLines > MAX_CSV_ROWS_PROCESS + 5) {
+        return res.status(413).json({
+          success: false,
+          error: `CSV too large. Please reduce rows (max ~${MAX_CSV_ROWS_PROCESS.toLocaleString()} rows).`,
+          code: "CSV_TOO_LARGE",
+        });
+      }
+      const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS);
 
       const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
       const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
@@ -2107,7 +2178,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     oauthRateLimiter, 
     linkedInApiRateLimiter,
     googleSheetsRateLimiter,
-    ga4RateLimiter 
+    ga4RateLimiter,
+    importRateLimiter
   } = await import('./middleware/rateLimiter');
 
   // Notifications routes
@@ -9160,13 +9232,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Salesforce save mappings (compute conversion value and unlock LinkedIn revenue metrics)
-  app.post("/api/campaigns/:id/salesforce/save-mappings", async (req, res) => {
+  app.post("/api/campaigns/:id/salesforce/save-mappings", importRateLimiter, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const body = z
         .object({
           campaignField: z.string().trim().min(1),
-          selectedValues: z.array(z.string().trim().min(1)).min(1),
+          selectedValues: zSelectedValues,
           revenueField: z.string().trim().min(1).optional(),
           conversionValueField: z.string().trim().optional(),
           valueSource: zValueSource.optional(),
@@ -9235,8 +9307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
         const all: any[] = [];
       let pages = 0;
-      while (nextUrl && pages < 25) {
-        const resp = await fetch(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+      while (nextUrl && pages < MAX_SALESFORCE_PAGES) {
+        const resp = await fetchWithTimeout(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
         const json: any = await resp.json().catch(() => ({}));
         if (!resp.ok) {
             const msg = String(json?.[0]?.message || json?.message || '');
@@ -9252,6 +9324,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         const recs = Array.isArray(json?.records) ? json.records : [];
           all.push(...recs);
+          if (all.length >= MAX_SALESFORCE_RESULTS) {
+            return res.status(413).json({
+              error: `Too many matching Salesforce opportunities (>${MAX_SALESFORCE_RESULTS.toLocaleString()}). Please narrow your filter or reduce the date range.`,
+              code: "SALESFORCE_TOO_MANY_RESULTS",
+            }) as any;
+          }
           nextUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
           pages += 1;
         }
@@ -9269,7 +9347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const trySoql = async (objectName: string, fieldName: string): Promise<string | null> => {
             const soql = `SELECT ${fieldName} FROM ${objectName} LIMIT 1`;
             const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-            const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+            const resp = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } });
             const json: any = await resp.json().catch(() => ({}));
             if (!resp.ok) return null;
             const rec = Array.isArray(json?.records) ? json.records[0] : null;
@@ -9295,7 +9373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const soql = `SELECT IsoCode FROM CurrencyType WHERE IsCorporate = true LIMIT 1`;
           const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const resp = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } });
           const json: any = await resp.json().catch(() => ({}));
           if (!resp.ok) return null;
           const rec = Array.isArray(json?.records) ? json.records[0] : null;
@@ -9310,7 +9388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fetchUserCurrencyIsoCode = async (): Promise<string | null> => {
         try {
           const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
-          const uiResp = await fetch(`${authBase}/services/oauth2/userinfo`, {
+          const uiResp = await fetchWithTimeout(`${authBase}/services/oauth2/userinfo`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
           const uiJson: any = await uiResp.json().catch(() => ({}));
@@ -9322,7 +9400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!userId) return null;
           const soql = `SELECT CurrencyIsoCode FROM User WHERE Id = '${String(userId).replace(/'/g, "\\'")}' LIMIT 1`;
           const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const resp = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } });
           const json: any = await resp.json().catch(() => ({}));
           if (!resp.ok) return null;
           const rec = Array.isArray(json?.records) ? json.records[0] : null;
@@ -9691,7 +9769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   async function hubspotSearchDeals(accessToken: string, body: any): Promise<any> {
-    const resp = await fetch('https://api.hubapi.com/crm/v3/objects/deals/search', {
+    const resp = await fetchWithTimeout('https://api.hubapi.com/crm/v3/objects/deals/search', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -9782,19 +9860,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // HubSpot save mappings (standalone revenue import; no dependency on LinkedIn)
-  app.post("/api/campaigns/:id/hubspot/save-mappings", async (req, res) => {
+  app.post("/api/campaigns/:id/hubspot/save-mappings", importRateLimiter, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const body = z
         .object({
           campaignProperty: z.string().trim().min(1),
-          selectedValues: z.array(z.string().trim().min(1)).min(1),
+          selectedValues: zSelectedValues,
           revenueProperty: z.string().trim().min(1).optional(),
           conversionValueProperty: z.string().trim().optional().nullable(),
           valueSource: zValueSource.optional(),
           revenueClassification: z.string().trim().optional(),
           days: zNumberLike.optional(),
-          stageIds: z.array(z.string().trim().min(1)).optional(),
+          stageIds: z.array(z.string().trim().min(1)).max(100).optional(),
           platformContext: zPlatformContext.optional(),
         })
         .passthrough()
@@ -9839,7 +9917,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let after: string | undefined;
       let pages = 0;
-      while (pages < 50) {
+      let seen = 0;
+      while (pages < MAX_HUBSPOT_PAGES) {
         const body: any = {
           filterGroups: [
             {
@@ -9865,6 +9944,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const json = await hubspotSearchDeals(accessToken, body);
         const results = Array.isArray(json?.results) ? json.results : [];
+        seen += results.length;
+        if (seen > MAX_HUBSPOT_RESULTS) {
+          return res.status(413).json({
+            error: `Too many matching HubSpot deals (>${MAX_HUBSPOT_RESULTS.toLocaleString()}). Please narrow your filter or reduce the date range.`,
+            code: "HUBSPOT_TOO_MANY_RESULTS",
+          });
+        }
         for (const d of results) {
           const props = d?.properties || {};
           const rRaw = props[revenueProp];
@@ -19620,13 +19706,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/shopify/save-mappings", async (req, res) => {
+  app.post("/api/campaigns/:id/shopify/save-mappings", importRateLimiter, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const body = z
         .object({
           campaignField: z.string().trim().min(1),
-          selectedValues: z.array(z.string().trim().min(1)).min(1),
+          selectedValues: zSelectedValues,
           revenueMetric: z.string().trim().optional(),
           revenueClassification: z.string().trim().optional(),
           days: zNumberLike.optional(),

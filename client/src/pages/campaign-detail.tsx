@@ -1,4 +1,4 @@
-﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -62,6 +62,7 @@ interface ConnectedPlatformStatus {
 interface PlatformMetrics {
   platform: string;
   connected: boolean;
+  requiresImport?: boolean;
   impressions: number;
   clicks: number;
   conversions: number;
@@ -70,6 +71,20 @@ interface PlatformMetrics {
   cpc: string;
   analyticsPath?: string | null;
 }
+
+const devLog = (...args: any[]) => {
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log(...args);
+  }
+};
+
+const devError = (...args: any[]) => {
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.error(...args);
+  }
+};
 
 // Benchmark Interface
 interface Benchmark {
@@ -4590,11 +4605,11 @@ export default function CampaignDetail() {
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/connected-platforms`);
       if (!response.ok) {
-        console.error(`[Campaign Detail] Failed to fetch connected platforms for ${campaignId}`);
+        devError(`[Campaign Detail] Failed to fetch connected platforms for ${campaignId}`);
         return { statuses: [] };
       }
       const data = await response.json();
-      console.log(`[Campaign Detail] Connected platforms for ${campaignId}:`, JSON.stringify(data, null, 2));
+      devLog(`[Campaign Detail] Connected platforms for ${campaignId}:`, data);
       return data;
     }
   });
@@ -4605,7 +4620,7 @@ export default function CampaignDetail() {
   const platformStatusMap = useMemo(() => {
     const map = new Map<string, ConnectedPlatformStatus>();
     connectedPlatformStatuses.forEach((status) => {
-      console.log(`[Campaign Detail] Mapping platform ${status.id}: connected=${status.connected}`);
+      devLog(`[Campaign Detail] Mapping platform ${status.id}: connected=${status.connected}`);
       map.set(status.id, status);
     });
     return map;
@@ -4921,12 +4936,16 @@ export default function CampaignDetail() {
   // Use platformStatusMap as single source of truth for connection status
   const isGA4Connected = gaPlatformStatus?.connected === true;
   
-  console.log(`[Campaign Detail] GA4 Status Check:`, {
+  devLog(`[Campaign Detail] GA4 Status Check:`, {
     campaignId,
     gaPlatformStatus,
     isGA4Connected,
     analyticsPath: gaPlatformStatus?.analyticsPath
   });
+
+  const isLinkedInConnected = platformStatusMap.get("linkedin")?.connected === true;
+  const hasLinkedInImportSession = !!linkedInSession?.id;
+  const linkedInRequiresImport = isLinkedInConnected && !hasLinkedInImportSession;
   
   // Build platformMetrics array dynamically based on connected platforms
   const allPlatformMetrics: PlatformMetrics[] = [
@@ -4985,14 +5004,17 @@ export default function CampaignDetail() {
     },
     {
       platform: "LinkedIn Ads",
-      connected: platformStatusMap.get("linkedin")?.connected === true,
-      impressions: platformStatusMap.get("linkedin")?.connected ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0,
-      clicks: platformStatusMap.get("linkedin")?.connected ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0,
-      conversions: platformStatusMap.get("linkedin")?.connected ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0,
-      spend: platformStatusMap.get("linkedin")?.connected ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00",
-      ctr: platformStatusMap.get("linkedin")?.connected ? "2.78%" : "0.00%",
-      cpc: platformStatusMap.get("linkedin")?.connected ? "$0.48" : "$0.00",
-      analyticsPath: platformStatusMap.get("linkedin")?.analyticsPath || `/campaigns/${campaign?.id}/linkedin-analytics`
+      connected: isLinkedInConnected,
+      requiresImport: linkedInRequiresImport,
+      impressions: linkedInRequiresImport ? 0 : (isLinkedInConnected ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0),
+      clicks: linkedInRequiresImport ? 0 : (isLinkedInConnected ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0),
+      conversions: linkedInRequiresImport ? 0 : (isLinkedInConnected ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0),
+      spend: linkedInRequiresImport ? "0.00" : (isLinkedInConnected ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00"),
+      ctr: linkedInRequiresImport ? "0.00%" : (isLinkedInConnected ? "2.78%" : "0.00%"),
+      cpc: linkedInRequiresImport ? "$0.00" : (isLinkedInConnected ? "$0.48" : "$0.00"),
+      analyticsPath: linkedInRequiresImport
+        ? null
+        : (platformStatusMap.get("linkedin")?.analyticsPath || (linkedInSession?.id ? `/campaigns/${campaign?.id}/linkedin-analytics?session=${encodeURIComponent(linkedInSession.id)}` : `/campaigns/${campaign?.id}/linkedin-analytics`))
     },
     {
       platform: "Shopify",
@@ -5021,9 +5043,9 @@ export default function CampaignDetail() {
   // The platform cards will show connection status and allow users to connect from the campaign detail page
   const platformMetrics = allPlatformMetrics;
   
-  console.log('[Campaign Detail] Connected platform IDs:', connectedPlatformIds);
-  console.log('[Campaign Detail] Connected platform names:', connectedPlatformNames);
-  console.log('[Campaign Detail] Showing all platforms, connected count:', platformMetrics.filter(p => p.connected).length);
+  devLog('[Campaign Detail] Connected platform IDs:', connectedPlatformIds);
+  devLog('[Campaign Detail] Connected platform names:', connectedPlatformNames);
+  devLog('[Campaign Detail] Showing all platforms, connected count:', platformMetrics.filter(p => p.connected).length);
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
@@ -6278,9 +6300,9 @@ export default function CampaignDetail() {
                 >
                   {/* Platform Header - Always Visible */}
                   <div 
-                    className={`flex items-center justify-between p-3 ${!platform.connected ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
+                    className={`flex items-center justify-between p-3 ${(!platform.connected || platform.requiresImport) ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
                     onClick={() => {
-                      if (!platform.connected) {
+                      if (!platform.connected || platform.requiresImport) {
                         setExpandedPlatform(expandedPlatform === platform.platform ? null : platform.platform);
                       }
                     }}
@@ -6290,18 +6312,18 @@ export default function CampaignDetail() {
                       <div>
                         <h3 className="font-semibold text-slate-900 dark:text-white">{platform.platform}</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {platform.connected ? "Connected & syncing data" : "Not connected"}
+                          {platform.requiresImport ? "Connected — import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Badge 
-                        variant={platform.connected ? "default" : "secondary"}
-                        className={platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+                        variant={(platform.connected || platform.requiresImport) ? "default" : "secondary"}
+                        className={platform.requiresImport ? "bg-amber-600 text-white hover:bg-amber-700" : (platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : "")}
                       >
-                        {platform.connected ? "Connected" : "Not Connected"}
+                        {platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
                       </Badge>
-                      {!platform.connected && (
+                      {(!platform.connected || platform.requiresImport) && (
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />
                       )}
                       {platform.connected && (
@@ -6316,6 +6338,29 @@ export default function CampaignDetail() {
                   {platform.connected && (
                     <div className="px-3 pb-3">
                       <div className="space-y-4">
+                        {/* LinkedIn Import Required Warning */}
+                        {platform.platform === "LinkedIn Ads" && platform.requiresImport && (
+                          <div className="pt-2 border-t">
+                            <div className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="font-medium text-amber-800 dark:text-amber-200">Import required</p>
+                                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                  Finish selecting the LinkedIn campaigns and metrics to import so analytics can load data.
+                                </p>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-2 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                                  onClick={() => setExpandedPlatform("LinkedIn Ads")}
+                                  data-testid="button-import-linkedin-from-campaign-detail"
+                                >
+                                  Import LinkedIn data
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         {/* Google Sheets Connection Expired Warning */}
                         {platform.platform === "Google Sheets" && sheetsError && (sheetsError as any).requiresReauthorization && (
                           <div className="pt-2 border-t">
@@ -6378,7 +6423,7 @@ export default function CampaignDetail() {
                   )}
 
                   {/* Connection Setup Dropdown - Show when expanded and (not connected OR adding additional sheet) */}
-                  {expandedPlatform === platform.platform && (!platform.connected || (platform.platform === "Google Sheets" && canAddMoreSheets)) && (
+                  {expandedPlatform === platform.platform && (!platform.connected || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets)) && (
                     <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-3">
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow 

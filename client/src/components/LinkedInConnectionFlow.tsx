@@ -562,7 +562,6 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
             <Button 
               onClick={() => {
                 setStep('credentials');
-                onConnectionSuccess();
               }}
               variant="outline"
               className="w-full"

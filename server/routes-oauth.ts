@@ -2663,6 +2663,245 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const computed = computeExecWowSignals({ dailyFacts: facts });
 
+      // --------------------------------------------------------------------
+      // Enterprise-grade agility + auditability:
+      // Provide a server-computed "goal health" snapshot (KPIs + Benchmarks)
+      // evaluated against the SAME import session inputs as other tabs.
+      //
+      // This ensures when:
+      // - scheduler imports new metrics daily, OR
+      // - an exec edits KPI/Benchmark targets,
+      // the system can immediately reflect the correct downstream evaluation.
+      // --------------------------------------------------------------------
+      let goalHealth: any = null;
+      try {
+        const importMetrics = await storage.getLinkedInImportMetrics(String((session as any).id)).catch(() => []);
+
+        // OOM/CPU safety:
+        // Pre-aggregate once (single pass) and reuse per KPI/benchmark evaluation.
+        // This avoids scanning importMetrics N times when there are many KPIs/benchmarks.
+        const baseAll: Record<string, number> = {
+          impressions: 0,
+          clicks: 0,
+          spend: 0,
+          conversions: 0,
+          leads: 0,
+          engagements: 0,
+          reach: 0,
+          videoViews: 0,
+          viralImpressions: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+        };
+        const baseByCampaignName = new Map<string, Record<string, number>>();
+
+        const ensureBase = (name: string) => {
+          const key = String(name || "").trim();
+          if (!key) return null;
+          const existing = baseByCampaignName.get(key);
+          if (existing) return existing;
+          const out: Record<string, number> = {
+            impressions: 0,
+            clicks: 0,
+            spend: 0,
+            conversions: 0,
+            leads: 0,
+            engagements: 0,
+            reach: 0,
+            videoViews: 0,
+            viralImpressions: 0,
+            likes: 0,
+            comments: 0,
+            shares: 0,
+          };
+          baseByCampaignName.set(key, out);
+          return out;
+        };
+
+        for (const m of Array.isArray(importMetrics) ? (importMetrics as any[]) : []) {
+          const metricKey = String(m?.metricKey || "").toLowerCase();
+          const value = parseFloat(String(m?.metricValue ?? "0"));
+          if (!metricKey || !Number.isFinite(value)) continue;
+
+          // normalize a few legacy keys used throughout the codebase
+          const normalizedKey =
+            metricKey === "videoviews"
+              ? "videoViews"
+              : metricKey === "viralimpressions"
+                ? "viralImpressions"
+                : metricKey === "totalengagements"
+                  ? "engagements"
+                  : metricKey;
+
+          if (Object.prototype.hasOwnProperty.call(baseAll, normalizedKey)) {
+            baseAll[normalizedKey] += value;
+          }
+
+          const campaignName = String(m?.campaignName || "").trim();
+          if (campaignName) {
+            const bucket = ensureBase(campaignName);
+            if (bucket && Object.prototype.hasOwnProperty.call(bucket, normalizedKey)) {
+              bucket[normalizedKey] += value;
+            }
+          }
+        }
+
+        const sumMetrics = (linkedInCampaignName?: string) => {
+          const name = String(linkedInCampaignName || "").trim();
+          if (!name) return baseAll;
+          return baseByCampaignName.get(name) || baseAll;
+        };
+
+        const isLowerBetter = (metricKey: string) => {
+          const k = String(metricKey || "").toLowerCase();
+          return ["spend", "cpc", "cpm", "cpa", "cpl"].includes(k);
+        };
+        const isRevenueDependent = (metricKey: string) => {
+          const k = String(metricKey || "").toLowerCase();
+          return ["roi", "roas", "totalrevenue", "profit", "profitmargin", "revenueperlead"].includes(k);
+        };
+
+        const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
+        const revAll = await resolveLinkedInRevenueContext({
+          campaignId,
+          conversionsTotal: Number(baseAll.conversions || 0),
+          sessionConversionValue: (session as any)?.conversionValue,
+        });
+
+        const hasRevenueTracking = !!(revAll as any)?.hasRevenueTracking;
+        const conversionValueUsed = Number((revAll as any)?.conversionValue || 0) || 0;
+        const importedRevenueToDate = Number((revAll as any)?.importedRevenueToDate || 0) || 0;
+        const totalConversionsAll = Number(baseAll.conversions || 0) || 0;
+
+        const computeRevenueForConversions = (conversions: number): number => {
+          const conv = Number(conversions || 0) || 0;
+          if (!hasRevenueTracking) return 0;
+          if (conversionValueUsed > 0) return conv * conversionValueUsed;
+          if (importedRevenueToDate > 0 && totalConversionsAll > 0) return importedRevenueToDate * (conv / totalConversionsAll);
+          return 0;
+        };
+
+        const computeDerived = (base: Record<string, number>) => {
+          const impressions = Number(base.impressions || 0);
+          const clicks = Number(base.clicks || 0);
+          const spend = Number(base.spend || 0);
+          const conversions = Number(base.conversions || 0);
+          const leads = Number(base.leads || 0);
+          const engagements = Number(base.engagements || 0);
+
+          const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+          const cpc = clicks > 0 ? spend / clicks : 0;
+          const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+          const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
+          const cpa = conversions > 0 ? spend / conversions : 0;
+          const cpl = leads > 0 ? spend / leads : 0;
+          const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
+
+          const totalRevenue = Number(Number(computeRevenueForConversions(conversions)).toFixed(2));
+          const profit = Number(Number(totalRevenue - spend).toFixed(2));
+          const roi = spend > 0 ? Number(((profit / spend) * 100).toFixed(2)) : 0;
+          const roas = spend > 0 ? Number((totalRevenue / spend).toFixed(2)) : 0;
+          const profitMargin = totalRevenue > 0 ? Number(((profit / totalRevenue) * 100).toFixed(2)) : 0;
+          const revenuePerLead = leads > 0 ? Number((totalRevenue / leads).toFixed(2)) : 0;
+
+          return { ctr, cpc, cpm, cvr, cpa, cpl, er, totalRevenue, profit, roi, roas, profitMargin, revenuePerLead };
+        };
+
+        const metricValueFor = (metricKeyRaw: string, base: Record<string, number>, derived: any): number => {
+          const metricKey = String(metricKeyRaw || "").trim();
+          if (!metricKey) return 0;
+          const k = metricKey.toLowerCase();
+          if (k in base) return Number((base as any)[k] || 0);
+          if (k in derived) return Number((derived as any)[k] || 0);
+          if (k === "videoviews") return Number((base as any).videoViews || 0);
+          if (k === "viralimpressions") return Number((base as any).viralImpressions || 0);
+          if (k === "profitmargin") return Number((derived as any).profitMargin || 0);
+          if (k === "revenueperlead") return Number((derived as any).revenuePerLead || 0);
+          if (k === "totalrevenue") return Number((derived as any).totalRevenue || 0);
+          return 0;
+        };
+
+        const kpis = await storage.getPlatformKPIs("linkedin", campaignId).catch(() => []);
+        const evaluatedKpis = (Array.isArray(kpis) ? kpis : []).map((k: any) => {
+          const metric = String(k?.metric || "").trim();
+          const scopeName = k?.applyTo === "specific" && k?.specificCampaignId ? String(k.specificCampaignId) : undefined;
+          const base = sumMetrics(scopeName);
+          const derived = computeDerived(base);
+          const currentValue = metricValueFor(metric, base, derived);
+          const targetValue = parseFloat(String(k?.targetValue ?? "0")) || 0;
+          const lower = isLowerBetter(metric);
+          const blocked = isRevenueDependent(metric) && !hasRevenueTracking;
+
+          const meetsTarget = blocked
+            ? false
+            : lower
+              ? (targetValue > 0 ? currentValue <= targetValue : true)
+              : (targetValue > 0 ? currentValue >= targetValue : true);
+
+          return {
+            id: k.id,
+            name: k.name,
+            metric,
+            unit: k.unit,
+            targetValue,
+            currentValue,
+            lowerIsBetter: lower,
+            status: blocked ? "blocked" : (targetValue > 0 ? (meetsTarget ? "on_track" : "behind") : "no_target"),
+          };
+        });
+
+        const benchmarks = await storage.getCampaignBenchmarks(campaignId).catch(() => []);
+        const evaluatedBenchmarks = (Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => {
+          const metric = String(b?.metric || "").trim();
+          const scopeName = b?.linkedInCampaignName ? String(b.linkedInCampaignName) : undefined;
+          const base = sumMetrics(scopeName);
+          const derived = computeDerived(base);
+          const currentValue = metricValueFor(metric, base, derived);
+          const benchmarkValue = parseFloat(String(b?.benchmarkValue ?? b?.targetValue ?? "0")) || 0;
+          const lower = isLowerBetter(metric);
+          const blocked = isRevenueDependent(metric) && !hasRevenueTracking;
+
+          const meetsTarget = blocked
+            ? false
+            : lower
+              ? (benchmarkValue > 0 ? currentValue <= benchmarkValue : true)
+              : (benchmarkValue > 0 ? currentValue >= benchmarkValue : true);
+
+          return {
+            id: b.id,
+            name: b.name,
+            metric,
+            benchmarkValue,
+            currentValue,
+            lowerIsBetter: lower,
+            status: blocked ? "blocked" : (benchmarkValue > 0 ? (meetsTarget ? "on_track" : "behind") : "no_target"),
+          };
+        });
+
+        goalHealth = {
+          sessionIdUsed: String((session as any).id),
+          hasRevenueTracking,
+          conversionValueUsed,
+          kpis: {
+            total: evaluatedKpis.length,
+            behind: evaluatedKpis.filter((x: any) => x.status === "behind").length,
+            blocked: evaluatedKpis.filter((x: any) => x.status === "blocked").length,
+            noTarget: evaluatedKpis.filter((x: any) => x.status === "no_target").length,
+            sample: evaluatedKpis.filter((x: any) => x.status === "behind" || x.status === "blocked").slice(0, 5),
+          },
+          benchmarks: {
+            total: evaluatedBenchmarks.length,
+            behind: evaluatedBenchmarks.filter((x: any) => x.status === "behind").length,
+            blocked: evaluatedBenchmarks.filter((x: any) => x.status === "blocked").length,
+            noTarget: evaluatedBenchmarks.filter((x: any) => x.status === "no_target").length,
+            sample: evaluatedBenchmarks.filter((x: any) => x.status === "behind" || x.status === "blocked").slice(0, 5),
+          },
+        };
+      } catch {
+        goalHealth = null;
+      }
+
       return res.json({
         success: true,
         sessionId: String(sessionId),
@@ -2672,6 +2911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         signals: computed.signals,
         rollups: computed.cur7 && computed.prev7 ? { last7: computed.cur7, prior7: computed.prev7 } : null,
         thresholds: DEFAULT_EXEC_WOW_THRESHOLDS,
+        goalHealth,
       });
     } catch (e: any) {
       return res.status(500).json({ success: false, message: e?.message || "Failed to compute LinkedIn insights" });
@@ -14012,7 +14252,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/campaigns/:id/kpis/:kpiId", async (req, res) => {
     try {
+      const campaignId = String((req.params as any)?.id || "").trim();
       const { kpiId } = req.params;
+      const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
+      if (!okKpi) return;
+
+      // Prevent cross-campaign KPI updates (URL campaignId must match KPI.campaignId).
+      if (campaignId && String((okKpi as any)?.campaignId || "") !== campaignId) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
+
+      const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!okCampaign) return;
 
       // Ensure DB has the column for user-selected input configs (deployed environments may not have run migrations yet).
       if (db) {
@@ -14057,6 +14308,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!kpi) {
         return res.status(404).json({ message: "KPI not found" });
       }
+
+      // Enterprise-grade agility: recompute KPI values and alerts immediately after changes.
+      try {
+        await refreshKPIsForCampaign(campaignId);
+      } catch (e: any) {
+        console.warn("[KPI Update] refreshKPIsForCampaign failed:", e?.message || e);
+      }
+      try {
+        await checkPerformanceAlerts();
+      } catch (e: any) {
+        console.warn("[KPI Update] checkPerformanceAlerts failed:", e?.message || e);
+      }
+
       res.json(kpi);
     } catch (error) {
       console.error('KPI update error:', error);

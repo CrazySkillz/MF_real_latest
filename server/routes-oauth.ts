@@ -16130,19 +16130,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+
+      // Canonical core metrics: always imported (UI does not allow selection).
+      // Keep this consistent with what the Overview/KPIs/Benchmarks expect.
+      const CORE_LINKEDIN_METRIC_KEYS = [
+        "impressions",
+        "reach",
+        "clicks",
+        "engagements",
+        "spend",
+        "conversions",
+        "leads",
+        "videoViews",
+        "viralImpressions",
+      ] as const;
+      const selectedMetricKeys = Array.from(CORE_LINKEDIN_METRIC_KEYS);
       
-      // Count selected campaigns and metrics
+      // Count selected campaigns and metrics (fixed core metric set)
       const selectedCampaignsCount = campaigns.length;
-      const selectedMetricsCount = campaigns.reduce((sum, c) => sum + (c.selectedMetrics?.length || 0), 0);
-      
-      // Collect unique selected metric keys across all campaigns
-      const selectedMetricKeysSet = new Set<string>();
-      campaigns.forEach(c => {
-        if (c.selectedMetrics && Array.isArray(c.selectedMetrics)) {
-          c.selectedMetrics.forEach((key: string) => selectedMetricKeysSet.add(key));
-        }
-      });
-      const selectedMetricKeys = Array.from(selectedMetricKeysSet);
+      const selectedMetricsCount = selectedCampaignsCount * selectedMetricKeys.length;
       
       // Get conversion value from the first campaign (all campaigns share the same value)
       const conversionValue = campaigns[0]?.conversionValue || null;
@@ -16158,26 +16164,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversionValue: conversionValue
       });
       
-      // Create metrics for each campaign and selected metric
+      // Create metrics for each campaign and core metric (fixed set)
       for (const campaign of campaigns) {
-        if (campaign.selectedMetrics && Array.isArray(campaign.selectedMetrics)) {
-          for (const metricKey of campaign.selectedMetrics) {
-            const metricValue = (Math.random() * 10000 + 1000).toFixed(2);
-            await storage.createLinkedInImportMetric({
-              sessionId: session.id,
-              campaignUrn: campaign.id,
-              campaignName: campaign.name,
-              campaignStatus: campaign.status || "active",
-              metricKey,
-              metricValue
-            });
-          }
+        for (const metricKey of selectedMetricKeys) {
+          const metricValue = (Math.random() * 10000 + 1000).toFixed(2);
+          await storage.createLinkedInImportMetric({
+            sessionId: session.id,
+            campaignUrn: campaign.id,
+            campaignName: campaign.name,
+            campaignStatus: campaign.status || "active",
+            metricKey,
+            metricValue
+          });
         }
         
         // Generate mock ad performance data (2-3 ads per campaign)
-        // Only generate data for metrics that were actually selected for this campaign
+        // Core metrics are always present; derived metrics are computed when base metrics exist.
         const numAds = Math.floor(Math.random() * 2) + 2;
-        const selectedMetrics = campaign.selectedMetrics || [];
+        const selectedMetrics = selectedMetricKeys;
         
         for (let i = 0; i < numAds; i++) {
           // Initialize ad data with campaign info and defaults
@@ -16198,8 +16202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             conversionRate: "0"
           };
           
-          // Only populate metrics that were selected for this campaign
-          // Core metrics
+          // Populate core metrics
           if (selectedMetrics.includes('impressions')) {
             adData.impressions = Math.floor(Math.random() * 50000) + 10000;
           }

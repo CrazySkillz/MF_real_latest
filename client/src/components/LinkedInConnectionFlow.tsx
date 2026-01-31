@@ -583,10 +583,10 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <SiLinkedin className="w-5 h-5 text-blue-600" />
-            Select Campaigns and Metrics
+            Select Campaigns
           </CardTitle>
           <CardDescription>
-            Choose which campaigns and metrics you want to import
+            Choose which campaigns you want to import
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -2054,6 +2054,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mark all notifications as read (scoped to caller-owned campaigns)
+  app.patch("/api/notifications/mark-all-read", async (req, res) => {
+    try {
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
+
+      const { db } = await import("./db");
+      if (!db) return res.status(503).json({ success: false, message: "Database not configured" });
+      const { notifications, campaigns } = await import("../shared/schema");
+      const { eq, and, inArray } = await import("drizzle-orm");
+
+      const owned = await db
+        .select({ id: (campaigns as any).id })
+        .from(campaigns as any)
+        .where(eq((campaigns as any).ownerId, actorId));
+      const ownedCampaignIds = (owned || []).map((r: any) => String(r?.id || "")).filter(Boolean);
+
+      if (ownedCampaignIds.length === 0) {
+        return res.json({ success: true, updatedCount: 0 });
+      }
+
+      const result = await db
+        .update(notifications as any)
+        .set({ read: true })
+        .where(and(inArray((notifications as any).campaignId, ownedCampaignIds), eq((notifications as any).read, false)));
+
+      res.json({ success: true, updatedCount: (result as any)?.rowCount ?? null });
+    } catch (error) {
+      console.error('[Notifications API] mark-all-read error:', error);
+      res.status(500).json({
+        message: "Failed to mark all notifications as read",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Delete ALL notifications (for cleanup/reset)
   app.delete("/api/notifications/all/clear", async (req, res) => {
     try {

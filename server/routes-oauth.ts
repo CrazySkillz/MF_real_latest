@@ -96,10 +96,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // - Keep warnings/errors visible; keep verbose logs dev-only.
   // --------------------------------------------------------------------------
   const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  const MAX_LOG_STRING = 2000;
+  const MAX_LOG_ARRAY = 30;
+  const MAX_LOG_KEYS = 30;
+  const MAX_LOG_DEPTH = 2;
+
+  const safeForLog = (v: any, depth: number = 0): any => {
+    if (depth > MAX_LOG_DEPTH) return "[truncated]";
+    if (v == null) return v;
+    const t = typeof v;
+    if (t === "string") {
+      return v.length > MAX_LOG_STRING ? `${v.slice(0, MAX_LOG_STRING)}…[+${v.length - MAX_LOG_STRING} chars]` : v;
+    }
+    if (t === "number" || t === "boolean" || t === "bigint") return v;
+    if (t === "function") return `[function ${v.name || "anonymous"}]`;
+    if (Array.isArray(v)) {
+      if (v.length <= MAX_LOG_ARRAY) return v.map((x) => safeForLog(x, depth + 1));
+      return [
+        ...v.slice(0, MAX_LOG_ARRAY).map((x) => safeForLog(x, depth + 1)),
+        `…[+${v.length - MAX_LOG_ARRAY} more]`,
+      ];
+    }
+    if (t === "object") {
+      // Avoid heavy serialization of large objects (common OOM cause).
+      const keys = Object.keys(v);
+      const out: any = {};
+      const take = keys.slice(0, MAX_LOG_KEYS);
+      for (const k of take) out[k] = safeForLog(v[k], depth + 1);
+      if (keys.length > MAX_LOG_KEYS) out.__moreKeys = keys.length - MAX_LOG_KEYS;
+      return out;
+    }
+    return String(v);
+  };
+
   const devLog = (...args: any[]) => {
     if (!isProd) {
       // eslint-disable-next-line no-console
-      console.log(...args);
+      console.log(...args.map((a) => safeForLog(a)));
     }
   };
 
@@ -4025,7 +4058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Campaign ID is required" });
       }
 
-      console.log(`[Google Sheets OAuth] Starting flow for campaign ${campaignId}`);
+      devLog(`[Google Sheets OAuth] Starting flow for campaign ${campaignId}`);
       
       // Use the same base URL logic as GA4 to ensure consistency
       const rawBaseUrl = process.env.APP_BASE_URL ||
@@ -4037,7 +4070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       const redirectUri = `${baseUrl}/api/auth/google-sheets/callback`;
       
-      console.log(`[Google Sheets OAuth] Using redirect URI: ${redirectUri}`);
+      devLog(`[Google Sheets OAuth] Using redirect URI: ${redirectUri}`);
       
       const state = sheetsPurpose ? `${campaignId}:${sheetsPurpose}` : String(campaignId);
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -4106,7 +4139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue'
           ? sheetsPurpose
           : null;
-      console.log(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
+      devLog(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
 
       // Exchange code for tokens - use same base URL logic
       const rawBaseUrl = process.env.APP_BASE_URL ||
@@ -4117,7 +4150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       const redirectUri = `${baseUrl}/api/auth/google-sheets/callback`;
       
-      console.log(`[Google Sheets OAuth] Using redirect URI for token exchange: ${redirectUri}`);
+      devLog(`[Google Sheets OAuth] Using redirect URI for token exchange: ${redirectUri}`);
       
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -4161,7 +4194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw error;
       }
 
-      console.log(`[Google Sheets OAuth] Tokens stored for campaign ${campaignId}`);
+      devLog(`[Google Sheets OAuth] Tokens stored for campaign ${campaignId}`);
 
       // Send success message to parent window
       res.send(`
@@ -4901,7 +4934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId } = req.params;
       const purpose = (req.query as any)?.purpose ? String((req.query as any).purpose) : undefined;
-      console.log(`[Google Sheets] Fetching spreadsheets for campaign ${campaignId}`);
+      devLog(`[Google Sheets] Fetching spreadsheets for campaign ${campaignId}`);
 
       const conns = await storage.getGoogleSheetsConnections(campaignId, purpose);
       let connection: any = conns.find((c: any) => c && c.accessToken) || conns[0];
@@ -4924,7 +4957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log(`[Google Sheets] Found connection, access token exists: ${!!connection.accessToken}`);
+      devLog(`[Google Sheets] Found connection, access token exists: ${!!connection.accessToken}`);
 
       let accessToken = connection.accessToken;
 
@@ -4939,7 +4972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Proactively refresh token if needed
       if (shouldRefreshToken(connection) && connection.refreshToken) {
-        console.log('🔄 Token expires soon, refreshing before Drive API call...');
+        devLog('🔄 Token expires soon, refreshing before Drive API call...');
         try {
           accessToken = await refreshGoogleSheetsToken(connection);
           connection = await storage.getGoogleSheetsConnection(campaignId, connection.spreadsheetId); // Get updated connection
@@ -4951,7 +4984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch spreadsheets from Google Drive API
       const driveUrl = 'https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name)';
-      console.log(`[Google Sheets] Calling Drive API: ${driveUrl}`);
+      devLog(`[Google Sheets] Calling Drive API: ${driveUrl}`);
       
       let driveResponse = await fetch(driveUrl, {
         headers: {
@@ -4959,11 +4992,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
 
-      console.log(`[Google Sheets] Drive API response status: ${driveResponse.status}`);
+      devLog(`[Google Sheets] Drive API response status: ${driveResponse.status}`);
 
       // If 401, try refreshing token and retry
       if (driveResponse.status === 401 && connection.refreshToken) {
-        console.log('🔄 Access token invalid (401), attempting refresh and retry...');
+        devLog('🔄 Access token invalid (401), attempting refresh and retry...');
         try {
           accessToken = await refreshGoogleSheetsToken(connection);
           
@@ -4974,7 +5007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
           });
           
-          console.log(`[Google Sheets] Retry after refresh - status: ${driveResponse.status}`);
+          devLog(`[Google Sheets] Retry after refresh - status: ${driveResponse.status}`);
         } catch (refreshError) {
           console.error('❌ Token refresh failed:', refreshError);
           return res.status(401).json({ 
@@ -5017,7 +5050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: file.name,
       })) || [];
 
-      console.log(`[Google Sheets] Found ${spreadsheets.length} spreadsheets`);
+      devLog(`[Google Sheets] Found ${spreadsheets.length} spreadsheets`);
       res.json({ spreadsheets });
     } catch (error: any) {
       console.error('[Google Sheets] Fetch spreadsheets error:', error);
@@ -5031,7 +5064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.params;
       const { connectionId } = req.query; // Optional: delete specific connection
       
-      console.log(`[Google Sheets] Deleting connection for campaign ${campaignId}${connectionId ? ` (connectionId: ${connectionId})` : ''}`);
+      devLog(`[Google Sheets] Deleting connection for campaign ${campaignId}${connectionId ? ` (connectionId: ${connectionId})` : ''}`);
 
       // Helper: identify whether a connection's mappings are used for revenue tracking (identifier + value source).
       const isRevenueTrackingConnection = (conn: any): boolean => {
@@ -5127,7 +5160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clean UX rule: if the user deletes a revenue-tracking source, disable revenue metrics immediately.
       // Even if another mapped source exists, we cannot safely assume conversion value should remain unchanged without recomputation.
       if (!hasAnyRevenueTrackingSourcesIncludingSalesforce || deletedWasRevenueTracking) {
-        console.log(`[Google Sheets] Clearing conversion values from platform connections (deletedWasRevenueTracking=${deletedWasRevenueTracking}, remainingRevenueTrackingSheets=${remainingRevenueTrackingSheets.length}, remainingRevenueTrackingHubspot=${remainingRevenueTrackingHubspot.length}, remainingRevenueTrackingSalesforce=${remainingRevenueTrackingSalesforce.length})`);
+        devLog(`[Google Sheets] Clearing conversion values from platform connections (deletedWasRevenueTracking=${deletedWasRevenueTracking}, remainingRevenueTrackingSheets=${remainingRevenueTrackingSheets.length}, remainingRevenueTrackingHubspot=${remainingRevenueTrackingHubspot.length}, remainingRevenueTrackingSalesforce=${remainingRevenueTrackingSalesforce.length})`);
         
         // Clear campaign-level conversion value (if it was set from Google Sheets)
         const campaign = await storage.getCampaign(campaignId);
@@ -5135,7 +5168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateCampaign(campaignId, {
             conversionValue: null
           });
-          console.log(`[Google Sheets] Cleared campaign-level conversion value`);
+          devLog(`[Google Sheets] Cleared campaign-level conversion value`);
           conversionValueCleared = true;
         }
         
@@ -5145,7 +5178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateLinkedInConnection(campaignId, {
             conversionValue: null
           });
-          console.log(`[Google Sheets] Cleared LinkedIn connection conversion value`);
+          devLog(`[Google Sheets] Cleared LinkedIn connection conversion value`);
           conversionValueCleared = true;
         }
         
@@ -5157,7 +5190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.updateLinkedInImportSession(session.id, {
                 conversionValue: null
               });
-              console.log(`[Google Sheets] Cleared conversion value from LinkedIn import session ${session.id}`);
+              devLog(`[Google Sheets] Cleared conversion value from LinkedIn import session ${session.id}`);
               conversionValueCleared = true;
             }
           }
@@ -5169,14 +5202,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateMetaConnection(campaignId, {
             conversionValue: null
           });
-          console.log(`[Google Sheets] Cleared Meta connection conversion value`);
+          devLog(`[Google Sheets] Cleared Meta connection conversion value`);
           conversionValueCleared = true;
         }
       } else {
-        console.log(`[Google Sheets] Revenue-tracking source(s) still exist (sheets=${remainingRevenueTrackingSheets.length}, hubspot=${remainingRevenueTrackingHubspot.length}, salesforce=${remainingRevenueTrackingSalesforce.length}) - keeping conversion values`);
+        devLog(`[Google Sheets] Revenue-tracking source(s) still exist (sheets=${remainingRevenueTrackingSheets.length}, hubspot=${remainingRevenueTrackingHubspot.length}, salesforce=${remainingRevenueTrackingSalesforce.length}) - keeping conversion values`);
       }
 
-      console.log(`[Google Sheets] Connection deleted successfully`);
+      devLog(`[Google Sheets] Connection deleted successfully`);
       res.json({
         success: true,
         message: 'Connection deleted',
@@ -5433,7 +5466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Spreadsheet ID is required' });
       }
 
-      console.log(`[Google Sheets] Selecting spreadsheet ${spreadsheetId} for campaign ${campaignId}`);
+      devLog(`[Google Sheets] Selecting spreadsheet ${spreadsheetId} for campaign ${campaignId}`);
 
       // Find existing connection with 'pending' spreadsheetId or create new one
       let connection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
@@ -5454,7 +5487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spreadsheetId,
       });
 
-      console.log(`[Google Sheets] Spreadsheet selected successfully`);
+      devLog(`[Google Sheets] Spreadsheet selected successfully`);
       res.json({ success: true, message: 'Spreadsheet connected successfully' });
     } catch (error: any) {
       console.error('[Google Sheets] Select spreadsheet error:', error);
@@ -7646,16 +7679,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         let spreadsheets = [];
         
-        console.log('Fetching Google Sheets files...');
+        devLog('Fetching Google Sheets files...');
         const filesResponse = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name,webViewLink)', {
           headers: { 'Authorization': `Bearer ${access_token}` }
         });
 
         if (filesResponse.ok) {
           const filesData = await filesResponse.json();
-          console.log('Google Sheets found:', {
+          devLog('Google Sheets found:', {
             count: filesData.files?.length || 0,
-            files: filesData.files?.map((f: any) => ({ id: f.id, name: f.name })) || []
+            sample: Array.isArray(filesData.files)
+              ? filesData.files.slice(0, 10).map((f: any) => ({ id: f?.id, name: f?.name }))
+              : [],
           });
           
           for (const file of filesData.files || []) {
@@ -7710,7 +7745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connectedAt: new Date().toISOString()
         });
 
-        console.log('Google Sheets OAuth connection stored for campaignId:', campaignId);
+        devLog('Google Sheets OAuth connection stored for campaignId:', campaignId);
 
         res.json({
           success: true,
@@ -7800,7 +7835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, spreadsheetId, sheetName } = req.body;
       
-      console.log('Spreadsheet selection request:', { campaignId, spreadsheetId, sheetName });
+      devLog('Spreadsheet selection request:', { campaignId, spreadsheetId, sheetName });
       
       // First, try to find connection in database (more reliable than global map)
       let dbConnection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
@@ -7828,7 +7863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
                   expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined,
                 });
-                console.log('[Select Spreadsheet] Created DB connection from global map');
+                devLog('[Select Spreadsheet] Created DB connection from global map');
               } catch (createError: any) {
                 console.error('[Select Spreadsheet] Failed to create connection from global map:', createError);
                 return res.status(404).json({ error: 'No Google Sheets connection found. Please reconnect Google Sheets.' });
@@ -7855,7 +7890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             spreadsheetName = metadata.properties?.title || spreadsheetName;
           }
         } catch (fetchError) {
-          console.log('[Select Spreadsheet] Could not fetch spreadsheet name, using default');
+          devLog('[Select Spreadsheet] Could not fetch spreadsheet name, using default');
         }
       }
       
@@ -7871,7 +7906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       await storage.updateGoogleSheetsConnection(dbConnection.id, updateData);
       
-      console.log('Updated database connection with spreadsheet:', {
+      devLog('Updated database connection with spreadsheet:', {
         campaignId,
         spreadsheetId,
         spreadsheetName,
@@ -7904,7 +7939,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? purpose
           : undefined;
       
-      console.log('Multiple spreadsheet selection request:', { campaignId, spreadsheetId, sheetNames, selectionMode: mode, purpose: sheetsPurpose });
+      devLog('Multiple spreadsheet selection request:', {
+        campaignId,
+        spreadsheetId,
+        sheetCount: Array.isArray(sheetNames) ? sheetNames.length : 0,
+        selectionMode: mode,
+        purpose: sheetsPurpose,
+      });
       
       if (!Array.isArray(sheetNames) || sheetNames.length === 0) {
         return res.status(400).json({ error: 'Sheet names array is required and must not be empty' });
@@ -7988,7 +8029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
                   expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined,
                 });
-                console.log('[Select Multiple Spreadsheets] Created DB connection from global map');
+                devLog('[Select Multiple Spreadsheets] Created DB connection from global map');
               } catch (createError: any) {
                 console.error('[Select Multiple Spreadsheets] Failed to create connection from global map:', createError);
                 return res.status(404).json({ error: 'No Google Sheets connection found. Please reconnect Google Sheets.' });
@@ -8019,7 +8060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : null;
           }
         } catch (fetchError) {
-          console.log('[Select Multiple Spreadsheets] Could not fetch spreadsheet name, using default');
+          devLog('[Select Multiple Spreadsheets] Could not fetch spreadsheet name, using default');
         }
       }
       
@@ -8041,15 +8082,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isFirstConnection = dbConnection.spreadsheetId === 'pending';
       let pendingConsumed = false;
       
-      console.log(`[Select Multiple Spreadsheets] 📋 Creating connections for ${connectedSheetNames.length} sheet(s)`);
-      console.log(`[Select Multiple Spreadsheets] Sheet names:`, connectedSheetNames);
-      console.log(`[Select Multiple Spreadsheets] Is first connection:`, isFirstConnection);
+      devLog(`[Select Multiple Spreadsheets] 📋 Creating connections for ${connectedSheetNames.length} sheet(s)`);
+      devLog(`[Select Multiple Spreadsheets] Sheet names:`, connectedSheetNames);
+      devLog(`[Select Multiple Spreadsheets] Is first connection:`, isFirstConnection);
       
       for (let i = 0; i < connectedSheetNames.length; i++) {
         const sheetName = connectedSheetNames[i];
         const sheetKey = String((sheetName || '').trim());
         
-        console.log(`[Select Multiple Spreadsheets] Processing sheet ${i + 1}/${sheetNames.length}: "${sheetName}"`);
+        devLog(`[Select Multiple Spreadsheets] Processing sheet ${i + 1}/${sheetNames.length}: "${sheetName}"`);
         
         const existing = existingBySheet.get(sheetKey);
         if (existing?.id) {
@@ -8081,11 +8122,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connectionIds.push(dbConnection.id);
           pendingConsumed = true;
           existingBySheet.set(sheetKey, { ...dbConnection, id: dbConnection.id, spreadsheetId, spreadsheetName, sheetName });
-          console.log(`[Select Multiple Spreadsheets] ✅ Updated pending connection ${dbConnection.id} with sheet: ${sheetName}`);
+          devLog(`[Select Multiple Spreadsheets] ✅ Updated pending connection ${dbConnection.id} with sheet: ${sheetName}`);
           continue;
         }
 
-          console.log(`[Select Multiple Spreadsheets] 🆕 Creating NEW connection for sheet: ${sheetName}`);
+          devLog(`[Select Multiple Spreadsheets] 🆕 Creating NEW connection for sheet: ${sheetName}`);
           try {
             const newConnection = await storage.createGoogleSheetsConnection({
               campaignId,
@@ -8101,7 +8142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             connectionIds.push(newConnection.id);
           existingBySheet.set(sheetKey, newConnection);
-            console.log(`[Select Multiple Spreadsheets] ✅ Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
+            devLog(`[Select Multiple Spreadsheets] ✅ Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
           } catch (error: any) {
             console.error(`[Select Multiple Spreadsheets] ❌ Failed to create connection for sheet ${sheetName}:`, error.message);
             console.error(`[Select Multiple Spreadsheets] Error stack:`, error.stack);
@@ -8151,9 +8192,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // best-effort cleanup; ignore failures
       }
       
-      console.log(`[Select Multiple Spreadsheets] 🎯 Final connectionIds:`, connectionIds);
+      devLog(`[Select Multiple Spreadsheets] 🎯 Final connectionIds:`, connectionIds);
       
-      console.log('Created/updated multiple database connections:', {
+      devLog('Created/updated multiple database connections:', {
         campaignId,
         spreadsheetId,
         spreadsheetName,
@@ -8835,7 +8876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for both spreadsheetId AND accessToken - both are required for data fetching
       // Also check that spreadsheetId is not 'pending' (placeholder)
       if (!primaryConnection || !primaryConnection.spreadsheetId || primaryConnection.spreadsheetId === 'pending' || !primaryConnection.accessToken) {
-        console.log(`[Google Sheets Check] Connection check failed for ${campaignId}:`, {
+        devLog(`[Google Sheets Check] Connection check failed for ${campaignId}:`, {
           hasConnection: !!primaryConnection,
           hasSpreadsheetId: !!primaryConnection?.spreadsheetId,
           spreadsheetId: primaryConnection?.spreadsheetId,
@@ -10155,7 +10196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       throw new Error('Missing refresh token or OAuth credentials for token refresh');
     }
 
-    console.log('🔄 Attempting to refresh Google Sheets access token for campaign:', connection.campaignId);
+    devLog('🔄 Attempting to refresh Google Sheets access token for campaign:', connection.campaignId);
 
     // Add timeout to token refresh to prevent hanging
     // Use Promise.race for timeout compatibility with older Node.js versions
@@ -10237,7 +10278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // IMPORTANT: update by connection id (not campaign id)
     await storage.updateGoogleSheetsConnection(String(connection.id), updateData);
 
-    console.log('✅ Google Sheets token refreshed successfully for campaign:', connection.campaignId);
+    devLog('✅ Google Sheets token refreshed successfully for campaign:', connection.campaignId);
     return tokens.access_token;
   }
 
@@ -10898,7 +10939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!connection) {
-        console.log(`[Google Sheets Data] No connection found for campaign ${campaignId} - returning empty data`);
+        devLog(`[Google Sheets Data] No connection found for campaign ${campaignId} - returning empty data`);
         // Return empty data structure instead of 404 so frontend can handle it gracefully
         return res.json({
           success: true,
@@ -10933,13 +10974,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Try to refresh if we have refresh token
         if (connection.refreshToken && connection.clientId && connection.clientSecret) {
           try {
-            console.log(`[Google Sheets Data] Attempting to refresh missing access token...`);
+            devLog(`[Google Sheets Data] Attempting to refresh missing access token...`);
             connection.accessToken = await refreshGoogleSheetsToken(connection);
             // Update the connection with the new token
             await storage.updateGoogleSheetsConnection(connection.id, {
               accessToken: connection.accessToken
             });
-            console.log(`[Google Sheets Data] ✅ Successfully refreshed access token`);
+            devLog(`[Google Sheets Data] ✅ Successfully refreshed access token`);
           } catch (refreshError: any) {
             console.error(`[Google Sheets Data] Token refresh failed:`, refreshError);
             if (refreshError.message === 'REFRESH_TOKEN_EXPIRED') {
@@ -10984,7 +11025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Proactively refresh token if it's close to expiring
       if (shouldRefreshToken(connection) && connection.refreshToken) {
-        console.log('🔄 Token expires soon, proactively refreshing...');
+        devLog('🔄 Token expires soon, proactively refreshing...');
         try {
           accessToken = await refreshGoogleSheetsToken(connection);
           connection.accessToken = accessToken; // Update local reference
@@ -11044,7 +11085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If token expired despite proactive refresh, try reactive refresh
       if (sheetResponse.status === 401 && connection.refreshToken) {
-        console.log('🔄 Access token expired, attempting automatic refresh...');
+        devLog('🔄 Access token expired, attempting automatic refresh...');
         try {
           accessToken = await refreshGoogleSheetsToken(connection);
           
@@ -11100,7 +11141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // For persistent connections, we need to handle refresh token expiration
           // by requesting fresh OAuth authorization
-          console.log('🔄 Refresh token may have expired, connection needs re-authorization');
+          devLog('🔄 Refresh token may have expired, connection needs re-authorization');
           
           // Clear the invalid connection so user can re-authorize
           await storage.deleteGoogleSheetsConnection(campaignId);
@@ -11132,7 +11173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Handle token expiration - clear invalid connection and require re-authorization
         if (sheetResponse.status === 401) {
-          console.log('🔄 Token expired without refresh capability, clearing connection');
+          devLog('🔄 Token expired without refresh capability, clearing connection');
           
           // Clear the invalid connection so user can re-authorize  
           await storage.deleteGoogleSheetsConnection(campaignId);
@@ -11190,7 +11231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const rows = sheetData.values || [];
-      console.log(`[Google Sheets Data] Received ${rows.length} rows from Google Sheets`);
+      devLog(`[Google Sheets Data] Received ${rows.length} rows from Google Sheets`);
       
       // Get campaign name for filtering summary data
       const campaign = await storage.getCampaign(campaignId);
@@ -11288,7 +11329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? filteredRowsForSummary
         : allRows;
       
-      console.log(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign name "${campaignName}") out of ${allRows.length} total rows`);
+      devLog(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign name "${campaignName}") out of ${allRows.length} total rows`);
       
       // Process spreadsheet data to extract campaign metrics (using filtered rows for summary, but show all rows in table)
       let campaignData = {
@@ -11303,7 +11344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Dynamically detect and aggregate numeric columns from FILTERED rows
       if (rowsForSummary.length > 0 && headers.length > 0) {
-        console.log('📊 Detected spreadsheet headers:', headers);
+      devLog('📊 Detected spreadsheet headers:', { count: headers.length, sample: headers.slice(0, 30) });
         
         // First pass: Identify which columns contain numeric data
         const numericColumns: Array<{name: string, index: number, type: 'currency' | 'integer' | 'decimal', samples: number[]}> = [];
@@ -11342,9 +11383,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
-        console.log(`✅ Detected ${numericColumns.length} numeric columns:`, 
-          numericColumns.map(col => `"${col.name}" (${col.type})`).join(', ')
-        );
+        devLog('✅ Detected numeric columns:', {
+          count: numericColumns.length,
+          sample: numericColumns.slice(0, 30).map((col) => ({ name: col.name, type: col.type })),
+        });
         
         // Second pass: Aggregate numeric columns from FILTERED rows only
         numericColumns.forEach(col => {
@@ -11373,11 +11415,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               total: total
             });
             
-            console.log(`  ✓ ${col.name}: ${total.toLocaleString()} (${count} filtered rows)`);
+            devLog(`  ✓ ${col.name}: ${total.toLocaleString()} (${count} filtered rows)`);
           }
         });
         
-        console.log(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rowsForSummary.length} filtered rows (campaign: "${campaignName}")`);
+        devLog(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rowsForSummary.length} filtered rows (campaign: "${campaignName}")`);
       }
 
       // Generate intelligent insights from the filtered data
@@ -11512,10 +11554,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (!matchedCampaigns.includes(name)) unmatchedCampaigns.push(name);
             });
             
-            console.log(`[Auto Conversion Value] ✅ Campaign Name + Platform matching: Found ${filteredRows.length} matching ${platformDisplayName} rows for "${campaignName}"`);
-            console.log(`[Auto Conversion Value] Matched campaigns: ${matchedCampaigns.join(', ')}`);
+            devLog(`[Auto Conversion Value] ✅ Campaign Name + Platform matching: Found ${filteredRows.length} matching ${platformDisplayName} rows for "${campaignName}"`);
+            devLog('[Auto Conversion Value] Matched campaigns:', { count: matchedCampaigns.length, sample: matchedCampaigns.slice(0, 30) });
             if (unmatchedCampaigns.length > 0) {
-              console.log(`[Auto Conversion Value] Other ${platformDisplayName} campaigns found: ${unmatchedCampaigns.join(', ')}`);
+              devLog(`[Auto Conversion Value] Other ${platformDisplayName} campaigns found:`, { count: unmatchedCampaigns.length, sample: unmatchedCampaigns.slice(0, 30) });
             }
           }
         }
@@ -11549,13 +11591,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               unmatchedCampaigns = Array.from(uniqueCampaignNames);
             }
             
-            console.log(`[Auto Conversion Value] ⚠️ Platform-only matching: Using ${filteredRows.length} ${platformDisplayName} rows (no Campaign Name match found)`);
-            console.log(`[Auto Conversion Value] Campaign "${campaignName}" not found in Google Sheets. Found ${unmatchedCampaigns.length} unique ${platformDisplayName} campaign name(s): ${unmatchedCampaigns.join(', ')}`);
+            devLog(`[Auto Conversion Value] ⚠️ Platform-only matching: Using ${filteredRows.length} ${platformDisplayName} rows (no Campaign Name match found)`);
+            devLog(`[Auto Conversion Value] Campaign "${campaignName}" not found in Google Sheets. Found ${unmatchedCampaigns.length} unique ${platformDisplayName} campaign name(s).`);
             if (unmatchedCampaigns.length > 0) {
-              console.log(`[Auto Conversion Value] Found ${platformDisplayName} campaigns: ${unmatchedCampaigns.join(', ')}`);
+              devLog(`[Auto Conversion Value] Found ${platformDisplayName} campaigns:`, { count: unmatchedCampaigns.length, sample: unmatchedCampaigns.slice(0, 30) });
             }
           } else {
-            console.log(`[Auto Conversion Value] Platform column detected but no ${platformDisplayName} rows found. Using all rows.`);
+            devLog(`[Auto Conversion Value] Platform column detected but no ${platformDisplayName} rows found. Using all rows.`);
             filteredRows = allRows; // Fallback to all rows if no platform match found
             matchingMethod = 'all_rows';
           }
@@ -11566,9 +11608,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           filteredRows = allRows;
           matchingMethod = 'all_rows';
           if (campaignPlatform) {
-            console.log(`[Auto Conversion Value] ℹ️ No Platform column detected or no ${platformDisplayName} match. Using all rows.`);
+            devLog(`[Auto Conversion Value] ℹ️ No Platform column detected or no ${platformDisplayName} match. Using all rows.`);
           } else {
-            console.log(`[Auto Conversion Value] ℹ️ No Platform column detected and campaign has no platform set. Using all rows.`);
+            devLog(`[Auto Conversion Value] ℹ️ No Platform column detected and campaign has no platform set. Using all rows.`);
           }
         }
         
@@ -11593,7 +11635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             mappings = JSON.parse(connection.columnMappings);
             if (mappings && mappings.length > 0) {
               useMappings = true;
-              console.log(`[Auto Conversion Value] Using saved column mappings (${mappings.length} mappings)`);
+              devLog(`[Auto Conversion Value] Using saved column mappings (${mappings.length} mappings)`);
               
               // Transform data using mappings
               const transformationResult = transformData(rows, mappings, campaignPlatform || 'linkedin');
@@ -11614,7 +11656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Phase 6: Convert to canonical format
               transformedRows = toCanonicalFormatBatch(transformedRows, 'google_sheets', 0.9);
               
-              console.log(`[Auto Conversion Value] Transformed ${transformedRows.length} rows using mappings`);
+              devLog(`[Auto Conversion Value] Transformed ${transformedRows.length} rows using mappings`);
             }
           } catch (mappingError) {
             console.warn(`[Auto Conversion Value] Failed to parse mappings, falling back to column detection:`, mappingError);
@@ -11702,7 +11744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     ? linkedInConversions 
                     : platformRows.reduce((sum, row) => sum + (parseInt(row.conversions) || 0), 0);
                   
-                  console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()} (Mapped): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsUsed.toLocaleString()} (${conversionSource}), CV: $${conversionValue.toFixed(2)}`);
+                  devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()} (Mapped): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsUsed.toLocaleString()} (${conversionSource}), CV: $${conversionValue.toFixed(2)}`);
                   
                   calculatedConversionValues.push({
                     platform: platformInfo.platform,
@@ -11712,7 +11754,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
                   
                   // DO NOT update platform connection - it will be cleared if needed by the analytics endpoint
-                  console.log(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
+                  devLog(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
                   // Platform connection values are managed by the LinkedIn Analytics endpoint
                   // which checks for active mappings and clears stale values
                 }
@@ -11789,7 +11831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 if (platformRevenue > 0 && conversionsToUse > 0) {
                   const platformConversionValue = (platformRevenue / conversionsToUse).toFixed(2);
                   
-                  console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: Revenue: $${platformRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource}), CV: $${platformConversionValue}`);
+                  devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: Revenue: $${platformRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource}), CV: $${platformConversionValue}`);
                   
                   // Store calculated value for response
                   calculatedConversionValues.push({
@@ -11800,7 +11842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
                   
                   // DO NOT update platform connection - it will be cleared if needed by the analytics endpoint
-                  console.log(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
+                  devLog(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
                   // Platform connection values are managed by the LinkedIn Analytics endpoint
                   // which checks for active mappings and clears stale values
                   if (false) { // Disabled - causes race condition with clearing logic
@@ -11808,19 +11850,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     await storage.updateLinkedInConnection(campaignId, {
                       conversionValue: platformConversionValue
                     });
-                    console.log(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue} (using ${conversionSource} conversions)`);
+                    devLog(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue} (using ${conversionSource} conversions)`);
                   } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
                     await storage.updateMetaConnection(campaignId, {
                       conversionValue: platformConversionValue
                     });
-                    console.log(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${platformConversionValue}`);
+                    devLog(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${platformConversionValue}`);
                     }
                   }
                 } else {
-                  console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No revenue/conversions data found`);
+                  devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No revenue/conversions data found`);
                 }
               } else {
-                console.log(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No matching rows found in Google Sheets`);
+                devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No matching rows found in Google Sheets`);
               }
             } catch (platformError) {
               console.warn(`[Auto Conversion Value] Could not calculate conversion value for ${platformInfo.platform}:`, platformError);
@@ -11869,7 +11911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : totalConversions;
             
             const platformLabel = campaignPlatform ? `${campaignPlatform} ` : '';
-            console.log(`[Auto Conversion Value] Campaign-level: Calculated from ${filteredRows.length} ${platformLabel}rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource})`);
+            devLog(`[Auto Conversion Value] Campaign-level: Calculated from ${filteredRows.length} ${platformLabel}rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource})`);
           } else {
             // Fallback: Try to find from aggregated metrics (if Platform filtering wasn't possible)
             const revenueKeys = ['Revenue', 'revenue', 'Total Revenue', 'total revenue', 'Revenue (USD)', 'Sales Revenue', 'Revenue Amount'];
@@ -11907,7 +11949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : totalConversions;
             
             if (totalRevenue > 0 || conversionsToUse > 0) {
-              console.log(`[Auto Conversion Value] Using aggregated metrics (not filtered by Platform): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource})`);
+              devLog(`[Auto Conversion Value] Using aggregated metrics (not filtered by Platform): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource})`);
             }
           }
           
@@ -11930,14 +11972,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (totalRevenue > 0 && finalConversions > 0) {
             const calculatedConversionValue = (totalRevenue / finalConversions).toFixed(2);
             
-            console.log(`[Auto Conversion Value] Campaign-level: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${finalConversions.toLocaleString()} (${finalConversionSource}), CV: $${calculatedConversionValue}`);
+            devLog(`[Auto Conversion Value] Campaign-level: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${finalConversions.toLocaleString()} (${finalConversionSource}), CV: $${calculatedConversionValue}`);
             
             const updatedCampaign = await storage.updateCampaign(campaignId, {
               conversionValue: calculatedConversionValue
             });
             
             if (updatedCampaign) {
-              console.log(`[Auto Conversion Value] ✅ Updated campaign ${campaignId} conversion value to $${calculatedConversionValue} (single platform, using ${finalConversionSource} conversions)`);
+              devLog(`[Auto Conversion Value] ✅ Updated campaign ${campaignId} conversion value to $${calculatedConversionValue} (single platform, using ${finalConversionSource} conversions)`);
             }
             
             // Also update LinkedIn import sessions if they exist AND campaign is LinkedIn (for consistency)
@@ -11950,7 +11992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     conversionValue: calculatedConversionValue
                   });
                   
-                  console.log(`[Auto Conversion Value] ✅ Updated LinkedIn import session ${latestSession.id} conversion value to $${calculatedConversionValue}`);
+                  devLog(`[Auto Conversion Value] ✅ Updated LinkedIn import session ${latestSession.id} conversion value to $${calculatedConversionValue}`);
                 }
               } catch (sessionError) {
                 console.warn(`[Auto Conversion Value] Could not update LinkedIn sessions:`, sessionError);
@@ -11960,7 +12002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (connectedPlatforms.length > 1) {
           // Multiple platforms connected - leave campaign.conversionValue blank to avoid confusion
           // Each platform connection has its own conversionValue
-          console.log(`[Auto Conversion Value] ℹ️ Multiple platforms connected (${connectedPlatforms.length}). Leaving campaign.conversionValue blank. Each platform has its own conversion value.`);
+          devLog(`[Auto Conversion Value] ℹ️ Multiple platforms connected (${connectedPlatforms.length}). Leaving campaign.conversionValue blank. Each platform has its own conversion value.`);
           
           // Optionally clear the campaign-level value if it was previously set
           const currentCampaign = await storage.getCampaign(campaignId);
@@ -11968,15 +12010,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.updateCampaign(campaignId, {
               conversionValue: null
             });
-            console.log(`[Auto Conversion Value] ℹ️ Cleared campaign.conversionValue (multiple platforms detected)`);
+            devLog(`[Auto Conversion Value] ℹ️ Cleared campaign.conversionValue (multiple platforms detected)`);
           }
         } else {
           if (totalRevenue === 0 && totalConversions === 0) {
-            console.log(`[Auto Conversion Value] ℹ️ No Revenue or Conversions columns detected in Google Sheets`);
+            devLog(`[Auto Conversion Value] ℹ️ No Revenue or Conversions columns detected in Google Sheets`);
           } else if (totalRevenue === 0) {
-            console.log(`[Auto Conversion Value] ℹ️ Revenue column not found (Conversions: ${totalConversions})`);
+            devLog(`[Auto Conversion Value] ℹ️ Revenue column not found (Conversions: ${totalConversions})`);
           } else if (totalConversions === 0) {
-            console.log(`[Auto Conversion Value] ℹ️ Conversions column not found (Revenue: $${totalRevenue})`);
+            devLog(`[Auto Conversion Value] ℹ️ Conversions column not found (Revenue: $${totalRevenue})`);
           }
         }
       } catch (calcError) {

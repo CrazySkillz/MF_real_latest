@@ -4,6 +4,14 @@ import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
 import { buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 
+const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+const devLog = (...args: any[]) => {
+  if (!isProd) {
+    // eslint-disable-next-line no-console
+    console.log(...args);
+  }
+};
+
 function hydrateDecryptedTokens<T extends Record<string, any>>(row: T): T {
   const enc = (row as any)?.encryptedTokens as EncryptedTokens | undefined;
   const dec = decryptTokens(enc);
@@ -3131,7 +3139,7 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       // If sheet_name/purpose column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('purpose') || error.message?.includes('column') || error.code === '42703') {
-        console.log('[Storage] sheet_name/purpose column not found, using fallback query');
+        devLog('[Storage] sheet_name/purpose column not found, using fallback query');
         const result = await db.execute(sql`
           SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, encrypted_tokens,
                  client_id, client_secret, expires_at, is_primary, is_active, column_mappings, 
@@ -3203,7 +3211,7 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
-        console.log('[Storage] sheet_name column not found, using fallback query for getGoogleSheetsConnection');
+        devLog('[Storage] sheet_name column not found, using fallback query for getGoogleSheetsConnection');
         let query;
         if (spreadsheetId) {
           query = sql`
@@ -3294,7 +3302,7 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
-        console.log('[Storage] sheet_name column not found, using fallback query for getPrimaryGoogleSheetsConnection');
+        devLog('[Storage] sheet_name column not found, using fallback query for getPrimaryGoogleSheetsConnection');
         const result = await db.execute(sql`
           SELECT id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, 
                  client_id, client_secret, expires_at, is_primary, is_active, column_mappings, 
@@ -3356,7 +3364,7 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL insert
       if (error.message?.includes('sheet_name') || error.message?.includes('purpose') || error.message?.includes('column') || error.code === '42703') {
-        console.log('[Storage] sheet_name/purpose column not found, using fallback insert for createGoogleSheetsConnection');
+        devLog('[Storage] sheet_name/purpose column not found, using fallback insert for createGoogleSheetsConnection');
         const enc = buildEncryptedTokens({
           accessToken: (connection as any).accessToken,
           refreshToken: (connection as any).refreshToken,
@@ -3469,7 +3477,7 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL update
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
-        console.log('[Storage] sheet_name column not found, using fallback update for updateGoogleSheetsConnection');
+        devLog('[Storage] sheet_name column not found, using fallback update for updateGoogleSheetsConnection');
         // Build update query without sheet_name
         const updates: string[] = [];
         const values: any[] = [];
@@ -3605,7 +3613,7 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       // Fallback if sheet_name column doesn't exist
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
-        console.log('[Storage] sheet_name column not found, using fallback query for deleteGoogleSheetsConnection');
+        devLog('[Storage] sheet_name column not found, using fallback query for deleteGoogleSheetsConnection');
         try {
           // First, get connection info using raw SQL
           const selectResult = await db.execute(sql`

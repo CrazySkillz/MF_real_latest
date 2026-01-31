@@ -103,6 +103,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // Rate limiters (must be initialized before any route handlers reference them)
+  const {
+    oauthRateLimiter,
+    linkedInApiRateLimiter,
+    googleSheetsRateLimiter,
+    ga4RateLimiter,
+    importRateLimiter,
+  } = await import("./middleware/rateLimiter");
+
   // ============================================================================
   // Deterministic GA4 simulation (for demo/testing properties like "yesop")
   // - Used when ?mock=1 OR propertyId matches a known mock property id.
@@ -2172,15 +2181,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const escaped = String(sheetName).replace(/'/g, "''");
     return `'${escaped}'!`;
   };
-
-  // Import rate limiters
-  const { 
-    oauthRateLimiter, 
-    linkedInApiRateLimiter,
-    googleSheetsRateLimiter,
-    ga4RateLimiter,
-    importRateLimiter
-  } = await import('./middleware/rateLimiter');
 
   // Notifications routes
   app.get("/api/notifications", async (req, res) => {

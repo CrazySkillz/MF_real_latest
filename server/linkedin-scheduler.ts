@@ -153,49 +153,62 @@ async function generateMockLinkedInData(
 
   console.log(`[LinkedIn Scheduler] ✅ Mock data generated for campaign ${campaignId}`);
 
-  // Also persist mock daily facts so Insights (Trends + anomalies) can be tested without waiting days.
+  // Persist mock daily facts incrementally so test mode simulates a real "days go by" journey:
+  // - first refresh => 1 day available
+  // - each subsequent refresh => +1 day (until we reach yesterday UTC)
   try {
-    const days = 90;
     const now = new Date();
     const endUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)); // yesterday UTC
-    const startUTC = new Date(endUTC.getTime());
-    startUTC.setUTCDate(startUTC.getUTCDate() - (days - 1));
 
-    let impressions = 20000 + Math.floor(Math.random() * 8000);
-    let clicks = Math.max(50, Math.floor(impressions * (0.008 + Math.random() * 0.01)));
-    let conversions = Math.max(0, Math.floor(clicks * (0.01 + Math.random() * 0.03)));
-    let spend = 300 + Math.random() * 700;
+    // Determine the next "new day" to add.
+    // We start from a base window (30 days back) but we do NOT backfill — we add one day per refresh.
+    const baseStartUTC = new Date(endUTC.getTime());
+    baseStartUTC.setUTCDate(baseStartUTC.getUTCDate() - 29);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const baseStartIso = iso(baseStartUTC);
+    const endIso = iso(endUTC);
 
-    const drift = () => 0.9 + Math.random() * 0.2; // ±10%
-    const rows: any[] = [];
+    const existing = await storage.getLinkedInDailyMetrics(campaignId, baseStartIso, endIso).catch(() => []);
+    const maxExistingDate = Array.isArray(existing) && existing.length > 0 ? String((existing as any[])[(existing as any[]).length - 1]?.date || "") : "";
 
-    for (let i = 0; i < days; i++) {
-      const d = new Date(startUTC.getTime());
-      d.setUTCDate(startUTC.getUTCDate() + i);
-      const date = d.toISOString().slice(0, 10);
-
-      impressions = Math.max(1000, Math.floor(impressions * drift()));
-      clicks = Math.max(1, Math.floor(clicks * drift()));
-      conversions = Math.max(0, Math.floor(conversions * drift()));
-      spend = Math.max(10, spend * drift());
-
-      rows.push({
-        campaignId,
-        date,
-        impressions,
-        clicks,
-        reach: Math.max(0, Math.floor(impressions * (0.6 + Math.random() * 0.2))),
-        engagements: Math.max(0, Math.floor(clicks + impressions * (0.002 + Math.random() * 0.004))),
-        conversions,
-        leads: Math.max(0, Math.floor(conversions * (0.4 + Math.random() * 0.4))),
-        spend: spend.toFixed(2),
-        videoViews: Math.max(0, Math.floor(impressions * (0.01 + Math.random() * 0.02))),
-        viralImpressions: Math.max(0, Math.floor(impressions * (0.05 + Math.random() * 0.1))),
-      });
+    let nextUTC: Date;
+    if (!maxExistingDate) {
+      nextUTC = baseStartUTC;
+    } else {
+      const parsed = new Date(`${maxExistingDate}T00:00:00.000Z`);
+      nextUTC = new Date(parsed.getTime());
+      nextUTC.setUTCDate(nextUTC.getUTCDate() + 1);
     }
 
-    await storage.upsertLinkedInDailyMetrics(rows as any);
-    console.log(`[LinkedIn Scheduler] ✅ Mock daily metrics upserted: ${rows.length} days for campaign ${campaignId}`);
+    // Cap at yesterday UTC; if we’re already at/after yesterday, just overwrite yesterday (simulate re-import corrections).
+    if (nextUTC.getTime() > endUTC.getTime()) {
+      nextUTC = endUTC;
+    }
+
+    const date = iso(nextUTC);
+
+    // Generate a single day's totals (lightweight; avoids big arrays/large writes).
+    const impressions = Math.max(1000, 20000 + Math.floor(Math.random() * 8000));
+    const clicks = Math.max(1, Math.floor(impressions * (0.008 + Math.random() * 0.01)));
+    const conversions = Math.max(0, Math.floor(clicks * (0.01 + Math.random() * 0.03)));
+    const spend = Math.max(10, 300 + Math.random() * 700);
+
+    const row = {
+      campaignId,
+      date,
+      impressions,
+      clicks,
+      reach: Math.max(0, Math.floor(impressions * (0.6 + Math.random() * 0.2))),
+      engagements: Math.max(0, Math.floor(clicks + impressions * (0.002 + Math.random() * 0.004))),
+      conversions,
+      leads: Math.max(0, Math.floor(conversions * (0.4 + Math.random() * 0.4))),
+      spend: spend.toFixed(2),
+      videoViews: Math.max(0, Math.floor(impressions * (0.01 + Math.random() * 0.02))),
+      viralImpressions: Math.max(0, Math.floor(impressions * (0.05 + Math.random() * 0.1))),
+    };
+
+    await storage.upsertLinkedInDailyMetrics([row] as any);
+    console.log(`[LinkedIn Scheduler] ✅ Mock daily metrics upserted: 1 day (${date}) for campaign ${campaignId}`);
 
     // Persist canonical last refresh timestamp for coverage UI.
     try {

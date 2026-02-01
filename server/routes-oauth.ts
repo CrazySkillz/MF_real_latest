@@ -2967,6 +2967,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = String(req.params.id || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { refreshLinkedInDataForCampaign } = await import("./linkedin-scheduler.js");
       await refreshLinkedInDataForCampaign(campaignId);
       res.json({ success: true, message: "LinkedIn refresh completed" });

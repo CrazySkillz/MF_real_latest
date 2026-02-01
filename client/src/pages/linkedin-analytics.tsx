@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, AlertTriangle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent, Info, Calculator, Send } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, DollarSign, Target, BarChart3, Trophy, Award, TrendingDownIcon, CheckCircle2, AlertCircle, AlertTriangle, Clock, Plus, Heart, MessageCircle, Share2, Activity, Users, Play, Filter, ArrowUpDown, ChevronRight, Trash2, Pencil, FileText, Settings, Download, Percent, Info, Calculator, Send, RefreshCw, Loader2 } from "lucide-react";
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -752,7 +752,9 @@ export default function LinkedInAnalytics() {
   });
 
   // LinkedIn daily facts (persisted) for Insights anomaly/delta detection
-  const LINKEDIN_DAILY_LOOKBACK_DAYS = 90;
+  // UI lookback only affects how many rows we request, not how many exist.
+  // Keep it small to match the incremental "days go by" test-mode journey.
+  const LINKEDIN_DAILY_LOOKBACK_DAYS = 30;
   const { data: linkedInCoverageResp, isLoading: linkedInCoverageLoading, isError: linkedInCoverageIsError, error: linkedInCoverageError, refetch: refetchLinkedInCoverage } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "linkedin-coverage", LINKEDIN_DAILY_LOOKBACK_DAYS],
     enabled: !!campaignId,
@@ -1529,6 +1531,65 @@ export default function LinkedInAnalytics() {
         variant: "destructive",
       });
     }
+  });
+
+  const runLinkedInRefreshMutation = useMutation({
+    mutationFn: async () => {
+      if (!campaignId) throw new Error("Missing campaign id");
+      const resp = await apiRequest(
+        "POST",
+        `/api/campaigns/${encodeURIComponent(String(campaignId))}/linkedin/refresh`,
+        {}
+      );
+      const json = await (resp as any).json?.().catch(() => ({} as any));
+      if (!resp.ok || json?.success === false) {
+        throw new Error(json?.error || json?.message || "Failed to refresh LinkedIn data");
+      }
+      return json;
+    },
+    onSuccess: async () => {
+      toast({
+        title: "Refresh complete",
+        description: "LinkedIn metrics have been updated.",
+      });
+
+      // Refresh creates a NEW import session; jump to the latest session so Overview updates immediately.
+      try {
+        const resp = await fetch(`/api/campaigns/${encodeURIComponent(String(campaignId))}/connected-platforms`, {
+          headers: { "Cache-Control": "no-cache" },
+        });
+        const json = await resp.json().catch(() => ({} as any));
+        const statuses = Array.isArray(json?.statuses) ? json.statuses : [];
+        const linkedin = statuses.find((s: any) => String(s?.id || "") === "linkedin");
+        const analyticsPath = String(linkedin?.analyticsPath || "").trim();
+
+        if (analyticsPath) {
+          const joiner = analyticsPath.includes("?") ? "&" : "?";
+          setLocation(`${analyticsPath}${joiner}tab=overview`);
+          return;
+        }
+      } catch {
+        // ignore (fallback below)
+      }
+
+      // Fallback: refetch current data (may still be the old session if URL isn't updated).
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-coverage", LINKEDIN_DAILY_LOOKBACK_DAYS] });
+        await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId], exact: true });
+        await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'], exact: true });
+      } catch {
+        // ignore
+      }
+    },
+    onError: (e: any) => {
+      toast({
+        title: "Refresh failed",
+        description: e?.message || "Could not refresh LinkedIn data.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Update Report mutation
@@ -4427,7 +4488,7 @@ export default function LinkedInAnalytics() {
         <main className="flex-1 p-8">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-4">
                 <Button 
                   variant="ghost" 
@@ -4452,6 +4513,25 @@ export default function LinkedInAnalytics() {
                     </p>
                   )}
                 </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!campaignId || runLinkedInRefreshMutation.isPending}
+                  onClick={() => runLinkedInRefreshMutation.mutate()}
+                  className="border-slate-300 dark:border-slate-700"
+                  data-testid="button-run-linkedin-refresh"
+                >
+                  {runLinkedInRefreshMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Run refresh
+                </Button>
               </div>
             </div>
 

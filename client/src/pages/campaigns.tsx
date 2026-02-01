@@ -72,6 +72,7 @@ interface DataConnectorsStepProps {
   isLoading: boolean;
   onLinkedInImportComplete?: () => void;
   onPlatformsChange?: (platforms: string[]) => void;
+  campaignId: string;
 }
 
 const platforms = [
@@ -126,7 +127,7 @@ const platforms = [
   }
 ];
 
-function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLinkedInImportComplete, onPlatformsChange, onGA4CampaignFilterSelected }: DataConnectorsStepProps & { campaignData: CampaignFormData; onGA4CampaignFilterSelected?: (value: string) => void }) {
+function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLinkedInImportComplete, onPlatformsChange, onGA4CampaignFilterSelected, campaignId }: DataConnectorsStepProps & { campaignData: CampaignFormData; onGA4CampaignFilterSelected?: (value: string) => void }) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({});
@@ -199,7 +200,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
     setIsConnecting(prev => ({ ...prev, 'google-analytics': true }));
 
     try {
-      const response = await fetch(`/api/campaigns/temp-campaign-setup/ga4-connection-status`);
+      const response = await fetch(`/api/campaigns/${encodeURIComponent(String(campaignId))}/ga4-connection-status`);
       const data = await response.json();
 
       if (data.connected && Array.isArray(data.properties) && data.properties.length > 0) {
@@ -252,7 +253,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          campaignId: 'temp-campaign-setup',
+          campaignId: String(campaignId),
           email: 'webhook@custom-integration.local', // Placeholder email
           allowedEmailAddresses: emailList.length > 0 ? emailList : undefined
         })
@@ -307,7 +308,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
     setIsGA4PropertyLoading(true);
 
     try {
-      const response = await fetch(`/api/campaigns/temp-campaign-setup/ga4-property`, {
+      const response = await fetch(`/api/campaigns/${encodeURIComponent(String(campaignId))}/ga4-property`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -330,7 +331,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
         // Immediately prompt for GA4 campaignName filter (still within the New Campaign flow)
         try {
           setIsGA4CampaignLoading(true);
-          const valsResp = await fetch(`/api/campaigns/temp-campaign-setup/ga4-campaign-values?dateRange=30days&limit=50&propertyId=${encodeURIComponent(selectedGA4Property)}`);
+          const valsResp = await fetch(`/api/campaigns/${encodeURIComponent(String(campaignId))}/ga4-campaign-values?dateRange=30days&limit=50&propertyId=${encodeURIComponent(selectedGA4Property)}`);
           const valsJson = await valsResp.json().catch(() => null);
           const vals = Array.isArray(valsJson?.campaigns) ? valsJson.campaigns : [];
           setGA4CampaignValues(vals);
@@ -444,7 +445,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-4">
                   {platform.id === 'google-analytics' && (
                     <IntegratedGA4Auth
-                      campaignId="temp-campaign-setup"
+                      campaignId={campaignId}
                       onSuccess={() => {
                         void loadGA4Properties();
                       }}
@@ -460,7 +461,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   
                   {platform.id === 'google-sheets' && (
                     <SimpleGoogleSheetsAuth
-                      campaignId="temp-campaign-setup"
+                      campaignId={campaignId}
                       onSuccess={() => {
                         console.log('📊 Google Sheets onSuccess fired!');
                         setConnectedPlatforms(prev => {
@@ -492,7 +493,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   
                   {platform.id === 'linkedin' && (
                     <LinkedInConnectionFlow
-                      campaignId="temp-campaign-setup"
+                      campaignId={campaignId}
                       mode="new"
                       onConnectionSuccess={() => {
                         console.log('🔗 LinkedIn onConnectionSuccess fired!');
@@ -523,7 +524,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   
                   {platform.id === 'facebook' && (
                     <SimpleMetaAuth
-                      campaignId="temp-campaign-setup"
+                      campaignId={campaignId}
                       onSuccess={() => {
                         setConnectedPlatforms(prev => [...prev, 'facebook']);
                         setSelectedPlatforms(prev => [...prev, 'facebook']);
@@ -616,7 +617,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                       setIsConnecting(prev => ({ ...prev, 'custom-integration': true }));
                       
                       // First, create the custom integration connection
-                      const connectResponse = await fetch(`/api/custom-integration/temp-campaign-setup/connect`, {
+                      const connectResponse = await fetch(`/api/custom-integration/${encodeURIComponent(String(campaignId))}/connect`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -632,7 +633,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                       const formData = new FormData();
                       formData.append('pdf', file);
                       
-                      const uploadResponse = await fetch(`/api/custom-integration/temp-campaign-setup/upload-pdf`, {
+                      const uploadResponse = await fetch(`/api/custom-integration/${encodeURIComponent(String(campaignId))}/upload-pdf`, {
                         method: 'POST',
                         body: formData
                       });
@@ -691,7 +692,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   try {
                     setIsConnecting(prev => ({ ...prev, 'custom-integration': true }));
                     
-                    const response = await fetch(`/api/custom-integration/temp-campaign-setup/connect`, {
+                    const response = await fetch(`/api/custom-integration/${encodeURIComponent(String(campaignId))}/connect`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -709,7 +710,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                     setSelectedPlatforms(prev => [...prev, 'custom-integration']);
                     setShowCustomIntegrationModal(false);
                     setShowEmailForwardingInstructions(true);
-                    setCustomIntegrationEmail(data.campaignEmail || 'temp-campaign-setup@import.mforensics.com');
+                    setCustomIntegrationEmail(data.campaignEmail || `${campaignId}@import.mforensics.com`);
                     
                     toast({
                       title: "Email Forwarding Configured!",
@@ -992,6 +993,8 @@ export default function Campaigns() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showConnectorsStep, setShowConnectorsStep] = useState(false);
   const [campaignData, setCampaignData] = useState<CampaignFormData | null>(null);
+  const [draftCampaignId, setDraftCampaignId] = useState<string | null>(null);
+  const [draftFinalized, setDraftFinalized] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [linkedInImportComplete, setLinkedInImportComplete] = useState(false);
@@ -1160,219 +1163,73 @@ export default function Campaigns() {
     },
   });
 
-  const handleSubmit = (data: CampaignFormData) => {
+  const handleSubmit = async (data: CampaignFormData) => {
     console.log('📋 Form submitted with data:', data);
     console.log('📋 Industry value:', data.industry);
     setCampaignData(data);
-    setShowConnectorsStep(true);
-  };
 
-  const handleConnectorsComplete = async (selectedPlatforms: string[]) => {
-    if (campaignData) {
-      console.log('🚀 handleConnectorsComplete called with platforms:', selectedPlatforms);
-      console.log('🚀 Current connectedPlatformsInDialog:', connectedPlatformsInDialog);
-      
-      // Create campaign with connected platforms data - no artificial metrics
-      const campaignWithPlatforms = {
-        ...campaignData,
+    // Create a real campaign first so connector flows can persist against a valid campaignId.
+    // This fixes test-mode LinkedIn import failing with "Campaign not found".
+    setDraftFinalized(false);
+    try {
+      const payload = {
+        ...data,
         ga4CampaignFilter: ga4CampaignFilterForNewCampaign || undefined,
-        industry: campaignData.industry || undefined, // Include industry for benchmark generation
-        platform: selectedPlatforms.join(', '), // Store connected platforms
+        industry: data.industry || undefined,
+        platform: "manual", // will be updated after connectors are completed
         status: "active" as const,
         type: "campaign" as const,
-        impressions: 0, // Start with 0 - will be populated from real API data
-        clicks: 0,      // Start with 0 - will be populated from real API data  
-        spend: "0",     // Backend expects string, not number
+        impressions: 0,
+        clicks: 0,
+        spend: "0",
       };
-      
-      console.log('🔧 Creating campaign with platforms:', selectedPlatforms);
-      console.log('🔧 Campaign data includes industry:', campaignWithPlatforms.industry);
-      
-      // Create the campaign and wait for response
-      const newCampaign = await new Promise((resolve, reject) => {
-        createCampaignMutation.mutate(campaignWithPlatforms, {
-          onSuccess: (data) => {
-            console.log('✅ Campaign created:', data);
-            resolve(data);
-          },
-          onError: reject
+
+      const created: any = await new Promise((resolve, reject) => {
+        createCampaignMutation.mutate(payload as any, {
+          onSuccess: (c) => resolve(c),
+          onError: reject,
         });
       });
 
-      // Safety net: ensure the GA4 campaignName filter is persisted even if future refactors
-      // change the create payload shape.
-      try {
-        if (ga4CampaignFilterForNewCampaign) {
-          await apiRequest("PATCH", `/api/campaigns/${(newCampaign as any).id}`, {
-            ga4CampaignFilter: ga4CampaignFilterForNewCampaign,
-          });
-        }
-      } catch (e) {
-        console.warn('Failed to persist GA4 campaign filter after create:', e);
-      }
-      
-      // Debug: Log selected platforms for troubleshooting
-      console.log('🔧 Debug - Selected platforms for transfer:', selectedPlatforms);
-      
-      // Transfer GA4 connection if GA4 was connected
-      if (selectedPlatforms.includes('google-analytics')) {
-        try {
-          console.log('🔄 Starting GA4 connection transfer...');
-          const response = await fetch('/api/ga4/transfer-connection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fromCampaignId: 'temp-campaign-setup',
-              toCampaignId: (newCampaign as any).id
-            })
-          });
-          const result = await response.json();
-          if (result.success) {
-            console.log('✅ GA4 connection transferred successfully to campaign:', (newCampaign as any).id);
-            // Invalidate and refetch connection status queries
-            await queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", (newCampaign as any).id] });
-            await queryClient.refetchQueries({ queryKey: ["/api/ga4/check-connection", (newCampaign as any).id] });
-          } else {
-            console.error('❌ GA4 transfer failed:', result.error);
-          }
-        } catch (error) {
-          console.error('❌ Failed to transfer GA4 connection:', error);
-        }
-      }
-
-      // Transfer Google Sheets connection if Google Sheets was connected
-      if (selectedPlatforms.includes('google-sheets')) {
-        console.log('🔧 Attempting Google Sheets transfer...');
-        console.log('🔧 Selected platforms:', selectedPlatforms);
-        try {
-          const response = await fetch('/api/google-sheets/transfer-connection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fromCampaignId: 'temp-campaign-setup',
-              toCampaignId: (newCampaign as any).id
-            })
-          });
-          
-          console.log('🔧 Google Sheets transfer response status:', response.status);
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Google Sheets transfer HTTP error:', response.status, errorText);
-            throw new Error(`Transfer failed with status ${response.status}`);
-          }
-          
-          const result = await response.json();
-          console.log('🔧 Google Sheets transfer result:', result);
-          
-          if (result.success) {
-            console.log('✅ Google Sheets connection transferred successfully to campaign:', (newCampaign as any).id);
-          } else {
-            console.error('❌ Google Sheets transfer failed:', result.error);
-          }
-        } catch (error) {
-          console.error('❌ Failed to transfer Google Sheets connection:', error);
-        }
-      } else {
-        console.log('🔧 Google Sheets not in selected platforms, skipping transfer');
-        console.log('🔧 Selected platforms:', selectedPlatforms);
-      }
-
-      // Transfer LinkedIn connection if LinkedIn was connected
-      if (selectedPlatforms.includes('linkedin')) {
-        console.log('🔧 Attempting LinkedIn transfer...');
-        try {
-          const response = await fetch('/api/linkedin/transfer-connection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fromCampaignId: 'temp-campaign-setup',
-              toCampaignId: (newCampaign as any).id
-            })
-          });
-          const result = await response.json();
-          if (result.success) {
-            console.log('✅ LinkedIn connection transferred successfully to campaign:', (newCampaign as any).id);
-          } else {
-            console.error('❌ LinkedIn transfer failed:', result.error);
-          }
-        } catch (error) {
-          console.error('❌ Failed to transfer LinkedIn connection:', error);
-        }
-      } else {
-        console.log('🔧 LinkedIn not in selected platforms, skipping transfer');
-      }
-
-      // Transfer Meta connection if Meta was connected
-      if (selectedPlatforms.includes('facebook')) {
-        console.log('🔧 Attempting Meta transfer...');
-        try {
-          const response = await fetch('/api/meta/transfer-connection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fromCampaignId: 'temp-campaign-setup',
-              toCampaignId: (newCampaign as any).id
-            })
-          });
-          const result = await response.json();
-          if (result.success) {
-            console.log('✅ Meta connection transferred successfully to campaign:', (newCampaign as any).id);
-          } else {
-            console.error('❌ Meta transfer failed:', result.error);
-          }
-        } catch (error) {
-          console.error('❌ Failed to transfer Meta connection:', error);
-        }
-      } else {
-        console.log('🔧 Meta not in selected platforms, skipping transfer');
-      }
-
-      // Transfer Custom Integration if custom integration was connected
-      if (selectedPlatforms.includes('custom-integration')) {
-        console.log('🔧 Attempting Custom Integration transfer...');
-        try {
-          const response = await fetch('/api/custom-integration/transfer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fromCampaignId: 'temp-campaign-setup',
-              toCampaignId: (newCampaign as any).id
-            })
-          });
-          const result = await response.json();
-          if (result.success) {
-            console.log('✅ Custom Integration transferred successfully to campaign:', (newCampaign as any).id);
-            // Remove query cache entirely to ensure fresh data on next fetch
-            queryClient.removeQueries({ queryKey: ["/api/custom-integration", (newCampaign as any).id] });
-            queryClient.removeQueries({ queryKey: ["/api/campaigns", (newCampaign as any).id, "connected-platforms"] });
-            console.log('✅ Removed query cache for Custom Integration and connected platforms - will fetch fresh on next mount');
-          } else {
-            console.error('❌ Custom Integration transfer failed:', result.error);
-          }
-        } catch (error) {
-          console.error('❌ Failed to transfer Custom Integration:', error);
-        }
-      } else {
-        console.log('🔧 Custom Integration not in selected platforms, skipping transfer');
-      }
-
-      // All transfers complete - now clean up and navigate
-      toast({
-        title: "Campaign created",
-        description: "Your new campaign has been created successfully.",
-      });
-      
-      setIsCreateModalOpen(false);
+      const id = String(created?.id || "").trim();
+      if (!id) throw new Error("Missing campaign id");
+      setDraftCampaignId(id);
+      setShowConnectorsStep(true);
+    } catch (e: any) {
+      console.error("Draft campaign create failed:", e);
+      // createCampaignMutation already toasts; keep the user on the form step
+      setDraftCampaignId(null);
       setShowConnectorsStep(false);
-      setCampaignData(null);
-      setLinkedInImportComplete(false);
-      setConnectedPlatformsInDialog([]);
-      form.reset();
-      
-      // Default: Navigate to campaigns page after all transfers complete
-      setLocation("/campaigns");
     }
+  };
+
+  const handleConnectorsComplete = async (selectedPlatforms: string[]) => {
+    if (!campaignData || !draftCampaignId) return;
+
+    console.log('🚀 handleConnectorsComplete called with platforms:', selectedPlatforms);
+    console.log('🚀 Current connectedPlatformsInDialog:', connectedPlatformsInDialog);
+
+    // Finalize: update the already-created campaign with the chosen platform list.
+    try {
+      await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
+        platform: selectedPlatforms.join(", "),
+        ga4CampaignFilter: ga4CampaignFilterForNewCampaign || null,
+      });
+    } catch (e: any) {
+      console.warn("Failed to finalize campaign platforms:", e?.message || e);
+    }
+
+    setDraftFinalized(true);
+
+    toast({
+      title: "Campaign created",
+      description: "Your new campaign has been created successfully.",
+    });
+
+    setIsCreateModalOpen(false);
+    resetCreateModalState();
+    void queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+    setLocation(`/campaigns/${draftCampaignId}`);
   };
 
   const handleBackToForm = () => {
@@ -1497,11 +1354,19 @@ export default function Campaigns() {
     setLinkedInImportComplete(false);
     setConnectedPlatformsInDialog([]);
     setCampaignData(null);
+    setDraftCampaignId(null);
+    setDraftFinalized(false);
     form.reset();
   };
 
   const handleCreateModalChange = (open: boolean) => {
     setIsCreateModalOpen(open);
+    // If the user closes the modal mid-setup, clean up the draft campaign (best-effort).
+    if (!open && draftCampaignId && !draftFinalized) {
+      apiRequest("DELETE", `/api/campaigns/${draftCampaignId}`).catch(() => {
+        // ignore cleanup errors
+      });
+    }
     resetCreateModalState();
   };
 
@@ -1723,6 +1588,7 @@ export default function Campaigns() {
                           onBack={handleBackToForm}
                           isLoading={createCampaignMutation.isPending}
                           campaignData={campaignData!}
+                          campaignId={draftCampaignId || ""}
                           onLinkedInImportComplete={() => setLinkedInImportComplete(true)}
                           onPlatformsChange={setConnectedPlatformsInDialog}
                           onGA4CampaignFilterSelected={(value) => setGa4CampaignFilterForNewCampaign(value)}

@@ -110,7 +110,7 @@ export default function LinkedInAnalytics() {
   const [selectedMetric, setSelectedMetric] = useState<string>('impressions');
   const [sortBy, setSortBy] = useState<string>('name');
   const [filterBy, setFilterBy] = useState<string>('all');
-  const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d">("7d");
+  const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d">("daily");
   const [insightsTrendMetric, setInsightsTrendMetric] = useState<
     "spend" | "conversions" | "ctr" | "cvr" | "impressions" | "clicks" | "revenue" | "roas"
   >("spend");
@@ -5936,8 +5936,23 @@ export default function LinkedInAnalytics() {
                                 <thead className="bg-slate-50 dark:bg-slate-800 border-b">
                                   <tr>
                                     <th className="text-left p-3 w-[55%]">Window</th>
-                                    <th className="text-right p-3">Value</th>
-                                    <th className="text-right p-3">Δ vs prior</th>
+                                    <th className="text-right p-3">
+                                      {(() => {
+                                        const k = String(insightsTrendMetric || "");
+                                        const labels: Record<string, string> = {
+                                          spend: "Spend",
+                                          conversions: "Conversions",
+                                          cvr: "CVR",
+                                          ctr: "CTR",
+                                          clicks: "Clicks",
+                                          impressions: "Impressions",
+                                          revenue: "Revenue",
+                                          roas: "ROAS",
+                                        };
+                                        return labels[k] || "Metric";
+                                      })()}
+                                    </th>
+                                    <th className="text-right p-3">Δ vs prior window</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -6434,33 +6449,28 @@ export default function LinkedInAnalytics() {
                   />
                 ) : kpisData && (kpisData as any[]).length > 0 ? (
                   <>
-                    {/* Header with Create Button */}
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                          Track and monitor your LinkedIn campaign KPIs
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Button 
-                          onClick={() => setIsKPIModalOpen(true)}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
-                          data-testid="button-create-kpi-header"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Create KPI
-                        </Button>
-                      </div>
+                      <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Performance tracker</div>
+                      <Button
+                        onClick={() => setIsKPIModalOpen(true)}
+                        variant="outline"
+                        size="sm"
+                        className="border-slate-300 dark:border-slate-700"
+                        data-testid="button-add-kpi"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add KPI
+                      </Button>
                     </div>
 
                     {/* KPI Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                       {(() => {
                         const NEAR_TARGET_BAND_PCT = 5; // Within ±5% of target is considered "on track"
                         let aboveTarget = 0;
                         let nearTarget = 0;
                         let belowTarget = 0;
+                        const ratios: number[] = [];
 
                         for (const k of (kpisData as any[]) || []) {
                           const isRevenueBlocked =
@@ -6478,7 +6488,15 @@ export default function LinkedInAnalytics() {
                           if (band === "above") aboveTarget += 1;
                           else if (band === "below") belowTarget += 1;
                           else nearTarget += 1;
+
+                          // Avg progress (0..100). Lower-is-better flips the ratio.
+                          if (Number.isFinite(current) && Number.isFinite(target) && target > 0) {
+                            const ratioRaw = lowerIsBetter ? (current > 0 ? target / current : 0) : current / target;
+                            const ratio = Math.max(0, Math.min(ratioRaw, 1));
+                            if (Number.isFinite(ratio)) ratios.push(ratio);
+                          }
                         }
+                        const avgPct = ratios.length > 0 ? (ratios.reduce((a, b) => a + b, 0) / ratios.length) * 100 : 0;
 
                         return (
                           <>
@@ -6537,6 +6555,18 @@ export default function LinkedInAnalytics() {
                               </p>
                             </div>
                             <AlertCircle className="w-8 h-8 text-amber-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">{avgPct.toFixed(1)}%</p>
+                            </div>
+                            <TrendingUp className="w-8 h-8 text-violet-600" />
                           </div>
                         </CardContent>
                       </Card>
@@ -6836,78 +6866,84 @@ export default function LinkedInAnalytics() {
                   </>
                 ) : (
                   <>
-                    {/* Header with Create Button */}
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                          Track and monitor your LinkedIn campaign KPIs
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Button 
-                          variant="outline"
-                          onClick={() => {
-                            setEditingReportId(null);
-                            setReportForm({
-                              name: 'KPIs Report',
-                              description: '',
-                              reportType: 'kpis',
-                              configuration: {},
-                              scheduleEnabled: false,
-                              scheduleFrequency: 'daily',
-                              scheduleDayOfWeek: 'monday',
-                              scheduleDayOfMonth: 'first',
-                              quarterTiming: 'end',
-                              scheduleTime: '9:00 AM',
-                              emailRecipients: '',
-                              status: 'draft'
-                            });
-                            setIsReportModalOpen(true);
-                          }}
-                          className="border-slate-300 dark:border-slate-700"
-                          data-testid="button-export-kpi-report"
-                        >
-                          <FileText className="w-4 h-4 mr-2" />
-                          Export KPI Report
-                        </Button>
-                        <Button 
-                          onClick={() => setIsKPIModalOpen(true)}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
-                          data-testid="button-create-kpi-header"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Create KPI
-                        </Button>
-                      </div>
+                      <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Performance tracker</div>
+                      <Button
+                        onClick={() => setIsKPIModalOpen(true)}
+                        variant="outline"
+                        size="sm"
+                        className="border-slate-300 dark:border-slate-700"
+                        data-testid="button-add-kpi-empty"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add KPI
+                      </Button>
                     </div>
 
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Target className="w-5 h-5 text-purple-600" />
-                          LinkedIn Campaign KPIs
-                        </CardTitle>
-                        <CardDescription>
-                          Track key performance indicators for your LinkedIn campaigns
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-center py-12">
-                          <p className="text-slate-600 dark:text-slate-400 mb-4">
-                            No KPIs have been created yet.
-                          </p>
-                          <Button 
-                            onClick={() => setIsKPIModalOpen(true)}
-                            className="bg-purple-600 hover:bg-purple-700 text-white"
-                            data-testid="button-create-kpi"
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create KPI
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">0</p>
+                            </div>
+                            <Target className="w-8 h-8 text-purple-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">more than +5% above target</p>
+                              <p className="text-2xl font-bold text-green-600">0</p>
+                            </div>
+                            <TrendingUp className="w-8 h-8 text-green-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">within ±5% of target</p>
+                              <p className="text-2xl font-bold text-blue-600">0</p>
+                            </div>
+                            <CheckCircle2 className="w-8 h-8 text-blue-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Below Track</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">more than −5% below target</p>
+                              <p className="text-2xl font-bold text-amber-600">0</p>
+                            </div>
+                            <AlertCircle className="w-8 h-8 text-amber-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">0.0%</p>
+                            </div>
+                            <TrendingUp className="w-8 h-8 text-violet-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                      No KPIs have been created yet.
+                    </div>
                   </>
                 )}
               </TabsContent>

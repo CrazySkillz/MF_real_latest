@@ -5835,7 +5835,7 @@ export default function LinkedInAnalytics() {
                                   <thead className="bg-slate-50 dark:bg-slate-800 border-b">
                                     <tr>
                                       <th className="text-left p-3 w-[38%]">Date</th>
-                                      <th className="text-right p-3">
+                                      <th className="text-right p-3 w-[31%]">
                                         {(() => {
                                           const k = String(insightsTrendMetric || "");
                                           const labels: Record<string, string> = {
@@ -5851,7 +5851,7 @@ export default function LinkedInAnalytics() {
                                           return labels[k] || "Metric";
                                         })()}
                                       </th>
-                                      <th className="text-right p-3">Δ vs prior day</th>
+                                      <th className="text-right p-3 w-[31%]">Δ vs prior</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -5935,8 +5935,8 @@ export default function LinkedInAnalytics() {
                               <table className="w-full text-sm table-fixed">
                                 <thead className="bg-slate-50 dark:bg-slate-800 border-b">
                                   <tr>
-                                    <th className="text-left p-3 w-[55%]">Window</th>
-                                    <th className="text-right p-3">
+                                    <th className="text-left p-3 w-[38%]">Date</th>
+                                    <th className="text-right p-3 w-[31%]">
                                       {(() => {
                                         const k = String(insightsTrendMetric || "");
                                         const labels: Record<string, string> = {
@@ -5952,7 +5952,7 @@ export default function LinkedInAnalytics() {
                                         return labels[k] || "Metric";
                                       })()}
                                     </th>
-                                    <th className="text-right p-3">Δ vs prior window</th>
+                                    <th className="text-right p-3 w-[31%]">Δ vs prior</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -6014,9 +6014,9 @@ export default function LinkedInAnalytics() {
                                     return (
                                       <tr key={row.key} className="border-b">
                                         <td className="p-3">
-                                          <div className="font-medium text-slate-900 dark:text-white">{row.label}</div>
+                                          <div className="font-medium text-slate-900 dark:text-white">{row.cur.endDate}</div>
                                           <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                            {row.cur.startDate} → {row.cur.endDate}
+                                            {row.cur.startDate} → {row.cur.endDate} ({row.label})
                                           </div>
                                         </td>
                                         <td className="p-3 text-right">
@@ -6450,7 +6450,12 @@ export default function LinkedInAnalytics() {
                 ) : kpisData && (kpisData as any[]).length > 0 ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Performance tracker</div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Track your KPI targets against the latest imported LinkedIn data
+                        </p>
+                      </div>
                       <Button
                         onClick={() => setIsKPIModalOpen(true)}
                         variant="outline"
@@ -6462,6 +6467,29 @@ export default function LinkedInAnalytics() {
                         Add KPI
                       </Button>
                     </div>
+
+                    {(() => {
+                      const dataThrough = String((linkedInCoverageResp as any)?.dataThroughUtc || "").trim() || null;
+                      const lastRefreshAtRaw = (linkedInCoverageResp as any)?.lastRefreshAt;
+                      const lastRefreshText = lastRefreshAtRaw ? new Date(lastRefreshAtRaw).toLocaleString() : "—";
+                      const total = Array.isArray(kpisData) ? (kpisData as any[]).length : 0;
+                      return (
+                        <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">
+                          <div className="flex flex-wrap gap-x-4 gap-y-1">
+                            <div>
+                              <span className="font-medium text-slate-700 dark:text-slate-300">KPIs:</span> {total}
+                            </div>
+                            <div>
+                              <span className="font-medium text-slate-700 dark:text-slate-300">LinkedIn data through:</span>{" "}
+                              {dataThrough ? `${dataThrough} (UTC)` : "—"}
+                            </div>
+                            <div>
+                              <span className="font-medium text-slate-700 dark:text-slate-300">Last refresh:</span> {lastRefreshText}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* KPI Summary Cards */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -6867,7 +6895,12 @@ export default function LinkedInAnalytics() {
                 ) : (
                   <>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Performance tracker</div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Track your KPI targets against the latest imported LinkedIn data
+                        </p>
+                      </div>
                       <Button
                         onClick={() => setIsKPIModalOpen(true)}
                         variant="outline"
@@ -6879,6 +6912,28 @@ export default function LinkedInAnalytics() {
                         Add KPI
                       </Button>
                     </div>
+
+                    {(() => {
+                      const dataThrough = String((linkedInCoverageResp as any)?.dataThroughUtc || "").trim() || null;
+                      const lastRefreshAtRaw = (linkedInCoverageResp as any)?.lastRefreshAt;
+                      const lastRefreshText = lastRefreshAtRaw ? new Date(lastRefreshAtRaw).toLocaleString() : "—";
+                      return (
+                        <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">
+                          <div className="flex flex-wrap gap-x-4 gap-y-1">
+                            <div>
+                              <span className="font-medium text-slate-700 dark:text-slate-300">KPIs:</span> 0
+                            </div>
+                            <div>
+                              <span className="font-medium text-slate-700 dark:text-slate-300">LinkedIn data through:</span>{" "}
+                              {dataThrough ? `${dataThrough} (UTC)` : "—"}
+                            </div>
+                            <div>
+                              <span className="font-medium text-slate-700 dark:text-slate-300">Last refresh:</span> {lastRefreshText}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                       <Card>
@@ -6966,7 +7021,7 @@ export default function LinkedInAnalytics() {
                       Compare your performance against industry benchmarks
                     </p>
                   </div>
-                  <Button 
+                  <Button
                     onClick={() => {
                       setEditingBenchmark(null);
                       setBenchmarkForm({
@@ -6987,11 +7042,13 @@ export default function LinkedInAnalytics() {
                       });
                       setIsBenchmarkModalOpen(true);
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                    data-testid="button-create-benchmark"
+                    variant="outline"
+                    size="sm"
+                    className="border-slate-300 dark:border-slate-700"
+                    data-testid="button-add-benchmark"
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Create Benchmark
+                    Add Benchmark
                   </Button>
                 </div>
 
@@ -7353,24 +7410,9 @@ export default function LinkedInAnalytics() {
                   </>
                 ) : (
                   <>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Trophy className="w-5 h-5" />
-                          LinkedIn Benchmarks
-                        </CardTitle>
-                        <CardDescription>
-                          Compare your performance against industry benchmarks
-                        </CardDescription>
-                      </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8">
-                        <p className="text-slate-600 dark:text-slate-400 mb-4">
-                          No benchmarks have been created for this campaign yet.
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                      No Benchmarks have been created yet.
+                    </div>
                   </>
                 )}
               </TabsContent>

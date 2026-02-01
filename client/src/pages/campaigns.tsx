@@ -995,6 +995,7 @@ export default function Campaigns() {
   const [campaignData, setCampaignData] = useState<CampaignFormData | null>(null);
   const [draftCampaignId, setDraftCampaignId] = useState<string | null>(null);
   const [draftFinalized, setDraftFinalized] = useState(false);
+  const [highlightCampaignId, setHighlightCampaignId] = useState<string | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [linkedInImportComplete, setLinkedInImportComplete] = useState(false);
@@ -1010,6 +1011,28 @@ export default function Campaigns() {
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
   });
+
+  // If we arrive on /campaigns?created=..., highlight the new campaign card.
+  useEffect(() => {
+    try {
+      const created = new URLSearchParams(window.location.search).get("created");
+      const id = String(created || "").trim();
+      if (!id) return;
+      setHighlightCampaignId(id);
+      // Best-effort scroll to the new card (after list render)
+      setTimeout(() => {
+        const el = document.querySelector(`[data-campaign-id="${CSS.escape(id)}"]`);
+        if (el && "scrollIntoView" in el) {
+          (el as any).scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 250);
+      // Clear highlight after a short time
+      const t = setTimeout(() => setHighlightCampaignId(null), 6000);
+      return () => clearTimeout(t);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Fetch connected platforms for edit dialog
   const { data: editDialogPlatformsData } = useQuery<{ statuses: Array<{ id: string; name: string; connected: boolean; conversionValue?: string | null }> }>({
@@ -1229,7 +1252,8 @@ export default function Campaigns() {
     setIsCreateModalOpen(false);
     resetCreateModalState();
     void queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-    setLocation(`/campaigns/${draftCampaignId}`);
+    // Take the user back to Campaign Management, with the new campaign visible.
+    setLocation(`/campaigns?created=${encodeURIComponent(draftCampaignId)}`);
   };
 
   const handleBackToForm = () => {
@@ -1606,7 +1630,14 @@ export default function Campaigns() {
                           <ArrowLeft className="w-4 h-4 mr-2" />
                           Back
                         </Button>
-                        <Button 
+                      {connectedPlatformsInDialog.includes("linkedin") && !linkedInImportComplete ? (
+                        <div className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4" />
+                          Finish LinkedIn import to enable campaign creation.
+                        </div>
+                      ) : null}
+
+                      <Button 
                           type="button" 
                           className="flex-1"
                           onClick={() => {
@@ -1614,7 +1645,10 @@ export default function Campaigns() {
                             console.log('🔧 Creating campaign with platforms:', connectedPlatformsInDialog);
                             handleConnectorsComplete(connectedPlatformsInDialog);
                           }}
-                          disabled={createCampaignMutation.isPending}
+                          disabled={
+                            createCampaignMutation.isPending ||
+                            (connectedPlatformsInDialog.includes("linkedin") && !linkedInImportComplete)
+                          }
                         >
                           {createCampaignMutation.isPending ? (
                             <>Creating...</>
@@ -1670,7 +1704,14 @@ export default function Campaigns() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {campaigns.map((campaign) => (
                   <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
-                    <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <Card
+                      data-campaign-id={campaign.id}
+                      className={`hover:shadow-md transition-shadow cursor-pointer ${
+                        highlightCampaignId && String(highlightCampaignId) === String(campaign.id)
+                          ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-background"
+                          : ""
+                      }`}
+                    >
                       <CardContent className="p-6">
                         <div className="mb-4">
                           <h3 className="font-semibold text-slate-900 dark:text-white">{campaign.name}</h3>

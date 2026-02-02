@@ -4478,6 +4478,10 @@ export default function LinkedInAnalytics() {
   // Extract campaign and session data
   const campaign = campaignData as any;
   const coverageTotals = ((linkedInCoverageResp as any)?.totals || null) as any;
+  const coverageAvailableDays = Number((linkedInCoverageResp as any)?.availableDays || 0) || 0;
+  // IMPORTANT: On a brand-new campaign, daily facts may be empty even though the initial import session has totals.
+  // Only switch Overview to daily-facts totals once we actually have daily history.
+  const useDailyTotalsForOverview = coverageAvailableDays > 0;
 
   return (
     <LinkedInErrorBoundary>
@@ -4704,7 +4708,7 @@ export default function LinkedInAnalytics() {
                         .map(([key, value]: [string, any]) => {
                           const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
                           // For "Spend to date" simulation and production consistency, prefer daily-facts totals when available.
-                          const displayValue = coverageTotals && Object.prototype.hasOwnProperty.call(coverageTotals, metricKey)
+                          const displayValue = useDailyTotalsForOverview && coverageTotals && Object.prototype.hasOwnProperty.call(coverageTotals, metricKey)
                             ? (coverageTotals as any)[metricKey]
                             : value;
                           const { icon: Icon, format, label } = getMetricDisplay(metricKey, value);
@@ -4746,7 +4750,7 @@ export default function LinkedInAnalytics() {
                         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Derived Metrics</h3>
                       </div>
                       {(() => {
-                        const d = coverageTotals || {};
+                        const d = useDailyTotalsForOverview ? (coverageTotals || {}) : {};
                         const derived = {
                           ctr: d.ctr ?? aggregated.ctr,
                           cpc: d.cpc ?? aggregated.cpc,

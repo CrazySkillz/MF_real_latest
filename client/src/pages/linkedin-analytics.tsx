@@ -4477,6 +4477,7 @@ export default function LinkedInAnalytics() {
 
   // Extract campaign and session data
   const campaign = campaignData as any;
+  const coverageTotals = ((linkedInCoverageResp as any)?.totals || null) as any;
 
   return (
     <LinkedInErrorBoundary>
@@ -4702,6 +4703,10 @@ export default function LinkedInAnalytics() {
                         })
                         .map(([key, value]: [string, any]) => {
                           const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
+                          // For "Spend to date" simulation and production consistency, prefer daily-facts totals when available.
+                          const displayValue = coverageTotals && Object.prototype.hasOwnProperty.call(coverageTotals, metricKey)
+                            ? (coverageTotals as any)[metricKey]
+                            : value;
                           const { icon: Icon, format, label } = getMetricDisplay(metricKey, value);
                           
                           return (
@@ -4714,7 +4719,7 @@ export default function LinkedInAnalytics() {
                                   <Icon className="w-4 h-4 text-slate-400" />
                                 </div>
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {format(value)}
+                                  {format(displayValue)}
                                 </p>
                                 {/* Show badge for raw metrics if benchmark exists (global only) */}
                                 {(() => {
@@ -4723,7 +4728,7 @@ export default function LinkedInAnalytics() {
                                     // Determine if higher or lower is better for this metric
                                     const higherBetterMetrics = ['impressions', 'clicks', 'conversions', 'leads', 'engagements', 'reach'];
                                     const metricType = higherBetterMetrics.includes(metricKey) ? 'higher-better' : 'lower-better';
-                                    return renderPerformanceBadge(metricKey, value, metricType);
+                                    return renderPerformanceBadge(metricKey, displayValue, metricType);
                                   }
                                   return null;
                                 })()}
@@ -4740,9 +4745,21 @@ export default function LinkedInAnalytics() {
                         <BarChart3 className="w-5 h-5 text-slate-600" />
                         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Derived Metrics</h3>
                       </div>
+                      {(() => {
+                        const d = coverageTotals || {};
+                        const derived = {
+                          ctr: d.ctr ?? aggregated.ctr,
+                          cpc: d.cpc ?? aggregated.cpc,
+                          cpm: d.cpm ?? aggregated.cpm,
+                          cvr: d.cvr ?? aggregated.cvr,
+                          cpa: d.cpa ?? aggregated.cpa,
+                          cpl: d.cpl ?? aggregated.cpl,
+                          er: d.er ?? aggregated.er,
+                        } as any;
+                        return (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {/* CTR */}
-                        {aggregated.ctr !== undefined && (
+                        {derived.ctr !== undefined && (
                           <Card className="hover:shadow-md transition-shadow">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
@@ -4752,13 +4769,13 @@ export default function LinkedInAnalytics() {
                                 <TrendingUp className="w-4 h-4 text-slate-400" />
                               </div>
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatPercentage(aggregated.ctr)}
+                                {formatPercentage(derived.ctr)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
                               {(() => {
                                 const ctrBenchmark = getBenchmarkForMetric('ctr');
                                 if (ctrBenchmark && !ctrBenchmark.linkedInCampaignName) {
-                                  return renderPerformanceBadge('ctr', aggregated.ctr, 'higher-better');
+                                  return renderPerformanceBadge('ctr', derived.ctr, 'higher-better');
                                 }
                                 return null;
                               })()}
@@ -4767,7 +4784,7 @@ export default function LinkedInAnalytics() {
                         )}
                         
                         {/* CPC */}
-                        {aggregated.cpc !== undefined && (
+                        {derived.cpc !== undefined && (
                           <Card className="hover:shadow-md transition-shadow">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
@@ -4777,13 +4794,13 @@ export default function LinkedInAnalytics() {
                                 <DollarSign className="w-4 h-4 text-slate-400" />
                               </div>
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(aggregated.cpc)}
+                                {formatCurrency(derived.cpc)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
                               {(() => {
                                 const cpcBenchmark = getBenchmarkForMetric('cpc');
                                 if (cpcBenchmark && !cpcBenchmark.linkedInCampaignName) {
-                                  return renderPerformanceBadge('cpc', aggregated.cpc, 'lower-better');
+                                  return renderPerformanceBadge('cpc', derived.cpc, 'lower-better');
                                 }
                                 return null;
                               })()}
@@ -4792,7 +4809,7 @@ export default function LinkedInAnalytics() {
                         )}
                         
                         {/* CPM */}
-                        {aggregated.cpm !== undefined && (
+                        {derived.cpm !== undefined && (
                           <Card className="hover:shadow-md transition-shadow">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
@@ -4802,13 +4819,13 @@ export default function LinkedInAnalytics() {
                                 <DollarSign className="w-4 h-4 text-slate-400" />
                               </div>
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(aggregated.cpm)}
+                                {formatCurrency(derived.cpm)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
                               {(() => {
                                 const cpmBenchmark = getBenchmarkForMetric('cpm');
                                 if (cpmBenchmark && !cpmBenchmark.linkedInCampaignName) {
-                                  return renderPerformanceBadge('cpm', aggregated.cpm, 'lower-better');
+                                  return renderPerformanceBadge('cpm', derived.cpm, 'lower-better');
                                 }
                                 return null;
                               })()}
@@ -4817,7 +4834,7 @@ export default function LinkedInAnalytics() {
                         )}
                         
                         {/* CVR */}
-                        {aggregated.cvr !== undefined && (
+                        {derived.cvr !== undefined && (
                           <Card className="hover:shadow-md transition-shadow">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
@@ -4827,13 +4844,13 @@ export default function LinkedInAnalytics() {
                                 <Target className="w-4 h-4 text-slate-400" />
                               </div>
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatPercentage(aggregated.cvr)}
+                                {formatPercentage(derived.cvr)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns */}
                               {(() => {
                                 const cvrBenchmark = getBenchmarkForMetric('cvr');
                                 if (cvrBenchmark && !cvrBenchmark.linkedInCampaignName) {
-                                  return renderPerformanceBadge('cvr', aggregated.cvr, 'higher-better');
+                                  return renderPerformanceBadge('cvr', derived.cvr, 'higher-better');
                                 }
                                 return null;
                               })()}
@@ -4842,7 +4859,7 @@ export default function LinkedInAnalytics() {
                         )}
                         
                         {/* CPA */}
-                        {aggregated.cpa !== undefined && (
+                        {derived.cpa !== undefined && (
                           <Card className="hover:shadow-md transition-shadow">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
@@ -4852,13 +4869,13 @@ export default function LinkedInAnalytics() {
                                 <DollarSign className="w-4 h-4 text-slate-400" />
                               </div>
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(aggregated.cpa)}
+                                {formatCurrency(derived.cpa)}
                               </p>
                               {/* Only show badge if benchmark is for ALL campaigns, not campaign-specific */}
                               {(() => {
                                 const cpaBenchmark = getBenchmarkForMetric('cpa');
                                 if (cpaBenchmark && !cpaBenchmark.linkedInCampaignName) {
-                                  return renderPerformanceBadge('cpa', aggregated.cpa, 'lower-better');
+                                  return renderPerformanceBadge('cpa', derived.cpa, 'lower-better');
                                 }
                                 return null;
                               })()}
@@ -4867,7 +4884,7 @@ export default function LinkedInAnalytics() {
                         )}
                         
                         {/* CPL */}
-                        {aggregated.cpl !== undefined && (
+                        {derived.cpl !== undefined && (
                           <Card className="hover:shadow-md transition-shadow">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
@@ -4877,15 +4894,15 @@ export default function LinkedInAnalytics() {
                                 <DollarSign className="w-4 h-4 text-slate-400" />
                               </div>
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(aggregated.cpl)}
+                                {formatCurrency(derived.cpl)}
                               </p>
-                              {renderPerformanceBadge('cpl', aggregated.cpl, 'lower-better')}
+                              {renderPerformanceBadge('cpl', derived.cpl, 'lower-better')}
                             </CardContent>
                           </Card>
                         )}
                         
                         {/* ER */}
-                        {aggregated.er !== undefined && (
+                        {derived.er !== undefined && (
                           <Card className="hover:shadow-md transition-shadow">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
@@ -4895,13 +4912,15 @@ export default function LinkedInAnalytics() {
                                 <Activity className="w-4 h-4 text-slate-400" />
                               </div>
                               <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {formatPercentage(aggregated.er)}
+                                {formatPercentage(derived.er)}
                               </p>
-                              {renderPerformanceBadge('er', aggregated.er, 'higher-better')}
+                              {renderPerformanceBadge('er', derived.er, 'higher-better')}
                             </CardContent>
                           </Card>
                         )}
                     </div>
+                        );
+                      })()}
 
                       {/* Revenue Metrics - Only shown if conversion value is set - Displayed under Derived Metrics */}
                       {(() => {

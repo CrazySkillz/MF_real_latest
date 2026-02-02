@@ -2940,6 +2940,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dataThroughUtc = daily && daily.length > 0 ? String((daily as any[])[(daily as any[]).length - 1]?.date || "") : null;
       const availableDays = Array.isArray(daily) ? daily.length : 0;
 
+      // Lightweight "to-date" totals based on the same daily facts used by Insights.
+      // This keeps Overview + Insights consistent without returning the full daily payload.
+      const sums = (Array.isArray(daily) ? (daily as any[]) : []).reduce(
+        (acc: any, r: any) => {
+          acc.impressions += Number(r?.impressions || 0) || 0;
+          acc.clicks += Number(r?.clicks || 0) || 0;
+          acc.reach += Number(r?.reach || 0) || 0;
+          acc.engagements += Number(r?.engagements || 0) || 0;
+          acc.conversions += Number(r?.conversions || 0) || 0;
+          acc.leads += Number(r?.leads || 0) || 0;
+          acc.videoViews += Number(r?.videoViews || r?.video_views || 0) || 0;
+          acc.viralImpressions += Number(r?.viralImpressions || r?.viral_impressions || 0) || 0;
+          acc.spend += Number(parseFloat(String(r?.spend ?? "0"))) || 0;
+          return acc;
+        },
+        {
+          impressions: 0,
+          clicks: 0,
+          reach: 0,
+          engagements: 0,
+          conversions: 0,
+          leads: 0,
+          spend: 0,
+          videoViews: 0,
+          viralImpressions: 0,
+        }
+      );
+
+      const safeDiv = (a: number, b: number) => (b > 0 ? a / b : 0);
+      const totals = {
+        impressions: sums.impressions,
+        clicks: sums.clicks,
+        reach: sums.reach,
+        engagements: sums.engagements,
+        conversions: sums.conversions,
+        leads: sums.leads,
+        spend: Number(sums.spend.toFixed(2)),
+        videoViews: sums.videoViews,
+        viralImpressions: sums.viralImpressions,
+        // Derived metrics (same definitions as UI)
+        ctr: safeDiv(sums.clicks, sums.impressions) * 100,
+        cpc: safeDiv(sums.spend, sums.clicks),
+        cpm: safeDiv(sums.spend, sums.impressions) * 1000,
+        cvr: safeDiv(sums.conversions, sums.clicks) * 100,
+        cpa: safeDiv(sums.spend, sums.conversions),
+        cpl: safeDiv(sums.spend, sums.leads),
+        er: safeDiv(sums.engagements, sums.impressions) * 100,
+      };
+
       const latestSession = await storage.getLatestLinkedInImportSession(campaignId).catch(() => undefined);
       const latestImportAt = latestSession ? (latestSession as any).importedAt : null;
 
@@ -2954,6 +3003,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate,
         dataThroughUtc,
         availableDays,
+        totals,
         latestImportAt,
         lastRefreshAt,
       });

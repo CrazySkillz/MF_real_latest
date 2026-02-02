@@ -754,7 +754,9 @@ export default function LinkedInAnalytics() {
   // LinkedIn daily facts (persisted) for Insights anomaly/delta detection
   // UI lookback only affects how many rows we request, not how many exist.
   // Keep it small to match the incremental "days go by" test-mode journey.
-  const LINKEDIN_DAILY_LOOKBACK_DAYS = 30;
+  // Request up to 60 complete days so 30d comparisons can unlock after enough simulated runs.
+  // This does NOT create data; it only controls how much history we fetch when it exists.
+  const LINKEDIN_DAILY_LOOKBACK_DAYS = 60;
   const { data: linkedInCoverageResp, isLoading: linkedInCoverageLoading, isError: linkedInCoverageIsError, error: linkedInCoverageError, refetch: refetchLinkedInCoverage } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "linkedin-coverage", LINKEDIN_DAILY_LOOKBACK_DAYS],
     enabled: !!campaignId,

@@ -161,9 +161,9 @@ async function generateMockLinkedInData(
     const endUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)); // yesterday UTC
 
     // Determine the next "new day" to add.
-    // We start from a base window (30 days back) but we do NOT backfill — we add one day per refresh.
+    // We start from a base window (60 days back) but we do NOT backfill — we add one day per refresh.
     const baseStartUTC = new Date(endUTC.getTime());
-    baseStartUTC.setUTCDate(baseStartUTC.getUTCDate() - 29);
+    baseStartUTC.setUTCDate(baseStartUTC.getUTCDate() - 59);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
     const baseStartIso = iso(baseStartUTC);
     const endIso = iso(endUTC);

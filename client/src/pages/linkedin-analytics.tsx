@@ -7911,7 +7911,15 @@ export default function LinkedInAnalytics() {
                                 <CardContent className="pt-6">
                                   <p className="text-sm text-slate-500 mb-1">Total Spend {isLimited && '(All Ads)'}</p>
                                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatCurrency(allAds.reduce((sum, ad) => sum + parseFloat(ad.spend || '0'), 0))}
+                                    {(() => {
+                                      // Keep Ad Comparison "Total Spend" consistent with Overview when daily facts exist.
+                                      // This represents spend-to-date across imported days (same source as Insights/Overview).
+                                      if (useDailyTotalsForOverview && coverageTotals && Number.isFinite(Number(coverageTotals?.spend))) {
+                                        return formatCurrency(Number(coverageTotals.spend || 0));
+                                      }
+                                      // Fallback (brand-new campaigns before daily facts exist): sum the ad spends for this session.
+                                      return formatCurrency(allAds.reduce((sum, ad) => sum + parseFloat(ad.spend || '0'), 0));
+                                    })()}
                                   </p>
                                 </CardContent>
                               </Card>

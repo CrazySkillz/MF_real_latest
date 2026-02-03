@@ -60,113 +60,31 @@ async function generateMockLinkedInData(
     return;
   }
 
-  // Create a new import session with the same configuration
-  const newSession = await storage.createLinkedInImportSession({
-    campaignId,
-    adAccountId: connection.adAccountId,
-    adAccountName: connection.adAccountName || '',
-    selectedCampaignsCount: latestSession.selectedCampaignsCount || 1,
-    selectedMetricsCount: latestSession.selectedMetricsCount || 0,
-    selectedMetricKeys: latestSession.selectedMetricKeys || [],
-    conversionValue: latestSession.conversionValue
-  });
+  // --- Test-mode truth model ---
+  // "To-date" numbers should be cumulative sums of daily facts.
+  // Ad Comparison should sum to the same to-date totals as Overview.
+  //
+  // So for each refresh:
+  // 1) add exactly one daily row
+  // 2) compute cumulative totals from daily rows
+  // 3) create a new import session whose campaign totals and ad totals reconcile to those cumulative totals
 
-  // Get the selected metric keys
-  const selectedMetricKeys = latestSession.selectedMetricKeys || [];
-
-  // Generate mock metrics (simplified - in real implementation, you'd want to preserve campaign structure)
-  for (const metricKey of selectedMetricKeys) {
-    // Generate slightly varied values to simulate real data changes
-    const baseValue = Math.random() * 10000 + 1000;
-    const variation = 0.8 + (Math.random() * 0.4); // ±20% variation
-    const raw = baseValue * variation;
-    const metricValue = normalizeLinkedInMetricValue(metricKey, raw);
-
-    await storage.createLinkedInImportMetric({
-      sessionId: newSession.id,
-      campaignUrn: `test-campaign-${Date.now()}`,
-      campaignName: 'Test Campaign',
-      campaignStatus: 'active',
-      metricKey,
-      metricValue
-    });
-  }
-
-  // Generate mock ad performance data
-  const numAds = Math.floor(Math.random() * 2) + 2;
-  for (let i = 0; i < numAds; i++) {
-    const adData: any = {
-      sessionId: newSession.id,
-      adId: `ad-${campaignId}-${Date.now()}-${i + 1}`,
-      adName: `Ad ${i + 1} - Test Campaign`,
-      campaignUrn: `test-campaign-${Date.now()}`,
-      campaignName: 'Test Campaign',
-      campaignSelectedMetrics: selectedMetricKeys,
-      impressions: 0,
-      clicks: 0,
-      spend: "0",
-      conversions: 0,
-      revenue: "0",
-      ctr: "0",
-      cpc: "0",
-      conversionRate: "0"
-    };
-
-    // Populate selected metrics with mock data
-    if (selectedMetricKeys.includes('impressions')) {
-      adData.impressions = Math.floor(Math.random() * 50000) + 10000;
-    }
-    if (selectedMetricKeys.includes('reach')) {
-      adData.reach = Math.floor(Math.random() * 40000) + 8000;
-    }
-    if (selectedMetricKeys.includes('clicks')) {
-      adData.clicks = Math.floor(Math.random() * 2000) + 500;
-    }
-    if (selectedMetricKeys.includes('engagements')) {
-      adData.engagements = Math.floor(Math.random() * 3000) + 600;
-    }
-    if (selectedMetricKeys.includes('spend')) {
-      adData.spend = (Math.random() * 5000 + 1000).toFixed(2);
-    }
-    if (selectedMetricKeys.includes('conversions')) {
-      adData.conversions = Math.floor(Math.random() * 100) + 10;
-    }
-    if (selectedMetricKeys.includes('leads')) {
-      adData.leads = Math.floor(Math.random() * 80) + 5;
-    }
-
-    // Calculate derived metrics
-    const spend = parseFloat(adData.spend);
-    if (selectedMetricKeys.includes('clicks') && selectedMetricKeys.includes('impressions') && adData.impressions > 0) {
-      adData.ctr = ((adData.clicks / adData.impressions) * 100).toFixed(2);
-    }
-    if (selectedMetricKeys.includes('spend') && selectedMetricKeys.includes('clicks') && adData.clicks > 0) {
-      adData.cpc = (spend / adData.clicks).toFixed(2);
-    }
-    if (selectedMetricKeys.includes('conversions') && selectedMetricKeys.includes('clicks') && adData.clicks > 0) {
-      adData.cvr = ((adData.conversions / adData.clicks) * 100).toFixed(2);
-      adData.conversionRate = adData.cvr;
-    }
-
-    await storage.createLinkedInAdPerformance(adData);
-  }
-
-  console.log(`[LinkedIn Scheduler] ✅ Mock data generated for campaign ${campaignId}`);
-
-  // Persist mock daily facts incrementally so test mode simulates a real "days go by" journey:
-  // - first refresh => 1 day available
-  // - each subsequent refresh => +1 day (until we reach yesterday UTC)
+  // Persist mock daily facts incrementally so test mode simulates a real "days go by" journey.
+  let toDate: any = null;
+  let endUTC: Date | null = null;
+  let baseStartIso = "";
+  let endIso = "";
   try {
     const now = new Date();
-    const endUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)); // yesterday UTC
+    endUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)); // yesterday UTC
 
     // Determine the next "new day" to add.
     // We start from a base window (60 days back) but we do NOT backfill — we add one day per refresh.
     const baseStartUTC = new Date(endUTC.getTime());
     baseStartUTC.setUTCDate(baseStartUTC.getUTCDate() - 59);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
-    const baseStartIso = iso(baseStartUTC);
-    const endIso = iso(endUTC);
+    baseStartIso = iso(baseStartUTC);
+    endIso = iso(endUTC);
 
     const existing = await storage.getLinkedInDailyMetrics(campaignId, baseStartIso, endIso).catch(() => []);
     const maxExistingDate = Array.isArray(existing) && existing.length > 0 ? String((existing as any[])[(existing as any[]).length - 1]?.date || "") : "";
@@ -216,9 +134,142 @@ async function generateMockLinkedInData(
     } catch {
       // ignore
     }
+
+    const dailyToDate = await storage.getLinkedInDailyMetrics(campaignId, baseStartIso, endIso).catch(() => []);
+    const sums = (Array.isArray(dailyToDate) ? (dailyToDate as any[]) : []).reduce(
+      (acc: any, r: any) => {
+        acc.impressions += Number(r?.impressions || 0) || 0;
+        acc.clicks += Number(r?.clicks || 0) || 0;
+        acc.reach += Number(r?.reach || 0) || 0;
+        acc.engagements += Number(r?.engagements || 0) || 0;
+        acc.conversions += Number(r?.conversions || 0) || 0;
+        acc.leads += Number(r?.leads || 0) || 0;
+        acc.videoViews += Number(r?.videoViews || r?.video_views || 0) || 0;
+        acc.viralImpressions += Number(r?.viralImpressions || r?.viral_impressions || 0) || 0;
+        acc.spend += Number(parseFloat(String(r?.spend ?? "0"))) || 0;
+        return acc;
+      },
+      { impressions: 0, clicks: 0, reach: 0, engagements: 0, conversions: 0, leads: 0, spend: 0, videoViews: 0, viralImpressions: 0 }
+    );
+    toDate = {
+      impressions: Math.round(Number(sums.impressions || 0)),
+      clicks: Math.round(Number(sums.clicks || 0)),
+      reach: Math.round(Number(sums.reach || 0)),
+      engagements: Math.round(Number(sums.engagements || 0)),
+      conversions: Math.round(Number(sums.conversions || 0)),
+      leads: Math.round(Number(sums.leads || 0)),
+      videoViews: Math.round(Number(sums.videoViews || 0)),
+      viralImpressions: Math.round(Number(sums.viralImpressions || 0)),
+      spend: Number(Number(sums.spend || 0).toFixed(2)),
+    };
   } catch (e: any) {
     console.warn(`[LinkedIn Scheduler] Mock daily metrics upsert failed for ${campaignId}:`, e?.message || e);
   }
+
+  // Create a new import session with the same configuration
+  const newSession = await storage.createLinkedInImportSession({
+    campaignId,
+    adAccountId: connection.adAccountId,
+    adAccountName: connection.adAccountName || '',
+    selectedCampaignsCount: latestSession.selectedCampaignsCount || 1,
+    selectedMetricsCount: latestSession.selectedMetricsCount || 0,
+    selectedMetricKeys: latestSession.selectedMetricKeys || [],
+    conversionValue: latestSession.conversionValue
+  });
+
+  const selectedMetricKeys = latestSession.selectedMetricKeys || [];
+  const totals = toDate || { impressions: 0, clicks: 0, reach: 0, engagements: 0, conversions: 0, leads: 0, spend: 0, videoViews: 0, viralImpressions: 0 };
+
+  // Store campaign totals that reconcile with daily to-date.
+  for (const metricKey of selectedMetricKeys) {
+    const raw = (totals as any)[String(metricKey)] ?? 0;
+    const metricValue = normalizeLinkedInMetricValue(metricKey, raw);
+    await storage.createLinkedInImportMetric({
+      sessionId: newSession.id,
+      campaignUrn: `test-campaign-${Date.now()}`,
+      campaignName: 'Test Campaign',
+      campaignStatus: 'active',
+      metricKey,
+      metricValue
+    });
+  }
+
+  // Generate ad performance that sums back to the same totals (especially spend).
+  const numAds = Math.floor(Math.random() * 2) + 2;
+  const splitNumber = (total: number, n: number, decimals = 0) => {
+    const parts: number[] = [];
+    if (n <= 0) return parts;
+    const factor = Math.pow(10, decimals);
+    const totalRounded = Math.round(total * factor) / factor;
+    const base = Math.floor((totalRounded / n) * factor) / factor;
+    let used = 0;
+    for (let i = 0; i < n; i++) {
+      const v = i === n - 1 ? Math.round((totalRounded - used) * factor) / factor : base;
+      parts.push(v);
+      used = Math.round((used + v) * factor) / factor;
+    }
+    return parts;
+  };
+  const spendParts = splitNumber(Number((totals as any).spend || 0), numAds, 2);
+  const impressionsParts = splitNumber(Number((totals as any).impressions || 0), numAds, 0);
+  const clicksParts = splitNumber(Number((totals as any).clicks || 0), numAds, 0);
+  const engagementsParts = splitNumber(Number((totals as any).engagements || 0), numAds, 0);
+  const reachParts = splitNumber(Number((totals as any).reach || 0), numAds, 0);
+  const conversionsParts = splitNumber(Number((totals as any).conversions || 0), numAds, 0);
+  const leadsParts = splitNumber(Number((totals as any).leads || 0), numAds, 0);
+  const videoViewsParts = splitNumber(Number((totals as any).videoViews || 0), numAds, 0);
+  const viralImpressionsParts = splitNumber(Number((totals as any).viralImpressions || 0), numAds, 0);
+
+  for (let i = 0; i < numAds; i++) {
+    const adData: any = {
+      sessionId: newSession.id,
+      adId: `ad-${campaignId}-${Date.now()}-${i + 1}`,
+      adName: `Ad ${i + 1} - Test Campaign`,
+      campaignUrn: `test-campaign-${Date.now()}`,
+      campaignName: 'Test Campaign',
+      campaignSelectedMetrics: selectedMetricKeys,
+      impressions: Math.round(impressionsParts[i] ?? 0),
+      reach: Math.round(reachParts[i] ?? 0),
+      clicks: Math.round(clicksParts[i] ?? 0),
+      engagements: Math.round(engagementsParts[i] ?? 0),
+      spend: Number(spendParts[i] ?? 0).toFixed(2),
+      conversions: Math.round(conversionsParts[i] ?? 0),
+      leads: Math.round(leadsParts[i] ?? 0),
+      videoViews: Math.round(videoViewsParts[i] ?? 0),
+      viralImpressions: Math.round(viralImpressionsParts[i] ?? 0),
+      revenue: "0",
+      ctr: "0",
+      cpc: "0",
+      cpm: "0",
+      cvr: "0",
+      cpa: "0",
+      cpl: "0",
+      er: "0",
+      conversionRate: "0",
+    };
+
+    const spend = parseFloat(adData.spend);
+    if (adData.impressions > 0) {
+      adData.ctr = ((adData.clicks / adData.impressions) * 100).toFixed(2);
+      adData.cpm = ((spend / adData.impressions) * 1000).toFixed(2);
+      adData.er = ((adData.engagements / adData.impressions) * 100).toFixed(2);
+    }
+    if (adData.clicks > 0) {
+      adData.cpc = (spend / adData.clicks).toFixed(2);
+      adData.cvr = ((adData.conversions / adData.clicks) * 100).toFixed(2);
+      adData.conversionRate = adData.cvr;
+    }
+    if (adData.conversions > 0) {
+      adData.cpa = (spend / adData.conversions).toFixed(2);
+    }
+    if (adData.leads > 0) {
+      adData.cpl = (spend / adData.leads).toFixed(2);
+    }
+
+    await storage.createLinkedInAdPerformance(adData);
+  }
+
+  console.log(`[LinkedIn Scheduler] ✅ Mock session totals + ads now reconcile to daily to-date for campaign ${campaignId}`);
 }
 
 /**

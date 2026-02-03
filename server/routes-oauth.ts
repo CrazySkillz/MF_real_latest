@@ -16215,11 +16215,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
         selectedMetricKeys,
         conversionValue: conversionValue
       });
+
+      // For exec-safe test-mode realism: simulate "to-date" as the sum of imported daily facts.
+      // On initial import, add the first daily day so Overview + Insights have a consistent baseline.
+      const now = new Date();
+      const endUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)); // yesterday UTC
+      const baseStartUTC = new Date(endUTC.getTime());
+      baseStartUTC.setUTCDate(baseStartUTC.getUTCDate() - 59); // 60-day simulation horizon
+      const iso = (d: Date) => d.toISOString().slice(0, 10);
+      const baseStartIso = iso(baseStartUTC);
+      const endIso = iso(endUTC);
+      const existingDaily = await storage.getLinkedInDailyMetrics(campaignId, baseStartIso, endIso).catch(() => []);
+      const maxExistingDate = Array.isArray(existingDaily) && existingDaily.length > 0
+        ? String((existingDaily as any[])[(existingDaily as any[]).length - 1]?.date || "")
+        : "";
+      let nextUTC: Date;
+      if (!maxExistingDate) nextUTC = baseStartUTC;
+      else {
+        const parsed = new Date(`${maxExistingDate}T00:00:00.000Z`);
+        nextUTC = new Date(parsed.getTime());
+        nextUTC.setUTCDate(nextUTC.getUTCDate() + 1);
+      }
+      if (nextUTC.getTime() > endUTC.getTime()) nextUTC = endUTC;
+      const nextDate = iso(nextUTC);
+
+      // 1) Add/overwrite the next daily day (one day per import/refresh).
+      const dayImpressions = Math.max(1000, 20000 + Math.floor(Math.random() * 8000));
+      const dayClicks = Math.max(1, Math.floor(dayImpressions * (0.008 + Math.random() * 0.01)));
+      const dayConversions = Math.max(0, Math.floor(dayClicks * (0.01 + Math.random() * 0.03)));
+      const daySpend = Math.max(10, 300 + Math.random() * 700);
+      const dayRow: any = {
+        campaignId,
+        date: nextDate,
+        impressions: dayImpressions,
+        clicks: dayClicks,
+        reach: Math.max(0, Math.floor(dayImpressions * (0.6 + Math.random() * 0.2))),
+        engagements: Math.max(0, Math.floor(dayClicks + dayImpressions * (0.002 + Math.random() * 0.004))),
+        conversions: dayConversions,
+        leads: Math.max(0, Math.floor(dayConversions * (0.4 + Math.random() * 0.4))),
+        spend: daySpend.toFixed(2),
+        videoViews: Math.max(0, Math.floor(dayImpressions * (0.01 + Math.random() * 0.02))),
+        viralImpressions: Math.max(0, Math.floor(dayImpressions * (0.05 + Math.random() * 0.1))),
+      };
+      await storage.upsertLinkedInDailyMetrics([dayRow] as any);
+      try {
+        await storage.updateLinkedInConnection(campaignId, { lastRefreshAt: new Date() } as any);
+      } catch {
+        // ignore
+      }
+
+      // 2) Compute to-date totals from daily facts (lightweight; max 60 rows).
+      const dailyToDate = await storage.getLinkedInDailyMetrics(campaignId, baseStartIso, endIso).catch(() => []);
+      const sums = (Array.isArray(dailyToDate) ? (dailyToDate as any[]) : []).reduce(
+        (acc: any, r: any) => {
+          acc.impressions += Number(r?.impressions || 0) || 0;
+          acc.clicks += Number(r?.clicks || 0) || 0;
+          acc.reach += Number(r?.reach || 0) || 0;
+          acc.engagements += Number(r?.engagements || 0) || 0;
+          acc.conversions += Number(r?.conversions || 0) || 0;
+          acc.leads += Number(r?.leads || 0) || 0;
+          acc.videoViews += Number(r?.videoViews || r?.video_views || 0) || 0;
+          acc.viralImpressions += Number(r?.viralImpressions || r?.viral_impressions || 0) || 0;
+          acc.spend += Number(parseFloat(String(r?.spend ?? "0"))) || 0;
+          return acc;
+        },
+        { impressions: 0, clicks: 0, reach: 0, engagements: 0, conversions: 0, leads: 0, spend: 0, videoViews: 0, viralImpressions: 0 }
+      );
+
+      // Helper: split a total into n parts, remainder on last item.
+      const splitNumber = (total: number, n: number, decimals = 0) => {
+        const parts: number[] = [];
+        if (n <= 0) return parts;
+        const factor = Math.pow(10, decimals);
+        const totalRounded = Math.round(total * factor) / factor;
+        const base = Math.floor((totalRounded / n) * factor) / factor;
+        let used = 0;
+        for (let i = 0; i < n; i++) {
+          const v = i === n - 1 ? Math.round((totalRounded - used) * factor) / factor : base;
+          parts.push(v);
+          used = Math.round((used + v) * factor) / factor;
+        }
+        return parts;
+      };
       
       // Create metrics for each campaign and core metric (fixed set)
-      for (const campaign of campaigns) {
+      const campaignCount = campaigns.length;
+      const spendParts = splitNumber(Number(sums.spend || 0), campaignCount, 2);
+      const impressionsParts = splitNumber(Number(sums.impressions || 0), campaignCount, 0);
+      const clicksParts = splitNumber(Number(sums.clicks || 0), campaignCount, 0);
+      const reachParts = splitNumber(Number(sums.reach || 0), campaignCount, 0);
+      const engagementsParts = splitNumber(Number(sums.engagements || 0), campaignCount, 0);
+      const conversionsParts = splitNumber(Number(sums.conversions || 0), campaignCount, 0);
+      const leadsParts = splitNumber(Number(sums.leads || 0), campaignCount, 0);
+      const videoViewsParts = splitNumber(Number(sums.videoViews || 0), campaignCount, 0);
+      const viralImpressionsParts = splitNumber(Number(sums.viralImpressions || 0), campaignCount, 0);
+
+      for (let cIdx = 0; cIdx < campaigns.length; cIdx++) {
+        const campaign = campaigns[cIdx];
+        const byKey: Record<string, any> = {
+          impressions: impressionsParts[cIdx] ?? 0,
+          reach: reachParts[cIdx] ?? 0,
+          clicks: clicksParts[cIdx] ?? 0,
+          engagements: engagementsParts[cIdx] ?? 0,
+          spend: spendParts[cIdx] ?? 0,
+          conversions: conversionsParts[cIdx] ?? 0,
+          leads: leadsParts[cIdx] ?? 0,
+          videoViews: videoViewsParts[cIdx] ?? 0,
+          viralImpressions: viralImpressionsParts[cIdx] ?? 0,
+        };
+
         for (const metricKey of selectedMetricKeys) {
-          const metricValue = (Math.random() * 10000 + 1000).toFixed(2);
+          const raw = byKey[metricKey] ?? 0;
+          const metricValue = metricKey === "spend" ? Number(raw).toFixed(2) : String(Math.round(Number(raw) || 0));
           await storage.createLinkedInImportMetric({
             sessionId: session.id,
             campaignUrn: campaign.id,
@@ -16234,6 +16341,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Core metrics are always present; derived metrics are computed when base metrics exist.
         const numAds = Math.floor(Math.random() * 2) + 2;
         const selectedMetrics = selectedMetricKeys;
+        const adSpendParts = splitNumber(Number(byKey.spend || 0), numAds, 2);
+        const adImpressionsParts = splitNumber(Number(byKey.impressions || 0), numAds, 0);
+        const adClicksParts = splitNumber(Number(byKey.clicks || 0), numAds, 0);
+        const adEngagementsParts = splitNumber(Number(byKey.engagements || 0), numAds, 0);
+        const adReachParts = splitNumber(Number(byKey.reach || 0), numAds, 0);
+        const adConversionsParts = splitNumber(Number(byKey.conversions || 0), numAds, 0);
+        const adLeadsParts = splitNumber(Number(byKey.leads || 0), numAds, 0);
+        const adVideoViewsParts = splitNumber(Number(byKey.videoViews || 0), numAds, 0);
+        const adViralImpressionsParts = splitNumber(Number(byKey.viralImpressions || 0), numAds, 0);
         
         for (let i = 0; i < numAds; i++) {
           // Initialize ad data with campaign info and defaults
@@ -16256,39 +16372,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Populate core metrics
           if (selectedMetrics.includes('impressions')) {
-            adData.impressions = Math.floor(Math.random() * 50000) + 10000;
+            adData.impressions = Math.round(adImpressionsParts[i] ?? 0);
           }
           
           if (selectedMetrics.includes('reach')) {
-            adData.reach = Math.floor(Math.random() * 40000) + 8000;
+            adData.reach = Math.round(adReachParts[i] ?? 0);
           }
           
           if (selectedMetrics.includes('clicks')) {
-            adData.clicks = Math.floor(Math.random() * 2000) + 500;
+            adData.clicks = Math.round(adClicksParts[i] ?? 0);
           }
           
           if (selectedMetrics.includes('engagements')) {
-            adData.engagements = Math.floor(Math.random() * 3000) + 600;
+            adData.engagements = Math.round(adEngagementsParts[i] ?? 0);
           }
           
           if (selectedMetrics.includes('spend')) {
-            adData.spend = (Math.random() * 5000 + 1000).toFixed(2);
+            adData.spend = Number(adSpendParts[i] ?? 0).toFixed(2);
           }
           
           if (selectedMetrics.includes('conversions')) {
-            adData.conversions = Math.floor(Math.random() * 100) + 10;
+            adData.conversions = Math.round(adConversionsParts[i] ?? 0);
           }
           
           if (selectedMetrics.includes('leads')) {
-            adData.leads = Math.floor(Math.random() * 80) + 5;
+            adData.leads = Math.round(adLeadsParts[i] ?? 0);
           }
           
           if (selectedMetrics.includes('videoViews')) {
-            adData.videoViews = Math.floor(Math.random() * 5000) + 1000;
+            adData.videoViews = Math.round(adVideoViewsParts[i] ?? 0);
           }
           
           if (selectedMetrics.includes('viralImpressions')) {
-            adData.viralImpressions = Math.floor(Math.random() * 10000) + 2000;
+            adData.viralImpressions = Math.round(adViralImpressionsParts[i] ?? 0);
           }
           
           // Calculate revenue if conversions are selected

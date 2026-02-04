@@ -1555,6 +1555,14 @@ export default function LinkedInAnalytics() {
         description: "LinkedIn metrics have been updated.",
       });
 
+      // Ensure UI refetches freshness + to-date totals immediately (covers Overview + Ad Comparison).
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-coverage", LINKEDIN_DAILY_LOOKBACK_DAYS] });
+        await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-coverage", LINKEDIN_DAILY_LOOKBACK_DAYS], exact: true });
+      } catch {
+        // ignore
+      }
+
       // Refresh creates a NEW import session; jump to the latest session so Overview updates immediately.
       try {
         const resp = await fetch(`/api/campaigns/${encodeURIComponent(String(campaignId))}/connected-platforms`, {

@@ -180,22 +180,30 @@ async function generateMockLinkedInData(
   const selectedMetricKeys = latestSession.selectedMetricKeys || [];
   const totals = toDate || { impressions: 0, clicks: 0, reach: 0, engagements: 0, conversions: 0, leads: 0, spend: 0, videoViews: 0, viralImpressions: 0 };
 
-  // Store campaign totals that reconcile with daily to-date.
-  for (const metricKey of selectedMetricKeys) {
-    const raw = (totals as any)[String(metricKey)] ?? 0;
-    const metricValue = normalizeLinkedInMetricValue(metricKey, raw);
-    await storage.createLinkedInImportMetric({
-      sessionId: newSession.id,
-      campaignUrn: `test-campaign-${Date.now()}`,
-      campaignName: 'Test Campaign',
-      campaignStatus: 'active',
-      metricKey,
-      metricValue
-    });
-  }
+  // Preserve campaign structure from the previous import so Campaign Breakdown is stable (no duplicate/partial cards).
+  const prevMetrics = await storage.getLinkedInImportMetrics(latestSession.id).catch(() => []);
+  const prevCampaigns = Array.isArray(prevMetrics)
+    ? Array.from(
+        prevMetrics.reduce((acc: Map<string, any>, m: any) => {
+          const urn = String(m?.campaignUrn || "").trim();
+          if (!urn) return acc;
+          if (!acc.has(urn)) {
+            acc.set(urn, {
+              urn,
+              name: String(m?.campaignName || "Test Campaign"),
+              status: String(m?.campaignStatus || "active"),
+            });
+          }
+          return acc;
+        }, new Map()).values()
+      )
+    : [];
 
-  // Generate ad performance that sums back to the same totals (especially spend).
-  const numAds = Math.floor(Math.random() * 2) + 2;
+  const campaigns =
+    prevCampaigns.length > 0
+      ? prevCampaigns
+      : [{ urn: `test-campaign-${campaignId}`, name: "Test Campaign", status: "active" }];
+
   const splitNumber = (total: number, n: number, decimals = 0) => {
     const parts: number[] = [];
     if (n <= 0) return parts;
@@ -210,63 +218,107 @@ async function generateMockLinkedInData(
     }
     return parts;
   };
-  const spendParts = splitNumber(Number((totals as any).spend || 0), numAds, 2);
-  const impressionsParts = splitNumber(Number((totals as any).impressions || 0), numAds, 0);
-  const clicksParts = splitNumber(Number((totals as any).clicks || 0), numAds, 0);
-  const engagementsParts = splitNumber(Number((totals as any).engagements || 0), numAds, 0);
-  const reachParts = splitNumber(Number((totals as any).reach || 0), numAds, 0);
-  const conversionsParts = splitNumber(Number((totals as any).conversions || 0), numAds, 0);
-  const leadsParts = splitNumber(Number((totals as any).leads || 0), numAds, 0);
-  const videoViewsParts = splitNumber(Number((totals as any).videoViews || 0), numAds, 0);
-  const viralImpressionsParts = splitNumber(Number((totals as any).viralImpressions || 0), numAds, 0);
 
-  for (let i = 0; i < numAds; i++) {
-    const adData: any = {
-      sessionId: newSession.id,
-      adId: `ad-${campaignId}-${Date.now()}-${i + 1}`,
-      adName: `Ad ${i + 1} - Test Campaign`,
-      campaignUrn: `test-campaign-${Date.now()}`,
-      campaignName: 'Test Campaign',
-      campaignSelectedMetrics: selectedMetricKeys,
-      impressions: Math.round(impressionsParts[i] ?? 0),
-      reach: Math.round(reachParts[i] ?? 0),
-      clicks: Math.round(clicksParts[i] ?? 0),
-      engagements: Math.round(engagementsParts[i] ?? 0),
-      spend: Number(spendParts[i] ?? 0).toFixed(2),
-      conversions: Math.round(conversionsParts[i] ?? 0),
-      leads: Math.round(leadsParts[i] ?? 0),
-      videoViews: Math.round(videoViewsParts[i] ?? 0),
-      viralImpressions: Math.round(viralImpressionsParts[i] ?? 0),
-      revenue: "0",
-      ctr: "0",
-      cpc: "0",
-      cpm: "0",
-      cvr: "0",
-      cpa: "0",
-      cpl: "0",
-      er: "0",
-      conversionRate: "0",
+  // Split to-date totals across campaigns so sums still reconcile.
+  const campaignCount = campaigns.length;
+  const spendParts = splitNumber(Number((totals as any).spend || 0), campaignCount, 2);
+  const impressionsParts = splitNumber(Number((totals as any).impressions || 0), campaignCount, 0);
+  const clicksParts = splitNumber(Number((totals as any).clicks || 0), campaignCount, 0);
+  const engagementsParts = splitNumber(Number((totals as any).engagements || 0), campaignCount, 0);
+  const reachParts = splitNumber(Number((totals as any).reach || 0), campaignCount, 0);
+  const conversionsParts = splitNumber(Number((totals as any).conversions || 0), campaignCount, 0);
+  const leadsParts = splitNumber(Number((totals as any).leads || 0), campaignCount, 0);
+  const videoViewsParts = splitNumber(Number((totals as any).videoViews || 0), campaignCount, 0);
+  const viralImpressionsParts = splitNumber(Number((totals as any).viralImpressions || 0), campaignCount, 0);
+
+  for (let cIdx = 0; cIdx < campaigns.length; cIdx++) {
+    const c = campaigns[cIdx];
+    const byKey: Record<string, any> = {
+      impressions: impressionsParts[cIdx] ?? 0,
+      reach: reachParts[cIdx] ?? 0,
+      clicks: clicksParts[cIdx] ?? 0,
+      engagements: engagementsParts[cIdx] ?? 0,
+      spend: spendParts[cIdx] ?? 0,
+      conversions: conversionsParts[cIdx] ?? 0,
+      leads: leadsParts[cIdx] ?? 0,
+      videoViews: videoViewsParts[cIdx] ?? 0,
+      viralImpressions: viralImpressionsParts[cIdx] ?? 0,
     };
 
-    const spend = parseFloat(adData.spend);
-    if (adData.impressions > 0) {
-      adData.ctr = ((adData.clicks / adData.impressions) * 100).toFixed(2);
-      adData.cpm = ((spend / adData.impressions) * 1000).toFixed(2);
-      adData.er = ((adData.engagements / adData.impressions) * 100).toFixed(2);
-    }
-    if (adData.clicks > 0) {
-      adData.cpc = (spend / adData.clicks).toFixed(2);
-      adData.cvr = ((adData.conversions / adData.clicks) * 100).toFixed(2);
-      adData.conversionRate = adData.cvr;
-    }
-    if (adData.conversions > 0) {
-      adData.cpa = (spend / adData.conversions).toFixed(2);
-    }
-    if (adData.leads > 0) {
-      adData.cpl = (spend / adData.leads).toFixed(2);
+    // Store per-campaign totals for this session (to-date semantics).
+    for (const metricKey of selectedMetricKeys) {
+      const raw = byKey[String(metricKey)] ?? 0;
+      const metricValue = normalizeLinkedInMetricValue(metricKey, raw);
+      await storage.createLinkedInImportMetric({
+        sessionId: newSession.id,
+        campaignUrn: c.urn,
+        campaignName: c.name,
+        campaignStatus: c.status,
+        metricKey,
+        metricValue,
+      });
     }
 
-    await storage.createLinkedInAdPerformance(adData);
+    // Generate ad performance that sums back to the same per-campaign totals (especially spend).
+    const numAds = Math.floor(Math.random() * 2) + 2;
+    const adSpendParts = splitNumber(Number(byKey.spend || 0), numAds, 2);
+    const adImpressionsParts = splitNumber(Number(byKey.impressions || 0), numAds, 0);
+    const adClicksParts = splitNumber(Number(byKey.clicks || 0), numAds, 0);
+    const adEngagementsParts = splitNumber(Number(byKey.engagements || 0), numAds, 0);
+    const adReachParts = splitNumber(Number(byKey.reach || 0), numAds, 0);
+    const adConversionsParts = splitNumber(Number(byKey.conversions || 0), numAds, 0);
+    const adLeadsParts = splitNumber(Number(byKey.leads || 0), numAds, 0);
+    const adVideoViewsParts = splitNumber(Number(byKey.videoViews || 0), numAds, 0);
+    const adViralImpressionsParts = splitNumber(Number(byKey.viralImpressions || 0), numAds, 0);
+
+    for (let i = 0; i < numAds; i++) {
+      const adData: any = {
+        sessionId: newSession.id,
+        adId: `ad-${newSession.id}-${c.urn}-${i + 1}`,
+        adName: `Ad ${i + 1} - ${c.name}`,
+        campaignUrn: c.urn,
+        campaignName: c.name,
+        campaignSelectedMetrics: selectedMetricKeys,
+        impressions: Math.round(adImpressionsParts[i] ?? 0),
+        reach: Math.round(adReachParts[i] ?? 0),
+        clicks: Math.round(adClicksParts[i] ?? 0),
+        engagements: Math.round(adEngagementsParts[i] ?? 0),
+        spend: Number(adSpendParts[i] ?? 0).toFixed(2),
+        conversions: Math.round(adConversionsParts[i] ?? 0),
+        leads: Math.round(adLeadsParts[i] ?? 0),
+        videoViews: Math.round(adVideoViewsParts[i] ?? 0),
+        viralImpressions: Math.round(adViralImpressionsParts[i] ?? 0),
+        revenue: "0",
+        ctr: "0",
+        cpc: "0",
+        cpm: "0",
+        cvr: "0",
+        cpa: "0",
+        cpl: "0",
+        er: "0",
+        conversionRate: "0",
+      };
+
+      const spend = parseFloat(adData.spend);
+      if (adData.impressions > 0) {
+        adData.ctr = ((adData.clicks / adData.impressions) * 100).toFixed(2);
+        adData.cpm = ((spend / adData.impressions) * 1000).toFixed(2);
+        adData.er = ((adData.engagements / adData.impressions) * 100).toFixed(2);
+      }
+      if (adData.clicks > 0) {
+        adData.cpc = (spend / adData.clicks).toFixed(2);
+        adData.cvr = ((adData.conversions / adData.clicks) * 100).toFixed(2);
+        adData.conversionRate = adData.cvr;
+      }
+      if (adData.conversions > 0) {
+        adData.cpa = (spend / adData.conversions).toFixed(2);
+      }
+      if (adData.leads > 0) {
+        adData.cpl = (spend / adData.leads).toFixed(2);
+      }
+
+      await storage.createLinkedInAdPerformance(adData);
+    }
   }
 
   console.log(`[LinkedIn Scheduler] ✅ Mock session totals + ads now reconcile to daily to-date for campaign ${campaignId}`);

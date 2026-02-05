@@ -3545,7 +3545,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                         <span>{benchmark.industry}</span>
                       </>
                     )}
-                    {benchmark.period && (
+                    {benchmark.period && String(benchmark.period || '').toLowerCase() !== 'monthly' && (
                       <>
                         <span>â€¢</span>
                         <span>{benchmark.period}</span>
@@ -4597,7 +4597,7 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
   });
 
-  const { data: connectedPlatformsData } = useQuery<{ statuses: ConnectedPlatformStatus[] }>({
+  const { data: connectedPlatformsData, isLoading: connectedPlatformsLoading } = useQuery<{ statuses: ConnectedPlatformStatus[] }>({
     queryKey: ["/api/campaigns", campaignId, "connected-platforms"],
     enabled: !!campaignId,
     refetchOnMount: "always",
@@ -4616,6 +4616,9 @@ export default function CampaignDetail() {
 
   const connectedPlatformStatuses: ConnectedPlatformStatus[] =
     connectedPlatformsData?.statuses ?? [];
+
+  // Avoid UI "flash" while platform statuses are still loading.
+  const connectedPlatformsReady = !!campaignId && !connectedPlatformsLoading;
 
   const platformStatusMap = useMemo(() => {
     const map = new Map<string, ConnectedPlatformStatus>();
@@ -5014,7 +5017,12 @@ export default function CampaignDetail() {
       cpc: linkedInRequiresImport ? "$0.00" : (isLinkedInConnected ? "$0.48" : "$0.00"),
       analyticsPath: linkedInRequiresImport
         ? null
-        : (platformStatusMap.get("linkedin")?.analyticsPath || (linkedInSession?.id ? `/campaigns/${campaign?.id}/linkedin-analytics?session=${encodeURIComponent(linkedInSession.id)}` : `/campaigns/${campaign?.id}/linkedin-analytics`))
+        : ((connectedPlatformsLoading || !campaign?.id)
+          ? null
+          : (platformStatusMap.get("linkedin")?.analyticsPath ||
+            (linkedInSession?.id
+              ? `/campaigns/${campaign?.id}/linkedin-analytics?session=${encodeURIComponent(linkedInSession.id)}`
+              : null)))
     },
     {
       platform: "Shopify",
@@ -6334,8 +6342,8 @@ export default function CampaignDetail() {
                     </div>
                   </div>
 
-                  {/* Connected Platform Metrics - Only show when platform is connected */}
-                  {platform.connected && (
+                  {/* Connected Platform Metrics - Only show when platform is connected and statuses are ready (prevents load flash) */}
+                  {connectedPlatformsReady && platform.connected && (
                     <div className="px-3 pb-3">
                       <div className="space-y-4">
                         {/* LinkedIn Import Required Warning */}
@@ -6385,8 +6393,8 @@ export default function CampaignDetail() {
                             </div>
                           </div>
                         )}
-                        {/* View Detailed Analytics Button - Show for Google Sheets when any active connection exists */}
-                        {platform.platform === "Google Sheets" && platform.connected && (
+                        {/* View Detailed Analytics Button - avoid initial load flash */}
+                        {!connectedPlatformsLoading && platform.platform === "Google Sheets" && platform.connected && (
                           <div className="pt-2 border-t">
                             <Link href={platform.analyticsPath || `/campaigns/${campaignId}/google-sheets-data`}>
                               <Button
@@ -6403,7 +6411,7 @@ export default function CampaignDetail() {
                               )}
                               
                         {/* View Detailed Analytics for other platforms */}
-                        {platform.analyticsPath && platform.platform !== "Google Sheets" && (
+                        {!connectedPlatformsLoading && platform.analyticsPath && platform.platform !== "Google Sheets" && (
                           <div className="pt-2">
                             <Link href={platform.analyticsPath}>
                               <Button

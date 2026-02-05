@@ -1154,7 +1154,7 @@ export default function LinkedInAnalytics() {
       emailNotifications: !!kpiForm.emailNotifications,
       slackNotifications: false,
       alertFrequency: kpiForm.alertFrequency || 'daily',
-      alertThreshold: (kpiForm.alertsEnabled ? (kpiForm.alertThreshold || null) : null), // Include alert threshold
+      alertThreshold: (kpiForm.alertsEnabled ? (stripNumeric(kpiForm.alertThreshold || '') || null) : null), // Include alert threshold (clean numeric)
       alertCondition: kpiForm.alertCondition || 'below', // Include alert condition
       emailRecipients: kpiForm.emailNotifications ? (String(kpiForm.emailRecipients || '').trim() || null) : null,
       applyTo: kpiForm.applyTo,
@@ -1436,7 +1436,7 @@ export default function LinkedInAnalytics() {
       specificCampaignId: finalSpecificCampaignId, // Use the converted campaign ID
       linkedInCampaignName: benchmarkForm.applyTo === 'specific' ? benchmarkForm.specificCampaignId : null, // Store LinkedIn campaign name for display
       alertsEnabled: benchmarkForm.alertsEnabled,
-      alertThreshold: benchmarkForm.alertsEnabled ? benchmarkForm.alertThreshold : null,
+      alertThreshold: benchmarkForm.alertsEnabled ? (stripNumeric(benchmarkForm.alertThreshold || '') || null) : null,
       alertCondition: benchmarkForm.alertCondition,
       emailNotifications: !!benchmarkForm.emailNotifications,
       alertFrequency: benchmarkForm.alertFrequency || 'daily',
@@ -6870,7 +6870,7 @@ export default function LinkedInAnalytics() {
                                       trackingPeriod: kpi.trackingPeriod?.toString() || '30',
                                       alertsEnabled: kpi.alertsEnabled || false,
                                       emailNotifications: kpi.emailNotifications || false,
-                                      alertThreshold: kpi.alertThreshold || '',
+                                      alertThreshold: kpi.alertThreshold ? formatNumberAsYouType(String(kpi.alertThreshold), { maxDecimals: getMaxDecimalsForMetric(kpi.metric || '') }) : '',
                                       alertCondition: kpi.alertCondition || 'below',
                                       emailRecipients: kpi.emailRecipients || '',
                                       applyTo: kpi.applyTo || 'all',
@@ -7314,12 +7314,6 @@ export default function LinkedInAnalytics() {
                                 </p>
                                 <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
                                   {benchmark.industry && <span>{benchmark.industry}</span>}
-                                  {benchmark.period && (
-                                    <>
-                                      <span>•</span>
-                                      <span>{benchmark.period}</span>
-                                    </>
-                                  )}
                                   {benchmark.category && (
                                     <>
                                       <span>•</span>
@@ -7359,7 +7353,7 @@ export default function LinkedInAnalytics() {
                                       // For "specific", the selector expects LinkedIn campaign NAME, not the DB campaignId.
                                       specificCampaignId: benchmark.linkedInCampaignName ? String(benchmark.linkedInCampaignName) : '',
                                       alertsEnabled: benchmark.alertsEnabled || false,
-                                      alertThreshold: benchmark.alertThreshold || '',
+                                      alertThreshold: benchmark.alertThreshold ? formatNumberAsYouType(String(benchmark.alertThreshold), { maxDecimals: getMaxDecimalsForMetric(benchmark.metric || '') }) : '',
                                       alertCondition: benchmark.alertCondition || 'below',
                                       emailRecipients: benchmark.emailRecipients || ''
                                     });
@@ -7968,8 +7962,8 @@ export default function LinkedInAnalytics() {
                 {/* Header with Create Button */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Reports</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Reports</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                       Create, schedule, and manage analytics reports
                     </p>
                   </div>
@@ -8121,12 +8115,6 @@ export default function LinkedInAnalytics() {
                   </div>
                 ) : (
                   <Card>
-                    <CardHeader>
-                      <CardTitle>Report Library</CardTitle>
-                      <CardDescription>
-                        View and manage your saved reports
-                      </CardDescription>
-                    </CardHeader>
                     <CardContent>
                       <div className="text-center py-12">
                         <BarChart3 className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
@@ -8899,12 +8887,11 @@ export default function LinkedInAnalytics() {
                         id="kpi-alert-threshold"
                         type="text"
                         placeholder="e.g., 80"
+                        inputMode="decimal"
                         value={kpiForm.alertThreshold}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/,/g, '');
-                          if (value === '' || !isNaN(parseFloat(value))) {
-                            setKpiForm({ ...kpiForm, alertThreshold: value });
-                          }
+                          const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(kpiForm.metric) });
+                          setKpiForm({ ...kpiForm, alertThreshold: formatted });
                         }}
                         data-testid="input-kpi-alert-threshold"
                       />
@@ -9566,12 +9553,11 @@ export default function LinkedInAnalytics() {
                         id="benchmark-alert-threshold"
                         type="text"
                         placeholder="e.g., 80"
+                        inputMode="decimal"
                         value={benchmarkForm.alertThreshold}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/,/g, '');
-                          if (value === '' || !isNaN(parseFloat(value))) {
-                            setBenchmarkForm({ ...benchmarkForm, alertThreshold: value });
-                          }
+                          const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) });
+                          setBenchmarkForm({ ...benchmarkForm, alertThreshold: formatted });
                         }}
                         data-testid="input-benchmark-alert-threshold"
                       />

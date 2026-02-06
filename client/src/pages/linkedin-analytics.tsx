@@ -192,6 +192,41 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
   const KPI_DESC_MAX = 200;
   const BENCHMARK_DESC_MAX = 200;
+  const getDefaultKpiDescription = (metricKey: string) => {
+    const k = String(metricKey || '').toLowerCase();
+    const labelMap: Record<string, string> = {
+      impressions: 'Impressions',
+      reach: 'Reach',
+      clicks: 'Clicks',
+      engagements: 'Engagements',
+      spend: 'Spend',
+      conversions: 'Conversions',
+      leads: 'Leads',
+      videoviews: 'Video Views',
+      viralimpressions: 'Viral Impressions',
+      ctr: 'CTR',
+      cpc: 'CPC',
+      cpm: 'CPM',
+      cvr: 'Conversion Rate',
+      cpa: 'CPA',
+      cpl: 'CPL',
+      er: 'Engagement Rate',
+      roi: 'ROI',
+      roas: 'ROAS',
+      totalrevenue: 'Total Revenue',
+      profit: 'Profit',
+      profitmargin: 'Profit Margin',
+      revenueperlead: 'Revenue Per Lead',
+    };
+    const label = labelMap[k] || 'this metric';
+
+    if (!k) return 'Track KPI performance against your target over time.';
+    if (['cpc', 'cpm', 'cpa', 'cpl'].includes(k)) return `Track ${label} against your target to manage cost efficiency.`;
+    if (['ctr', 'cvr', 'er'].includes(k)) return `Track ${label} against your target to monitor engagement and conversion efficiency.`;
+    if (['spend'].includes(k)) return `Track ${label} against your target to keep budget efficiency on track.`;
+    if (['roi', 'roas', 'profit', 'profitmargin', 'totalrevenue', 'revenueperlead'].includes(k)) return `Track ${label} against your target to validate financial performance.`;
+    return `Track ${label} against your target to monitor performance.`;
+  };
   const getDefaultBenchmarkDescription = (metricKey: string) => {
     const k = String(metricKey || '').toLowerCase();
     const labelMap: Record<string, string> = {
@@ -6716,7 +6751,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   )}
                                 </div>
                                 <CardDescription className="text-sm">
-                                  {kpi.description || 'No description provided'}
+                                  {(String(kpi.description || '').trim() || getDefaultKpiDescription(kpi.metric || kpi.metricKey))}
                                 </CardDescription>
                                 {/* Campaign Scope Badge */}
                                 {kpi.applyTo === 'specific' && kpi.specificCampaignId && (
@@ -6735,9 +6770,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 )}
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge variant={kpi.status === 'active' ? 'default' : 'secondary'}>
-                                  {kpi.status || 'active'}
-                                </Badge>
                                 {kpi.priority && (
                                   <Badge variant="outline" className={
                                     kpi.priority === 'high' ? 'text-red-600 border-red-300' :
@@ -6755,9 +6787,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     setEditingKPI(kpi);
                                     const liveForEdit = getLiveCurrentForKpi(kpi);
                                     const metricKeyForEdit = String(kpi.metric || kpi.metricKey || '');
+                                    const defaultDescForEdit = getDefaultKpiDescription(metricKeyForEdit);
                                     setKpiForm({
                                       name: kpi.name,
-                                      description: kpi.description || '',
+                                      description: (String(kpi.description || '').trim() || defaultDescForEdit),
                                       metric: metricKeyForEdit,
                                       targetValue: kpi.targetValue
                                         ? formatNumberAsYouType(String(kpi.targetValue), { maxDecimals: getMaxDecimalsForMetric(metricKeyForEdit) })
@@ -7131,9 +7164,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge variant={benchmark.status === 'active' ? 'default' : 'secondary'}>
-                                  {benchmark.status === 'active' ? 'Active' : 'Inactive'}
-                                </Badge>
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -7908,6 +7938,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
         campaignCurrencySymbol={campaignCurrencySymbol}
         availableCampaigns={availableCampaigns}
         KPI_DESC_MAX={KPI_DESC_MAX}
+        getDefaultKpiDescription={getDefaultKpiDescription}
         formatNumberAsYouType={formatNumberAsYouType}
         getMaxDecimalsForMetric={getMaxDecimalsForMetric}
         handleCreateKPI={handleCreateKPI}

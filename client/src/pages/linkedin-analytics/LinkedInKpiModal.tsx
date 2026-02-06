@@ -28,6 +28,7 @@ export function LinkedInKpiModal(props: any) {
     campaignCurrencySymbol,
     availableCampaigns,
     KPI_DESC_MAX,
+    getDefaultKpiDescription,
     formatNumberAsYouType,
     getMaxDecimalsForMetric,
     handleCreateKPI,
@@ -133,6 +134,11 @@ export function LinkedInKpiModal(props: any) {
               <Select
                 value={kpiForm.metric || ""}
                 onValueChange={(value) => {
+                  const prevDefaultDesc = typeof getDefaultKpiDescription === "function" ? getDefaultKpiDescription(kpiForm.metric) : "";
+                  const nextDefaultDesc = typeof getDefaultKpiDescription === "function" ? getDefaultKpiDescription(value) : "";
+                  const shouldAutoUpdateDesc =
+                    !String(kpiForm.description || "").trim() || String(kpiForm.description || "") === prevDefaultDesc;
+
                   const revenueMetrics = ["roi", "roas", "totalRevenue", "profit", "profitMargin", "revenuePerLead"];
                   if (revenueMetrics.includes(value) && !aggregated?.hasRevenueTracking) {
                     toast({
@@ -389,7 +395,13 @@ export function LinkedInKpiModal(props: any) {
                   const formattedCurrentValue = result.value
                     ? formatNumberAsYouType(String(result.value), { maxDecimals: getMaxDecimalsForMetric(value) })
                     : "";
-                  setKpiForm({ ...kpiForm, metric: value, currentValue: formattedCurrentValue, unit: result.unit });
+                  setKpiForm({
+                    ...kpiForm,
+                    metric: value,
+                    currentValue: formattedCurrentValue,
+                    unit: result.unit,
+                    description: shouldAutoUpdateDesc ? nextDefaultDesc : kpiForm.description,
+                  });
                 }}
               >
                 <SelectTrigger id="kpi-metric" data-testid="select-kpi-metric">

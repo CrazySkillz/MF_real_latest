@@ -1,8 +1,26 @@
 import { db } from "./db";
-import { notifications, kpis } from "../shared/schema";
-import { eq } from "drizzle-orm";
+import { linkedinDailyMetrics, notifications, kpis } from "../shared/schema";
+import { desc, eq } from "drizzle-orm";
 import type { KPI, InsertNotification } from "../shared/schema";
 import { storage } from "./storage";
+
+async function getLinkedInWindowKey(campaignId: string): Promise<string | null> {
+  const cid = String(campaignId || "").trim();
+  if (!cid) return null;
+  try {
+    if (!db) return null;
+    const rows = await db
+      .select({ date: linkedinDailyMetrics.date })
+      .from(linkedinDailyMetrics)
+      .where(eq(linkedinDailyMetrics.campaignId, cid))
+      .orderBy(desc(linkedinDailyMetrics.date))
+      .limit(1);
+    const d = String((rows as any[])?.[0]?.date || "").trim();
+    return d || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * KPI Notification Helper Functions
@@ -40,21 +58,45 @@ export async function createKPIReminder(kpi: KPI): Promise<void> {
  * Triggered when current value breaches alert threshold
  */
 export async function createKPIAlert(kpi: KPI): Promise<void> {
-  // Check if an alert for this KPI already exists today (prevent duplicates)
+  // Dedupe:
+  // - default: prevent duplicates within the same real-world day
+  // - LinkedIn test-mode: prevent duplicates per simulated day (windowKey == latest daily metrics date)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  let windowKey: string | null = null;
+  try {
+    if (kpi.campaignId) {
+      const conn = await storage.getLinkedInConnection(String(kpi.campaignId)).catch(() => undefined as any);
+      const method = String((conn as any)?.method || "").toLowerCase();
+      const token = String((conn as any)?.accessToken || "");
+      const isTestMode =
+        method.includes("test") ||
+        process.env.LINKEDIN_TEST_MODE === "true" ||
+        token === "test-mode-token" ||
+        token.startsWith("test_") ||
+        token.startsWith("test-");
+      if (isTestMode) {
+        windowKey = await getLinkedInWindowKey(String(kpi.campaignId));
+      }
+    }
+  } catch {
+    // ignore
+  }
   
   const existingAlerts = await db.select()
     .from(notifications)
     .where(eq(notifications.type, 'performance-alert'));
   
-  // Check if there's already an alert for this KPI today
+  // Check if there's already an alert for this KPI in the current dedupe window
   const hasRecentAlert = existingAlerts.some(n => {
     if (!n.metadata) return false;
     try {
       const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
       const createdAt = new Date(n.createdAt);
-      return meta.kpiId === kpi.id && createdAt >= today;
+      if (windowKey) {
+        return String(meta.kpiId) === String(kpi.id) && String(meta.windowKey || "") === windowKey;
+      }
+      return String(meta.kpiId) === String(kpi.id) && createdAt >= today;
     } catch {
       return false;
     }
@@ -92,7 +134,8 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'performance-alert',
-    actionUrl
+    actionUrl,
+    ...(windowKey ? { windowKey } : {}),
   });
 
   const notification: InsertNotification = {

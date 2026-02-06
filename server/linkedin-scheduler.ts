@@ -7,8 +7,10 @@
 import { storage } from "./storage";
 import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
+import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { db } from "./db";
-import { linkedinConnections } from "../shared/schema";
+import { linkedinConnections, linkedinDailyMetrics } from "../shared/schema";
+import { desc, eq } from "drizzle-orm";
 
 const isLinkedInCountMetric = (metricKey: string): boolean => {
   const k = String(metricKey || "").toLowerCase();
@@ -49,7 +51,8 @@ const normalizeLinkedInMetricValue = (metricKey: string, value: any): string => 
  */
 async function generateMockLinkedInData(
   campaignId: string,
-  connection: any
+  connection: any,
+  opts?: { advanceDay?: boolean }
 ): Promise<void> {
   console.log(`[LinkedIn Scheduler] TEST MODE: Generating mock data for campaign ${campaignId}`);
 
@@ -76,32 +79,65 @@ async function generateMockLinkedInData(
   let endIso = "";
   try {
     const now = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
     endUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)); // yesterday UTC
 
     // Determine the next "new day" to add.
     // We start from a base window (60 days back) but we do NOT backfill — we add one day per refresh.
-    const baseStartUTC = new Date(endUTC.getTime());
-    baseStartUTC.setUTCDate(baseStartUTC.getUTCDate() - 59);
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
-    baseStartIso = iso(baseStartUTC);
-    endIso = iso(endUTC);
+    //
+    // IMPORTANT: When `opts.advanceDay` is true (manual "Run refresh" in test mode), we intentionally
+    // advance the simulated date even beyond real-world "yesterday" so each click == one simulated day.
+    const advanceDay = Boolean(opts?.advanceDay);
 
-    const existing = await storage.getLinkedInDailyMetrics(campaignId, baseStartIso, endIso).catch(() => []);
-    const maxExistingDate = Array.isArray(existing) && existing.length > 0 ? String((existing as any[])[(existing as any[]).length - 1]?.date || "") : "";
+    let maxExistingDate = "";
+    try {
+      if (db) {
+        const rows = await db
+          .select({ date: linkedinDailyMetrics.date })
+          .from(linkedinDailyMetrics)
+          .where(eq(linkedinDailyMetrics.campaignId, campaignId))
+          .orderBy(desc(linkedinDailyMetrics.date))
+          .limit(1);
+        maxExistingDate = String((rows as any[])?.[0]?.date || "");
+      } else {
+        const existingAll = await storage.getLinkedInDailyMetrics(campaignId, "0000-01-01", "9999-12-31").catch(() => []);
+        maxExistingDate =
+          Array.isArray(existingAll) && existingAll.length > 0 ? String((existingAll as any[])[(existingAll as any[]).length - 1]?.date || "") : "";
+      }
+    } catch {
+      // ignore; fall back to the base window logic below
+    }
+
+    // Base window start is always "endUTC - 59", but we may extend endUTC for advanceDay.
+    const baseStartForYesterdayUTC = new Date(endUTC.getTime());
+    baseStartForYesterdayUTC.setUTCDate(baseStartForYesterdayUTC.getUTCDate() - 59);
 
     let nextUTC: Date;
     if (!maxExistingDate) {
-      nextUTC = baseStartUTC;
+      nextUTC = baseStartForYesterdayUTC;
     } else {
       const parsed = new Date(`${maxExistingDate}T00:00:00.000Z`);
       nextUTC = new Date(parsed.getTime());
       nextUTC.setUTCDate(nextUTC.getUTCDate() + 1);
     }
 
-    // Cap at yesterday UTC; if we’re already at/after yesterday, just overwrite yesterday (simulate re-import corrections).
-    if (nextUTC.getTime() > endUTC.getTime()) {
-      nextUTC = endUTC;
+    if (!advanceDay) {
+      // Cap at yesterday UTC; if we’re already at/after yesterday, just overwrite yesterday (simulate re-import corrections).
+      if (nextUTC.getTime() > endUTC.getTime()) {
+        nextUTC = endUTC;
+      }
+    } else {
+      // In manual test-mode refresh: treat each click as a new simulated day.
+      if (nextUTC.getTime() > endUTC.getTime()) {
+        endUTC = new Date(nextUTC.getTime());
+      }
     }
+
+    // Recompute window strings AFTER potentially extending endUTC.
+    const baseStartUTC = new Date(endUTC.getTime());
+    baseStartUTC.setUTCDate(baseStartUTC.getUTCDate() - 59);
+    baseStartIso = iso(baseStartUTC);
+    endIso = iso(endUTC);
 
     const date = iso(nextUTC);
 
@@ -591,7 +627,8 @@ async function fetchRealLinkedInData(
  */
 export async function refreshLinkedInDataForCampaign(
   campaignId: string,
-  connection?: any
+  connection?: any,
+  opts?: { advanceTestDay?: boolean }
 ): Promise<void> {
   try {
     // Get connection if not provided
@@ -615,7 +652,7 @@ export async function refreshLinkedInDataForCampaign(
       token.startsWith('test-');
 
     if (isTestMode) {
-      await generateMockLinkedInData(campaignId, connection);
+      await generateMockLinkedInData(campaignId, connection, { advanceDay: Boolean(opts?.advanceTestDay) });
     } else {
       await fetchRealLinkedInData(campaignId, connection);
     }
@@ -627,6 +664,13 @@ export async function refreshLinkedInDataForCampaign(
     // Immediately check for alerts after KPI refresh
     console.log(`[LinkedIn Scheduler] Checking performance alerts for campaign ${campaignId}...`);
     await checkPerformanceAlerts();
+
+    // Benchmark alerts are separate from KPI alerts; run them after refresh too.
+    try {
+      await checkBenchmarkPerformanceAlerts();
+    } catch (e: any) {
+      console.warn(`[LinkedIn Scheduler] Benchmark alert check failed for campaign ${campaignId}:`, e?.message || e);
+    }
 
     console.log(`[LinkedIn Scheduler] ✅ Completed refresh for campaign ${campaignId}`);
   } catch (error: any) {

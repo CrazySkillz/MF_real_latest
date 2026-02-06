@@ -1,8 +1,26 @@
 import { db } from "./db";
-import { benchmarks, notifications } from "../shared/schema";
-import { and, eq } from "drizzle-orm";
+import { benchmarks, linkedinDailyMetrics, notifications } from "../shared/schema";
+import { and, desc, eq } from "drizzle-orm";
 import type { InsertNotification } from "../shared/schema";
 import { storage } from "./storage";
+
+async function getLinkedInWindowKey(campaignId: string): Promise<string | null> {
+  const cid = String(campaignId || "").trim();
+  if (!cid) return null;
+  try {
+    if (!db) return null;
+    const rows = await db
+      .select({ date: linkedinDailyMetrics.date })
+      .from(linkedinDailyMetrics)
+      .where(eq(linkedinDailyMetrics.campaignId, cid))
+      .orderBy(desc(linkedinDailyMetrics.date))
+      .limit(1);
+    const d = String((rows as any[])?.[0]?.date || "").trim();
+    return d || null;
+  } catch {
+    return null;
+  }
+}
 
 function shouldTriggerBenchmarkAlert(opts: {
   currentValue: number;
@@ -53,6 +71,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     .where(eq(notifications.type, "performance-alert"));
 
   let created = 0;
+  const windowKeyByCampaign = new Map<string, string>();
 
   for (const b of items as any[]) {
     const thresholdRaw = b.alertThreshold;
@@ -67,12 +86,46 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     const condition = (String(b.alertCondition || "below") as any) as 'below' | 'above' | 'equals';
     if (!shouldTriggerBenchmarkAlert({ currentValue, thresholdValue, condition })) continue;
 
+    // For LinkedIn test-mode, dedupe per simulated day instead of per real day.
+    let windowKey: string | null = null;
+    try {
+      const platform = String(b?.platformType || "").trim().toLowerCase();
+      const campaignId = String(b?.campaignId || "").trim();
+      if (platform === "linkedin" && campaignId) {
+        const conn = await storage.getLinkedInConnection(campaignId).catch(() => undefined as any);
+        const method = String((conn as any)?.method || "").toLowerCase();
+        const token = String((conn as any)?.accessToken || "");
+        const isTestMode =
+          method.includes("test") ||
+          process.env.LINKEDIN_TEST_MODE === "true" ||
+          token === "test-mode-token" ||
+          token.startsWith("test_") ||
+          token.startsWith("test-");
+        if (isTestMode) {
+          const cached = windowKeyByCampaign.get(campaignId);
+          if (cached) windowKey = cached;
+          else {
+            const wk = await getLinkedInWindowKey(campaignId);
+            if (wk) {
+              windowKeyByCampaign.set(campaignId, wk);
+              windowKey = wk;
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     // Duplicate prevention: benchmarkId + createdAt >= today
     const hasRecent = (existingAlerts || []).some((n: any) => {
       if (!n?.metadata) return false;
       try {
         const meta = typeof n.metadata === "string" ? JSON.parse(n.metadata) : n.metadata;
         const createdAt = new Date(n.createdAt);
+        if (windowKey) {
+          return String(meta?.benchmarkId || "") === String(b.id) && String(meta?.windowKey || "") === windowKey;
+        }
         return String(meta?.benchmarkId || "") === String(b.id) && createdAt >= today;
       } catch {
         return false;
@@ -103,6 +156,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
       benchmarkId: b.id,
       alertType: "benchmark-alert",
       actionUrl,
+      ...(windowKey ? { windowKey } : {}),
     });
 
     const notification: InsertNotification = {

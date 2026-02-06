@@ -1037,6 +1037,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId] });
+      // If KPI had generated alerts/reminders, remove them from bell + Notifications center immediately.
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.refetchQueries({ queryKey: ['/api/notifications'], exact: true });
       toast({
         title: "KPI Deleted",
         description: "The KPI has been deleted successfully.",
@@ -1291,6 +1294,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       // Force immediate refetch for both Overview and Benchmarks tab
       await refetchBenchmarks();
       await refetchBenchmarksTab();
+
+      // If Benchmark had generated alerts, remove them from bell + Notifications center immediately.
+      await queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/notifications'], exact: true });
       
       // Clear editing state and reset form
       setEditingBenchmark(null);
@@ -3588,13 +3595,22 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   });
 
   // Helper to identify count-based metrics that should always be whole numbers
+  const normalizeMetricKey = (metricKey: string): string => {
+    // Normalize to a stable "comparison key" so older saved rows like "Reach", "reach ", "Total Revenue"
+    // still format correctly.
+    return String(metricKey || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]/g, "");
+  };
+
   const isCountMetric = (metricKey: string): boolean => {
     const countMetrics = [
       'impressions', 'clicks', 'conversions', 'leads', 'engagements', 
       'reach', 'videoviews', 'viralimpressions', 'shares', 'comments', 
       'likes', 'reactions', 'follows'
     ];
-    return countMetrics.includes(metricKey.toLowerCase());
+    return countMetrics.includes(normalizeMetricKey(metricKey));
   };
   
   // Smart number formatter that auto-rounds count metrics
@@ -3648,7 +3664,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   };
 
   const getMaxDecimalsForMetric = (metricKey: string) => {
-    const k = String(metricKey || '').toLowerCase();
+    const k = normalizeMetricKey(metricKey);
     if (isCountMetric(k)) return 0;
     if (['ctr', 'cvr', 'er', 'roi', 'profitmargin'].includes(k)) return 2;
     if (['roas'].includes(k)) return 2;
@@ -3707,7 +3723,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   };
 
   const isCurrencyLikeMetric = (metricKey: string) => {
-    const k = String(metricKey || '').toLowerCase();
+    const k = normalizeMetricKey(metricKey);
     return ['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'totalrevenue', 'profit', 'revenueperlead'].includes(k);
   };
 
@@ -3743,7 +3759,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   };
 
   const formatMetricValueForDisplay = (metricKey: string, raw: number | string) => {
-    const k = String(metricKey || '').toLowerCase();
+    const k = normalizeMetricKey(metricKey);
     const decimals = getMaxDecimalsForMetric(k);
     const n = typeof raw === 'string' ? parseFloat(stripNumeric(raw)) : raw;
     const safe = Number.isFinite(n) ? Number(n) : 0;
@@ -3762,7 +3778,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   };
 
   const formatMetricValueForInput = (metricKey: string, raw: number | string) => {
-    const k = String(metricKey || '').toLowerCase();
+    const k = normalizeMetricKey(metricKey);
     const maxDecimals = getMaxDecimalsForMetric(k);
     const n = typeof raw === 'string' ? parseFloat(stripNumeric(raw)) : raw;
     if (!Number.isFinite(n)) return '';
@@ -6945,15 +6961,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   {(() => {
                                     if (isRevenueBlocked) return '—';
                                     const value = Number.isFinite(currentVal) ? currentVal : 0;
-                                    const metricKey = String(kpi.metric || kpi.metricKey || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                                    const formatted = value.toLocaleString('en-US', { 
-                                      minimumFractionDigits: (String(kpi.unit || '') === '%' && (metricKey === 'roi' || metricKey === 'profitmargin')) ? 1 : 2,
-                                      maximumFractionDigits: (String(kpi.unit || '') === '%' && (metricKey === 'roi' || metricKey === 'profitmargin')) ? 1 : 2
-                                    });
-                                    const unit = String(kpi.unit || '');
-                                    if (unit === '$' || unit === '£' || unit === '€') return `${unit}${formatted}`;
-                                    if (unit === '%') return `${formatted}%`;
-                                    return `${formatted}${unit}`;
+                                    const metricKey = String(kpi.metric || kpi.metricKey || '');
+                                    return formatMetricValueForDisplay(metricKey, value);
                                   })()}
                                 </div>
                               </div>
@@ -6963,16 +6972,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 </div>
                                 <div className="text-xl font-bold text-slate-900 dark:text-white">
                                   {(() => {
-                                    const value = parseFloat(kpi.targetValue || '0');
-                                    const metricKey = String(kpi.metric || kpi.metricKey || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                                    const formatted = value.toLocaleString('en-US', { 
-                                      minimumFractionDigits: (String(kpi.unit || '') === '%' && (metricKey === 'roi' || metricKey === 'profitmargin')) ? 1 : 2,
-                                      maximumFractionDigits: (String(kpi.unit || '') === '%' && (metricKey === 'roi' || metricKey === 'profitmargin')) ? 1 : 2
-                                    });
-                                    const unit = String(kpi.unit || '');
-                                    if (unit === '$' || unit === '£' || unit === '€') return `${unit}${formatted}`;
-                                    if (unit === '%') return `${formatted}%`;
-                                    return `${formatted}${unit}`;
+                                    const value = parseFloat(stripNumeric(String(kpi.targetValue || '0'))) || 0;
+                                    const metricKey = String(kpi.metric || kpi.metricKey || '');
+                                    return formatMetricValueForDisplay(metricKey, value);
                                   })()}
                                 </div>
                               </div>

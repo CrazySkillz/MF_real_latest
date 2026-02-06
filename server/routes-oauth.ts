@@ -14238,6 +14238,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) {
         return res.status(404).json({ message: "KPI not found" });
       }
+
+      // Cascade delete: remove any notifications tied to this KPI (alerts, reminders, etc).
+      // Notifications store linkage via JSON metadata { kpiId, ... }.
+      try {
+        const notifs = await storage.getNotifications().catch(() => []);
+        await Promise.all(
+          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
+            const metaRaw = (n as any)?.metadata;
+            if (!metaRaw) return;
+            try {
+              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
+              if (String(meta?.kpiId || "") === String(kpiId)) {
+                await storage.deleteNotification(String((n as any).id));
+              }
+            } catch {
+              // ignore non-JSON metadata
+            }
+          })
+        );
+      } catch (e) {
+        console.warn("[KPI Delete] Failed to cascade delete KPI notifications:", e);
+      }
       
       res.setHeader('Content-Type', 'application/json');
       const response = { message: "KPI deleted successfully", success: true };
@@ -14701,6 +14723,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deleted = await storage.deleteBenchmark(benchmarkId);
       if (!deleted) {
         return res.status(404).json({ message: "Benchmark not found" });
+      }
+
+      // Cascade delete: remove any notifications tied to this Benchmark.
+      // Notifications store linkage via JSON metadata { benchmarkId, ... }.
+      try {
+        const notifs = await storage.getNotifications().catch(() => []);
+        await Promise.all(
+          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
+            const metaRaw = (n as any)?.metadata;
+            if (!metaRaw) return;
+            try {
+              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
+              if (String(meta?.benchmarkId || "") === String(benchmarkId)) {
+                await storage.deleteNotification(String((n as any).id));
+              }
+            } catch {
+              // ignore non-JSON metadata
+            }
+          })
+        );
+      } catch (e) {
+        console.warn("[Benchmark Delete] Failed to cascade delete benchmark notifications:", e);
       }
       
       res.json({ message: "Benchmark deleted successfully", success: true });

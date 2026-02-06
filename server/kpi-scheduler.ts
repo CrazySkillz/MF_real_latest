@@ -244,8 +244,10 @@ export async function checkPerformanceAlerts(): Promise<void> {
     console.log(`[KPI Scheduler] Found ${activeKPIs.length} active KPIs with alerts enabled`);
 
     for (const kpi of activeKPIs) {
-      const currentValue = parseFloat(kpi.currentValue);
-      const alertThreshold = kpi.alertThreshold ? parseFloat(kpi.alertThreshold.toString()) : null;
+      // NOTE: KPI numeric values may be stored as formatted strings (e.g. "370,000").
+      // Use shouldTriggerAlert/createKPIAlert for truth; these logs are best-effort.
+      const currentValue = parseFloat(String(kpi.currentValue || "").replace(/,/g, ""));
+      const alertThreshold = kpi.alertThreshold ? parseFloat(String(kpi.alertThreshold).replace(/,/g, "")) : null;
       const alertCondition = kpi.alertCondition || 'below';
       
       console.log(`[KPI Scheduler] Checking KPI: ${kpi.name}`);

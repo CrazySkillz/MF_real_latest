@@ -4,6 +4,15 @@ import { and, desc, eq } from "drizzle-orm";
 import type { InsertNotification } from "../shared/schema";
 import { storage } from "./storage";
 
+function parseLooseNumber(input: unknown): number {
+  // Accept formatted inputs like "370,000", "$1,234.50", "  1000  ".
+  // Keep digits, decimal point, and leading minus.
+  const s = String(input ?? "").trim();
+  const cleaned = s.replace(/,/g, "").replace(/[^\d.-]/g, "");
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 async function getLinkedInWindowKey(campaignId: string): Promise<string | null> {
   const cid = String(campaignId || "").trim();
   if (!cid) return null;
@@ -78,8 +87,8 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     const currentRaw = b.currentValue;
     if (thresholdRaw === null || typeof thresholdRaw === "undefined") continue;
 
-    const thresholdValue = parseFloat(String(thresholdRaw));
-    const currentValue = parseFloat(String(currentRaw ?? "0"));
+    const thresholdValue = parseLooseNumber(thresholdRaw);
+    const currentValue = parseLooseNumber(currentRaw ?? "0");
     if (!Number.isFinite(thresholdValue)) continue;
     if (!Number.isFinite(currentValue)) continue;
 
@@ -143,7 +152,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
       }
     }
 
-    const benchmarkValue = parseFloat(String(b.benchmarkValue ?? "0"));
+    const benchmarkValue = parseLooseNumber(b.benchmarkValue ?? "0");
     const unit = String(b.unit || "");
     const actionUrl = buildBenchmarkActionUrl(b);
 

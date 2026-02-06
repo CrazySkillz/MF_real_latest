@@ -4522,6 +4522,14 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     };
   }, [aggregated, linkedInDailyResp]);
 
+  const formatShortYearIsoDate = (yyyyMmDd: string) => {
+    const s = String(yyyyMmDd || "").trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return s;
+    const yy = m[1].slice(-2);
+    return `'${yy}-${m[2]}-${m[3]}`;
+  };
+
   const getTrendIcon = (direction: 'up' | 'down' | 'neutral') => {
     if (direction === 'up') return <TrendingUp className="w-4 h-4 text-green-500" />;
     if (direction === 'down') return <TrendingDown className="w-4 h-4 text-red-500" />;
@@ -5986,7 +5994,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 <ResponsiveContainer width="100%" height="100%">
                                   <LineChart data={series}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                                    <XAxis
+                                      dataKey="date"
+                                      tick={{ fontSize: 12 }}
+                                      tickFormatter={(v: any) => formatShortYearIsoDate(String(v || ""))}
+                                    />
                                     <YAxis tick={{ fontSize: 12 }} />
                                     <Tooltip formatter={(value: any) => formatChartValue(value)} />
                                     <Legend />
@@ -6075,7 +6087,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         return (
                                           <tr key={r.date} className="border-b">
                                             <td className="p-3">
-                                              <div className="font-medium text-slate-900 dark:text-white">{r.date}</div>
+                                              <div className="font-medium text-slate-900 dark:text-white">
+                                                {formatShortYearIsoDate(String(r.date || ""))}
+                                              </div>
                                             </td>
                                             <td className="p-3 text-right">
                                               <div className="font-medium text-slate-900 dark:text-white">
@@ -6339,36 +6353,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         {isExpanded ? "Hide explanation" : "Explain"}
                                       </Button>
                                     ) : null}
-                                    {Array.isArray(i.actions) && i.actions.length > 0
-                                      ? i.actions.slice(0, 3).map((a: any, idx: number) => {
-                                          if (a.kind === "openRevenueModal") {
-                                            return (
-                                              <Button
-                                                key={`${i.id}:a:${idx}`}
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => openAddRevenueModal("add")}
-                                              >
-                                                {a.label}
-                                              </Button>
-                                            );
-                                          }
-                                          const tab = a.tab;
-                                          const url = `/campaigns/${encodeURIComponent(String(campaignId || ""))}/linkedin-analytics?tab=${encodeURIComponent(
-                                            String(tab)
-                                          )}${sessionId ? `&session=${encodeURIComponent(String(sessionId))}` : ""}`;
-                                          return (
-                                            <Button
-                                              key={`${i.id}:a:${idx}`}
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() => setLocation(url)}
-                                            >
-                                              {a.label}
-                                            </Button>
-                                          );
-                                        })
-                                      : null}
                                   </div>
 
                                   {isExpanded && canExplain ? (
@@ -6435,34 +6419,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   <div className="text-sm font-semibold text-slate-900 dark:text-white">
                                     Goal impact (KPIs & Benchmarks)
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() =>
-                                        setLocation(
-                                          `/campaigns/${encodeURIComponent(String(campaignId || ""))}/linkedin-analytics?tab=${encodeURIComponent(
-                                            "kpis"
-                                          )}${sessionId ? `&session=${encodeURIComponent(String(sessionId))}` : ""}`
-                                        )
-                                      }
-                                    >
-                                      Open KPIs
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() =>
-                                        setLocation(
-                                          `/campaigns/${encodeURIComponent(String(campaignId || ""))}/linkedin-analytics?tab=${encodeURIComponent(
-                                            "benchmarks"
-                                          )}${sessionId ? `&session=${encodeURIComponent(String(sessionId))}` : ""}`
-                                        )
-                                      }
-                                    >
-                                      Open Benchmarks
-                                    </Button>
-                                  </div>
                                 </div>
 
                                 <div className="grid gap-3 md:grid-cols-2 mt-3">
@@ -6472,11 +6428,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                       <Badge variant="outline" className="text-xs">
                                         {Number((goalHealth as any)?.kpis?.total || 0)}
                                       </Badge>
-                                    </div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                                      <div><span className="font-medium text-slate-700 dark:text-slate-300">Behind:</span> {Number((goalHealth as any)?.kpis?.behind || 0)}</div>
-                                      <div><span className="font-medium text-slate-700 dark:text-slate-300">Blocked:</span> {Number((goalHealth as any)?.kpis?.blocked || 0)}</div>
-                                      <div><span className="font-medium text-slate-700 dark:text-slate-300">No target:</span> {Number((goalHealth as any)?.kpis?.noTarget || 0)}</div>
                                     </div>
 
                                     {Array.isArray((goalHealth as any)?.kpis?.sample) && (goalHealth as any).kpis.sample.length > 0 ? (
@@ -6513,11 +6464,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                       <Badge variant="outline" className="text-xs">
                                         {Number((goalHealth as any)?.benchmarks?.total || 0)}
                                       </Badge>
-                                    </div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                                      <div><span className="font-medium text-slate-700 dark:text-slate-300">Behind:</span> {Number((goalHealth as any)?.benchmarks?.behind || 0)}</div>
-                                      <div><span className="font-medium text-slate-700 dark:text-slate-300">Blocked:</span> {Number((goalHealth as any)?.benchmarks?.blocked || 0)}</div>
-                                      <div><span className="font-medium text-slate-700 dark:text-slate-300">No target:</span> {Number((goalHealth as any)?.benchmarks?.noTarget || 0)}</div>
                                     </div>
 
                                     {Array.isArray((goalHealth as any)?.benchmarks?.sample) && (goalHealth as any).benchmarks.sample.length > 0 ? (

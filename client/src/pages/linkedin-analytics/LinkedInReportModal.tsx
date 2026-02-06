@@ -1302,7 +1302,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Activity, BarChart3, Download, FileText, Settings, Target, Trophy } from "lucide-react";
 
-type Props = {
+type LegacyProps = {
   isReportModalOpen: boolean;
   setIsReportModalOpen: (open: boolean) => void;
   reportModalStep: "standard" | "custom" | "type" | "configuration";
@@ -1349,7 +1349,7 @@ const DERIVED_METRICS: Array<{ key: string; label: string }> = [
   { key: "roas", label: "ROAS" },
 ];
 
-export function LinkedInReportModal(props: Props) {
+function LegacyLinkedInReportModal(props: LegacyProps) {
   const {
     isReportModalOpen,
     setIsReportModalOpen,

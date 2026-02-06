@@ -386,7 +386,10 @@ export function LinkedInKpiModal(props: any) {
                   };
 
                   const result = getMetricValue(value);
-                  setKpiForm({ ...kpiForm, metric: value, currentValue: result.value, unit: result.unit });
+                  const formattedCurrentValue = result.value
+                    ? formatNumberAsYouType(String(result.value), { maxDecimals: getMaxDecimalsForMetric(value) })
+                    : "";
+                  setKpiForm({ ...kpiForm, metric: value, currentValue: formattedCurrentValue, unit: result.unit });
                 }}
               >
                 <SelectTrigger id="kpi-metric" data-testid="select-kpi-metric">
@@ -455,12 +458,11 @@ export function LinkedInKpiModal(props: any) {
                 id="kpi-current"
                 type="text"
                 placeholder="0"
-                value={kpiForm.currentValue ? parseFloat(kpiForm.currentValue).toLocaleString("en-US") : ""}
+                inputMode="decimal"
+                value={kpiForm.currentValue || ""}
                 onChange={(e) => {
-                  const value = e.target.value.replace(/,/g, "");
-                  if (value === "" || !isNaN(parseFloat(value))) {
-                    setKpiForm({ ...kpiForm, currentValue: value });
-                  }
+                  const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(kpiForm.metric) });
+                  setKpiForm({ ...kpiForm, currentValue: formatted });
                 }}
                 data-testid="input-kpi-current"
               />
@@ -605,7 +607,16 @@ export function LinkedInKpiModal(props: any) {
                         break;
                     }
 
-                    setKpiForm((prev: any) => ({ ...prev, applyTo: value, specificCampaignId: "", currentValue, unit }));
+                    const formattedCurrentValue = currentValue
+                      ? formatNumberAsYouType(String(currentValue), { maxDecimals: getMaxDecimalsForMetric(kpiForm.metric) })
+                      : "";
+                    setKpiForm((prev: any) => ({
+                      ...prev,
+                      applyTo: value,
+                      specificCampaignId: "",
+                      currentValue: formattedCurrentValue,
+                      unit,
+                    }));
                   }
                 }}
               >
@@ -776,7 +787,15 @@ export function LinkedInKpiModal(props: any) {
                             break;
                         }
 
-                        setKpiForm((prev: any) => ({ ...prev, specificCampaignId: value, currentValue, unit }));
+                        const formattedCurrentValue = currentValue
+                          ? formatNumberAsYouType(String(currentValue), { maxDecimals: getMaxDecimalsForMetric(kpiForm.metric) })
+                          : "";
+                        setKpiForm((prev: any) => ({
+                          ...prev,
+                          specificCampaignId: value,
+                          currentValue: formattedCurrentValue,
+                          unit,
+                        }));
                       }
                     }
                   }}

@@ -6869,12 +6869,15 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   onClick={() => {
                                     setEditingKPI(kpi);
                                     const liveForEdit = getLiveCurrentForKpi(kpi);
+                                    const metricKeyForEdit = String(kpi.metric || kpi.metricKey || '');
                                     setKpiForm({
                                       name: kpi.name,
                                       description: kpi.description || '',
-                                      metric: kpi.metric || '',
-                                      targetValue: kpi.targetValue || '',
-                                      currentValue: formatMetricValueForInput(kpi.metric || kpi.metricKey || '', String(liveForEdit)),
+                                      metric: metricKeyForEdit,
+                                      targetValue: kpi.targetValue
+                                        ? formatNumberAsYouType(String(kpi.targetValue), { maxDecimals: getMaxDecimalsForMetric(metricKeyForEdit) })
+                                        : '',
+                                      currentValue: formatMetricValueForInput(metricKeyForEdit, String(liveForEdit)),
                                       unit: kpi.unit || '',
                                       priority: kpi.priority || 'medium',
                                       status: kpi.status || 'active',

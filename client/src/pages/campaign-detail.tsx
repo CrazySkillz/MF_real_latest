@@ -3541,19 +3541,19 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     {benchmark.benchmarkType && <span>Type: {benchmark.benchmarkType}</span>}
                     {benchmark.industry && (
                       <>
-                        <span>â€¢</span>
+                        <span>•</span>
                         <span>{benchmark.industry}</span>
                       </>
                     )}
-                    {benchmark.period && String(benchmark.period || '').toLowerCase() !== 'monthly' && (
+                    {benchmark.period && String(benchmark.period || "").toLowerCase() !== "monthly" && (
                       <>
-                        <span>â€¢</span>
+                        <span>•</span>
                         <span>{benchmark.period}</span>
                       </>
                     )}
                     {benchmark.category && (
                       <>
-                        <span>â€¢</span>
+                        <span>•</span>
                         <span>{benchmark.category}</span>
                       </>
                     )}
@@ -5022,7 +5022,7 @@ export default function CampaignDetail() {
           : (platformStatusMap.get("linkedin")?.analyticsPath ||
             (linkedInSession?.id
               ? `/campaigns/${campaign?.id}/linkedin-analytics?session=${encodeURIComponent(linkedInSession.id)}`
-              : null)))
+              : `/campaigns/${campaign?.id}/linkedin-analytics`)))
     },
     {
       platform: "Shopify",

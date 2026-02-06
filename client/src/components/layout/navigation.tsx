@@ -1,4 +1,4 @@
-import { Bell, X, AlertCircle, CheckCircle, Info, TrendingUp } from "lucide-react";
+import { Bell, X, AlertCircle, CheckCircle, Info, TrendingUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -30,11 +30,7 @@ export default function Navigation() {
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  // Filter to only show performance alerts (Option C: Hybrid)
-  // Hide old notification types: reminder, period-complete, trend-alert
-  const notifications = allNotifications.filter(n => 
-    n.type === 'alert' || n.type === 'performance-alert'
-  );
+  const notifications = allNotifications;
 
   const unreadCount = notifications.filter(n => !n.read).length;
   
@@ -84,6 +80,19 @@ export default function Navigation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    },
+  });
+
+  const deleteNotificationMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      const res = await fetch(`/api/notifications/${encodeURIComponent(notificationId)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete notification");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     },
   });
   
@@ -192,12 +201,20 @@ export default function Navigation() {
                 ) : (
                   <div className="divide-y">
                     {notifications.map((notification) => (
-                      <button
+                      <div
                         key={notification.id}
-                        className={`w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${
+                        role="button"
+                        tabIndex={0}
+                        className={`w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${
                           !notification.read ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''
                         }`}
                         onClick={() => handleNotificationClick(notification)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleNotificationClick(notification);
+                          }
+                        }}
                       >
                         <div className="flex items-start gap-3">
                           <div className="mt-0.5">
@@ -221,11 +238,28 @@ export default function Navigation() {
                               </span>
                             </div>
                           </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteNotificationMutation.mutate(notification.id);
+                              }}
+                              aria-label="Delete notification"
+                              data-testid={`button-delete-notification-popover-${notification.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                           {!notification.read && (
                             <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                           )}
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}

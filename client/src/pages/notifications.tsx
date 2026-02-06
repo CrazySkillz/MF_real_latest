@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, MoreHorizontal } from "lucide-react";
+import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, Trash2 } from "lucide-react";
 import { Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +18,6 @@ import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
 
 export default function Notifications() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [readFilter, setReadFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
@@ -85,7 +84,6 @@ export default function Notifications() {
                          notification.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (notification.campaignName && notification.campaignName.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesType = typeFilter === "all" || notification.type === typeFilter;
     const matchesPriority = priorityFilter === "all" || notification.priority === priorityFilter;
     const matchesRead = readFilter === "all" || 
                        (readFilter === "unread" && !notification.read) || 
@@ -115,7 +113,7 @@ export default function Notifications() {
       }
     }
 
-    return matchesSearch && matchesType && matchesPriority && matchesRead && matchesCampaign && matchesDate;
+    return matchesSearch && matchesPriority && matchesRead && matchesCampaign && matchesDate;
   });
 
   // Get unique campaign names for filter dropdown
@@ -130,7 +128,7 @@ export default function Notifications() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, typeFilter, priorityFilter, readFilter, campaignFilter, dateFilter]);
+  }, [searchTerm, priorityFilter, readFilter, campaignFilter, dateFilter]);
 
   // Adjust current page if it's now out of bounds (after deletion)
   useEffect(() => {
@@ -231,24 +229,7 @@ export default function Notifications() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="type-filter">Type</Label>
-                    <Select value={typeFilter} onValueChange={setTypeFilter}>
-                      <SelectTrigger data-testid="select-type-filter">
-                        <SelectValue placeholder="All types" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="performance-alert">KPI Alerts</SelectItem>
-                        <SelectItem value="info">Info</SelectItem>
-                        <SelectItem value="success">Success</SelectItem>
-                        <SelectItem value="warning">Warning</SelectItem>
-                        <SelectItem value="error">Error</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="priority-filter">Priority</Label>
                     <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -463,7 +444,7 @@ export default function Notifications() {
                             disabled={deleteNotificationMutation.isPending}
                             data-testid={`button-delete-${notification.id}`}
                           >
-                            <XCircle className="w-4 h-4 text-red-500" />
+                            <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
                         </div>
                       </div>

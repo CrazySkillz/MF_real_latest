@@ -2445,6 +2445,7 @@ export class MemStorage implements IStorage {
       campaignName: notificationData.campaignName || null,
       read: notificationData.read || false,
       priority: notificationData.priority || "normal",
+      metadata: (notificationData as any).metadata || null,
       createdAt: new Date(),
     };
 

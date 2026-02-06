@@ -1562,6 +1562,14 @@ export default function LinkedInAnalytics() {
         description: "LinkedIn metrics have been updated.",
       });
 
+      // Refresh may create new notifications (test-mode) and/or KPI alerts. Ensure the bell updates immediately.
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
+      } catch {
+        // ignore
+      }
+
       // Ensure UI refetches freshness + to-date totals immediately (covers Overview + Ad Comparison).
       try {
         await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-coverage", LINKEDIN_DAILY_LOOKBACK_DAYS] });

@@ -3021,6 +3021,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       const { refreshLinkedInDataForCampaign } = await import("./linkedin-scheduler.js");
       await refreshLinkedInDataForCampaign(campaignId);
+
+      // In test/dev flows, create an in-app notification so the UI bell reflects "a new day was simulated".
+      // This is intentionally lightweight: KPI alerts may or may not exist for the campaign yet.
+      try {
+        if (String(process.env.NODE_ENV || "").toLowerCase() !== "production") {
+          const campaign = await storage.getCampaign(campaignId).catch(() => undefined as any);
+          const connection = await storage.getLinkedInConnection(campaignId).catch(() => undefined as any);
+          const method = String((connection as any)?.method || "").toLowerCase();
+          const token = String((connection as any)?.accessToken || "");
+          const isTestMode =
+            method.includes("test") ||
+            process.env.LINKEDIN_TEST_MODE === "true" ||
+            token === "test-mode-token" ||
+            token.startsWith("test_") ||
+            token.startsWith("test-");
+
+          if (isTestMode) {
+            await storage.createNotification({
+              title: "LinkedIn test refresh completed",
+              message: "A new day of LinkedIn test metrics was simulated. Open LinkedIn analytics to review updated coverage and trends.",
+              type: "info",
+              campaignId,
+              campaignName: String((campaign as any)?.name || "").trim() || null,
+              read: false,
+              priority: "normal",
+              metadata: JSON.stringify({
+                actionUrl: `/campaigns/${encodeURIComponent(String(campaignId))}/linkedin-analytics?tab=overview`,
+              }),
+            } as any);
+          }
+        }
+      } catch {
+        // non-blocking
+      }
+
       res.json({ success: true, message: "LinkedIn refresh completed" });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to refresh LinkedIn data" });

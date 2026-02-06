@@ -121,6 +121,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     "spend" | "conversions" | "ctr" | "cvr" | "impressions" | "clicks" | "revenue" | "roas"
   >("spend");
   const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
+  const [insightsDailyChartDays, setInsightsDailyChartDays] = useState<30 | 60>(30);
   const [insightsExpanded, setInsightsExpanded] = useState<Record<string, boolean>>({});
   const [linkedInDailyRefreshedAt, setLinkedInDailyRefreshedAt] = useState<number | null>(null);
   const [linkedInSignalsRefreshedAt, setLinkedInSignalsRefreshedAt] = useState<number | null>(null);
@@ -4522,6 +4523,14 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     };
   }, [aggregated, linkedInDailyResp]);
 
+  const formatShortUtcDate = (yyyyMmDd: string) => {
+    const s = String(yyyyMmDd || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const d = new Date(`${s}T00:00:00Z`);
+    if (!Number.isFinite(d.getTime())) return s;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
   const getTrendIcon = (direction: 'up' | 'down' | 'neutral') => {
     if (direction === 'up') return <TrendingUp className="w-4 h-4 text-green-500" />;
     if (direction === 'down') return <TrendingDown className="w-4 h-4 text-red-500" />;
@@ -5900,6 +5909,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               size="sm"
                               onClick={() => {
                                 setInsightsDailyShowMore(false);
+                                setInsightsDailyChartDays(30);
                                 setInsightsTrendMode("daily");
                               }}
                             >
@@ -5922,6 +5932,28 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               30d
                             </Button>
                           </div>
+                          {insightsTrendMode === "daily" ? (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant={insightsDailyChartDays === 30 ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setInsightsDailyChartDays(30)}
+                                className="h-9"
+                              >
+                                30d
+                              </Button>
+                              <Button
+                                type="button"
+                                variant={insightsDailyChartDays === 60 ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setInsightsDailyChartDays(60)}
+                                className="h-9"
+                              >
+                                60d
+                              </Button>
+                            </div>
+                          ) : null}
                           {/* Daily mode always shows day-over-day deltas in the table */}
                           <div className="min-w-[220px]">
                             <Select value={insightsTrendMetric} onValueChange={(v: any) => setInsightsTrendMetric(v)}>
@@ -5949,12 +5981,16 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                       ) : (
                         <>
                           {(() => {
-                            const series =
+                            const rawSeries =
                               insightsTrendMode === "daily"
                                 ? linkedInDailySeries.daily
                                 : insightsTrendMode === "7d"
                                   ? linkedInDailySeries.rolling7
                                   : linkedInDailySeries.rolling30;
+                            const series =
+                              insightsTrendMode === "daily"
+                                ? (Array.isArray(rawSeries) ? (rawSeries as any[]).slice(-insightsDailyChartDays) : rawSeries)
+                                : rawSeries;
 
                             const minRequired = insightsTrendMode === "daily" ? 2 : insightsTrendMode === "7d" ? 14 : 60;
                             const available = Number(linkedInInsightsRollups?.availableDays || 0);
@@ -5986,7 +6022,13 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 <ResponsiveContainer width="100%" height="100%">
                                   <LineChart data={series}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                                    <XAxis
+                                      dataKey="date"
+                                      tick={{ fontSize: 12 }}
+                                      tickFormatter={(v: any) => formatShortUtcDate(String(v || ""))}
+                                      interval="preserveStartEnd"
+                                      minTickGap={32}
+                                    />
                                     <YAxis tick={{ fontSize: 12 }} />
                                     <Tooltip formatter={(value: any) => formatChartValue(value)} />
                                     <Legend />

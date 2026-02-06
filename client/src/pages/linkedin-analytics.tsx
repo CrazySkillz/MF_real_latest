@@ -6424,74 +6424,114 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 <div className="grid gap-3 md:grid-cols-2 mt-3">
                                   <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3">
                                     <div className="flex items-center justify-between">
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">KPIs</div>
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">Top KPI gaps</div>
                                       <Badge variant="outline" className="text-xs">
-                                        {Number((goalHealth as any)?.kpis?.total || 0)}
+                                        {Number((goalHealth as any)?.kpis?.behind || 0)}
                                       </Badge>
                                     </div>
 
-                                    {Array.isArray((goalHealth as any)?.kpis?.sample) && (goalHealth as any).kpis.sample.length > 0 ? (
-                                      <div className="mt-3 space-y-2">
-                                        {(goalHealth as any).kpis.sample.slice(0, 5).map((k: any) => {
-                                          const status = String(k?.status || "");
-                                          const badgeClass =
-                                            status === "behind"
-                                              ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
-                                              : status === "blocked"
-                                                ? "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
-                                                : "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900";
-                                          const badgeText =
-                                            status === "behind" ? "Behind" : status === "blocked" ? "Blocked" : status === "on_track" ? "On track" : "—";
-                                          return (
-                                            <div key={String(k?.id || k?.name || Math.random())} className="flex items-center justify-between gap-2">
-                                              <div className="min-w-0">
-                                                <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{String(k?.name || "KPI")}</div>
-                                                <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                                                  Metric: {String(k?.metric || "—")}
+                                    {(() => {
+                                      const raw = (goalHealth as any)?.kpis?.sample;
+                                      const list = Array.isArray(raw) ? raw : [];
+                                      const behind = list.filter((x: any) => String(x?.status || "") === "behind");
+
+                                      const gapPct = (x: any) => {
+                                        const current = Number(x?.currentValue ?? 0) || 0;
+                                        const target = Number(x?.targetValue ?? 0) || 0;
+                                        if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) return null;
+                                        const lower = !!x?.lowerIsBetter;
+                                        const ratio = lower ? (current > 0 ? target / current : 0) : current / target;
+                                        const deltaPct = (ratio - 1) * 100;
+                                        return deltaPct;
+                                      };
+
+                                      const rows = behind
+                                        .map((x: any) => ({ x, d: gapPct(x) }))
+                                        .filter((o: any) => o.d !== null && Number.isFinite(o.d))
+                                        .sort((a: any, b: any) => Math.abs(Number(b.d)) - Math.abs(Number(a.d)))
+                                        .slice(0, 3);
+
+                                      if (rows.length === 0) return null;
+
+                                      return (
+                                        <div className="mt-3 space-y-2">
+                                          {rows.map((o: any) => {
+                                            const k = o.x;
+                                            const d = Number(o.d || 0);
+                                            const gapText = `${d >= 0 ? "+" : ""}${d.toFixed(1)}%`;
+                                            return (
+                                              <div key={String(k?.id || k?.name || Math.random())} className="flex items-center justify-between gap-2">
+                                                <div className="min-w-0">
+                                                  <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{String(k?.name || "KPI")}</div>
+                                                  <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                                    Metric: {String(k?.metric || "—")} • Gap: {gapText}
+                                                  </div>
                                                 </div>
+                                                <Badge className="text-xs border bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900">
+                                                  Behind
+                                                </Badge>
                                               </div>
-                                              <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    ) : null}
+                                            );
+                                          })}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
 
                                   <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3">
                                     <div className="flex items-center justify-between">
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">Benchmarks</div>
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">Top Benchmark gaps</div>
                                       <Badge variant="outline" className="text-xs">
-                                        {Number((goalHealth as any)?.benchmarks?.total || 0)}
+                                        {Number((goalHealth as any)?.benchmarks?.behind || 0)}
                                       </Badge>
                                     </div>
 
-                                    {Array.isArray((goalHealth as any)?.benchmarks?.sample) && (goalHealth as any).benchmarks.sample.length > 0 ? (
-                                      <div className="mt-3 space-y-2">
-                                        {(goalHealth as any).benchmarks.sample.slice(0, 5).map((b: any) => {
-                                          const status = String(b?.status || "");
-                                          const badgeClass =
-                                            status === "behind"
-                                              ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
-                                              : status === "blocked"
-                                                ? "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
-                                                : "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900";
-                                          const badgeText =
-                                            status === "behind" ? "Behind" : status === "blocked" ? "Blocked" : status === "on_track" ? "On track" : "—";
-                                          return (
-                                            <div key={String(b?.id || b?.name || Math.random())} className="flex items-center justify-between gap-2">
-                                              <div className="min-w-0">
-                                                <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{String(b?.name || "Benchmark")}</div>
-                                                <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                                                  Metric: {String(b?.metric || "—")}
+                                    {(() => {
+                                      const raw = (goalHealth as any)?.benchmarks?.sample;
+                                      const list = Array.isArray(raw) ? raw : [];
+                                      const behind = list.filter((x: any) => String(x?.status || "") === "behind");
+
+                                      const gapPct = (x: any) => {
+                                        const current = Number(x?.currentValue ?? 0) || 0;
+                                        const bench = Number(x?.benchmarkValue ?? 0) || 0;
+                                        if (!Number.isFinite(current) || !Number.isFinite(bench) || bench <= 0) return null;
+                                        const lower = !!x?.lowerIsBetter;
+                                        const ratio = lower ? (current > 0 ? bench / current : 0) : current / bench;
+                                        const deltaPct = (ratio - 1) * 100;
+                                        return deltaPct;
+                                      };
+
+                                      const rows = behind
+                                        .map((x: any) => ({ x, d: gapPct(x) }))
+                                        .filter((o: any) => o.d !== null && Number.isFinite(o.d))
+                                        .sort((a: any, b: any) => Math.abs(Number(b.d)) - Math.abs(Number(a.d)))
+                                        .slice(0, 3);
+
+                                      if (rows.length === 0) return null;
+
+                                      return (
+                                        <div className="mt-3 space-y-2">
+                                          {rows.map((o: any) => {
+                                            const b = o.x;
+                                            const d = Number(o.d || 0);
+                                            const gapText = `${d >= 0 ? "+" : ""}${d.toFixed(1)}%`;
+                                            return (
+                                              <div key={String(b?.id || b?.name || Math.random())} className="flex items-center justify-between gap-2">
+                                                <div className="min-w-0">
+                                                  <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{String(b?.name || "Benchmark")}</div>
+                                                  <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                                    Metric: {String(b?.metric || "—")} • Gap: {gapText}
+                                                  </div>
                                                 </div>
+                                                <Badge className="text-xs border bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900">
+                                                  Behind
+                                                </Badge>
                                               </div>
-                                              <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    ) : null}
+                                            );
+                                          })}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
 

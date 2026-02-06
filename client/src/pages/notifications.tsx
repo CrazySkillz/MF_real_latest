@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, Trash2 } from "lucide-react";
+import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, Trash2, MailOpen } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -343,9 +344,7 @@ export default function Notifications() {
                               <h3 className={`font-semibold ${!notification.read ? "text-slate-900" : "text-slate-700"}`}>
                                 {notification.title}
                               </h3>
-                              {!notification.read && (
-                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              )}
+                              {/* Unread state is shown via left blue border + subtle background */}
                             </div>
                             
                             <p className="text-slate-600 text-sm mb-2">
@@ -426,15 +425,21 @@ export default function Notifications() {
                           })()}
                           
                           {!notification.read && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => markAsReadMutation.mutate(notification.id)}
-                              disabled={markAsReadMutation.isPending}
-                              data-testid={`button-mark-read-${notification.id}`}
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => markAsReadMutation.mutate(notification.id)}
+                                  disabled={markAsReadMutation.isPending}
+                                  aria-label="Mark as read"
+                                  data-testid={`button-mark-read-${notification.id}`}
+                                >
+                                  <MailOpen className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Mark as read</TooltipContent>
+                            </Tooltip>
                           )}
                           
                           <Button

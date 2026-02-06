@@ -305,6 +305,30 @@ export function LinkedInReportModal(props: Props) {
 
                     {reportForm.scheduleEnabled && (
                       <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 space-y-4">
+                        {/* Report Name + Description (shown when scheduling is enabled) */}
+                        <div className="space-y-2">
+                          <Label htmlFor="report-name">Report Name</Label>
+                          <Input
+                            id="report-name"
+                            value={reportForm.name}
+                            onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
+                            placeholder="Enter report name"
+                            data-testid="input-report-name"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="report-description">Description (Optional)</Label>
+                          <Textarea
+                            id="report-description"
+                            value={reportForm.description}
+                            onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                            placeholder="Add a description for this report"
+                            rows={3}
+                            data-testid="input-report-description"
+                          />
+                        </div>
+
                         {/* Frequency */}
                         <div className="space-y-2">
                           <Label htmlFor="schedule-frequency">Frequency</Label>
@@ -493,33 +517,7 @@ export function LinkedInReportModal(props: Props) {
                   </div>
                 </div>
 
-                {/* Report Configuration */}
-                {reportForm.reportType && reportForm.reportType !== "custom" && (
-                  <div className="space-y-4 pt-4 border-t">
-                    <div className="space-y-2">
-                      <Label htmlFor="report-name">Report Name</Label>
-                      <Input
-                        id="report-name"
-                        value={reportForm.name}
-                        onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
-                        placeholder="Enter report name"
-                        data-testid="input-report-name"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="report-description">Description (Optional)</Label>
-                      <Textarea
-                        id="report-description"
-                        value={reportForm.description}
-                        onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
-                        placeholder="Add a description for this report"
-                        rows={3}
-                        data-testid="input-report-description"
-                      />
-                    </div>
-                  </div>
-                )}
+                {/* Report Name/Description is shown inside the scheduling block above */}
               </div>
             </div>
           )}
@@ -527,32 +525,6 @@ export function LinkedInReportModal(props: Props) {
           {/* Custom Report Content */}
           {reportModalStep === "custom" && (
             <div className="space-y-6">
-              {/* Report Name and Description */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="custom-report-name">Report Name</Label>
-                  <Input
-                    id="custom-report-name"
-                    value={reportForm.name}
-                    onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
-                    placeholder="Enter report name"
-                    data-testid="input-custom-report-name"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="custom-report-description">Description (Optional)</Label>
-                  <Textarea
-                    id="custom-report-description"
-                    value={reportForm.description}
-                    onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
-                    placeholder="Add a description for this report"
-                    rows={2}
-                    data-testid="input-custom-report-description"
-                  />
-                </div>
-              </div>
-
               {/* Metrics Selection */}
               <div className="space-y-4 pt-4 border-t">
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Select Metrics</h3>
@@ -1015,6 +987,30 @@ export function LinkedInReportModal(props: Props) {
 
                 {reportForm.scheduleEnabled && (
                   <div className="space-y-4 pl-6">
+                    {/* Report Name + Description (shown when scheduling is enabled) */}
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-report-name">Report Name</Label>
+                      <Input
+                        id="custom-report-name"
+                        value={reportForm.name}
+                        onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
+                        placeholder="Enter report name"
+                        data-testid="input-custom-report-name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-report-description">Description (Optional)</Label>
+                      <Textarea
+                        id="custom-report-description"
+                        value={reportForm.description}
+                        onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                        placeholder="Add a description for this report"
+                        rows={2}
+                        data-testid="input-custom-report-description"
+                      />
+                    </div>
+
                     {/* Frequency */}
                     <div className="space-y-2">
                       <Label htmlFor="schedule-frequency">Frequency</Label>

@@ -6633,118 +6633,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                       );
                     })()}
 
-                    {/* KPI Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                      {(() => {
-                        const NEAR_TARGET_BAND_PCT = 5; // Within ±5% of target is considered "on track"
-                        let aboveTarget = 0;
-                        let nearTarget = 0;
-                        let belowTarget = 0;
-                        const ratios: number[] = [];
-
-                        for (const k of (kpisData as any[]) || []) {
-                          const isRevenueBlocked =
-                            isRevenueDependentBenchmarkMetric(String(k.metric || k.metricKey || '')) &&
-                            aggregated?.hasRevenueTracking !== 1;
-                          if (isRevenueBlocked) continue;
-
-                          const current = getLiveCurrentForKpi(k);
-                          const target = parseFloat(k.targetValue || '0');
-                          const lowerIsBetter = isLowerIsBetterKpi({ metric: k.metric || k.metricKey, name: k.name });
-                          const effectiveDeltaPct = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
-                          if (effectiveDeltaPct === null) continue;
-
-                          const band = classifyKpiBand({ effectiveDeltaPct, nearTargetBandPct: NEAR_TARGET_BAND_PCT });
-                          if (band === "above") aboveTarget += 1;
-                          else if (band === "below") belowTarget += 1;
-                          else nearTarget += 1;
-
-                          // Avg progress (0..100). Lower-is-better flips the ratio.
-                          if (Number.isFinite(current) && Number.isFinite(target) && target > 0) {
-                            const ratioRaw = lowerIsBetter ? (current > 0 ? target / current : 0) : current / target;
-                            const ratio = Math.max(0, Math.min(ratioRaw, 1));
-                            if (Number.isFinite(ratio)) ratios.push(ratio);
-                          }
-                        }
-                        const avgPct = ratios.length > 0 ? (ratios.reduce((a, b) => a + b, 0) / ratios.length) * 100 : 0;
-
-                        return (
-                          <>
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {(kpisData as any[]).length}
-                              </p>
-                            </div>
-                            <Target className="w-8 h-8 text-purple-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-500">more than +5% above target</p>
-                              <p className="text-2xl font-bold text-green-600">
-                                {aboveTarget}
-                              </p>
-                            </div>
-                            <TrendingUp className="w-8 h-8 text-green-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-500">within ±5% of target</p>
-                              <p className="text-2xl font-bold text-blue-600">
-                                {nearTarget}
-                              </p>
-                            </div>
-                            <CheckCircle2 className="w-8 h-8 text-blue-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Below Track</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-500">more than −5% below target</p>
-                              <p className="text-2xl font-bold text-amber-600">
-                                {belowTarget}
-                              </p>
-                            </div>
-                            <AlertCircle className="w-8 h-8 text-amber-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">{avgPct.toFixed(1)}%</p>
-                            </div>
-                            <TrendingUp className="w-8 h-8 text-violet-600" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                          </>
-                        );
-                      })()}
-                    </div>
-
                     {/* KPI Cards */}
                     <div className="grid gap-6 lg:grid-cols-2">
                       {(kpisData as any[]).map((kpi: any) => {
@@ -6755,10 +6643,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                         const targetVal = parseFloat(kpi.targetValue || '0');
                         const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi.metric || kpi.metricKey, name: kpi.name });
                         const effectiveDeltaPct = computeEffectiveDeltaPct({ current: currentVal, target: targetVal, lowerIsBetter });
-                        const performanceBand =
-                          !isRevenueBlocked && effectiveDeltaPct !== null
-                            ? classifyKpiBand({ effectiveDeltaPct, nearTargetBandPct: 5 })
-                            : null;
                         return (
                         <Card key={kpi.id} data-testid={`kpi-card-${kpi.id}`}>
                           <CardHeader className="pb-3">
@@ -6828,21 +6712,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   {kpi.metric && (
                                     <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">
                                       {kpi.metric.toUpperCase()}
-                                    </Badge>
-                                  )}
-                                  {/* KPI performance band badge */}
-                                  {performanceBand && (
-                                    <Badge
-                                      variant="outline"
-                                      className={
-                                        performanceBand === 'above'
-                                          ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
-                                          : performanceBand === 'near'
-                                            ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
-                                            : 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:border-amber-800'
-                                      }
-                                    >
-                                      {performanceBand === 'above' ? 'Above Target' : performanceBand === 'near' ? 'On Track' : 'Below Track'}
                                     </Badge>
                                   )}
                                 </div>
@@ -7206,85 +7075,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                   );
                 })()}
 
-                {/* Benchmarks performance tracker (exec snapshot) - show even when there are 0 benchmarks */}
-                {!benchmarksLoading ? (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                    <Card>
-                      <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Benchmarks</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.total}</p>
-                          </div>
-                          <Target className="w-7 h-7 text-slate-500" />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">On Track</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-500">≥ 90% of benchmark value</p>
-                            <p className="text-2xl font-bold text-emerald-600">{benchmarkTracker.onTrack}</p>
-                          </div>
-                          <CheckCircle2 className="w-7 h-7 text-emerald-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs Attention</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-500">70–89% of benchmark value</p>
-                            <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
-                          </div>
-                          <AlertTriangle className="w-7 h-7 text-amber-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Behind</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-500">&lt; 70% of benchmark value</p>
-                            <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
-                          </div>
-                          <TrendingDown className="w-7 h-7 text-red-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Progress</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.avgPct.toFixed(1)}%</p>
-                          </div>
-                          <TrendingUp className="w-7 h-7 text-violet-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                ) : (
-                  <div className="animate-pulse grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Card key={i}>
-                        <CardContent className="p-5">
-                          <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-2/3 mb-2"></div>
-                          <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded w-1/2"></div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-
                 {benchmarksLoading ? (
                   <div className="animate-pulse space-y-4">
                     <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
@@ -7474,54 +7264,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               );
                             })()}
                             
-                            {/* Performance vs Benchmark (parity logic + thresholds) */}
-                            {(() => {
-                              const benchVal = parseFloat(stripNumeric(String(benchmark.benchmarkValue || benchmark.targetValue || '0'))) || 0;
-                              if (!Number.isFinite(benchVal) || benchVal <= 0) return null;
-                              if (p.status === 'blocked') {
-                                return (
-                                  <div className="mt-4 flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                        Performance vs Benchmark:
-                                      </span>
-                                      <Badge variant="outline" className="border-amber-300 text-amber-800 dark:border-amber-700 dark:text-amber-300">
-                                        Blocked
-                                      </Badge>
-                                      <span className="text-xs text-slate-600 dark:text-slate-400">
-                                        Requires revenue tracking (conversion value / revenue source)
-                                      </span>
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              const statusLabel = p.status === 'on_track' ? 'On Track' : p.status === 'needs_attention' ? 'Needs Attention' : 'Behind';
-                              const badgeClass =
-                                p.status === 'on_track'
-                                  ? 'bg-emerald-600'
-                                  : p.status === 'needs_attention'
-                                    ? 'bg-amber-600'
-                                    : 'bg-red-600';
-                              return (
-                                <div className="mt-4 flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                      Performance vs Benchmark:
-                                    </span>
-                                    <Badge className={badgeClass}>
-                                      {statusLabel}
-                                    </Badge>
-                                    <span className="text-xs text-slate-500">
-                                      {p.pct.toFixed(1)}% progress
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-slate-500">
-                                    {p.deltaPct >= 0 ? '+' : ''}
-                                    {p.deltaPct.toFixed(1)}%
-                                  </div>
-                                </div>
-                              );
-                            })()}
                           </CardContent>
                         </Card>
                         );

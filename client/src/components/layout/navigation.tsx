@@ -128,13 +128,25 @@ export default function Navigation() {
       }
     }
     
-    // Navigate to KPI if metadata has actionUrl
+    // Navigate (prefer actionUrl, but avoid the legacy non-campaign /linkedin-analytics route when possible)
     if (metadata && typeof metadata === 'object' && 'actionUrl' in metadata) {
-      const actionUrl = metadata.actionUrl as string;
+      const actionUrl = String((metadata as any).actionUrl || '');
+      if (actionUrl.startsWith('/linkedin-analytics') && notification.campaignId) {
+        // Rewrite legacy actionUrl -> campaign-scoped route
+        const suffix = actionUrl.replace(/^\/linkedin-analytics/, '');
+        setLocation(`/campaigns/${encodeURIComponent(String(notification.campaignId))}/linkedin-analytics${suffix}`);
+        return;
+      }
       setLocation(actionUrl);
-    } else {
-      setLocation('/linkedin-analytics?tab=kpis');
+      return;
     }
+
+    // Fallback: campaign-scoped KPI tab when possible; otherwise send to Notifications center.
+    if (notification.campaignId) {
+      setLocation(`/campaigns/${encodeURIComponent(String(notification.campaignId))}/linkedin-analytics?tab=kpis`);
+      return;
+    }
+    setLocation('/notifications');
   };
 
   return (

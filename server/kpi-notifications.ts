@@ -41,10 +41,13 @@ async function getLinkedInWindowKey(campaignId: string): Promise<string | null> 
  * Triggered on 1st of month for monthly KPIs
  */
 export async function createKPIReminder(kpi: KPI): Promise<void> {
+  const actionUrl = kpi.campaignId
+    ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
+    : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'reminder',
-    actionUrl: `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
+    actionUrl
   });
 
   const notification: InsertNotification = {
@@ -184,10 +187,13 @@ export async function createPeriodComplete(
     ? ` (${trendDirection === 'up' ? '↑' : trendDirection === 'down' ? '↓' : '→'} ${Math.abs(changePercentage).toFixed(1)}% from previous period)`
     : '';
 
+  const actionUrl = kpi.campaignId
+    ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
+    : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'period-complete',
-    actionUrl: `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
+    actionUrl
   });
 
   const notification: InsertNotification = {
@@ -210,10 +216,13 @@ export async function createPeriodComplete(
  * Triggered when KPI shows consistent decline
  */
 export async function createTrendAlert(kpi: KPI, consecutivePeriods: number): Promise<void> {
+  const actionUrl = kpi.campaignId
+    ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
+    : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'trend-alert',
-    actionUrl: `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
+    actionUrl
   });
 
   const notification: InsertNotification = {

@@ -98,7 +98,7 @@ const LINKEDIN_KPI_TEMPLATES = [
   }
 ];
 
-export default function LinkedInAnalytics() {
+function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   const devLog = (...args: any[]) => {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
@@ -106,7 +106,6 @@ export default function LinkedInAnalytics() {
     }
   };
 
-  const [, params] = useRoute("/campaigns/:id/linkedin-analytics");
   const [location, setLocation] = useLocation();
   const sessionId = new URLSearchParams(window.location.search).get('session');
   const urlParams = new URLSearchParams(window.location.search);
@@ -190,7 +189,6 @@ export default function LinkedInAnalytics() {
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
   const [editingKPI, setEditingKPI] = useState<any>(null);
   const { toast } = useToast();
-  const campaignId = params?.id;
 
   const KPI_DESC_MAX = 200;
   const BENCHMARK_DESC_MAX = 200;
@@ -4523,7 +4521,7 @@ export default function LinkedInAnalytics() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  onClick={() => setLocation(`/campaigns/${params?.id}`)}
+                  onClick={() => setLocation(`/campaigns/${encodeURIComponent(String(campaignId || ""))}`)}
                   data-testid="button-back"
                 >
                   <ArrowLeft className="w-5 h-5" />
@@ -8352,4 +8350,35 @@ export default function LinkedInAnalytics() {
     </TooltipProvider>
     </LinkedInErrorBoundary>
   );
+}
+
+export default function LinkedInAnalytics() {
+  const [, params] = useRoute("/campaigns/:id/linkedin-analytics");
+  const [, setLocation] = useLocation();
+  const campaignId = String(params?.id || "").trim();
+
+  // The app historically had a global `/linkedin-analytics` route used as a fallback.
+  // LinkedIn analytics is campaign-scoped; without a campaignId we show a safe landing state.
+  if (!campaignId) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Navigation />
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1 p-6">
+            <div className="max-w-5xl mx-auto">
+              <LinkedInTabEmptyState
+                title="Select a campaign"
+                description="LinkedIn analytics is campaign-scoped."
+                message="Open LinkedIn analytics from a Campaign to see Overview metrics, KPIs, Benchmarks, and Ads."
+                primaryAction={{ label: "Go to Campaigns", onClick: () => setLocation("/campaigns") }}
+              />
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  return <LinkedInAnalyticsCampaign campaignId={campaignId} />;
 }

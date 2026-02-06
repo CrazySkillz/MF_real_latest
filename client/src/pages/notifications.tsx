@@ -393,9 +393,18 @@ export default function Notifications() {
                                       
                                       setReadStateMutation.mutate({ notificationId: notification.id, read: true });
                                       
-                                      // Use actionUrl from metadata if available, otherwise fallback
+                                      // Use actionUrl from metadata if available, otherwise fallback.
+                                      // Avoid legacy non-campaign /linkedin-analytics links when campaignId is known.
                                       if (metadata?.actionUrl) {
-                                        setLocation(metadata.actionUrl);
+                                        const actionUrl = String(metadata.actionUrl || '');
+                                        if (actionUrl.startsWith('/linkedin-analytics') && campaignId) {
+                                          const suffix = actionUrl.replace(/^\/linkedin-analytics/, '');
+                                          setLocation(
+                                            `/campaigns/${encodeURIComponent(String(campaignId))}/linkedin-analytics${suffix}`
+                                          );
+                                        } else {
+                                          setLocation(actionUrl);
+                                        }
                                       } else {
                                         // Fallback to campaign-based navigation
                                         const campaignId = notification.campaignId;

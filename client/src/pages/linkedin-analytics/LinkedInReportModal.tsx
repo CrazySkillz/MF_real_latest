@@ -303,32 +303,34 @@ export function LinkedInReportModal(props: Props) {
                       </Label>
                     </div>
 
+                    {/* Report Name + Description (always shown) */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="report-name">Report Name</Label>
+                        <Input
+                          id="report-name"
+                          value={reportForm.name}
+                          onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
+                          placeholder="Enter report name"
+                          data-testid="input-report-name"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="report-description">Description (Optional)</Label>
+                        <Textarea
+                          id="report-description"
+                          value={reportForm.description}
+                          onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                          placeholder="Add a description for this report"
+                          rows={3}
+                          data-testid="input-report-description"
+                        />
+                      </div>
+                    </div>
+
                     {reportForm.scheduleEnabled && (
-                      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 space-y-4">
-                        {/* Report Name + Description (shown when scheduling is enabled) */}
-                        <div className="space-y-2">
-                          <Label htmlFor="report-name">Report Name</Label>
-                          <Input
-                            id="report-name"
-                            value={reportForm.name}
-                            onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
-                            placeholder="Enter report name"
-                            data-testid="input-report-name"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="report-description">Description (Optional)</Label>
-                          <Textarea
-                            id="report-description"
-                            value={reportForm.description}
-                            onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
-                            placeholder="Add a description for this report"
-                            rows={3}
-                            data-testid="input-report-description"
-                          />
-                        </div>
-
+                      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 space-y-4 mt-4">
                         {/* Frequency */}
                         <div className="space-y-2">
                           <Label htmlFor="schedule-frequency">Frequency</Label>
@@ -985,32 +987,32 @@ export function LinkedInReportModal(props: Props) {
                   </Label>
                 </div>
 
-                {reportForm.scheduleEnabled && (
-                  <div className="space-y-4 pl-6">
-                    {/* Report Name + Description (shown when scheduling is enabled) */}
-                    <div className="space-y-2">
-                      <Label htmlFor="custom-report-name">Report Name</Label>
-                      <Input
-                        id="custom-report-name"
-                        value={reportForm.name}
-                        onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
-                        placeholder="Enter report name"
-                        data-testid="input-custom-report-name"
-                      />
-                    </div>
+                <div className="space-y-4 pl-6">
+                  {/* Report Name + Description (always shown) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-report-name">Report Name</Label>
+                    <Input
+                      id="custom-report-name"
+                      value={reportForm.name}
+                      onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })}
+                      placeholder="Enter report name"
+                      data-testid="input-custom-report-name"
+                    />
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="custom-report-description">Description (Optional)</Label>
-                      <Textarea
-                        id="custom-report-description"
-                        value={reportForm.description}
-                        onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
-                        placeholder="Add a description for this report"
-                        rows={2}
-                        data-testid="input-custom-report-description"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-report-description">Description (Optional)</Label>
+                    <Textarea
+                      id="custom-report-description"
+                      value={reportForm.description}
+                      onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                      placeholder="Add a description for this report"
+                      rows={2}
+                      data-testid="input-custom-report-description"
+                    />
+                  </div>
 
+                  {reportForm.scheduleEnabled && (
                     {/* Frequency */}
                     <div className="space-y-2">
                       <Label htmlFor="schedule-frequency">Frequency</Label>
@@ -1194,8 +1196,8 @@ export function LinkedInReportModal(props: Props) {
                         </p>
                       )}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1567,6 +1569,22 @@ function LegacyLinkedInReportModal(props: LegacyProps) {
 
           {/* Shared fields */}
           <div className="space-y-4 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="schedule-enabled"
+                checked={!!reportForm?.scheduleEnabled}
+                onCheckedChange={(checked) => {
+                  const enabled = !!checked;
+                  setReportForm({ ...reportForm, scheduleEnabled: enabled });
+                  if (!enabled) setReportFormErrors({});
+                }}
+                data-testid="checkbox-schedule-enabled"
+              />
+              <Label htmlFor="schedule-enabled" className="cursor-pointer">
+                Enable schedule
+              </Label>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="report-name">Report Name</Label>
               <Input
@@ -1588,22 +1606,6 @@ function LegacyLinkedInReportModal(props: LegacyProps) {
                 rows={3}
                 data-testid="input-report-description"
               />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="schedule-enabled"
-                checked={!!reportForm?.scheduleEnabled}
-                onCheckedChange={(checked) => {
-                  const enabled = !!checked;
-                  setReportForm({ ...reportForm, scheduleEnabled: enabled });
-                  if (!enabled) setReportFormErrors({});
-                }}
-                data-testid="checkbox-schedule-enabled"
-              />
-              <Label htmlFor="schedule-enabled" className="cursor-pointer">
-                Enable schedule
-              </Label>
             </div>
 
             {reportForm?.scheduleEnabled && (

@@ -6517,18 +6517,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               <>
                                 <div className="space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Data integrity & setup</div>
-                                    <Badge variant="outline" className="text-xs">{integrity.length}</Badge>
-                                  </div>
-                                  {integrity.length === 0 ? (
-                                    <div className="text-sm text-slate-600 dark:text-slate-400">No integrity issues detected.</div>
-                                  ) : (
-                                    integrity.slice(0, 12).map(renderInsightCard)
-                                  )}
-                                </div>
-
-                                <div className="space-y-3 pt-2">
-                                  <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                       <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Performance & anomalies</div>
                                       {thresholdsPopover}

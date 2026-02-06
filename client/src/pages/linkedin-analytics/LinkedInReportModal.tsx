@@ -1013,8 +1013,9 @@ export function LinkedInReportModal(props: Props) {
                   </div>
 
                   {reportForm.scheduleEnabled && (
-                    {/* Frequency */}
-                    <div className="space-y-2">
+                    <div className="space-y-4">
+                      {/* Frequency */}
+                      <div className="space-y-2">
                       <Label htmlFor="schedule-frequency">Frequency</Label>
                       <Select
                         value={reportForm.scheduleFrequency}
@@ -1030,7 +1031,7 @@ export function LinkedInReportModal(props: Props) {
                           <SelectItem value="quarterly">Quarterly</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
+                      </div>
 
                     {/* Day of Week - Only for Weekly */}
                     {reportForm.scheduleFrequency === "weekly" && (
@@ -1195,6 +1196,7 @@ export function LinkedInReportModal(props: Props) {
                           Reports will be automatically generated and sent to these email addresses
                         </p>
                       )}
+                    </div>
                     </div>
                   )}
                 </div>

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, Trash2, MailOpen } from "lucide-react";
+import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, Trash2, Mail, MailOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -32,9 +32,9 @@ export default function Notifications() {
     queryKey: ["/api/notifications"],
   });
 
-  const markAsReadMutation = useMutation({
-    mutationFn: async (notificationId: string) => {
-      const response = await apiRequest("PATCH", `/api/notifications/${notificationId}`, { read: true });
+  const setReadStateMutation = useMutation({
+    mutationFn: async (vars: { notificationId: string; read: boolean }) => {
+      const response = await apiRequest("PATCH", `/api/notifications/${vars.notificationId}`, { read: vars.read });
       return response.json();
     },
     onSuccess: () => {
@@ -391,7 +391,7 @@ export default function Notifications() {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       
-                                      markAsReadMutation.mutate(notification.id);
+                                      setReadStateMutation.mutate({ notificationId: notification.id, read: true });
                                       
                                       // Use actionUrl from metadata if available, otherwise fallback
                                       if (metadata?.actionUrl) {
@@ -424,23 +424,30 @@ export default function Notifications() {
                             return null;
                           })()}
                           
-                          {!notification.read && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => markAsReadMutation.mutate(notification.id)}
-                                  disabled={markAsReadMutation.isPending}
-                                  aria-label="Mark as read"
-                                  data-testid={`button-mark-read-${notification.id}`}
-                                >
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setReadStateMutation.mutate({
+                                    notificationId: notification.id,
+                                    read: !notification.read,
+                                  })
+                                }
+                                disabled={setReadStateMutation.isPending}
+                                aria-label={notification.read ? "Mark as unread" : "Mark as read"}
+                                data-testid={`button-toggle-read-${notification.id}`}
+                              >
+                                {notification.read ? (
                                   <MailOpen className="w-4 h-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Mark as read</TooltipContent>
-                            </Tooltip>
-                          )}
+                                ) : (
+                                  <Mail className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{notification.read ? "Mark as unread" : "Mark as read"}</TooltipContent>
+                          </Tooltip>
                           
                           <Button
                             variant="ghost"

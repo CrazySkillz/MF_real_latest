@@ -70,8 +70,10 @@ export function HubSpotRevenueWizard(props: {
   const [campaignProperty, setCampaignProperty] = useState<string>("");
   const [revenueProperty, setRevenueProperty] = useState<string>("amount");
   const [conversionValueProperty, setConversionValueProperty] = useState<string>(""); // retained for backward-compat (legacy saved configs)
-  const [valueSource, setValueSource] = useState<"revenue" | "conversion_value">("revenue");
-  // LinkedIn: pipeline is now a required step (stage selection required).
+  // LinkedIn exec flow: HubSpot provides revenue-to-date from deal Amount. Conversion Value is intentionally not offered here.
+  const [valueSource, setValueSource] = useState<"revenue">("revenue");
+  // LinkedIn: pipeline proxy can be enabled for an exec "early signal".
+  // Default to enabled to preserve existing behavior; users can switch to Revenue-only.
   const [pipelineEnabled, setPipelineEnabled] = useState<boolean>(isLinkedIn);
   const [pipelineStageId, setPipelineStageId] = useState<string>("");
   const [pipelineStageLabel, setPipelineStageLabel] = useState<string>("");
@@ -98,8 +100,7 @@ export function HubSpotRevenueWizard(props: {
     const nextSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
     const nextRevenueProperty = cfg.revenueProperty ? String(cfg.revenueProperty) : "amount";
     const nextConversionValueProperty = cfg.conversionValueProperty ? String(cfg.conversionValueProperty) : "";
-    const nextValueSource: "revenue" | "conversion_value" =
-      String(cfg.valueSource || "").trim().toLowerCase() === "conversion_value" ? "conversion_value" : "revenue";
+    const nextValueSource: "revenue" = "revenue";
     const nextRevenueClassification: any = cfg.revenueClassification ? String(cfg.revenueClassification) : null;
     const nextPipelineEnabled = cfg.pipelineEnabled === true;
     const nextPipelineStageId = cfg.pipelineStageId ? String(cfg.pipelineStageId) : "";
@@ -109,9 +110,10 @@ export function HubSpotRevenueWizard(props: {
     setCampaignProperty(nextCampaignProperty);
     setSelectedValues(nextSelectedValues);
     setRevenueProperty(nextRevenueProperty);
-    setConversionValueProperty(nextConversionValueProperty);
+    // Deprecated: Conversion Value mode. Keep reading it (for display/debug) but do not keep the wizard in CV mode.
+    setConversionValueProperty("");
     setValueSource(nextValueSource);
-    setPipelineEnabled(isLinkedIn ? true : nextPipelineEnabled);
+    setPipelineEnabled(nextPipelineEnabled);
     setPipelineStageId(nextPipelineStageId);
     setPipelineStageLabel(nextPipelineStageLabel);
     if (nextRevenueClassification === "onsite_in_ga4" || nextRevenueClassification === "offsite_not_in_ga4") {
@@ -125,12 +127,12 @@ export function HubSpotRevenueWizard(props: {
       ...(isLinkedIn ? [{ id: "value-source" as const, label: "Source", icon: DollarSign }] : []),
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
-      ...(isLinkedIn ? [{ id: "pipeline" as const, label: "Pipeline", icon: Target }] : []),
+      ...(isLinkedIn && pipelineEnabled ? [{ id: "pipeline" as const, label: "Pipeline", icon: Target }] : []),
       // Keep the stepper label stable to avoid layout shift (exec-grade UI polish).
       { id: "revenue" as const, label: "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ];
-  }, [isLinkedIn]);
+  }, [isLinkedIn, pipelineEnabled]);
 
   const currentStepIndex = useMemo(() => {
     const idx = steps.findIndex((s) => s.id === step);
@@ -328,10 +330,10 @@ export function HubSpotRevenueWizard(props: {
     return p?.label || revenueProperty || "Revenue field";
   }, [properties, revenueProperty]);
 
-  const conversionValuePropertyLabel = useMemo(() => {
-    const p = properties.find((x) => x.name === conversionValueProperty);
-    return p?.label || conversionValueProperty || "Conversion value field";
-  }, [properties, conversionValueProperty]);
+  const hubspotSourceMode = useMemo(() => {
+    if (!isLinkedIn) return "revenue_only" as const;
+    return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);
+  }, [isLinkedIn, pipelineEnabled]);
 
   const save = async () => {
     setIsSaving(true);
@@ -343,13 +345,13 @@ export function HubSpotRevenueWizard(props: {
           campaignProperty,
           selectedValues,
           revenueProperty,
-          conversionValueProperty: isLinkedIn ? conversionValueProperty : null,
-          valueSource: isLinkedIn ? valueSource : "revenue",
+          conversionValueProperty: null,
+          valueSource: "revenue",
           revenueClassification,
           days,
-          pipelineEnabled: isLinkedIn ? true : false,
-          pipelineStageId: isLinkedIn ? pipelineStageId : null,
-          pipelineStageLabel: isLinkedIn ? (pipelineStageLabel || null) : null,
+          pipelineEnabled: isLinkedIn ? pipelineEnabled : false,
+          pipelineStageId: isLinkedIn && pipelineEnabled ? pipelineStageId : null,
+          pipelineStageLabel: isLinkedIn && pipelineEnabled ? (pipelineStageLabel || null) : null,
           platformContext,
         }),
       });
@@ -358,10 +360,7 @@ export function HubSpotRevenueWizard(props: {
 
       toast({
         title: "HubSpot Mappings Saved",
-        description:
-          isLinkedIn && valueSource === "conversion_value"
-            ? `Conversion value connected: ${Number(json?.conversionValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
-            : `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+        description: `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
       });
       setLastSaveResult(json);
       onSuccess?.(json);
@@ -379,8 +378,8 @@ export function HubSpotRevenueWizard(props: {
 
   const handleNext = async () => {
     if (step === "value-source") {
-      // Keep selections mutually exclusive to reduce confusion.
-      if (valueSource === "revenue") setConversionValueProperty("");
+      // Revenue-only wizard: ensure conversion value stays cleared.
+      setConversionValueProperty("");
       setStep("campaign-field");
       return;
     }
@@ -414,7 +413,7 @@ export function HubSpotRevenueWizard(props: {
         });
         return;
       }
-      setStep(isLinkedIn ? "pipeline" : "revenue");
+      setStep(isLinkedIn && pipelineEnabled ? "pipeline" : "revenue");
       return;
     }
     if (step === "pipeline") {
@@ -430,16 +429,7 @@ export function HubSpotRevenueWizard(props: {
       return;
     }
     if (step === "revenue") {
-      if (isLinkedIn && valueSource === "conversion_value") {
-        if (!conversionValueProperty) {
-          toast({
-            title: "Select a conversion value field",
-            description: "Choose the HubSpot field that represents conversion value per conversion.",
-            variant: "destructive",
-          });
-          return;
-        }
-      } else if (!revenueProperty) {
+      if (!revenueProperty) {
         toast({
           title: "Select a revenue field",
           description: "Choose the HubSpot field that represents deal amount.",
@@ -469,7 +459,7 @@ export function HubSpotRevenueWizard(props: {
     }
     if (step === "crosswalk") return setStep("campaign-field");
     if (step === "pipeline") return setStep("crosswalk");
-    if (step === "revenue") return setStep(isLinkedIn ? "pipeline" : "crosswalk");
+    if (step === "revenue") return setStep(isLinkedIn && pipelineEnabled ? "pipeline" : "crosswalk");
     if (step === "review") return setStep("revenue");
     if (step === "complete") return setStep("review");
   };
@@ -558,7 +548,7 @@ export function HubSpotRevenueWizard(props: {
             {step === "revenue" && (
               <>
                 <DollarSign className="w-5 h-5 text-green-600" />
-                {isLinkedIn && valueSource === "conversion_value" ? "Select Conversion Value Field" : "Select Revenue Field"}
+                Select Revenue Field
               </>
             )}
             {step === "review" && (
@@ -577,7 +567,7 @@ export function HubSpotRevenueWizard(props: {
           <CardDescription>
             {step === "value-source" &&
               (isLinkedIn
-                ? "Choose whether HubSpot should provide Total Revenue (to date) or Conversion Value (estimated value per conversion)."
+                ? "Choose what HubSpot should provide for this LinkedIn campaign: Total Revenue only, or Total Revenue + Pipeline (Proxy)."
                 : "")}
             {step === "campaign-field" &&
               (statusLoading
@@ -590,9 +580,7 @@ export function HubSpotRevenueWizard(props: {
             {step === "pipeline" &&
               "Choose the HubSpot stage that should count as “pipeline created”. This provides a daily signal alongside daily spend."}
             {step === "revenue" &&
-              (isLinkedIn && valueSource === "conversion_value"
-                ? "Select the HubSpot field that represents conversion value per conversion."
-                : "Select the HubSpot field that represents deal amount.")}
+              "Select the HubSpot field that represents deal amount."}
             {step === "review" && "Review the settings below, then save mappings."}
             {step === "complete" &&
               (isLinkedIn
@@ -610,26 +598,37 @@ export function HubSpotRevenueWizard(props: {
                 <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
                 <div className="flex items-start justify-between gap-3">
                   <RadioGroup
-                    value={valueSource}
+                    value={hubspotSourceMode}
                     onValueChange={(v: any) => {
-                      setValueSource(v);
-                      if (String(v) === "revenue") setConversionValueProperty("");
+                      const next = String(v || "");
+                      // Revenue modes
+                      setValueSource("revenue");
+                      setConversionValueProperty("");
+                      if (next === "revenue_plus_pipeline") {
+                        setPipelineEnabled(true);
+                      } else {
+                        setPipelineEnabled(false);
+                        setPipelineStageId("");
+                        setPipelineStageLabel("");
+                      }
                     }}
                     className="space-y-2 flex-1"
                   >
                     <div className="flex items-start gap-2">
-                      <RadioGroupItem id="hs-mode-revenue" value="revenue" className="mt-0.5" />
-                      <label htmlFor="hs-mode-revenue" className="cursor-pointer">
-                        <div className="text-sm font-medium leading-snug">Total Revenue - Pipeline (Opportunities, SQL, MQL, etc)</div>
-                        <div className="text-xs text-slate-500 leading-snug">Updates daily, but lags daily spend (deals close later).</div>
+                      <RadioGroupItem id="hs-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
+                      <label htmlFor="hs-mode-revenue-pipeline" className="cursor-pointer">
+                        <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
+                        <div className="text-xs text-slate-500 leading-snug">
+                          Total Revenue comes from mapped deal Amounts (to date). Adds a Pipeline (Proxy) card using a stage like SQL as an early signal.
+                        </div>
                       </label>
                     </div>
                     <div className="flex items-start gap-2">
-                      <RadioGroupItem id="hs-mode-cv" value="conversion_value" className="mt-0.5" />
-                      <label htmlFor="hs-mode-cv" className="cursor-pointer">
-                        <div className="text-sm font-medium leading-snug">Conversion Value (per conversion)</div>
+                      <RadioGroupItem id="hs-mode-revenue-only" value="revenue_only" className="mt-0.5" />
+                      <label htmlFor="hs-mode-revenue-only" className="cursor-pointer">
+                        <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
                         <div className="text-xs text-slate-500 leading-snug">
-                          Advanced. Requires a consistent numeric HubSpot field (e.g., Expected Value / ACV / LTV per conversion).
+                          Imports revenue-to-date from mapped deal Amounts. No Pipeline (Proxy) section in Overview.
                         </div>
                       </label>
                     </div>
@@ -643,7 +642,9 @@ export function HubSpotRevenueWizard(props: {
                 </div>
 
                 <div className="text-xs text-slate-500">
-                  Next, you’ll choose which Pipeline stage should count as “pipeline created”.
+                  {hubspotSourceMode === "revenue_plus_pipeline"
+                    ? "Next, you’ll choose which Pipeline stage should count as “pipeline created”."
+                    : "Next, you’ll map HubSpot deals to this campaign."}
                 </div>
               </div>
             </div>
@@ -835,13 +836,12 @@ export function HubSpotRevenueWizard(props: {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>
-                  {isLinkedIn && valueSource === "conversion_value" ? "Conversion value field" : "Revenue field"}
+                  Revenue field
                 </Label>
                 <Select
-                  value={isLinkedIn && valueSource === "conversion_value" ? conversionValueProperty : revenueProperty}
+                  value={revenueProperty}
                   onValueChange={(v) => {
-                    if (isLinkedIn && valueSource === "conversion_value") setConversionValueProperty(v);
-                    else setRevenueProperty(v);
+                    setRevenueProperty(v);
                   }}
                 >
                   <SelectTrigger>
@@ -858,9 +858,7 @@ export function HubSpotRevenueWizard(props: {
                   </SelectContent>
                 </Select>
                 <div className="text-xs text-slate-500">
-                  {isLinkedIn && valueSource === "conversion_value"
-                    ? "Choose the numeric field that represents value per conversion (estimated value)."
-                    : "Default (recommended): Deal amount."}
+                  Default (recommended): Deal amount.
                 </div>
               </div>
 
@@ -899,14 +897,14 @@ export function HubSpotRevenueWizard(props: {
             <div className="space-y-4">
               <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4">
                 <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                  {isLinkedIn ? "Review HubSpot revenue / conversion value settings" : "Review HubSpot revenue settings"}
+                  Review HubSpot revenue settings
                 </div>
                 <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   Confirm these details before saving.
                   {isLinkedIn ? (
                     <>
                       {" "}
-                      Source of truth: <span className="font-medium">{valueSource === "conversion_value" ? "Conversion Value" : "Revenue (to date)"}</span>.
+                      Source of truth: <span className="font-medium">Revenue (to date)</span>.
                     </>
                   ) : (
                     <>
@@ -926,10 +924,10 @@ export function HubSpotRevenueWizard(props: {
 
                   <div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {isLinkedIn ? (valueSource === "conversion_value" ? "Conversion value field" : "Revenue field") : "Revenue field"}
+                      Revenue field
                     </div>
                     <div className="font-medium text-slate-900 dark:text-white">
-                      {isLinkedIn && valueSource === "conversion_value" ? conversionValuePropertyLabel : revenuePropertyLabel}
+                      {revenuePropertyLabel}
                     </div>
                   </div>
 
@@ -938,7 +936,7 @@ export function HubSpotRevenueWizard(props: {
                     <div className="font-medium text-slate-900 dark:text-white">{campaignPropertyLabel}</div>
                   </div>
 
-                  {isLinkedIn && (
+                  {isLinkedIn && pipelineEnabled && (
                     <div>
                       <div className="text-xs text-slate-500 dark:text-slate-400">Pipeline proxy</div>
                       <div className="font-medium text-slate-900 dark:text-white">
@@ -968,21 +966,10 @@ export function HubSpotRevenueWizard(props: {
           {step === "complete" && (
             <div className="space-y-3">
               <div className="text-sm text-slate-700">
-                {isLinkedIn && valueSource === "conversion_value" ? (
-                  <>
-                    Conversion value connected:{" "}
-                    <strong>
-                      {Number(lastSaveResult?.conversionValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </strong>
-                  </>
-                ) : (
-                  <>
-                    Revenue connected:{" "}
-                    <strong>
-                      ${Number(lastSaveResult?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </strong>
-                  </>
-                )}
+                Revenue connected:{" "}
+                <strong>
+                  ${Number(lastSaveResult?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </strong>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -1015,7 +1002,7 @@ export function HubSpotRevenueWizard(props: {
                   (step === "campaign-field" ? (!isConnected || !campaignProperty) :
                    step === "crosswalk" ? (selectedValues.length === 0) :
                    step === "pipeline" ? (!pipelineStageId) :
-                   step === "revenue" ? (isLinkedIn && valueSource === "conversion_value" ? (!conversionValueProperty) : (!revenueProperty)) :
+                   step === "revenue" ? (!revenueProperty) :
                    false)
                 }
               >

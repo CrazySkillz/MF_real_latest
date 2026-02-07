@@ -10269,6 +10269,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clear HubSpot pipeline proxy config for a campaign (LinkedIn-only UX action).
+  app.delete("/api/hubspot/:campaignId/pipeline-proxy", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      const conn: any = await storage.getHubspotConnection(campaignId);
+      if (!conn?.id) {
+        return res.status(404).json({ success: false, error: "HubSpot is not connected for this campaign." });
+      }
+
+      let cfg: any = {};
+      try {
+        cfg = conn?.mappingConfig ? JSON.parse(String(conn.mappingConfig)) : {};
+      } catch {
+        cfg = {};
+      }
+
+      const nextCfg = {
+        ...cfg,
+        pipelineEnabled: false,
+        pipelineStageId: null,
+        pipelineStageLabel: null,
+        pipelineTotalToDate: 0,
+        pipelineCurrency: null,
+        pipelineLastUpdatedAt: null,
+        pipelineWarning: null,
+      };
+
+      await storage.updateHubspotConnection(String(conn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[HubSpot Pipeline Proxy Delete] Error:", error);
+      res.status(500).json({ success: false, error: error?.message || "Failed to clear pipeline proxy" });
+    }
+  });
+
   function deriveDefaultClosedWonStageIds(pipelines: any[]): string[] {
     const stageIds: string[] = [];
     for (const p of pipelines || []) {

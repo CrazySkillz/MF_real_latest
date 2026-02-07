@@ -1405,6 +1405,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
       await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
       await queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "linkedin"] });
       // KPI tab: clear/recompute revenue-dependent KPIs (ROI/ROAS/etc)
       await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId] });
       // Force immediate recompute for the active page (no waiting for intervals)
@@ -1412,12 +1413,36 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId], exact: true });
       await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'], exact: true });
       await queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: true });
+      await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "linkedin"], exact: true });
       await queryClient.refetchQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId], exact: true });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message || "Failed to remove revenue source",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // HubSpot pipeline proxy removal (clears the Pipeline (Proxy) card)
+  const deleteHubspotPipelineProxyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('DELETE', `/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy`);
+      return res.json();
+    },
+    onSuccess: async () => {
+      toast({
+        title: "Pipeline proxy removed",
+        description: "The Pipeline (Proxy) card has been removed from Overview.",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: true });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove pipeline proxy",
         variant: "destructive",
       });
     },
@@ -5025,15 +5050,47 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                         );
                       })()}
 
-                      {/* Pipeline Proxy (optional, exec daily signal) */}
-                      {hubspotPipelineProxyData?.success && hubspotPipelineProxyData?.pipelineEnabled === true && (
+                      {/* Pipeline Proxy (exec daily signal; tied to revenue tracking for this campaign) */}
+                      {(aggregated?.hasRevenueTracking === 1) && hubspotPipelineProxyData?.success && hubspotPipelineProxyData?.pipelineEnabled === true && (
                         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Target className="w-5 h-5 text-amber-600" />
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Pipeline (Proxy)</h3>
-                            <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                              Early signal
-                            </Badge>
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <div className="flex items-center gap-2">
+                              <Target className="w-5 h-5 text-amber-600" />
+                              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Pipeline (Proxy)</h3>
+                              <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                                Early signal
+                              </Badge>
+                            </div>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  data-testid="button-delete-hubspot-pipeline-proxy"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove Pipeline (Proxy)?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This removes the HubSpot Pipeline (Proxy) card from Overview. You can re-enable it later by reconnecting HubSpot revenue.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteHubspotPipelineProxyMutation.mutate()}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Remove
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

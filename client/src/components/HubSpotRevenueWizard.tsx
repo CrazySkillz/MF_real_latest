@@ -65,6 +65,7 @@ export function HubSpotRevenueWizard(props: {
   const [revenueProperty, setRevenueProperty] = useState<string>("amount");
   const [conversionValueProperty, setConversionValueProperty] = useState<string>("");
   const [valueSource, setValueSource] = useState<"revenue" | "conversion_value">("revenue");
+  const [showAdvancedValueSource, setShowAdvancedValueSource] = useState<boolean>(false);
   const [pipelineEnabled, setPipelineEnabled] = useState<boolean>(false);
   const [pipelineStageId, setPipelineStageId] = useState<string>("");
   const [pipelineStageLabel, setPipelineStageLabel] = useState<string>("");
@@ -104,6 +105,7 @@ export function HubSpotRevenueWizard(props: {
     setRevenueProperty(nextRevenueProperty);
     setConversionValueProperty(nextConversionValueProperty);
     setValueSource(nextValueSource);
+    setShowAdvancedValueSource(nextValueSource === "conversion_value");
     setPipelineEnabled(nextPipelineEnabled);
     setPipelineStageId(nextPipelineStageId);
     setPipelineStageLabel(nextPipelineStageLabel);
@@ -112,6 +114,12 @@ export function HubSpotRevenueWizard(props: {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId, mode, initialMappingConfig, isLinkedIn]);
+
+  // If the user selects Conversion Value, keep the advanced section visible.
+  useEffect(() => {
+    if (!isLinkedIn) return;
+    if (valueSource === "conversion_value") setShowAdvancedValueSource(true);
+  }, [isLinkedIn, valueSource]);
 
   const steps = useMemo(
     () => [
@@ -517,7 +525,7 @@ export function HubSpotRevenueWizard(props: {
             {step === "value-source" && (
               <>
                 <DollarSign className="w-5 h-5 text-green-600" />
-                Choose source of truth
+                What should HubSpot provide?
               </>
             )}
             {step === "campaign-field" && (
@@ -562,7 +570,7 @@ export function HubSpotRevenueWizard(props: {
           <CardDescription>
             {step === "value-source" &&
               (isLinkedIn
-                ? "Choose whether HubSpot should provide Total Revenue (to date) or a Conversion Value (estimated value per conversion)."
+                ? "Pick what MetricMind should pull from HubSpot for this LinkedIn campaign. Most teams use Revenue; Conversion Value is an advanced setup."
                 : "")}
             {step === "campaign-field" &&
               (statusLoading
@@ -573,7 +581,7 @@ export function HubSpotRevenueWizard(props: {
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
             {step === "pipeline" &&
-              "Optional: enable a pipeline proxy (deals entering a stage like SQL/Opportunity) as an early daily signal alongside spend."}
+              "Optional: enable a pipeline proxy (deals entering a stage like SQL/Opportunity) as an early signal alongside daily spend. Revenue still comes from Closed Won."}
             {step === "revenue" &&
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Select the HubSpot field that represents conversion value per conversion (estimated value)."
@@ -592,7 +600,7 @@ export function HubSpotRevenueWizard(props: {
           {step === "value-source" && isLinkedIn && (
             <div className="space-y-3">
               <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-2">
-                <div className="text-sm font-medium">What do you want to import from HubSpot?</div>
+                <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
                 <RadioGroup
                   value={valueSource}
                   onValueChange={(v: any) => {
@@ -605,20 +613,39 @@ export function HubSpotRevenueWizard(props: {
                   <div className="flex items-start gap-2 min-h-[44px]">
                     <RadioGroupItem id="hs-mode-revenue" value="revenue" />
                     <label htmlFor="hs-mode-revenue" className="cursor-pointer">
-                      <div className="text-sm font-medium leading-snug">Total Revenue (to date)</div>
-                      <div className="text-xs text-slate-500 leading-snug">Recommended for executive ROI/ROAS</div>
+                      <div className="text-sm font-medium leading-snug">Total Revenue (Closed Won, to date)</div>
+                      <div className="text-xs text-slate-500 leading-snug">Real revenue. Updates daily, but lags daily spend (deals close later).</div>
                     </label>
                   </div>
-                  <div className="flex items-start gap-2 min-h-[44px]">
-                    <RadioGroupItem id="hs-mode-cv" value="conversion_value" />
-                    <label htmlFor="hs-mode-cv" className="cursor-pointer">
-                      <div className="text-sm font-medium leading-snug">Conversion Value (per conversion)</div>
-                      <div className="text-xs text-slate-500 leading-snug">Advanced: estimated value mode (LTV/ACV/etc.)</div>
-                    </label>
-                  </div>
+
+                  {(showAdvancedValueSource || valueSource === "conversion_value") && (
+                    <div className="flex items-start gap-2 min-h-[44px]">
+                      <RadioGroupItem id="hs-mode-cv" value="conversion_value" />
+                      <label htmlFor="hs-mode-cv" className="cursor-pointer">
+                        <div className="text-sm font-medium leading-snug">Conversion Value (per conversion)</div>
+                        <div className="text-xs text-slate-500 leading-snug">
+                          Advanced. Requires a consistent numeric HubSpot field (e.g., Expected Value / ACV / LTV per conversion).
+                        </div>
+                      </label>
+                    </div>
+                  )}
                 </RadioGroup>
+
+                {!showAdvancedValueSource && valueSource !== "conversion_value" && (
+                  <div className="pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAdvancedValueSource(true)}
+                    >
+                      Show advanced option
+                    </Button>
+                  </div>
+                )}
+
                 <div className="text-xs text-slate-500">
-                  Revenue is best for exec ROI/ROAS when you have realized revenue. Conversion Value is best when you intentionally use an estimated value (e.g., LTV/ACV).
+                  If your goal is “daily ROI/ROAS next to daily spend,” you’ll typically use the Pipeline proxy step later. Revenue is the finance outcome.
                 </div>
               </div>
             </div>
@@ -730,7 +757,7 @@ export function HubSpotRevenueWizard(props: {
               </div>
 
               <div className="text-xs text-slate-500 shrink-0">
-                Default filter: Closed Won deals (best-effort across pipelines). Revenue is imported to date (lifetime-style).
+                Tip: Revenue uses Closed Won by default. Pipeline proxy (optional) uses your selected stage.
               </div>
             </div>
           )}
@@ -757,7 +784,7 @@ export function HubSpotRevenueWizard(props: {
                   />
                   <div>
                     <div className="text-sm font-medium">Enable pipeline proxy</div>
-                    <div className="text-xs text-slate-500">Adds “Pipeline created” to Overview (last 30 days, last 7 days, today).</div>
+                    <div className="text-xs text-slate-500">Adds “Pipeline created (to date)” to Overview as a daily proxy next to spend.</div>
                   </div>
                 </div>
 
@@ -804,7 +831,7 @@ export function HubSpotRevenueWizard(props: {
                       </SelectContent>
                     </Select>
                     <div className="text-xs text-slate-500">
-                      MetricMind will sum Deal Amounts for deals that entered this stage in the last 30 days.
+                      MetricMind will sum Deal Amounts for deals that entered this stage (cumulative to date).
                     </div>
                   </div>
                 )}

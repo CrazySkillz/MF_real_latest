@@ -477,6 +477,11 @@ export function HubSpotRevenueWizard(props: {
   const lastExternalBackNonceRef = useRef<number | null>(null);
   useEffect(() => {
     if (externalBackNonce == null) return;
+    // Avoid firing on first mount (parent passes 0 by default).
+    if (lastExternalBackNonceRef.current == null) {
+      lastExternalBackNonceRef.current = externalBackNonce;
+      return;
+    }
     if (lastExternalBackNonceRef.current === externalBackNonce) return;
     lastExternalBackNonceRef.current = externalBackNonce;
     handleBackStep();

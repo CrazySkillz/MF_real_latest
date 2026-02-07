@@ -10705,30 +10705,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Materialize revenue across the selected window so date-range queries behave correctly.
-        const endDate = new Date().toISOString().slice(0, 10);
-        const startObj = new Date();
-        startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
-        const startDate = startObj.toISOString().slice(0, 10);
-        const days = enumerateDatesInclusive(startDate, endDate);
-
-        const totalCents = Math.round(Number(Number(totalRevenue || 0).toFixed(2)) * 100);
-        const baseCents = Math.floor(totalCents / Math.max(1, days.length));
-        const remainder = totalCents - baseCents * Math.max(1, days.length);
-
-        const records = days.map((d, idx) => {
-          const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
-          return {
+        // Revenue-to-date source semantics:
+        // This mapping represents a cumulative total, not daily revenue. Do NOT spread it across the date range,
+        // otherwise date-window queries (like LinkedIn's last-30-complete-days) will show a tiny fraction.
+        // Instead, materialize a single record on the most recent complete UTC day (yesterday), so
+        // range queries include the full to-date amount.
+        const recordDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        await storage.createRevenueRecords([
+          {
             campaignId,
             revenueSourceId: String((source as any).id),
-            date: d,
-            revenue: (cents / 100).toFixed(2) as any,
+            date: recordDate,
+            revenue: Number(Number(totalRevenue || 0).toFixed(2)).toFixed(2) as any,
             currency: cur,
-          } as any;
-        });
-        if (records.length > 0) {
-          await storage.createRevenueRecords(records);
-        }
+          } as any,
+        ]);
 
         // If HubSpot is being used as a LinkedIn revenue source, revenue is the source of truth.
         // Clear any conversion value so LinkedIn metrics don't incorrectly switch back to derived revenue.

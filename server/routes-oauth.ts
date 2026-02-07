@@ -10255,7 +10255,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // If cached total is zero (or missing), recompute on-demand so UI isn't stuck with stale $0.00.
-      // This is especially important when HubSpot doesn't populate/filter `hs_date_entered_{stageId}` reliably.
+      // This is especially important when HubSpot doesn't populate/filter `hs_date_entered_{stageId}` reliably,
+      // and also when tokens expire (we fall back to the last-known total to avoid exec-confusing $0).
+      let recomputeFailed = false;
       try {
         const cached = Number(cfg.pipelineTotalToDate || 0);
         if (!Number.isFinite(cached) || cached <= 0) {
@@ -10374,7 +10376,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } catch {
-        // ignore (best-effort refresh)
+        recomputeFailed = true;
+      }
+
+      // Final fallback: if proxy is still 0 but we have a last-known revenue total, show that instead of $0.
+      // This avoids confusing execs when HubSpot stage-entry timestamps are unavailable or tokens are expired.
+      try {
+        const proxyNow = Number(cfg.pipelineTotalToDate || 0);
+        const lastKnown = Number(cfg.lastTotalRevenue || 0);
+        if ((!Number.isFinite(proxyNow) || proxyNow <= 0) && Number.isFinite(lastKnown) && lastKnown > 0) {
+          cfg.pipelineTotalToDate = Number(Number(lastKnown).toFixed(2));
+          cfg.pipelineProxyMode = 'revenue_total_fallback';
+          cfg.pipelineWarning =
+            cfg.pipelineWarning ||
+            (recomputeFailed
+              ? 'Showing last-known total (HubSpot refresh required to recompute pipeline proxy).'
+              : 'Showing last-known total (no stage-based proxy rows found).');
+          cfg.pipelineLastUpdatedAt = cfg.pipelineLastUpdatedAt || new Date().toISOString();
+          if (conn?.id) {
+            await storage.updateHubspotConnection(String(conn.id), { mappingConfig: JSON.stringify(cfg) } as any);
+          }
+        }
+      } catch {
+        // ignore
       }
 
       res.json({

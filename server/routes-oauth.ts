@@ -10206,6 +10206,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // HubSpot pipeline proxy status (cached in mappingConfig by save-mappings)
+  // NOTE: This is an exec-facing "daily signal" helper. It does NOT change revenue tracking logic.
+  app.get("/api/hubspot/:campaignId/pipeline-proxy", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      const conn: any = await storage.getHubspotConnection(campaignId);
+      let cfg: any = {};
+      try {
+        cfg = conn?.mappingConfig ? JSON.parse(String(conn.mappingConfig)) : {};
+      } catch {
+        cfg = {};
+      }
+
+      if (!cfg || cfg.pipelineEnabled !== true || !cfg.pipelineStageId) {
+        return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for this campaign." });
+      }
+
+      res.json({
+        success: true,
+        pipelineEnabled: true,
+        pipelineStageId: String(cfg.pipelineStageId),
+        pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
+        currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency) : null,
+        lastUpdatedAt: cfg.pipelineLastUpdatedAt ? String(cfg.pipelineLastUpdatedAt) : null,
+        last30DaysTotal: Number(cfg.pipelineLast30DaysTotal || 0),
+        last7DaysTotal: Number(cfg.pipelineLast7DaysTotal || 0),
+        todayTotal: Number(cfg.pipelineTodayTotal || 0),
+      });
+    } catch (error: any) {
+      console.error("[HubSpot Pipeline Proxy] Error:", error);
+      res.status(500).json({ success: false, error: error?.message || "Failed to load pipeline proxy" });
+    }
+  });
+
   function deriveDefaultClosedWonStageIds(pipelines: any[]): string[] {
     const stageIds: string[] = [];
     for (const p of pipelines || []) {
@@ -10334,6 +10372,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenueClassification: z.string().trim().optional(),
           days: zNumberLike.optional(),
           stageIds: z.array(z.string().trim().min(1)).max(100).optional(),
+          pipelineEnabled: z.boolean().optional(),
+          pipelineStageId: z.string().trim().optional().nullable(),
+          pipelineStageLabel: z.string().trim().optional().nullable(),
           platformContext: zPlatformContext.optional(),
         })
         .passthrough()
@@ -10349,6 +10390,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stageIds = body.data.stageIds;
       const platformContext = body.data.platformContext;
       const revenueClassification = body.data.revenueClassification;
+      const pipelineEnabled = body.data.pipelineEnabled === true;
+      const pipelineStageId = String(body.data.pipelineStageId || "").trim();
+      const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
 
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
@@ -10469,7 +10513,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
           revenueClassification: rc,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+          pipelineEnabled: pipelineEnabled,
+          pipelineStageId: pipelineEnabled && pipelineStageId ? pipelineStageId : null,
+          pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
         };
+
+        // Best-effort: compute a lightweight "pipeline created" proxy (last 30 days + last 7 days + today),
+        // keyed off the stage-entry timestamp property `hs_date_entered_{stageId}`.
+        if (pipelineEnabled && pipelineStageId) {
+          try {
+            const stageEntryProp = `hs_date_entered_${pipelineStageId}`;
+            const end = Date.now();
+            const start30 = end - 30 * 24 * 60 * 60 * 1000;
+            const start7 = end - 7 * 24 * 60 * 60 * 1000;
+
+            let pipeline30 = 0;
+            let pipeline7 = 0;
+            let pipelineToday = 0;
+            const pipelineCurrencies = new Set<string>();
+
+            const startTodayUtc = (() => {
+              const now = new Date();
+              const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+              return d.getTime();
+            })();
+
+            let after2: string | undefined;
+            let pages2 = 0;
+            let seen2 = 0;
+            while (pages2 < MAX_HUBSPOT_PAGES) {
+              const body2: any = {
+                filterGroups: [
+                  {
+                    filters: [
+                      { propertyName: campaignProp, operator: 'IN', values: selected },
+                      { propertyName: stageEntryProp, operator: 'GTE', value: String(start30) },
+                    ],
+                  },
+                ],
+                properties: Array.from(new Set([
+                  campaignProp,
+                  revenueProp,
+                  'hs_currency',
+                  stageEntryProp,
+                ])),
+                limit: 100,
+                after: after2,
+              };
+
+              const json2 = await hubspotSearchDeals(accessToken, body2);
+              const results2 = Array.isArray(json2?.results) ? json2.results : [];
+              seen2 += results2.length;
+              if (seen2 > MAX_HUBSPOT_RESULTS) break;
+
+              for (const d of results2) {
+                const props = d?.properties || {};
+                const tRaw = props?.[stageEntryProp];
+                const tMs = tRaw === undefined || tRaw === null ? NaN : Number(String(tRaw).replace(/[^0-9]/g, ""));
+                if (!Number.isFinite(tMs)) continue;
+
+                const rRaw = props[revenueProp];
+                const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+                if (!Number.isFinite(amt)) continue;
+
+                const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
+                if (c) pipelineCurrencies.add(c);
+
+                if (tMs >= start30) pipeline30 += amt;
+                if (tMs >= start7) pipeline7 += amt;
+                if (tMs >= startTodayUtc) pipelineToday += amt;
+              }
+
+              after2 = json2?.paging?.next?.after ? String(json2.paging.next.after) : undefined;
+              if (!after2) break;
+              pages2 += 1;
+            }
+
+            if (pipelineCurrencies.size > 1) {
+              // Do not fail revenue setup; just omit the proxy if currency is mixed.
+              (mappingConfig as any).pipelineCurrency = null;
+              (mappingConfig as any).pipelineLastUpdatedAt = new Date().toISOString();
+              (mappingConfig as any).pipelineLast30DaysTotal = 0;
+              (mappingConfig as any).pipelineLast7DaysTotal = 0;
+              (mappingConfig as any).pipelineTodayTotal = 0;
+              (mappingConfig as any).pipelineWarning =
+                `Multiple currencies found for pipeline proxy (${Array.from(pipelineCurrencies).join(', ')}). Filter HubSpot to a single currency to enable pipeline proxy.`;
+            } else {
+              (mappingConfig as any).pipelineCurrency = pipelineCurrencies.size === 1 ? Array.from(pipelineCurrencies)[0] : null;
+              (mappingConfig as any).pipelineLastUpdatedAt = new Date().toISOString();
+              (mappingConfig as any).pipelineLast30DaysTotal = Number(pipeline30.toFixed(2));
+              (mappingConfig as any).pipelineLast7DaysTotal = Number(pipeline7.toFixed(2));
+              (mappingConfig as any).pipelineTodayTotal = Number(pipelineToday.toFixed(2));
+            }
+          } catch {
+            // ignore (proxy is optional)
+          }
+        }
         await storage.updateHubspotConnection(hubspotConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }
 
@@ -10501,6 +10640,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionValueProperty: convValueProp || null,
           days: rangeDays,
           stageIds: effectiveStageIds,
+          pipelineEnabled: pipelineEnabled,
+          pipelineStageId: pipelineEnabled && pipelineStageId ? pipelineStageId : null,
+          pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
           revenueClassification,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastSyncedAt: new Date().toISOString(),

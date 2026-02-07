@@ -550,6 +550,23 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     },
   });
 
+  // Optional: HubSpot "pipeline created" proxy (exec daily signal)
+  const { data: hubspotPipelineProxyData } = useQuery<any>({
+    queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    retry: false,
+    queryFn: async () => {
+      const resp = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy`, {
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (!resp.ok) return null;
+      return await resp.json().catch(() => null);
+    },
+  });
+
   const getLinkedInRevenueSourceLabel = (src: any): string => {
     if (!src) return '';
     const type = String(src?.sourceType || '').toLowerCase();
@@ -5005,6 +5022,67 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                     </div>
                         );
                       })()}
+
+                      {/* Pipeline Proxy (optional, exec daily signal) */}
+                      {hubspotPipelineProxyData?.success && hubspotPipelineProxyData?.pipelineEnabled === true && (
+                        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Target className="w-5 h-5 text-amber-600" />
+                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Pipeline (Proxy)</h3>
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                              Early signal
+                            </Badge>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <Card className="hover:shadow-md transition-shadow border-amber-200 dark:border-amber-800">
+                              <CardContent className="p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                      Pipeline created (last 7 days)
+                                    </h3>
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <button type="button" className="inline-flex items-center">
+                                          <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-sm">
+                                        <div className="space-y-2 text-sm">
+                                          <p className="font-medium">What this means</p>
+                                          <p className="text-xs text-slate-400">
+                                            Sum of HubSpot deal Amounts for deals that entered the selected stage in the last 7 days.
+                                            This is a proxy signal (not Closed Won revenue).
+                                          </p>
+                                          {hubspotPipelineProxyData?.pipelineStageLabel ? (
+                                            <p className="text-xs text-slate-400">Stage: {String(hubspotPipelineProxyData.pipelineStageLabel)}</p>
+                                          ) : null}
+                                        </div>
+                                      </TooltipContent>
+                                    </UITooltip>
+                                  </div>
+                                  <Target className="w-4 h-4 text-amber-600" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-2xl font-bold text-amber-800 dark:text-amber-300">
+                                    {formatCurrency(Number(hubspotPipelineProxyData?.last7DaysTotal || 0))}
+                                  </p>
+                                  {!!hubspotPipelineProxyData?.pipelineStageLabel && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {String(hubspotPipelineProxyData.pipelineStageLabel)}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  Today: {formatCurrency(Number(hubspotPipelineProxyData?.todayTotal || 0))} • 30d:{" "}
+                                  {formatCurrency(Number(hubspotPipelineProxyData?.last30DaysTotal || 0))}
+                                </p>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Revenue Metrics - Only shown if conversion value is set - Displayed under Derived Metrics */}
                       {(() => {

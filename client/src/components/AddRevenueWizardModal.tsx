@@ -66,6 +66,9 @@ export function AddRevenueWizardModal(props: {
       // so the critical piece is to force a refetch by invalidating the query keys used by the UI.
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/kpis"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
+
+      // Optional HubSpot pipeline proxy (exec daily signal)
+      void queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
     }
 
     // GA4 KPI tab caches (revenue-to-date affects financial KPIs when GA4 revenue is missing).
@@ -78,6 +81,7 @@ export function AddRevenueWizardModal(props: {
 
     if (platformContext === 'linkedin') {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
     } else {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_analytics/kpis", campaignId], exact: false });
     }
@@ -102,6 +106,9 @@ export function AddRevenueWizardModal(props: {
     valueSource?: string;
     days?: number;
     revenueClassification?: string;
+    pipelineEnabled?: boolean;
+    pipelineStageId?: string;
+    pipelineStageLabel?: string;
   }>(null);
 
   // Manual
@@ -290,6 +297,9 @@ export function AddRevenueWizardModal(props: {
         valueSource: config?.valueSource ? String(config.valueSource) : undefined,
         days: Number.isFinite(Number(config?.days)) ? Number(config.days) : undefined,
         revenueClassification: config?.revenueClassification ? String(config.revenueClassification) : undefined,
+        pipelineEnabled: config?.pipelineEnabled === true,
+        pipelineStageId: config?.pipelineStageId ? String(config.pipelineStageId) : undefined,
+        pipelineStageLabel: config?.pipelineStageLabel ? String(config.pipelineStageLabel) : undefined,
       };
       setHubspotInitialMappingConfig(next);
       setStep("hubspot");

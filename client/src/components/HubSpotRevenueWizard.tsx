@@ -32,6 +32,9 @@ export function HubSpotRevenueWizard(props: {
     valueSource?: string;
     days?: number;
     revenueClassification?: string;
+    pipelineEnabled?: boolean;
+    pipelineStageId?: string;
+    pipelineStageLabel?: string;
   } | null;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
@@ -46,7 +49,7 @@ export function HubSpotRevenueWizard(props: {
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
 
-  type Step = "value-source" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
+  type Step = "value-source" | "campaign-field" | "crosswalk" | "pipeline" | "revenue" | "review" | "complete";
   // UX: avoid an intermediate "Connect HubSpot" screen; start at Campaign field.
   const [step, setStep] = useState<Step>(isLinkedIn ? "value-source" : "campaign-field");
   const [isConnecting, setIsConnecting] = useState(false);
@@ -62,6 +65,11 @@ export function HubSpotRevenueWizard(props: {
   const [revenueProperty, setRevenueProperty] = useState<string>("amount");
   const [conversionValueProperty, setConversionValueProperty] = useState<string>("");
   const [valueSource, setValueSource] = useState<"revenue" | "conversion_value">("revenue");
+  const [pipelineEnabled, setPipelineEnabled] = useState<boolean>(false);
+  const [pipelineStageId, setPipelineStageId] = useState<string>("");
+  const [pipelineStageLabel, setPipelineStageLabel] = useState<string>("");
+  const [pipelines, setPipelines] = useState<any[]>([]);
+  const [pipelinesLoading, setPipelinesLoading] = useState(false);
   // Default to offsite since the user is explicitly importing revenue in this flow.
   // Keep as an Advanced toggle to prevent double-counting when GA4 revenue is also present.
   const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("offsite_not_in_ga4");
@@ -86,6 +94,9 @@ export function HubSpotRevenueWizard(props: {
     const nextValueSource: "revenue" | "conversion_value" =
       String(cfg.valueSource || "").trim().toLowerCase() === "conversion_value" ? "conversion_value" : "revenue";
     const nextRevenueClassification: any = cfg.revenueClassification ? String(cfg.revenueClassification) : null;
+    const nextPipelineEnabled = cfg.pipelineEnabled === true;
+    const nextPipelineStageId = cfg.pipelineStageId ? String(cfg.pipelineStageId) : "";
+    const nextPipelineStageLabel = cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : "";
 
     setStep(isLinkedIn ? "value-source" : "campaign-field");
     setCampaignProperty(nextCampaignProperty);
@@ -93,6 +104,9 @@ export function HubSpotRevenueWizard(props: {
     setRevenueProperty(nextRevenueProperty);
     setConversionValueProperty(nextConversionValueProperty);
     setValueSource(nextValueSource);
+    setPipelineEnabled(nextPipelineEnabled);
+    setPipelineStageId(nextPipelineStageId);
+    setPipelineStageLabel(nextPipelineStageLabel);
     if (nextRevenueClassification === "onsite_in_ga4" || nextRevenueClassification === "offsite_not_in_ga4") {
       setRevenueClassification(nextRevenueClassification);
     }
@@ -104,6 +118,7 @@ export function HubSpotRevenueWizard(props: {
       ...(isLinkedIn ? [{ id: "value-source" as const, label: "Source", icon: DollarSign }] : []),
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
+      { id: "pipeline" as const, label: "Pipeline (optional)", icon: Target },
       // Keep the stepper label stable to avoid layout shift (exec-grade UI polish).
       { id: "revenue" as const, label: "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
@@ -165,6 +180,20 @@ export function HubSpotRevenueWizard(props: {
       setSelectedValues((prev) => prev.filter((v) => allowed.has(v)));
     } finally {
       setValuesLoading(false);
+    }
+  };
+
+  const fetchPipelines = async () => {
+    setPipelinesLoading(true);
+    try {
+      const resp = await fetch(`/api/hubspot/${campaignId}/deals/pipelines`);
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || "Failed to load pipelines");
+      const p = Array.isArray(json?.pipelines) ? json.pipelines : [];
+      setPipelines(p);
+      return p as any[];
+    } finally {
+      setPipelinesLoading(false);
     }
   };
 
@@ -260,6 +289,25 @@ export function HubSpotRevenueWizard(props: {
     })();
   }, [step, portalId, properties.length, toast]);
 
+  // When entering pipeline step, load pipelines once (LinkedIn-only).
+  useEffect(() => {
+    if (step !== "pipeline") return;
+    if (!isConnected) return;
+    if (pipelines.length > 0) return;
+    void (async () => {
+      try {
+        await fetchPipelines();
+      } catch (err: any) {
+        toast({
+          title: "Failed to Load HubSpot Pipelines",
+          description: err?.message || "Please try again.",
+          variant: "destructive",
+        });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, isConnected, pipelines.length, campaignId]);
+
   const campaignPropertyLabel = useMemo(() => {
     const p = properties.find((x) => x.name === campaignProperty);
     return p?.label || campaignProperty || "Campaign field";
@@ -289,6 +337,9 @@ export function HubSpotRevenueWizard(props: {
           valueSource: isLinkedIn ? valueSource : "revenue",
           revenueClassification,
           days,
+          pipelineEnabled: isLinkedIn ? pipelineEnabled : false,
+          pipelineStageId: isLinkedIn && pipelineEnabled ? pipelineStageId : null,
+          pipelineStageLabel: isLinkedIn && pipelineEnabled ? (pipelineStageLabel || null) : null,
           platformContext,
         }),
       });
@@ -359,6 +410,18 @@ export function HubSpotRevenueWizard(props: {
         });
         return;
       }
+      setStep("pipeline");
+      return;
+    }
+    if (step === "pipeline") {
+      if (pipelineEnabled && !pipelineStageId) {
+        toast({
+          title: "Select a pipeline stage",
+          description: "Choose the HubSpot stage that should count as “pipeline created”.",
+          variant: "destructive",
+        });
+        return;
+      }
       setStep("revenue");
       return;
     }
@@ -403,7 +466,8 @@ export function HubSpotRevenueWizard(props: {
       return;
     }
     if (step === "crosswalk") return setStep("campaign-field");
-    if (step === "revenue") return setStep("crosswalk");
+    if (step === "pipeline") return setStep("crosswalk");
+    if (step === "revenue") return setStep("pipeline");
     if (step === "review") return setStep("revenue");
     if (step === "complete") return setStep("review");
   };
@@ -468,6 +532,12 @@ export function HubSpotRevenueWizard(props: {
                 Link Campaign to HubSpot Value(s)
               </>
             )}
+            {step === "pipeline" && (
+              <>
+                <Target className="w-5 h-5 text-blue-600" />
+                Pipeline (Optional)
+              </>
+            )}
             {step === "revenue" && (
               <>
                 <DollarSign className="w-5 h-5 text-green-600" />
@@ -502,6 +572,8 @@ export function HubSpotRevenueWizard(props: {
                 : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
+            {step === "pipeline" &&
+              "Optional: enable a pipeline proxy (deals entering a stage like SQL/Opportunity) as an early daily signal alongside spend."}
             {step === "revenue" &&
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Select the HubSpot field that represents conversion value per conversion (estimated value)."
@@ -663,6 +735,83 @@ export function HubSpotRevenueWizard(props: {
             </div>
           )}
 
+          {step === "pipeline" && isLinkedIn && (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-3">
+                <div className="text-sm font-medium">Optional: pipeline created (daily signal)</div>
+                <div className="text-xs text-slate-500">
+                  Pipeline is <span className="font-medium">not</span> Closed Won revenue. It’s an early indicator (deals entering a stage like SQL/Opportunity).
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    checked={pipelineEnabled}
+                    onCheckedChange={(v) => {
+                      const enabled = !!v;
+                      setPipelineEnabled(enabled);
+                      if (!enabled) {
+                        setPipelineStageId("");
+                        setPipelineStageLabel("");
+                      }
+                    }}
+                  />
+                  <div>
+                    <div className="text-sm font-medium">Enable pipeline proxy</div>
+                    <div className="text-xs text-slate-500">Adds “Pipeline created” to Overview (last 30 days, last 7 days, today).</div>
+                  </div>
+                </div>
+
+                {pipelineEnabled && (
+                  <div className="space-y-2">
+                    <Label>Stage that counts as “pipeline created”</Label>
+                    <Select
+                      value={pipelineStageId}
+                      onValueChange={(v) => {
+                        setPipelineStageId(v);
+                        // best-effort label lookup
+                        const flat: Array<{ id: string; label: string }> = [];
+                        for (const p of pipelines || []) {
+                          const stages = Array.isArray((p as any)?.stages) ? (p as any).stages : [];
+                          const pLabel = String((p as any)?.label || (p as any)?.name || "Pipeline");
+                          for (const s of stages) {
+                            const id = String((s as any)?.id || "");
+                            const label = String((s as any)?.label || (s as any)?.name || id);
+                            if (id) flat.push({ id, label: `${pLabel} — ${label}` });
+                          }
+                        }
+                        const hit = flat.find((x) => x.id === v);
+                        setPipelineStageLabel(hit?.label || "");
+                      }}
+                      disabled={pipelinesLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={pipelinesLoading ? "Loading…" : "Select a stage…"} />
+                      </SelectTrigger>
+                      <SelectContent className="z-[10000] max-h-[320px]">
+                        {(pipelines || []).flatMap((p: any) => {
+                          const stages = Array.isArray(p?.stages) ? p.stages : [];
+                          const pLabel = String(p?.label || p?.name || "Pipeline");
+                          return stages.map((s: any) => {
+                            const id = String(s?.id || "");
+                            const label = String(s?.label || s?.name || id);
+                            return (
+                              <SelectItem key={`${pLabel}-${id}`} value={id}>
+                                {pLabel} — {label}
+                              </SelectItem>
+                            );
+                          });
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-slate-500">
+                      MetricMind will sum Deal Amounts for deals that entered this stage in the last 30 days.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {step === "revenue" && (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -781,6 +930,15 @@ export function HubSpotRevenueWizard(props: {
                     <div className="font-medium text-slate-900 dark:text-white">{campaignPropertyLabel}</div>
                   </div>
 
+                  {isLinkedIn && (
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Pipeline proxy</div>
+                      <div className="font-medium text-slate-900 dark:text-white">
+                        {pipelineEnabled ? (pipelineStageLabel || pipelineStageId || "Enabled") : "Off"}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">Selected value(s)</div>
                     <div className="font-medium text-slate-900 dark:text-white">
@@ -848,6 +1006,7 @@ export function HubSpotRevenueWizard(props: {
                   statusLoading ||
                   (step === "campaign-field" ? (!isConnected || !campaignProperty) :
                    step === "crosswalk" ? (selectedValues.length === 0) :
+                   step === "pipeline" ? (pipelineEnabled && !pipelineStageId) :
                    step === "revenue" ? (isLinkedIn && valueSource === "conversion_value" ? (!conversionValueProperty) : (!revenueProperty)) :
                    false)
                 }

@@ -169,6 +169,7 @@ export function AddRevenueWizardModal(props: {
   const [shopifyWizardStep, setShopifyWizardStep] = useState<any>("campaign-field");
   const [shopifyExternalStep, setShopifyExternalStep] = useState<any>(null);
   const [shopifyExternalNonce, setShopifyExternalNonce] = useState(0);
+  const [hubspotBackNonce, setHubspotBackNonce] = useState(0);
 
   const resetAll = () => {
     setStep(initialStep || "select");
@@ -202,6 +203,7 @@ export function AddRevenueWizardModal(props: {
     setShopifyWizardStep("campaign-field");
     setShopifyExternalStep(null);
     setShopifyExternalNonce(0);
+    setHubspotBackNonce(0);
     setHubspotInitialMappingConfig(null);
     setSalesforceInitialMappingConfig(null);
   };
@@ -417,6 +419,10 @@ export function AddRevenueWizardModal(props: {
     if (step === "select") return;
     if (step === "csv_map") return setStep("csv");
     if (step === "sheets_map") return setStep("sheets_choose");
+    if (step === "hubspot") {
+      setHubspotBackNonce((n) => n + 1);
+      return;
+    }
     // Embedded Shopify wizard: go back inside the Shopify flow first (campaign-field),
     // then exit to source selection if already at the first screen.
     if (step === "shopify") {
@@ -1610,6 +1616,7 @@ export function AddRevenueWizardModal(props: {
                   campaignId={campaignId}
                   platformContext={platformContext}
                   mode={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "hubspot" ? "edit" : "connect"}
+                  externalBackNonce={hubspotBackNonce}
                   initialMappingConfig={
                     isEditing && String(initialSource?.sourceType || "").toLowerCase() === "hubspot"
                       ? (hubspotInitialMappingConfig || null)

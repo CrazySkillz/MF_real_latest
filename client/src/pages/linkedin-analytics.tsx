@@ -5114,6 +5114,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                             Cumulative sum of HubSpot deal Amounts for deals that entered the selected stage (pipeline proxy).
                                             This is a proxy signal (not Closed Won revenue).
                                           </p>
+                                          {hubspotPipelineProxyData?.warning ? (
+                                            <p className="text-xs text-amber-700 dark:text-amber-300">
+                                              Note: {String(hubspotPipelineProxyData.warning)}
+                                            </p>
+                                          ) : null}
                                           {hubspotPipelineProxyData?.pipelineStageLabel ? (
                                             <p className="text-xs text-slate-400">Stage: {String(hubspotPipelineProxyData.pipelineStageLabel)}</p>
                                           ) : null}

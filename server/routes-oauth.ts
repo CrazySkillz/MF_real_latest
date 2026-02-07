@@ -10262,6 +10262,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency) : null,
         lastUpdatedAt: cfg.pipelineLastUpdatedAt ? String(cfg.pipelineLastUpdatedAt) : null,
         totalToDate: Number(cfg.pipelineTotalToDate || 0),
+        mode: cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null,
+        warning: cfg.pipelineWarning ? String(cfg.pipelineWarning) : null,
       });
     } catch (error: any) {
       console.error("[HubSpot Pipeline Proxy] Error:", error);
@@ -10615,7 +10617,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Cumulative “to date” over the configured lookback window (defaults to 3650 days).
             const startToDate = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
             let pipelineToDate = 0;
-            const pipelineCurrencies = new Set<string>();
+            let pipelineCurrencies = new Set<string>();
+            let pipelineProxyMode: 'stage_entry' | 'current_stage' = 'stage_entry';
+            let pipelineProxyWarning: string | null = null;
 
             let after2: string | undefined;
             let pages2 = 0;
@@ -10665,17 +10669,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
               pages2 += 1;
             }
 
+            // Fallback: some portals don't reliably populate/filter `hs_date_entered_{stageId}` (e.g., deals created directly
+            // into a stage). In that case, fall back to "current stage" totals so the proxy isn't confusingly $0.
+            if (pipelineToDate <= 0) {
+              try {
+                pipelineToDate = 0;
+                pipelineCurrencies = new Set<string>();
+                pipelineProxyMode = 'current_stage';
+                pipelineProxyWarning = 'Using current-stage totals (stage-entry timestamps unavailable).';
+
+                let after3: string | undefined;
+                let pages3 = 0;
+                let seen3 = 0;
+                while (pages3 < MAX_HUBSPOT_PAGES) {
+                  const body3: any = {
+                    filterGroups: [
+                      {
+                        filters: [
+                          { propertyName: campaignProp, operator: 'IN', values: selected },
+                          { propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] },
+                        ],
+                      },
+                    ],
+                    properties: Array.from(new Set([campaignProp, revenueProp, 'hs_currency', 'dealstage'])),
+                    limit: 100,
+                    after: after3,
+                  };
+
+                  const json3 = await hubspotSearchDeals(accessToken, body3);
+                  const results3 = Array.isArray(json3?.results) ? json3.results : [];
+                  seen3 += results3.length;
+                  if (seen3 > MAX_HUBSPOT_RESULTS) break;
+
+                  for (const d of results3) {
+                    const props = d?.properties || {};
+                    const rRaw = props[revenueProp];
+                    const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+                    if (!Number.isFinite(amt)) continue;
+
+                    const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
+                    if (c) pipelineCurrencies.add(c);
+                    pipelineToDate += amt;
+                  }
+
+                  after3 = json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
+                  if (!after3) break;
+                  pages3 += 1;
+                }
+              } catch {
+                // ignore fallback errors
+              }
+            }
+
             if (pipelineCurrencies.size > 1) {
               // Do not fail revenue setup; just omit the proxy if currency is mixed.
               (mappingConfig as any).pipelineCurrency = null;
               (mappingConfig as any).pipelineLastUpdatedAt = new Date().toISOString();
               (mappingConfig as any).pipelineTotalToDate = 0;
+              (mappingConfig as any).pipelineProxyMode = pipelineProxyMode;
               (mappingConfig as any).pipelineWarning =
                 `Multiple currencies found for pipeline proxy (${Array.from(pipelineCurrencies).join(', ')}). Filter HubSpot to a single currency to enable pipeline proxy.`;
             } else {
               (mappingConfig as any).pipelineCurrency = pipelineCurrencies.size === 1 ? Array.from(pipelineCurrencies)[0] : null;
               (mappingConfig as any).pipelineLastUpdatedAt = new Date().toISOString();
               (mappingConfig as any).pipelineTotalToDate = Number(pipelineToDate.toFixed(2));
+              (mappingConfig as any).pipelineProxyMode = pipelineProxyMode;
+              (mappingConfig as any).pipelineWarning = pipelineProxyWarning;
             }
           } catch {
             // ignore (proxy is optional)

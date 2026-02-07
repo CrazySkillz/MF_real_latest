@@ -10234,9 +10234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
         currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency) : null,
         lastUpdatedAt: cfg.pipelineLastUpdatedAt ? String(cfg.pipelineLastUpdatedAt) : null,
-        last30DaysTotal: Number(cfg.pipelineLast30DaysTotal || 0),
-        last7DaysTotal: Number(cfg.pipelineLast7DaysTotal || 0),
-        todayTotal: Number(cfg.pipelineTodayTotal || 0),
+        totalToDate: Number(cfg.pipelineTotalToDate || 0),
       });
     } catch (error: any) {
       console.error("[HubSpot Pipeline Proxy] Error:", error);
@@ -10523,20 +10521,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (pipelineEnabled && pipelineStageId) {
           try {
             const stageEntryProp = `hs_date_entered_${pipelineStageId}`;
-            const end = Date.now();
-            const start30 = end - 30 * 24 * 60 * 60 * 1000;
-            const start7 = end - 7 * 24 * 60 * 60 * 1000;
-
-            let pipeline30 = 0;
-            let pipeline7 = 0;
-            let pipelineToday = 0;
+            // Cumulative “to date” over the configured lookback window (defaults to 3650 days).
+            const startToDate = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
+            let pipelineToDate = 0;
             const pipelineCurrencies = new Set<string>();
-
-            const startTodayUtc = (() => {
-              const now = new Date();
-              const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-              return d.getTime();
-            })();
 
             let after2: string | undefined;
             let pages2 = 0;
@@ -10547,7 +10535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   {
                     filters: [
                       { propertyName: campaignProp, operator: 'IN', values: selected },
-                      { propertyName: stageEntryProp, operator: 'GTE', value: String(start30) },
+                      { propertyName: stageEntryProp, operator: 'GTE', value: String(startToDate) },
                     ],
                   },
                 ],
@@ -10578,10 +10566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
                 if (c) pipelineCurrencies.add(c);
-
-                if (tMs >= start30) pipeline30 += amt;
-                if (tMs >= start7) pipeline7 += amt;
-                if (tMs >= startTodayUtc) pipelineToday += amt;
+                pipelineToDate += amt;
               }
 
               after2 = json2?.paging?.next?.after ? String(json2.paging.next.after) : undefined;
@@ -10593,17 +10578,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Do not fail revenue setup; just omit the proxy if currency is mixed.
               (mappingConfig as any).pipelineCurrency = null;
               (mappingConfig as any).pipelineLastUpdatedAt = new Date().toISOString();
-              (mappingConfig as any).pipelineLast30DaysTotal = 0;
-              (mappingConfig as any).pipelineLast7DaysTotal = 0;
-              (mappingConfig as any).pipelineTodayTotal = 0;
+              (mappingConfig as any).pipelineTotalToDate = 0;
               (mappingConfig as any).pipelineWarning =
                 `Multiple currencies found for pipeline proxy (${Array.from(pipelineCurrencies).join(', ')}). Filter HubSpot to a single currency to enable pipeline proxy.`;
             } else {
               (mappingConfig as any).pipelineCurrency = pipelineCurrencies.size === 1 ? Array.from(pipelineCurrencies)[0] : null;
               (mappingConfig as any).pipelineLastUpdatedAt = new Date().toISOString();
-              (mappingConfig as any).pipelineLast30DaysTotal = Number(pipeline30.toFixed(2));
-              (mappingConfig as any).pipelineLast7DaysTotal = Number(pipeline7.toFixed(2));
-              (mappingConfig as any).pipelineTodayTotal = Number(pipelineToday.toFixed(2));
+              (mappingConfig as any).pipelineTotalToDate = Number(pipelineToDate.toFixed(2));
             }
           } catch {
             // ignore (proxy is optional)

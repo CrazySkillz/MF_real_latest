@@ -5040,7 +5040,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                      Pipeline created (last 7 days)
+                                      Pipeline created (to date)
                                     </h3>
                                     <UITooltip>
                                       <TooltipTrigger asChild>
@@ -5052,7 +5052,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         <div className="space-y-2 text-sm">
                                           <p className="font-medium">What this means</p>
                                           <p className="text-xs text-slate-400">
-                                            Sum of HubSpot deal Amounts for deals that entered the selected stage in the last 7 days.
+                                            Cumulative sum of HubSpot deal Amounts for deals that entered the selected stage (pipeline proxy).
                                             This is a proxy signal (not Closed Won revenue).
                                           </p>
                                           {hubspotPipelineProxyData?.pipelineStageLabel ? (
@@ -5066,7 +5066,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <p className="text-2xl font-bold text-amber-800 dark:text-amber-300">
-                                    {formatCurrency(Number(hubspotPipelineProxyData?.last7DaysTotal || 0))}
+                                    {formatCurrency(Number(hubspotPipelineProxyData?.totalToDate || 0))}
                                   </p>
                                   {!!hubspotPipelineProxyData?.pipelineStageLabel && (
                                     <Badge variant="outline" className="text-xs">
@@ -5074,10 +5074,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     </Badge>
                                   )}
                                 </div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  Today: {formatCurrency(Number(hubspotPipelineProxyData?.todayTotal || 0))} • 30d:{" "}
-                                  {formatCurrency(Number(hubspotPipelineProxyData?.last30DaysTotal || 0))}
-                                </p>
+                                {!!hubspotPipelineProxyData?.lastUpdatedAt && (
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Updated: {String(hubspotPipelineProxyData.lastUpdatedAt)}
+                                  </p>
+                                )}
                               </CardContent>
                             </Card>
                           </div>

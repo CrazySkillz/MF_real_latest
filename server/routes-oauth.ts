@@ -987,6 +987,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // 2b) If HubSpot pipeline proxy was configured for LinkedIn, clear it too.
+      // UX requirement: deleting LinkedIn revenue tracking should also remove the "Pipeline (Proxy)" card.
+      try {
+        const hubspotConn: any = await storage.getHubspotConnection(campaignId);
+        if (hubspotConn?.id) {
+          let cfg: any = {};
+          try {
+            cfg = hubspotConn?.mappingConfig ? JSON.parse(String(hubspotConn.mappingConfig)) : {};
+          } catch {
+            cfg = {};
+          }
+          const nextCfg = {
+            ...cfg,
+            pipelineEnabled: false,
+            pipelineStageId: null,
+            pipelineStageLabel: null,
+            pipelineTotalToDate: 0,
+            pipelineCurrency: null,
+            pipelineLastUpdatedAt: null,
+            pipelineWarning: null,
+          };
+          await storage.updateHubspotConnection(String(hubspotConn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+        }
+      } catch {
+        // ignore (best-effort cleanup)
+      }
+
       // 3) Clear LinkedIn conversion value so revenue metrics are disabled immediately
       try {
         await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);

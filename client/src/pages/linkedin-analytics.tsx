@@ -1404,12 +1404,14 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
       await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
       await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"] });
       // KPI tab: clear/recompute revenue-dependent KPIs (ROI/ROAS/etc)
       await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId] });
       // Force immediate recompute for the active page (no waiting for intervals)
       await queryClient.refetchQueries({ queryKey: ["/api/linkedin/metrics", campaignId], exact: true });
       await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId], exact: true });
       await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'], exact: true });
+      await queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: true });
       await queryClient.refetchQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId], exact: true });
     },
     onError: (error: any) => {

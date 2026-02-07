@@ -10263,6 +10263,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return Array.from(new Set(stageIds)).slice(0, 50);
   }
 
+  function deriveDefaultNonLostStageIds(pipelines: any[]): string[] {
+    const stageIds: string[] = [];
+    for (const p of pipelines || []) {
+      const stages = Array.isArray(p?.stages) ? p.stages : [];
+      for (const s of stages) {
+        const id = s?.id ? String(s.id) : null;
+        if (!id) continue;
+        const md = s?.metadata || {};
+        const label = String(s?.label || '').toLowerCase();
+        const isClosedLost =
+          String((md as any)?.isClosedLost ?? '').toLowerCase() === 'true' ||
+          id.toLowerCase() === 'closedlost' ||
+          label.includes('closed lost');
+        if (isClosedLost) continue;
+        stageIds.push(id);
+      }
+    }
+    return Array.from(new Set(stageIds)).slice(0, 200);
+  }
+
   async function hubspotSearchDeals(accessToken: string, body: any): Promise<any> {
     const resp = await fetchWithTimeout('https://api.hubapi.com/crm/v3/objects/deals/search', {
       method: 'POST',
@@ -10293,8 +10313,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
-      // Default filters: Closed Won-ish stages + last N days (by close date)
-      let stageIds: string[] = ['closedwon'];
+      // Default filters (LinkedIn exec UX): include non-lost deals over recent activity window
+      // so new/updated deals show up immediately in the Crosswalk list.
+      let stageIds: string[] = [];
       try {
         const pipelinesResp = await fetch('https://api.hubapi.com/crm/v3/pipelines/deals', {
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -10302,7 +10323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const pipelinesJson: any = await pipelinesResp.json().catch(() => ({}));
         if (pipelinesResp.ok) {
           const pipelines = Array.isArray(pipelinesJson?.results) ? pipelinesJson.results : [];
-          const derived = deriveDefaultClosedWonStageIds(pipelines);
+          const derived = deriveDefaultNonLostStageIds(pipelines);
           if (derived.length > 0) stageIds = derived;
         }
       } catch {
@@ -10319,8 +10340,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           filterGroups: [
             {
               filters: [
-                { propertyName: 'dealstage', operator: 'IN', values: stageIds },
-                { propertyName: 'closedate', operator: 'GTE', value: String(startMs) },
+                ...(stageIds.length > 0 ? [{ propertyName: 'dealstage', operator: 'IN', values: stageIds }] : []),
+                { propertyName: 'hs_lastmodifieddate', operator: 'GTE', value: String(startMs) },
               ],
             },
           ],
@@ -10394,7 +10415,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
-      // Determine default closed-won stage ids unless caller provides an explicit list
+      const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
+      const effectiveValueSource: 'revenue' | 'conversion_value' = (platformCtx === 'linkedin' ? parsedValueSource : 'revenue');
+
+      // Determine default stage ids unless caller provides an explicit list:
+      // - linkedin: non-lost stages (so "revenue" can reflect pipeline/opps too, per exec expectation)
+      // - ga4: closed-won-ish stages (finance-grade)
       let effectiveStageIds: string[] = Array.isArray(stageIds) && stageIds.length > 0 ? stageIds.map((v: any) => String(v)) : ['closedwon'];
       if (!Array.isArray(stageIds) || stageIds.length === 0) {
         try {
@@ -10404,7 +10430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const pipelinesJson: any = await pipelinesResp.json().catch(() => ({}));
           if (pipelinesResp.ok) {
             const pipelines = Array.isArray(pipelinesJson?.results) ? pipelinesJson.results : [];
-            const derived = deriveDefaultClosedWonStageIds(pipelines);
+            const derived = platformCtx === "linkedin" ? deriveDefaultNonLostStageIds(pipelines) : deriveDefaultClosedWonStageIds(pipelines);
             if (derived.length > 0) effectiveStageIds = derived;
           }
         } catch {
@@ -10428,7 +10454,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               filters: [
                 { propertyName: campaignProp, operator: 'IN', values: selected },
                 { propertyName: 'dealstage', operator: 'IN', values: effectiveStageIds },
-                { propertyName: 'closedate', operator: 'GTE', value: String(startMs) },
+                // GA4 uses close date; LinkedIn exec flow uses last-modified so edited deals are reflected daily.
+                { propertyName: platformCtx === "linkedin" ? 'hs_lastmodifieddate' : 'closedate', operator: 'GTE', value: String(startMs) },
               ],
             },
           ],
@@ -10439,6 +10466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'dealname',
             'dealstage',
             'closedate',
+            'hs_lastmodifieddate',
             ...(convValueProp ? [convValueProp] : []),
           ])),
           limit: 100,
@@ -10484,9 +10512,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // NOTE: No LinkedIn coupling here. This endpoint only saves HubSpot mappings + materializes revenue.
-
-      const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
-      const effectiveValueSource: 'revenue' | 'conversion_value' = (platformCtx === 'linkedin' ? parsedValueSource : 'revenue');
 
       if (platformCtx === 'linkedin' && effectiveValueSource === 'conversion_value' && !convValueProp) {
         return res.status(400).json({ error: 'conversionValueProperty is required when valueSource=conversion_value' });

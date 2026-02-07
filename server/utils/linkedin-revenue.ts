@@ -137,7 +137,15 @@ export async function resolveLinkedInRevenueContext(opts: {
 
   let totalRevenue = 0;
   if (hasRevenueTracking) {
-    if (importedRevenueToDate > 0 && conversionValueSource === "none") {
+    // IMPORTANT: When we have an imported revenue-to-date (e.g., HubSpot deal Amounts), that imported
+    // value is the source of truth for Total Revenue. We may still *derive* conversionValue for display,
+    // but we must not recompute Total Revenue from conversions × (rounded) conversionValue, or the UI
+    // will drift by cents (exec-facing accuracy requirement).
+    //
+    // Only use conversions × conversionValue when conversionValue is explicitly configured by the user.
+    const hasImportedToDate = importedRevenueToDate > 0;
+    const hasExplicitConversionValue = conversionValueSource === "connection" || conversionValueSource === "session";
+    if (hasImportedToDate && !hasExplicitConversionValue) {
       totalRevenue = importedRevenueToDate;
     } else if (conversionValue > 0) {
       totalRevenue = conversionsTotal * conversionValue;

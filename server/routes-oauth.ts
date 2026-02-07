@@ -10254,6 +10254,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for this campaign." });
       }
 
+      // If cached total is zero (or missing), recompute on-demand so UI isn't stuck with stale $0.00.
+      // This is especially important when HubSpot doesn't populate/filter `hs_date_entered_{stageId}` reliably.
+      try {
+        const cached = Number(cfg.pipelineTotalToDate || 0);
+        if (!Number.isFinite(cached) || cached <= 0) {
+          const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
+          const campaignProp = String(cfg.campaignProperty || "").trim();
+          const selectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
+          const revenueProp = String(cfg.revenueProperty || "amount").trim() || "amount";
+          const pipelineStageId = String(cfg.pipelineStageId || "").trim();
+          const rangeDays = Math.min(Math.max(parseInt(String(cfg.days ?? 3650), 10) || 3650, 1), 3650);
+          const startToDate = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
+
+          let totalToDate = 0;
+          let currencies = new Set<string>();
+          let mode: 'stage_entry' | 'current_stage' = 'stage_entry';
+          let warning: string | null = null;
+
+          // 1) Preferred: stage-entry timestamp
+          if (campaignProp && pipelineStageId && selectedValues.length > 0) {
+            const stageEntryProp = `hs_date_entered_${pipelineStageId}`;
+            let after: string | undefined;
+            let pages = 0;
+            let seen = 0;
+            while (pages < MAX_HUBSPOT_PAGES) {
+              const body2: any = {
+                filterGroups: [
+                  {
+                    filters: [
+                      { propertyName: campaignProp, operator: 'IN', values: selectedValues },
+                      { propertyName: stageEntryProp, operator: 'GTE', value: String(startToDate) },
+                    ],
+                  },
+                ],
+                properties: Array.from(new Set([campaignProp, revenueProp, 'hs_currency', stageEntryProp])),
+                limit: 100,
+                after,
+              };
+              const json2 = await hubspotSearchDeals(accessToken, body2);
+              const results2 = Array.isArray(json2?.results) ? json2.results : [];
+              seen += results2.length;
+              if (seen > MAX_HUBSPOT_RESULTS) break;
+              for (const d of results2) {
+                const props = d?.properties || {};
+                const rRaw = props[revenueProp];
+                const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+                if (!Number.isFinite(amt)) continue;
+                const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
+                if (c) currencies.add(c);
+                totalToDate += amt;
+              }
+              after = json2?.paging?.next?.after ? String(json2.paging.next.after) : undefined;
+              if (!after) break;
+              pages += 1;
+            }
+          }
+
+          // 2) Fallback: sum deals currently in the stage
+          if (totalToDate <= 0 && campaignProp && pipelineStageId && selectedValues.length > 0) {
+            totalToDate = 0;
+            currencies = new Set<string>();
+            mode = 'current_stage';
+            warning = 'Using current-stage totals (stage-entry timestamps unavailable).';
+
+            let after3: string | undefined;
+            let pages3 = 0;
+            let seen3 = 0;
+            while (pages3 < MAX_HUBSPOT_PAGES) {
+              const body3: any = {
+                filterGroups: [
+                  {
+                    filters: [
+                      { propertyName: campaignProp, operator: 'IN', values: selectedValues },
+                      { propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] },
+                    ],
+                  },
+                ],
+                properties: Array.from(new Set([campaignProp, revenueProp, 'hs_currency', 'dealstage'])),
+                limit: 100,
+                after: after3,
+              };
+              const json3 = await hubspotSearchDeals(accessToken, body3);
+              const results3 = Array.isArray(json3?.results) ? json3.results : [];
+              seen3 += results3.length;
+              if (seen3 > MAX_HUBSPOT_RESULTS) break;
+              for (const d of results3) {
+                const props = d?.properties || {};
+                const rRaw = props[revenueProp];
+                const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+                if (!Number.isFinite(amt)) continue;
+                const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
+                if (c) currencies.add(c);
+                totalToDate += amt;
+              }
+              after3 = json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
+              if (!after3) break;
+              pages3 += 1;
+            }
+          }
+
+          const lastUpdatedAt = new Date().toISOString();
+          if (currencies.size > 1) {
+            cfg.pipelineTotalToDate = 0;
+            cfg.pipelineCurrency = null;
+            cfg.pipelineLastUpdatedAt = lastUpdatedAt;
+            cfg.pipelineProxyMode = mode;
+            cfg.pipelineWarning = `Multiple currencies found for pipeline proxy (${Array.from(currencies).join(', ')}). Filter HubSpot to a single currency to enable pipeline proxy.`;
+          } else {
+            cfg.pipelineTotalToDate = Number(Number(totalToDate || 0).toFixed(2));
+            cfg.pipelineCurrency = currencies.size === 1 ? Array.from(currencies)[0] : null;
+            cfg.pipelineLastUpdatedAt = lastUpdatedAt;
+            cfg.pipelineProxyMode = mode;
+            cfg.pipelineWarning = warning;
+          }
+
+          if (conn?.id) {
+            await storage.updateHubspotConnection(String(conn.id), { mappingConfig: JSON.stringify(cfg) } as any);
+          }
+        }
+      } catch {
+        // ignore (best-effort refresh)
+      }
+
       res.json({
         success: true,
         pipelineEnabled: true,

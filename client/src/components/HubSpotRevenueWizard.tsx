@@ -90,7 +90,8 @@ export function HubSpotRevenueWizard(props: {
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  // Advanced options intentionally hidden for exec flow simplicity.
+  const [showAdvanced] = useState(false);
 
   // Edit mode: prefill from the saved mappingConfig and always start at Source (LinkedIn) for consistency.
   useEffect(() => {
@@ -634,11 +635,7 @@ export function HubSpotRevenueWizard(props: {
                     </div>
                   </RadioGroup>
 
-                  {isConnected && (
-                    <Button type="button" variant="link" className="px-0 h-auto" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                      {isConnecting ? "Reconnecting…" : "Reconnect"}
-                    </Button>
-                  )}
+                  {/* Reconnect intentionally hidden here (keep flow simple) */}
                 </div>
 
                 <div className="text-xs text-slate-500">
@@ -709,7 +706,7 @@ export function HubSpotRevenueWizard(props: {
 
           {step === "crosswalk" && (
             <div className="flex flex-col gap-3 min-h-0">
-              <div className="flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center justify-between gap-2 shrink-0">
                 <div className="text-sm text-slate-600">
                   Selected: <strong>{selectedValues.length}</strong>
                 </div>
@@ -722,18 +719,6 @@ export function HubSpotRevenueWizard(props: {
                   >
                     {valuesLoading ? "Refreshing…" : "Refresh values"}
                   </Button>
-                  {isConnected && (
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      className="px-0"
-                      onClick={() => void openOAuthWindow()}
-                      disabled={isConnecting}
-                    >
-                      {isConnecting ? "Reconnecting…" : "Reconnect"}
-                    </Button>
-                  )}
                 </div>
               </div>
 
@@ -861,13 +846,8 @@ export function HubSpotRevenueWizard(props: {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-xs text-slate-500">
-                  Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => setShowAdvanced((v) => !v)}>
-                  {showAdvanced ? "Hide advanced" : "Advanced"}
-                </Button>
+              <div className="text-xs text-slate-500">
+                Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
               </div>
 
               {showAdvanced && (

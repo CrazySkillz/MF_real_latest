@@ -106,6 +106,36 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     }
   };
 
+  /**
+   * Canonical client-side revenue attribution helper (mirrors server rules).
+   *
+   * - Aggregate ROI/ROAS/etc should use server-computed `aggregated.totalRevenue`.
+   * - When we need to attribute revenue to sub-entities (campaign rows, daily rows, etc),
+   *   allocate by conversions share against the campaign's total revenue for the window.
+   *   This avoids cents drift when conversionValue is derived/rounded.
+   */
+  const computeRevenueFromConversions = (conversions: number): number => {
+    const hasRevenueTracking =
+      (aggregated as any)?.hasRevenueTracking === 1 || (aggregated as any)?.hasRevenueTracking === true;
+    if (!hasRevenueTracking) return 0;
+
+    const totalRevenueAll = Number((aggregated as any)?.totalRevenue ?? (aggregated as any)?.revenue ?? 0) || 0;
+    const totalConversionsAll = Number((aggregated as any)?.totalConversions ?? (aggregated as any)?.conversions ?? 0) || 0;
+    const conversionValue = Number((aggregated as any)?.conversionValue || 0) || 0;
+
+    // Prefer allocating from the canonical totalRevenue for the window.
+    if (totalRevenueAll > 0 && totalConversionsAll > 0 && Number.isFinite(conversions) && conversions > 0) {
+      return (totalRevenueAll * conversions) / totalConversionsAll;
+    }
+
+    // Fallback: explicit conversion value mode (or when totals are missing).
+    if (conversionValue > 0 && Number.isFinite(conversions) && conversions > 0) {
+      return conversions * conversionValue;
+    }
+
+    return 0;
+  };
+
   const getStageOnlyLabel = (label: unknown): string | null => {
     if (!label) return null;
     const raw = String(label).trim();
@@ -937,9 +967,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
         const er = impressions > 0 ? (engagements / impressions) * 100 : 0;
 
         // Revenue-derived metrics (only when revenue tracking is enabled for LinkedIn)
-        const hasRevenueTracking = !!aggregated?.hasRevenueTracking;
-        const conversionValue = Number(aggregated?.conversionValue || 0);
-        const totalRevenue = hasRevenueTracking && conversionValue > 0 ? conversions * conversionValue : 0;
+        const totalRevenue = computeRevenueFromConversions(conversions);
         const profit = totalRevenue - spend;
         const roi = spend > 0 ? (profit / spend) * 100 : 0; // percent
         const roas = spend > 0 ? totalRevenue / spend : 0; // x
@@ -1006,9 +1034,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     const er = totals.impressions > 0 ? (totals.engagements / totals.impressions) * 100 : 0;
 
     // Revenue-derived metrics (only when revenue tracking is enabled for LinkedIn)
-    const hasRevenueTracking = !!aggregated?.hasRevenueTracking;
-    const conversionValue = Number(aggregated?.conversionValue || 0);
-    const totalRevenue = hasRevenueTracking && conversionValue > 0 ? totals.conversions * conversionValue : 0;
+    const totalRevenue = computeRevenueFromConversions(Number(totals.conversions || 0));
     const profit = totalRevenue - totals.spend;
     const roi = totals.spend > 0 ? (profit / totals.spend) * 100 : 0; // percent
     const roas = totals.spend > 0 ? totalRevenue / totals.spend : 0; // x
@@ -2297,7 +2323,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
           const spend = Number(r?.spend || 0) || 0;
           const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
           const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
-          const revenue = hasRevenueTracking && hasConversionValue ? conversions * conversionValue : 0;
+          const revenue = hasRevenueTracking ? computeRevenueFromConversions(conversions) : 0;
           const roas = spend > 0 ? revenue / spend : 0;
           return { date, impressions, clicks, conversions, spend, ctr, cvr, revenue, roas };
         })
@@ -2384,8 +2410,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       }, {})
     ) as any[];
 
-    const conversionValue = Number((aggregated as any)?.conversionValue || (aggregated as any)?.conversionvalue || 0);
-    const hasRevenue = (aggregated as any)?.hasRevenueTracking === 1 && Number.isFinite(conversionValue) && conversionValue > 0;
+    const hasRevenue = (aggregated as any)?.hasRevenueTracking === 1 || (aggregated as any)?.hasRevenueTracking === true;
 
     const selectedUrns = Array.isArray(opts?.selectedCampaignUrns) ? opts!.selectedCampaignUrns : null;
     const visibleCampaigns = selectedUrns && selectedUrns.length > 0
@@ -2426,7 +2451,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       const cpc = clicks > 0 ? spend / clicks : 0;
       const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
       const cpa = conversions > 0 ? spend / conversions : 0;
-      const revenue = hasRevenue ? conversions * conversionValue : 0;
+      const revenue = hasRevenue ? computeRevenueFromConversions(conversions) : 0;
       const profit = hasRevenue ? (revenue - spend) : 0;
       const roi = hasRevenue && spend > 0 ? (profit / spend) * 100 : 0;
       const roas = hasRevenue && spend > 0 ? (revenue / spend) : 0;
@@ -3877,11 +3902,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       if (typeof base === 'number') return base;
 
       // Compute revenue metrics for campaign scope when available
-      if (hasRevenueTracking && conversionValue > 0) {
+      if (hasRevenueTracking) {
         const spend = Number((campaignMetrics as any).spend || 0);
         const conversions = Number((campaignMetrics as any).conversions || 0);
         const leads = Number((campaignMetrics as any).leads || 0);
-        const revenue = conversions * conversionValue;
+        const revenue = computeRevenueFromConversions(conversions);
         const profit = revenue - spend;
         switch (k) {
           case 'totalrevenue': return revenue;
@@ -4414,7 +4439,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   const linkedInInsightsRollups = useMemo(() => {
     const a: any = aggregated || {};
     const hasRevenueTracking = a?.hasRevenueTracking === 1 || a?.hasRevenueTracking === true;
-    const conversionValue = Number(a?.conversionValue || 0) || 0;
 
     const rows = Array.isArray((linkedInDailyResp as any)?.data) ? (linkedInDailyResp as any).data : [];
     const byDate = rows
@@ -4445,7 +4469,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       );
       const ctr = sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : 0;
       const cvr = sums.clicks > 0 ? (sums.conversions / sums.clicks) * 100 : 0;
-      const revenue = hasRevenueTracking && conversionValue > 0 ? sums.conversions * conversionValue : 0;
+      const revenue = hasRevenueTracking ? computeRevenueFromConversions(Number(sums.conversions || 0)) : 0;
       const roas = sums.spend > 0 ? revenue / sums.spend : 0;
       const startDate = slice[0]?.date || null;
       const endDate = slice[slice.length - 1]?.date || null;
@@ -4490,7 +4514,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   const linkedInDailySeries = useMemo(() => {
     const a: any = aggregated || {};
     const hasRevenueTracking = a?.hasRevenueTracking === 1 || a?.hasRevenueTracking === true;
-    const conversionValue = Number(a?.conversionValue || 0) || 0;
 
     const rows = Array.isArray((linkedInDailyResp as any)?.data) ? (linkedInDailyResp as any).data : [];
     const byDate = rows
@@ -4502,7 +4525,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
         const spend = Number(r?.spend || 0) || 0;
         const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
         const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
-        const revenue = hasRevenueTracking && conversionValue > 0 ? conversions * conversionValue : 0;
+        const revenue = hasRevenueTracking ? computeRevenueFromConversions(conversions) : 0;
         const roas = spend > 0 ? revenue / spend : 0;
         return { date, impressions, clicks, conversions, spend, ctr, cvr, revenue, roas };
       })
@@ -5710,10 +5733,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     </div>
                                   </div>
 
-                                  {/* Revenue Metrics - Only shown when per-campaign revenue allocation is possible */}
-                                  {(aggregated?.hasRevenueTracking === 1 && Number(aggregated?.conversionValue || 0) > 0) && (() => {
-                                    const conversionValue = Number(aggregated.conversionValue || 0);
-                                    const campaignRevenue = conversions * conversionValue;
+                                  {/* Revenue Metrics - Only shown when revenue tracking is enabled */}
+                                  {(aggregated?.hasRevenueTracking === 1) && (() => {
+                                    const campaignRevenue = computeRevenueFromConversions(conversions);
                                     const campaignProfit = campaignRevenue - spend;
                                     const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
                                     const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;

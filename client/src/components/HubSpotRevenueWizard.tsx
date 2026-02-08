@@ -128,12 +128,13 @@ export function HubSpotRevenueWizard(props: {
       ...(isLinkedIn ? [{ id: "value-source" as const, label: "Source", icon: DollarSign }] : []),
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
-      ...(isLinkedIn && pipelineEnabled ? [{ id: "pipeline" as const, label: "Pipeline", icon: Target }] : []),
-      // Keep the stepper label stable to avoid layout shift (exec-grade UI polish).
+      // Always render the Pipeline step in the stepper for LinkedIn to prevent the stepper from "jumping"
+      // when toggling between Revenue-only vs Revenue+Pipeline.
+      ...(isLinkedIn ? [{ id: "pipeline" as const, label: "Pipeline", icon: Target }] : []),
       { id: "revenue" as const, label: "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ];
-  }, [isLinkedIn, pipelineEnabled]);
+  }, [isLinkedIn]);
 
   const currentStepIndex = useMemo(() => {
     const idx = steps.findIndex((s) => s.id === step);
@@ -486,32 +487,41 @@ export function HubSpotRevenueWizard(props: {
       <div className="flex items-center justify-between shrink-0 mb-6">
         {steps.map((s, index) => {
           const StepIcon = s.icon;
-          const isActive = s.id === step;
-          const isCompleted = index < currentStepIndex;
+          const isPipelineStep = isLinkedIn && s.id === "pipeline";
+          const isDisabled = isPipelineStep && !pipelineEnabled;
+          const isActive = !isDisabled && s.id === step;
+          // Don't mark disabled optional steps as "completed"
+          const isCompleted = !isDisabled && index < currentStepIndex;
+          // But keep the connector progress accurate so the bar doesn't look "broken"
+          const isConnectorCompleted = index < currentStepIndex;
           return (
             <div key={s.id} className="flex items-center flex-1">
               <div className="flex flex-col items-center flex-1">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-                    isActive
+                    isDisabled
+                      ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
+                      : isActive
                       ? "bg-blue-600 border-blue-600 text-white"
                       : isCompleted
                       ? "bg-green-600 border-green-600 text-white"
                       : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400"
                   }`}
                 >
-                  {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
+                  {!isDisabled && isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
                 </div>
                 <p
                   className={`text-xs mt-2 text-center whitespace-nowrap ${
-                    isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-slate-400"
+                    isDisabled ? "text-slate-400" : isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-slate-400"
                   }`}
                 >
                   {s.label}
                 </p>
               </div>
               {index < steps.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-2 ${isCompleted ? "bg-green-600" : "bg-slate-200 dark:bg-slate-700"}`} />
+                <div
+                  className={`flex-1 h-0.5 mx-2 ${isConnectorCompleted ? "bg-green-600" : "bg-slate-200 dark:bg-slate-700"}`}
+                />
               )}
             </div>
           );
@@ -635,7 +645,17 @@ export function HubSpotRevenueWizard(props: {
                     </div>
                   </RadioGroup>
 
-                  {/* Reconnect intentionally hidden here (keep flow simple) */}
+                  {isConnected && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="px-0 h-auto"
+                      onClick={() => void openOAuthWindow()}
+                      disabled={isConnecting}
+                    >
+                      {isConnecting ? "Reconnecting…" : "Reconnect"}
+                    </Button>
+                  )}
                 </div>
 
                 <div className="text-xs text-slate-500">

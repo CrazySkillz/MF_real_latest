@@ -10254,72 +10254,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for this campaign." });
       }
 
-      // If cached total is zero (or missing), recompute on-demand so UI isn't stuck with stale $0.00.
-      // This is especially important when HubSpot doesn't populate/filter `hs_date_entered_{stageId}` reliably,
-      // and also when tokens expire (we fall back to the last-known total to avoid exec-confusing $0).
+      // Recompute on-demand so UI isn't stuck with stale/wrong values.
+      // For LinkedIn, the proxy is defined as the sum of deals CURRENTLY in the selected stage
+      // (stage subset), not "entered stage at some point" (which is confusing and often equals Total Revenue).
       let recomputeFailed = false;
       try {
         const cached = Number(cfg.pipelineTotalToDate || 0);
-        if (!Number.isFinite(cached) || cached <= 0) {
+        const cachedMode = cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null;
+        if (!Number.isFinite(cached) || cached <= 0 || cachedMode !== 'current_stage') {
           const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
           const campaignProp = String(cfg.campaignProperty || "").trim();
           const selectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
           const revenueProp = String(cfg.revenueProperty || "amount").trim() || "amount";
           const pipelineStageId = String(cfg.pipelineStageId || "").trim();
-          const rangeDays = Math.min(Math.max(parseInt(String(cfg.days ?? 3650), 10) || 3650, 1), 3650);
-          const startToDate = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
 
           let totalToDate = 0;
           let currencies = new Set<string>();
-          let mode: 'stage_entry' | 'current_stage' = 'stage_entry';
-          let warning: string | null = null;
+          const mode: 'current_stage' = 'current_stage';
+          const warning: string | null = null;
 
-          // 1) Preferred: stage-entry timestamp
           if (campaignProp && pipelineStageId && selectedValues.length > 0) {
-            const stageEntryProp = `hs_date_entered_${pipelineStageId}`;
-            let after: string | undefined;
-            let pages = 0;
-            let seen = 0;
-            while (pages < MAX_HUBSPOT_PAGES) {
-              const body2: any = {
-                filterGroups: [
-                  {
-                    filters: [
-                      { propertyName: campaignProp, operator: 'IN', values: selectedValues },
-                      { propertyName: stageEntryProp, operator: 'GTE', value: String(startToDate) },
-                    ],
-                  },
-                ],
-                properties: Array.from(new Set([campaignProp, revenueProp, 'hs_currency', stageEntryProp])),
-                limit: 100,
-                after,
-              };
-              const json2 = await hubspotSearchDeals(accessToken, body2);
-              const results2 = Array.isArray(json2?.results) ? json2.results : [];
-              seen += results2.length;
-              if (seen > MAX_HUBSPOT_RESULTS) break;
-              for (const d of results2) {
-                const props = d?.properties || {};
-                const rRaw = props[revenueProp];
-                const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
-                if (!Number.isFinite(amt)) continue;
-                const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
-                if (c) currencies.add(c);
-                totalToDate += amt;
-              }
-              after = json2?.paging?.next?.after ? String(json2.paging.next.after) : undefined;
-              if (!after) break;
-              pages += 1;
-            }
-          }
-
-          // 2) Fallback: sum deals currently in the stage
-          if (totalToDate <= 0 && campaignProp && pipelineStageId && selectedValues.length > 0) {
-            totalToDate = 0;
-            currencies = new Set<string>();
-            mode = 'current_stage';
-            warning = 'Using current-stage totals (stage-entry timestamps unavailable).';
-
             let after3: string | undefined;
             let pages3 = 0;
             let seen3 = 0;
@@ -10379,19 +10333,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recomputeFailed = true;
       }
 
-      // Final fallback: if proxy is still 0 but we have a last-known revenue total, show that instead of $0.
-      // This avoids confusing execs when HubSpot stage-entry timestamps are unavailable or tokens are expired.
+      // Final fallback (token/error only): if recompute failed and we have a last-known revenue total,
+      // show that instead of $0. Avoid using Total Revenue as a "proxy" when the stage query succeeded
+      // (a real 0 can be valid if no deals are currently in that stage).
       try {
         const proxyNow = Number(cfg.pipelineTotalToDate || 0);
         const lastKnown = Number(cfg.lastTotalRevenue || 0);
-        if ((!Number.isFinite(proxyNow) || proxyNow <= 0) && Number.isFinite(lastKnown) && lastKnown > 0) {
+        if (recomputeFailed && (!Number.isFinite(proxyNow) || proxyNow <= 0) && Number.isFinite(lastKnown) && lastKnown > 0) {
           cfg.pipelineTotalToDate = Number(Number(lastKnown).toFixed(2));
           cfg.pipelineProxyMode = 'revenue_total_fallback';
           cfg.pipelineWarning =
             cfg.pipelineWarning ||
-            (recomputeFailed
-              ? 'Showing last-known total (HubSpot refresh required to recompute pipeline proxy).'
-              : 'Showing last-known total (no stage-based proxy rows found).');
+            'Showing last-known total (HubSpot refresh required to recompute pipeline proxy).';
           cfg.pipelineLastUpdatedAt = cfg.pipelineLastUpdatedAt || new Date().toISOString();
           if (conn?.id) {
             await storage.updateHubspotConnection(String(conn.id), { mappingConfig: JSON.stringify(cfg) } as any);
@@ -10756,52 +10709,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
         };
 
-        // Best-effort: compute a lightweight "pipeline created" proxy (last 30 days + last 7 days + today),
-        // keyed off the stage-entry timestamp property `hs_date_entered_{stageId}`.
+        // Best-effort: compute an exec-facing "pipeline" proxy as the sum of deals CURRENTLY in the selected stage.
+        // This is intentionally a stage subset (e.g., SQL pipeline), not a historical "entered stage" total.
         if (pipelineEnabled && pipelineStageId) {
           try {
-            const stageEntryProp = `hs_date_entered_${pipelineStageId}`;
-            // Cumulative “to date” over the configured lookback window (defaults to 3650 days).
-            const startToDate = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
             let pipelineToDate = 0;
             let pipelineCurrencies = new Set<string>();
-            let pipelineProxyMode: 'stage_entry' | 'current_stage' = 'stage_entry';
+            let pipelineProxyMode: 'current_stage' = 'current_stage';
             let pipelineProxyWarning: string | null = null;
 
-            let after2: string | undefined;
-            let pages2 = 0;
-            let seen2 = 0;
-            while (pages2 < MAX_HUBSPOT_PAGES) {
-              const body2: any = {
+            let after3: string | undefined;
+            let pages3 = 0;
+            let seen3 = 0;
+            while (pages3 < MAX_HUBSPOT_PAGES) {
+              const body3: any = {
                 filterGroups: [
                   {
                     filters: [
                       { propertyName: campaignProp, operator: 'IN', values: selected },
-                      { propertyName: stageEntryProp, operator: 'GTE', value: String(startToDate) },
+                      { propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] },
                     ],
                   },
                 ],
-                properties: Array.from(new Set([
-                  campaignProp,
-                  revenueProp,
-                  'hs_currency',
-                  stageEntryProp,
-                ])),
+                properties: Array.from(new Set([campaignProp, revenueProp, 'hs_currency', 'dealstage'])),
                 limit: 100,
-                after: after2,
+                after: after3,
               };
 
-              const json2 = await hubspotSearchDeals(accessToken, body2);
-              const results2 = Array.isArray(json2?.results) ? json2.results : [];
-              seen2 += results2.length;
-              if (seen2 > MAX_HUBSPOT_RESULTS) break;
+              const json3 = await hubspotSearchDeals(accessToken, body3);
+              const results3 = Array.isArray(json3?.results) ? json3.results : [];
+              seen3 += results3.length;
+              if (seen3 > MAX_HUBSPOT_RESULTS) break;
 
-              for (const d of results2) {
+              for (const d of results3) {
                 const props = d?.properties || {};
-                const tRaw = props?.[stageEntryProp];
-                const tMs = tRaw === undefined || tRaw === null ? NaN : Number(String(tRaw).replace(/[^0-9]/g, ""));
-                if (!Number.isFinite(tMs)) continue;
-
                 const rRaw = props[revenueProp];
                 const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
                 if (!Number.isFinite(amt)) continue;
@@ -10811,61 +10752,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 pipelineToDate += amt;
               }
 
-              after2 = json2?.paging?.next?.after ? String(json2.paging.next.after) : undefined;
-              if (!after2) break;
-              pages2 += 1;
-            }
-
-            // Fallback: some portals don't reliably populate/filter `hs_date_entered_{stageId}` (e.g., deals created directly
-            // into a stage). In that case, fall back to "current stage" totals so the proxy isn't confusingly $0.
-            if (pipelineToDate <= 0) {
-              try {
-                pipelineToDate = 0;
-                pipelineCurrencies = new Set<string>();
-                pipelineProxyMode = 'current_stage';
-                pipelineProxyWarning = 'Using current-stage totals (stage-entry timestamps unavailable).';
-
-                let after3: string | undefined;
-                let pages3 = 0;
-                let seen3 = 0;
-                while (pages3 < MAX_HUBSPOT_PAGES) {
-                  const body3: any = {
-                    filterGroups: [
-                      {
-                        filters: [
-                          { propertyName: campaignProp, operator: 'IN', values: selected },
-                          { propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] },
-                        ],
-                      },
-                    ],
-                    properties: Array.from(new Set([campaignProp, revenueProp, 'hs_currency', 'dealstage'])),
-                    limit: 100,
-                    after: after3,
-                  };
-
-                  const json3 = await hubspotSearchDeals(accessToken, body3);
-                  const results3 = Array.isArray(json3?.results) ? json3.results : [];
-                  seen3 += results3.length;
-                  if (seen3 > MAX_HUBSPOT_RESULTS) break;
-
-                  for (const d of results3) {
-                    const props = d?.properties || {};
-                    const rRaw = props[revenueProp];
-                    const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
-                    if (!Number.isFinite(amt)) continue;
-
-                    const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
-                    if (c) pipelineCurrencies.add(c);
-                    pipelineToDate += amt;
-                  }
-
-                  after3 = json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
-                  if (!after3) break;
-                  pages3 += 1;
-                }
-              } catch {
-                // ignore fallback errors
-              }
+              after3 = json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
+              if (!after3) break;
+              pages3 += 1;
             }
 
             if (pipelineCurrencies.size > 1) {

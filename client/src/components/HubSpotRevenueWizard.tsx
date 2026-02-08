@@ -778,9 +778,9 @@ export function HubSpotRevenueWizard(props: {
           {step === "pipeline" && isLinkedIn && (
             <div className="space-y-4">
               <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-3">
-                <div className="text-sm font-medium">Pipeline created (daily signal)</div>
+                <div className="text-sm font-medium">Pipeline stage total (daily signal)</div>
                 <div className="text-xs text-slate-500">
-                  Pipeline is <span className="font-medium">not</span> Closed Won revenue. It’s an early indicator (deals entering a stage like SQL/Opportunity).
+                  Pipeline (Proxy) is <span className="font-medium">not</span> Closed Won revenue. It’s an early indicator (deals currently in a stage like SQL/Opportunity).
                 </div>
 
                 <div className="space-y-2">
@@ -793,11 +793,10 @@ export function HubSpotRevenueWizard(props: {
                       const flat: Array<{ id: string; label: string }> = [];
                       for (const p of pipelines || []) {
                         const stages = Array.isArray((p as any)?.stages) ? (p as any).stages : [];
-                        const pLabel = String((p as any)?.label || (p as any)?.name || "Pipeline");
                         for (const s of stages) {
                           const id = String((s as any)?.id || "");
                           const label = String((s as any)?.label || (s as any)?.name || id);
-                          if (id) flat.push({ id, label: `${pLabel} — ${label}` });
+                          if (id) flat.push({ id, label });
                         }
                       }
                       const hit = flat.find((x) => x.id === v);
@@ -825,7 +824,7 @@ export function HubSpotRevenueWizard(props: {
                     </SelectContent>
                   </Select>
                   <div className="text-xs text-slate-500">
-                    MetricMind will sum Deal Amounts for deals that entered this stage (cumulative to date).
+                    MetricMind will sum Deal Amounts for deals currently in this stage (stage subset).
                   </div>
                 </div>
               </div>

@@ -1434,29 +1434,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     },
   });
 
-  // HubSpot pipeline proxy removal (clears the Pipeline (Proxy) card)
-  const deleteHubspotPipelineProxyMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest('DELETE', `/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy`);
-      return res.json();
-    },
-    onSuccess: async () => {
-      toast({
-        title: "Pipeline proxy removed",
-        description: "The Pipeline (Proxy) card has been removed from Overview.",
-      });
-      await queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: true });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to remove pipeline proxy",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Handle create Benchmark
   const handleCreateBenchmark = () => {
     if (benchmarkForm.alertsEnabled) {
@@ -5089,97 +5066,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           
                           {/* Revenue Metrics Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {/* Pipeline (Proxy — stage subset) */}
-                          {hubspotPipelineProxyData?.success && hubspotPipelineProxyData?.pipelineEnabled === true && (
-                            <Card className="hover:shadow-md transition-shadow border-amber-200 dark:border-amber-800">
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                      Pipeline (Proxy — stage subset)
-                                    </h3>
-                                    <UITooltip>
-                                      <TooltipTrigger asChild>
-                                        <button type="button" className="inline-flex items-center">
-                                          <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" />
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="max-w-sm">
-                                        <div className="space-y-2 text-sm">
-                                          <p className="font-medium">What this means</p>
-                                          <p className="text-xs text-slate-400">
-                                            Stage-only subset of mapped deals. It sums HubSpot deal Amounts for deals currently in the selected stage (e.g., SQL).
-                                          </p>
-                                          {hubspotPipelineProxyData?.warning ? (
-                                            <p className="text-xs text-amber-700 dark:text-amber-300">
-                                              Note: {String(hubspotPipelineProxyData.warning)}
-                                            </p>
-                                          ) : null}
-                                          {hubspotPipelineProxyData?.pipelineStageLabel ? (
-                                            <p className="text-xs text-slate-400">
-                                              Stage: {String(getStageOnlyLabel(hubspotPipelineProxyData.pipelineStageLabel) || hubspotPipelineProxyData.pipelineStageLabel)}
-                                            </p>
-                                          ) : null}
-                                        </div>
-                                      </TooltipContent>
-                                    </UITooltip>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                          data-testid="button-delete-hubspot-pipeline-proxy"
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Remove Pipeline (Proxy)?</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            This removes the HubSpot Pipeline (Proxy) card from Overview. You can re-enable it later by reconnecting HubSpot revenue.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction
-                                            onClick={() => deleteHubspotPipelineProxyMutation.mutate()}
-                                            className="bg-red-600 hover:bg-red-700"
-                                          >
-                                            Remove
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                    <Target className="w-4 h-4 text-amber-600" />
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <p className="text-2xl font-bold text-amber-800 dark:text-amber-300">
-                                    {formatCurrency(Number(hubspotPipelineProxyData?.totalToDate || 0))}
-                                  </p>
-                                  {!!getStageOnlyLabel(hubspotPipelineProxyData?.pipelineStageLabel) && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {String(getStageOnlyLabel(hubspotPipelineProxyData?.pipelineStageLabel))}
-                                    </Badge>
-                                  )}
-                                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                                    Early signal
-                                  </Badge>
-                                </div>
-                                {!!hubspotPipelineProxyData?.lastUpdatedAt && (
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    Updated: {String(hubspotPipelineProxyData.lastUpdatedAt)}
-                                  </p>
-                                )}
-                              </CardContent>
-                            </Card>
-                          )}
-
                           {/* Total Revenue (Revenue source controls live here) */}
                           <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">
                             <CardContent className="p-4">
@@ -5288,6 +5174,63 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               )}
                             </CardContent>
                           </Card>
+
+                          {/* Pipeline (Proxy — stage subset) */}
+                          {hubspotPipelineProxyData?.success && hubspotPipelineProxyData?.pipelineEnabled === true && (
+                            <Card className="hover:shadow-md transition-shadow border-amber-200 dark:border-amber-800">
+                              <CardContent className="p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                      Pipeline (Proxy — stage subset)
+                                    </h3>
+                                    <UITooltip>
+                                      <TooltipTrigger asChild>
+                                        <button type="button" className="inline-flex items-center">
+                                          <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-sm">
+                                        <div className="space-y-2 text-sm">
+                                          <p className="font-medium">What this means</p>
+                                          <p className="text-xs text-slate-400">
+                                            Stage-only subset of mapped deals. It sums HubSpot deal Amounts for deals currently in the selected stage (e.g., SQL).
+                                          </p>
+                                          {hubspotPipelineProxyData?.warning ? (
+                                            <p className="text-xs text-amber-700 dark:text-amber-300">
+                                              Note: {String(hubspotPipelineProxyData.warning)}
+                                            </p>
+                                          ) : null}
+                                          {hubspotPipelineProxyData?.pipelineStageLabel ? (
+                                            <p className="text-xs text-slate-400">
+                                              Stage: {String(getStageOnlyLabel(hubspotPipelineProxyData.pipelineStageLabel) || hubspotPipelineProxyData.pipelineStageLabel)}
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                      </TooltipContent>
+                                    </UITooltip>
+                                  </div>
+                                  <Target className="w-4 h-4 text-amber-600" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-2xl font-bold text-amber-800 dark:text-amber-300">
+                                    {formatCurrency(Number(hubspotPipelineProxyData?.totalToDate || 0))}
+                                  </p>
+                                  {!!getStageOnlyLabel(hubspotPipelineProxyData?.pipelineStageLabel) && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {String(getStageOnlyLabel(hubspotPipelineProxyData?.pipelineStageLabel))}
+                                    </Badge>
+                                  )}
+                                  <Badge
+                                    variant="secondary"
+                                    className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                                  >
+                                    Early signal
+                                  </Badge>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
                           {/* Conversion Value (derived from the revenue source mappings) */}
                           <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">

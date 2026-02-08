@@ -5056,7 +5056,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           <div className="flex items-center justify-between gap-3 mb-3">
                             <div className="flex items-center gap-2">
                               <Target className="w-5 h-5 text-amber-600" />
-                              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Pipeline (Proxy)</h3>
+                              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Pipeline (Proxy — stage subset)</h3>
                               <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                                 Early signal
                               </Badge>
@@ -5111,8 +5111,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         <div className="space-y-2 text-sm">
                                           <p className="font-medium">What this means</p>
                                           <p className="text-xs text-slate-400">
-                                            Cumulative sum of HubSpot deal Amounts for deals that entered the selected stage (pipeline proxy).
-                                            This is a proxy signal (not Closed Won revenue).
+                                            Pipeline (Proxy) is a <span className="font-medium">stage-only subset</span> of your mapped deals (Crosswalk).
+                                            It sums HubSpot deal Amounts for deals that are in/entered the selected stage (e.g., SQL). This is an early signal, not “Closed Won revenue”.
                                           </p>
                                           {hubspotPipelineProxyData?.warning ? (
                                             <p className="text-xs text-amber-700 dark:text-amber-300">
@@ -5185,7 +5185,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                   <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                    Total Revenue
+                                    Total Revenue (all mapped deals)
                                   </h3>
                                   <UITooltip>
                                     <TooltipTrigger asChild>
@@ -5195,6 +5195,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     </TooltipTrigger>
                                     <TooltipContent className="max-w-sm">
                                       <div className="space-y-2 text-sm">
+                                        <p className="font-medium">What this means</p>
+                                        <p className="text-xs text-slate-400">
+                                          Total Revenue is the sum of HubSpot deal Amounts for <span className="font-medium">all deals mapped to this campaign</span> via Crosswalk (not filtered to the Pipeline stage).
+                                        </p>
                                         <p className="font-medium">Calculation</p>
                                         {Number(aggregated.conversionValue || 0) > 0 ? (
                                           <>

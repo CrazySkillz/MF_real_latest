@@ -17678,6 +17678,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       aggregated.er = sanitizeCalculatedMetric('er', computeErPercent(totalEngagements, totalImpressions));
 
       // Canonical LinkedIn revenue rules (shared across Overview/KPIs/Benchmarks/Ads)
+      // Auto-recalculate Shopify CV if the mapping is missing data (one-time backfill for legacy mappings)
+      await recalculateShopifyConversionValueIfNeeded(session.campaignId);
+      
       const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
       const rev = await resolveLinkedInRevenueContext({
         campaignId: String(session.campaignId),
@@ -20662,6 +20665,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
       throw new Error("No active Shopify connection found for this campaign.");
     }
     return conn as any;
+  };
+
+  /**
+   * Auto-recalculate Shopify conversion value for LinkedIn revenue sources.
+   * Called when loading LinkedIn analytics if Shopify CV is missing from mappingConfig.
+   */
+  const recalculateShopifyConversionValueIfNeeded = async (campaignId: string): Promise<{ recalculated: boolean; conversionValue: number | null; orderCount: number }> => {
+    try {
+      // Check if there's a LinkedIn-scoped Shopify revenue source
+      const sources = await storage.getRevenueSources(campaignId, "linkedin").catch(() => [] as any[]);
+      const shopifySource = (Array.isArray(sources) ? sources : []).find((s: any) => {
+        return !!s && (s as any)?.isActive !== false && String((s as any)?.sourceType || "").toLowerCase() === "shopify";
+      });
+      if (!shopifySource) return { recalculated: false, conversionValue: null, orderCount: 0 };
+
+      // Check if mappingConfig already has lastConversionValue
+      const raw = (shopifySource as any)?.mappingConfig;
+      const cfg = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : {};
+      if (cfg?.lastConversionValue && cfg?.lastMatchedOrderCount) {
+        // Already has CV data, no need to recalculate
+        return { recalculated: false, conversionValue: Number(cfg.lastConversionValue), orderCount: Number(cfg.lastMatchedOrderCount) };
+      }
+
+      // Need to recalculate - get Shopify connection
+      let conn: any;
+      try {
+        conn = await getShopifyConnectionForCampaign(campaignId);
+      } catch {
+        return { recalculated: false, conversionValue: null, orderCount: 0 };
+      }
+
+      // Get mapping config from Shopify connection or revenue source
+      const connRaw = conn?.mappingConfig;
+      const connCfg = connRaw ? (typeof connRaw === "string" ? JSON.parse(connRaw) : connRaw) : {};
+      const field = String(cfg?.campaignField || connCfg?.campaignField || "utm_campaign");
+      const selected: string[] = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues : (Array.isArray(connCfg?.selectedValues) ? connCfg.selectedValues : []);
+      const metric = String(cfg?.revenueMetric || connCfg?.revenueMetric || "total_price");
+      const rangeDays = Number(cfg?.days || connCfg?.days || 30) || 30;
+
+      if (selected.length === 0) {
+        return { recalculated: false, conversionValue: null, orderCount: 0 };
+      }
+
+      // Fetch orders from Shopify
+      const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+      const createdAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
+      const ordersResp = await shopifyApiFetch({
+        shopDomain: conn.shopDomain,
+        accessToken: conn.accessToken,
+        path: `/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`,
+      });
+      const orders: any[] = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
+
+      // Match orders
+      const getFieldValue = (o: any): string => {
+        const utm = getUtmFromOrder(o);
+        if (field === "utm_campaign") return String((utm as any).utm_campaign || "");
+        if (field === "utm_source") return String((utm as any).utm_source || "");
+        if (field === "utm_medium") return String((utm as any).utm_medium || "");
+        if (field === "discount_code") {
+          const codes = Array.isArray(o?.discount_codes) ? o.discount_codes.map((d: any) => d?.code).filter(Boolean) : [];
+          return codes.length > 0 ? String(codes[0]) : "";
+        }
+        return "";
+      };
+
+      const parseMoney = (val: any): number => {
+        const n = Number(String(val ?? "").replace(/[^0-9.\-]/g, ""));
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      const getOrderAmount = (o: any) => {
+        const set = metric === "current_total_price" ? (o?.current_total_price_set || {}) : (o?.total_price_set || {});
+        const shopMoney = set?.shop_money || set?.shopMoney || null;
+        const shopAmount = shopMoney?.amount ?? (metric === "current_total_price" ? o?.current_total_price : o?.total_price);
+        return parseMoney(shopAmount);
+      };
+
+      let totalRevenue = 0;
+      const matchedOrders: any[] = [];
+      const selectedSet = new Set(selected);
+      for (const o of orders) {
+        const v = getFieldValue(o).trim();
+        if (!v || !selectedSet.has(v)) continue;
+        matchedOrders.push(o);
+        totalRevenue += getOrderAmount(o);
+      }
+
+      if (matchedOrders.length === 0) {
+        return { recalculated: true, conversionValue: null, orderCount: 0 };
+      }
+
+      // Calculate conversion value
+      const calculatedCv = Number((totalRevenue / matchedOrders.length).toFixed(2));
+
+      // Update the revenue source mappingConfig with the calculated values
+      const updatedCfg = {
+        ...cfg,
+        lastConversionValue: calculatedCv,
+        lastMatchedOrderCount: matchedOrders.length,
+        lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+        lastRecalculatedAt: new Date().toISOString(),
+      };
+      await storage.updateRevenueSource(String((shopifySource as any).id), {
+        mappingConfig: JSON.stringify(updatedCfg),
+      } as any);
+
+      // Also update the LinkedIn connection's conversionValue
+      try {
+        await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedCv as any } as any);
+      } catch {
+        // ignore
+      }
+
+      devLog("[Shopify Auto-Recalc] Recalculated conversion value", {
+        campaignId,
+        totalRevenue,
+        matchedOrderCount: matchedOrders.length,
+        calculatedCv,
+      });
+
+      return { recalculated: true, conversionValue: calculatedCv, orderCount: matchedOrders.length };
+    } catch (err) {
+      devLog("[Shopify Auto-Recalc] Error", { campaignId, error: (err as any)?.message || String(err) });
+      return { recalculated: false, conversionValue: null, orderCount: 0 };
+    }
   };
 
   app.post("/api/shopify/connect", async (req, res) => {

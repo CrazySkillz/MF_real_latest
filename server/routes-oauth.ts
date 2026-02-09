@@ -21194,25 +21194,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1))
           : now;
         const endDate = endDateObj.toISOString().slice(0, 10);
+
+        // Group matched orders by date to create revenue records
+        const revenueByDate = new Map<string, number>();
+        for (const o of matchedOrders) {
+          const orderDate = String(o?.created_at || "").split("T")[0];
+          if (orderDate && /^\d{4}-\d{2}-\d{2}$/.test(orderDate)) {
+            const amt = getOrderAmounts(o);
+            const current = revenueByDate.get(orderDate) || 0;
+            revenueByDate.set(orderDate, current + amt.shopAmount);
+          }
+        }
+
+        // If no matched orders have dates, or all dates are in the future, put revenue on today or endDate
+        let recordDates = Array.from(revenueByDate.keys()).sort();
+        if (recordDates.length === 0) {
+          recordDates = [endDate];
+          revenueByDate.set(endDate, totalRevenue);
+        }
+
+        // Ensure all revenue dates are within the requested window
         const startObj = new Date(endDateObj.getTime());
         startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
         const startDate = startObj.toISOString().slice(0, 10);
-        const days = enumerateDatesInclusive(startDate, endDate);
+        
+        // Filter out dates outside the range
+        recordDates = recordDates.filter(d => d >= startDate && d <= endDate);
+        
+        // If all dates are filtered out, use end date
+        if (recordDates.length === 0) {
+          recordDates = [endDate];
+          revenueByDate.clear();
+          revenueByDate.set(endDate, totalRevenue);
+        }
 
-        const totalCents = Math.round(Number(totalRevenue.toFixed(2)) * 100);
-        const baseCents = Math.floor(totalCents / Math.max(1, days.length));
-        const remainder = totalCents - baseCents * Math.max(1, days.length);
-
-        const records = days.map((d, idx) => {
-          const cents = idx === days.length - 1 ? (baseCents + remainder) : baseCents;
-          return {
-            campaignId,
-            revenueSourceId: String((source as any).id),
-            date: d,
-            revenue: (cents / 100).toFixed(2) as any,
-            currency: cur,
-          } as any;
-        });
+        const records = recordDates.map(d => ({
+          campaignId,
+          revenueSourceId: String((source as any).id),
+          date: d,
+          revenue: Number((revenueByDate.get(d) || 0).toFixed(2)) as any,
+          currency: cur,
+        } as any));
         await storage.createRevenueRecords(records);
 
         if (platformCtx === "linkedin") {

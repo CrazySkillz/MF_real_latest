@@ -21082,12 +21082,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         calculatedConversionValue = Number((totalRevenue / matchedOrders.length).toFixed(2));
         totalConversions = matchedOrders.length;
       }
-      
-      console.log(`[Shopify Save Mappings] Conversion Value Calculation:
-- Total Revenue: ${totalRevenue}
-- Matched Orders: ${matchedOrders.length}
-- Calculated CV: ${calculatedConversionValue}
-- Total Conversions: ${totalConversions}`);
+
+      devLog("[Shopify Save Mappings] Computed conversion value", {
+        totalRevenue,
+        matchedOrderCount: matchedOrders.length,
+        calculatedConversionValue,
+        totalConversions,
+        platformContext: platformCtx,
+      });
 
       // Dry-run preview: return computed totals without persisting anything.
       if (isDryRun) {
@@ -21123,6 +21125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenueClassification: rc,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastConversionValue: calculatedConversionValue,
+          lastMatchedOrderCount: matchedOrders.length,
         };
         await storage.updateShopifyConnection(shopifyConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }
@@ -21173,6 +21176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenueClassification: rc,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastConversionValue: calculatedConversionValue,
+          lastMatchedOrderCount: matchedOrders.length,
           lastSyncedAt: new Date().toISOString(),
           currency: matchedCurrency,
         });
@@ -21250,15 +21254,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (platformCtx === "linkedin") {
           // For Shopify: persist the calculated conversion value (average order value) to the LinkedIn connection
-          console.log(`[Shopify Save Mappings] Persisting conversion value to LinkedIn connection:
-- Campaign ID: ${campaignId}
-- Conversion Value: ${calculatedConversionValue}
-- Platform Context: ${platformCtx}`);
           try {
             const updateResult = await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue as any } as any);
-            console.log(`[Shopify Save Mappings] Update result:`, updateResult);
+            devLog("[Shopify Save Mappings] Persisted conversion value to LinkedIn connection", {
+              campaignId,
+              conversionValue: calculatedConversionValue,
+              updated: !!updateResult,
+            });
           } catch (err) {
-            console.error(`[Shopify Save Mappings] Failed to persist conversion value:`, err);
+            devLog("[Shopify Save Mappings] Failed to persist conversion value to LinkedIn connection", {
+              campaignId,
+              error: (err as any)?.message || String(err),
+            });
             // ignore
           }
           await clearLatestLinkedInImportSessionConversionValue(campaignId);

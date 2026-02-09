@@ -80,13 +80,20 @@ export async function resolveLinkedInRevenueContext(opts: {
     importedRevenueToDate = 0;
   }
 
+  // Revenue sources for LinkedIn (used to detect explicit conversion-value sources AND Shopify AOV fallback)
+  let linkedInRevenueSources: any[] = [];
+  try {
+    linkedInRevenueSources = await (storage as any).getRevenueSources?.(campaignId, "linkedin");
+  } catch {
+    linkedInRevenueSources = [];
+  }
+
   // If the user explicitly configured a LinkedIn conversion-value source, we can trust conversionValue.
   // Otherwise, a legacy/stale session conversionValue may exist from older configs and should not override
   // imported revenue-to-date (we'll derive CV from revenue ÷ conversions instead).
   let hasExplicitLinkedInConversionValueSource = false;
   try {
-    const sources = await (storage as any).getRevenueSources?.(campaignId, "linkedin");
-    hasExplicitLinkedInConversionValueSource = (Array.isArray(sources) ? sources : []).some((s: any) => {
+    hasExplicitLinkedInConversionValueSource = (Array.isArray(linkedInRevenueSources) ? linkedInRevenueSources : []).some((s: any) => {
       if (!s || (s as any)?.isActive === false) return false;
       const raw = (s as any)?.mappingConfig;
       if (!raw) return false;
@@ -111,28 +118,28 @@ export async function resolveLinkedInRevenueContext(opts: {
     connCv = 0;
   }
 
-  // Failsafe: if no explicit conversion value is set but we have Shopify revenue,
-  // calculate the conversion value from the Shopify revenue records (order count)
-  if (connCv <= 0 && importedRevenueToDate > 0) {
-    try {
-      const sources = await (storage as any).getRevenueSources?.(campaignId, "linkedin");
-      const shopifySource = (Array.isArray(sources) ? sources : []).find((s: any) => {
-        return !!s && (s as any)?.isActive !== false && String((s as any)?.sourceType || "").toLowerCase() === "shopify";
-      });
-      
-      if (shopifySource && importedRevenueToDate > 0) {
-        // Count the number of revenue records for this source (each represents a matched order/day)
-        const sourceRecords = await (storage as any).getRevenueRecords?.(String((shopifySource as any)?.id), startDate, endDate).catch(() => []);
-        const recordCount = Array.isArray(sourceRecords) ? sourceRecords.length : 0;
-        
-        if (recordCount > 0) {
-          // Calculate conversion value as average revenue per record
-          connCv = importedRevenueToDate / recordCount;
-        }
+  // Shopify fallback: Shopify is revenue-to-date. We still want a Conversion Value card.
+  // Use the Shopify mappingConfig's computed AOV (lastConversionValue), or derive from
+  // revenue-to-date ÷ lastMatchedOrderCount. This does NOT depend on LinkedIn conversions.
+  let shopifyCv = 0;
+  try {
+    const shopifySource = (Array.isArray(linkedInRevenueSources) ? linkedInRevenueSources : []).find((s: any) => {
+      if (!s || (s as any)?.isActive === false) return false;
+      return String((s as any)?.sourceType || "").trim().toLowerCase() === "shopify";
+    });
+    if (shopifySource) {
+      const raw = (shopifySource as any)?.mappingConfig;
+      const cfg = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : {};
+      const lastCv = parseNum(cfg?.lastConversionValue);
+      const lastCount = Math.max(0, Math.round(parseNum(cfg?.lastMatchedOrderCount)));
+      if (lastCv > 0) {
+        shopifyCv = lastCv;
+      } else if (importedRevenueToDate > 0 && lastCount > 0) {
+        shopifyCv = importedRevenueToDate / lastCount;
       }
-    } catch (e) {
-      // Failsafe silently fails; use connCv = 0
     }
+  } catch {
+    shopifyCv = 0;
   }
 
   const sessionCvRaw = parseNum(opts.sessionConversionValue);
@@ -148,6 +155,9 @@ export async function resolveLinkedInRevenueContext(opts: {
   } else if (sessionCv > 0) {
     conversionValue = sessionCv;
     conversionValueSource = "session";
+  } else if (shopifyCv > 0) {
+    conversionValue = shopifyCv;
+    conversionValueSource = "derived";
   } else if (importedRevenueToDate > 0 && conversionsTotal > 0) {
     conversionValue = importedRevenueToDate / conversionsTotal;
     conversionValueSource = "derived";

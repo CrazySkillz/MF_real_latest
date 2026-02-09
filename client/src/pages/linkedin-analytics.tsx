@@ -5230,7 +5230,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                             </CardContent>
                           </Card>
 
-                          {/* Pipeline (Proxy — stage subset) */}
+                          {/* Pipeline (Proxy — stage subset) - only when configured */}
                           {pipelineProxyData?.success && pipelineProxyData?.pipelineEnabled === true && (
                             <Card className="hover:shadow-md transition-shadow border-amber-200 dark:border-amber-800">
                               <CardContent className="p-4">
@@ -5273,7 +5273,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   </p>
                                   {!!getStageOnlyLabel(pipelineProxyData?.pipelineStageLabel) && (
                                     <Badge variant="outline" className="text-xs">
-                                      {String(getStageOnlyLabel(pipelineProxyData?.pipelineStageLabel))}
+                                      {String(getStageOnlyLabel(pipelineProxyData.pipelineStageLabel))}
                                     </Badge>
                                   )}
                                   <Badge

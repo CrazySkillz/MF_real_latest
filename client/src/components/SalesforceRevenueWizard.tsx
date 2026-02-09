@@ -1020,7 +1020,7 @@ export function SalesforceRevenueWizard(props: {
           {step === "crosswalk" && (
             <div className="space-y-3">
               <div className="text-xs text-slate-500">
-                Values shown are <strong>Closed Won</strong> only (<code>IsWon = true</code>)—they contribute to <strong>Total Revenue</strong> (confirmed). On the next step, <strong>Pipeline (Proxy)</strong> lets you add anticipated revenue from open opportunities.
+                Values shown are <strong>Closed Won</strong> only - they contribute to <strong>Total Revenue</strong> (confirmed). On the next step, <strong>Pipeline (Proxy)</strong> lets you add anticipated revenue from open opportunities.
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm text-slate-600">

@@ -21243,9 +21243,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createRevenueRecords(records);
 
         if (platformCtx === "linkedin") {
-          // Revenue is the source of truth: clear any conversion value so LinkedIn metrics don't switch to derived revenue.
+          // For Shopify: persist the calculated conversion value (average order value) to the LinkedIn connection
           try {
-            await storage.updateLinkedInConnection(campaignId, { conversionValue: null as any } as any);
+            await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue as any } as any);
           } catch {
             // ignore
           }

@@ -662,12 +662,16 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       ? salesforcePipelineProxyData
       : activeLinkedInRevenueSourceType === 'hubspot'
       ? hubspotPipelineProxyData
+      : activeLinkedInRevenueSourceType === 'shopify'
+      ? null
       : (hubspotPipelineProxyData?.success ? hubspotPipelineProxyData : salesforcePipelineProxyData);
   const pipelineProxyProviderLabel =
     activeLinkedInRevenueSourceType === 'salesforce'
       ? 'Salesforce'
       : activeLinkedInRevenueSourceType === 'hubspot'
       ? 'HubSpot'
+      : activeLinkedInRevenueSourceType === 'shopify'
+      ? ''
       : (hubspotPipelineProxyData?.success ? 'HubSpot' : (salesforcePipelineProxyData?.success ? 'Salesforce' : ''));
   const pipelineProxyEntityNoun = pipelineProxyProviderLabel === 'Salesforce' ? 'Opportunity' : 'deal';
 

@@ -21074,9 +21074,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const presentmentCurrency = presentmentCurrencies.size === 1 ? Array.from(presentmentCurrencies)[0] : null;
 
       // Revenue-only; conversion value is not computed/persisted from Shopify in this wizard.
-      const calculatedConversionValue: number | null = null;
-      const totalConversions: number | null = null;
+      // Calculate conversion value as average order value if there are matched orders
+      let calculatedConversionValue: number | null = null;
+      let totalConversions: number | null = null;
       const latestSessionId: string | null = null;
+      if (matchedOrders.length > 0) {
+        calculatedConversionValue = Number((totalRevenue / matchedOrders.length).toFixed(2));
+        totalConversions = matchedOrders.length;
+      }
 
       // Dry-run preview: return computed totals without persisting anything.
       if (isDryRun) {
@@ -21282,10 +21287,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         mode: "revenue_to_date",
-        conversionValueCalculated: false,
+        conversionValueCalculated: matchedOrders.length > 0,
         conversionValue: calculatedConversionValue,
         totalRevenue: Number(totalRevenue.toFixed(2)),
-        totalConversions: totalConversions === null ? null : Number((totalConversions as number).toFixed(2)),
+        totalConversions: totalConversions,
         matchedOrderCount: matchedOrders.length,
         currency: matchedCurrency,
         presentmentTotal: presentmentCurrency ? Number(presentmentTotal.toFixed(2)) : null,

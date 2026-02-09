@@ -20997,6 +20997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metric = String(body.data.revenueMetric || "total_price").trim();
       const rangeDays = Math.min(Math.max(parseInt(String(body.data.days ?? 90), 10) || 90, 1), 3650);
       const platformCtx = body.data.platformContext || "ga4";
+      const revenueClassification = body.data.revenueClassification;
       // Shopify is revenue-only. We intentionally do NOT support "conversion_value" as a source of truth here,
       // because Shopify orders do not contain a native conversion value field.
       const effectiveValueSource: "revenue" = "revenue";
@@ -21093,12 +21094,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const rcRaw = String(revenueClassification || "").trim();
+      const rc = rcRaw === "offsite_not_in_ga4" || rcRaw === "onsite_in_ga4" ? rcRaw : "onsite_in_ga4";
+
       // Persist mapping config on the active Shopify connection
       const shopifyConn: any = await storage.getShopifyConnection(campaignId);
       if (shopifyConn) {
-        const rcRaw = String(revenueClassification || "").trim();
-        const rc =
-          rcRaw === "offsite_not_in_ga4" || rcRaw === "onsite_in_ga4" ? rcRaw : "onsite_in_ga4";
         const mappingConfig = {
           objectType: "orders",
           platformContext: platformCtx,
@@ -21158,7 +21159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           selectedValues: selected,
           revenueMetric: metric,
           days: rangeDays,
-          revenueClassification,
+          revenueClassification: rc,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastConversionValue: calculatedConversionValue,
           lastSyncedAt: new Date().toISOString(),

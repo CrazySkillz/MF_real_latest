@@ -334,7 +334,8 @@ export function ShopifyRevenueWizard(props: {
             revenueMetric,
             days,
             platformContext,
-          valueSource: "revenue",
+            valueSource: "revenue",
+            revenueClassification: isLinkedIn ? "offsite_not_in_ga4" : "onsite_in_ga4",
           }),
         });
         const json = await resp.json().catch(() => ({}));
@@ -364,15 +365,16 @@ export function ShopifyRevenueWizard(props: {
       const resp = await fetch(`/api/campaigns/${campaignId}/shopify/save-mappings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaignField,
-          selectedValues,
-          revenueMetric,
-          days,
-          platformContext,
-          valueSource: "revenue",
-          dryRun: true,
-        }),
+          body: JSON.stringify({
+            campaignField,
+            selectedValues,
+            revenueMetric,
+            days,
+            platformContext,
+            valueSource: "revenue",
+            revenueClassification: isLinkedIn ? "offsite_not_in_ga4" : "onsite_in_ga4",
+            dryRun: true,
+          }),
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load preview");

@@ -905,9 +905,21 @@ export function SalesforceRevenueWizard(props: {
                   )}
                 </div>
 
-                <Select value={campaignField} onValueChange={(v) => setCampaignField(v)} disabled={!isConnected || statusLoading || fieldsLoading}>
+                <Select
+                  value={campaignField}
+                  onValueChange={(v) => setCampaignField(v)}
+                  disabled={!isConnected || statusLoading || fieldsLoading}
+                >
                   <SelectTrigger>
-                    <span>{statusLoading ? "Checking connection…" : (!isConnected ? "Select a Salesforce Opportunity field…" : campaignFieldDisplay)}</span>
+                    <SelectValue
+                      placeholder={
+                        statusLoading
+                          ? "Checking connection…"
+                          : !isConnected
+                          ? "Connect Salesforce to load fields…"
+                          : "Select a Salesforce Opportunity field…"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]" side="bottom" align="start" sideOffset={4} avoidCollisions={false}>
                     {fields

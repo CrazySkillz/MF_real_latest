@@ -495,9 +495,14 @@ export function SalesforceRevenueWizard(props: {
 
   const salesforceSourceMode = useMemo(() => {
     if (!isLinkedIn) return "revenue_only" as const;
-    if (valueSource === "conversion_value") return "conversion_value" as const;
     return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);
-  }, [isLinkedIn, valueSource, pipelineEnabled]);
+  }, [isLinkedIn, pipelineEnabled]);
+
+  const isLegacyConversionValueConfig = useMemo(() => {
+    if (mode !== "edit") return false;
+    const raw = String((initialMappingConfig as any)?.valueSource || "").trim().toLowerCase();
+    return raw === "conversion_value";
+  }, [mode, initialMappingConfig]);
 
   const campaignFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === campaignField);
@@ -633,7 +638,9 @@ export function SalesforceRevenueWizard(props: {
   const handleNext = async () => {
     if (step === "value-source") {
       // Mode-first UX: pick source of truth before mapping fields.
-      if (valueSource === "revenue") setConversionValueField("");
+      // Exec flow: Revenue is the source of truth. Conversion Value is no longer offered here.
+      setValueSource("revenue");
+      setConversionValueField("");
       setStep("campaign-field");
       return;
     }
@@ -868,7 +875,9 @@ export function SalesforceRevenueWizard(props: {
             </div>
             {step === "value-source" &&
               isLinkedIn &&
-              "Choose what Salesforce should provide for this LinkedIn campaign: Total Revenue only, Total Revenue + Pipeline (Proxy), or Conversion Value."}
+              (isLegacyConversionValueConfig
+                ? "Choose what Salesforce should provide for this LinkedIn campaign."
+                : "Choose whether Salesforce should provide Total Revenue only, or Total Revenue + Pipeline (Proxy).")}
             {step === "campaign-field" &&
               "Select the Salesforce Opportunity field that identifies which deals belong to this MetricMind campaign."}
             {step === "crosswalk" &&
@@ -898,13 +907,6 @@ export function SalesforceRevenueWizard(props: {
                 value={salesforceSourceMode}
                 onValueChange={(v: any) => {
                   const next = String(v || "");
-                  if (next === "conversion_value") {
-                    setValueSource("conversion_value");
-                    setPipelineEnabled(false);
-                    setPipelineStageName("");
-                    setPipelineStageLabel("");
-                    return;
-                  }
                   setValueSource("revenue");
                   setConversionValueField("");
                   if (next === "revenue_plus_pipeline") {
@@ -935,20 +937,11 @@ export function SalesforceRevenueWizard(props: {
                     </div>
                   </label>
                 </div>
-                <div className="flex items-start gap-2">
-                  <RadioGroupItem id="sf-mode-cv" value="conversion_value" className="mt-0.5" />
-                  <label htmlFor="sf-mode-cv" className="cursor-pointer">
-                    <div className="text-sm font-medium leading-snug">Conversion Value (per conversion)</div>
-                    <div className="text-xs text-slate-500 leading-snug">Advanced: estimated value mode (LTV/ACV/etc.)</div>
-                  </label>
-                </div>
               </RadioGroup>
               <div className="text-xs text-slate-500">
                 {salesforceSourceMode === "revenue_plus_pipeline"
                   ? "Next, you’ll choose which Opportunity stage should count as “pipeline created”."
-                  : salesforceSourceMode === "revenue_only"
-                  ? "Next, you’ll map Salesforce Opportunities to this campaign."
-                  : "Revenue is best for exec ROI/ROAS when you have realized revenue. Conversion Value is best when you intentionally use an estimated value (e.g., ACV/LTV)."}
+                  : "Next, you’ll map Salesforce Opportunities to this campaign."}
               </div>
             </div>
           )}

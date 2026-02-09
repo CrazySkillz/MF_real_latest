@@ -119,11 +119,15 @@ export function SalesforceRevenueWizard(props: {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
   const [previewRows, setPreviewRows] = useState<string[][]>([]);
+  const [pipelinePreviewError, setPipelinePreviewError] = useState<string | null>(null);
+  const [pipelinePreviewHeaders, setPipelinePreviewHeaders] = useState<string[]>([]);
+  const [pipelinePreviewRows, setPipelinePreviewRows] = useState<string[][]>([]);
   const [previewCampaignCurrency, setPreviewCampaignCurrency] = useState<string | null>(null);
   const [previewDetectedCurrency, setPreviewDetectedCurrency] = useState<string | null>(null);
   const [previewCurrencyMismatch, setPreviewCurrencyMismatch] = useState<boolean>(false);
   const [previewCurrencyDebugSteps, setPreviewCurrencyDebugSteps] = useState<any[] | null>(null);
   const [previewBuild, setPreviewBuild] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const steps = useMemo(
     () => [
@@ -516,6 +520,7 @@ export function SalesforceRevenueWizard(props: {
   const preview = async () => {
     setPreviewLoading(true);
     setPreviewError(null);
+    setPipelinePreviewError(null);
     try {
       const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/preview`, {
         method: "POST",
@@ -526,12 +531,28 @@ export function SalesforceRevenueWizard(props: {
           revenueField,
           days,
           limit: 25,
+          pipelineEnabled: isLinkedIn ? pipelineEnabled : false,
+          pipelineStageName: isLinkedIn && pipelineEnabled ? pipelineStageName : null,
         }),
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load preview");
       setPreviewHeaders(Array.isArray(json?.headers) ? json.headers : []);
       setPreviewRows(Array.isArray(json?.rows) ? json.rows : []);
+      const pp = json?.pipelinePreview || null;
+      if (pp?.error) {
+        setPipelinePreviewError(String(pp.error));
+        setPipelinePreviewHeaders([]);
+        setPipelinePreviewRows([]);
+      } else if (pp && Array.isArray(pp?.headers) && Array.isArray(pp?.rows)) {
+        setPipelinePreviewError(null);
+        setPipelinePreviewHeaders(pp.headers);
+        setPipelinePreviewRows(pp.rows);
+      } else {
+        setPipelinePreviewError(null);
+        setPipelinePreviewHeaders([]);
+        setPipelinePreviewRows([]);
+      }
       setPreviewCampaignCurrency(json?.campaignCurrency ? String(json.campaignCurrency) : null);
       setPreviewDetectedCurrency(json?.detectedCurrency ? String(json.detectedCurrency) : null);
       setPreviewCurrencyMismatch(!!json?.currencyMismatch);
@@ -541,6 +562,9 @@ export function SalesforceRevenueWizard(props: {
       setPreviewError(err?.message || "Failed to load preview");
       setPreviewHeaders([]);
       setPreviewRows([]);
+      setPipelinePreviewError(null);
+      setPipelinePreviewHeaders([]);
+      setPipelinePreviewRows([]);
       setPreviewCampaignCurrency(null);
       setPreviewDetectedCurrency(null);
       setPreviewCurrencyMismatch(false);
@@ -563,6 +587,7 @@ export function SalesforceRevenueWizard(props: {
 
   const save = async () => {
     setIsSaving(true);
+    setSaveError(null);
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/salesforce/save-mappings`, {
         method: "POST",
@@ -586,11 +611,15 @@ export function SalesforceRevenueWizard(props: {
       setLastSaveResult(json);
       toast({
         title: "Revenue Metrics Processed",
-        description: `Conversion value calculated: $${json?.conversionValue || "0"} per conversion.`,
+        description:
+          isLinkedIn && valueSource === "conversion_value"
+            ? `Conversion value saved: $${json?.conversionValue || "0"} per conversion.`
+            : `Total Revenue processed: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
       });
       onSuccess?.(json);
       setStep("complete");
     } catch (err: any) {
+      setSaveError(err?.message || "Please try again.");
       toast({
         title: "Failed to Process Revenue Metrics",
         description: err?.message || "Please try again.",
@@ -1216,6 +1245,7 @@ export function SalesforceRevenueWizard(props: {
               )}
 
               {previewError && <div className="text-sm text-red-600">{previewError}</div>}
+              {saveError && <div className="text-sm text-red-600">{saveError}</div>}
 
               {!previewError && previewHeaders.length > 0 && (
                 <div className="border rounded">
@@ -1256,6 +1286,58 @@ export function SalesforceRevenueWizard(props: {
                       )}
                     </TableBody>
                   </Table>
+                </div>
+              )}
+
+              {/* Pipeline (Proxy) preview: stage subset (not Closed Won) */}
+              {isLinkedIn && pipelineEnabled && (
+                <div className="space-y-2 pt-2">
+                  <div className="text-sm text-slate-700">
+                    Preview for <strong>Pipeline (Proxy — stage subset)</strong> (Opportunities currently in{" "}
+                    <strong>{pipelineStageLabel || pipelineStageName || "selected stage"}</strong>).
+                  </div>
+                  {pipelinePreviewError && <div className="text-sm text-red-600">{pipelinePreviewError}</div>}
+                  {!pipelinePreviewError && pipelinePreviewHeaders.length > 0 && (
+                    <div className="border rounded">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            {pipelinePreviewHeaders
+                              .filter((h) => String(h).toLowerCase() !== "id")
+                              .map((h) => (
+                                <TableHead key={h} className="whitespace-nowrap">
+                                  {h.toLowerCase() === "name" ? "Opportunity Name" : h}
+                                </TableHead>
+                              ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pipelinePreviewRows.length === 0 ? (
+                            <TableRow>
+                              <TableCell
+                                colSpan={pipelinePreviewHeaders.filter((h) => String(h).toLowerCase() !== "id").length}
+                                className="text-sm text-slate-500"
+                              >
+                                No matching Opportunities found for the pipeline stage subset.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            pipelinePreviewRows.map((row, idx) => (
+                              <TableRow key={idx}>
+                                {row
+                                  .filter((_, j) => String(pipelinePreviewHeaders[j] || "").toLowerCase() !== "id")
+                                  .map((cell, j) => (
+                                    <TableCell key={j} className="max-w-[320px] truncate">
+                                      {cell}
+                                    </TableCell>
+                                  ))}
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -9630,7 +9630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/salesforce/:campaignId/opportunities/preview", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
-      const { campaignField, selectedValues, revenueField, days, limit, debug } = req.body || {};
+      const { campaignField, selectedValues, revenueField, days, limit, debug, pipelineEnabled, pipelineStageName } = req.body || {};
       const debugMode = !!debug;
 
       const attribField = String(campaignField || '').trim();
@@ -9638,6 +9638,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
       const rangeDays = Math.min(Math.max(parseInt(String(days || '90'), 10) || 90, 1), 3650);
       const rowLimit = Math.min(Math.max(parseInt(String(limit || '25'), 10) || 25, 5), 200);
+      const wantPipelinePreview = pipelineEnabled === true && String(pipelineStageName || '').trim().length > 0;
+      const pipelineStage = String(pipelineStageName || '').trim();
 
       if (!attribField) return res.status(400).json({ error: 'campaignField is required' });
       if (selected.length === 0) return res.status(400).json({ error: 'selectedValues is required' });
@@ -9660,6 +9662,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
+
+      const baseHeaders = (includeCurrency: boolean) =>
+        Array.from(
+          new Set([
+            'Id',
+            'Name',
+            'StageName',
+            'CloseDate',
+            attribField,
+            revenue,
+            ...(includeCurrency ? ['CurrencyIsoCode'] : []),
+          ])
+        );
 
       const buildSoql = (includeCurrency: boolean) => {
         const baseFields = Array.from(
@@ -9705,6 +9720,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const headers = result.headers;
       const records = result.records || [];
       const rows = records.map((r: any) => headers.map((h: string) => String(readField(r, h) ?? '')));
+
+      // Optional pipeline preview: Opportunities currently in selected stage (not filtered to IsWon).
+      let pipelinePreview: any = null;
+      if (wantPipelinePreview) {
+        const escapedStage = pipelineStage.replace(/'/g, "\\'");
+        const runPipeline = async (includeCurrency: boolean): Promise<{ ok: boolean; headers: string[]; records?: any[]; error?: string }> => {
+          const headers = baseHeaders(includeCurrency);
+          const soql =
+            `SELECT ${headers.join(', ')} ` +
+            `FROM Opportunity ` +
+            `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted}) ` +
+            `ORDER BY CloseDate DESC ` +
+            `LIMIT ${rowLimit}`;
+          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            const msg = String(json?.[0]?.message || json?.message || 'Failed to load Salesforce pipeline preview');
+            return { ok: false, headers, error: msg };
+          }
+          const records = Array.isArray(json?.records) ? json.records : [];
+          return { ok: true, headers, records };
+        };
+
+        let p = await runPipeline(true);
+        if (!p.ok && String(p.error || '').toLowerCase().includes('currencyisocode')) {
+          p = await runPipeline(false);
+        }
+        if (p.ok) {
+          const pHeaders = p.headers;
+          const pRecords = p.records || [];
+          const pRows = pRecords.map((r: any) => pHeaders.map((h: string) => String(readField(r, h) ?? '')));
+          pipelinePreview = {
+            headers: pHeaders,
+            rows: pRows,
+            rowCount: pRows.length,
+          };
+        } else {
+          pipelinePreview = { error: p.error || 'Failed to load pipeline preview' };
+        }
+      }
       const currencies = new Set<string>();
       for (const r of records) {
         const c = r?.CurrencyIsoCode ? String(r.CurrencyIsoCode).trim().toUpperCase() : '';
@@ -9734,6 +9790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers,
         rows,
         rowCount: rows.length,
+        pipelinePreview,
         campaignCurrency,
         detectedCurrency,
         detectedCurrencies: Array.from(currencies),

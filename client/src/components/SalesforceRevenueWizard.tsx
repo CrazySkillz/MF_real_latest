@@ -31,6 +31,9 @@ export function SalesforceRevenueWizard(props: {
     conversionValueField?: string;
     valueSource?: "revenue" | "conversion_value" | string;
     days?: number;
+    pipelineEnabled?: boolean;
+    pipelineStageName?: string;
+    pipelineStageLabel?: string;
   } | null;
   connectOnly?: boolean;
   /**
@@ -52,7 +55,7 @@ export function SalesforceRevenueWizard(props: {
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
 
-  type Step = "value-source" | "connect" | "campaign-field" | "crosswalk" | "revenue" | "review" | "complete";
+  type Step = "value-source" | "connect" | "campaign-field" | "crosswalk" | "pipeline" | "revenue" | "review" | "complete";
   // UX: OAuth happens before this wizard opens (from the Connect Additional Data flow),
   // so start at Campaign field (no separate Connect step).
   const [step, setStep] = useState<Step>(isLinkedIn ? "value-source" : "campaign-field");
@@ -74,6 +77,12 @@ export function SalesforceRevenueWizard(props: {
   const [revenueField, setRevenueField] = useState<string>("Amount");
   const [conversionValueField, setConversionValueField] = useState<string>("");
   const [valueSource, setValueSource] = useState<"revenue" | "conversion_value">("revenue");
+  // LinkedIn: pipeline proxy can be enabled for an exec "early signal" (minimize lag).
+  const [pipelineEnabled, setPipelineEnabled] = useState<boolean>(isLinkedIn);
+  const [pipelineStageName, setPipelineStageName] = useState<string>("");
+  const [pipelineStageLabel, setPipelineStageLabel] = useState<string>("");
+  const [stages, setStages] = useState<Array<{ value: string; label: string }>>([]);
+  const [stagesLoading, setStagesLoading] = useState(false);
   // Internal flag used to avoid double-counting GA4 revenue in campaign totals.
   // We no longer expose this choice in the Salesforce wizard UI; default based on context.
   const [revenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">(
@@ -104,6 +113,7 @@ export function SalesforceRevenueWizard(props: {
       ...(isLinkedIn ? [{ id: "value-source" as const, label: "Source", icon: DollarSign }] : []),
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
+      ...(isLinkedIn ? [{ id: "pipeline" as const, label: "Pipeline", icon: Target }] : []),
       // Keep the stepper label stable to avoid layout shift (exec-grade UI polish).
       { id: "revenue" as const, label: "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
@@ -146,6 +156,10 @@ export function SalesforceRevenueWizard(props: {
       setRevenueField("Amount");
       setConversionValueField("");
       setValueSource("revenue");
+      setPipelineEnabled(isLinkedIn);
+      setPipelineStageName("");
+      setPipelineStageLabel("");
+      setStages([]);
       setUniqueValues([]);
       setSelectedValues([]);
       setLastSaveResult(null);
@@ -161,6 +175,9 @@ export function SalesforceRevenueWizard(props: {
     const nextDays = Number.isFinite(Number(cfg.days)) ? Math.min(Math.max(Number(cfg.days), 1), 3650) : days;
     const nextValueSource: "revenue" | "conversion_value" =
       String(cfg.valueSource || "").trim().toLowerCase() === "conversion_value" ? "conversion_value" : "revenue";
+    const nextPipelineEnabled = cfg.pipelineEnabled === true;
+    const nextPipelineStageName = cfg.pipelineStageName ? String(cfg.pipelineStageName) : "";
+    const nextPipelineStageLabel = cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : "";
 
     // Always start at the first step for LinkedIn so edits and source switching are consistent.
     setStep(isLinkedIn ? "value-source" : "campaign-field");
@@ -170,6 +187,9 @@ export function SalesforceRevenueWizard(props: {
     setRevenueField(nextRevenueField);
     setConversionValueField(nextConversionValueField);
     setValueSource(nextValueSource);
+    setPipelineEnabled(nextPipelineEnabled);
+    setPipelineStageName(nextPipelineStageName);
+    setPipelineStageLabel(nextPipelineStageLabel);
     setSelectedValues(nextSelectedValues);
     setUniqueValues([]);
     setDays(nextDays);
@@ -431,6 +451,33 @@ export function SalesforceRevenueWizard(props: {
     })();
   }, [step, fields.length, toast, statusLoading, isConnected, campaignId]);
 
+  useEffect(() => {
+    if (step !== "pipeline") return;
+    if (!isConnected) return;
+    if (stages.length > 0) return;
+    void (async () => {
+      setStagesLoading(true);
+      try {
+        const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/stages`);
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(json?.error || "Failed to load Opportunity stages");
+        const s = Array.isArray(json?.stages) ? json.stages : [];
+        setStages(s);
+      } catch (err: any) {
+        setStages([]);
+        toast({ title: "Failed to Load Stages", description: err?.message || "Please try again.", variant: "destructive" });
+      } finally {
+        setStagesLoading(false);
+      }
+    })();
+  }, [step, isConnected, stages.length, campaignId, toast]);
+
+  const salesforceSourceMode = useMemo(() => {
+    if (!isLinkedIn) return "revenue_only" as const;
+    if (valueSource === "conversion_value") return "conversion_value" as const;
+    return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);
+  }, [isLinkedIn, valueSource, pipelineEnabled]);
+
   const campaignFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === campaignField);
     return f?.label || campaignField || "Campaign field";
@@ -511,6 +558,9 @@ export function SalesforceRevenueWizard(props: {
           valueSource: isLinkedIn ? valueSource : "revenue",
           revenueClassification,
           days,
+          pipelineEnabled: isLinkedIn ? pipelineEnabled : false,
+          pipelineStageName: isLinkedIn && pipelineEnabled ? (pipelineStageName || null) : null,
+          pipelineStageLabel: isLinkedIn && pipelineEnabled ? (pipelineStageLabel || null) : null,
           platformContext,
         }),
       });
@@ -567,6 +617,18 @@ export function SalesforceRevenueWizard(props: {
         });
         return;
       }
+      setStep(isLinkedIn && pipelineEnabled ? "pipeline" : "revenue");
+      return;
+    }
+    if (step === "pipeline") {
+      if (!pipelineStageName) {
+        toast({
+          title: "Select a pipeline stage",
+          description: "Choose the Opportunity stage that should count as “pipeline created”.",
+          variant: "destructive",
+        });
+        return;
+      }
       setStep("revenue");
       return;
     }
@@ -614,7 +676,8 @@ export function SalesforceRevenueWizard(props: {
       return;
     }
     if (step === "crosswalk") return setStep("campaign-field");
-    if (step === "revenue") return setStep("crosswalk");
+    if (step === "pipeline") return setStep("crosswalk");
+    if (step === "revenue") return setStep(isLinkedIn && pipelineEnabled ? "pipeline" : "crosswalk");
     if (step === "review") return setStep("revenue");
     if (step === "complete") return setStep("review");
   };
@@ -625,32 +688,45 @@ export function SalesforceRevenueWizard(props: {
       <div className="flex items-center justify-between">
         {steps.map((s, index) => {
           const StepIcon = s.icon;
-          const isActive = s.id === step;
-          const isCompleted = index < currentStepIndex;
+          const isPipelineStep = isLinkedIn && s.id === "pipeline";
+          const isDisabled = isPipelineStep && !pipelineEnabled;
+          const isActive = !isDisabled && s.id === step;
+          // Don't mark disabled optional steps as completed
+          const isCompleted = !isDisabled && index < currentStepIndex;
+          // Keep connector progress accurate so the bar doesn't look broken
+          const isConnectorCompleted = index < currentStepIndex;
           return (
             <div key={s.id} className="flex items-center flex-1">
               <div className="flex flex-col items-center flex-1">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-                    isActive
+                    isDisabled
+                      ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
+                      : isActive
                       ? "bg-blue-600 border-blue-600 text-white"
                       : isCompleted
                       ? "bg-green-600 border-green-600 text-white"
                       : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400"
                   }`}
                 >
-                  {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
+                  {!isDisabled && isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
                 </div>
                 <p
                   className={`text-xs mt-2 text-center whitespace-nowrap ${
-                    isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-slate-400"
+                    isDisabled
+                      ? "text-slate-400"
+                      : isActive
+                      ? "text-blue-600 font-medium"
+                      : isCompleted
+                      ? "text-green-600"
+                      : "text-slate-400"
                   }`}
                 >
                   {s.label}
                 </p>
               </div>
               {index < steps.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-2 ${isCompleted ? "bg-green-600" : "bg-slate-200 dark:bg-slate-700"}`} />
+                <div className={`flex-1 h-0.5 mx-2 ${isConnectorCompleted ? "bg-green-600" : "bg-slate-200 dark:bg-slate-700"}`} />
               )}
             </div>
           );
@@ -677,6 +753,12 @@ export function SalesforceRevenueWizard(props: {
                 <>
                   <Link2 className="w-5 h-5 text-blue-600" />
                   Link Campaign to Salesforce Value(s)
+                </>
+              )}
+              {step === "pipeline" && (
+                <>
+                  <Target className="w-5 h-5 text-blue-600" />
+                  Pipeline
                 </>
               )}
               {step === "revenue" && (
@@ -723,11 +805,15 @@ export function SalesforceRevenueWizard(props: {
                 <span className="opacity-0 whitespace-nowrap">Connected to: Placeholder</span>
               )}
             </div>
-            {step === "value-source" && isLinkedIn && "Choose whether Salesforce should provide Total Revenue (to date) or a Conversion Value (estimated value per conversion)."}
+            {step === "value-source" &&
+              isLinkedIn &&
+              "Choose what Salesforce should provide for this LinkedIn campaign: Total Revenue only, Total Revenue + Pipeline (Proxy), or Conversion Value."}
             {step === "campaign-field" &&
               "Select the Salesforce Opportunity field that identifies which deals belong to this MetricMind campaign."}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignFieldLabel}” that should map to this MetricMind campaign.`}
+            {step === "pipeline" &&
+              "Choose the Opportunity stage that should count as “pipeline created”. This provides a daily signal alongside daily spend."}
             {step === "revenue" &&
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Select the Opportunity field that represents conversion value per conversion (estimated value)."
@@ -746,24 +832,50 @@ export function SalesforceRevenueWizard(props: {
         <CardContent className="space-y-4">
           {step === "value-source" && isLinkedIn && (
             <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-2">
-              <div className="text-sm font-medium">What do you want to import from Salesforce?</div>
+              <div className="text-sm font-medium">What do you want MetricMind to pull from Salesforce?</div>
               <RadioGroup
-                value={valueSource}
+                value={salesforceSourceMode}
                 onValueChange={(v: any) => {
-                  setValueSource(v);
-                  if (String(v) === "revenue") setConversionValueField("");
+                  const next = String(v || "");
+                  if (next === "conversion_value") {
+                    setValueSource("conversion_value");
+                    setPipelineEnabled(false);
+                    setPipelineStageName("");
+                    setPipelineStageLabel("");
+                    return;
+                  }
+                  setValueSource("revenue");
+                  setConversionValueField("");
+                  if (next === "revenue_plus_pipeline") {
+                    setPipelineEnabled(true);
+                  } else {
+                    setPipelineEnabled(false);
+                    setPipelineStageName("");
+                    setPipelineStageLabel("");
+                  }
                 }}
                 className="space-y-2"
               >
-                <div className="flex items-start gap-2 min-h-[44px]">
-                  <RadioGroupItem id="sf-mode-revenue" value="revenue" />
-                  <label htmlFor="sf-mode-revenue" className="cursor-pointer">
-                    <div className="text-sm font-medium leading-snug">Total Revenue (to date)</div>
-                    <div className="text-xs text-slate-500 leading-snug">Recommended for executive ROI/ROAS</div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem id="sf-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
+                  <label htmlFor="sf-mode-revenue-pipeline" className="cursor-pointer">
+                    <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
+                    <div className="text-xs text-slate-500 leading-snug">
+                      Total Revenue comes from mapped Opportunity Amounts (to date). Adds a Pipeline (Proxy) card using a stage like Proposal as an early signal.
+                    </div>
                   </label>
                 </div>
-                <div className="flex items-start gap-2 min-h-[44px]">
-                  <RadioGroupItem id="sf-mode-cv" value="conversion_value" />
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem id="sf-mode-revenue-only" value="revenue_only" className="mt-0.5" />
+                  <label htmlFor="sf-mode-revenue-only" className="cursor-pointer">
+                    <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
+                    <div className="text-xs text-slate-500 leading-snug">
+                      Imports revenue-to-date from mapped Opportunity Amounts. No Pipeline (Proxy) section in Overview.
+                    </div>
+                  </label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem id="sf-mode-cv" value="conversion_value" className="mt-0.5" />
                   <label htmlFor="sf-mode-cv" className="cursor-pointer">
                     <div className="text-sm font-medium leading-snug">Conversion Value (per conversion)</div>
                     <div className="text-xs text-slate-500 leading-snug">Advanced: estimated value mode (LTV/ACV/etc.)</div>
@@ -771,7 +883,11 @@ export function SalesforceRevenueWizard(props: {
                 </div>
               </RadioGroup>
               <div className="text-xs text-slate-500">
-                Revenue is best for exec ROI/ROAS when you have realized revenue. Conversion Value is best when you intentionally use an estimated value (e.g., ACV/LTV).
+                {salesforceSourceMode === "revenue_plus_pipeline"
+                  ? "Next, you’ll choose which Opportunity stage should count as “pipeline created”."
+                  : salesforceSourceMode === "revenue_only"
+                  ? "Next, you’ll map Salesforce Opportunities to this campaign."
+                  : "Revenue is best for exec ROI/ROAS when you have realized revenue. Conversion Value is best when you intentionally use an estimated value (e.g., ACV/LTV)."}
               </div>
             </div>
           )}
@@ -882,6 +998,43 @@ export function SalesforceRevenueWizard(props: {
                 )}
               </div>
               <div className="text-xs text-slate-500">Default filter: Won opportunities (IsWon = true) within the last {days} days.</div>
+            </div>
+          )}
+
+          {step === "pipeline" && isLinkedIn && (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-3">
+                <div className="text-sm font-medium">Pipeline stage total (daily signal)</div>
+                <div className="text-xs text-slate-500">
+                  Pipeline (Proxy) is <span className="font-medium">not</span> Closed Won revenue. It’s an early indicator (Opportunities currently in a stage like Proposal/Negotiation).
+                </div>
+                <div className="space-y-2">
+                  <Label>Stage that counts as “pipeline created”</Label>
+                  <Select
+                    value={pipelineStageName}
+                    onValueChange={(v) => {
+                      setPipelineStageName(v);
+                      const hit = stages.find((s) => s.value === v);
+                      setPipelineStageLabel(hit?.label || v);
+                    }}
+                    disabled={stagesLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={stagesLoading ? "Loading…" : "Select a stage…"} />
+                    </SelectTrigger>
+                    <SelectContent className="z-[10000] max-h-[320px]">
+                      {stages.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
+                          {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-slate-500">
+                    MetricMind will sum Opportunity Amounts for Opportunities currently in this stage (stage subset).
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -998,6 +1151,12 @@ export function SalesforceRevenueWizard(props: {
                 </div>
               </div>
 
+              {isLinkedIn && pipelineEnabled && pipelineStageLabel && (
+                <div className="text-xs text-slate-500">
+                  Pipeline proxy: <strong>{pipelineStageLabel}</strong>
+                </div>
+              )}
+
               {previewError && <div className="text-sm text-red-600">{previewError}</div>}
 
               {!previewError && previewHeaders.length > 0 && (
@@ -1071,7 +1230,10 @@ export function SalesforceRevenueWizard(props: {
                 disabled={
                   valuesLoading ||
                   isSaving ||
+                  stagesLoading ||
                   (step === "campaign-field" && (statusLoading || !isConnected || fieldsLoading || fields.length === 0 || !campaignField)) ||
+                  (step === "crosswalk" && selectedValues.length === 0) ||
+                  (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.
                   (step === "review" && effectiveCurrencyMismatch)
                 }

@@ -97,6 +97,9 @@ export function AddRevenueWizardModal(props: {
     conversionValueField?: string;
     valueSource?: string;
     days?: number;
+    pipelineEnabled?: boolean;
+    pipelineStageName?: string;
+    pipelineStageLabel?: string;
   }>(null);
   const [hubspotInitialMappingConfig, setHubspotInitialMappingConfig] = useState<null | {
     campaignProperty?: string;
@@ -284,6 +287,9 @@ export function AddRevenueWizardModal(props: {
         conversionValueField: config?.conversionValueField ? String(config.conversionValueField) : undefined,
         valueSource: config?.valueSource ? String(config.valueSource) : undefined,
         days: Number.isFinite(Number(config?.days)) ? Number(config.days) : undefined,
+        pipelineEnabled: config?.pipelineEnabled === true,
+        pipelineStageName: config?.pipelineStageName ? String(config.pipelineStageName) : undefined,
+        pipelineStageLabel: config?.pipelineStageLabel ? String(config.pipelineStageLabel) : undefined,
       };
       setSalesforceInitialMappingConfig(next);
       setStep("salesforce");

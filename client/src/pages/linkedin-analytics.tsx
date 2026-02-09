@@ -606,6 +606,23 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     },
   });
 
+  // Optional: Salesforce "pipeline created" proxy (exec daily signal)
+  const { data: salesforcePipelineProxyData } = useQuery<any>({
+    queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    retry: false,
+    queryFn: async () => {
+      const resp = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy`, {
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (!resp.ok) return null;
+      return await resp.json().catch(() => null);
+    },
+  });
+
   const getLinkedInRevenueSourceLabel = (src: any): string => {
     if (!src) return '';
     const type = String(src?.sourceType || '').toLowerCase();
@@ -638,6 +655,21 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     return active || null;
   })();
   const linkedInRevenueSourceLabel = getLinkedInRevenueSourceLabel(activeLinkedInRevenueSource);
+
+  const activeLinkedInRevenueSourceType = String(activeLinkedInRevenueSource?.sourceType || '').trim().toLowerCase();
+  const pipelineProxyData =
+    activeLinkedInRevenueSourceType === 'salesforce'
+      ? salesforcePipelineProxyData
+      : activeLinkedInRevenueSourceType === 'hubspot'
+      ? hubspotPipelineProxyData
+      : (hubspotPipelineProxyData?.success ? hubspotPipelineProxyData : salesforcePipelineProxyData);
+  const pipelineProxyProviderLabel =
+    activeLinkedInRevenueSourceType === 'salesforce'
+      ? 'Salesforce'
+      : activeLinkedInRevenueSourceType === 'hubspot'
+      ? 'HubSpot'
+      : (hubspotPipelineProxyData?.success ? 'HubSpot' : (salesforcePipelineProxyData?.success ? 'Salesforce' : ''));
+  const pipelineProxyEntityNoun = pipelineProxyProviderLabel === 'Salesforce' ? 'Opportunity' : 'deal';
 
   // Fetch Google Sheets connections to check if mappings exist
   const { data: googleSheetsConnections, refetch: refetchGoogleSheetsConnections } = useQuery({
@@ -5199,7 +5231,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           </Card>
 
                           {/* Pipeline (Proxy — stage subset) */}
-                          {hubspotPipelineProxyData?.success && hubspotPipelineProxyData?.pipelineEnabled === true && (
+                          {pipelineProxyData?.success && pipelineProxyData?.pipelineEnabled === true && (
                             <Card className="hover:shadow-md transition-shadow border-amber-200 dark:border-amber-800">
                               <CardContent className="p-4">
                                 <div className="flex items-start justify-between mb-2">
@@ -5217,16 +5249,16 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         <div className="space-y-2 text-sm">
                                           <p className="font-medium">What this means</p>
                                           <p className="text-xs text-slate-400">
-                                            Stage-only subset of mapped deals. It sums HubSpot deal Amounts for deals currently in the selected stage (e.g., SQL).
+                                            Stage-only subset of mapped records. It sums {pipelineProxyProviderLabel || 'CRM'} {pipelineProxyEntityNoun} Amounts for records currently in the selected stage.
                                           </p>
-                                          {hubspotPipelineProxyData?.warning ? (
+                                          {pipelineProxyData?.warning ? (
                                             <p className="text-xs text-amber-700 dark:text-amber-300">
-                                              Note: {String(hubspotPipelineProxyData.warning)}
+                                              Note: {String(pipelineProxyData.warning)}
                                             </p>
                                           ) : null}
-                                          {hubspotPipelineProxyData?.pipelineStageLabel ? (
+                                          {pipelineProxyData?.pipelineStageLabel ? (
                                             <p className="text-xs text-slate-400">
-                                              Stage: {String(getStageOnlyLabel(hubspotPipelineProxyData.pipelineStageLabel) || hubspotPipelineProxyData.pipelineStageLabel)}
+                                              Stage: {String(getStageOnlyLabel(pipelineProxyData.pipelineStageLabel) || pipelineProxyData.pipelineStageLabel)}
                                             </p>
                                           ) : null}
                                         </div>
@@ -5237,11 +5269,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <p className="text-2xl font-bold text-amber-800 dark:text-amber-300">
-                                    {formatCurrency(Number(hubspotPipelineProxyData?.totalToDate || 0))}
+                                    {formatCurrency(Number(pipelineProxyData?.totalToDate || 0))}
                                   </p>
-                                  {!!getStageOnlyLabel(hubspotPipelineProxyData?.pipelineStageLabel) && (
+                                  {!!getStageOnlyLabel(pipelineProxyData?.pipelineStageLabel) && (
                                     <Badge variant="outline" className="text-xs">
-                                      {String(getStageOnlyLabel(hubspotPipelineProxyData?.pipelineStageLabel))}
+                                      {String(getStageOnlyLabel(pipelineProxyData?.pipelineStageLabel))}
                                     </Badge>
                                   )}
                                   <Badge

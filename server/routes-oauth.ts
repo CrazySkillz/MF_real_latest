@@ -9499,6 +9499,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Salesforce Opportunity stages (StageName picklist, for pipeline proxy selection)
+  app.get("/api/salesforce/:campaignId/opportunities/stages", async (req, res) => {
+    try {
+      const campaignId = req.params.campaignId;
+      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const version = process.env.SALESFORCE_API_VERSION || "v59.0";
+
+      const resp = await fetch(`${instanceUrl}/services/data/${version}/sobjects/Opportunity/describe`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json: any = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        return res.status(resp.status).json({ error: json?.[0]?.message || json?.message || "Failed to load Opportunity describe" });
+      }
+
+      const fields = Array.isArray(json?.fields) ? json.fields : [];
+      const stageField = fields.find((f: any) => String(f?.name || "").toLowerCase() === "stagename");
+      const picklistValues = Array.isArray(stageField?.picklistValues) ? stageField.picklistValues : [];
+      const stages = picklistValues
+        .filter((p: any) => p && (p.active === undefined || p.active === true))
+        .map((p: any) => ({
+          value: String(p.value || "").trim(),
+          label: String(p.label || p.value || "").trim(),
+        }))
+        .filter((p: any) => !!p.value);
+
+      res.json({ success: true, stages });
+    } catch (error: any) {
+      console.error("[Salesforce Stages] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to load Opportunity stages" });
+    }
+  });
+
   // Salesforce Opportunity unique values for a field (for crosswalk multi-select)
   app.get("/api/salesforce/:campaignId/opportunities/unique-values", async (req, res) => {
     try {
@@ -9732,6 +9765,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenueClassification: z.string().trim().optional(),
           platformContext: zPlatformContext.optional(),
           salesforceCurrencyOverride: z.string().trim().optional(),
+          pipelineEnabled: z.boolean().optional(),
+          pipelineStageName: z.string().trim().optional().nullable(),
+          pipelineStageLabel: z.string().trim().optional().nullable(),
         })
         .passthrough()
         .safeParse(req.body || {});
@@ -9746,6 +9782,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const revenueClassification = body.data.revenueClassification;
       const platformContext = body.data.platformContext;
       const salesforceCurrencyOverride = body.data.salesforceCurrencyOverride;
+      const pipelineEnabled = body.data.pipelineEnabled === true;
+      const pipelineStageName = String(body.data.pipelineStageName || "").trim();
+      const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
 
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
@@ -10090,7 +10129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const rcRaw = String(revenueClassification || '').trim();
         const rc =
           rcRaw === 'offsite_not_in_ga4' || rcRaw === 'onsite_in_ga4' ? rcRaw : 'onsite_in_ga4';
-        const mappingConfig = {
+        const mappingConfig: any = {
           objectType: 'opportunity',
           platformContext: platformCtx,
           campaignField: attribField,
@@ -10102,7 +10141,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
           revenueClassification: rc,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+          pipelineEnabled: platformCtx === "linkedin" ? pipelineEnabled : false,
+          pipelineStageName: platformCtx === "linkedin" && pipelineEnabled && pipelineStageName ? pipelineStageName : null,
+          pipelineStageLabel: platformCtx === "linkedin" && pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
+          pipelineTotalToDate: 0,
+          pipelineCurrency: null,
+          pipelineLastUpdatedAt: null,
+          pipelineProxyMode: null,
+          pipelineWarning: null,
         };
+
+        // Best-effort: compute an exec-facing pipeline proxy as the sum of Opportunities CURRENTLY in the selected stage.
+        // This is intentionally a stage subset, not historical "entered stage" totals.
+        if (platformCtx === "linkedin" && pipelineEnabled && pipelineStageName) {
+          try {
+            let pipelineToDate = 0;
+            const pipelineCurrencies = new Set<string>();
+            const escapedStage = String(pipelineStageName).replace(/'/g, "\\'");
+
+            const runQuery = async (includeCurrency: boolean): Promise<void> => {
+              const soql =
+                `SELECT Id, ${revenue}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
+                `FROM Opportunity ` +
+                `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted}) ` +
+                `LIMIT 2000`;
+              let next: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+              let pages = 0;
+              while (next && pages < 10) {
+                const resp = await fetchWithTimeout(next, { headers: { Authorization: `Bearer ${accessToken}` } });
+                const json: any = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
+                const recs = Array.isArray(json?.records) ? json.records : [];
+                for (const rec of recs) {
+                  const rRaw = readField(rec, revenue);
+                  const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
+                  if (Number.isFinite(amt)) pipelineToDate += amt;
+                  if (includeCurrency) {
+                    const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
+                    if (c) pipelineCurrencies.add(c);
+                  }
+                }
+                next = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
+                pages += 1;
+              }
+            };
+
+            try {
+              await runQuery(true);
+            } catch (e: any) {
+              const msg = String(e?.message || "").toLowerCase();
+              if (msg.includes("no such column") && msg.includes("currencyisocode")) {
+                await runQuery(false);
+              } else {
+                throw e;
+              }
+            }
+
+            if (pipelineCurrencies.size > 1) {
+              mappingConfig.pipelineTotalToDate = 0;
+              mappingConfig.pipelineCurrency = null;
+              mappingConfig.pipelineLastUpdatedAt = new Date().toISOString();
+              mappingConfig.pipelineProxyMode = "current_stage";
+              mappingConfig.pipelineWarning = `Multiple currencies found for pipeline proxy (${Array.from(pipelineCurrencies).join(", ")}). Filter Salesforce to a single currency to enable pipeline proxy.`;
+            } else {
+              mappingConfig.pipelineTotalToDate = Number(pipelineToDate.toFixed(2));
+              mappingConfig.pipelineCurrency = pipelineCurrencies.size === 1 ? Array.from(pipelineCurrencies)[0] : null;
+              mappingConfig.pipelineLastUpdatedAt = new Date().toISOString();
+              mappingConfig.pipelineProxyMode = "current_stage";
+              mappingConfig.pipelineWarning = null;
+            }
+          } catch {
+            mappingConfig.pipelineTotalToDate = 0;
+            mappingConfig.pipelineCurrency = null;
+            mappingConfig.pipelineLastUpdatedAt = new Date().toISOString();
+            mappingConfig.pipelineProxyMode = "current_stage";
+            mappingConfig.pipelineWarning = "Failed to compute pipeline proxy.";
+          }
+        }
         await storage.updateSalesforceConnection(sfConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }
 
@@ -10128,6 +10243,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             days: rangeDays,
             revenueClassification,
             lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+            pipelineEnabled: platformCtx === "linkedin" ? pipelineEnabled : false,
+            pipelineStageName: platformCtx === "linkedin" && pipelineEnabled && pipelineStageName ? pipelineStageName : null,
+            pipelineStageLabel: platformCtx === "linkedin" && pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
           }),
           isActive: true,
         } as any);
@@ -10168,6 +10286,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[Salesforce Save Mappings] Error:', error);
       res.status(500).json({ error: error.message || 'Failed to save Salesforce mappings' });
+    }
+  });
+
+  // Salesforce pipeline proxy status (cached in mappingConfig by save-mappings)
+  app.get("/api/salesforce/:campaignId/pipeline-proxy", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      const conn: any = await storage.getSalesforceConnection(campaignId);
+      let cfg: any = {};
+      try {
+        cfg = conn?.mappingConfig ? JSON.parse(String(conn.mappingConfig)) : {};
+      } catch {
+        cfg = {};
+      }
+
+      if (!cfg || cfg.pipelineEnabled !== true || !cfg.pipelineStageName) {
+        return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for this campaign." });
+      }
+
+      // Prefer cached value if present and in correct mode.
+      const cached = Number(cfg.pipelineTotalToDate || 0);
+      const cachedMode = cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null;
+      if (Number.isFinite(cached) && cached > 0 && cachedMode === "current_stage") {
+        return res.json({
+          success: true,
+          pipelineEnabled: true,
+          pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
+          currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency) : null,
+          lastUpdatedAt: cfg.pipelineLastUpdatedAt ? String(cfg.pipelineLastUpdatedAt) : null,
+          totalToDate: cached,
+          mode: cachedMode,
+          warning: cfg.pipelineWarning ? String(cfg.pipelineWarning) : null,
+        });
+      }
+
+      // Recompute on-demand (best-effort) so UI isn't stuck with stale/wrong values.
+      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const version = process.env.SALESFORCE_API_VERSION || "v59.0";
+      const attribField = String(cfg.campaignField || "").trim();
+      const selected: string[] = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
+      const revenueField = String(cfg.revenueField || "Amount").trim() || "Amount";
+      const stageName = String(cfg.pipelineStageName || "").trim();
+      if (!attribField || selected.length === 0 || !stageName) {
+        return res.json({
+          success: true,
+          pipelineEnabled: true,
+          pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
+          currency: null,
+          lastUpdatedAt: cfg.pipelineLastUpdatedAt ? String(cfg.pipelineLastUpdatedAt) : null,
+          totalToDate: 0,
+          mode: "current_stage",
+          warning: "Pipeline proxy configuration incomplete. Re-save Salesforce mappings to recompute.",
+        });
+      }
+
+      const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(",");
+      const escapedStage = stageName.replace(/'/g, "\\'");
+      let totalToDate = 0;
+      const currencies = new Set<string>();
+
+      const runQuery = async (includeCurrency: boolean): Promise<void> => {
+        const soql =
+          `SELECT Id, ${revenueField}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
+          `FROM Opportunity ` +
+          `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted}) ` +
+          `LIMIT 2000`;
+        let next: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+        let pages = 0;
+        while (next && pages < 10) {
+          const resp = await fetchWithTimeout(next, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
+          const recs = Array.isArray(json?.records) ? json.records : [];
+          for (const rec of recs) {
+            const rRaw = rec?.[revenueField];
+            const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
+            if (Number.isFinite(amt)) totalToDate += amt;
+            if (includeCurrency) {
+              const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
+              if (c) currencies.add(c);
+            }
+          }
+          next = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
+          pages += 1;
+        }
+      };
+
+      try {
+        await runQuery(true);
+      } catch (e: any) {
+        const msg = String(e?.message || "").toLowerCase();
+        if (msg.includes("no such column") && msg.includes("currencyisocode")) {
+          await runQuery(false);
+        } else {
+          throw e;
+        }
+      }
+
+      const lastUpdatedAt = new Date().toISOString();
+      let warning: string | null = cfg.pipelineWarning ? String(cfg.pipelineWarning) : null;
+      let currency: string | null = currencies.size === 1 ? Array.from(currencies)[0] : null;
+      if (currencies.size > 1) {
+        // Do not fail the page; omit proxy value when mixed currency.
+        totalToDate = 0;
+        currency = null;
+        warning = `Multiple currencies found for pipeline proxy (${Array.from(currencies).join(", ")}). Filter Salesforce to a single currency to enable pipeline proxy.`;
+      }
+
+      // Best-effort persist back to mappingConfig so future loads are fast.
+      try {
+        const nextCfg = { ...(cfg || {}) };
+        nextCfg.pipelineTotalToDate = Number(Number(totalToDate || 0).toFixed(2));
+        nextCfg.pipelineCurrency = currency;
+        nextCfg.pipelineLastUpdatedAt = lastUpdatedAt;
+        nextCfg.pipelineProxyMode = "current_stage";
+        nextCfg.pipelineWarning = warning;
+        if (conn?.id) await storage.updateSalesforceConnection(String(conn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+      } catch {
+        // ignore
+      }
+
+      res.json({
+        success: true,
+        pipelineEnabled: true,
+        pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
+        currency,
+        lastUpdatedAt,
+        totalToDate: Number(Number(totalToDate || 0).toFixed(2)),
+        mode: "current_stage",
+        warning,
+      });
+    } catch (error: any) {
+      console.error("[Salesforce Pipeline Proxy] Error:", error);
+      res.status(500).json({ success: false, error: error?.message || "Failed to load pipeline proxy" });
     }
   });
 

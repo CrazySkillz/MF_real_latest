@@ -83,7 +83,13 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord)
     campaignField: mappingConfig.campaignField,
     selectedValues: mappingConfig.selectedValues,
     revenueField: mappingConfig.revenueField,
+    conversionValueField: mappingConfig.conversionValueField,
+    valueSource: mappingConfig.valueSource,
     days: mappingConfig.days,
+    pipelineEnabled: mappingConfig.pipelineEnabled,
+    pipelineStageName: mappingConfig.pipelineStageName,
+    pipelineStageLabel: mappingConfig.pipelineStageLabel,
+    platformContext: mappingConfig.platformContext,
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/salesforce/save-mappings`, body);
   if (!result.ok) {

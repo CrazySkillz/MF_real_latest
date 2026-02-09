@@ -90,9 +90,14 @@ export async function refreshAllGA4DailyMetrics(): Promise<void> {
 
 /**
  * Start the GA4 daily refresh scheduler
- * Runs daily (default: 24h interval), with an initial run on startup.
+ * Runs daily (default: 24h interval), with an initial run deferred to avoid impacting deployment/startup.
+ * Set GA4_DAILY_ENABLED=false to disable entirely (e.g. when OAuth tokens are expired).
  */
 export function startGA4DailyScheduler(): void {
+  if (String(process.env.GA4_DAILY_ENABLED ?? "true").toLowerCase() === "false") {
+    console.log("[GA4 Daily] Scheduler disabled via GA4_DAILY_ENABLED=false");
+    return;
+  }
   if ((global as any).ga4DailySchedulerInterval) {
     console.log("[GA4 Daily] Scheduler already running");
     return;
@@ -103,11 +108,12 @@ export function startGA4DailyScheduler(): void {
 
   console.log(`[GA4 Daily] Scheduler started (interval=${refreshIntervalHours}h)`);
 
-  // Run immediately on startup (best-effort)
-  refreshAllGA4DailyMetrics();
+  // Defer initial run by 60s so deployment/health checks complete first; never let errors crash the process
+  const runSafe = () => refreshAllGA4DailyMetrics().catch((e: any) => console.warn("[GA4 Daily] Initial run error:", e?.message || e));
+  setTimeout(runSafe, 60_000);
 
   (global as any).ga4DailySchedulerInterval = setInterval(() => {
-    refreshAllGA4DailyMetrics();
+    refreshAllGA4DailyMetrics().catch((e: any) => console.warn("[GA4 Daily] Interval run error:", e?.message || e));
   }, refreshIntervalMs);
 }
 

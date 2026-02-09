@@ -161,14 +161,10 @@ async function refreshAllGoogleSheetsTokens(): Promise<void> {
 
 /**
  * Start the Google Sheets token refresh scheduler
- * Runs daily at 2 AM (low traffic time) to proactively refresh tokens.
- * Set GOOGLE_SHEETS_TOKEN_REFRESH_ENABLED=false to disable (e.g. when tokens are expired).
+ * Runs daily at 2 AM (low traffic time) to proactively refresh tokens
  */
 export function startGoogleSheetsTokenScheduler(): void {
-  if (String(process.env.GOOGLE_SHEETS_TOKEN_REFRESH_ENABLED ?? "true").toLowerCase() === "false") {
-    console.log('[Token Scheduler] Disabled via GOOGLE_SHEETS_TOKEN_REFRESH_ENABLED=false');
-    return;
-  }
+  // Check if scheduler is already running
   if ((global as any).googleSheetsTokenSchedulerInterval) {
     console.log('[Token Scheduler] Scheduler is already running');
     return;
@@ -194,19 +190,17 @@ export function startGoogleSheetsTokenScheduler(): void {
   
   const msUntilNextRun = nextRun.getTime() - now.getTime();
   
-  // Defer initial run by 90s so deployment completes first; wrap in catch to never crash
-  console.log('[Token Scheduler] Initial run deferred by 90s (avoids impacting deployment)');
-  setTimeout(() => {
-    refreshAllGoogleSheetsTokens().catch((e: any) => console.warn('[Token Scheduler] Initial run error:', e?.message || e));
-  }, 90_000);
+  // Run immediately on startup (for testing and immediate refresh of expiring tokens)
+  console.log('[Token Scheduler] Running initial token refresh check...');
+  refreshAllGoogleSheetsTokens();
   
   // Schedule first run at 2 AM
   setTimeout(() => {
-    refreshAllGoogleSheetsTokens().catch((e: any) => console.warn('[Token Scheduler] Run error:', e?.message || e));
+    refreshAllGoogleSheetsTokens();
     
     // Then schedule regular runs every 24 hours
     (global as any).googleSheetsTokenSchedulerInterval = setInterval(() => {
-      refreshAllGoogleSheetsTokens().catch((e: any) => console.warn('[Token Scheduler] Run error:', e?.message || e));
+      refreshAllGoogleSheetsTokens();
     }, refreshIntervalMs);
     
     console.log(`[Token Scheduler] Scheduled daily runs at 2 AM`);

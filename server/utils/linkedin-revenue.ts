@@ -111,6 +111,30 @@ export async function resolveLinkedInRevenueContext(opts: {
     connCv = 0;
   }
 
+  // Failsafe: if no explicit conversion value is set but we have Shopify revenue,
+  // calculate the conversion value from the Shopify revenue records (order count)
+  if (connCv <= 0 && importedRevenueToDate > 0) {
+    try {
+      const sources = await (storage as any).getRevenueSources?.(campaignId, "linkedin");
+      const shopifySource = (Array.isArray(sources) ? sources : []).find((s: any) => {
+        return !!s && (s as any)?.isActive !== false && String((s as any)?.sourceType || "").toLowerCase() === "shopify";
+      });
+      
+      if (shopifySource && importedRevenueToDate > 0) {
+        // Count the number of revenue records for this source (each represents a matched order/day)
+        const sourceRecords = await (storage as any).getRevenueRecords?.(String((shopifySource as any)?.id), startDate, endDate).catch(() => []);
+        const recordCount = Array.isArray(sourceRecords) ? sourceRecords.length : 0;
+        
+        if (recordCount > 0) {
+          // Calculate conversion value as average revenue per record
+          connCv = importedRevenueToDate / recordCount;
+        }
+      }
+    } catch (e) {
+      // Failsafe silently fails; use connCv = 0
+    }
+  }
+
   const sessionCvRaw = parseNum(opts.sessionConversionValue);
   const shouldIgnoreSessionCv =
     importedRevenueToDate > 0 && connCv <= 0 && !hasExplicitLinkedInConversionValueSource;

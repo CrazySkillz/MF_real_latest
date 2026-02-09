@@ -1143,6 +1143,7 @@ export function SalesforceRevenueWizard(props: {
               <div className="text-xs text-slate-500">
                 Currency default: one currency per campaign. If mixed currencies are detected, you’ll be asked to filter to one.
               </div>
+            </div>
           )}
 
           {step === "review" && <div />}

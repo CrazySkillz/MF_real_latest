@@ -121,6 +121,7 @@ export async function resolveLinkedInRevenueContext(opts: {
   // Shopify fallback: Shopify is revenue-to-date. We still want a Conversion Value card.
   // Use the Shopify mappingConfig's computed AOV (lastConversionValue), or derive from
   // revenue-to-date ÷ lastMatchedOrderCount. This does NOT depend on LinkedIn conversions.
+  // Also check the Shopify CONNECTION's mappingConfig as a fallback.
   let shopifyCv = 0;
   try {
     const shopifySource = (Array.isArray(linkedInRevenueSources) ? linkedInRevenueSources : []).find((s: any) => {
@@ -136,6 +137,32 @@ export async function resolveLinkedInRevenueContext(opts: {
         shopifyCv = lastCv;
       } else if (importedRevenueToDate > 0 && lastCount > 0) {
         shopifyCv = importedRevenueToDate / lastCount;
+      }
+      
+      // Fallback: check Shopify connection's mappingConfig for lastConversionValue/lastMatchedOrderCount
+      if (shopifyCv <= 0) {
+        try {
+          const shopifyConn = await (storage as any).getShopifyConnection?.(campaignId);
+          if (shopifyConn) {
+            const connRaw = (shopifyConn as any)?.mappingConfig;
+            const connCfg = connRaw ? (typeof connRaw === "string" ? JSON.parse(connRaw) : connRaw) : {};
+            const connLastCv = parseNum(connCfg?.lastConversionValue);
+            const connLastCount = Math.max(0, Math.round(parseNum(connCfg?.lastMatchedOrderCount)));
+            if (connLastCv > 0) {
+              shopifyCv = connLastCv;
+            } else if (importedRevenueToDate > 0 && connLastCount > 0) {
+              shopifyCv = importedRevenueToDate / connLastCount;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+      
+      // Ultimate fallback: if we have Shopify revenue but no order count info at all,
+      // assume 1 order (so CV = revenue-to-date). This handles legacy mappings.
+      if (shopifyCv <= 0 && importedRevenueToDate > 0) {
+        shopifyCv = importedRevenueToDate;
       }
     }
   } catch {

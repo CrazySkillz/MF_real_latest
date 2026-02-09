@@ -937,6 +937,11 @@ export function SalesforceRevenueWizard(props: {
                   Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}
                   <strong>Opportunity Name</strong> can work only if your opportunity naming convention contains the campaign value you want to map.
                 </div>
+                <div className="text-xs text-slate-500">
+                  Note: this mapping step uses <strong>Closed Won</strong> opportunities (<code>IsWon = true</code>) to calculate{" "}
+                  <strong>Total Revenue</strong>. If you enabled <strong>Pipeline (Proxy)</strong>, deals currently in stages like{" "}
+                  <strong>Proposal</strong> will appear later under the <strong>Pipeline</strong> step and the Overview “Pipeline (Proxy)” card.
+                </div>
 
                 {oauthError && (
                   <div className="text-sm text-red-600">
@@ -1009,7 +1014,10 @@ export function SalesforceRevenueWizard(props: {
                   </div>
                 )}
               </div>
-              <div className="text-xs text-slate-500">Default filter: Won opportunities (IsWon = true) within the last {days} days.</div>
+              <div className="text-xs text-slate-500">
+                Default filter: <strong>Closed Won</strong> opportunities (<code>IsWon = true</code>) within the last {days} days. (Pipeline stages like Proposal
+                are tracked separately in <strong>Pipeline (Proxy)</strong> when enabled.)
+              </div>
             </div>
           )}
 

@@ -28,26 +28,26 @@ import { checkPerformanceAlerts } from "./kpi-scheduler";
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
   if (values.length === 0) return 'unknown';
-  
+
   const valueStrings = values.map(v => String(v).trim());
-  
+
   // Check for currency
   const currencyPattern = /^[\$€£¥]\s*\d+[.,]?\d*$/;
   const currencyCount = valueStrings.filter(v => currencyPattern.test(v)).length;
   if (currencyCount / values.length > 0.5) return 'currency';
-  
+
   // Check for percentage
   const percentagePattern = /^\d+[.,]?\d*\s*%$/;
   const percentageCount = valueStrings.filter(v => percentagePattern.test(v)).length;
   if (percentageCount / values.length > 0.5) return 'percentage';
-  
+
   // Check for numbers
   const numericValues = values.filter(v => {
     const str = String(v).replace(/[,\s]/g, '');
     return !isNaN(parseFloat(str)) && isFinite(parseFloat(str));
   });
   if (numericValues.length / values.length > 0.7) return 'number';
-  
+
   return 'text';
 }
 
@@ -590,7 +590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const days =
       String(dateRange).toLowerCase() === "7days" ? 7 :
-      String(dateRange).toLowerCase() === "90days" ? 90 : 30;
+        String(dateRange).toLowerCase() === "90days" ? 90 : 30;
     const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
     const fmt = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
     return { startDate: fmt(start), endDate: fmt(end) };
@@ -1301,31 +1301,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireCampaignAccessParamId,
     uploadCsv.single("file"),
     async (req, res) => {
-    try {
-      if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
-      const file = (req as any).file as any;
-      const csvText = Buffer.from(file.buffer).toString("utf-8");
-      // Hard cap lines up-front to avoid expensive parsing of huge files.
-      const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PREVIEW + 5);
-      if (approxLines > MAX_CSV_ROWS_PREVIEW + 5) {
-        return res.status(413).json({
-          success: false,
-          error: `CSV too large. Please upload a smaller file (max ~${MAX_CSV_ROWS_PREVIEW.toLocaleString()} rows for preview).`,
-          code: "CSV_TOO_LARGE",
+      try {
+        if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
+        const file = (req as any).file as any;
+        const csvText = Buffer.from(file.buffer).toString("utf-8");
+        // Hard cap lines up-front to avoid expensive parsing of huge files.
+        const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PREVIEW + 5);
+        if (approxLines > MAX_CSV_ROWS_PREVIEW + 5) {
+          return res.status(413).json({
+            success: false,
+            error: `CSV too large. Please upload a smaller file (max ~${MAX_CSV_ROWS_PREVIEW.toLocaleString()} rows for preview).`,
+            code: "CSV_TOO_LARGE",
+          });
+        }
+        const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PREVIEW);
+        res.json({
+          success: true,
+          fileName: file.originalname,
+          headers: parsed.headers,
+          sampleRows: parsed.rows.slice(0, 25),
+          rowCount: parsed.rows.length,
         });
+      } catch (e: any) {
+        res.status(500).json({ success: false, error: e?.message || "Failed to preview CSV" });
       }
-      const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PREVIEW);
-      res.json({
-        success: true,
-        fileName: file.originalname,
-        headers: parsed.headers,
-        sampleRows: parsed.rows.slice(0, 25),
-        rowCount: parsed.rows.length,
-      });
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to preview CSV" });
-    }
-  });
+    });
 
   app.post(
     "/api/campaigns/:id/revenue/csv/process",
@@ -1333,166 +1333,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireCampaignAccessParamId,
     uploadCsv.single("file"),
     async (req, res) => {
-    try {
-      const campaignId = req.params.id;
-      if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
-      const file = (req as any).file as any;
-      const platformContext = parsePlatformContext((req.body as any)?.platformContext, "ga4", res);
-      if (!platformContext) return;
-
-      let mappingRaw: any = null;
       try {
-        mappingRaw = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
-      } catch {
-        return sendBadRequest(res, "Invalid mapping JSON");
-      }
-      const parsedMapping = zRevenueMapping.safeParse(mappingRaw || {});
-      if (!parsedMapping.success) {
-        return sendBadRequest(res, "Invalid mapping", parsedMapping.error.errors);
-      }
-      const mapping = parsedMapping.data as any;
+        const campaignId = req.params.id;
+        if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
+        const file = (req as any).file as any;
+        const platformContext = parsePlatformContext((req.body as any)?.platformContext, "ga4", res);
+        if (!platformContext) return;
 
-      const valueSource: "revenue" | "conversion_value" =
-        platformContext === "linkedin" ? parseValueSource(mapping?.valueSource, "revenue") : "revenue";
-      const revenueColumn = mapping?.revenueColumn ? String(mapping.revenueColumn) : "";
-      const conversionValueColumn = mapping?.conversionValueColumn ? String(mapping.conversionValueColumn) : "";
-      if (platformContext === "ga4") {
-        if (!revenueColumn) return sendBadRequest(res, "revenueColumn is required");
-      } else {
-        if (valueSource === "conversion_value") {
-          if (!conversionValueColumn) return sendBadRequest(res, "conversionValueColumn is required when valueSource=conversion_value");
-        } else {
-          if (!revenueColumn) return sendBadRequest(res, "revenueColumn is required when valueSource=revenue");
+        let mappingRaw: any = null;
+        try {
+          mappingRaw = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
+        } catch {
+          return sendBadRequest(res, "Invalid mapping JSON");
         }
-      }
+        const parsedMapping = zRevenueMapping.safeParse(mappingRaw || {});
+        if (!parsedMapping.success) {
+          return sendBadRequest(res, "Invalid mapping", parsedMapping.error.errors);
+        }
+        const mapping = parsedMapping.data as any;
 
-      const csvText = Buffer.from(file.buffer).toString("utf-8");
-      const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
-      if (approxLines > MAX_CSV_ROWS_PROCESS + 5) {
-        return res.status(413).json({
-          success: false,
-          error: `CSV too large. Please reduce rows (max ~${MAX_CSV_ROWS_PROCESS.toLocaleString()} rows).`,
-          code: "CSV_TOO_LARGE",
-        });
-      }
-      const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS);
-
-      const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
-      const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
-      const campaignValues: string[] | null = Array.isArray(mapping.campaignValues)
-        ? (mapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v))
-        : null;
-      const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
-
-      let kept = 0;
-      let totalRevenueToDate = 0;
-      const conversionValues: number[] = [];
-
-      for (const row of parsed.rows) {
-        if (campaignCol && (campaignValueSet || campaignValue)) {
-          const v = String((row as any)[campaignCol] ?? "").trim();
-          if (campaignValueSet) {
-            if (!campaignValueSet.has(v)) continue;
-          } else if (campaignValue && v !== campaignValue) {
-            continue;
+        const valueSource: "revenue" | "conversion_value" =
+          platformContext === "linkedin" ? parseValueSource(mapping?.valueSource, "revenue") : "revenue";
+        const revenueColumn = mapping?.revenueColumn ? String(mapping.revenueColumn) : "";
+        const conversionValueColumn = mapping?.conversionValueColumn ? String(mapping.conversionValueColumn) : "";
+        if (platformContext === "ga4") {
+          if (!revenueColumn) return sendBadRequest(res, "revenueColumn is required");
+        } else {
+          if (valueSource === "conversion_value") {
+            if (!conversionValueColumn) return sendBadRequest(res, "conversionValueColumn is required when valueSource=conversion_value");
+          } else {
+            if (!revenueColumn) return sendBadRequest(res, "revenueColumn is required when valueSource=revenue");
           }
         }
+
+        const csvText = Buffer.from(file.buffer).toString("utf-8");
+        const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
+        if (approxLines > MAX_CSV_ROWS_PROCESS + 5) {
+          return res.status(413).json({
+            success: false,
+            error: `CSV too large. Please reduce rows (max ~${MAX_CSV_ROWS_PROCESS.toLocaleString()} rows).`,
+            code: "CSV_TOO_LARGE",
+          });
+        }
+        const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS);
+
+        const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
+        const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
+        const campaignValues: string[] | null = Array.isArray(mapping.campaignValues)
+          ? (mapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v))
+          : null;
+        const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
+
+        let kept = 0;
+        let totalRevenueToDate = 0;
+        const conversionValues: number[] = [];
+
+        for (const row of parsed.rows) {
+          if (campaignCol && (campaignValueSet || campaignValue)) {
+            const v = String((row as any)[campaignCol] ?? "").trim();
+            if (campaignValueSet) {
+              if (!campaignValueSet.has(v)) continue;
+            } else if (campaignValue && v !== campaignValue) {
+              continue;
+            }
+          }
+          if (platformContext === 'linkedin' && valueSource === 'conversion_value') {
+            const cv = parseNum((row as any)[conversionValueColumn]);
+            if (!(cv > 0)) continue;
+            kept++;
+            conversionValues.push(cv);
+          } else {
+            const revenue = parseNum((row as any)[revenueColumn]);
+            if (!(revenue > 0)) continue;
+            kept++;
+            totalRevenueToDate += revenue;
+            // If a conversion value column was also provided (but not selected as source of truth), we can optionally collect it
+            // for diagnostics; we do not persist it as the active conversion value when revenue is source of truth.
+          }
+        }
+
+        const endDate = yesterdayUTC();
+
+        const campaign = await storage.getCampaign(campaignId);
+        const currency = mapping.currency || (campaign as any)?.currency || "USD";
+
+        await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
+
+        const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: (platformContext === 'linkedin' && valueSource === 'conversion_value') ? 'conversion_value' : "revenue_to_date" };
+        const source = await storage.createRevenueSource({
+          campaignId,
+          sourceType: "csv",
+          platformContext,
+          displayName: mapping.displayName || file.originalname,
+          currency,
+          mappingConfig: JSON.stringify(normalizedMapping),
+          isActive: true,
+        } as any);
+
+        await storage.deleteRevenueRecordsBySource(source.id);
+
         if (platformContext === 'linkedin' && valueSource === 'conversion_value') {
-          const cv = parseNum((row as any)[conversionValueColumn]);
-          if (!(cv > 0)) continue;
-          kept++;
-          conversionValues.push(cv);
-        } else {
-          const revenue = parseNum((row as any)[revenueColumn]);
-          if (!(revenue > 0)) continue;
-          kept++;
-          totalRevenueToDate += revenue;
-          // If a conversion value column was also provided (but not selected as source of truth), we can optionally collect it
-          // for diagnostics; we do not persist it as the active conversion value when revenue is source of truth.
-        }
-      }
-
-      const endDate = yesterdayUTC();
-
-      const campaign = await storage.getCampaign(campaignId);
-      const currency = mapping.currency || (campaign as any)?.currency || "USD";
-
-      await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
-
-      const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: (platformContext === 'linkedin' && valueSource === 'conversion_value') ? 'conversion_value' : "revenue_to_date" };
-      const source = await storage.createRevenueSource({
-        campaignId,
-        sourceType: "csv",
-        platformContext,
-        displayName: mapping.displayName || file.originalname,
-        currency,
-        mappingConfig: JSON.stringify(normalizedMapping),
-        isActive: true,
-      } as any);
-
-      await storage.deleteRevenueRecordsBySource(source.id);
-
-      if (platformContext === 'linkedin' && valueSource === 'conversion_value') {
-        const sorted = conversionValues.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
-        if (sorted.length === 0) return res.status(400).json({ success: false, error: "No valid conversion values found in selected rows" });
-        const mid = Math.floor(sorted.length / 2);
-        const convValue = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-        try {
-          await storage.updateLinkedInConnection(campaignId, { conversionValue: Number(convValue.toFixed(2)).toFixed(2) as any } as any);
-        } catch {
-          // ignore
-        }
-        await setLatestLinkedInImportSessionConversionValue(campaignId, Number(convValue.toFixed(2)).toFixed(2));
-        await recomputeCampaignDerivedValues(campaignId);
-        res.json({
-          success: true,
-          sourceId: source.id,
-          currency,
-          rowCount: parsed.rows.length,
-          keptRows: kept,
-          date: endDate,
-          mode: "conversion_value",
-          conversionValue: Number(convValue.toFixed(2)),
-          totalRevenue: 0,
-        });
-      } else {
-        // Revenue is source of truth.
-        try {
-          if (platformContext === 'linkedin') {
-            await storage.updateLinkedInConnection(campaignId, { conversionValue: null as any } as any);
-            await clearLatestLinkedInImportSessionConversionValue(campaignId);
+          const sorted = conversionValues.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+          if (sorted.length === 0) return res.status(400).json({ success: false, error: "No valid conversion values found in selected rows" });
+          const mid = Math.floor(sorted.length / 2);
+          const convValue = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+          try {
+            await storage.updateLinkedInConnection(campaignId, { conversionValue: Number(convValue.toFixed(2)).toFixed(2) as any } as any);
+          } catch {
+            // ignore
           }
-        } catch {
-          // ignore
+          await setLatestLinkedInImportSessionConversionValue(campaignId, Number(convValue.toFixed(2)).toFixed(2));
+          await recomputeCampaignDerivedValues(campaignId);
+          res.json({
+            success: true,
+            sourceId: source.id,
+            currency,
+            rowCount: parsed.rows.length,
+            keptRows: kept,
+            date: endDate,
+            mode: "conversion_value",
+            conversionValue: Number(convValue.toFixed(2)),
+            totalRevenue: 0,
+          });
+        } else {
+          // Revenue is source of truth.
+          try {
+            if (platformContext === 'linkedin') {
+              await storage.updateLinkedInConnection(campaignId, { conversionValue: null as any } as any);
+              await clearLatestLinkedInImportSessionConversionValue(campaignId);
+            }
+          } catch {
+            // ignore
+          }
+          const totalRevenue = Number(totalRevenueToDate.toFixed(2));
+          if (totalRevenue > 0) {
+            await storage.createRevenueRecords([
+              {
+                campaignId,
+                revenueSourceId: source.id,
+                date: endDate,
+                revenue: totalRevenue.toFixed(2) as any,
+                currency,
+              } as any,
+            ]);
+          }
+          await recomputeCampaignDerivedValues(campaignId);
+          res.json({
+            success: true,
+            sourceId: source.id,
+            currency,
+            rowCount: parsed.rows.length,
+            keptRows: kept,
+            date: endDate,
+            mode: "revenue_to_date",
+            totalRevenue,
+          });
         }
-        const totalRevenue = Number(totalRevenueToDate.toFixed(2));
-        if (totalRevenue > 0) {
-          await storage.createRevenueRecords([
-            {
-              campaignId,
-              revenueSourceId: source.id,
-              date: endDate,
-              revenue: totalRevenue.toFixed(2) as any,
-              currency,
-            } as any,
-          ]);
-        }
-        await recomputeCampaignDerivedValues(campaignId);
-        res.json({
-          success: true,
-          sourceId: source.id,
-          currency,
-          rowCount: parsed.rows.length,
-          keptRows: kept,
-          date: endDate,
-          mode: "revenue_to_date",
-          totalRevenue,
-        });
+      } catch (e: any) {
+        res.status(500).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
       }
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
-    }
-  });
+    });
 
   app.post("/api/campaigns/:id/revenue/sheets/preview", googleSheetsRateLimiter, async (req, res) => {
     try {
@@ -2397,7 +2397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json(list);
     } catch (error) {
       console.error('[Notifications API] Error:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to fetch notifications",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -2470,8 +2470,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .delete(notifications as any)
         .where(inArray((notifications as any).campaignId, ownedCampaignIds));
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: `Deleted ${(result as any)?.rowCount ?? 0} notifications`,
         deletedCount: (result as any)?.rowCount ?? 0
       });
@@ -2480,7 +2480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete all notifications" });
     }
   });
-  
+
   app.delete("/api/notifications/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -2498,11 +2498,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!okCampaign) return;
 
       const result = await db.delete(notifications).where(eq(notifications.id, id));
-      
+
       res.json({ success: true, message: "Notification deleted" });
     } catch (error) {
       console.error('[Notifications API] Delete error:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to delete notification",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -2525,15 +2525,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignId) return res.status(404).json({ success: false, message: "Notification not found" });
       const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!okCampaign) return;
-      
+
       const result = await db.update(notifications)
         .set({ read: read })
         .where(eq(notifications.id, id));
-      
+
       res.json({ success: true, message: "Notification updated" });
     } catch (error) {
       console.error('[Notifications API] Update error:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to update notification",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -3477,13 +3477,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Cache-Control", "no-store");
       const { getIndustries, getIndustryDisplayName, getBenchmarkValue } = await import('./data/industry-benchmarks.js');
       const industries = getIndustries();
-      
+
       // Return list of industries with display names
       const industryList = industries.map(key => ({
         value: key,
         label: getIndustryDisplayName(key)
       })).sort((a, b) => String(a.label).localeCompare(String(b.label)));
-      
+
       res.json({ industries: industryList });
     } catch (error) {
       console.error('Industry benchmarks fetch error:', error);
@@ -3512,15 +3512,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           asOf: "2026-01-01",
         });
       }
-      
+
       const benchmarkData = getBenchmarkValue(industry, metric);
-      
+
       if (!benchmarkData) {
-        return res.status(404).json({ 
-          message: "Benchmark not found for this industry/metric combination" 
+        return res.status(404).json({
+          message: "Benchmark not found for this industry/metric combination"
         });
       }
-      
+
       res.json(benchmarkData);
     } catch (error) {
       console.error('Industry benchmark fetch error:', error);
@@ -3677,7 +3677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
       }
       console.log('[Campaign Creation] Received data:', JSON.stringify(req.body, null, 2));
-      
+
       // Sanitize numeric fields to strings for decimal columns
       const sanitizedData = { ...req.body };
       if (sanitizedData.budget !== undefined && sanitizedData.budget !== null && typeof sanitizedData.budget === 'number') {
@@ -3692,24 +3692,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sanitizedData.spend = sanitizedData.spend.toString();
         console.log('[Campaign Creation] Converted spend from number to string:', sanitizedData.spend);
       }
-      
+
       const validatedData = insertCampaignSchema.parse({ ...sanitizedData, ownerId: actorId });
       console.log('[Campaign Creation] Validated data:', JSON.stringify(validatedData, null, 2));
       const campaign = await storage.createCampaign(validatedData);
       console.log('[Campaign Creation] Campaign created successfully:', campaign.id);
-      
+
       // AUTO-GENERATE BENCHMARKS IF INDUSTRY IS SELECTED
       if (validatedData.industry) {
         console.log('[Benchmarks] Industry detected:', validatedData.industry);
         try {
           const { getIndustryBenchmarks } = await import('./data/industry-benchmarks.js');
           const industryBenchmarks = getIndustryBenchmarks(validatedData.industry);
-          
+
           if (industryBenchmarks) {
             // Filter out revenue metrics (ROI, ROAS) if no conversion value is set
             const hasConversionValue = validatedData.conversionValue !== null && validatedData.conversionValue !== undefined;
             const revenueMetrics = ['roi', 'roas'];
-            
+
             const metricsToCreate = Object.entries(industryBenchmarks).filter(([metricKey]) => {
               // If no conversion value, exclude revenue metrics
               if (!hasConversionValue && revenueMetrics.includes(metricKey.toLowerCase())) {
@@ -3718,9 +3718,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               return true;
             });
-            
+
             console.log(`[Benchmarks] Generating ${metricsToCreate.length} benchmarks (${hasConversionValue ? 'with' : 'without'} revenue metrics)...`);
-            
+
             for (const [metricKey, thresholds] of metricsToCreate) {
               await storage.createBenchmark({
                 campaignId: campaign.id,
@@ -3738,7 +3738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 period: 'monthly',
               });
             }
-            
+
             console.log(`[Benchmarks] ✅ Created ${metricsToCreate.length} benchmarks for campaign ${campaign.id}`);
           }
         } catch (benchmarkError) {
@@ -3747,7 +3747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('[Benchmarks] No industry specified, skipping benchmark generation');
       }
-      
+
       res.status(201).json(campaign);
     } catch (error) {
       console.error('[Campaign Creation] Error:', error);
@@ -3789,9 +3789,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
-      
+
       if (!campaign) return;
-      
+
       res.json(campaign);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch campaign" });
@@ -3805,14 +3805,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const success = await storage.deleteCampaign(campaignId);
-      
+
       if (!success) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-      
+
       // Also delete any associated GA4 connection
       await storage.deleteGA4Connection(campaignId);
-      
+
       res.json({ success: true, message: "Campaign deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete campaign" });
@@ -3926,10 +3926,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lastUpdated =
         stored.length > 0
           ? (stored as any[]).reduce((latest: string | null, r: any) => {
-              const ts = r?.updatedAt ? new Date(r.updatedAt).toISOString() : null;
-              if (!ts) return latest;
-              return !latest || ts > latest ? ts : latest;
-            }, null)
+            const ts = r?.updatedAt ? new Date(r.updatedAt).toISOString() : null;
+            if (!ts) return latest;
+            return !latest || ts > latest ? ts : latest;
+          }, null)
           : null;
 
       res.json({
@@ -4139,7 +4139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaign = await storage.getCampaign(campaignId);
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-      
+
       // Get all connections or a specific one
       let connections;
       if (propertyId) {
@@ -4148,13 +4148,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         connections = await storage.getGA4Connections(campaignId);
       }
-      
+
       if (!connections || connections.length === 0) {
-        return res.status(404).json({ 
-          error: "No GA4 connection found for this campaign. Please connect your Google Analytics first." 
+        return res.status(404).json({
+          error: "No GA4 connection found for this campaign. Please connect your Google Analytics first."
         });
       }
-      
+
       // Convert date range to GA4 format
       let ga4DateRange = '30daysAgo';
       switch (dateRange) {
@@ -4215,7 +4215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('GA4 metrics error:', error);
-      
+
       // Don't return mock metrics here — instead, return a structured error so the UI can prompt reconnect.
       if (error instanceof Error && (error.message === 'AUTO_REFRESH_NEEDED' || (error as any).isAutoRefreshNeeded)) {
         return res.status(401).json({
@@ -4438,19 +4438,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       devLog(`[Google Sheets OAuth] Starting flow for campaign ${campaignId}`);
-      
+
       // Use the same base URL logic as GA4 to ensure consistency
       const rawBaseUrl = process.env.APP_BASE_URL ||
         process.env.RENDER_EXTERNAL_URL ||
         (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
         `${req.protocol}://${req.get('host')}`;
-      
+
       // Strip trailing slashes to prevent double slashes
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       const redirectUri = `${baseUrl}/api/auth/google-sheets/callback`;
-      
+
       devLog(`[Google Sheets OAuth] Using redirect URI: ${redirectUri}`);
-      
+
       const state = sheetsPurpose ? `${campaignId}:${sheetsPurpose}` : String(campaignId);
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(process.env.GOOGLE_CLIENT_ID || '')}&` +
@@ -4566,12 +4566,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         process.env.RENDER_EXTERNAL_URL ||
         (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
         `${req.protocol}://${req.get('host')}`;
-      
+
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       const redirectUri = `${baseUrl}/api/auth/google-sheets/callback`;
-      
+
       devLog(`[Google Sheets OAuth] Using redirect URI for token exchange: ${redirectUri}`);
-      
+
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -4606,7 +4606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (error: any) {
         if (error.message && error.message.includes('Maximum limit')) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             error: error.message,
             errorCode: 'CONNECTION_LIMIT_REACHED'
           });
@@ -5161,9 +5161,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         grantedScopes: grantedScopesRaw,
         grantedScopesList: grantedScopesRaw
           ? grantedScopesRaw
-              .split(",")
-              .map((s: any) => String(s).trim())
-              .filter(Boolean)
+            .split(",")
+            .map((s: any) => String(s).trim())
+            .filter(Boolean)
           : [],
         connectedAt: new Date().toISOString(),
       });
@@ -5361,12 +5361,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const conns = await storage.getGoogleSheetsConnections(campaignId, purpose);
       let connection: any = conns.find((c: any) => c && c.accessToken) || conns[0];
-      
+
       if (!connection || !connection.accessToken) {
         console.error(`[Google Sheets] No connection found for campaign ${campaignId}`);
         return res.status(404).json({ error: 'No Google Sheets connection found' });
       }
-      
+
       // Check if clientId and clientSecret are stored (needed for token refresh)
       if (!connection.clientId || !connection.clientSecret) {
         console.warn(`[Google Sheets] Connection missing OAuth credentials, attempting to add them...`);
@@ -5408,7 +5408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch spreadsheets from Google Drive API
       const driveUrl = 'https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name)';
       devLog(`[Google Sheets] Calling Drive API: ${driveUrl}`);
-      
+
       let driveResponse = await fetch(driveUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -5422,18 +5422,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         devLog('🔄 Access token invalid (401), attempting refresh and retry...');
         try {
           accessToken = await refreshGoogleSheetsToken(connection);
-          
+
           // Retry with new token
           driveResponse = await fetch(driveUrl, {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
             },
           });
-          
+
           devLog(`[Google Sheets] Retry after refresh - status: ${driveResponse.status}`);
         } catch (refreshError) {
           console.error('❌ Token refresh failed:', refreshError);
-          return res.status(401).json({ 
+          return res.status(401).json({
             error: 'Authentication expired. Please reconnect Google Sheets.',
             needsReauth: true
           });
@@ -5443,15 +5443,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!driveResponse.ok) {
         const errorBody = await driveResponse.text();
         console.error(`[Google Sheets] Drive API error response:`, errorBody);
-        
+
         let errorMessage = 'Failed to fetch spreadsheets from Google Drive';
         let needsReauth = false;
-        
+
         try {
           const errorJson = JSON.parse(errorBody);
           errorMessage = errorJson.error?.message || errorMessage;
           console.error(`[Google Sheets] Drive API error details:`, errorJson);
-          
+
           // If insufficient scopes or auth error, user needs to reconnect
           if (errorJson.error?.code === 403 && errorJson.error?.message?.includes('insufficient authentication scopes')) {
             errorMessage = 'Please reconnect Google Sheets to grant Drive access permissions';
@@ -5463,7 +5463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (e) {
           console.error(`[Google Sheets] Could not parse error response`);
         }
-        
+
         return res.status(driveResponse.status).json({ error: errorMessage, needsReauth });
       }
 
@@ -5486,7 +5486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId } = req.params;
       const { connectionId } = req.query; // Optional: delete specific connection
-      
+
       devLog(`[Google Sheets] Deleting connection for campaign ${campaignId}${connectionId ? ` (connectionId: ${connectionId})` : ''}`);
 
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
@@ -5537,7 +5537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if there are any remaining active Google Sheets connections
       const remainingConnections = await storage.getGoogleSheetsConnections(campaignId);
       const hasActiveConnections = remainingConnections.length > 0;
-      
+
       // Check if there are any remaining active connections that are USED FOR REVENUE TRACKING.
       // IMPORTANT: Revenue tracking can come from Google Sheets OR HubSpot OR Salesforce.
       // Deleting a view-only sheet must NOT disable revenue metrics if a CRM is still mapped for revenue.
@@ -5581,13 +5581,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const hasAnyRevenueTrackingSourcesIncludingSalesforce =
         hasAnyRevenueTrackingSources || remainingRevenueTrackingSalesforce.length > 0;
-      
+
       let conversionValueCleared = false;
       // Clean UX rule: if the user deletes a revenue-tracking source, disable revenue metrics immediately.
       // Even if another mapped source exists, we cannot safely assume conversion value should remain unchanged without recomputation.
       if (!hasAnyRevenueTrackingSourcesIncludingSalesforce || deletedWasRevenueTracking) {
         devLog(`[Google Sheets] Clearing conversion values from platform connections (deletedWasRevenueTracking=${deletedWasRevenueTracking}, remainingRevenueTrackingSheets=${remainingRevenueTrackingSheets.length}, remainingRevenueTrackingHubspot=${remainingRevenueTrackingHubspot.length}, remainingRevenueTrackingSalesforce=${remainingRevenueTrackingSalesforce.length})`);
-        
+
         // Clear campaign-level conversion value (if it was set from Google Sheets)
         const campaign = await storage.getCampaign(campaignId);
         if (campaign?.conversionValue) {
@@ -5597,7 +5597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           devLog(`[Google Sheets] Cleared campaign-level conversion value`);
           conversionValueCleared = true;
         }
-        
+
         // Clear LinkedIn connection conversion value
         const linkedInConnection = await storage.getLinkedInConnection(campaignId);
         if (linkedInConnection?.conversionValue) {
@@ -5607,7 +5607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           devLog(`[Google Sheets] Cleared LinkedIn connection conversion value`);
           conversionValueCleared = true;
         }
-        
+
         // Also clear conversion value from LinkedIn import sessions
         const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
         if (linkedInSessions && linkedInSessions.length > 0) {
@@ -5621,7 +5621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
-        
+
         // Clear Meta connection conversion value
         const metaConnection = await storage.getMetaConnection(campaignId);
         if (metaConnection?.conversionValue) {
@@ -5899,7 +5899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Find existing connection with 'pending' spreadsheetId or create new one
       let connection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
-      
+
       if (!connection) {
         // Check if there's any connection for this campaign
         const existingConnections = await storage.getGoogleSheetsConnections(campaignId);
@@ -6069,9 +6069,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if connection already exists in database
       const existingConnections = await storage.getGA4Connections(campaignId);
-      
+
       console.log(`[Set Property] Found ${existingConnections.length} existing connections for ${campaignId}`);
-      
+
       if (existingConnections.length > 0) {
         // Update existing connection
         const existingConnection = existingConnections[0];
@@ -6142,7 +6142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const campaign = await storage.getCampaign(campaignId);
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-      
+
       // Get all connections or a specific one
       let connections: any[] = [];
       if (propertyId) {
@@ -6151,7 +6151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         connections = await storage.getGA4Connections(campaignId);
       }
-      
+
       if (!connections || connections.length === 0) {
         return res.status(404).json({
           success: false,
@@ -6169,37 +6169,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-        // Convert date range to GA4 format
-        let ga4DateRange = '30daysAgo';
-        switch (dateRange) {
-          case '7days':
-            ga4DateRange = '7daysAgo';
-            break;
-          case '30days':
-            ga4DateRange = '30daysAgo';
-            break;
-          case '90days':
-            ga4DateRange = '90daysAgo';
-            break;
-          default:
-            ga4DateRange = '30daysAgo';
-        }
-        
-        const timeSeriesData = await ga4Service.getTimeSeriesData(campaignId, storage, ga4DateRange, selectedConnection.propertyId, campaignFilter);
-        
-        res.json({
-          success: true,
-          data: timeSeriesData,
-          propertyId: selectedConnection.propertyId,
-          propertyName: selectedConnection.propertyName,
-          displayName: selectedConnection.displayName,
-          lastUpdated: new Date().toISOString()
-        });
+      // Convert date range to GA4 format
+      let ga4DateRange = '30daysAgo';
+      switch (dateRange) {
+        case '7days':
+          ga4DateRange = '7daysAgo';
+          break;
+        case '30days':
+          ga4DateRange = '30daysAgo';
+          break;
+        case '90days':
+          ga4DateRange = '90daysAgo';
+          break;
+        default:
+          ga4DateRange = '30daysAgo';
+      }
+
+      const timeSeriesData = await ga4Service.getTimeSeriesData(campaignId, storage, ga4DateRange, selectedConnection.propertyId, campaignFilter);
+
+      res.json({
+        success: true,
+        data: timeSeriesData,
+        propertyId: selectedConnection.propertyId,
+        propertyName: selectedConnection.propertyName,
+        displayName: selectedConnection.displayName,
+        lastUpdated: new Date().toISOString()
+      });
     } catch (error: any) {
       console.error('Error fetching GA4 time series data:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || 'Failed to fetch time series data' 
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch time series data'
       });
     }
   });
@@ -6772,16 +6772,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if any connection has access token
       const hasValidToken = connections.some(conn => !!conn.accessToken);
       if (!hasValidToken) {
-        return res.status(400).json({ 
-          success: false, 
+        return res.status(400).json({
+          success: false,
           error: 'GA4 access token missing',
           requiresConnection: true
         });
       }
 
       // Use the primary connection or first available connection
-      const primaryConnection = connections.find(conn => conn.isPrimary && conn.accessToken) || 
-                               connections.find(conn => conn.accessToken);
+      const primaryConnection = connections.find(conn => conn.isPrimary && conn.accessToken) ||
+        connections.find(conn => conn.accessToken);
 
       if (!primaryConnection || !primaryConnection.accessToken) {
         throw new Error('No valid connection available');
@@ -6807,7 +6807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       } catch (authError: any) {
         console.log('Geographic API failed, attempting token refresh:', authError.message);
-        
+
         // Check if we have refresh token to attempt refresh
         if (primaryConnection.refreshToken) {
           try {
@@ -6817,14 +6817,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               primaryConnection.clientId || undefined,
               primaryConnection.clientSecret || undefined
             );
-            
+
             // Update the connection with new token
             const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
             await storage.updateGA4ConnectionTokens(primaryConnection.id, {
               accessToken: tokenData.access_token,
               expiresAt
             });
-            
+
             console.log('Token refreshed for geographic data - retrying...');
             geographicData = await ga4Service.getGeographicMetrics(
               primaryConnection.propertyId,
@@ -6929,24 +6929,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/google/url", (req, res) => {
     try {
       const { campaignId, returnUrl } = req.body;
-      
+
       const clientId = process.env.GOOGLE_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-      
+
       if (!clientId || !clientSecret) {
         return res.status(400).json({
           error: "Google OAuth credentials not configured. Please add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your environment variables."
         });
       }
-      
+
       const baseUrl = "https://accounts.google.com/o/oauth2/v2/auth";
       const scopes = [
         "https://www.googleapis.com/auth/analytics.readonly",
         "https://www.googleapis.com/auth/userinfo.email"
       ];
-      
+
       const state = Buffer.from(JSON.stringify({ campaignId, returnUrl })).toString('base64');
-      
+
       const params = {
         client_id: clientId,
         redirect_uri: `${req.protocol}://${req.get('host')}/auth/google/callback`,
@@ -6957,10 +6957,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         state: state,
         include_granted_scopes: "true"
       };
-      
+
       const queryString = new URLSearchParams(params).toString();
       const oauthUrl = `${baseUrl}?${queryString}`;
-      
+
       res.json({ oauth_url: oauthUrl });
     } catch (error) {
       console.error('OAuth URL generation error:', error);
@@ -6972,18 +6972,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/google/callback", async (req, res) => {
     try {
       const { code, state } = req.body;
-      
+
       if (!code) {
         return res.status(400).json({ error: 'Authorization code is required' });
       }
-      
+
       const clientId = process.env.GOOGLE_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-      
+
       if (!clientId || !clientSecret) {
         return res.status(500).json({ error: 'OAuth not configured' });
       }
-      
+
       let campaignId = 'unknown';
       try {
         const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
@@ -6991,7 +6991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e) {
         console.warn('Could not parse OAuth state:', e);
       }
-      
+
       // Exchange authorization code for tokens
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -7006,39 +7006,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           redirect_uri: `${req.protocol}://${req.get('host')}/auth/google/callback`
         })
       });
-      
+
       const tokenData = await tokenResponse.json();
-      
+
       if (!tokenResponse.ok) {
         console.error('Token exchange failed:', tokenData);
-        return res.status(400).json({ 
-          error: tokenData.error_description || 'Failed to exchange authorization code' 
+        return res.status(400).json({
+          error: tokenData.error_description || 'Failed to exchange authorization code'
         });
       }
-      
+
       // Get user info
       const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`
         }
       });
-      
+
       let userInfo = null;
       if (userInfoResponse.ok) {
         userInfo = await userInfoResponse.json();
       }
-      
+
       // Get Analytics properties
       const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`
         }
       });
-      
+
       let properties: any[] = [];
       if (accountsResponse.ok) {
         const accountsData = await accountsResponse.json();
-        
+
         for (const account of accountsData.accounts || []) {
           try {
             const propertiesResponse = await fetch(`https://analyticsadmin.googleapis.com/v1alpha/${account.name}/properties`, {
@@ -7046,7 +7046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 'Authorization': `Bearer ${tokenData.access_token}`
               }
             });
-            
+
             if (propertiesResponse.ok) {
               const propertiesData = await propertiesResponse.json();
               for (const property of propertiesData.properties || []) {
@@ -7062,12 +7062,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       console.log('About to store OAuth connection...');
       console.log('Campaign ID:', campaignId);
       console.log('Properties found:', properties.length);
       console.log('Token data available:', !!tokenData.access_token, !!tokenData.refresh_token);
-      
+
       // Store the OAuth connection
       (global as any).oauthConnections = (global as any).oauthConnections || new Map();
       (global as any).oauthConnections.set(campaignId, {
@@ -7078,11 +7078,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         properties,
         connectedAt: new Date().toISOString()
       });
-      
+
       console.log('OAuth connection stored for campaignId:', campaignId);
       console.log('Total connections after storage:', (global as any).oauthConnections.size);
       console.log('All connection keys:', Array.from((global as any).oauthConnections.keys()));
-      
+
       res.json({
         success: true,
         user: userInfo,
@@ -7099,14 +7099,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/ga4/check-connection/:campaignId", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
-      
+
       console.log(`[GA4 Check] Checking connection for campaign: ${campaignId}`);
-      
+
       // Get all GA4 connections for this campaign
       const ga4Connections = await storage.getGA4Connections(campaignId);
-      
+
       console.log(`[GA4 Check] Found ${ga4Connections.length} connections for campaign ${campaignId}`);
-      
+
       if (ga4Connections && ga4Connections.length > 0) {
         const primaryConnection = ga4Connections.find(conn => conn.isPrimary) || ga4Connections[0];
         return res.json({
@@ -7141,7 +7141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user: connection.userInfo
         });
       }
-      
+
       res.json({ connected: false, totalConnections: 0, connections: [] });
     } catch (error) {
       console.error('Connection check error:', error);
@@ -7174,7 +7174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getMetaConnection(campaignId),
         storage.getCustomIntegration(campaignId),
       ]);
-      
+
       // Get primary Google Sheets connection for backward compatibility
       const googleSheetsConnection = googleSheetsConnections.find(c => c.isPrimary) || googleSheetsConnections[0];
 
@@ -7184,7 +7184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[Connected Platforms] - GA4 Connection: ${conn.id}, property: ${conn.propertyId}, isPrimary: ${conn.isPrimary}, isActive: ${conn.isActive}`);
         });
       }
-      
+
       console.log(`[Connected Platforms] Google Sheets connection:`, googleSheetsConnection ? `Found (ID: ${googleSheetsConnection.id})` : 'Not found');
       console.log(`[Connected Platforms] LinkedIn connection:`, linkedInConnection ? `Found (ID: ${linkedInConnection.id}, adAccountId: ${linkedInConnection.adAccountId || 'missing'})` : 'Not found');
       console.log(`[Connected Platforms] Meta connection:`, metaConnection ? `Found (ID: ${metaConnection.id})` : 'Not found');
@@ -7272,7 +7272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error stack:", error?.stack);
       res
         .status(500)
-        .json({ 
+        .json({
           message: "Failed to fetch connected platform statuses",
           error: error?.message,
           details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
@@ -7466,8 +7466,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ga4Totals?.connected === true
           ? "ga4"
           : custom?.connected === true
-          ? "custom_integration"
-          : null;
+            ? "custom_integration"
+            : null;
       const webAnalytics = {
         connected: Boolean(webAnalyticsProvider),
         provider: webAnalyticsProvider,
@@ -7475,26 +7475,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           webAnalyticsProvider === "ga4"
             ? parseNum(ga4Totals.revenue)
             : webAnalyticsProvider === "custom_integration"
-            ? parseNum(custom?.revenue)
-            : 0,
+              ? parseNum(custom?.revenue)
+              : 0,
         conversions:
           webAnalyticsProvider === "ga4"
             ? parseNum(ga4Totals.conversions)
             : webAnalyticsProvider === "custom_integration"
-            ? parseNum(custom?.conversions)
-            : 0,
+              ? parseNum(custom?.conversions)
+              : 0,
         sessions:
           webAnalyticsProvider === "ga4"
             ? parseNum(ga4Totals.sessions)
             : webAnalyticsProvider === "custom_integration"
-            ? parseNum(custom?.sessions)
-            : 0,
+              ? parseNum(custom?.sessions)
+              : 0,
         users:
           webAnalyticsProvider === "ga4"
             ? parseNum(ga4Totals.users)
             : webAnalyticsProvider === "custom_integration"
-            ? parseNum(custom?.users)
-            : 0,
+              ? parseNum(custom?.users)
+              : 0,
       };
 
       // Unified spend rule:
@@ -7586,7 +7586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const connections = await storage.getGA4Connections(campaignId);
-      
+
       res.json({
         success: true,
         connections: connections.map(conn => ({
@@ -7612,7 +7612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id: campaignId, connectionId } = req.params;
       const success = await storage.setPrimaryGA4Connection(campaignId, connectionId);
-      
+
       if (success) {
         res.json({ success: true, message: 'Primary connection updated' });
       } else {
@@ -7629,7 +7629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { connectionId } = req.params;
       const success = await storage.deleteGA4Connection(connectionId);
-      
+
       if (success) {
         res.json({ success: true, message: 'Connection deleted successfully' });
       } else {
@@ -7645,42 +7645,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ga4/select-property", async (req, res) => {
     try {
       const { campaignId, propertyId } = req.body;
-      
+
       console.log('Property selection request:', { campaignId, propertyId });
-      
+
       if (!campaignId || !propertyId) {
         return res.status(400).json({ error: 'Campaign ID and Property ID are required' });
       }
-      
+
       const connections = (global as any).oauthConnections;
       console.log('Available connections:', {
         hasGlobalConnections: !!connections,
         connectionKeys: connections ? Array.from(connections.keys()) : [],
         hasThisCampaign: connections ? connections.has(campaignId) : false
       });
-      
+
       if (!connections || !connections.has(campaignId)) {
         return res.status(404).json({ error: 'No OAuth connection found for this campaign' });
       }
-      
+
       const connection = connections.get(campaignId);
-      
+
       connection.selectedPropertyId = propertyId;
       connection.selectedProperty = connection.properties?.find((p: any) => p.id === propertyId);
-      
+
       // CRITICAL: Update the database connection with the selected property ID
       const propertyName = connection.selectedProperty?.name || `Property ${propertyId}`;
       await storage.updateGA4Connection(campaignId, {
         propertyId,
         propertyName
       });
-      
+
       console.log('Updated database connection with property:', {
         campaignId,
         propertyId,
         propertyName
       });
-      
+
       // Store in real GA4 connections for metrics access
       (global as any).realGA4Connections = (global as any).realGA4Connections || new Map();
       (global as any).realGA4Connections.set(campaignId, {
@@ -7691,7 +7691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isReal: true,
         propertyName
       });
-      
+
       res.json({
         success: true,
         selectedProperty: connection.selectedProperty
@@ -7711,13 +7711,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add proper validation for the fields the frontend sends
       const frontendSchema = insertGA4ConnectionSchema.pick({
         campaignId: true,
-        accessToken: true, 
+        accessToken: true,
         refreshToken: true,
         propertyId: true
       });
       const validatedData = frontendSchema.parse(req.body);
       const { campaignId, accessToken, refreshToken, propertyId } = validatedData;
-      
+
       console.log('GA4 connect-token request (AFTER validation):', {
         campaignId,
         propertyId,
@@ -7726,11 +7726,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasRefreshToken: !!refreshToken,
         validatedDataKeys: Object.keys(validatedData)
       });
-      
+
       if (!campaignId || !accessToken || !propertyId) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Campaign ID, access token, and property ID are required" 
+        return res.status(400).json({
+          success: false,
+          error: "Campaign ID, access token, and property ID are required"
         });
       }
 
@@ -7744,7 +7744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         propertyName: `GA4 Property ${propertyId}`,
         serviceAccountKey: null
       });
-      
+
       console.log('GA4 connection created:', {
         id: connection.id,
         campaignId: connection.campaignId,
@@ -7761,10 +7761,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('GA4 token connection error:', error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Invalid GA4 connection data", 
-          details: error.errors 
+        return res.status(400).json({
+          success: false,
+          error: "Invalid GA4 connection data",
+          details: error.errors
         });
       }
       res.status(500).json({
@@ -7785,11 +7785,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const validatedData = serviceAccountSchema.parse(req.body);
       const { campaignId, serviceAccountKey, propertyId } = validatedData;
-      
+
       if (!campaignId || !serviceAccountKey || !propertyId) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Campaign ID, service account key, and property ID are required" 
+        return res.status(400).json({
+          success: false,
+          error: "Campaign ID, service account key, and property ID are required"
         });
       }
 
@@ -7824,10 +7824,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('GA4 service account connection error:', error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Invalid GA4 service account data", 
-          details: error.errors 
+        return res.status(400).json({
+          success: false,
+          error: "Invalid GA4 service account data",
+          details: error.errors
         });
       }
       res.status(500).json({
@@ -7841,7 +7841,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ga4/oauth-exchange", async (req, res) => {
     try {
       const { campaignId, authCode, clientId, clientSecret, redirectUri } = req.body;
-      
+
       // Debug logging
       console.log('OAuth exchange request body:', {
         campaignId: !!campaignId,
@@ -7851,7 +7851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clientSecretLength: clientSecret?.length || 0,
         redirectUri: !!redirectUri
       });
-      
+
       if (!campaignId || !authCode || !clientId || !clientSecret || !redirectUri) {
         console.log('Missing required fields:', {
           campaignId: !campaignId,
@@ -7874,7 +7874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         redirect_uri: redirectUri,
         grant_type: 'authorization_code'
       };
-      
+
       console.log('Token exchange params:', {
         code: !!authCode,
         client_id: !!clientId,
@@ -7889,7 +7889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestBody = urlParams.toString();
       console.log('Request body being sent to Google:', requestBody);
       console.log('URLSearchParams entries:', Array.from(urlParams.entries()));
-      
+
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -7918,7 +7918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get GA4 properties using the access token
       try {
         let properties = [];
-        
+
         // Step 1: Get all accounts first
         console.log('Step 1: Fetching Google Analytics accounts...');
         const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
@@ -7945,13 +7945,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const accountId = account.name.split('/').pop();
           console.log(`\nStep 2: Fetching properties for account: ${account.name} (${account.displayName})`);
           console.log(`Account ID extracted: ${accountId}`);
-          
+
           // Try v1beta first (more stable)
           const endpoints = [
             `https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/${accountId}`,
             `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${accountId}`
           ];
-          
+
           let success = false;
           for (let i = 0; i < endpoints.length; i++) {
             const endpoint = endpoints[i];
@@ -7960,9 +7960,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const propertiesResponse = await fetch(endpoint, {
                 headers: { 'Authorization': `Bearer ${access_token}` }
               });
-              
+
               console.log(`Response status: ${propertiesResponse.status}`);
-              
+
               if (propertiesResponse.ok) {
                 const propertiesData = await propertiesResponse.json();
                 console.log(`Success! Properties data:`, {
@@ -7972,7 +7972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     displayName: p.displayName
                   })) || []
                 });
-                
+
                 for (const property of propertiesData.properties || []) {
                   properties.push({
                     id: property.name.split('/').pop(),
@@ -7990,12 +7990,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.error(`Error with endpoint ${endpoint}:`, error);
             }
           }
-          
+
           if (!success) {
             console.warn(`Could not fetch properties for account ${account.name} using any endpoint`);
           }
         }
-        
+
         console.log('\nStep 3: Final results:');
         console.log('Total properties found:', properties.length);
         console.log('Properties summary:', properties.map(p => ({
@@ -8027,7 +8027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           properties,
           connectedAt: new Date().toISOString()
         });
-        
+
         console.log('OAuth connection stored for campaignId:', campaignId);
         console.log('Total connections after storage:', (global as any).oauthConnections.size);
         console.log('All connection keys:', Array.from((global as any).oauthConnections.keys()));
@@ -8057,12 +8057,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Google Sheets OAuth endpoints
-  
+
   // OAuth code exchange for Google Sheets
   app.post("/api/google-sheets/oauth-exchange", requireCampaignAccessBodyCampaignId, async (req, res) => {
     try {
       const { campaignId, authCode, clientId, clientSecret, redirectUri } = req.body;
-      
+
       if (!campaignId || !authCode || !clientId || !clientSecret || !redirectUri) {
         return res.status(400).json({
           success: false,
@@ -8081,7 +8081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         redirect_uri: redirectUri,
         grant_type: 'authorization_code'
       };
-      
+
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -8110,7 +8110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get available spreadsheets using the access token
       try {
         let spreadsheets = [];
-        
+
         devLog('Fetching Google Sheets files...');
         const filesResponse = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name,webViewLink)', {
           headers: { 'Authorization': `Bearer ${access_token}` }
@@ -8124,7 +8124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? filesData.files.slice(0, 10).map((f: any) => ({ id: f?.id, name: f?.name }))
               : [],
           });
-          
+
           for (const file of filesData.files || []) {
             spreadsheets.push({
               id: file.id,
@@ -8135,7 +8135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           const errorText = await filesResponse.text();
           console.error('Failed to fetch spreadsheets:', filesResponse.status, errorText);
-          
+
           // If it's a 403 error, likely means Google Drive API is not enabled
           if (filesResponse.status === 403) {
             return res.status(400).json({
@@ -8145,7 +8145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               requiresManualEntry: true
             });
           }
-          
+
           // For other errors, also return error response
           return res.status(400).json({
             success: false,
@@ -8168,8 +8168,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Store in global connections for spreadsheet selection
         (global as any).googleSheetsConnections = (global as any).googleSheetsConnections || new Map();
-      const key = (typeof campaignId === 'string' && (campaignId as any).includes(':')) ? campaignId : String(campaignId);
-      (global as any).googleSheetsConnections.set(key, {
+        const key = (typeof campaignId === 'string' && (campaignId as any).includes(':')) ? campaignId : String(campaignId);
+        (global as any).googleSheetsConnections.set(key, {
           accessToken: access_token,
           refreshToken: refresh_token,
           expiresAt: Date.now() + (tokens.expires_in * 1000),
@@ -8208,14 +8208,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { spreadsheetId } = req.params;
       const { campaignId, purpose } = req.query as any;
-      
+
       if (!campaignId) {
         return res.status(400).json({ error: 'campaignId is required' });
       }
 
       const ok = await ensureCampaignAccess(req as any, res as any, String(campaignId));
       if (!ok) return;
-      
+
       // Get connection to access token
       const conns = await storage.getGoogleSheetsConnections(String(campaignId), purpose ? String(purpose) : undefined);
       const connection = conns.find((c: any) => c && c.accessToken) || conns[0];
@@ -8258,9 +8258,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error fetching sheets:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to fetch sheets',
-        message: error.message 
+        message: error.message
       });
     }
   });
@@ -8269,15 +8269,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/google-sheets/select-spreadsheet", requireCampaignAccessBodyCampaignId, async (req, res) => {
     try {
       const { campaignId, spreadsheetId, sheetName } = req.body;
-      
+
       devLog('Spreadsheet selection request:', { campaignId, spreadsheetId, sheetName });
 
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      
+
       // First, try to find connection in database (more reliable than global map)
       let dbConnection = await storage.getGoogleSheetsConnection(campaignId, 'pending');
-      
+
       if (!dbConnection) {
         // Check if there's any connection for this campaign
         const existingConnections = await storage.getGoogleSheetsConnections(campaignId);
@@ -8306,8 +8306,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.error('[Select Spreadsheet] Failed to create connection from global map:', createError);
                 return res.status(404).json({ error: 'No Google Sheets connection found. Please reconnect Google Sheets.' });
               }
-        } else {
-          return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
+            } else {
+              return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
             }
           } else {
             return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
@@ -8331,7 +8331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           devLog('[Select Spreadsheet] Could not fetch spreadsheet name, using default');
         }
       }
-      
+
       // Update the database connection with the selected spreadsheet and sheet
       // Note: sheetName will be ignored if column doesn't exist (handled in storage layer)
       const updateData: any = {
@@ -8343,7 +8343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.sheetName = sheetName;
       }
       await storage.updateGoogleSheetsConnection(dbConnection.id, updateData);
-      
+
       devLog('Updated database connection with spreadsheet:', {
         campaignId,
         spreadsheetId,
@@ -8351,7 +8351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sheetName: sheetName || 'first sheet (default)',
         connectionId: dbConnection.id
       });
-      
+
       res.json({
         success: true,
         connectionId: dbConnection.id,
@@ -8376,7 +8376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue')
           ? purpose
           : undefined;
-      
+
       devLog('Multiple spreadsheet selection request:', {
         campaignId,
         spreadsheetId,
@@ -8387,7 +8387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      
+
       if (!Array.isArray(sheetNames) || sheetNames.length === 0) {
         return res.status(400).json({ error: 'Sheet names array is required and must not be empty' });
       }
@@ -8440,11 +8440,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           existingConnections: existingCount
         });
       }
-      
+
       // First, try to find connection in database (more reliable than global map)
       let dbConnection = (await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose))
         .find((c: any) => c && c.spreadsheetId === 'pending') as any;
-      
+
       if (!dbConnection) {
         // Check if there's any connection for this campaign
         const existingConnections = await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose);
@@ -8504,7 +8504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           devLog('[Select Multiple Spreadsheets] Could not fetch spreadsheet name, using default');
         }
       }
-      
+
       // Guardrail: only allow sheetNames that actually exist in the spreadsheet.
       // This prevents mismatches where a stale client selection (or bad payload) connects unexpected tabs.
       if (spreadsheetTabTitles && spreadsheetTabTitles.length > 0) {
@@ -8517,28 +8517,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       // Create/update connections for each sheet (idempotent: do not create duplicates)
       const connectionIds: string[] = [];
       const isFirstConnection = dbConnection.spreadsheetId === 'pending';
       let pendingConsumed = false;
-      
+
       devLog(`[Select Multiple Spreadsheets] 📋 Creating connections for ${connectedSheetNames.length} sheet(s)`);
       devLog(`[Select Multiple Spreadsheets] Sheet names:`, connectedSheetNames);
       devLog(`[Select Multiple Spreadsheets] Is first connection:`, isFirstConnection);
-      
+
       for (let i = 0; i < connectedSheetNames.length; i++) {
         const sheetName = connectedSheetNames[i];
         const sheetKey = String((sheetName || '').trim());
-        
+
         devLog(`[Select Multiple Spreadsheets] Processing sheet ${i + 1}/${sheetNames.length}: "${sheetName}"`);
-        
+
         const existing = existingBySheet.get(sheetKey);
         if (existing?.id) {
           // Refresh tokens/metadata on the existing connection (best-effort)
           try {
             await storage.updateGoogleSheetsConnection(existing.id, {
-            spreadsheetId,
+              spreadsheetId,
               spreadsheetName,
               sheetName,
               accessToken: dbConnection.accessToken,
@@ -8567,29 +8567,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-          devLog(`[Select Multiple Spreadsheets] 🆕 Creating NEW connection for sheet: ${sheetName}`);
-          try {
-            const newConnection = await storage.createGoogleSheetsConnection({
-              campaignId,
-              spreadsheetId,
-              spreadsheetName,
-              sheetName: sheetName || null,
-              purpose: sheetsPurpose || null,
-              accessToken: dbConnection.accessToken,
-              refreshToken: dbConnection.refreshToken || null,
-              clientId: dbConnection.clientId,
-              clientSecret: dbConnection.clientSecret,
-              expiresAt: dbConnection.expiresAt,
-            });
-            connectionIds.push(newConnection.id);
+        devLog(`[Select Multiple Spreadsheets] 🆕 Creating NEW connection for sheet: ${sheetName}`);
+        try {
+          const newConnection = await storage.createGoogleSheetsConnection({
+            campaignId,
+            spreadsheetId,
+            spreadsheetName,
+            sheetName: sheetName || null,
+            purpose: sheetsPurpose || null,
+            accessToken: dbConnection.accessToken,
+            refreshToken: dbConnection.refreshToken || null,
+            clientId: dbConnection.clientId,
+            clientSecret: dbConnection.clientSecret,
+            expiresAt: dbConnection.expiresAt,
+          });
+          connectionIds.push(newConnection.id);
           existingBySheet.set(sheetKey, newConnection);
-            devLog(`[Select Multiple Spreadsheets] ✅ Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
-          } catch (error: any) {
-            console.error(`[Select Multiple Spreadsheets] ❌ Failed to create connection for sheet ${sheetName}:`, error.message);
-            console.error(`[Select Multiple Spreadsheets] Error stack:`, error.stack);
-            // Continue with other sheets even if one fails
-          }
+          devLog(`[Select Multiple Spreadsheets] ✅ Created new connection ${newConnection.id} for sheet: ${sheetName || 'default'}`);
+        } catch (error: any) {
+          console.error(`[Select Multiple Spreadsheets] ❌ Failed to create connection for sheet ${sheetName}:`, error.message);
+          console.error(`[Select Multiple Spreadsheets] Error stack:`, error.stack);
+          // Continue with other sheets even if one fails
         }
+      }
 
       // If a pending row wasn't consumed, delete it to avoid clutter/limits.
       if (dbConnection?.spreadsheetId === 'pending' && dbConnection?.id && !pendingConsumed && connectionIds.length > 0) {
@@ -8632,9 +8632,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {
         // best-effort cleanup; ignore failures
       }
-      
+
       devLog(`[Select Multiple Spreadsheets] 🎯 Final connectionIds:`, connectionIds);
-      
+
       devLog('Created/updated multiple database connections:', {
         campaignId,
         spreadsheetId,
@@ -8642,7 +8642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sheets: connectedSheetNames,
         connectionIds
       });
-      
+
       res.json({
         success: true,
         connectionIds,
@@ -8716,7 +8716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           spreadsheetTabTitles.set(spreadsheetId, titles);
         }
       }
-      
+
       res.json({
         success: true,
         connections: connections.map(conn => {
@@ -8729,21 +8729,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             (titles && tabIndex >= 0 && tabIndex < titles.length ? titles[tabIndex] : null);
 
           return ({
-          id: conn.id,
-          spreadsheetId: conn.spreadsheetId,
-          spreadsheetName: conn.spreadsheetName,
+            id: conn.id,
+            spreadsheetId: conn.spreadsheetId,
+            spreadsheetName: conn.spreadsheetName,
             sheetName: derivedSheetName,
-          isPrimary: conn.isPrimary,
-          isActive: conn.isActive,
-          columnMappings: conn.columnMappings,
-          connectedAt: conn.connectedAt
+            isPrimary: conn.isPrimary,
+            isActive: conn.isActive,
+            columnMappings: conn.columnMappings,
+            connectedAt: conn.connectedAt
           });
         })
       });
     } catch (error: any) {
       console.error('List connections error:', error);
       console.error('Error stack:', error.stack);
-      res.status(500).json({ 
+      res.status(500).json({
         error: error.message || 'Failed to list connections',
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
@@ -9102,9 +9102,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const tryProps = async (includeCurrency: boolean) => {
             const headers = includeCurrency ? [...propsToFetch, 'CurrencyIsoCode'] : propsToFetch;
             const soql = `SELECT ${headers.join(', ')} FROM Opportunity WHERE ${whereParts.join(' AND ')} LIMIT ${Math.min(limit, 200)}`;
-          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-          const json: any = await resp.json().catch(() => ({}));
+            const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+            const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+            const json: any = await resp.json().catch(() => ({}));
             return { resp, json, headers };
           };
 
@@ -9296,11 +9296,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id: campaignId, connectionId } = req.params;
       const success = await storage.setPrimaryGoogleSheetsConnection(campaignId, connectionId);
-      
+
       if (!success) {
         return res.status(404).json({ error: 'Connection not found' });
       }
-      
+
       res.json({ success: true, message: 'Primary connection updated' });
     } catch (error: any) {
       console.error('Set primary connection error:', error);
@@ -9315,7 +9315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       const connections = await storage.getGoogleSheetsConnections(campaignId);
       const primaryConnection = connections.find(c => c.isPrimary) || connections[0];
-      
+
       // Check for both spreadsheetId AND accessToken - both are required for data fetching
       // Also check that spreadsheetId is not 'pending' (placeholder)
       if (!primaryConnection || !primaryConnection.spreadsheetId || primaryConnection.spreadsheetId === 'pending' || !primaryConnection.accessToken) {
@@ -9327,7 +9327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         return res.json({ connected: false, totalConnections: connections.length });
       }
-      
+
       res.json({
         connected: true,
         totalConnections: connections.length,
@@ -9886,13 +9886,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const fetchOppRecords = async (includeCurrency: boolean): Promise<{ records: any[]; includeCurrency: boolean }> => {
         const soql = buildSoql(includeCurrency);
-      let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+        let nextUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
         const all: any[] = [];
-      let pages = 0;
-      while (nextUrl && pages < MAX_SALESFORCE_PAGES) {
-        const resp = await fetchWithTimeout(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-        const json: any = await resp.json().catch(() => ({}));
-        if (!resp.ok) {
+        let pages = 0;
+        while (nextUrl && pages < MAX_SALESFORCE_PAGES) {
+          const resp = await fetchWithTimeout(nextUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
             const msg = String(json?.[0]?.message || json?.message || '');
             const isInvalidCurrencyIsoCodeField =
               includeCurrency &&
@@ -9903,8 +9903,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return await fetchOppRecords(false);
             }
             return res.status(resp.status).json({ error: msg || 'Failed to load opportunities' }) as any;
-        }
-        const recs = Array.isArray(json?.records) ? json.records : [];
+          }
+          const recs = Array.isArray(json?.records) ? json.records : [];
           all.push(...recs);
           if (all.length >= MAX_SALESFORCE_RESULTS) {
             return res.status(413).json({
@@ -9999,8 +9999,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { records, includeCurrency } = fetched as any;
       for (const rec of records) {
         const rRaw = readField(rec, revenue);
-          const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
-          if (Number.isFinite(r)) totalRevenue += r;
+        const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+        if (Number.isFinite(r)) totalRevenue += r;
         const closeDate = rec?.CloseDate ? String(rec.CloseDate).slice(0, 10) : '';
         if (closeDate && Number.isFinite(r)) {
           revenueByDate.set(closeDate, (revenueByDate.get(closeDate) || 0) + r);
@@ -10175,10 +10175,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Revenue-to-date should remain the source of truth; conversion value is derived on-the-fly.
         try {
           await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);
-        } catch {}
+        } catch { }
         try {
           if (latestSession?.id) await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: null } as any);
-        } catch {}
+        } catch { }
       }
 
       const sfConn: any = await storage.getSalesforceConnection(campaignId);
@@ -11131,21 +11131,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const source =
           existingHubspot
             ? await storage.updateRevenueSource(String((existingHubspot as any).id), {
-                displayName: `HubSpot (Deals)`,
-                currency: cur,
-                mappingConfig,
-                isActive: true,
-                connectedAt: new Date(),
-              } as any)
+              displayName: `HubSpot (Deals)`,
+              currency: cur,
+              mappingConfig,
+              isActive: true,
+              connectedAt: new Date(),
+            } as any)
             : await storage.createRevenueSource({
-                campaignId,
-                sourceType: "hubspot",
-                platformContext: platformCtx,
-                displayName: `HubSpot (Deals)`,
-                currency: cur,
-                mappingConfig,
-                isActive: true,
-              } as any);
+              campaignId,
+              sourceType: "hubspot",
+              platformContext: platformCtx,
+              displayName: `HubSpot (Deals)`,
+              currency: cur,
+              mappingConfig,
+              isActive: true,
+            } as any);
 
         await storage.deleteRevenueRecordsBySource(String((source as any).id));
 
@@ -11239,7 +11239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (typeof AbortController !== 'undefined') {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-          
+
           try {
             const response = await fetch(url, {
               ...options,
@@ -11259,7 +11259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => reject(new Error('Token refresh timeout: OAuth API did not respond within 15 seconds')), timeoutMs);
           });
-          
+
           const fetchPromise = fetch(url, options);
           return await Promise.race([fetchPromise, timeoutPromise]) as Response;
         }
@@ -11285,29 +11285,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!refreshResponse.ok) {
       const errorText = await refreshResponse.text();
       console.error('Token refresh failed with status:', refreshResponse.status, errorText);
-      
+
       // If refresh token is invalid/expired, throw specific error
       if (refreshResponse.status === 400 && errorText.includes('invalid_grant')) {
         throw new Error('REFRESH_TOKEN_EXPIRED');
       }
-      
+
       throw new Error(`Token refresh failed: ${errorText}`);
     }
 
     const tokens = await refreshResponse.json();
-    
+
     // Update the stored connection with new access token and potentially new refresh token
     const expiresAt = new Date(Date.now() + ((tokens.expires_in || 3600) * 1000));
     const updateData: any = {
       accessToken: tokens.access_token,
       expiresAt: expiresAt
     };
-    
+
     // Some OAuth providers issue new refresh tokens on refresh
     if (tokens.refresh_token) {
       updateData.refreshToken = tokens.refresh_token;
     }
-    
+
     // IMPORTANT: update by connection id (not campaign id)
     await storage.updateGoogleSheetsConnection(String(connection.id), updateData);
 
@@ -11409,18 +11409,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to check if token needs proactive refresh (within 5 minutes of expiry)
   function shouldRefreshToken(connection: any): boolean {
     if (!connection.expiresAt) return false;
-    
+
     const expiresAt = new Date(connection.expiresAt);
     const now = new Date();
     const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
-    
+
     return expiresAt <= fiveMinutesFromNow;
   }
 
   // Helper function to map MetricMind platform values to Google Sheets platform keywords
   function getPlatformKeywords(platform: string | null | undefined): string[] {
     if (!platform) return [];
-    
+
     const platformLower = platform.toLowerCase();
     const platformMapping: Record<string, string[]> = {
       'linkedin': ['linkedin', 'linked in', 'linkedin ads'],
@@ -11435,7 +11435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       'bing_ads': ['bing ads', 'bing', 'microsoft ads', 'microsoft advertising'],
       'amazon_ads': ['amazon ads', 'amazon', 'amazon advertising'],
     };
-    
+
     // Return mapped keywords or use platform name as fallback
     return platformMapping[platformLower] || [platformLower];
   }
@@ -11448,8 +11448,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Helper function to generate intelligent insights from spreadsheet data
   function generateInsights(
-    rows: any[][], 
-    detectedColumns: Array<{name: string, index: number, type: string, total: number}>,
+    rows: any[][],
+    detectedColumns: Array<{ name: string, index: number, type: string, total: number }>,
     metrics: Record<string, number>
   ) {
     const insights: any = {
@@ -11477,7 +11477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Analyze each numeric column
     detectedColumns.forEach(col => {
       const values: number[] = [];
-      const rowData: Array<{rowIndex: number, value: number, rowContent: any[]}> = [];
+      const rowData: Array<{ rowIndex: number, value: number, rowContent: any[] }> = [];
 
       // Collect all values for this column
       dataRows.forEach((row, idx) => {
@@ -11507,7 +11507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const median = sortedValues[Math.floor(sortedValues.length / 2)];
       const min = sortedValues[0];
       const max = sortedValues[sortedValues.length - 1];
-      
+
       // Calculate standard deviation
       const squareDiffs = values.map(value => Math.pow(value - mean, 2));
       const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / values.length;
@@ -11702,8 +11702,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get spreadsheet data for a campaign
   app.get("/api/campaigns/:id/google-sheets-data", async (req, res) => {
-      const campaignId = req.params.id;
-      const { spreadsheetId, view } = req.query; // Optional: fetch from specific spreadsheet or combined view
+    const campaignId = req.params.id;
+    const { spreadsheetId, view } = req.query; // Optional: fetch from specific spreadsheet or combined view
     try {
       // Handle combined view - aggregate data from all mapped connections
       if (view === 'combined') {
@@ -11831,7 +11831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
                   const platformMatches = matchesPlatform(platformValue, platformKeywords);
                   const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
-                                         campaignName.toLowerCase().includes(campaignNameValue);
+                    campaignName.toLowerCase().includes(campaignNameValue);
                   return platformMatches && matchesCampaign;
                 });
               } else {
@@ -11839,7 +11839,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) return false;
                   const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
                   return campaignNameValue.includes(campaignName.toLowerCase()) ||
-                         campaignName.toLowerCase().includes(campaignNameValue);
+                    campaignName.toLowerCase().includes(campaignNameValue);
                 });
               }
             } else if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
@@ -11871,7 +11871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Generate summary from aggregated data
         const headers = Array.from(aggregatedData.allHeaders);
         const summaryMetrics: Record<string, number> = {};
-        const detectedColumns: Array<{name: string, index: number, type: string, total: number}> = [];
+        const detectedColumns: Array<{ name: string, index: number, type: string, total: number }> = [];
 
         // Aggregate numeric columns
         headers.forEach((header: string, index: number) => {
@@ -11958,8 +11958,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const [spreadsheetIdOnly, identifier] = spreadsheetIdStr.split(':');
           // Get all connections for this campaign and find the one matching both spreadsheetId and identifier
           const allConnections = await storage.getGoogleSheetsConnections(campaignId);
-          connection = allConnections.find((conn: any) => 
-            conn.spreadsheetId === spreadsheetIdOnly && 
+          connection = allConnections.find((conn: any) =>
+            conn.spreadsheetId === spreadsheetIdOnly &&
             (conn.sheetName === identifier || conn.id === identifier)
           );
         } else {
@@ -11967,10 +11967,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connection = await storage.getGoogleSheetsConnection(campaignId, spreadsheetIdStr);
         }
       } else {
-        connection = await storage.getPrimaryGoogleSheetsConnection(campaignId) || 
-                     await storage.getGoogleSheetsConnection(campaignId);
+        connection = await storage.getPrimaryGoogleSheetsConnection(campaignId) ||
+          await storage.getGoogleSheetsConnection(campaignId);
       }
-      
+
       if (!connection) {
         devLog(`[Google Sheets Data] No connection found for campaign ${campaignId} - returning empty data`);
         // Return empty data structure instead of 404 so frontend can handle it gracefully
@@ -11991,17 +11991,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastUpdated: new Date().toISOString()
         });
       }
-      
+
       if (!connection.spreadsheetId || connection.spreadsheetId === 'pending') {
         console.error(`[Google Sheets Data] Connection exists but no spreadsheetId for campaign ${campaignId}`);
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
           error: "Google Sheets connection exists but no spreadsheet is selected. Please select a spreadsheet in the connection settings.",
           requiresReauthorization: false,
           missingSpreadsheet: true
         });
       }
-      
+
       if (!connection.accessToken) {
         console.error(`[Google Sheets Data] Connection exists but no accessToken for campaign ${campaignId}`);
         // Try to refresh if we have refresh token
@@ -12018,14 +12018,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error(`[Google Sheets Data] Token refresh failed:`, refreshError);
             if (refreshError.message === 'REFRESH_TOKEN_EXPIRED') {
               await storage.deleteGoogleSheetsConnection(connection.id);
-              return res.status(401).json({ 
+              return res.status(401).json({
                 success: false,
                 error: 'REFRESH_TOKEN_EXPIRED',
                 message: 'Connection expired. Please reconnect your Google Sheets account.',
                 requiresReauthorization: true
               });
             }
-            return res.status(401).json({ 
+            return res.status(401).json({
               success: false,
               error: 'ACCESS_TOKEN_EXPIRED',
               message: 'Connection expired. Please reconnect your Google Sheets account.',
@@ -12036,7 +12036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // No refresh token available, need to reconnect
           console.error(`[Google Sheets Data] No access token and no refresh token available`);
           await storage.deleteGoogleSheetsConnection(connection.id);
-          return res.status(401).json({ 
+          return res.status(401).json({
             success: false,
             error: 'ACCESS_TOKEN_EXPIRED',
             message: 'Connection expired. Please reconnect your Google Sheets account.',
@@ -12075,7 +12075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (typeof AbortController !== 'undefined') {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-            
+
             try {
               const response = await fetch(url, {
                 ...options,
@@ -12095,7 +12095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const timeoutPromise = new Promise((_, reject) => {
               setTimeout(() => reject(new Error('Request timeout: Google Sheets API did not respond within 30 seconds')), timeoutMs);
             });
-            
+
             const fetchPromise = fetch(url, options);
             return await Promise.race([fetchPromise, timeoutPromise]) as Response;
           }
@@ -12121,7 +12121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         devLog('🔄 Access token expired, attempting automatic refresh...');
         try {
           accessToken = await refreshGoogleSheetsToken(connection);
-          
+
           // Retry the request with new token (using same timeout helper)
           const fetchWithTimeoutRetry = async (url: string, options: any, timeoutMs: number = 30000) => {
             try {
@@ -12129,7 +12129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (typeof AbortController !== 'undefined') {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-                
+
                 try {
                   const response = await fetch(url, {
                     ...options,
@@ -12149,7 +12149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const timeoutPromise = new Promise((_, reject) => {
                   setTimeout(() => reject(new Error('Request timeout: Google Sheets API did not respond within 30 seconds')), timeoutMs);
                 });
-                
+
                 const fetchPromise = fetch(url, options);
                 return await Promise.race([fetchPromise, timeoutPromise]) as Response;
               }
@@ -12171,15 +12171,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
         } catch (refreshError) {
           console.error('❌ Automatic token refresh failed:', refreshError);
-          
+
           // For persistent connections, we need to handle refresh token expiration
           // by requesting fresh OAuth authorization
           devLog('🔄 Refresh token may have expired, connection needs re-authorization');
-          
+
           // Clear the invalid connection so user can re-authorize
           await storage.deleteGoogleSheetsConnection(campaignId);
-          
-          return res.status(401).json({ 
+
+          return res.status(401).json({
             error: 'REFRESH_TOKEN_EXPIRED',
             message: 'Connection expired. Please reconnect your Google Sheets account.',
             requiresReauthorization: true,
@@ -12196,22 +12196,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch {
           errorData = { error: errorText };
         }
-        
+
         console.error('[Google Sheets Data] Google Sheets API error:', {
           status: sheetResponse.status,
           statusText: sheetResponse.statusText,
           error: errorData,
           spreadsheetId: connection.spreadsheetId
         });
-        
+
         // Handle token expiration - clear invalid connection and require re-authorization
         if (sheetResponse.status === 401) {
           devLog('🔄 Token expired without refresh capability, clearing connection');
-          
+
           // Clear the invalid connection so user can re-authorize  
           await storage.deleteGoogleSheetsConnection(campaignId);
-          
-          return res.status(401).json({ 
+
+          return res.status(401).json({
             success: false,
             error: 'ACCESS_TOKEN_EXPIRED',
             message: 'Connection expired. Please reconnect your Google Sheets account.',
@@ -12219,7 +12219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             campaignId: campaignId
           });
         }
-        
+
         // Handle 403 (Forbidden) - might be permissions issue
         if (sheetResponse.status === 403) {
           console.error('[Google Sheets Data] Permission denied - check spreadsheet sharing settings');
@@ -12230,7 +12230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             requiresReauthorization: false
           });
         }
-        
+
         // Handle 404 (Not Found) - spreadsheet might be deleted or ID is wrong
         if (sheetResponse.status === 404) {
           console.error('[Google Sheets Data] Spreadsheet not found');
@@ -12242,7 +12242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             missingSpreadsheet: true
           });
         }
-        
+
         // Generic API error
         const errorMessage = errorData.error?.message || errorData.error || errorText || 'Unknown Google Sheets API error';
         throw new Error(`Google Sheets API Error (${sheetResponse.status}): ${errorMessage}`);
@@ -12257,26 +12257,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('[Google Sheets Data] Response text:', responseText.substring(0, 500));
         throw new Error(`Invalid JSON response from Google Sheets API: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`);
       }
-      
+
       if (!sheetData || typeof sheetData !== 'object') {
         console.error('[Google Sheets Data] Invalid sheet data structure:', sheetData);
         throw new Error('Invalid data structure received from Google Sheets API');
       }
-      
+
       const rows = sheetData.values || [];
       devLog(`[Google Sheets Data] Received ${rows.length} rows from Google Sheets`);
-      
+
       // Get campaign name for filtering summary data
       const campaign = await storage.getCampaign(campaignId);
       const campaignName = campaign?.name || '';
       const campaignPlatform = campaign?.platform || null;
-      
+
       // Get headers and determine column indices for filtering
       // First check if mappings exist (use mapped columns if available)
       const headers = rows[0] || [];
       let platformColumnIndex = -1;
       let campaignNameColumnIndex = -1;
-      
+
       // Check if mappings exist and use them to find column indices
       if (connection.columnMappings) {
         try {
@@ -12285,7 +12285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Find mapped columns
             const campaignNameMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_name');
             const platformMapping = mappings.find((m: any) => m.targetFieldId === 'platform');
-            
+
             if (campaignNameMapping) {
               campaignNameColumnIndex = campaignNameMapping.sourceColumnIndex;
             }
@@ -12297,26 +12297,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.warn('[Google Sheets Summary] Failed to parse mappings, falling back to column detection:', mappingError);
         }
       }
-      
+
       // Fallback to column detection if mappings don't exist or didn't find the columns
       if (campaignNameColumnIndex < 0) {
-        campaignNameColumnIndex = headers.findIndex((h: string) => 
+        campaignNameColumnIndex = headers.findIndex((h: string) =>
           String(h || '').toLowerCase().includes('campaign name')
         );
       }
       if (platformColumnIndex < 0) {
-        platformColumnIndex = headers.findIndex((h: string) => 
+        platformColumnIndex = headers.findIndex((h: string) =>
           String(h || '').toLowerCase().includes('platform')
         );
       }
-      
+
       // Get platform keywords for filtering
       const platformKeywords = campaignPlatform ? getPlatformKeywords(campaignPlatform) : [];
-      
+
       // Filter rows by campaign name (and platform if available) for summary
       let filteredRowsForSummary: any[] = [];
       const allRows = rows.slice(1); // Skip header row
-      
+
       if (campaignNameColumnIndex >= 0 && campaignName) {
         // Filter by campaign name (and platform if available)
         if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
@@ -12329,7 +12329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
             const platformMatches = matchesPlatform(platformValue, platformKeywords);
             const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
-                                   campaignName.toLowerCase().includes(campaignNameValue);
+              campaignName.toLowerCase().includes(campaignNameValue);
             return platformMatches && matchesCampaign;
           });
         } else {
@@ -12340,7 +12340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
             return campaignNameValue.includes(campaignName.toLowerCase()) ||
-                   campaignName.toLowerCase().includes(campaignNameValue);
+              campaignName.toLowerCase().includes(campaignNameValue);
           });
         }
       } else if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
@@ -12356,14 +12356,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Strategy 4: Use all rows (no filtering possible)
         filteredRowsForSummary = allRows;
       }
-      
+
       // Use filtered rows for summary if we have a campaign name match, otherwise use all rows
       const rowsForSummary = filteredRowsForSummary.length > 0 && campaignNameColumnIndex >= 0 && campaignName
         ? filteredRowsForSummary
         : allRows;
-      
+
       devLog(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign name "${campaignName}") out of ${allRows.length} total rows`);
-      
+
       // Process spreadsheet data to extract campaign metrics (using filtered rows for summary, but show all rows in table)
       let campaignData = {
         totalRows: rows.length, // Keep original total for reference
@@ -12372,73 +12372,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: allRows, // Show all rows in the table (not filtered)
         sampleData: rowsForSummary.slice(0, 6), // First 5 filtered data rows
         metrics: {} as Record<string, number>,
-        detectedColumns: [] as Array<{name: string, index: number, type: string, total: number}>
+        detectedColumns: [] as Array<{ name: string, index: number, type: string, total: number }>
       };
 
       // Dynamically detect and aggregate numeric columns from FILTERED rows
       if (rowsForSummary.length > 0 && headers.length > 0) {
-      devLog('📊 Detected spreadsheet headers:', { count: headers.length, sample: headers.slice(0, 30) });
-        
+        devLog('📊 Detected spreadsheet headers:', { count: headers.length, sample: headers.slice(0, 30) });
+
         // First pass: Identify which columns contain numeric data
-        const numericColumns: Array<{name: string, index: number, type: 'currency' | 'integer' | 'decimal', samples: number[]}> = [];
-        
+        const numericColumns: Array<{ name: string, index: number, type: 'currency' | 'integer' | 'decimal', samples: number[] }> = [];
+
         headers.forEach((header: string, index: number) => {
           const headerStr = String(header || '').trim();
           if (!headerStr) return; // Skip empty headers
-          
+
           // Sample first 5 filtered data rows to determine if column is numeric
           const samples: number[] = [];
           let hasNumericData = false;
           let hasCurrency = false;
           let hasDecimals = false;
-          
+
           for (let i = 0; i < Math.min(6, rowsForSummary.length); i++) {
             const cellValue = rowsForSummary[i]?.[index];
             if (!cellValue) continue;
-            
+
             const cellStr = String(cellValue).trim();
             if (cellStr.includes('$') || cellStr.includes('USD')) hasCurrency = true;
-            
+
             // Clean and parse the value
             const cleanValue = cellStr.replace(/[$,]/g, '').trim();
             const numValue = parseFloat(cleanValue);
-            
+
             if (!isNaN(numValue)) {
               samples.push(numValue);
               hasNumericData = true;
               if (cleanValue.includes('.')) hasDecimals = true;
             }
           }
-          
+
           if (hasNumericData && samples.length > 0) {
             const type = hasCurrency ? 'currency' : (hasDecimals ? 'decimal' : 'integer');
             numericColumns.push({ name: headerStr, index, type, samples });
           }
         });
-        
+
         devLog('✅ Detected numeric columns:', {
           count: numericColumns.length,
           sample: numericColumns.slice(0, 30).map((col) => ({ name: col.name, type: col.type })),
         });
-        
+
         // Second pass: Aggregate numeric columns from FILTERED rows only
         numericColumns.forEach(col => {
           let total = 0;
           let count = 0;
-          
+
           for (let i = 0; i < rowsForSummary.length; i++) {
             const cellValue = rowsForSummary[i]?.[col.index];
             if (!cellValue) continue;
-            
+
             const cleanValue = String(cellValue).replace(/[$,]/g, '').trim();
             const numValue = parseFloat(cleanValue);
-            
+
             if (!isNaN(numValue)) {
               total += numValue;
               count++;
             }
           }
-          
+
           if (count > 0) {
             campaignData.metrics[col.name] = total;
             campaignData.detectedColumns.push({
@@ -12447,11 +12447,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               type: col.type,
               total: total
             });
-            
+
             devLog(`  ✓ ${col.name}: ${total.toLocaleString()} (${count} filtered rows)`);
           }
         });
-        
+
         devLog(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rowsForSummary.length} filtered rows (campaign: "${campaignName}")`);
       }
 
@@ -12482,9 +12482,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Automatic Conversion Value Calculation from Google Sheets - DISABLED
       // Enable automatic conversion value calculation after mappings are saved
       const AUTO_CALCULATE_CONVERSION_VALUE = true;
-      
+
       // Initialize calculatedConversionValues and matchingInfo (needed for response even when auto-calculation is disabled)
-      let calculatedConversionValues: Array<{platform: string, conversionValue: string, revenue: number, conversions: number}> = [];
+      let calculatedConversionValues: Array<{ platform: string, conversionValue: string, revenue: number, conversions: number }> = [];
       let matchingInfo = {
         method: 'all_rows',
         matchedCampaigns: [] as string[],
@@ -12493,571 +12493,571 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalRows: 0,
         platform: null as string | null
       };
-      
+
       if (AUTO_CALCULATE_CONVERSION_VALUE) {
-      // Automatic Conversion Value Calculation from Google Sheets
-      // NEW: Calculates conversion value for EACH connected platform separately
-      // If Revenue and Conversions columns are detected, calculate and save conversion value per platform
-      // Smart matching: Campaign Name + Platform (best) → Platform only (fallback) → All rows (last resort)
-      // NOW SUPPORTS MULTI-PLATFORM: LinkedIn, Google Ads, Facebook Ads, Twitter Ads, etc.
-      
-      try {
-        // Campaign name and platform already fetched above for summary filtering
-        // Reuse them here for conversion value calculation
-        
-        // Get ALL platform connections for this campaign to calculate conversion value for each
-        const linkedInConnection = await storage.getLinkedInConnection(campaignId).catch(() => null);
-        const metaConnection = await storage.getMetaConnection(campaignId).catch(() => null);
-        // TODO: Add other platform connections when implemented (Google Ads, Twitter, etc.)
-        
-        // Determine which platforms are connected
-        const connectedPlatforms: Array<{platform: string, connection: any, keywords: string[]}> = [];
-        if (linkedInConnection) {
-          connectedPlatforms.push({
-            platform: 'linkedin',
-            connection: linkedInConnection,
-            keywords: getPlatformKeywords('linkedin')
-          });
-        }
-        if (metaConnection) {
-          connectedPlatforms.push({
-            platform: 'facebook_ads',
-            connection: metaConnection,
-            keywords: getPlatformKeywords('facebook_ads')
-          });
-        }
-        
-        // Get platform keywords for matching (use campaign platform as primary, but calculate for all)
-        const platformKeywords = getPlatformKeywords(campaignPlatform);
-        const platformDisplayName = campaignPlatform || 'unknown';
-        
-        const headers = campaignData.headers || [];
-        const platformColumnIndex = headers.findIndex((h: string) => 
-          String(h || '').toLowerCase().includes('platform')
-        );
-        const campaignNameColumnIndex = headers.findIndex((h: string) => 
-          String(h || '').toLowerCase().includes('campaign name')
-        );
-        
-        let filteredRows: any[] = [];
-        let allRows = rows.slice(1); // Skip header row
-        let matchingMethod = 'all_rows'; // Track which method was used
-        let matchedCampaigns: string[] = [];
-        let unmatchedCampaigns: string[] = [];
-        
-        // Strategy 1: Campaign Name + Platform matching (most accurate)
-        if (platformColumnIndex >= 0 && campaignNameColumnIndex >= 0 && campaignName && platformKeywords.length > 0) {
-          filteredRows = allRows.filter((row: any[]) => {
-            const platformValue = String(row[platformColumnIndex] || '');
-            const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
-            const platformMatches = matchesPlatform(platformValue, platformKeywords);
-            const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
-                                   campaignName.toLowerCase().includes(campaignNameValue);
-            return platformMatches && matchesCampaign;
-          });
-          
-          if (filteredRows.length > 0) {
-            matchingMethod = 'campaign_name_platform';
-            // Collect matched and unmatched campaign names for feedback (for this platform only)
-            const uniqueCampaignNames = new Set<string>();
-            allRows.forEach((row: any[]) => {
-              // Safety check: ensure row is an array and has enough elements
-              if (!Array.isArray(row) || row.length <= Math.max(platformColumnIndex, campaignNameColumnIndex)) {
-                return;
-              }
-              
-              const platformValue = String(row[platformColumnIndex] || '');
-              const campaignNameValue = String(row[campaignNameColumnIndex] || '').trim();
-              if (matchesPlatform(platformValue, platformKeywords) && campaignNameValue) {
-                uniqueCampaignNames.add(campaignNameValue);
-              }
+        // Automatic Conversion Value Calculation from Google Sheets
+        // NEW: Calculates conversion value for EACH connected platform separately
+        // If Revenue and Conversions columns are detected, calculate and save conversion value per platform
+        // Smart matching: Campaign Name + Platform (best) → Platform only (fallback) → All rows (last resort)
+        // NOW SUPPORTS MULTI-PLATFORM: LinkedIn, Google Ads, Facebook Ads, Twitter Ads, etc.
+
+        try {
+          // Campaign name and platform already fetched above for summary filtering
+          // Reuse them here for conversion value calculation
+
+          // Get ALL platform connections for this campaign to calculate conversion value for each
+          const linkedInConnection = await storage.getLinkedInConnection(campaignId).catch(() => null);
+          const metaConnection = await storage.getMetaConnection(campaignId).catch(() => null);
+          // TODO: Add other platform connections when implemented (Google Ads, Twitter, etc.)
+
+          // Determine which platforms are connected
+          const connectedPlatforms: Array<{ platform: string, connection: any, keywords: string[] }> = [];
+          if (linkedInConnection) {
+            connectedPlatforms.push({
+              platform: 'linkedin',
+              connection: linkedInConnection,
+              keywords: getPlatformKeywords('linkedin')
             });
-            
-            filteredRows.forEach((row: any[]) => {
-              // Safety check: ensure row is an array and has enough elements
-              if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) {
-                return;
-              }
-              
-              const name = String(row[campaignNameColumnIndex] || '').trim();
-              if (name && !matchedCampaigns.includes(name)) matchedCampaigns.push(name);
-            });
-            
-            Array.from(uniqueCampaignNames).forEach(name => {
-              if (!matchedCampaigns.includes(name)) unmatchedCampaigns.push(name);
-            });
-            
-            devLog(`[Auto Conversion Value] ✅ Campaign Name + Platform matching: Found ${filteredRows.length} matching ${platformDisplayName} rows for "${campaignName}"`);
-            devLog('[Auto Conversion Value] Matched campaigns:', { count: matchedCampaigns.length, sample: matchedCampaigns.slice(0, 30) });
-            if (unmatchedCampaigns.length > 0) {
-              devLog(`[Auto Conversion Value] Other ${platformDisplayName} campaigns found:`, { count: unmatchedCampaigns.length, sample: unmatchedCampaigns.slice(0, 30) });
-            }
           }
-        }
-        
-        // Strategy 2: Platform-only filtering (fallback)
-        if (filteredRows.length === 0 && platformColumnIndex >= 0 && platformKeywords.length > 0) {
-          filteredRows = allRows.filter((row: any[]) => {
-            // Safety check: ensure row is an array and has enough elements
-            if (!Array.isArray(row) || row.length <= platformColumnIndex) {
-              return false;
-            }
-            
-            const platformValue = String(row[platformColumnIndex] || '');
-            return matchesPlatform(platformValue, platformKeywords);
-          });
-          
-          if (filteredRows.length > 0) {
-            matchingMethod = 'platform_only';
-            // Collect all platform campaign names for feedback
-            if (campaignNameColumnIndex >= 0) {
+          if (metaConnection) {
+            connectedPlatforms.push({
+              platform: 'facebook_ads',
+              connection: metaConnection,
+              keywords: getPlatformKeywords('facebook_ads')
+            });
+          }
+
+          // Get platform keywords for matching (use campaign platform as primary, but calculate for all)
+          const platformKeywords = getPlatformKeywords(campaignPlatform);
+          const platformDisplayName = campaignPlatform || 'unknown';
+
+          const headers = campaignData.headers || [];
+          const platformColumnIndex = headers.findIndex((h: string) =>
+            String(h || '').toLowerCase().includes('platform')
+          );
+          const campaignNameColumnIndex = headers.findIndex((h: string) =>
+            String(h || '').toLowerCase().includes('campaign name')
+          );
+
+          let filteredRows: any[] = [];
+          let allRows = rows.slice(1); // Skip header row
+          let matchingMethod = 'all_rows'; // Track which method was used
+          let matchedCampaigns: string[] = [];
+          let unmatchedCampaigns: string[] = [];
+
+          // Strategy 1: Campaign Name + Platform matching (most accurate)
+          if (platformColumnIndex >= 0 && campaignNameColumnIndex >= 0 && campaignName && platformKeywords.length > 0) {
+            filteredRows = allRows.filter((row: any[]) => {
+              const platformValue = String(row[platformColumnIndex] || '');
+              const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
+              const platformMatches = matchesPlatform(platformValue, platformKeywords);
+              const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
+                campaignName.toLowerCase().includes(campaignNameValue);
+              return platformMatches && matchesCampaign;
+            });
+
+            if (filteredRows.length > 0) {
+              matchingMethod = 'campaign_name_platform';
+              // Collect matched and unmatched campaign names for feedback (for this platform only)
               const uniqueCampaignNames = new Set<string>();
+              allRows.forEach((row: any[]) => {
+                // Safety check: ensure row is an array and has enough elements
+                if (!Array.isArray(row) || row.length <= Math.max(platformColumnIndex, campaignNameColumnIndex)) {
+                  return;
+                }
+
+                const platformValue = String(row[platformColumnIndex] || '');
+                const campaignNameValue = String(row[campaignNameColumnIndex] || '').trim();
+                if (matchesPlatform(platformValue, platformKeywords) && campaignNameValue) {
+                  uniqueCampaignNames.add(campaignNameValue);
+                }
+              });
+
               filteredRows.forEach((row: any[]) => {
                 // Safety check: ensure row is an array and has enough elements
                 if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) {
                   return;
                 }
-                
+
                 const name = String(row[campaignNameColumnIndex] || '').trim();
-                if (name) uniqueCampaignNames.add(name);
+                if (name && !matchedCampaigns.includes(name)) matchedCampaigns.push(name);
               });
-              unmatchedCampaigns = Array.from(uniqueCampaignNames);
-            }
-            
-            devLog(`[Auto Conversion Value] ⚠️ Platform-only matching: Using ${filteredRows.length} ${platformDisplayName} rows (no Campaign Name match found)`);
-            devLog(`[Auto Conversion Value] Campaign "${campaignName}" not found in Google Sheets. Found ${unmatchedCampaigns.length} unique ${platformDisplayName} campaign name(s).`);
-            if (unmatchedCampaigns.length > 0) {
-              devLog(`[Auto Conversion Value] Found ${platformDisplayName} campaigns:`, { count: unmatchedCampaigns.length, sample: unmatchedCampaigns.slice(0, 30) });
-            }
-          } else {
-            devLog(`[Auto Conversion Value] Platform column detected but no ${platformDisplayName} rows found. Using all rows.`);
-            filteredRows = allRows; // Fallback to all rows if no platform match found
-            matchingMethod = 'all_rows';
-          }
-        }
-        
-        // Strategy 3: All rows (last resort)
-        if (filteredRows.length === 0) {
-          filteredRows = allRows;
-          matchingMethod = 'all_rows';
-          if (campaignPlatform) {
-            devLog(`[Auto Conversion Value] ℹ️ No Platform column detected or no ${platformDisplayName} match. Using all rows.`);
-          } else {
-            devLog(`[Auto Conversion Value] ℹ️ No Platform column detected and campaign has no platform set. Using all rows.`);
-          }
-        }
-        
-        // Update matchingInfo with final results
-        matchingInfo = {
-          method: matchingMethod,
-          matchedCampaigns: matchedCampaigns,
-          unmatchedCampaigns: unmatchedCampaigns,
-          totalFilteredRows: filteredRows.length,
-          totalRows: allRows.length,
-          platform: campaignPlatform,
-          campaignName: campaignName // Include campaign name for UI display
-        };
-        
-        // Check if mappings exist for this connection (flexible mapping system)
-        let useMappings = false;
-        let mappings: any[] = [];
-        let transformedRows: any[] = [];
-        
-        if (connection.columnMappings) {
-          try {
-            mappings = JSON.parse(connection.columnMappings);
-            if (mappings && mappings.length > 0) {
-              useMappings = true;
-              devLog(`[Auto Conversion Value] Using saved column mappings (${mappings.length} mappings)`);
-              
-              // Transform data using mappings
-              const transformationResult = transformData(rows, mappings, campaignPlatform || 'linkedin');
-              transformedRows = transformationResult.transformedRows;
-              
-              if (transformationResult.errors.length > 0) {
-                console.warn(`[Auto Conversion Value] Transformation errors:`, transformationResult.errors.slice(0, 5));
-              }
-              
-              // Phase 4: Enrich data with context
-              const enrichmentContext = {
-                campaignName: campaignName || '',
-                platform: campaignPlatform || 'linkedin',
-                hasLinkedInApi: campaignPlatform?.toLowerCase() === 'linkedin'
-              };
-              transformedRows = enrichRows(transformedRows, enrichmentContext);
-              
-              // Phase 6: Convert to canonical format
-              transformedRows = toCanonicalFormatBatch(transformedRows, 'google_sheets', 0.9);
-              
-              devLog(`[Auto Conversion Value] Transformed ${transformedRows.length} rows using mappings`);
-            }
-          } catch (mappingError) {
-            console.warn(`[Auto Conversion Value] Failed to parse mappings, falling back to column detection:`, mappingError);
-          }
-        }
-        
-        // Find Revenue and Conversions column indices (fallback for non-mapped data)
-        const revenueColumnIndex = headers.findIndex((h: string) => {
-          const header = String(h || '').toLowerCase();
-          return header.includes('revenue') || header.includes('sales revenue') || header.includes('revenue amount');
-        });
-        
-        const conversionsColumnIndex = headers.findIndex((h: string) => {
-          const header = String(h || '').toLowerCase();
-          return header.includes('conversion') || header.includes('order') || header.includes('purchase');
-        });
-        
-        // NEW APPROACH: Calculate conversion value for EACH connected platform separately
-        // This ensures each platform gets its own accurate conversion value
-        // Reset calculatedConversionValues for this calculation
-        calculatedConversionValues = [];
-        
-        // Helper function to get LinkedIn API conversions for a campaign
-        const getLinkedInApiConversions = async (campaignId: string): Promise<number | null> => {
-          try {
-            const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
-            if (latestSession) {
-              const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
-              
-              const normalizeMetricKey = (key: any) =>
-                String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-              // Sum all conversions from LinkedIn metrics (handle key variants)
-              const totalConversions = metrics.reduce((sum: number, m: any) => {
-                const k = normalizeMetricKey(m.metricKey);
-                if (k === 'conversions' || k === 'externalwebsiteconversions') {
-                  return sum + (parseFloat(m.metricValue || '0') || 0);
-                }
-                return sum;
-              }, 0);
-              
-              return totalConversions > 0 ? totalConversions : null;
-            }
-          } catch (error) {
-            console.warn(`[Auto Conversion Value] Could not fetch LinkedIn API conversions:`, error);
-          }
-          return null;
-        };
-
-        // Use mapped data if available, otherwise use column indices
-        if (useMappings && transformedRows.length > 0) {
-          // Use transformed data with mappings
-          for (const platformInfo of connectedPlatforms) {
-            try {
-              // Filter transformed rows by platform and campaign (Phase 5: Enhanced with fuzzy matching)
-              const platformRows = filterRowsByCampaignAndPlatform(
-                transformedRows,
-                campaignName,
-                platformInfo.platform,
-                {
-                  fuzzyMatch: true,
-                  minSimilarity: 0.8,
-                  contextAware: true
-                }
-              );
-              
-              if (platformRows.length > 0) {
-                // Get LinkedIn API conversions if this is a LinkedIn campaign
-                let linkedInConversions: number | null = null;
-                let conversionSource = 'Google Sheets';
-                if (platformInfo.platform === 'linkedin') {
-                  linkedInConversions = await getLinkedInApiConversions(campaignId);
-                  if (linkedInConversions !== null && linkedInConversions > 0) {
-                    conversionSource = 'LinkedIn API';
-                  }
-                }
-                
-                // Calculate conversion value from transformed data
-                // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
-                const conversionValue = calculateConversionValue(platformRows, linkedInConversions);
-                
-                if (conversionValue !== null) {
-                  const totalRevenue = platformRows.reduce((sum, row) => sum + (parseFloat(row.revenue) || 0), 0);
-                  const conversionsUsed = linkedInConversions !== null && linkedInConversions > 0 
-                    ? linkedInConversions 
-                    : platformRows.reduce((sum, row) => sum + (parseInt(row.conversions) || 0), 0);
-                  
-                  devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()} (Mapped): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsUsed.toLocaleString()} (${conversionSource}), CV: $${conversionValue.toFixed(2)}`);
-                  
-                  calculatedConversionValues.push({
-                    platform: platformInfo.platform,
-                    conversionValue: conversionValue.toFixed(2),
-                    revenue: totalRevenue,
-                    conversions: conversionsUsed
-                  });
-                  
-                  // DO NOT update platform connection - it will be cleared if needed by the analytics endpoint
-                  devLog(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
-                  // Platform connection values are managed by the LinkedIn Analytics endpoint
-                  // which checks for active mappings and clears stale values
-                }
-              }
-            } catch (platformError) {
-              console.warn(`[Auto Conversion Value] Could not calculate conversion value for ${platformInfo.platform}:`, platformError);
-            }
-          }
-        } else if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0 && platformColumnIndex >= 0) {
-          // Fallback to existing column-based logic
-          // Calculate conversion value for each connected platform
-          for (const platformInfo of connectedPlatforms) {
-            try {
-              // Filter rows for this specific platform
-              let platformRows = allRows.filter((row: any[]) => {
-                // Safety check: ensure row is an array and has enough elements
-                if (!Array.isArray(row) || row.length <= platformColumnIndex) {
-                  return false;
-                }
-                
-                const platformValue = String(row[platformColumnIndex] || '');
-                return matchesPlatform(platformValue, platformInfo.keywords);
+              Array.from(uniqueCampaignNames).forEach(name => {
+                if (!matchedCampaigns.includes(name)) unmatchedCampaigns.push(name);
               });
-              
-              // Further filter by campaign name if available
-              if (campaignNameColumnIndex >= 0 && campaignName) {
-                platformRows = platformRows.filter((row: any[]) => {
+
+              devLog(`[Auto Conversion Value] ✅ Campaign Name + Platform matching: Found ${filteredRows.length} matching ${platformDisplayName} rows for "${campaignName}"`);
+              devLog('[Auto Conversion Value] Matched campaigns:', { count: matchedCampaigns.length, sample: matchedCampaigns.slice(0, 30) });
+              if (unmatchedCampaigns.length > 0) {
+                devLog(`[Auto Conversion Value] Other ${platformDisplayName} campaigns found:`, { count: unmatchedCampaigns.length, sample: unmatchedCampaigns.slice(0, 30) });
+              }
+            }
+          }
+
+          // Strategy 2: Platform-only filtering (fallback)
+          if (filteredRows.length === 0 && platformColumnIndex >= 0 && platformKeywords.length > 0) {
+            filteredRows = allRows.filter((row: any[]) => {
+              // Safety check: ensure row is an array and has enough elements
+              if (!Array.isArray(row) || row.length <= platformColumnIndex) {
+                return false;
+              }
+
+              const platformValue = String(row[platformColumnIndex] || '');
+              return matchesPlatform(platformValue, platformKeywords);
+            });
+
+            if (filteredRows.length > 0) {
+              matchingMethod = 'platform_only';
+              // Collect all platform campaign names for feedback
+              if (campaignNameColumnIndex >= 0) {
+                const uniqueCampaignNames = new Set<string>();
+                filteredRows.forEach((row: any[]) => {
                   // Safety check: ensure row is an array and has enough elements
                   if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) {
-                    return false;
+                    return;
                   }
-                  
-                  const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
-                  return campaignNameValue.includes(campaignName.toLowerCase()) ||
-                         campaignName.toLowerCase().includes(campaignNameValue);
+
+                  const name = String(row[campaignNameColumnIndex] || '').trim();
+                  if (name) uniqueCampaignNames.add(name);
                 });
+                unmatchedCampaigns = Array.from(uniqueCampaignNames);
               }
-              
-              if (platformRows.length > 0) {
-                // Calculate revenue from Google Sheets
-                let platformRevenue = 0;
-                let platformConversions = 0;
-                
-                platformRows.forEach((row: any[]) => {
-                  // Safety check: ensure row is an array and has enough elements
-                  if (!Array.isArray(row) || row.length <= Math.max(revenueColumnIndex, conversionsColumnIndex)) {
-                    return; // Skip invalid rows
-                  }
-                  
-                  const revenueValue = String(row[revenueColumnIndex] || '').replace(/[$,]/g, '').trim();
-                  const revenue = parseFloat(revenueValue) || 0;
-                  platformRevenue += revenue;
-                  
-                  const conversionsValue = String(row[conversionsColumnIndex] || '').replace(/[$,]/g, '').trim();
-                  const conversions = parseFloat(conversionsValue) || 0;
-                  platformConversions += conversions;
-                });
-                
-                // Get LinkedIn API conversions if this is a LinkedIn campaign
-                let linkedInConversions: number | null = null;
-                let conversionSource = 'Google Sheets';
-                if (platformInfo.platform === 'linkedin') {
-                  linkedInConversions = await getLinkedInApiConversions(campaignId);
-                  if (linkedInConversions !== null && linkedInConversions > 0) {
-                    conversionSource = 'LinkedIn API';
-                  }
+
+              devLog(`[Auto Conversion Value] ⚠️ Platform-only matching: Using ${filteredRows.length} ${platformDisplayName} rows (no Campaign Name match found)`);
+              devLog(`[Auto Conversion Value] Campaign "${campaignName}" not found in Google Sheets. Found ${unmatchedCampaigns.length} unique ${platformDisplayName} campaign name(s).`);
+              if (unmatchedCampaigns.length > 0) {
+                devLog(`[Auto Conversion Value] Found ${platformDisplayName} campaigns:`, { count: unmatchedCampaigns.length, sample: unmatchedCampaigns.slice(0, 30) });
+              }
+            } else {
+              devLog(`[Auto Conversion Value] Platform column detected but no ${platformDisplayName} rows found. Using all rows.`);
+              filteredRows = allRows; // Fallback to all rows if no platform match found
+              matchingMethod = 'all_rows';
+            }
+          }
+
+          // Strategy 3: All rows (last resort)
+          if (filteredRows.length === 0) {
+            filteredRows = allRows;
+            matchingMethod = 'all_rows';
+            if (campaignPlatform) {
+              devLog(`[Auto Conversion Value] ℹ️ No Platform column detected or no ${platformDisplayName} match. Using all rows.`);
+            } else {
+              devLog(`[Auto Conversion Value] ℹ️ No Platform column detected and campaign has no platform set. Using all rows.`);
+            }
+          }
+
+          // Update matchingInfo with final results
+          matchingInfo = {
+            method: matchingMethod,
+            matchedCampaigns: matchedCampaigns,
+            unmatchedCampaigns: unmatchedCampaigns,
+            totalFilteredRows: filteredRows.length,
+            totalRows: allRows.length,
+            platform: campaignPlatform,
+            campaignName: campaignName // Include campaign name for UI display
+          };
+
+          // Check if mappings exist for this connection (flexible mapping system)
+          let useMappings = false;
+          let mappings: any[] = [];
+          let transformedRows: any[] = [];
+
+          if (connection.columnMappings) {
+            try {
+              mappings = JSON.parse(connection.columnMappings);
+              if (mappings && mappings.length > 0) {
+                useMappings = true;
+                devLog(`[Auto Conversion Value] Using saved column mappings (${mappings.length} mappings)`);
+
+                // Transform data using mappings
+                const transformationResult = transformData(rows, mappings, campaignPlatform || 'linkedin');
+                transformedRows = transformationResult.transformedRows;
+
+                if (transformationResult.errors.length > 0) {
+                  console.warn(`[Auto Conversion Value] Transformation errors:`, transformationResult.errors.slice(0, 5));
                 }
-                
-                // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
-                const conversionsToUse = (linkedInConversions !== null && linkedInConversions > 0) 
-                  ? linkedInConversions 
-                  : platformConversions;
-                
-                if (platformRevenue > 0 && conversionsToUse > 0) {
-                  const platformConversionValue = (platformRevenue / conversionsToUse).toFixed(2);
-                  
-                  devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: Revenue: $${platformRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource}), CV: $${platformConversionValue}`);
-                  
-                  // Store calculated value for response
-                  calculatedConversionValues.push({
-                    platform: platformInfo.platform,
-                    conversionValue: platformConversionValue,
-                    revenue: platformRevenue,
-                    conversions: conversionsToUse
-                  });
-                  
-                  // DO NOT update platform connection - it will be cleared if needed by the analytics endpoint
-                  devLog(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
-                  // Platform connection values are managed by the LinkedIn Analytics endpoint
-                  // which checks for active mappings and clears stale values
-                  if (false) { // Disabled - causes race condition with clearing logic
-                  if (platformInfo.platform === 'linkedin' && linkedInConnection) {
-                    await storage.updateLinkedInConnection(campaignId, {
-                      conversionValue: platformConversionValue
-                    });
-                    devLog(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue} (using ${conversionSource} conversions)`);
-                  } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
-                    await storage.updateMetaConnection(campaignId, {
-                      conversionValue: platformConversionValue
-                    });
-                    devLog(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${platformConversionValue}`);
+
+                // Phase 4: Enrich data with context
+                const enrichmentContext = {
+                  campaignName: campaignName || '',
+                  platform: campaignPlatform || 'linkedin',
+                  hasLinkedInApi: campaignPlatform?.toLowerCase() === 'linkedin'
+                };
+                transformedRows = enrichRows(transformedRows, enrichmentContext);
+
+                // Phase 6: Convert to canonical format
+                transformedRows = toCanonicalFormatBatch(transformedRows, 'google_sheets', 0.9);
+
+                devLog(`[Auto Conversion Value] Transformed ${transformedRows.length} rows using mappings`);
+              }
+            } catch (mappingError) {
+              console.warn(`[Auto Conversion Value] Failed to parse mappings, falling back to column detection:`, mappingError);
+            }
+          }
+
+          // Find Revenue and Conversions column indices (fallback for non-mapped data)
+          const revenueColumnIndex = headers.findIndex((h: string) => {
+            const header = String(h || '').toLowerCase();
+            return header.includes('revenue') || header.includes('sales revenue') || header.includes('revenue amount');
+          });
+
+          const conversionsColumnIndex = headers.findIndex((h: string) => {
+            const header = String(h || '').toLowerCase();
+            return header.includes('conversion') || header.includes('order') || header.includes('purchase');
+          });
+
+          // NEW APPROACH: Calculate conversion value for EACH connected platform separately
+          // This ensures each platform gets its own accurate conversion value
+          // Reset calculatedConversionValues for this calculation
+          calculatedConversionValues = [];
+
+          // Helper function to get LinkedIn API conversions for a campaign
+          const getLinkedInApiConversions = async (campaignId: string): Promise<number | null> => {
+            try {
+              const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+              if (latestSession) {
+                const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
+
+                const normalizeMetricKey = (key: any) =>
+                  String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+                // Sum all conversions from LinkedIn metrics (handle key variants)
+                const totalConversions = metrics.reduce((sum: number, m: any) => {
+                  const k = normalizeMetricKey(m.metricKey);
+                  if (k === 'conversions' || k === 'externalwebsiteconversions') {
+                    return sum + (parseFloat(m.metricValue || '0') || 0);
+                  }
+                  return sum;
+                }, 0);
+
+                return totalConversions > 0 ? totalConversions : null;
+              }
+            } catch (error) {
+              console.warn(`[Auto Conversion Value] Could not fetch LinkedIn API conversions:`, error);
+            }
+            return null;
+          };
+
+          // Use mapped data if available, otherwise use column indices
+          if (useMappings && transformedRows.length > 0) {
+            // Use transformed data with mappings
+            for (const platformInfo of connectedPlatforms) {
+              try {
+                // Filter transformed rows by platform and campaign (Phase 5: Enhanced with fuzzy matching)
+                const platformRows = filterRowsByCampaignAndPlatform(
+                  transformedRows,
+                  campaignName,
+                  platformInfo.platform,
+                  {
+                    fuzzyMatch: true,
+                    minSimilarity: 0.8,
+                    contextAware: true
+                  }
+                );
+
+                if (platformRows.length > 0) {
+                  // Get LinkedIn API conversions if this is a LinkedIn campaign
+                  let linkedInConversions: number | null = null;
+                  let conversionSource = 'Google Sheets';
+                  if (platformInfo.platform === 'linkedin') {
+                    linkedInConversions = await getLinkedInApiConversions(campaignId);
+                    if (linkedInConversions !== null && linkedInConversions > 0) {
+                      conversionSource = 'LinkedIn API';
                     }
                   }
-                } else {
-                  devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No revenue/conversions data found`);
+
+                  // Calculate conversion value from transformed data
+                  // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
+                  const conversionValue = calculateConversionValue(platformRows, linkedInConversions);
+
+                  if (conversionValue !== null) {
+                    const totalRevenue = platformRows.reduce((sum, row) => sum + (parseFloat(row.revenue) || 0), 0);
+                    const conversionsUsed = linkedInConversions !== null && linkedInConversions > 0
+                      ? linkedInConversions
+                      : platformRows.reduce((sum, row) => sum + (parseInt(row.conversions) || 0), 0);
+
+                    devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()} (Mapped): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsUsed.toLocaleString()} (${conversionSource}), CV: $${conversionValue.toFixed(2)}`);
+
+                    calculatedConversionValues.push({
+                      platform: platformInfo.platform,
+                      conversionValue: conversionValue.toFixed(2),
+                      revenue: totalRevenue,
+                      conversions: conversionsUsed
+                    });
+
+                    // DO NOT update platform connection - it will be cleared if needed by the analytics endpoint
+                    devLog(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
+                    // Platform connection values are managed by the LinkedIn Analytics endpoint
+                    // which checks for active mappings and clears stale values
+                  }
                 }
-              } else {
-                devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No matching rows found in Google Sheets`);
-              }
-            } catch (platformError) {
-              console.warn(`[Auto Conversion Value] Could not calculate conversion value for ${platformInfo.platform}:`, platformError);
-            }
-          }
-        }
-        
-        // Update campaign-level conversion value ONLY if exactly ONE platform is connected
-        // If multiple platforms are connected, leave it blank to avoid confusion
-        // Each platform connection maintains its own conversionValue for accurate revenue calculations
-        if (connectedPlatforms.length === 1) {
-          // Only one platform connected - safe to update campaign-level value
-          let totalRevenue = 0;
-          let totalConversions = 0;
-          
-          // Calculate from filtered platform rows (based on campaign.platform)
-          if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0) {
-            filteredRows.forEach((row: any[]) => {
-              // Safety check: ensure row is an array and has enough elements
-              if (!Array.isArray(row) || row.length <= Math.max(revenueColumnIndex, conversionsColumnIndex)) {
-                return; // Skip invalid rows
-              }
-              
-              const revenueValue = String(row[revenueColumnIndex] || '').replace(/[$,]/g, '').trim();
-              const revenue = parseFloat(revenueValue) || 0;
-              totalRevenue += revenue;
-              
-              const conversionsValue = String(row[conversionsColumnIndex] || '').replace(/[$,]/g, '').trim();
-              const conversions = parseFloat(conversionsValue) || 0;
-              totalConversions += conversions;
-            });
-            
-            // Get LinkedIn API conversions if this is a LinkedIn campaign
-            let linkedInConversions: number | null = null;
-            let conversionSource = 'Google Sheets';
-            if (connectedPlatforms[0]?.platform === 'linkedin') {
-              linkedInConversions = await getLinkedInApiConversions(campaignId);
-              if (linkedInConversions !== null && linkedInConversions > 0) {
-                conversionSource = 'LinkedIn API';
+              } catch (platformError) {
+                console.warn(`[Auto Conversion Value] Could not calculate conversion value for ${platformInfo.platform}:`, platformError);
               }
             }
-            
-            // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
-            const conversionsToUse = (linkedInConversions !== null && linkedInConversions > 0) 
-              ? linkedInConversions 
-              : totalConversions;
-            
-            const platformLabel = campaignPlatform ? `${campaignPlatform} ` : '';
-            devLog(`[Auto Conversion Value] Campaign-level: Calculated from ${filteredRows.length} ${platformLabel}rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource})`);
-          } else {
-            // Fallback: Try to find from aggregated metrics (if Platform filtering wasn't possible)
-            const revenueKeys = ['Revenue', 'revenue', 'Total Revenue', 'total revenue', 'Revenue (USD)', 'Sales Revenue', 'Revenue Amount'];
-            const conversionsKeys = ['Conversions', 'conversions', 'Total Conversions', 'total conversions', 'Orders', 'orders', 'Purchases', 'purchases'];
-            
-            // Find revenue value from aggregated metrics
-            for (const key of revenueKeys) {
-              if (campaignData.metrics[key] !== undefined) {
-                totalRevenue = parseFloat(String(campaignData.metrics[key])) || 0;
-                if (totalRevenue > 0) break;
-              }
-            }
-            
-            // Find conversions value from aggregated metrics
-            for (const key of conversionsKeys) {
-              if (campaignData.metrics[key] !== undefined) {
-                totalConversions = parseFloat(String(campaignData.metrics[key])) || 0;
-                if (totalConversions > 0) break;
-              }
-            }
-            
-            // Get LinkedIn API conversions if this is a LinkedIn campaign
-            let linkedInConversions: number | null = null;
-            let conversionSource = 'Google Sheets';
-            if (connectedPlatforms[0]?.platform === 'linkedin') {
-              linkedInConversions = await getLinkedInApiConversions(campaignId);
-              if (linkedInConversions !== null && linkedInConversions > 0) {
-                conversionSource = 'LinkedIn API';
-              }
-            }
-            
-            // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
-            const conversionsToUse = (linkedInConversions !== null && linkedInConversions > 0) 
-              ? linkedInConversions 
-              : totalConversions;
-            
-            if (totalRevenue > 0 || conversionsToUse > 0) {
-              devLog(`[Auto Conversion Value] Using aggregated metrics (not filtered by Platform): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource})`);
-            }
-          }
-          
-          // Get LinkedIn API conversions for final calculation (if not already fetched)
-          let finalLinkedInConversions: number | null = null;
-          let finalConversionSource = 'Google Sheets';
-          if (connectedPlatforms[0]?.platform === 'linkedin') {
-            finalLinkedInConversions = await getLinkedInApiConversions(campaignId);
-            if (finalLinkedInConversions !== null && finalLinkedInConversions > 0) {
-              finalConversionSource = 'LinkedIn API';
-            }
-          }
-          
-          // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
-          const finalConversions = (finalLinkedInConversions !== null && finalLinkedInConversions > 0) 
-            ? finalLinkedInConversions 
-            : totalConversions;
-          
-          // Update campaign conversion value (only when single platform)
-          if (totalRevenue > 0 && finalConversions > 0) {
-            const calculatedConversionValue = (totalRevenue / finalConversions).toFixed(2);
-            
-            devLog(`[Auto Conversion Value] Campaign-level: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${finalConversions.toLocaleString()} (${finalConversionSource}), CV: $${calculatedConversionValue}`);
-            
-            const updatedCampaign = await storage.updateCampaign(campaignId, {
-              conversionValue: calculatedConversionValue
-            });
-            
-            if (updatedCampaign) {
-              devLog(`[Auto Conversion Value] ✅ Updated campaign ${campaignId} conversion value to $${calculatedConversionValue} (single platform, using ${finalConversionSource} conversions)`);
-            }
-            
-            // Also update LinkedIn import sessions if they exist AND campaign is LinkedIn (for consistency)
-            if (campaignPlatform && campaignPlatform.toLowerCase() === 'linkedin') {
+          } else if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0 && platformColumnIndex >= 0) {
+            // Fallback to existing column-based logic
+            // Calculate conversion value for each connected platform
+            for (const platformInfo of connectedPlatforms) {
               try {
-                const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
-                if (latestSession) {
-                  
-                  await storage.updateLinkedInImportSession(latestSession.id, {
-                    conversionValue: calculatedConversionValue
+                // Filter rows for this specific platform
+                let platformRows = allRows.filter((row: any[]) => {
+                  // Safety check: ensure row is an array and has enough elements
+                  if (!Array.isArray(row) || row.length <= platformColumnIndex) {
+                    return false;
+                  }
+
+                  const platformValue = String(row[platformColumnIndex] || '');
+                  return matchesPlatform(platformValue, platformInfo.keywords);
+                });
+
+                // Further filter by campaign name if available
+                if (campaignNameColumnIndex >= 0 && campaignName) {
+                  platformRows = platformRows.filter((row: any[]) => {
+                    // Safety check: ensure row is an array and has enough elements
+                    if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) {
+                      return false;
+                    }
+
+                    const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
+                    return campaignNameValue.includes(campaignName.toLowerCase()) ||
+                      campaignName.toLowerCase().includes(campaignNameValue);
                   });
-                  
-                  devLog(`[Auto Conversion Value] ✅ Updated LinkedIn import session ${latestSession.id} conversion value to $${calculatedConversionValue}`);
                 }
-              } catch (sessionError) {
-                console.warn(`[Auto Conversion Value] Could not update LinkedIn sessions:`, sessionError);
+
+                if (platformRows.length > 0) {
+                  // Calculate revenue from Google Sheets
+                  let platformRevenue = 0;
+                  let platformConversions = 0;
+
+                  platformRows.forEach((row: any[]) => {
+                    // Safety check: ensure row is an array and has enough elements
+                    if (!Array.isArray(row) || row.length <= Math.max(revenueColumnIndex, conversionsColumnIndex)) {
+                      return; // Skip invalid rows
+                    }
+
+                    const revenueValue = String(row[revenueColumnIndex] || '').replace(/[$,]/g, '').trim();
+                    const revenue = parseFloat(revenueValue) || 0;
+                    platformRevenue += revenue;
+
+                    const conversionsValue = String(row[conversionsColumnIndex] || '').replace(/[$,]/g, '').trim();
+                    const conversions = parseFloat(conversionsValue) || 0;
+                    platformConversions += conversions;
+                  });
+
+                  // Get LinkedIn API conversions if this is a LinkedIn campaign
+                  let linkedInConversions: number | null = null;
+                  let conversionSource = 'Google Sheets';
+                  if (platformInfo.platform === 'linkedin') {
+                    linkedInConversions = await getLinkedInApiConversions(campaignId);
+                    if (linkedInConversions !== null && linkedInConversions > 0) {
+                      conversionSource = 'LinkedIn API';
+                    }
+                  }
+
+                  // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
+                  const conversionsToUse = (linkedInConversions !== null && linkedInConversions > 0)
+                    ? linkedInConversions
+                    : platformConversions;
+
+                  if (platformRevenue > 0 && conversionsToUse > 0) {
+                    const platformConversionValue = (platformRevenue / conversionsToUse).toFixed(2);
+
+                    devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: Revenue: $${platformRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource}), CV: $${platformConversionValue}`);
+
+                    // Store calculated value for response
+                    calculatedConversionValues.push({
+                      platform: platformInfo.platform,
+                      conversionValue: platformConversionValue,
+                      revenue: platformRevenue,
+                      conversions: conversionsToUse
+                    });
+
+                    // DO NOT update platform connection - it will be cleared if needed by the analytics endpoint
+                    devLog(`[Auto Conversion Value] ℹ️ Skipping platform connection update (managed by analytics endpoint)`);
+                    // Platform connection values are managed by the LinkedIn Analytics endpoint
+                    // which checks for active mappings and clears stale values
+                    if (false) { // Disabled - causes race condition with clearing logic
+                      if (platformInfo.platform === 'linkedin' && linkedInConnection) {
+                        await storage.updateLinkedInConnection(campaignId, {
+                          conversionValue: platformConversionValue
+                        });
+                        devLog(`[Auto Conversion Value] ✅ Updated LinkedIn connection conversion value to $${platformConversionValue} (using ${conversionSource} conversions)`);
+                      } else if (platformInfo.platform === 'facebook_ads' && metaConnection) {
+                        await storage.updateMetaConnection(campaignId, {
+                          conversionValue: platformConversionValue
+                        });
+                        devLog(`[Auto Conversion Value] ✅ Updated Meta/Facebook connection conversion value to $${platformConversionValue}`);
+                      }
+                    }
+                  } else {
+                    devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No revenue/conversions data found`);
+                  }
+                } else {
+                  devLog(`[Auto Conversion Value] ${platformInfo.platform.toUpperCase()}: No matching rows found in Google Sheets`);
+                }
+              } catch (platformError) {
+                console.warn(`[Auto Conversion Value] Could not calculate conversion value for ${platformInfo.platform}:`, platformError);
               }
             }
           }
-        } else if (connectedPlatforms.length > 1) {
-          // Multiple platforms connected - leave campaign.conversionValue blank to avoid confusion
-          // Each platform connection has its own conversionValue
-          devLog(`[Auto Conversion Value] ℹ️ Multiple platforms connected (${connectedPlatforms.length}). Leaving campaign.conversionValue blank. Each platform has its own conversion value.`);
-          
-          // Optionally clear the campaign-level value if it was previously set
-          const currentCampaign = await storage.getCampaign(campaignId);
-          if (currentCampaign?.conversionValue) {
-            await storage.updateCampaign(campaignId, {
-              conversionValue: null
-            });
-            devLog(`[Auto Conversion Value] ℹ️ Cleared campaign.conversionValue (multiple platforms detected)`);
+
+          // Update campaign-level conversion value ONLY if exactly ONE platform is connected
+          // If multiple platforms are connected, leave it blank to avoid confusion
+          // Each platform connection maintains its own conversionValue for accurate revenue calculations
+          if (connectedPlatforms.length === 1) {
+            // Only one platform connected - safe to update campaign-level value
+            let totalRevenue = 0;
+            let totalConversions = 0;
+
+            // Calculate from filtered platform rows (based on campaign.platform)
+            if (revenueColumnIndex >= 0 && conversionsColumnIndex >= 0) {
+              filteredRows.forEach((row: any[]) => {
+                // Safety check: ensure row is an array and has enough elements
+                if (!Array.isArray(row) || row.length <= Math.max(revenueColumnIndex, conversionsColumnIndex)) {
+                  return; // Skip invalid rows
+                }
+
+                const revenueValue = String(row[revenueColumnIndex] || '').replace(/[$,]/g, '').trim();
+                const revenue = parseFloat(revenueValue) || 0;
+                totalRevenue += revenue;
+
+                const conversionsValue = String(row[conversionsColumnIndex] || '').replace(/[$,]/g, '').trim();
+                const conversions = parseFloat(conversionsValue) || 0;
+                totalConversions += conversions;
+              });
+
+              // Get LinkedIn API conversions if this is a LinkedIn campaign
+              let linkedInConversions: number | null = null;
+              let conversionSource = 'Google Sheets';
+              if (connectedPlatforms[0]?.platform === 'linkedin') {
+                linkedInConversions = await getLinkedInApiConversions(campaignId);
+                if (linkedInConversions !== null && linkedInConversions > 0) {
+                  conversionSource = 'LinkedIn API';
+                }
+              }
+
+              // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
+              const conversionsToUse = (linkedInConversions !== null && linkedInConversions > 0)
+                ? linkedInConversions
+                : totalConversions;
+
+              const platformLabel = campaignPlatform ? `${campaignPlatform} ` : '';
+              devLog(`[Auto Conversion Value] Campaign-level: Calculated from ${filteredRows.length} ${platformLabel}rows: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource})`);
+            } else {
+              // Fallback: Try to find from aggregated metrics (if Platform filtering wasn't possible)
+              const revenueKeys = ['Revenue', 'revenue', 'Total Revenue', 'total revenue', 'Revenue (USD)', 'Sales Revenue', 'Revenue Amount'];
+              const conversionsKeys = ['Conversions', 'conversions', 'Total Conversions', 'total conversions', 'Orders', 'orders', 'Purchases', 'purchases'];
+
+              // Find revenue value from aggregated metrics
+              for (const key of revenueKeys) {
+                if (campaignData.metrics[key] !== undefined) {
+                  totalRevenue = parseFloat(String(campaignData.metrics[key])) || 0;
+                  if (totalRevenue > 0) break;
+                }
+              }
+
+              // Find conversions value from aggregated metrics
+              for (const key of conversionsKeys) {
+                if (campaignData.metrics[key] !== undefined) {
+                  totalConversions = parseFloat(String(campaignData.metrics[key])) || 0;
+                  if (totalConversions > 0) break;
+                }
+              }
+
+              // Get LinkedIn API conversions if this is a LinkedIn campaign
+              let linkedInConversions: number | null = null;
+              let conversionSource = 'Google Sheets';
+              if (connectedPlatforms[0]?.platform === 'linkedin') {
+                linkedInConversions = await getLinkedInApiConversions(campaignId);
+                if (linkedInConversions !== null && linkedInConversions > 0) {
+                  conversionSource = 'LinkedIn API';
+                }
+              }
+
+              // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
+              const conversionsToUse = (linkedInConversions !== null && linkedInConversions > 0)
+                ? linkedInConversions
+                : totalConversions;
+
+              if (totalRevenue > 0 || conversionsToUse > 0) {
+                devLog(`[Auto Conversion Value] Using aggregated metrics (not filtered by Platform): Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${conversionsToUse.toLocaleString()} (${conversionSource})`);
+              }
+            }
+
+            // Get LinkedIn API conversions for final calculation (if not already fetched)
+            let finalLinkedInConversions: number | null = null;
+            let finalConversionSource = 'Google Sheets';
+            if (connectedPlatforms[0]?.platform === 'linkedin') {
+              finalLinkedInConversions = await getLinkedInApiConversions(campaignId);
+              if (finalLinkedInConversions !== null && finalLinkedInConversions > 0) {
+                finalConversionSource = 'LinkedIn API';
+              }
+            }
+
+            // Use LinkedIn API conversions if available, otherwise use Google Sheets conversions
+            const finalConversions = (finalLinkedInConversions !== null && finalLinkedInConversions > 0)
+              ? finalLinkedInConversions
+              : totalConversions;
+
+            // Update campaign conversion value (only when single platform)
+            if (totalRevenue > 0 && finalConversions > 0) {
+              const calculatedConversionValue = (totalRevenue / finalConversions).toFixed(2);
+
+              devLog(`[Auto Conversion Value] Campaign-level: Revenue: $${totalRevenue.toLocaleString()}, Conversions: ${finalConversions.toLocaleString()} (${finalConversionSource}), CV: $${calculatedConversionValue}`);
+
+              const updatedCampaign = await storage.updateCampaign(campaignId, {
+                conversionValue: calculatedConversionValue
+              });
+
+              if (updatedCampaign) {
+                devLog(`[Auto Conversion Value] ✅ Updated campaign ${campaignId} conversion value to $${calculatedConversionValue} (single platform, using ${finalConversionSource} conversions)`);
+              }
+
+              // Also update LinkedIn import sessions if they exist AND campaign is LinkedIn (for consistency)
+              if (campaignPlatform && campaignPlatform.toLowerCase() === 'linkedin') {
+                try {
+                  const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+                  if (latestSession) {
+
+                    await storage.updateLinkedInImportSession(latestSession.id, {
+                      conversionValue: calculatedConversionValue
+                    });
+
+                    devLog(`[Auto Conversion Value] ✅ Updated LinkedIn import session ${latestSession.id} conversion value to $${calculatedConversionValue}`);
+                  }
+                } catch (sessionError) {
+                  console.warn(`[Auto Conversion Value] Could not update LinkedIn sessions:`, sessionError);
+                }
+              }
+            }
+          } else if (connectedPlatforms.length > 1) {
+            // Multiple platforms connected - leave campaign.conversionValue blank to avoid confusion
+            // Each platform connection has its own conversionValue
+            devLog(`[Auto Conversion Value] ℹ️ Multiple platforms connected (${connectedPlatforms.length}). Leaving campaign.conversionValue blank. Each platform has its own conversion value.`);
+
+            // Optionally clear the campaign-level value if it was previously set
+            const currentCampaign = await storage.getCampaign(campaignId);
+            if (currentCampaign?.conversionValue) {
+              await storage.updateCampaign(campaignId, {
+                conversionValue: null
+              });
+              devLog(`[Auto Conversion Value] ℹ️ Cleared campaign.conversionValue (multiple platforms detected)`);
+            }
+          } else {
+            if (totalRevenue === 0 && totalConversions === 0) {
+              devLog(`[Auto Conversion Value] ℹ️ No Revenue or Conversions columns detected in Google Sheets`);
+            } else if (totalRevenue === 0) {
+              devLog(`[Auto Conversion Value] ℹ️ Revenue column not found (Conversions: ${totalConversions})`);
+            } else if (totalConversions === 0) {
+              devLog(`[Auto Conversion Value] ℹ️ Conversions column not found (Revenue: $${totalRevenue})`);
+            }
           }
-        } else {
-          if (totalRevenue === 0 && totalConversions === 0) {
-            devLog(`[Auto Conversion Value] ℹ️ No Revenue or Conversions columns detected in Google Sheets`);
-          } else if (totalRevenue === 0) {
-            devLog(`[Auto Conversion Value] ℹ️ Revenue column not found (Conversions: ${totalConversions})`);
-          } else if (totalConversions === 0) {
-            devLog(`[Auto Conversion Value] ℹ️ Conversions column not found (Revenue: $${totalRevenue})`);
-          }
+        } catch (calcError) {
+          console.error(`[Auto Conversion Value] ❌ Error calculating conversion value:`, calcError);
+          // Don't fail the request if auto-calculation fails
         }
-      } catch (calcError) {
-        console.error(`[Auto Conversion Value] ❌ Error calculating conversion value:`, calcError);
-        // Don't fail the request if auto-calculation fails
-      }
       } // End of AUTO_CALCULATE_CONVERSION_VALUE check
 
       res.json({
@@ -13091,13 +13091,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('[Google Sheets Data] ❌ Error fetching data:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
-      
+
       console.error('[Google Sheets Data] Error details:', {
         campaignId,
         error: errorMessage,
         stack: errorStack ? errorStack.split('\n').slice(0, 5).join('\n') : undefined
       });
-      
+
       // CRITICAL: Ensure we always send a response, even if headers were already sent
       if (!res.headersSent) {
         res.status(500).json({
@@ -13118,40 +13118,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/google-trends", async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       // Get campaign to access industry and keywords
       const campaign = await storage.getCampaign(id);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-      
+
       const keywords = (campaign as any).trendKeywords || [];
       const industry = (campaign as any).industry;
-      
+
       if (!keywords || keywords.length === 0) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "No trend keywords configured for this campaign",
           suggestion: "Add industry keywords to track market trends"
         });
       }
-      
+
       // Check for SerpAPI key
       const apiKey = process.env.SERPAPI_API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ 
+        return res.status(500).json({
           message: "SerpAPI key not configured",
           suggestion: "Add SERPAPI_API_KEY to Replit Secrets"
         });
       }
-      
+
       // Fetch Google Trends data using SerpAPI
       const { getJson } = await import("serpapi");
       const trendsData = [];
-      
+
       for (const keyword of keywords) {
         let success = false;
         let data = [];
-        
+
         try {
           const response = await getJson({
             engine: "google_trends",
@@ -13161,10 +13161,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             api_key: apiKey,
             timeout: 30000 // 30 second timeout
           });
-          
+
           // SerpAPI returns timeline data in interest_over_time.timeline_data
           const timelineData = response?.interest_over_time?.timeline_data || [];
-          
+
           if (timelineData && timelineData.length > 0) {
             // Transform SerpAPI format to match Google Trends format expected by frontend
             // SerpAPI provides: timestamp (Unix epoch), date (formatted string), values array
@@ -13178,7 +13178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 formattedValue: [String(keywordValue?.extracted_value || 0)] // String format
               };
             });
-            
+
             console.log(`✓ SerpAPI: Fetched ${data.length} data points for "${keyword}"`);
             success = true;
           } else {
@@ -13187,20 +13187,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (e) {
           console.error(`✗ SerpAPI error for "${keyword}":`, e instanceof Error ? e.message : String(e));
         }
-        
+
         trendsData.push({
           keyword,
           data,
           success
         });
       }
-      
+
       const totalDataPoints = trendsData.reduce((sum, t) => sum + (t.data?.length || 0), 0);
       const successCount = trendsData.filter(t => t.success).length;
       const failedCount = trendsData.filter(t => !t.success).length;
-      
+
       console.log(`[Google Trends via SerpAPI] Returned ${trendsData.length} keywords (${successCount} successful, ${failedCount} failed) with ${totalDataPoints} total data points`);
-      
+
       res.json({
         industry,
         keywords,
@@ -13274,7 +13274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return { ok: false, error: "Invalid state" };
     }
   };
-  
+
   /**
    * Initiate LinkedIn OAuth flow with centralized credentials
    * Similar to Google Analytics - credentials stored in env vars, not user input
@@ -13298,7 +13298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!clientId || !clientSecret) {
         console.log('[LinkedIn OAuth] Credentials not configured in environment variables');
-        return res.status(500).json({ 
+        return res.status(500).json({
           message: "LinkedIn OAuth not configured. Please add LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET to environment variables.",
           setupRequired: true
         });
@@ -13442,7 +13442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Exchange code for access token
       const { retryOAuthExchange } = await import('./utils/retry');
-      
+
       const tokenResponse = await retryOAuthExchange(async () => {
         console.log('[LinkedIn OAuth] Attempting token exchange...');
         const response = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
@@ -13552,7 +13552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/linkedin/ad-accounts", async (req, res) => {
     try {
       const { campaignId } = req.body;
-      
+
       if (!campaignId) {
         return res.status(400).json({ success: false, error: 'Campaign ID is required', message: 'Campaign ID is required' });
       }
@@ -13569,9 +13569,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { LinkedInClient } = await import('./linkedinClient');
       const { retryApiCall } = await import('./utils/retry');
-      
+
       const linkedInClient = new LinkedInClient(String(connection.accessToken));
-      
+
       const adAccounts = await retryApiCall(
         async () => await linkedInClient.getAdAccounts(),
         'LinkedIn Ad Accounts'
@@ -13579,7 +13579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[LinkedIn] Found ${adAccounts.length} ad accounts`);
 
-      res.json({ 
+      res.json({
         success: true,
         adAccounts: adAccounts.map(account => ({
           id: account.id,
@@ -13731,9 +13731,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId } = req.params;
       console.log(`[LinkedIn] Deleting connection for campaign ${campaignId}`);
-      
+
       await storage.deleteLinkedInConnection(campaignId);
-      
+
       console.log(`[LinkedIn] Connection deleted successfully`);
       res.json({ success: true, message: 'Connection deleted' });
     } catch (error: any) {
@@ -13801,7 +13801,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId } = req.params;
       const connection = await storage.getMetaConnection(campaignId);
-      
+
       if (!connection) {
         return res.json({ connected: false });
       }
@@ -13825,9 +13825,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId } = req.params;
       console.log(`[Meta] Deleting connection for campaign ${campaignId}`);
-      
+
       await storage.deleteMetaConnection(campaignId);
-      
+
       console.log(`[Meta] Connection deleted successfully`);
       res.json({ success: true, message: 'Connection deleted' });
     } catch (error: any) {
@@ -13845,7 +13845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Meta Transfer] Transferring connection from ${fromCampaignId} to ${toCampaignId}`);
 
       const tempConnection = await storage.getMetaConnection(fromCampaignId);
-      
+
       if (!tempConnection) {
         console.log(`[Meta Transfer] No connection found for ${fromCampaignId}`);
         return res.json({ success: true, message: 'No connection to transfer' });
@@ -13882,7 +13882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Meta Analytics] Fetching analytics for campaign ${campaignId}`);
 
       const connection = await storage.getMetaConnection(campaignId);
-      
+
       if (!connection) {
         return res.status(404).json({ error: "Meta connection not found for this campaign" });
       }
@@ -13908,7 +13908,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Meta Summary] Fetching summary for campaign ${campaignId}`);
 
       const connection = await storage.getMetaConnection(campaignId);
-      
+
       if (!connection) {
         return res.status(404).json({ error: "Meta connection not found for this campaign" });
       }
@@ -13951,21 +13951,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("[Custom Integration] Received connection request:", req.body);
       const { email, campaignId, allowedEmailAddresses } = req.body;
-      
+
       if (!email || !campaignId) {
         console.log("[Custom Integration] Missing email or campaignId");
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: "Email and campaign ID are required" 
+          error: "Email and campaign ID are required"
         });
       }
 
       // Validate email format
       if (!email.includes('@')) {
         console.log("[Custom Integration] Invalid email format:", email);
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: "Invalid email format" 
+          error: "Invalid email format"
         });
       }
 
@@ -13975,23 +13975,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validatedEmailAddresses = allowedEmailAddresses
           .map((e: string) => e.trim())
           .filter((e: string) => e.includes('@'));
-        
+
         if (validatedEmailAddresses.length === 0) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             success: false,
-            error: "Invalid email addresses in whitelist" 
+            error: "Invalid email addresses in whitelist"
           });
         }
-        
+
         console.log("[Custom Integration] Email whitelist configured:", validatedEmailAddresses);
       }
 
       // Check if integration already exists
       const existing = await storage.getCustomIntegration(campaignId);
-      
+
       // Only generate a new webhook token if this is a new integration
       const webhookToken = existing?.webhookToken || nanoid(32);
-      
+
       // Create or update the custom integration
       console.log("[Custom Integration] Creating custom integration for:", { campaignId, email, webhookToken, allowedEmailAddresses: validatedEmailAddresses });
       const customIntegration = await storage.createCustomIntegration({
@@ -14002,7 +14002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       console.log("[Custom Integration] Created successfully:", customIntegration);
 
-      const responseData = { 
+      const responseData = {
         success: true,
         customIntegration,
         message: `Successfully connected to ${email}`
@@ -14011,9 +14011,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(responseData);
     } catch (error) {
       console.error("[Custom Integration] Connection error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
-        error: "Failed to connect custom integration" 
+        error: "Failed to connect custom integration"
       });
     }
   });
@@ -14024,10 +14024,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!customIntegration) {
         return res.status(404).json({ message: "Custom integration not found" });
       }
-      
+
       // Include latest metrics for KPI creation dropdown
       const metrics = await storage.getLatestCustomIntegrationMetrics(req.params.campaignId);
-      
+
       res.json({
         ...customIntegration,
         metrics: metrics || null
@@ -14068,7 +14068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (previous && hasChanges) {
         const metricKeys = ['users', 'sessions', 'pageviews', 'bounceRate', 'emailsDelivered', 'openRate', 'clickThroughRate', 'spend', 'conversions', 'impressions', 'clicks'];
-        
+
         metricKeys.forEach(key => {
           const currentVal = parseFloat(current[key] || '0');
           const previousVal = parseFloat(previous[key] || '0');
@@ -14097,11 +14097,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId } = req.params;
       const metrics = await storage.getLatestCustomIntegrationMetrics(campaignId);
-      
+
       if (!metrics) {
         return res.status(404).json({ message: "No metrics found for this campaign" });
       }
-      
+
       res.json(metrics);
     } catch (error) {
       console.error("Failed to fetch custom integration metrics:", error);
@@ -14113,11 +14113,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/custom-integration/:campaignId/upload-pdf", upload.single('pdf'), async (req, res) => {
     try {
       const { campaignId } = req.params;
-      
+
       if (!req.file) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: "No PDF file provided" 
+          error: "No PDF file provided"
         });
       }
 
@@ -14181,9 +14181,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("[PDF Upload] Error processing PDF:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "Failed to process PDF" 
+        error: error instanceof Error ? error.message : "Failed to process PDF"
       });
     }
   });
@@ -14192,20 +14192,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/webhook/custom-integration/:token", upload.single('pdf'), async (req, res) => {
     try {
       const { token } = req.params;
-      
+
       console.log(`[Webhook] Received request with token: ${token}`);
       console.log(`[Webhook] Request body:`, req.body);
       console.log(`[Webhook] Has file:`, !!req.file);
-      
+
       // Find the custom integration by webhook token
       const customIntegrations = await storage.getAllCustomIntegrations();
       const integration = customIntegrations.find(ci => ci.webhookToken === token);
-      
+
       if (!integration) {
         console.log(`[Webhook] Invalid token: ${token}`);
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: "Invalid webhook token" 
+          error: "Invalid webhook token"
         });
       }
 
@@ -14217,35 +14217,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdfBuffer = req.file.buffer;
         fileName = req.file.originalname;
         console.log(`[Webhook] Processing uploaded PDF for campaign ${integration.campaignId}, file: ${fileName}, size: ${req.file.size} bytes`);
-      } 
+      }
       // Check if PDF URL was provided (IFTTT)
       else if (req.body.pdfUrl || req.body.pdf_url || req.body.value1) {
         const pdfUrl = req.body.pdfUrl || req.body.pdf_url || req.body.value1;
         console.log(`[Webhook] Downloading PDF from URL: ${pdfUrl}`);
-        
+
         try {
           const response = await fetch(pdfUrl);
           if (!response.ok) {
             throw new Error(`Failed to download PDF: ${response.statusText}`);
           }
-          
+
           const arrayBuffer = await response.arrayBuffer();
           pdfBuffer = Buffer.from(arrayBuffer);
           fileName = pdfUrl.split('/').pop()?.split('?')[0] || 'downloaded.pdf';
-          
+
           console.log(`[Webhook] Downloaded PDF for campaign ${integration.campaignId}, size: ${pdfBuffer.length} bytes`);
         } catch (downloadError) {
           console.error('[Webhook] PDF download error:', downloadError);
-          return res.status(400).json({ 
+          return res.status(400).json({
             success: false,
-            error: "Failed to download PDF from URL" 
+            error: "Failed to download PDF from URL"
           });
         }
-      } 
+      }
       else {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: "No PDF file or PDF URL provided. Send either a file upload or provide 'pdfUrl' in the request body." 
+          error: "No PDF file or PDF URL provided. Send either a file upload or provide 'pdfUrl' in the request body."
         });
       }
 
@@ -14254,11 +14254,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Webhook] Parsed metrics:`, parsedMetrics);
       console.log(`[Webhook] Confidence: ${parsedMetrics._confidence}%`);
       console.log(`[Webhook] Extracted fields: ${parsedMetrics._extractedFields}`);
-      
+
       if (parsedMetrics._warnings && parsedMetrics._warnings.length > 0) {
         console.warn(`[Webhook] ⚠️  Validation warnings:`, parsedMetrics._warnings);
       }
-      
+
       if (parsedMetrics._requiresReview) {
         console.warn(`[Webhook] ⚠️  MANUAL REVIEW REQUIRED - Confidence: ${parsedMetrics._confidence}%`);
       }
@@ -14312,8 +14312,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Prepare response with validation metadata
       const response: any = {
         success: true,
-        message: parsedMetrics._requiresReview 
-          ? "PDF processed but requires manual review" 
+        message: parsedMetrics._requiresReview
+          ? "PDF processed but requires manual review"
           : "PDF processed successfully",
         campaignId: integration.campaignId,
         metricsId: metrics.id,
@@ -14325,7 +14325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         requiresReview: parsedMetrics._requiresReview,
         warnings: parsedMetrics._warnings || [],
       };
-      
+
       // If confidence is below threshold, include review URL
       if (parsedMetrics._requiresReview) {
         response.reviewUrl = `/campaigns/${integration.campaignId}/review-import/${metrics.id}`;
@@ -14335,9 +14335,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(response);
     } catch (error) {
       console.error("[Webhook] Error processing PDF:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "Failed to process PDF" 
+        error: error instanceof Error ? error.message : "Failed to process PDF"
       });
     }
   });
@@ -14346,20 +14346,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/email/inbound/:token", async (req, res) => {
     try {
       const { token } = req.params;
-      
+
       console.log(`[Email] Received email with token: ${token}`);
       console.log(`[Email] From:`, req.body.envelope?.from);
       console.log(`[Email] Subject:`, req.body.headers?.subject);
-      
+
       // Find the custom integration by webhook token
       const customIntegrations = await storage.getAllCustomIntegrations();
       const integration = customIntegrations.find(ci => ci.webhookToken === token);
-      
+
       if (!integration) {
         console.log(`[Email] Invalid token: ${token}`);
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: "Invalid email token" 
+          error: "Invalid email token"
         });
       }
 
@@ -14367,38 +14367,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const senderEmail = req.body.envelope?.from?.toLowerCase();
       if (integration.allowedEmailAddresses && integration.allowedEmailAddresses.length > 0) {
         const normalizedWhitelist = integration.allowedEmailAddresses.map(e => e.toLowerCase());
-        
+
         if (!senderEmail || !normalizedWhitelist.includes(senderEmail)) {
           console.log(`[Email] Rejected email from unauthorized sender: ${senderEmail}`);
           console.log(`[Email] Allowed senders:`, integration.allowedEmailAddresses);
-          return res.status(403).json({ 
+          return res.status(403).json({
             success: false,
-            error: "Email sender not authorized. Only whitelisted email addresses can send to this webhook." 
+            error: "Email sender not authorized. Only whitelisted email addresses can send to this webhook."
           });
         }
-        
+
         console.log(`[Email] Email sender validated: ${senderEmail}`);
       }
 
       // Extract PDF attachment from CloudMailin format
       const attachments = req.body.attachments;
       if (!attachments || attachments.length === 0) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: "No attachments found in email" 
+          error: "No attachments found in email"
         });
       }
 
       // Find the first PDF attachment
-      const pdfAttachment = attachments.find((att: any) => 
-        att.content_type === 'application/pdf' || 
+      const pdfAttachment = attachments.find((att: any) =>
+        att.content_type === 'application/pdf' ||
         att.file_name?.toLowerCase().endsWith('.pdf')
       );
 
       if (!pdfAttachment) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: "No PDF attachment found in email" 
+          error: "No PDF attachment found in email"
         });
       }
 
@@ -14409,7 +14409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (pdfAttachment.content) {
         console.log(`[Email] Decoding base64 PDF: ${fileName}`);
         pdfBuffer = Buffer.from(pdfAttachment.content, 'base64');
-      } 
+      }
       // Check if attachment has URL (cloud storage)
       else if (pdfAttachment.url) {
         console.log(`[Email] Downloading PDF from cloud storage: ${pdfAttachment.url}`);
@@ -14422,16 +14422,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pdfBuffer = Buffer.from(arrayBuffer);
         } catch (downloadError) {
           console.error('[Email] PDF download error:', downloadError);
-          return res.status(400).json({ 
+          return res.status(400).json({
             success: false,
-            error: "Failed to download PDF from cloud storage" 
+            error: "Failed to download PDF from cloud storage"
           });
         }
-      } 
+      }
       else {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: "PDF attachment has no content or URL" 
+          error: "PDF attachment has no content or URL"
         });
       }
 
@@ -14445,7 +14445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingMetrics = await storage.getLatestCustomIntegrationMetrics(integration.campaignId);
       let previousMetrics = null;
       let previousUpdateAt = null;
-      
+
       if (existingMetrics) {
         // Save current state as previous before updating
         previousMetrics = JSON.stringify({
@@ -14525,15 +14525,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("[Email] Error processing PDF:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "Failed to process email PDF" 
+        error: error instanceof Error ? error.message : "Failed to process email PDF"
       });
     }
   });
 
   // LinkedIn API routes
-  
+
   // POST /api/linkedin/connect - Manual token connection
   app.post("/api/linkedin/connect", async (req, res) => {
     try {
@@ -14544,7 +14544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertLinkedInConnectionSchema.parse(req.body);
       const connection = await storage.createLinkedInConnection(validatedData);
-      
+
       res.status(201).json({
         success: true,
         connection: {
@@ -14580,11 +14580,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const connection = await storage.getLinkedInConnection(campaignId);
-      
+
       if (!connection || !connection.adAccountId) {
         return res.json({ connected: false });
       }
-      
+
       res.json({
         connected: true,
         connection: {
@@ -14608,14 +14608,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const deleted = await storage.deleteLinkedInConnection(campaignId);
-      
+
       if (!deleted) {
         return res.status(404).json({
           success: false,
           error: "LinkedIn connection not found"
         });
       }
-      
+
       res.json({
         success: true,
         message: 'LinkedIn connection deleted successfully'
@@ -14647,16 +14647,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const validatedData = insertLinkedInConnectionSchema.partial().parse(req.body);
-      
+
       const updatedConnection = await storage.updateLinkedInConnection(campaignId, validatedData);
-      
+
       if (!updatedConnection) {
         return res.status(404).json({
           success: false,
           error: "LinkedIn connection not found"
         });
       }
-      
+
       res.json({
         success: true,
         connection: {
@@ -14756,7 +14756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (v === '' || v === null || typeof v === 'undefined') return fallback;
         return typeof v === 'number' ? String(v) : String(v);
       };
-      
+
       // Convert empty strings to null for numeric and optional text fields
       const requestData = {
         ...req.body,
@@ -14775,9 +14775,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rollingAverage: req.body.rollingAverage || "7day",
         targetDate: req.body.targetDate ? new Date(req.body.targetDate) : null
       };
-      
+
       const validatedKPI = insertKPISchema.parse(requestData);
-      
+
       const kpi = await storage.createKPI(validatedKPI);
       res.json(kpi);
     } catch (error) {
@@ -14795,7 +14795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { kpiId } = req.params;
       const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
       if (!okKpi) return;
-      
+
       const toDecimalStringOrUndefined = (v: any): string | undefined => {
         if (typeof v === 'undefined') return undefined;
         if (v === null) return undefined;
@@ -14815,7 +14815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         emailRecipients: req.body.emailRecipients === '' ? null : req.body.emailRecipients,
         targetDate: req.body.targetDate ? new Date(req.body.targetDate) : req.body.targetDate === null ? null : undefined
       };
-      
+
       // Validate update payload to prevent invalid/inconsistent KPI rows.
       // Force campaignId/platformType from the existing KPI (never editable via patch).
       const validated = insertKPISchema.partial().parse({
@@ -14847,7 +14847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
       if (!okKpi) return;
       const deleted = await storage.deleteKPI(kpiId);
-      
+
       if (!deleted) {
         return res.status(404).json({ message: "KPI not found" });
       }
@@ -14873,7 +14873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e) {
         console.warn("[KPI Delete] Failed to cascade delete KPI notifications:", e);
       }
-      
+
       res.setHeader('Content-Type', 'application/json');
       const response = { message: "KPI deleted successfully", success: true };
       res.json(response);
@@ -14908,7 +14908,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("[KPI Create] Failed to ensure calculation_config column:", e);
         }
       }
-      
+
       // Convert numeric values to strings for decimal fields
       const requestData = {
         ...req.body,
@@ -14918,13 +14918,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timeframe: req.body.timeframe || "monthly",
         trackingPeriod: req.body.trackingPeriod || 30,
         rollingAverage: req.body.rollingAverage || "7day",
-        targetDate: req.body.targetDate && req.body.targetDate.trim() !== '' 
-          ? new Date(req.body.targetDate) 
+        targetDate: req.body.targetDate && req.body.targetDate.trim() !== ''
+          ? new Date(req.body.targetDate)
           : null
       };
-      
+
       const validatedKPI = insertKPISchema.parse(requestData);
-      
+
       const kpi = await storage.createKPI(validatedKPI);
       res.json(kpi);
     } catch (error) {
@@ -14971,12 +14971,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("[KPI Update] Failed to ensure calculation_config column:", e);
         }
       }
-      
+
       // Convert numeric values to strings for decimal fields
       const updateData: any = {
         ...req.body,
       };
-      
+
       if (req.body.targetValue !== undefined) {
         updateData.targetValue = req.body.targetValue?.toString();
       }
@@ -14987,11 +14987,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.alertThreshold = req.body.alertThreshold?.toString();
       }
       if (req.body.targetDate !== undefined) {
-        updateData.targetDate = req.body.targetDate && req.body.targetDate.trim() !== '' 
-          ? new Date(req.body.targetDate) 
+        updateData.targetDate = req.body.targetDate && req.body.targetDate.trim() !== ''
+          ? new Date(req.body.targetDate)
           : null;
       }
-      
+
       const kpi = await storage.updateKPI(kpiId, updateData);
       if (!kpi) {
         return res.status(404).json({ message: "KPI not found" });
@@ -15023,12 +15023,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/campaigns/:id/kpis/:kpiId", async (req, res) => {
     try {
       const { kpiId } = req.params;
-      
+
       const deleted = await storage.deleteKPI(kpiId);
       if (!deleted) {
         return res.status(404).json({ message: "KPI not found" });
       }
-      
+
       res.json({ message: "KPI deleted successfully", success: true });
     } catch (error) {
       console.error('KPI deletion error:', error);
@@ -15267,7 +15267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const ok = await ensureCampaignAccess(req as any, res as any, id);
       if (!ok) return;
-      
+
       // Convert numeric values to strings for decimal fields
       const cleanedData = {
         ...req.body,
@@ -15278,10 +15278,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         benchmarkValue: req.body.benchmarkValue !== undefined && req.body.benchmarkValue !== '' ? String(req.body.benchmarkValue) : null,
         currentValue: req.body.currentValue !== undefined && req.body.currentValue !== '' ? String(req.body.currentValue) : null
       };
-      
+
       const validatedBenchmark = insertBenchmarkSchema.parse(cleanedData);
       const benchmark = await storage.createBenchmark(validatedBenchmark);
-      
+
       res.json(benchmark);
     } catch (error) {
       console.error('Campaign Benchmark creation error:', error);
@@ -15297,7 +15297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { benchmarkId } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
-      
+
       // Convert numeric values to strings for decimal fields
       const cleanedData = { ...req.body };
       if (cleanedData.alertThreshold !== undefined) {
@@ -15309,14 +15309,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (cleanedData.currentValue !== undefined) {
         cleanedData.currentValue = cleanedData.currentValue !== '' ? String(cleanedData.currentValue) : null;
       }
-      
+
       const validatedBenchmark = insertBenchmarkSchema.partial().parse(cleanedData);
-      
+
       const benchmark = await storage.updateBenchmark(benchmarkId, validatedBenchmark);
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
-      
+
       res.json(benchmark);
     } catch (error) {
       console.error('Campaign Benchmark update error:', error);
@@ -15332,7 +15332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { benchmarkId } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
-      
+
       const deleted = await storage.deleteBenchmark(benchmarkId);
       if (!deleted) {
         return res.status(404).json({ message: "Benchmark not found" });
@@ -15359,7 +15359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e) {
         console.warn("[Benchmark Delete] Failed to cascade delete benchmark notifications:", e);
       }
-      
+
       res.json({ message: "Benchmark deleted successfully", success: true });
     } catch (error) {
       console.error('Campaign Benchmark deletion error:', error);
@@ -15374,7 +15374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const okKpi = await ensureKpiAccess(req as any, res as any, id);
       if (!okKpi) return;
       const timeframe = req.query.timeframe as string || "30d";
-      
+
       const analytics = await storage.getKPIAnalytics(id, timeframe);
       res.json(analytics);
     } catch (error) {
@@ -15389,7 +15389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const okKpi = await ensureKpiAccess(req as any, res as any, id);
       if (!okKpi) return;
-      
+
       const progressData = {
         kpiId: id,
         value: req.body.value?.toString() || "0",
@@ -15398,7 +15398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trendDirection: req.body.trendDirection || "neutral",
         notes: req.body.notes
       };
-      
+
       const validated = insertKPIProgressSchema.parse(progressData);
       const progress = await storage.recordKPIProgress(validated);
       res.json(progress);
@@ -15524,7 +15524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const ok = await ensureCampaignAccess(req as any, res as any, String(req.body.campaignId));
       if (!ok) return;
-      
+
       // Convert empty strings to null for numeric fields
       const cleanedData = {
         ...req.body,
@@ -15534,9 +15534,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         benchmarkValue: req.body.benchmarkValue === '' ? null : req.body.benchmarkValue,
         currentValue: req.body.currentValue === '' ? null : req.body.currentValue
       };
-      
+
       const validatedData = insertBenchmarkSchema.parse(cleanedData);
-      
+
       // Calculate initial variance if current value exists
       if (validatedData.currentValue && validatedData.benchmarkValue) {
         const currentVal = parseFloat(validatedData.currentValue.toString());
@@ -15544,7 +15544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const variance = ((currentVal - benchmarkVal) / benchmarkVal) * 100;
         validatedData.variance = variance.toString();
       }
-      
+
       const benchmark = await storage.createBenchmark(validatedData);
       res.status(201).json(benchmark);
     } catch (error) {
@@ -15562,9 +15562,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { benchmarkId } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
-      
+
       const validatedData = insertBenchmarkSchema.partial().parse(req.body);
-      
+
       // Calculate variance if both values are provided
       if (validatedData.currentValue && validatedData.benchmarkValue) {
         const currentVal = parseFloat(validatedData.currentValue.toString());
@@ -15572,12 +15572,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const variance = ((currentVal - benchmarkVal) / benchmarkVal) * 100;
         validatedData.variance = variance.toString();
       }
-      
+
       const benchmark = await storage.updateBenchmark(benchmarkId, validatedData);
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
-      
+
       res.json(benchmark);
     } catch (error) {
       console.error('Platform benchmark update error:', error);
@@ -15594,12 +15594,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { benchmarkId } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
-      
+
       const deleted = await storage.deleteBenchmark(benchmarkId);
       if (!deleted) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
-      
+
       res.json({ message: "Benchmark deleted successfully", success: true });
     } catch (error) {
       console.error('Platform benchmark deletion error:', error);
@@ -15699,7 +15699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       const allowedReportTypes = new Set(["overview", "kpis", "benchmarks", "ads", "insights", "custom"]);
       const reportType = String(body?.reportType || "").toLowerCase();
       if (!reportType || !allowedReportTypes.has(reportType)) {
@@ -15727,7 +15727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validated = insertLinkedInReportSchema.parse(requestData);
       const report = await storage.createPlatformReport(validated);
-      
+
       res.status(201).json(report);
     } catch (error) {
       console.error('Platform report creation error:', error);
@@ -15794,7 +15794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!report) {
         return res.status(404).json({ message: "Report not found" });
       }
-      
+
       res.json(report);
     } catch (error) {
       console.error('Platform report update error:', error);
@@ -15812,12 +15812,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { reportId } = req.params;
       const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
       if (!existing) return;
-      
+
       const deleted = await storage.deletePlatformReport(reportId);
       if (!deleted) {
         return res.status(404).json({ message: "Report not found" });
       }
-      
+
       res.json({ message: "Report deleted successfully", success: true });
     } catch (error) {
       console.error('Platform report deletion error:', error);
@@ -15831,40 +15831,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { reportId } = req.params;
       const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
       if (!existing) return;
-      
+
       // Check email configuration first
       const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
-      const hasEmailConfig = 
+      const hasEmailConfig =
         (emailProvider === 'mailgun' && process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS) ||
         (emailProvider === 'sendgrid' && process.env.SENDGRID_API_KEY) ||
         (emailProvider === 'smtp' && process.env.SMTP_USER && process.env.SMTP_PASS);
-      
+
       if (!hasEmailConfig) {
         console.error(`[API] Email not configured. Provider: ${emailProvider}`);
-        return res.status(500).json({ 
+        return res.status(500).json({
           message: `Email service not configured. Please set up ${emailProvider.toUpperCase()} credentials in environment variables.`,
           success: false,
           emailProvider
         });
       }
-      
+
       const { sendTestReport } = await import('./report-scheduler.js');
       const sent = await sendTestReport(reportId);
-      
+
       if (sent) {
-        res.json({ 
-          message: "Test report email sent successfully! Check your inbox.", 
-          success: true 
+        res.json({
+          message: "Test report email sent successfully! Check your inbox.",
+          success: true
         });
       } else {
-        res.status(500).json({ 
-          message: "Failed to send test report email. Check server logs for details.", 
-          success: false 
+        res.status(500).json({
+          message: "Failed to send test report email. Check server logs for details.",
+          success: false
         });
       }
     } catch (error) {
       console.error('[API] Test report send error:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: `Error: ${error instanceof Error ? error.message : 'Failed to send test report'}`,
         success: false
       });
@@ -16040,7 +16040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       const validatedData = insertBenchmarkSchema.parse(req.body);
-      
+
       // Calculate initial variance if current value exists
       if (validatedData.currentValue && validatedData.benchmarkValue) {
         const currentVal = parseFloat(validatedData.currentValue.toString());
@@ -16048,7 +16048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const variance = ((currentVal - benchmarkVal) / benchmarkVal) * 100;
         validatedData.variance = variance.toString();
       }
-      
+
       const benchmark = await storage.createBenchmark(validatedData);
       res.status(201).json(benchmark);
     } catch (error) {
@@ -16067,7 +16067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await ensureBenchmarkAccess(req as any, res as any, id);
       if (!existing) return;
       const updateData = req.body;
-      
+
       // Recalculate variance if values are updated
       if (updateData.currentValue && updateData.benchmarkValue) {
         const currentVal = parseFloat(updateData.currentValue.toString());
@@ -16075,13 +16075,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const variance = ((currentVal - benchmarkVal) / benchmarkVal) * 100;
         updateData.variance = variance.toString();
       }
-      
+
       const benchmark = await storage.updateBenchmark(id, updateData);
-      
+
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
-      
+
       res.json(benchmark);
     } catch (error) {
       console.error('Benchmark update error:', error);
@@ -16096,11 +16096,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await ensureBenchmarkAccess(req as any, res as any, id);
       if (!existing) return;
       const success = await storage.deleteBenchmark(id);
-      
+
       if (!success) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
-      
+
       res.json({ success: true, message: "Benchmark deleted successfully" });
     } catch (error) {
       console.error('Benchmark deletion error:', error);
@@ -16128,7 +16128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, id);
       if (!existing) return;
-      
+
       const historyData = {
         benchmarkId: id,
         currentValue: req.body.currentValue?.toString(),
@@ -16137,7 +16137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         performanceRating: req.body.performanceRating || "average",
         notes: req.body.notes
       };
-      
+
       const validated = insertBenchmarkHistorySchema.parse(historyData);
       const history = await storage.recordBenchmarkHistory(validated);
       res.json(history);
@@ -16166,7 +16166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Attribution Analysis Routes
-  
+
   // Attribution Models endpoints
   app.get('/api/attribution/models', async (req, res) => {
     try {
@@ -16184,7 +16184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedAt: new Date()
         },
         {
-          id: "last-touch", 
+          id: "last-touch",
           name: "Last Touch",
           type: "last_touch",
           description: "100% credit to the last touchpoint before conversion",
@@ -16197,7 +16197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "linear",
           name: "Linear",
-          type: "linear", 
+          type: "linear",
           description: "Equal credit distributed across all touchpoints",
           configuration: null,
           isDefault: false,
@@ -16301,7 +16301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/attribution/journeys', async (req, res) => {
     try {
       const { status } = req.query;
-      
+
       // Sample customer journeys with touchpoints for demo
       const journeys = [
         {
@@ -16320,7 +16320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedAt: new Date(),
         },
         {
-          id: "journey-002", 
+          id: "journey-002",
           customerId: "CUST_002",
           sessionId: "session_def456",
           deviceId: null,
@@ -16336,7 +16336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         {
           id: "journey-003",
-          customerId: "CUST_003", 
+          customerId: "CUST_003",
           sessionId: "session_ghi789",
           deviceId: null,
           userId: null,
@@ -16352,7 +16352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "journey-004",
           customerId: "CUST_004",
-          sessionId: "session_jkl012", 
+          sessionId: "session_jkl012",
           deviceId: null,
           userId: null,
           journeyStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
@@ -16380,7 +16380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedAt: new Date(),
         }
       ];
-      
+
       // Filter by status if provided
       const filteredJourneys = status ? journeys.filter(j => j.status === status) : journeys;
       res.json(filteredJourneys);
@@ -16442,7 +16442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/attribution/touchpoints', async (req, res) => {
     try {
       const { journeyId } = req.query;
-      
+
       // Sample touchpoints data based on journey ID
       const touchpointsData: Record<string, any[]> = {
         "journey-001": [
@@ -16463,7 +16463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             conversion_value: "57.00"
           },
           {
-            id: "tp-001-2", 
+            id: "tp-001-2",
             journeyId: "journey-001",
             channel: "Facebook",
             touchpointType: "paid_social",
@@ -16480,7 +16480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           {
             id: "tp-001-3",
-            journeyId: "journey-001", 
+            journeyId: "journey-001",
             channel: "Email",
             touchpointType: "email",
             timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -16676,7 +16676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         ]
       };
-      
+
       const touchpoints = touchpointsData[journeyId as string] || [];
       res.json(touchpoints);
     } catch (error) {
@@ -16704,7 +16704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/attribution/calculate', async (req, res) => {
     try {
       const { journeyId, modelId } = req.body;
-      
+
       if (!journeyId || !modelId) {
         res.status(400).json({ error: 'Journey ID and Model ID are required' });
         return;
@@ -16722,7 +16722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/attribution/channel-performance', async (req, res) => {
     try {
       const { startDate, endDate, modelId } = req.query;
-      
+
       // Sample channel performance data with correct structure for frontend
       const performance = [
         {
@@ -16782,7 +16782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           returnOnAdSpend: 999.9
         }
       ];
-      
+
       res.json(performance);
     } catch (error) {
       console.error('Failed to get channel performance attribution:', error);
@@ -16794,18 +16794,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/campaigns/:campaignId/attribution', async (req, res) => {
     try {
       const { modelId } = req.query;
-      
+
       // Get campaign touchpoints
       const touchpoints = await storage.getCampaignTouchpoints(req.params.campaignId);
-      
+
       // Get attribution insights for this campaign
       const insights = await storage.getCampaignAttributionInsights(
-        req.params.campaignId, 
+        req.params.campaignId,
         modelId as string
       );
 
       // Calculate campaign attribution summary
-      const totalAttributedValue = touchpoints.reduce((sum, tp) => 
+      const totalAttributedValue = touchpoints.reduce((sum, tp) =>
         sum + parseFloat(tp.eventValue || "0"), 0
       );
 
@@ -16828,12 +16828,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // LinkedIn Import Routes
-  
+
   // Create LinkedIn import session with metrics and ad performance data
   app.post("/api/linkedin/imports", async (req, res) => {
     try {
       const { campaignId, adAccountId, adAccountName, campaigns } = req.body;
-      
+
       if (!campaignId || !adAccountId || !adAccountName || !campaigns || !Array.isArray(campaigns)) {
         return res.status(400).json({ message: "Invalid request body" });
       }
@@ -16855,14 +16855,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "viralImpressions",
       ] as const;
       const selectedMetricKeys = Array.from(CORE_LINKEDIN_METRIC_KEYS);
-      
+
       // Count selected campaigns and metrics (fixed core metric set)
       const selectedCampaignsCount = campaigns.length;
       const selectedMetricsCount = selectedCampaignsCount * selectedMetricKeys.length;
-      
+
       // Get conversion value from the first campaign (all campaigns share the same value)
       const conversionValue = campaigns[0]?.conversionValue || null;
-      
+
       // Create import session
       const session = await storage.createLinkedInImportSession({
         campaignId,
@@ -16955,7 +16955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return parts;
       };
-      
+
       // Create metrics for each campaign and core metric (fixed set)
       const campaignCount = campaigns.length;
       const spendParts = splitNumber(Number(sums.spend || 0), campaignCount, 2);
@@ -16994,7 +16994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             metricValue
           });
         }
-        
+
         // Generate mock ad performance data (2-3 ads per campaign)
         // Core metrics are always present; derived metrics are computed when base metrics exist.
         const numAds = Math.floor(Math.random() * 2) + 2;
@@ -17008,7 +17008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const adLeadsParts = splitNumber(Number(byKey.leads || 0), numAds, 0);
         const adVideoViewsParts = splitNumber(Number(byKey.videoViews || 0), numAds, 0);
         const adViralImpressionsParts = splitNumber(Number(byKey.viralImpressions || 0), numAds, 0);
-        
+
         for (let i = 0; i < numAds; i++) {
           // Initialize ad data with campaign info and defaults
           const adData: any = {
@@ -17027,108 +17027,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
             cpc: "0",
             conversionRate: "0"
           };
-          
+
           // Populate core metrics
           if (selectedMetrics.includes('impressions')) {
             adData.impressions = Math.round(adImpressionsParts[i] ?? 0);
           }
-          
+
           if (selectedMetrics.includes('reach')) {
             adData.reach = Math.round(adReachParts[i] ?? 0);
           }
-          
+
           if (selectedMetrics.includes('clicks')) {
             adData.clicks = Math.round(adClicksParts[i] ?? 0);
           }
-          
+
           if (selectedMetrics.includes('engagements')) {
             adData.engagements = Math.round(adEngagementsParts[i] ?? 0);
           }
-          
+
           if (selectedMetrics.includes('spend')) {
             adData.spend = Number(adSpendParts[i] ?? 0).toFixed(2);
           }
-          
+
           if (selectedMetrics.includes('conversions')) {
             adData.conversions = Math.round(adConversionsParts[i] ?? 0);
           }
-          
+
           if (selectedMetrics.includes('leads')) {
             adData.leads = Math.round(adLeadsParts[i] ?? 0);
           }
-          
+
           if (selectedMetrics.includes('videoViews')) {
             adData.videoViews = Math.round(adVideoViewsParts[i] ?? 0);
           }
-          
+
           if (selectedMetrics.includes('viralImpressions')) {
             adData.viralImpressions = Math.round(adViralImpressionsParts[i] ?? 0);
           }
-          
+
           // Calculate revenue if conversions are selected
           if (selectedMetrics.includes('conversions') && adData.conversions > 0) {
             adData.revenue = (adData.conversions * (Math.random() * 200 + 50)).toFixed(2);
           }
-          
+
           // Calculate all derived metrics only if base metrics are available
           const spend = parseFloat(adData.spend);
-          
+
           // CTR = (Clicks / Impressions) * 100
           if (selectedMetrics.includes('clicks') && selectedMetrics.includes('impressions') && adData.impressions > 0) {
             adData.ctr = ((adData.clicks / adData.impressions) * 100).toFixed(2);
           }
-          
+
           // CPC = Spend / Clicks
           if (selectedMetrics.includes('spend') && selectedMetrics.includes('clicks') && adData.clicks > 0) {
             adData.cpc = (spend / adData.clicks).toFixed(2);
           }
-          
+
           // CPM = (Spend / Impressions) * 1000
           if (selectedMetrics.includes('spend') && selectedMetrics.includes('impressions') && adData.impressions > 0) {
             adData.cpm = ((spend / adData.impressions) * 1000).toFixed(2);
           }
-          
+
           // CVR (Conversion Rate) = (Conversions / Clicks) * 100
           if (selectedMetrics.includes('conversions') && selectedMetrics.includes('clicks') && adData.clicks > 0) {
             adData.cvr = ((adData.conversions / adData.clicks) * 100).toFixed(2);
             adData.conversionRate = adData.cvr; // Keep legacy field in sync
           }
-          
+
           // CPA (Cost per Acquisition) = Spend / Conversions
           if (selectedMetrics.includes('spend') && selectedMetrics.includes('conversions') && adData.conversions > 0) {
             adData.cpa = (spend / adData.conversions).toFixed(2);
           }
-          
+
           // CPL (Cost per Lead) = Spend / Leads
           if (selectedMetrics.includes('spend') && selectedMetrics.includes('leads') && adData.leads > 0) {
             adData.cpl = (spend / adData.leads).toFixed(2);
           }
-          
+
           // ER (Engagement Rate) = (Engagements / Impressions) * 100
           if (selectedMetrics.includes('engagements') && selectedMetrics.includes('impressions') && adData.impressions > 0) {
             adData.er = ((adData.engagements / adData.impressions) * 100).toFixed(2);
           }
-          
+
           // ROI = ((Revenue - Spend) / Spend) * 100
           if (selectedMetrics.includes('conversions') && selectedMetrics.includes('spend') && spend > 0 && parseFloat(adData.revenue) > 0) {
             const revenue = parseFloat(adData.revenue);
             adData.roi = (((revenue - spend) / spend) * 100).toFixed(2);
           }
-          
+
           // ROAS = Revenue / Spend
           if (selectedMetrics.includes('conversions') && selectedMetrics.includes('spend') && spend > 0 && parseFloat(adData.revenue) > 0) {
             const revenue = parseFloat(adData.revenue);
             adData.roas = (revenue / spend).toFixed(2);
           }
-          
+
           await storage.createLinkedInAdPerformance(adData);
         }
       }
-      
+
       // Create LinkedIn connection for transfer to work
       // Check if connection already exists for this campaign
       const existingConnection = await storage.getLinkedInConnection(campaignId);
-      
+
       if (!existingConnection) {
         // Create a test mode connection (using test data, no real OAuth tokens)
         await storage.createLinkedInConnection({
@@ -17143,7 +17143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastRefreshAt: new Date(),
           expiresAt: null
         });
-        
+
         console.log('Created LinkedIn test mode connection for campaign:', campaignId);
       } else {
         // Keep refresh metadata current for coverage UI.
@@ -17153,14 +17153,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // ignore
         }
       }
-      
+
       // Stage 1: Automatically refresh KPIs after LinkedIn import
       try {
         const { refreshKPIsForCampaign } = await import('./utils/kpi-refresh');
         console.log(`[LinkedIn Import] Refreshing KPIs for campaign ${campaignId}...`);
         await refreshKPIsForCampaign(campaignId);
         console.log(`[LinkedIn Import] ✅ KPI refresh completed`);
-        
+
         // Stage 2: Immediately check for alerts after KPI refresh (enterprise-grade)
         try {
           const { checkPerformanceAlerts } = await import('./kpi-scheduler');
@@ -17175,14 +17175,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Don't fail the import if KPI refresh fails - log and continue
         console.error(`[LinkedIn Import] Warning: KPI refresh failed (import still succeeded):`, kpiError);
       }
-      
+
       res.status(201).json({ success: true, sessionId: session.id });
     } catch (error) {
       console.error('LinkedIn import creation error:', error);
       res.status(500).json({ message: "Failed to create LinkedIn import" });
     }
   });
-  
+
   // Get all import sessions for a campaign
   app.get("/api/linkedin/import-sessions/:campaignId", async (req, res) => {
     try {
@@ -17205,11 +17205,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      
+
       // Canonical "latest session" selection: DB-ordered, deterministic.
       const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
       if (!latestSession) return res.json(null);
-      
+
       // Get metrics for this session
       const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
 
@@ -17235,11 +17235,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const canonReach = sumMetricValues(['reach']);
       const canonVideoViews = sumMetricValues(['videoviews']);
       const canonViralImpressions = sumMetricValues(['viralimpressions']);
-      
+
       // Aggregate metrics
       const aggregated: Record<string, number> = {};
       const selectedMetrics = Array.from(new Set(metrics.map((m: any) => m.metricKey)));
-      
+
       selectedMetrics.forEach((metricKey: string) => {
         const total = metrics
           .filter((m: any) => m.metricKey === metricKey)
@@ -17261,7 +17261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ].includes(k);
         aggregated[metricKey] = isCount ? Math.round(total) : parseFloat(total.toFixed(2));
       });
-      
+
       // Calculate derived metrics
       // Use canonical totals, and also expose them on the response in stable keys.
       const impressions = Math.round(canonImpressions);
@@ -17340,17 +17340,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aggregated.roas = 0;
         aggregated.roi = 0;
       }
-      
+
       // CTR: (Clicks / Impressions) * 100
       if (impressions > 0) {
         aggregated.ctr = parseFloat(((clicks / impressions) * 100).toFixed(2));
       }
-      
+
       // CPC: Spend / Clicks
       if (clicks > 0) {
         aggregated.cpc = parseFloat((spend / clicks).toFixed(2));
       }
-      
+
       // CPM: (Spend / Impressions) * 1000
       if (impressions > 0) {
         aggregated.cpm = parseFloat(((spend / impressions) * 1000).toFixed(2));
@@ -17375,7 +17375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (impressions > 0) {
         aggregated.er = parseFloat((((aggregated.engagements || 0) / impressions) * 100).toFixed(2));
       }
-      
+
       res.json(aggregated);
     } catch (error) {
       console.error('LinkedIn metrics fetch error:', error);
@@ -17389,13 +17389,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('Campaign ID:', req.params.id);
     try {
       const { id } = req.params;
-      
+
       const parseNum = (val: any): number => {
         if (val === null || val === undefined || val === '') return 0;
         const num = typeof val === 'string' ? parseFloat(val) : Number(val);
         return isNaN(num) || !isFinite(num) ? 0 : num;
       };
-      
+
       // Fetch LinkedIn metrics
       let linkedinMetrics: any = {};
       try {
@@ -17412,7 +17412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (err) {
         console.log('No LinkedIn metrics found');
       }
-      
+
       // Fetch Custom Integration metrics
       let customIntegrationData: any = {};
       try {
@@ -17423,16 +17423,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (err) {
         console.log('No custom integration metrics found');
       }
-      
+
       // Aggregate metrics from all sources
       const totalImpressions = parseNum(linkedinMetrics.impressions) + parseNum(customIntegrationData.impressions);
       const totalEngagements = parseNum(linkedinMetrics.engagements) + parseNum(customIntegrationData.engagements);
       const totalClicks = parseNum(linkedinMetrics.clicks) + parseNum(customIntegrationData.clicks);
       const totalConversions = parseNum(linkedinMetrics.conversions) + parseNum(customIntegrationData.conversions);
       const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend);
-      
+
       devLog('Snapshot metrics:', { totalImpressions, totalEngagements, totalClicks, totalConversions, totalSpend });
-      
+
       const snapshot = await storage.createMetricSnapshot({
         campaignId: id,
         totalImpressions: Math.round(totalImpressions),
@@ -17441,7 +17441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalConversions: Math.round(totalConversions),
         totalSpend: totalSpend.toFixed(2)
       });
-      
+
       devLog(`Snapshot created for campaign ${id}:`, snapshot);
       res.json(snapshot);
     } catch (error) {
@@ -17454,11 +17454,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { type } = req.query;
-      
+
       if (!type || !['yesterday', 'last_week', 'last_month'].includes(type as string)) {
         return res.status(400).json({ message: "Invalid comparison type. Use: yesterday, last_week, or last_month" });
       }
-      
+
       const comparisonData = await storage.getComparisonData(id, type as 'yesterday' | 'last_week' | 'last_month');
       res.json(comparisonData);
     } catch (error) {
@@ -17472,11 +17472,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { period } = req.query;
-      
+
       if (!period || !['daily', 'weekly', 'monthly'].includes(period as string)) {
         return res.status(400).json({ message: "Invalid period. Use: daily, weekly, or monthly" });
       }
-      
+
       const snapshots = await storage.getCampaignSnapshotsByPeriod(id, period as 'daily' | 'weekly' | 'monthly');
       res.json(snapshots);
     } catch (error) {
@@ -17503,41 +17503,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const okSession = await ensureLinkedInSessionAccess(req as any, res as any, sessionId);
       if (!okSession) return;
-      
+
       const session = await storage.getLinkedInImportSession(sessionId);
       if (!session) {
         return res.status(404).json({ message: "Import session not found" });
       }
-      
+
       // Get campaign to access conversion value
       const campaign = await storage.getCampaign(session.campaignId);
       devLog('=== LINKEDIN ANALYTICS DEBUG ===');
       devLog('Campaign ID:', session.campaignId);
       devLog('Campaign found:', campaign ? 'YES' : 'NO');
       devLog('Campaign conversion value:', campaign?.conversionValue);
-      
+
       const rawMetrics = await storage.getLinkedInImportMetrics(sessionId);
       const ads = await storage.getLinkedInAdPerformance(sessionId);
-      
+
       // ============================================
       // DATA VALIDATION LAYER
       // ============================================
-      const { 
-        LinkedInMetricSchema, 
-        validateMetricValue, 
+      const {
+        LinkedInMetricSchema,
+        validateMetricValue,
         validateMetricRelationships,
-        calculateDataQualityScore 
+        calculateDataQualityScore
       } = await import('./validation/linkedin-metrics.js');
-      
+
       const validatedMetrics: any[] = [];
       const validationErrors: any[] = [];
-      
+
       // Validate each metric
       for (const metric of rawMetrics) {
         try {
           // Schema validation
           const validated = LinkedInMetricSchema.parse(metric);
-          
+
           // Value constraint validation
           const valueValidation = validateMetricValue(validated.metricKey, validated.metricValue);
           if (!valueValidation.isValid) {
@@ -17551,7 +17551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.warn('[Validation Warning]', valueValidation.error);
             continue; // Skip this metric
           }
-          
+
           validatedMetrics.push(validated);
         } catch (error) {
           console.error('[Validation Error]', error);
@@ -17564,34 +17564,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       // Use validated metrics
       const metrics = validatedMetrics;
-      
+
       // Log validation summary
       if (validationErrors.length > 0) {
         console.warn(`[LinkedIn Metrics Validation] ${validationErrors.length} metrics failed validation`);
       }
-      
+
       const dataQuality = calculateDataQualityScore(
         rawMetrics.length,
         validatedMetrics.length,
         0 // Will add relationship errors later
       );
-      
+
       devLog(`[Data Quality] Score: ${dataQuality.score.toFixed(1)}% (${dataQuality.grade}) - ${dataQuality.message}`);
-      
+
       // Get unique selected metrics from the imported data
       const selectedMetrics = Array.from(new Set(metrics.map((m: any) => m.metricKey)));
-      
+
       // Dynamically aggregate only the selected metrics
       const aggregated: Record<string, number> = {};
-      
+
       selectedMetrics.forEach((metricKey: string) => {
         const total = metrics
           .filter((m: any) => m.metricKey === metricKey)
           .reduce((sum: number, m: any) => sum + parseFloat(m.metricValue || '0'), 0);
-        
+
         // Use consistent naming: total{MetricName}
         const aggregateKey = `total${metricKey.charAt(0).toUpperCase() + metricKey.slice(1)}`;
         const k = String(metricKey || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -17612,7 +17612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ].includes(k);
         aggregated[aggregateKey] = isCount ? Math.round(total) : parseFloat(total.toFixed(2));
       });
-      
+
       const normalizeMetricKey = (key: any) =>
         String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -17633,7 +17633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalLeads = aggregated.totalLeads || 0;
       const totalImpressions = aggregated.totalImpressions || 0;
       const totalEngagements = aggregated.totalEngagements || sumMetricValues(['engagements']);
-      
+
       // Validate metric relationships
       const { sanitizeCalculatedMetric } = await import('./validation/linkedin-metrics.js');
       const relationshipValidation = validateMetricRelationships({
@@ -17644,7 +17644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         engagements: totalEngagements,
         reach: aggregated.totalReach || 0,
       });
-      
+
       if (!relationshipValidation.isValid) {
         console.warn('[Relationship Validation] Issues detected:', relationshipValidation.errors);
         relationshipValidation.errors.forEach(err => {
@@ -17657,7 +17657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         });
       }
-      
+
       // Derived metrics (single source-of-truth math helpers)
       const {
         computeCpaRounded,
@@ -17676,7 +17676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       aggregated.cpa = sanitizeCalculatedMetric('cpa', computeCpaRounded(totalSpend, totalConversions));
       aggregated.cpl = sanitizeCalculatedMetric('cpl', computeCpl(totalSpend, totalLeads));
       aggregated.er = sanitizeCalculatedMetric('er', computeErPercent(totalEngagements, totalImpressions));
-      
+
       // Canonical LinkedIn revenue rules (shared across Overview/KPIs/Benchmarks/Ads)
       const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
       const rev = await resolveLinkedInRevenueContext({
@@ -17727,24 +17727,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         aggregated.revenuePerLead = 0;
       }
-      
+
       // Calculate performance indicators based on benchmarks
       try {
         const campaignBenchmarks = await storage.getCampaignBenchmarks(session.campaignId);
-        
+
         if (campaignBenchmarks && campaignBenchmarks.length > 0) {
           devLog(`[Performance Indicators] Found ${campaignBenchmarks.length} benchmarks for campaign`);
-          
+
           // Helper function to calculate performance level
           const getPerformanceLevel = (actualValue: number, benchmark: any): string | null => {
             if (!benchmark || !benchmark.benchmarkValue) return null;
-            
+
             const target = parseFloat(benchmark.benchmarkValue);
             const metricKey = benchmark.metric?.toLowerCase();
-            
+
             // For cost metrics (lower is better): CPC, CPM, CPA, CPL
             const lowerIsBetter = ['cpc', 'cpm', 'cpa', 'cpl'].includes(metricKey || '');
-            
+
             if (lowerIsBetter) {
               // Lower is better logic
               if (actualValue <= target * 0.75) return 'excellent'; // 25% below target
@@ -17759,20 +17759,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return 'poor';
             }
           };
-          
+
           // Calculate performance for each metric
           const performanceIndicators: Record<string, string | null> = {};
-          
+
           for (const benchmark of campaignBenchmarks) {
             const metricKey = benchmark.metric?.toLowerCase();
             if (!metricKey) continue;
-            
+
             const actualValue = aggregated[metricKey];
             if (actualValue !== undefined && actualValue !== null) {
               performanceIndicators[metricKey] = getPerformanceLevel(actualValue, benchmark);
             }
           }
-          
+
           aggregated.performanceIndicators = performanceIndicators;
           devLog('[Performance Indicators] Calculated:', performanceIndicators);
         } else {
@@ -17783,14 +17783,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('[Performance Indicators] Error calculating performance:', benchmarkError);
         aggregated.performanceIndicators = {};
       }
-      
+
       // Calculate final data quality score
       const finalDataQuality = calculateDataQualityScore(
         rawMetrics.length,
         validatedMetrics.length,
         relationshipValidation.errors.length
       );
-      
+
       // Prepare validation summary
       const validationSummary = validationErrors.length > 0 ? {
         totalMetrics: rawMetrics.length,
@@ -17800,7 +17800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `${validationErrors.length} metrics failed validation and were excluded`,
         errors: validationErrors.slice(0, 10), // Include first 10 errors for debugging
       } : undefined;
-      
+
       res.json({
         session,
         metrics,
@@ -17812,7 +17812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch import session" });
     }
   });
-  
+
   // Get ad performance data sorted by revenue
   app.get("/api/linkedin/imports/:sessionId/ads", async (req, res) => {
     try {
@@ -17933,7 +17933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // LinkedIn Reports Routes
-  
+
   // Get all LinkedIn reports
   app.get("/api/linkedin/reports", async (req, res) => {
     try {
@@ -17950,11 +17950,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const report = await storage.getLinkedInReport(id);
-      
+
       if (!report) {
         return res.status(404).json({ message: "Report not found" });
       }
-      
+
       res.json(report);
     } catch (error) {
       console.error('Failed to fetch LinkedIn report:', error);
@@ -17978,11 +17978,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const updated = await storage.updateLinkedInReport(id, req.body);
-      
+
       if (!updated) {
         return res.status(404).json({ message: "Report not found" });
       }
-      
+
       res.json(updated);
     } catch (error) {
       console.error('Failed to update LinkedIn report:', error);
@@ -17995,11 +17995,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const updated = await storage.updateLinkedInReport(id, req.body);
-      
+
       if (!updated) {
         return res.status(404).json({ message: "Report not found" });
       }
-      
+
       res.json(updated);
     } catch (error) {
       console.error('Failed to update LinkedIn report:', error);
@@ -18012,11 +18012,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const deleted = await storage.deleteLinkedInReport(id);
-      
+
       if (!deleted) {
         return res.status(404).json({ message: "Report not found" });
       }
-      
+
       res.json({ success: true, message: "Report deleted successfully" });
     } catch (error) {
       console.error('Failed to delete LinkedIn report:', error);
@@ -18028,7 +18028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/executive-summary", async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       // Get campaign details
       const campaign = await storage.getCampaign(id);
       if (!campaign) {
@@ -18069,7 +18069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         revenue: 0
       };
       let linkedinLastUpdate: string | null = null;
-      
+
       try {
         const latestSession = await storage.getLatestLinkedInImportSession(id);
         if (latestSession) {
@@ -18109,7 +18109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let customIntegrationRawData: any = null; // Store raw data for website analytics
       let customIntegrationLastUpdate: string | null = null;
       let hasCustomIntegration = false;
-      
+
       try {
         const customIntegration = await storage.getLatestCustomIntegrationMetrics(id);
         if (customIntegration) {
@@ -18141,7 +18141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Data freshness validation
       const now = new Date();
       const dataFreshnessWarnings = [];
-      
+
       if (linkedinLastUpdate) {
         const linkedinAge = (now.getTime() - new Date(linkedinLastUpdate).getTime()) / (1000 * 60 * 60 * 24); // days
         if (linkedinAge > 7) {
@@ -18153,7 +18153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       if (customIntegrationLastUpdate) {
         const customAge = (now.getTime() - new Date(customIntegrationLastUpdate).getTime()) / (1000 * 60 * 60 * 24); // days
         if (customAge > 7) {
@@ -18184,18 +18184,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
       const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
       const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
-      
+
       // CVR Calculation - Full Transparency Approach
       // Click-Through CVR: Only conversions that can be attributed to direct clicks (capped at 100%)
       const clickThroughConversions = Math.min(totalConversions, totalClicks);
       const clickThroughCvr = totalClicks > 0 ? (clickThroughConversions / totalClicks) * 100 : 0;
-      
+
       // Total CVR: Includes view-through conversions (can exceed 100%)
       const totalCvr = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
-      
+
       // Legacy CVR for backward compatibility
       const cvr = totalCvr;
-      
+
       const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
       const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
 
@@ -18237,7 +18237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Platform performance breakdown - only include platforms with actual data
       const platforms: any[] = [];
       const platformsForDisplay: any[] = []; // Separate array for UI display (includes platforms with no data)
-      
+
       // Check if LinkedIn has any meaningful advertising data
       // We check spend, conversions, or revenue (not just impressions/clicks which could be organic)
       const hasLinkedInData = linkedinMetrics.spend > 0 || linkedinMetrics.conversions > 0 || linkedinMetrics.revenue > 0;
@@ -18254,11 +18254,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platforms.push(linkedInPlatform);
         platformsForDisplay.push(linkedInPlatform);
       }
-      
+
       // Check if Custom Integration has any meaningful advertising data
       // We check spend, conversions, or revenue (not impressions/engagements which could be website analytics)
       const hasCustomIntegrationData = customMetrics.spend > 0 || customMetrics.conversions > 0 || customMetrics.revenue > 0;
-      
+
       if (hasCustomIntegration && customIntegrationRawData) {
         const customPlatform = {
           name: 'Custom Integration',
@@ -18281,12 +18281,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             avgSessionDuration: parseInterval(customIntegrationRawData.avgSessionDuration)
           }
         };
-        
+
         // Only include in recommendations/insights if it has actual advertising data
         if (hasCustomIntegrationData) {
           platforms.push(customPlatform);
         }
-        
+
         // Always include in display array (with website analytics for Executive Overview)
         platformsForDisplay.push(customPlatform);
       }
@@ -18299,13 +18299,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let growthTrajectory: string | null = null;
       let trendPercentage = 0;
       let hasHistoricalData = false;
-      
+
       if (comparisonData?.current && comparisonData?.previous) {
         hasHistoricalData = true;
         const currentRevenue = parseNum(comparisonData.current.totalConversions) * (totalRevenue / (totalConversions || 1));
         const previousRevenue = parseNum(comparisonData.previous.totalConversions) * (totalRevenue / (totalConversions || 1));
         trendPercentage = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
-        
+
         if (trendPercentage > 10) growthTrajectory = 'accelerating';
         else if (trendPercentage < -10) growthTrajectory = 'declining';
         else growthTrajectory = 'stable';
@@ -18314,7 +18314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Risk assessment - only based on platforms with actual advertising data
       let riskLevel = 'low';
       const riskFactors = [];
-      
+
       // Platform concentration risk
       if (platforms.length === 1 && platformsForDisplay.length === 1) {
         // Only one platform total - true single platform dependency
@@ -18323,9 +18323,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (platforms.length === 1 && platformsForDisplay.length > 1) {
         // Multiple platforms connected but only one has advertising data
         const platformsWithoutAdData = platformsForDisplay.filter(p => !platforms.some(pd => pd.name === p.name));
-        riskFactors.push({ 
-          type: 'concentration', 
-          message: `All advertising spend on ${platforms[0].name} - ${platformsWithoutAdData.map(p => p.name).join(', ')} ${platformsWithoutAdData.length === 1 ? 'has' : 'have'} no advertising data` 
+        riskFactors.push({
+          type: 'concentration',
+          message: `All advertising spend on ${platforms[0].name} - ${platformsWithoutAdData.map(p => p.name).join(', ')} ${platformsWithoutAdData.length === 1 ? 'has' : 'have'} no advertising data`
         });
         riskLevel = 'medium';
       } else if (platforms.length > 1 && platforms[0].spendShare > 70) {
@@ -18348,7 +18348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         riskFactors.push({ type: 'trend', message: `Performance declining ${Math.abs(trendPercentage).toFixed(0)}% - intervention needed` });
         if (riskLevel === 'low') riskLevel = 'medium';
       }
-      
+
       // Generate risk explanation
       let riskExplanation = '';
       if (riskLevel === 'low') {
@@ -18392,18 +18392,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Strategic recommendations with enterprise-grade projections
       const recommendations = [];
-      
+
       // Helper: Calculate diminishing returns for scaling (industry standard: 15-25% efficiency loss per doubling)
       const calculateDiminishingReturns = (currentSpend: number, additionalSpend: number, currentRoas: number) => {
         const spendIncreasePct = (additionalSpend / currentSpend) * 100;
         let efficiencyLoss = 0;
-        
+
         // Conservative diminishing returns model based on ad platform data
         if (spendIncreasePct <= 25) efficiencyLoss = 0.05; // 5% loss for small increases
         else if (spendIncreasePct <= 50) efficiencyLoss = 0.15; // 15% loss for moderate increases  
         else if (spendIncreasePct <= 100) efficiencyLoss = 0.25; // 25% loss for doubling
         else efficiencyLoss = 0.35; // 35% loss for aggressive scaling
-        
+
         const adjustedRoas = currentRoas * (1 - efficiencyLoss);
         return {
           adjustedRoas,
@@ -18412,18 +18412,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           worstCase: currentRoas * (1 - efficiencyLoss * 1.5)  // 50% more efficiency loss
         };
       };
-      
+
       // Budget optimization recommendations
       if (topPlatform && bottomPlatform && topPlatform.roas > bottomPlatform.roas * 1.5) {
         // Dynamic reallocation based on performance gap
         const performanceGap = topPlatform.roas / bottomPlatform.roas;
         const reallocationPct = performanceGap > 3 ? 0.5 : performanceGap > 2 ? 0.3 : 0.2;
         const reallocationAmount = bottomPlatform.spend * reallocationPct;
-        
+
         // Conservative estimate assuming some efficiency loss
         const conservativeTopRoas = topPlatform.roas * 0.9; // 10% efficiency loss from reallocation
         const estimatedImpact = reallocationAmount * (conservativeTopRoas - bottomPlatform.roas);
-        
+
         recommendations.push({
           priority: 'high',
           category: 'Budget Reallocation',
@@ -18449,16 +18449,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (roi > 50 && roas > 2 && growthTrajectory !== 'declining') {
         const scaleAmount = totalSpend * 0.5;
         const scalingModel = calculateDiminishingReturns(totalSpend, scaleAmount, roas);
-        
+
         const expectedRevenue = scaleAmount * scalingModel.adjustedRoas;
         const expectedProfit = expectedRevenue - scaleAmount;
-        
+
         const bestCaseRevenue = scaleAmount * scalingModel.bestCase;
         const bestCaseProfit = bestCaseRevenue - scaleAmount;
-        
+
         const worstCaseRevenue = scaleAmount * scalingModel.worstCase;
         const worstCaseProfit = worstCaseRevenue - scaleAmount;
-        
+
         recommendations.push({
           priority: 'high',
           category: 'Scaling Opportunity',
@@ -18487,7 +18487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const targetRoas = 1.5;
         const currentRoasGap = targetRoas - bottomPlatform.roas;
         const potentialRevenueLift = bottomPlatform.spend * currentRoasGap;
-        
+
         recommendations.push({
           priority: 'medium',
           category: 'Performance Optimization',
@@ -18516,7 +18516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const conservativeRoas = roas * 0.7; // Assume 30% lower ROAS on new platform
         const expectedRevenue = testBudget * conservativeRoas;
         const expectedProfit = expectedRevenue - testBudget;
-        
+
         recommendations.push({
           priority: 'medium',
           category: 'Risk Mitigation',
@@ -18571,9 +18571,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           score: Math.round(healthScore),
           grade,
           factors: healthFactors,
-          ...(hasHistoricalData && { 
+          ...(hasHistoricalData && {
             trajectory: growthTrajectory,
-            trendPercentage 
+            trendPercentage
           })
         },
         risk: {
@@ -18591,8 +18591,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           linkedinLastUpdate,
           customIntegrationLastUpdate,
           warnings: dataFreshnessWarnings,
-          overallStatus: dataFreshnessWarnings.length === 0 ? 'current' : 
-                        dataFreshnessWarnings.some(w => w.severity === 'high') ? 'stale' : 'aging'
+          overallStatus: dataFreshnessWarnings.length === 0 ? 'current' :
+            dataFreshnessWarnings.some(w => w.severity === 'high') ? 'stale' : 'aging'
         },
         metadata: {
           generatedAt: now.toISOString(),
@@ -18623,9 +18623,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[GA4 Transfer] Transferring connection from ${fromCampaignId} to ${toCampaignId}`);
 
       if (!fromCampaignId || !toCampaignId) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Both fromCampaignId and toCampaignId are required" 
+        return res.status(400).json({
+          success: false,
+          error: "Both fromCampaignId and toCampaignId are required"
         });
       }
 
@@ -18635,9 +18635,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (existingConnections.length === 0) {
         console.log(`[GA4 Transfer] No connections found for ${fromCampaignId}`);
-        return res.status(404).json({ 
-          success: false, 
-          error: "No GA4 connection found for source campaign" 
+        return res.status(404).json({
+          success: false,
+          error: "No GA4 connection found for source campaign"
         });
       }
 
@@ -18671,16 +18671,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[GA4 Transfer] Deleted temp connection ${conn.id}`);
       }
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: 'GA4 connection transferred successfully',
         connectionId: newConnection.id
       });
     } catch (error) {
       console.error('[GA4 Transfer] Error:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Failed to transfer GA4 connection' 
+      res.status(500).json({
+        success: false,
+        error: 'Failed to transfer GA4 connection'
       });
     }
   });
@@ -18694,9 +18694,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Set Property] Setting property ${propertyId} for campaign ${campaignId}`);
 
       if (!propertyId) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Property ID is required" 
+        return res.status(400).json({
+          success: false,
+          error: "Property ID is required"
         });
       }
 
@@ -18704,9 +18704,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = realGA4Client.getConnection(campaignId);
       if (!connection) {
         console.log(`[Set Property] No connection found in realGA4Client for ${campaignId}`);
-        return res.status(404).json({ 
-          success: false, 
-          error: "No active GA4 connection found" 
+        return res.status(404).json({
+          success: false,
+          error: "No active GA4 connection found"
         });
       }
 
@@ -18725,20 +18725,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update existing connection
         const existingConnection = existingConnections[0];
         console.log(`[Set Property] Updating existing connection ${existingConnection.id}`);
-        
+
         await storage.updateGA4Connection(existingConnection.id, {
           propertyId,
           propertyName,
           isPrimary: true,
           isActive: true
         });
-        
+
         await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
         console.log(`[Set Property] Connection updated and set as primary`);
       } else {
         // Create new connection
         console.log(`[Set Property] Creating new connection for ${campaignId} with property ${propertyId}`);
-        
+
         const newConnection = await storage.createGA4Connection({
           campaignId,
           propertyId,
@@ -18757,15 +18757,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[Set Property] New connection created: ${newConnection.id}, isPrimary: ${newConnection.isPrimary}, isActive: ${newConnection.isActive}`);
       }
 
-      res.json({ 
-        success: true, 
-        message: "Property set successfully" 
+      res.json({
+        success: true,
+        message: "Property set successfully"
       });
     } catch (error) {
       console.error('[Set Property] Error:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Failed to set property' 
+      res.status(500).json({
+        success: false,
+        error: 'Failed to set property'
       });
     }
   });
@@ -18782,7 +18782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (connections.length > 0) {
         const primaryConnection = connections.find(c => c.isPrimary) || connections[0];
         console.log(`[GA4 Check] Returning connected=true for ${campaignId}, primary connection: ${primaryConnection.id}`);
-        
+
         res.json({
           connected: true,
           totalConnections: connections.length,
@@ -18803,17 +18803,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else {
         console.log(`[GA4 Check] No connections found for ${campaignId}, returning connected=false`);
-        res.json({ 
-          connected: false, 
-          totalConnections: 0, 
-          connections: [] 
+        res.json({
+          connected: false,
+          totalConnections: 0,
+          connections: []
         });
       }
     } catch (error) {
       console.error('[GA4 Check] Error:', error);
-      res.status(500).json({ 
-        connected: false, 
-        error: 'Failed to check connection status' 
+      res.status(500).json({
+        connected: false,
+        error: 'Failed to check connection status'
       });
     }
   });
@@ -18825,7 +18825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[GA4 Status] Checking status for campaign ${campaignId}`);
 
       const connection = realGA4Client.getConnection(campaignId);
-      
+
       if (connection && connection.availableProperties) {
         console.log(`[GA4 Status] Found connection with ${connection.availableProperties.length} properties`);
         res.json({
@@ -18839,9 +18839,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error('[GA4 Status] Error:', error);
-      res.status(500).json({ 
-        connected: false, 
-        error: 'Failed to get connection status' 
+      res.status(500).json({
+        connected: false,
+        error: 'Failed to get connection status'
       });
     }
   });
@@ -18858,11 +18858,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!okTo) return;
 
       const existingConnection = await storage.getGoogleSheetsConnection(fromCampaignId);
-      
+
       if (!existingConnection) {
-        return res.status(404).json({ 
-          success: false, 
-          error: "No Google Sheets connection found" 
+        return res.status(404).json({
+          success: false,
+          error: "No Google Sheets connection found"
         });
       }
 
@@ -18894,11 +18894,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[LinkedIn Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
 
       const existingConnection = await storage.getLinkedInConnection(fromCampaignId);
-      
+
       if (!existingConnection) {
-        return res.status(404).json({ 
-          success: false, 
-          error: "No LinkedIn connection found" 
+        return res.status(404).json({
+          success: false,
+          error: "No LinkedIn connection found"
         });
       }
 
@@ -18918,7 +18918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Transfer import sessions
       const importSessions = await storage.getCampaignLinkedInImportSessions(fromCampaignId);
       console.log(`[LinkedIn Transfer] Found ${importSessions?.length || 0} import sessions to transfer`);
-      
+
       if (importSessions && importSessions.length > 0) {
         for (const session of importSessions) {
           // Update the session's campaignId
@@ -18954,7 +18954,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Handle temporary campaign during setup flow
       let nameForEmail: string;
-      
+
       if (campaignId === 'temp-campaign-setup') {
         // Use provided campaign name or generate a temporary one
         nameForEmail = campaignName || `temp-${Date.now()}`;
@@ -19020,7 +19020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`[Custom Integration] Processing PDF: ${req.file.originalname}, size: ${req.file.size} bytes`);
-      
+
       // Parse the PDF
       const { parsePDFMetrics } = await import('./services/pdf-parser');
       const metrics = await parsePDFMetrics(req.file.buffer);
@@ -19061,7 +19061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY) {
         const signature = req.headers['x-twilio-email-event-webhook-signature'];
         const timestamp = req.headers['x-twilio-email-event-webhook-timestamp'];
-        
+
         if (signature && timestamp) {
           const crypto = await import('crypto');
           const payload = timestamp + JSON.stringify(req.body);
@@ -19069,7 +19069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .createHmac('sha256', process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY)
             .update(payload)
             .digest('base64');
-          
+
           if (signature !== expectedSignature) {
             console.error('[SendGrid] Invalid webhook signature');
             return res.status(401).json({ error: 'Invalid signature' });
@@ -19081,7 +19081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recipient = req.body.to; // e.g., "q4-wine-marketing@import.mforensics.com"
       const sender = req.body.from;
       const subject = req.body.subject || 'No subject';
-      
+
       console.log(`[SendGrid] Recipient: ${recipient}`);
       console.log(`[SendGrid] From: ${sender}`);
       console.log(`[SendGrid] Subject: ${subject}`);
@@ -19089,9 +19089,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 3. Find campaign by email address
       const { extractEmailAddress } = await import('./utils/email-generator');
       const cleanRecipient = extractEmailAddress(recipient);
-      
+
       const integration = await storage.getCustomIntegrationByEmail(cleanRecipient);
-      
+
       if (!integration) {
         console.error(`[SendGrid] No integration found for email: ${cleanRecipient}`);
         return res.status(404).json({ error: 'Campaign not found for this email address' });
@@ -19119,12 +19119,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const attachments = JSON.parse(attachmentsStr);
           console.log(`[SendGrid] Found ${attachments.length} attachment(s)`);
-          
+
           // Find PDF attachment
-          const pdfAttachment = attachments.find((att: any) => 
+          const pdfAttachment = attachments.find((att: any) =>
             att.type === 'application/pdf' || att.filename?.endsWith('.pdf')
           );
-          
+
           if (pdfAttachment) {
             console.log(`[SendGrid] Found PDF: ${pdfAttachment.filename}`);
             pdfBuffer = Buffer.from(pdfAttachment.content, 'base64');
@@ -19193,13 +19193,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const timestamp = req.body.timestamp;
         const token = req.body.token;
         const signature = req.body.signature;
-        
+
         if (timestamp && token && signature) {
           const expectedSignature = crypto
             .createHmac('sha256', process.env.MAILGUN_WEBHOOK_SIGNING_KEY)
             .update(timestamp + token)
             .digest('hex');
-          
+
           if (signature !== expectedSignature) {
             console.error('[Mailgun] Invalid webhook signature');
             return res.status(401).json({ error: 'Invalid signature' });
@@ -19212,7 +19212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recipient = req.body.recipient; // e.g., "temp-1763426057214@sandbox....mailgun.org"
       const sender = req.body.sender || req.body.from;
       const subject = req.body.subject || 'No subject';
-      
+
       console.log(`[Mailgun] Recipient: ${recipient}`);
       console.log(`[Mailgun] From: ${sender}`);
       console.log(`[Mailgun] Subject: ${subject}`);
@@ -19220,9 +19220,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 3. Find campaign by email address
       const { extractEmailAddress } = await import('./utils/email-generator');
       const cleanRecipient = extractEmailAddress(recipient);
-      
+
       const integration = await storage.getCustomIntegrationByEmail(cleanRecipient);
-      
+
       if (!integration) {
         console.error(`[Mailgun] No integration found for email: ${cleanRecipient}`);
         return res.status(404).json({ error: 'Campaign not found for this email address' });
@@ -19247,15 +19247,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Multer parses multipart/form-data and puts files in req.files
       const files = (req as any).files as Express.Multer.File[] | undefined;
       console.log(`[Mailgun] Found ${files?.length || 0} file(s)`);
-      
+
       if (files && files.length > 0) {
         // Find PDF file
-        const pdfFile = files.find(file => 
-          file.mimetype === 'application/pdf' || 
+        const pdfFile = files.find(file =>
+          file.mimetype === 'application/pdf' ||
           file.originalname?.endsWith('.pdf') ||
           file.fieldname?.startsWith('attachment-')
         );
-        
+
         if (pdfFile) {
           console.log(`[Mailgun] Found PDF: ${pdfFile.originalname}, size: ${pdfFile.size} bytes`);
           pdfBuffer = pdfFile.buffer;
@@ -19313,11 +19313,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Custom Integration Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
 
       const existingIntegration = await storage.getCustomIntegration(fromCampaignId);
-      
+
       if (!existingIntegration) {
-        return res.status(404).json({ 
-          success: false, 
-          error: "No custom integration found" 
+        return res.status(404).json({
+          success: false,
+          error: "No custom integration found"
         });
       }
 
@@ -19337,15 +19337,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Transfer metrics data if any exists (but NOT from temp-campaign-setup)
       // temp-campaign-setup is just a placeholder and may have old test data
       const shouldTransferMetrics = fromCampaignId !== 'temp-campaign-setup';
-      const existingMetrics = shouldTransferMetrics 
+      const existingMetrics = shouldTransferMetrics
         ? await storage.getAllCustomIntegrationMetrics(fromCampaignId)
         : [];
-      
+
       console.log(`[Custom Integration Transfer] Found ${existingMetrics.length} metrics to transfer`);
       if (fromCampaignId === 'temp-campaign-setup') {
         console.log(`[Custom Integration Transfer] Skipping metrics transfer from temp campaign (would be old test data)`);
       }
-      
+
       if (existingMetrics.length > 0) {
         for (const metric of existingMetrics) {
           // Create new metric record for the new campaign
@@ -19390,7 +19390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Delete old integration and metrics
       await storage.deleteCustomIntegration(fromCampaignId);
       console.log(`[Custom Integration Transfer] Deleted old integration from ${fromCampaignId}`);
-      
+
       // Verify the transfer was successful
       const verifyIntegration = await storage.getCustomIntegration(toCampaignId);
       if (verifyIntegration) {
@@ -19398,7 +19398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.error(`[Custom Integration Transfer] ❌ VERIFICATION FAILED: Integration NOT found for campaign ${toCampaignId}`);
       }
-      
+
       console.log(`[Custom Integration Transfer] Transfer complete`);
 
       res.json({ success: true, message: 'Custom integration and metrics transferred' });
@@ -19456,11 +19456,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const recentEvents = await storage.getConversionEvents(campaignId, thirtyDaysAgo);
-      
+
       if (recentEvents.length > 0) {
         const totalValue = recentEvents.reduce((sum, e) => sum + parseFloat(e.value || "0"), 0);
         const avgValue = (totalValue / recentEvents.length).toFixed(2);
-        
+
         // Update campaign's conversionValue with average (optional - for backward compatibility)
         await storage.updateCampaign(campaignId, {
           conversionValue: avgValue
@@ -19495,9 +19495,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platform } = req.params;
       const { campaignId } = req.query;
-      
+
       let fields = getPlatformFields(platform);
-      
+
       // For LinkedIn campaigns with LinkedIn API connected, adjust required fields
       // LinkedIn API already provides: Impressions, Clicks, Spend, Conversions
       // Google Sheets only needs: Campaign Name (to match rows) and Revenue (for conversion value)
@@ -19509,7 +19509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // If Platform column exists, it's likely a multi-platform dataset and Platform is REQUIRED for filtering
             const googleSheetsConnections = await storage.getGoogleSheetsConnections(campaignId);
             let hasPlatformColumn = false;
-            
+
             if (googleSheetsConnections.length > 0) {
               // Check if any connection has column mappings that include Platform
               for (const conn of googleSheetsConnections) {
@@ -19526,16 +19526,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                 }
               }
-              
+
               // Also check detected columns from schema discovery (if available)
               // This helps when user first opens mapping interface before mappings are saved
               if (!hasPlatformColumn) {
                 try {
                   const { spreadsheetId } = req.query;
-                  const connection = spreadsheetId 
+                  const connection = spreadsheetId
                     ? googleSheetsConnections.find(c => c.spreadsheetId === spreadsheetId)
                     : googleSheetsConnections.find(c => c.isPrimary) || googleSheetsConnections[0];
-                  
+
                   if (connection?.spreadsheetId && connection?.accessToken) {
                     // Fetch schema to check for Platform column
                     const schemaResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}?includeGridData=false`, {
@@ -19552,7 +19552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         if (valuesResponse.ok) {
                           const values = await valuesResponse.json();
                           const headers = values.values?.[0] || [];
-                          hasPlatformColumn = headers.some((h: string) => 
+                          hasPlatformColumn = headers.some((h: string) =>
                             /platform|channel|network|source/i.test(String(h || ''))
                           );
                         }
@@ -19565,20 +19565,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
             }
-            
+
             // LinkedIn API is connected - adjust required fields
             fields = fields.map(f => {
               // Only Campaign Name and Revenue are required from Google Sheets
               if (f.id === 'campaign_name' || f.id === 'revenue') {
                 return { ...f, required: true };
               }
-              
+
               // Platform is REQUIRED if Platform column exists (multi-platform dataset)
               // Platform is optional only if no Platform column exists (single-platform, can default to "LinkedIn")
               if (f.id === 'platform') {
                 return { ...f, required: hasPlatformColumn };
               }
-              
+
               // All other fields are optional since LinkedIn API provides them
               if (f.id === 'impressions' || f.id === 'clicks' || f.id === 'spend' || f.id === 'conversions') {
                 return { ...f, required: false };
@@ -19591,7 +19591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('[Platform Fields] Could not check LinkedIn connection, using default fields');
         }
       }
-      
+
       res.json({
         success: true,
         platform,
@@ -19615,33 +19615,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const { spreadsheetId, connectionId, connectionIds, fetchAll, sheetNames } = req.query;
-      
+
       console.log('[Detect Columns] 🔍 Query params:', { spreadsheetId, connectionId, connectionIds, fetchAll, sheetNames, campaignId });
-      
+
       // Get connections
       let connections: any[] = [];
-      
+
       // If sheetNames is provided, fetch ONLY those specific sheets
       if (sheetNames && spreadsheetId) {
         const selectedSheets = (sheetNames as string).split(',').map(s => s.trim());
         console.log('[Detect Columns] 🎯 Fetching ONLY selected sheets:', selectedSheets);
-        
+
         // Get any connection for this spreadsheet to use the access token
         const allConnections = await storage.getGoogleSheetsConnections(campaignId);
         const baseConnection = allConnections.find(conn => conn.spreadsheetId === spreadsheetId);
-        
+
         if (!baseConnection || !baseConnection.accessToken) {
           console.error('[Detect Columns] ❌ No connection found for spreadsheet:', spreadsheetId);
           return res.status(404).json({ error: 'No Google Sheets connection found' });
         }
-        
+
         // Create virtual connections for ONLY the selected sheets
         connections = selectedSheets.map((sheetName: string) => ({
           ...baseConnection,
           sheetName,
           id: `${baseConnection.id}-${sheetName}`
         }));
-        
+
         console.log('[Detect Columns] ✅ Will fetch columns from', connections.length, 'selected sheet(s):', selectedSheets);
       }
       // If fetchAll is specified with spreadsheetId, fetch ALL tabs directly from Google Sheets API
@@ -19649,37 +19649,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get any connection for this spreadsheet to use the access token
         const allConnections = await storage.getGoogleSheetsConnections(campaignId);
         const baseConnection = allConnections.find(conn => conn.spreadsheetId === spreadsheetId);
-        
+
         if (!baseConnection || !baseConnection.accessToken) {
           console.error('[Detect Columns] ❌ No connection found for spreadsheet:', spreadsheetId);
           return res.status(404).json({ error: 'No Google Sheets connection found' });
         }
-        
+
         console.log('[Detect Columns] 📊 Fetching ALL tabs from spreadsheet:', spreadsheetId);
-        
+
         // Fetch spreadsheet metadata to get all sheet names
         try {
           const metadataResponse = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?includeGridData=false`,
             { headers: { 'Authorization': `Bearer ${baseConnection.accessToken}` } }
           );
-          
+
           if (!metadataResponse.ok) {
             throw new Error(`Failed to fetch spreadsheet metadata: ${metadataResponse.statusText}`);
           }
-          
+
           const metadata = await metadataResponse.json();
           const allSheets = metadata.sheets || [];
-          
+
           console.log('[Detect Columns] 📋 Found', allSheets.length, 'sheet(s) in spreadsheet');
-          
+
           // Create virtual connections for each sheet
           connections = allSheets.map((sheet: any) => ({
             ...baseConnection,
             sheetName: sheet.properties.title,
             id: `${baseConnection.id}-${sheet.properties.title}` // Virtual ID for this tab
           }));
-          
+
           console.log('[Detect Columns] ✅ Will fetch columns from ALL', connections.length, 'sheet(s):', connections.map(c => c.sheetName));
         } catch (error: any) {
           console.error('[Detect Columns] ❌ Failed to fetch sheet metadata:', error.message);
@@ -19709,19 +19709,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       // Last resort: primary connection
       else {
-        const conn = await storage.getPrimaryGoogleSheetsConnection(campaignId) || 
-                     await storage.getGoogleSheetsConnection(campaignId);
+        const conn = await storage.getPrimaryGoogleSheetsConnection(campaignId) ||
+          await storage.getGoogleSheetsConnection(campaignId);
         if (conn) connections = [conn];
         console.log('[Detect Columns] 🎯 Using primary/fallback connection');
       }
-      
+
       if (connections.length === 0 || !connections[0]?.accessToken) {
         console.error('[Detect Columns] ❌ No valid connections found');
         return res.status(404).json({ error: 'No Google Sheets connection found' });
       }
-      
+
       console.log('[Detect Columns] ✅ Will process', connections.length, 'sheet(s):', connections.map(c => c.sheetName || 'default'));
-      
+
       // Collect all columns from all sheets
       const allColumnsMap = new Map<string, DetectedColumn>();
       const sheetNamesRequested = connections.map(c => c.sheetName || 'default');
@@ -19729,43 +19729,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sheetNamesFailed: Array<{ sheet: string; status?: number; statusText?: string }> = [];
       let totalRowsAcrossSheets = 0;
       let globalColumnIndex = 0; // Track global index across all sheets
-      
+
       for (const connection of connections) {
         // Build range with sheet name if specified
         const analysisRange = connection.sheetName ? `${toA1SheetPrefix(connection.sheetName)}A1:Z100` : 'A1:Z100';
-        
+
         console.log(`[Detect Columns] Fetching columns from sheet: ${connection.sheetName || 'default'}, spreadsheet: ${connection.spreadsheetId}`);
-        
+
         // Fetch first 100 rows for analysis
         const sheetResponse = await fetch(
           `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(analysisRange)}?valueRenderOption=UNFORMATTED_VALUE`,
           { headers: { 'Authorization': `Bearer ${connection.accessToken}` } }
         );
-        
+
         if (!sheetResponse.ok) {
           console.warn(`[Detect Columns] Failed to fetch sheet ${connection.sheetName || 'default'}: ${sheetResponse.statusText}`);
           sheetNamesFailed.push({ sheet: connection.sheetName || 'default', status: sheetResponse.status, statusText: sheetResponse.statusText });
           continue; // Skip this sheet and continue with others
         }
         sheetNamesFetched.push(connection.sheetName || 'default');
-        
+
         const sheetData = await sheetResponse.json();
         const rows = sheetData.values || [];
-        
+
         if (rows.length === 0) {
           console.warn(`[Detect Columns] Sheet ${connection.sheetName || 'default'} has no data`);
           continue;
         }
-        
+
         totalRowsAcrossSheets += rows.length;
-        
+
         // Analyze columns from this sheet
         const headers = rows[0] || [];
         const dataRows = rows.slice(1);
-        
+
         headers.forEach((header: any, localIndex: number) => {
           const columnName = String(header || `Column ${localIndex + 1}`).trim();
-          
+
           // If column already exists (from another sheet), merge sample values but keep existing index
           if (allColumnsMap.has(columnName)) {
             const existing = allColumnsMap.get(columnName)!;
@@ -19779,11 +19779,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // New column - analyze it and assign unique global index
             const columnValues = dataRows.map((row: any[]) => row[localIndex]);
             const nonEmptyValues = columnValues.filter((val: any) => val !== undefined && val !== null && val !== '');
-            
+
             // Detect column type using simple inference
             const detectedType = inferColumnType(nonEmptyValues);
             const confidence = calculateConfidence(nonEmptyValues, detectedType);
-            
+
             allColumnsMap.set(columnName, {
               index: globalColumnIndex++, // Assign unique sequential index
               name: columnName,
@@ -19794,15 +19794,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               uniqueValues: new Set(nonEmptyValues).size,
               nullCount: columnValues.length - nonEmptyValues.length,
               // Extra metadata (safe for clients): which sheet tabs contained this column
-              ...( { sheets: [connection.sheetName || 'default'] } as any )
+              ...({ sheets: [connection.sheetName || 'default'] } as any)
             });
             console.log(`[Detect Columns] Added new column "${columnName}" with global index ${globalColumnIndex - 1}`);
           }
         });
       }
-      
+
       const detectedColumns = Array.from(allColumnsMap.values());
-      
+
       console.log(`[Detect Columns] Combined columns from ${connections.length} sheet(s): ${detectedColumns.length} unique columns found`);
       console.log('[Detect Columns] Column names:', detectedColumns.map(c => c.name));
       console.log('[Detect Columns] Response:', JSON.stringify({
@@ -19811,7 +19811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sheetsAnalyzed: connections.length,
         sampleColumn: detectedColumns[0]
       }, null, 2));
-      
+
       res.json({
         success: true,
         columns: detectedColumns,
@@ -19938,21 +19938,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const { platform, columns } = req.body;
-      
+
       if (!platform) {
         return res.status(400).json({ error: 'Platform is required' });
       }
-      
+
       if (!columns || !Array.isArray(columns)) {
         return res.status(400).json({ error: 'Columns array is required' });
       }
-      
+
       // Get platform fields
       const platformFields = getPlatformFields(platform);
-      
+
       // Auto-map
       const mappings = autoMapColumns(columns, platformFields);
-      
+
       res.json({
         success: true,
         mappings,
@@ -19970,7 +19970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`[Save Mappings] ========== SAVE MAPPINGS ENDPOINT CALLED ==========`);
     console.log(`[Save Mappings] Campaign ID: ${req.params.id}`);
     console.log(`[Save Mappings] Request body:`, JSON.stringify({ connectionId: req.body.connectionId, mappingsCount: req.body.mappings?.length, platform: req.body.platform, spreadsheetId: req.body.spreadsheetId, sheetNames: req.body.sheetNames }));
-    
+
     try {
       const campaignId = req.params.id;
       const { connectionId, mappings, platform } = req.body;
@@ -19978,19 +19978,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sheetNamesFromBody: string[] = Array.isArray(req.body.sheetNames)
         ? req.body.sheetNames.filter((s: any) => typeof s === 'string' && s.trim().length > 0).map((s: string) => s.trim())
         : (typeof req.body.sheetNames === 'string'
-            ? req.body.sheetNames.split(',').map((s: string) => s.trim()).filter(Boolean)
-            : []);
-      
+          ? req.body.sheetNames.split(',').map((s: string) => s.trim()).filter(Boolean)
+          : []);
+
       if (!connectionId || !mappings || !Array.isArray(mappings)) {
         console.error(`[Save Mappings] ❌ Validation failed: connectionId=${!!connectionId}, mappings is array=${Array.isArray(mappings)}`);
         return res.status(400).json({ error: 'connectionId and mappings array are required' });
       }
-      
+
       console.log(`[Save Mappings] ✅ Validation passed. Processing ${mappings.length} mappings...`);
-      
+
       // Get platform fields with dynamic requirements (same logic as /api/platforms/:platform/fields)
       let platformFields = getPlatformFields(platform || 'linkedin');
-      
+
       // For LinkedIn, adjust field requirements based on whether LinkedIn API is connected
       if (platform?.toLowerCase() === 'linkedin' || !platform) {
         try {
@@ -20021,7 +20021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('[Save Mappings] Could not check LinkedIn connection, using default field requirements');
         }
       }
-      
+
       // Validate mappings
       const errors = validateMappings(mappings, platformFields);
       // LinkedIn guided flow "either/or" requirements:
@@ -20042,20 +20042,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errors.set('value_source', 'Please map Conversion Value or Revenue');
         }
       }
-      
+
       if (errors.size > 0) {
         return res.status(400).json({
           error: 'Mapping validation failed',
           errors: Object.fromEntries(errors)
         });
       }
-      
+
       // Update connection with mappings AND ensure it's active
       const updateResult = await storage.updateGoogleSheetsConnection(connectionId, {
         columnMappings: JSON.stringify(mappings),
         isActive: true  // Ensure connection stays active
       });
-      
+
       console.log(`[Save Mappings] Update result:`, updateResult ? 'SUCCESS' : 'FAILED');
       if (updateResult) {
         console.log(`[Save Mappings] Updated connection:`, {
@@ -20065,18 +20065,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           columnMappingsLength: updateResult.columnMappings?.length || 0
         });
       }
-      
+
       // Verify the update was successful by fetching all connections and finding this one
       const allConnections = await storage.getGoogleSheetsConnections(campaignId);
       console.log(`[Save Mappings] Total active connections for campaign:`, allConnections.length);
       const updatedConnection = allConnections.find(conn => conn.id === connectionId);
-      
+
       if (!updatedConnection) {
         console.error(`[Save Mappings] ❌ Connection ${connectionId} not found in active connections after update`);
         console.error(`[Save Mappings] Available connection IDs:`, allConnections.map(c => c.id));
         return res.status(404).json({ error: 'Connection not found after update' });
       }
-      
+
       console.log(`[Save Mappings] ✅ Verified connection ${connectionId} exists with mappings:`, updatedConnection.columnMappings ? 'YES' : 'NO');
       if (updatedConnection.columnMappings) {
         try {
@@ -20086,21 +20086,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`[Save Mappings] ❌ Mappings are not valid JSON:`, e);
         }
       }
-      
+
       // IMMEDIATELY calculate and save conversion value after saving mappings
       console.log(`[Save Mappings] 🚀 Calculating conversion value immediately...`);
       console.log(`[Save Mappings] Campaign ID: ${campaignId}, Connection ID: ${connectionId}`);
-      
+
       try {
         const campaign = await storage.getCampaign(campaignId);
         console.log(`[Save Mappings] Campaign found:`, campaign ? campaign.name : 'NOT FOUND');
-        
+
         const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
         console.log(`[Save Mappings] LinkedIn sessions found: ${linkedInSessions.length}`);
-        
+
         const linkedInConnection = await storage.getLinkedInConnection(campaignId);
         console.log(`[Save Mappings] LinkedIn connection found:`, linkedInConnection ? 'YES' : 'NO');
-        
+
         if (linkedInConnection && linkedInSessions.length > 0 && campaign) {
           // Get all mapped Google Sheets connections
           const sheetsConnections = await storage.getGoogleSheetsConnections(campaignId);
@@ -20114,9 +20114,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return false;
             }
           });
-          
+
           console.log(`[Save Mappings] Found ${mappedConnections.length} active mapped connections out of ${sheetsConnections.length} total`);
-          
+
           if (mappedConnections.length > 0) {
             // Get LinkedIn conversions from API
             let totalConversions = 0;
@@ -20124,15 +20124,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!latestSession) {
               throw new Error('No LinkedIn import session found. Please import LinkedIn metrics first.');
             }
-            
+
             console.log(`[Save Mappings] Using latest session: ${latestSession.id}`);
-            
+
             const linkedInMetrics = await storage.getLinkedInImportMetrics(latestSession.id);
             console.log(`[Save Mappings] LinkedIn metrics found: ${linkedInMetrics.length}`);
-            
+
             const normalizeMetricKey = (key: any) =>
               String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            
+
             for (const metric of linkedInMetrics) {
               const k = normalizeMetricKey(metric.metricKey);
               if (k === 'conversions' || k === 'externalwebsiteconversions') {
@@ -20141,12 +20141,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`[Save Mappings] Found conversions metric (${metric.metricKey}): ${convValue} (total: ${totalConversions})`);
               }
             }
-            
+
             console.log(`[Save Mappings] Total LinkedIn conversions: ${totalConversions}`);
-            
+
             // Fetch revenue from Google Sheets
             let totalRevenue = 0;
-            
+
             // If the DB cannot persist sheet_name (older schema), mappedConnections will all have sheetName=null.
             // In that case, rely on sheetNames passed by the client to fetch the correct tabs (e.g. Revenue_Closed_Won).
             const shouldUseSheetNamesFromBody = !!spreadsheetIdFromBody && sheetNamesFromBody.length > 0;
@@ -20160,49 +20160,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
             for (const conn of connectionsToProcess) {
               try {
                 console.log(`[Save Mappings] Processing connection ${conn.id} (${conn.spreadsheetId}, sheet: ${conn.sheetName || 'default'})`);
-                
+
                 // Fetch Google Sheets data using the same logic as google-sheets-data endpoint
                 const range = conn.sheetName ? `${toA1SheetPrefix(conn.sheetName)}A1:Z1000` : 'A1:Z1000';
                 const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheetId}/values/${range}`;
-                
+
                 const sheetsResponse = await fetch(sheetsUrl, {
                   headers: {
                     'Authorization': `Bearer ${conn.accessToken}`
                   }
                 });
-                
+
                 if (!sheetsResponse.ok) {
                   const errorData = await sheetsResponse.json().catch(() => ({}));
                   console.error(`[Save Mappings] Google Sheets API error for ${conn.id}:`, sheetsResponse.status, errorData);
                   continue;
                 }
-                
+
                 const sheetsData = await sheetsResponse.json();
                 const rows = sheetsData.values || [];
-                
+
                 console.log(`[Save Mappings] Sheet ${conn.id} has ${rows.length} rows`);
-                
+
                 if (rows.length === 0) {
                   console.log(`[Save Mappings] No data in sheet ${conn.spreadsheetId}`);
                   continue;
                 }
-                
+
                 const headers = rows[0] || [];
                 const dataRows = rows.slice(1);
-                
+
                 const mappings = JSON.parse(conn.columnMappings || '[]');
                 console.log(`[Save Mappings] Mappings for ${conn.id}:`, JSON.stringify(mappings));
-                
+
                 const revenueMapping = mappings.find((m: any) => m.targetFieldId === 'revenue' || m.platformField === 'revenue');
                 const conversionValueMapping = mappings.find((m: any) => m.targetFieldId === 'conversion_value' || m.platformField === 'conversion_value');
                 const campaignIdMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_id' || m.platformField === 'campaign_id');
                 const campaignNameMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_name' || m.platformField === 'campaign_name');
-                
+
                 console.log(`[Save Mappings] Revenue mapping:`, revenueMapping);
                 console.log(`[Save Mappings] Conversion Value mapping:`, conversionValueMapping);
                 console.log(`[Save Mappings] Campaign ID mapping:`, campaignIdMapping);
                 console.log(`[Save Mappings] Campaign name mapping:`, campaignNameMapping);
-                
+
                 if (revenueMapping || conversionValueMapping) {
                   const resolveColumnIndex = (mapping: any, sheetHeaders: any[]): number => {
                     let idx = mapping?.sourceColumnIndex ?? mapping?.columnIndex ?? -1;
@@ -20215,12 +20215,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                   const revenueColumnIndex = revenueMapping ? resolveColumnIndex(revenueMapping, headers) : -1;
                   const conversionValueColumnIndex = conversionValueMapping ? resolveColumnIndex(conversionValueMapping, headers) : -1;
-                if (revenueMapping) {
-                  console.log(`[Save Mappings] Revenue column index: ${revenueColumnIndex} (from mapping:`, revenueMapping, ')');
-                  if (revenueColumnIndex < 0 || revenueColumnIndex >= headers.length) {
-                    console.error(`[Save Mappings] ❌ Invalid revenue column index: ${revenueColumnIndex} (headers length: ${headers.length})`);
-                    continue;
-                  }
+                  if (revenueMapping) {
+                    console.log(`[Save Mappings] Revenue column index: ${revenueColumnIndex} (from mapping:`, revenueMapping, ')');
+                    if (revenueColumnIndex < 0 || revenueColumnIndex >= headers.length) {
+                      console.error(`[Save Mappings] ❌ Invalid revenue column index: ${revenueColumnIndex} (headers length: ${headers.length})`);
+                      continue;
+                    }
                   }
                   if (conversionValueMapping) {
                     console.log(`[Save Mappings] Conversion Value column index: ${conversionValueColumnIndex} (from mapping:`, conversionValueMapping, ')');
@@ -20229,7 +20229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       continue;
                     }
                   }
-                  
+
                   // Filter by campaign identifier if mapped.
                   // Prefer Campaign ID when available (more reliable), otherwise fall back to Campaign Name.
                   // IMPORTANT: The spreadsheet typically contains LinkedIn *campaign names* or IDs, not necessarily the MetricMind workspace campaign name.
@@ -20340,7 +20340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   if (filteredRows.length === 0) {
                     filteredRows = dataRows;
                   }
-                  
+
                   // If conversion_value is mapped, prefer extracting conversion value directly.
                   // Otherwise, sum revenue to compute conversion value.
                   if (conversionValueMapping) {
@@ -20373,24 +20373,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
 
                   if (revenueMapping) {
-                  // Sum revenue
-                  let connectionRevenue = 0;
-                  let revenueRowCount = 0;
-                  for (const row of filteredRows) {
-                    if (!Array.isArray(row) || row.length <= revenueColumnIndex) continue;
-                    const rawValue = String(row[revenueColumnIndex] || '0');
-                    const revenueValue = parseFloat(rawValue.replace(/[$,]/g, '')) || 0;
-                    if (revenueValue > 0) {
-                      connectionRevenue += revenueValue;
-                      revenueRowCount++;
-                      if (revenueRowCount <= 3) {
-                        console.log(`[Save Mappings] Revenue row ${revenueRowCount}: "${rawValue}" -> $${revenueValue}`);
+                    // Sum revenue
+                    let connectionRevenue = 0;
+                    let revenueRowCount = 0;
+                    for (const row of filteredRows) {
+                      if (!Array.isArray(row) || row.length <= revenueColumnIndex) continue;
+                      const rawValue = String(row[revenueColumnIndex] || '0');
+                      const revenueValue = parseFloat(rawValue.replace(/[$,]/g, '')) || 0;
+                      if (revenueValue > 0) {
+                        connectionRevenue += revenueValue;
+                        revenueRowCount++;
+                        if (revenueRowCount <= 3) {
+                          console.log(`[Save Mappings] Revenue row ${revenueRowCount}: "${rawValue}" -> $${revenueValue}`);
+                        }
                       }
                     }
-                  }
-                  
-                  totalRevenue += connectionRevenue;
-                  console.log(`[Save Mappings] Revenue from connection ${conn.id}: $${connectionRevenue} (from ${revenueRowCount} rows with revenue > 0, total so far: $${totalRevenue})`);
+
+                    totalRevenue += connectionRevenue;
+                    console.log(`[Save Mappings] Revenue from connection ${conn.id}: $${connectionRevenue} (from ${revenueRowCount} rows with revenue > 0, total so far: $${totalRevenue})`);
                   }
                 } else {
                   console.log(`[Save Mappings] ⚠️ No revenue/conversion_value mapping found for connection ${conn.id}`);
@@ -20400,9 +20400,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.error(`[Save Mappings] Error stack:`, sheetError.stack);
               }
             }
-            
+
             console.log(`[Save Mappings] 💰 FINAL: Total revenue: $${totalRevenue}, Total conversions: ${totalConversions}`);
-            
+
             // Calculate conversion value
             let calculatedConversionValue: string | null = null;
             const extracted = (campaign as any).__conversionValuesFromSheets as number[] | undefined;
@@ -20417,9 +20417,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             if (!calculatedConversionValue && totalRevenue > 0 && totalConversions > 0) {
               calculatedConversionValue = (totalRevenue / totalConversions).toFixed(2);
-              
+
               console.log(`[Save Mappings] 💰 Calculated conversion value: $${calculatedConversionValue} (Revenue: $${totalRevenue}, Conversions: ${totalConversions})`);
-              
+
               // Save to campaign - use conversionValue field name that matches schema
               console.log(`[Save Mappings] Attempting to save conversionValue "${calculatedConversionValue}" to campaign ${campaignId}`);
               try {
@@ -20428,13 +20428,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   console.error(`[Save Mappings] ❌ updateCampaign returned null/undefined!`);
                   throw new Error('updateCampaign returned null');
                 }
-                
+
                 // Check if the value was actually saved (handle both string and number comparison)
                 const savedValue = updatedCampaign.conversionValue?.toString() || null;
                 const expectedValue = calculatedConversionValue.toString();
-                
+
                 console.log(`[Save Mappings] Update result - Expected: "${expectedValue}", Got: "${savedValue}"`);
-                
+
                 if (savedValue !== expectedValue && parseFloat(savedValue || '0') !== parseFloat(expectedValue)) {
                   console.error(`[Save Mappings] ❌ Value mismatch! Expected "${expectedValue}", got "${savedValue}"`);
                   // Don't throw - continue to try other saves
@@ -20446,7 +20446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.error(`[Save Mappings] Error stack:`, updateError.stack);
                 // Continue with other saves even if campaign update fails
               }
-              
+
               // Save to LinkedIn connection
               const updatedLinkedIn = await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue });
               if (!updatedLinkedIn) {
@@ -20454,7 +20454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               } else {
                 console.log(`[Save Mappings] ✅ LinkedIn connection updated: conversionValue = ${updatedLinkedIn.conversionValue}`);
               }
-              
+
               // Save to all sessions
               for (const session of linkedInSessions) {
                 const updatedSession = await storage.updateLinkedInImportSession(session.id, { conversionValue: calculatedConversionValue });
@@ -20464,9 +20464,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   console.log(`[Save Mappings] ✅ Session ${session.id} updated: conversionValue = ${updatedSession.conversionValue}`);
                 }
               }
-              
+
               console.log(`[Save Mappings] ✅✅✅ Conversion value $${calculatedConversionValue} saved to campaign, LinkedIn connection, and ${linkedInSessions.length} session(s)`);
-              
+
               // Verify it was saved by refetching
               const verifyCampaign = await storage.getCampaign(campaignId);
               console.log(`[Save Mappings] 🔍 VERIFICATION: Campaign conversion value after save: ${verifyCampaign?.conversionValue}`);
@@ -20487,14 +20487,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`[Save Mappings] Error stack:`, calcError.stack);
         // Don't fail the request if calculation fails
       }
-      
+
       // Get the final conversion value for the response
       const finalCampaign = await storage.getCampaign(campaignId);
       const finalConversionValue = finalCampaign?.conversionValue || null;
-      
+
       console.log(`[Save Mappings] ✅✅✅ Mappings saved for connection ${connectionId}`);
       console.log(`[Save Mappings] Final conversion value in database: ${finalConversionValue}`);
-      
+
       res.json({
         success: true,
         message: 'Mappings saved successfully',
@@ -20513,7 +20513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const { connectionId } = req.query;
-      
+
       let connection: any;
       if (connectionId) {
         // `connectionId` is the google_sheets_connections.id (NOT spreadsheetId).
@@ -20521,16 +20521,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connection = (all || []).find((c: any) => c?.id === String(connectionId));
         // Backwards-compat fallback: allow callers to pass a spreadsheetId.
         if (!connection) {
-        connection = await storage.getGoogleSheetsConnection(campaignId, connectionId as string);
+          connection = await storage.getGoogleSheetsConnection(campaignId, connectionId as string);
         }
       } else {
         connection = await storage.getPrimaryGoogleSheetsConnection(campaignId);
       }
-      
+
       if (!connection) {
         return res.status(404).json({ error: 'Connection not found' });
       }
-      
+
       let mappings: any[] = [];
       try {
         const raw = (connection as any).columnMappings ?? (connection as any).column_mappings ?? null;
@@ -20540,7 +20540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {
         mappings = [];
       }
-      
+
       res.json({
         success: true,
         mappings,
@@ -21169,26 +21169,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const source =
           existingShopify
             ? await storage.updateRevenueSource(String((existingShopify as any).id), {
-                displayName: `Shopify (${conn.shopDomain})`,
-                currency: cur,
-                mappingConfig: mappingCfg,
-                isActive: true,
-                connectedAt: new Date(),
-              } as any)
+              displayName: `Shopify (${conn.shopDomain})`,
+              currency: cur,
+              mappingConfig: mappingCfg,
+              isActive: true,
+              connectedAt: new Date(),
+            } as any)
             : await storage.createRevenueSource({
-                campaignId,
-                sourceType: "shopify",
-                platformContext: platformCtx,
-                displayName: `Shopify (${conn.shopDomain})`,
-                currency: cur,
-                mappingConfig: mappingCfg,
-                isActive: true,
-              } as any);
+              campaignId,
+              sourceType: "shopify",
+              platformContext: platformCtx,
+              displayName: `Shopify (${conn.shopDomain})`,
+              currency: cur,
+              mappingConfig: mappingCfg,
+              isActive: true,
+            } as any);
 
         await storage.deleteRevenueRecordsBySource(String((source as any).id));
 
-        const endDate = new Date().toISOString().slice(0, 10);
-        const startObj = new Date();
+        // Use yesterday (UTC) as the materialized end date when creating LinkedIn-scoped
+        // Shopify revenue so it lines up with the LinkedIn 30-day window (which uses yesterdayUTC).
+        const now = new Date();
+        const endDateObj = platformCtx === "linkedin"
+          ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1))
+          : now;
+        const endDate = endDateObj.toISOString().slice(0, 10);
+        const startObj = new Date(endDateObj.getTime());
         startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
         const startDate = startObj.toISOString().slice(0, 10);
         const days = enumerateDatesInclusive(startDate, endDate);
@@ -21217,6 +21223,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // ignore
           }
           await clearLatestLinkedInImportSessionConversionValue(campaignId);
+          // Also clear any HubSpot pipeline proxy configuration when a non-CRM (Shopify) revenue source
+          // is being saved for LinkedIn. Pipeline proxy is CRM-specific and should not persist.
+          try {
+            const hubspotConn: any = await storage.getHubspotConnection(campaignId);
+            if (hubspotConn?.id) {
+              let cfg: any = {};
+              try {
+                cfg = hubspotConn?.mappingConfig ? JSON.parse(String(hubspotConn.mappingConfig)) : {};
+              } catch {
+                cfg = {};
+              }
+              const nextCfg = {
+                ...cfg,
+                pipelineEnabled: false,
+                pipelineStageId: null,
+                pipelineStageLabel: null,
+                pipelineTotalToDate: 0,
+                pipelineCurrency: null,
+                pipelineLastUpdatedAt: null,
+                pipelineWarning: null,
+              };
+              await storage.updateHubspotConnection(String(hubspotConn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+            }
+          } catch {
+            // best-effort cleanup; ignore errors
+          }
         }
       } catch (e) {
         console.warn("[Shopify Save Mappings] Failed to materialize revenue records:", e);

@@ -50,8 +50,25 @@ export function SalesforceRevenueWizard(props: {
    * Example: GA4 revenue sources must not unlock LinkedIn revenue metrics.
    */
   platformContext?: "ga4" | "linkedin";
+  /**
+   * Optional: lets the parent modal header Back button step backwards inside this wizard.
+   * Increment the nonce to request a single back navigation.
+   */
+  externalBackNonce?: number;
 }) {
-  const { campaignId, mode = "connect", initialMappingConfig = null, connectOnly = false, autoStartOAuth = false, onConnected, onBack, onSuccess, onClose, platformContext = "ga4" } = props;
+  const {
+    campaignId,
+    mode = "connect",
+    initialMappingConfig = null,
+    connectOnly = false,
+    autoStartOAuth = false,
+    onConnected,
+    onBack,
+    onSuccess,
+    onClose,
+    platformContext = "ga4",
+    externalBackNonce,
+  } = props;
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
 
@@ -682,6 +699,21 @@ export function SalesforceRevenueWizard(props: {
     if (step === "complete") return setStep("review");
   };
 
+  // Allow parent header Back button to drive internal wizard back navigation.
+  const [lastExternalBackNonce, setLastExternalBackNonce] = useState<number | null>(null);
+  useEffect(() => {
+    if (externalBackNonce == null) return;
+    // Avoid firing on first mount (parent passes 0 by default).
+    if (lastExternalBackNonce == null) {
+      setLastExternalBackNonce(externalBackNonce);
+      return;
+    }
+    if (lastExternalBackNonce === externalBackNonce) return;
+    setLastExternalBackNonce(externalBackNonce);
+    handleBackStep();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalBackNonce]);
+
   return (
     <div className="space-y-6">
       {/* Step indicator */}
@@ -1119,7 +1151,13 @@ export function SalesforceRevenueWizard(props: {
           {step === "review" && (
             <div className="space-y-3">
               <div className="text-sm text-slate-700">
-                Preview the Opportunities that will be used to compute revenue for this campaign (Won only, last {days} days).
+                Preview the Opportunities that will be used to compute <strong>Total Revenue</strong> for this campaign (<strong>Closed Won</strong> only, last {days} days).
+                {isLinkedIn && pipelineEnabled ? (
+                  <>
+                    {" "}
+                    Deals currently in pipeline stages (e.g., Proposal) are tracked separately under <strong>Pipeline (Proxy)</strong>.
+                  </>
+                ) : null}
               </div>
 
               {previewCampaignCurrency && (

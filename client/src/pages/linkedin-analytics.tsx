@@ -5416,7 +5416,13 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                     )}
                     </div>
 
-                    {/* Campaign Breakdown */}
+                    {/* Campaign Breakdown - only when 2+ campaigns to avoid duplicating metrics */}
+                    {(() => {
+                      const uniqueCampaignCount = metrics
+                        ? Object.keys(metrics.reduce((acc: any, m: any) => ({ ...acc, [m.campaignUrn]: true }), {})).length
+                        : 0;
+                      if (uniqueCampaignCount < 2) return null;
+                      return (
                     <div className="space-y-4">
                       <div className="flex items-center gap-2">
                         <BarChart3 className="w-5 h-5 text-slate-600" />
@@ -5428,6 +5434,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                             <span className="font-medium">Note:</span> Overview derived metrics (CPC/CTR/CPA/CVR/CPM/ER) are <span className="font-medium">blended</span> across all imported campaigns
                             (weighted by the underlying denominators), so they will not equal the simple average of per-campaign rates.
+                            {aggregated?.hasRevenueTracking === 1 && (
+                              <> Revenue per campaign is <span className="font-medium">allocated by conversion share</span> (Total Revenue × this campaign’s conversions ÷ total conversions). Pipeline (Proxy) is campaign-level only and is not split per campaign.
+                              </>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -5908,6 +5918,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                         </Card>
                       )}
                     </div>
+                    );
+                    })()}
                   </>
                 ) : (
                   <Card>

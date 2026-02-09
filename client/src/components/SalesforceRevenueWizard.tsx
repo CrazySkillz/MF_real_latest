@@ -105,9 +105,8 @@ export function SalesforceRevenueWizard(props: {
   const [revenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">(
     platformContext === "ga4" ? "onsite_in_ga4" : "offsite_not_in_ga4"
   );
-  // Production-friendly default: reduce query volume for large orgs, while still being adjustable in Advanced.
-  const [days, setDays] = useState<number>(180);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  // Fixed lookback to match HubSpot (no UI); new campaigns have limited records.
+  const [days, setDays] = useState<number>(3650);
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
@@ -193,7 +192,7 @@ export function SalesforceRevenueWizard(props: {
     const nextRevenueField = cfg.revenueField ? String(cfg.revenueField) : "Amount";
     const nextConversionValueField = cfg.conversionValueField ? String(cfg.conversionValueField) : "";
     const nextSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v) => String(v)) : [];
-    const nextDays = Number.isFinite(Number(cfg.days)) ? Math.min(Math.max(Number(cfg.days), 1), 3650) : days;
+    const nextDays = Number.isFinite(Number(cfg.days)) ? Math.min(Math.max(Number(cfg.days), 1), 3650) : 3650;
     const nextValueSource: "revenue" | "conversion_value" =
       String(cfg.valueSource || "").trim().toLowerCase() === "conversion_value" ? "conversion_value" : "revenue";
     const nextPipelineEnabled = cfg.pipelineEnabled === true;
@@ -213,7 +212,7 @@ export function SalesforceRevenueWizard(props: {
     setPipelineStageLabel(nextPipelineStageLabel);
     setSelectedValues(nextSelectedValues);
     setUniqueValues([]);
-    setDays(nextDays);
+    setDays(nextDays); // persisted value when editing; no setter exposed in UI
     setLastSaveResult(null);
   }, [campaignId, mode, initialMappingConfig]);
 
@@ -1069,7 +1068,7 @@ export function SalesforceRevenueWizard(props: {
                 )}
               </div>
               <div className="text-xs text-slate-500">
-                Default filter: <strong>Closed Won</strong> opportunities (<code>IsWon = true</code>) within the last {days} days. (Pipeline stages like Proposal
+                Default filter: <strong>Closed Won</strong> opportunities (<code>IsWon = true</code>). (Pipeline stages like Proposal
                 are tracked separately in <strong>Pipeline (Proxy)</strong> when enabled.)
               </div>
             </div>
@@ -1141,31 +1140,9 @@ export function SalesforceRevenueWizard(props: {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-xs text-slate-500">
-                  Currency default: one currency per campaign. If mixed currencies are detected, you’ll be asked to filter to one.
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => setShowAdvanced((v) => !v)}>
-                  {showAdvanced ? "Hide advanced" : "Advanced"}
-                </Button>
+              <div className="text-xs text-slate-500">
+                Currency default: one currency per campaign. If mixed currencies are detected, you’ll be asked to filter to one.
               </div>
-
-              {showAdvanced && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-3">
-                  <div className="space-y-2">
-                    <Label>Lookback window (days)</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={3650}
-                      value={days}
-                      onChange={(e) => setDays(Math.min(Math.max(parseInt(e.target.value || "180", 10) || 180, 1), 3650))}
-                    />
-                    <div className="text-xs text-slate-500">Default: last 180 days.</div>
-                  </div>
-                </div>
-              )}
-            </div>
           )}
 
           {step === "review" && <div />}
@@ -1173,7 +1150,7 @@ export function SalesforceRevenueWizard(props: {
           {step === "review" && (
             <div className="space-y-3">
               <div className="text-sm text-slate-700">
-                Preview the Opportunities that will be used to compute <strong>Total Revenue</strong> for this campaign (<strong>Closed Won</strong> only, last {days} days).
+                Preview the Opportunities that will be used to compute <strong>Total Revenue</strong> for this campaign (<strong>Closed Won</strong> only).
                 {isLinkedIn && pipelineEnabled ? (
                   <>
                     {" "}

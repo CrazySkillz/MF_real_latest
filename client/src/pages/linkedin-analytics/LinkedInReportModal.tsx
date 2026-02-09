@@ -1013,77 +1013,78 @@ export function LinkedInReportModal(props: Props) {
                   </div>
 
                   {reportForm.scheduleEnabled && (
-                    <div className="space-y-4">
-                      {/* Frequency */}
-                      <div className="space-y-2">
-                      <Label htmlFor="schedule-frequency">Frequency</Label>
-                      <Select
-                        value={reportForm.scheduleFrequency}
-                        onValueChange={(value) => setReportForm({ ...reportForm, scheduleFrequency: value })}
-                      >
-                        <SelectTrigger id="schedule-frequency" data-testid="select-frequency">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                          <SelectItem value="quarterly">Quarterly</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      </div>
-
-                    {/* Day of Week - Only for Weekly */}
-                    {reportForm.scheduleFrequency === "weekly" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="schedule-day">Day of Week</Label>
+                    <>
+                      <div className="space-y-4">
+                        {/* Frequency */}
+                        <div className="space-y-2">
+                        <Label htmlFor="schedule-frequency">Frequency</Label>
                         <Select
-                          value={reportForm.scheduleDayOfWeek}
-                          onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfWeek: value })}
+                          value={reportForm.scheduleFrequency}
+                          onValueChange={(value) => setReportForm({ ...reportForm, scheduleFrequency: value })}
                         >
-                          <SelectTrigger id="schedule-day" data-testid="select-day">
+                          <SelectTrigger id="schedule-frequency" data-testid="select-frequency">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="monday">Monday</SelectItem>
-                            <SelectItem value="tuesday">Tuesday</SelectItem>
-                            <SelectItem value="wednesday">Wednesday</SelectItem>
-                            <SelectItem value="thursday">Thursday</SelectItem>
-                            <SelectItem value="friday">Friday</SelectItem>
-                            <SelectItem value="saturday">Saturday</SelectItem>
-                            <SelectItem value="sunday">Sunday</SelectItem>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="quarterly">Quarterly</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                    )}
+                        </div>
 
-                    {/* Quarter Timing - Only for Quarterly */}
-                    {reportForm.scheduleFrequency === "quarterly" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="quarter-timing">Quarter Timing</Label>
-                        <Select
-                          value={reportForm.quarterTiming}
-                          onValueChange={(value) => setReportForm({ ...reportForm, quarterTiming: value })}
-                        >
-                          <SelectTrigger id="quarter-timing" data-testid="select-quarter-timing">
-                            <SelectValue placeholder="End of Quarter" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="end">End of Quarter (Mar, Jun, Sep, Dec)</SelectItem>
-                            <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Choose whether to run reports at the start or end of each quarter
-                        </p>
-                      </div>
-                    )}
+                        {/* Day of Week - Only for Weekly */}
+                        {reportForm.scheduleFrequency === "weekly" && (
+                          <div className="space-y-2">
+                          <Label htmlFor="schedule-day">Day of Week</Label>
+                          <Select
+                            value={reportForm.scheduleDayOfWeek}
+                            onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfWeek: value })}
+                          >
+                            <SelectTrigger id="schedule-day" data-testid="select-day">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="monday">Monday</SelectItem>
+                              <SelectItem value="tuesday">Tuesday</SelectItem>
+                              <SelectItem value="wednesday">Wednesday</SelectItem>
+                              <SelectItem value="thursday">Thursday</SelectItem>
+                              <SelectItem value="friday">Friday</SelectItem>
+                              <SelectItem value="saturday">Saturday</SelectItem>
+                              <SelectItem value="sunday">Sunday</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          </div>
+                        )}
 
-                    {/* Day of Month - Only for Monthly and Quarterly */}
-                    {(reportForm.scheduleFrequency === "monthly" ||
-                      reportForm.scheduleFrequency === "quarterly") && (
-                      <div className="space-y-2">
-                        <Label htmlFor="schedule-day-month">Day of Month</Label>
+                        {/* Quarter Timing - Only for Quarterly */}
+                        {reportForm.scheduleFrequency === "quarterly" && (
+                          <div className="space-y-2">
+                            <Label htmlFor="quarter-timing">Quarter Timing</Label>
+                            <Select
+                              value={reportForm.quarterTiming}
+                              onValueChange={(value) => setReportForm({ ...reportForm, quarterTiming: value })}
+                            >
+                              <SelectTrigger id="quarter-timing" data-testid="select-quarter-timing">
+                                <SelectValue placeholder="End of Quarter" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="end">End of Quarter (Mar, Jun, Sep, Dec)</SelectItem>
+                                <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Choose whether to run reports at the start or end of each quarter
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Day of Month - Only for Monthly and Quarterly */}
+                        {(reportForm.scheduleFrequency === "monthly" ||
+                          reportForm.scheduleFrequency === "quarterly") && (
+                          <div className="space-y-2">
+                            <Label htmlFor="schedule-day-month">Day of Month</Label>
                         <Select
                           value={reportForm.scheduleDayOfMonth}
                           onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfMonth: value })}
@@ -1198,6 +1199,7 @@ export function LinkedInReportModal(props: Props) {
                       )}
                     </div>
                     </div>
+                    </>
                   )}
                 </div>
               </div>

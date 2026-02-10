@@ -6590,7 +6590,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                           {(() => {
                                             const raw = (goalHealth as any)?.kpis?.sample;
                                             const list = Array.isArray(raw) ? raw : [];
-                                            const behind = list.filter((x: any) => String(x?.status || "") === "behind");
+                                            const behindOrBlocked = list.filter((x: any) => {
+                                              const status = String(x?.status || "");
+                                              return status === "behind" || status === "blocked";
+                                            });
 
                                             const gapPct = (x: any) => {
                                               const current = Number(x?.currentValue ?? 0) || 0;
@@ -6602,7 +6605,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                               return deltaPct;
                                             };
 
-                                            const rows = behind
+                                            const rows = behindOrBlocked
                                               .map((x: any) => ({ x, d: gapPct(x) }))
                                               .filter((o: any) => o.d !== null && Number.isFinite(o.d))
                                               .sort((a: any, b: any) => Math.abs(Number(b.d)) - Math.abs(Number(a.d)))
@@ -6615,17 +6618,23 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                 {rows.map((o: any) => {
                                                   const k = o.x;
                                                   const d = Number(o.d || 0);
+                                                  const status = String(k?.status || "");
+                                                  const isBlocked = status === "blocked";
                                                   const gapText = `${d >= 0 ? "+" : ""}${d.toFixed(1)}%`;
                                                   return (
                                                     <div key={String(k?.id || k?.name || Math.random())} className="flex items-center justify-between gap-2">
                                                       <div className="min-w-0">
                                                         <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{String(k?.name || "KPI")}</div>
                                                         <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                                                          Metric: {String(k?.metric || "—")} • Gap: {gapText}
+                                                          Metric: {String(k?.metric || "—")} {isBlocked ? "" : `• Gap: ${gapText}`}
                                                         </div>
                                                       </div>
-                                                      <Badge className="text-xs border bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900">
-                                                        Behind
+                                                      <Badge className={`text-xs border ${
+                                                        isBlocked
+                                                          ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
+                                                          : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
+                                                      }`}>
+                                                        {isBlocked ? "Blocked" : "Behind"}
                                                       </Badge>
                                                     </div>
                                                   );
@@ -6646,7 +6655,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                           {(() => {
                                             const raw = (goalHealth as any)?.benchmarks?.sample;
                                             const list = Array.isArray(raw) ? raw : [];
-                                            const behind = list.filter((x: any) => String(x?.status || "") === "behind");
+                                            const behindOrBlocked = list.filter((x: any) => {
+                                              const status = String(x?.status || "");
+                                              return status === "behind" || status === "blocked";
+                                            });
 
                                             const gapPct = (x: any) => {
                                               const current = Number(x?.currentValue ?? 0) || 0;
@@ -6658,7 +6670,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                               return deltaPct;
                                             };
 
-                                            const rows = behind
+                                            const rows = behindOrBlocked
                                               .map((x: any) => ({ x, d: gapPct(x) }))
                                               .filter((o: any) => o.d !== null && Number.isFinite(o.d))
                                               .sort((a: any, b: any) => Math.abs(Number(b.d)) - Math.abs(Number(a.d)))
@@ -6671,17 +6683,23 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                 {rows.map((o: any) => {
                                                   const b = o.x;
                                                   const d = Number(o.d || 0);
+                                                  const status = String(b?.status || "");
+                                                  const isBlocked = status === "blocked";
                                                   const gapText = `${d >= 0 ? "+" : ""}${d.toFixed(1)}%`;
                                                   return (
                                                     <div key={String(b?.id || b?.name || Math.random())} className="flex items-center justify-between gap-2">
                                                       <div className="min-w-0">
                                                         <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{String(b?.name || "Benchmark")}</div>
                                                         <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                                                          Metric: {String(b?.metric || "—")} • Gap: {gapText}
+                                                          Metric: {String(b?.metric || "—")} {isBlocked ? "" : `• Gap: ${gapText}`}
                                                         </div>
                                                       </div>
-                                                      <Badge className="text-xs border bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900">
-                                                        Behind
+                                                      <Badge className={`text-xs border ${
+                                                        isBlocked
+                                                          ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
+                                                          : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
+                                                      }`}>
+                                                        {isBlocked ? "Blocked" : "Behind"}
                                                       </Badge>
                                                     </div>
                                                   );
@@ -6698,6 +6716,87 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         </div>
                                       )}
                                     </div>
+                                  ) : null}
+
+                                  {goalHealth && (Number((goalHealth as any)?.kpis?.onTrack || 0) > 0 || Number((goalHealth as any)?.benchmarks?.onTrack || 0) > 0) ? (
+                                    <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20">
+                                      <CardHeader>
+                                        <CardTitle className="text-emerald-900 dark:text-emerald-200">Success stories</CardTitle>
+                                        <CardDescription className="text-emerald-700 dark:text-emerald-300">
+                                          KPIs and Benchmarks currently meeting or exceeding targets
+                                        </CardDescription>
+                                      </CardHeader>
+                                      <CardContent>
+                                        <div className="grid gap-3 md:grid-cols-2">
+                                          {Number((goalHealth as any)?.kpis?.onTrack || 0) > 0 && (
+                                            <div className="rounded-md border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-950 p-3">
+                                              <div className="flex items-center justify-between">
+                                                <div className="text-sm font-semibold text-slate-900 dark:text-white">On-track KPIs</div>
+                                                <Badge variant="outline" className="text-xs text-emerald-700 border-emerald-300 dark:text-emerald-300 dark:border-emerald-700">
+                                                  {Number((goalHealth as any)?.kpis?.onTrack || 0)}
+                                                </Badge>
+                                              </div>
+                                              {(() => {
+                                                const raw = (goalHealth as any)?.kpis?.sample;
+                                                const list = Array.isArray(raw) ? raw : [];
+                                                const onTrack = list.filter((x: any) => String(x?.status || "") === "on_track").slice(0, 3);
+                                                if (onTrack.length === 0) return null;
+                                                return (
+                                                  <div className="mt-3 space-y-2">
+                                                    {onTrack.map((k: any) => (
+                                                      <div key={String(k?.id || k?.name || Math.random())} className="flex items-center justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                          <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{String(k?.name || "KPI")}</div>
+                                                          <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                                            {String(k?.metric || "—")}: {Number(k?.currentValue || 0).toFixed(2)} {String(k?.unit || "")}
+                                                          </div>
+                                                        </div>
+                                                        <Badge className="text-xs border bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900">
+                                                          On Track
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                );
+                                              })()}
+                                            </div>
+                                          )}
+                                          {Number((goalHealth as any)?.benchmarks?.onTrack || 0) > 0 && (
+                                            <div className="rounded-md border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-950 p-3">
+                                              <div className="flex items-center justify-between">
+                                                <div className="text-sm font-semibold text-slate-900 dark:text-white">On-track Benchmarks</div>
+                                                <Badge variant="outline" className="text-xs text-emerald-700 border-emerald-300 dark:text-emerald-300 dark:border-emerald-700">
+                                                  {Number((goalHealth as any)?.benchmarks?.onTrack || 0)}
+                                                </Badge>
+                                              </div>
+                                              {(() => {
+                                                const raw = (goalHealth as any)?.benchmarks?.sample;
+                                                const list = Array.isArray(raw) ? raw : [];
+                                                const onTrack = list.filter((x: any) => String(x?.status || "") === "on_track").slice(0, 3);
+                                                if (onTrack.length === 0) return null;
+                                                return (
+                                                  <div className="mt-3 space-y-2">
+                                                    {onTrack.map((b: any) => (
+                                                      <div key={String(b?.id || b?.name || Math.random())} className="flex items-center justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                          <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{String(b?.name || "Benchmark")}</div>
+                                                          <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                                            {String(b?.metric || "—")}: {Number(b?.currentValue || 0).toFixed(2)}
+                                                          </div>
+                                                        </div>
+                                                        <Badge className="text-xs border bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900">
+                                                          On Track
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                );
+                                              })()}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </CardContent>
+                                    </Card>
                                   ) : null}
 
                                   {availableDays > 0 && availableDays < 14 ? (

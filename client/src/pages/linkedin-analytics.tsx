@@ -5361,8 +5361,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
                                   {/* Profit */}
                                   <Card className={`hover:shadow-md transition-shadow ${(aggregated.profit || 0) >= 0
-                                      ? 'border-green-200 dark:border-green-800'
-                                      : 'border-red-200 dark:border-red-800'
+                                    ? 'border-green-200 dark:border-green-800'
+                                    : 'border-red-200 dark:border-red-800'
                                     }`}>
                                     <CardContent className="p-4">
                                       <div className="flex items-start justify-between mb-2">
@@ -5376,8 +5376,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         )}
                                       </div>
                                       <p className={`text-2xl font-bold ${(aggregated.profit || 0) >= 0
-                                          ? 'text-green-700 dark:text-green-400'
-                                          : 'text-red-700 dark:text-red-400'
+                                        ? 'text-green-700 dark:text-green-400'
+                                        : 'text-red-700 dark:text-red-400'
                                         }`}>
                                         {formatCurrency(aggregated.profit || 0)}
                                       </p>
@@ -5812,13 +5812,13 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                       </p>
                                                     </div>
                                                     <div className={`p-3 rounded-lg ${campaignProfit >= 0
-                                                        ? 'bg-green-50 dark:bg-green-900/10'
-                                                        : 'bg-red-50 dark:bg-red-900/10'
+                                                      ? 'bg-green-50 dark:bg-green-900/10'
+                                                      : 'bg-red-50 dark:bg-red-900/10'
                                                       }`}>
                                                       <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit</p>
                                                       <p className={`text-sm font-bold ${campaignProfit >= 0
-                                                          ? 'text-green-700 dark:text-green-400'
-                                                          : 'text-red-700 dark:text-red-400'
+                                                        ? 'text-green-700 dark:text-green-400'
+                                                        : 'text-red-700 dark:text-red-400'
                                                         }`}>
                                                         {formatCurrency(campaignProfit)}
                                                       </p>
@@ -6629,11 +6629,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                           Metric: {String(k?.metric || "—")} {isBlocked ? "" : `• Gap: ${gapText}`}
                                                         </div>
                                                       </div>
-                                                      <Badge className={`text-xs border ${
-                                                        isBlocked
+                                                      <Badge className={`text-xs border ${isBlocked
                                                           ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
                                                           : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
-                                                      }`}>
+                                                        }`}>
                                                         {isBlocked ? "Blocked" : "Behind"}
                                                       </Badge>
                                                     </div>
@@ -6694,11 +6693,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                           Metric: {String(b?.metric || "—")} {isBlocked ? "" : `• Gap: ${gapText}`}
                                                         </div>
                                                       </div>
-                                                      <Badge className={`text-xs border ${
-                                                        isBlocked
+                                                      <Badge className={`text-xs border ${isBlocked
                                                           ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
                                                           : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
-                                                      }`}>
+                                                        }`}>
                                                         {isBlocked ? "Blocked" : "Behind"}
                                                       </Badge>
                                                     </div>
@@ -6815,22 +6813,36 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     </div>
                                   ) : (
                                     <>
-                                      <div className="space-y-3">
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-2">
-                                            <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Performance & anomalies</div>
-                                            {thresholdsPopover}
+                                      {integrity.length > 0 && (
+                                        <div className="space-y-3">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Data integrity & configuration</div>
+                                            </div>
+                                            <Badge variant="outline" className="text-xs">{integrity.length}</Badge>
                                           </div>
-                                          <Badge variant="outline" className="text-xs">{performance.length}</Badge>
+                                          {integrity.slice(0, 12).map(renderInsightCard)}
                                         </div>
-                                        {performance.length === 0 ? (
-                                          <div className="text-sm text-slate-600 dark:text-slate-400">
-                                            No performance issues detected. Add KPIs/Benchmarks to unlock more evaluations.
+                                      )}
+
+                                      {performance.length > 0 && (
+                                        <div className="space-y-3">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Performance & anomalies</div>
+                                              {thresholdsPopover}
+                                            </div>
+                                            <Badge variant="outline" className="text-xs">{performance.length}</Badge>
                                           </div>
-                                        ) : (
-                                          performance.slice(0, 12).map(renderInsightCard)
-                                        )}
-                                      </div>
+                                          {performance.slice(0, 12).map(renderInsightCard)}
+                                        </div>
+                                      )}
+
+                                      {integrity.length === 0 && performance.length === 0 && (
+                                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                                          No issues detected. System is operating normally.
+                                        </div>
+                                      )}
                                     </>
                                   )}
                                 </>
@@ -7869,8 +7881,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                       <div
                                         key={ad.id}
                                         className={`flex items-center justify-between p-3 rounded-lg border ${isTop ? 'border-green-500 bg-green-50 dark:bg-green-950/20' :
-                                            isBottom ? 'border-red-500 bg-red-50 dark:bg-red-950/20' :
-                                              'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'
+                                          isBottom ? 'border-red-500 bg-red-50 dark:bg-red-950/20' :
+                                            'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'
                                           }`}
                                         data-testid={`ad-detail-${index}`}
                                       >

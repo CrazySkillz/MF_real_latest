@@ -17680,7 +17680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Canonical LinkedIn revenue rules (shared across Overview/KPIs/Benchmarks/Ads)
       // Auto-recalculate Shopify CV if the mapping is missing data (one-time backfill for legacy mappings)
       await recalculateShopifyConversionValueIfNeeded(session.campaignId);
-      
+
       const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
       const rev = await resolveLinkedInRevenueContext({
         campaignId: String(session.campaignId),
@@ -21361,10 +21361,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const startObj = new Date(endDateObj.getTime());
         startObj.setUTCDate(startObj.getUTCDate() - (rangeDays - 1));
         const startDate = startObj.toISOString().slice(0, 10);
-        
+
         // Filter out dates outside the range
         recordDates = recordDates.filter(d => d >= startDate && d <= endDate);
-        
+
         // If all dates are filtered out, use end date
         if (recordDates.length === 0) {
           recordDates = [endDate];

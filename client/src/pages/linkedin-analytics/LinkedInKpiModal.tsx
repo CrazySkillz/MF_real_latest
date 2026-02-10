@@ -522,7 +522,8 @@ export function LinkedInKpiModal(props: any) {
             </div>
           </div>
 
-          {/* Apply To Section */}
+          {/* Apply To Section - Only show if multiple campaigns */}
+          {availableCampaigns.length > 1 && (
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="kpi-apply-to">Apply To</Label>
@@ -827,7 +828,7 @@ export function LinkedInKpiModal(props: any) {
               </div>
             )}
           </div>
-
+          )}\n
           {/* Alert Settings Section */}
           <div className="space-y-4 pt-4 border-t">
             <div className="space-y-2">

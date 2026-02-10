@@ -138,7 +138,7 @@ export async function resolveLinkedInRevenueContext(opts: {
       } else if (importedRevenueToDate > 0 && lastCount > 0) {
         shopifyCv = importedRevenueToDate / lastCount;
       }
-      
+
       // Fallback: check Shopify connection's mappingConfig for lastConversionValue/lastMatchedOrderCount
       if (shopifyCv <= 0) {
         try {
@@ -158,7 +158,7 @@ export async function resolveLinkedInRevenueContext(opts: {
           // ignore
         }
       }
-      
+
       // Ultimate fallback: if we have Shopify revenue but no order count info at all,
       // assume 1 order (so CV = revenue-to-date). This handles legacy mappings.
       if (shopifyCv <= 0 && importedRevenueToDate > 0) {

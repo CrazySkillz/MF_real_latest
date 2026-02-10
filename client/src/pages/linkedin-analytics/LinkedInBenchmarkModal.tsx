@@ -364,7 +364,8 @@ export function LinkedInBenchmarkModal(props: any) {
             </div>
           </div>
 
-          {/* Apply To Section */}
+          {/* Apply To Section - Only show if multiple campaigns */}
+          {availableCampaigns.length > 1 && (
           <div className="space-y-2">
             <Label htmlFor="benchmark-apply-to" className="text-base font-semibold">
               Apply Benchmark To
@@ -419,6 +420,7 @@ export function LinkedInBenchmarkModal(props: any) {
               Choose whether this benchmark applies to all campaigns combined or a specific individual campaign
             </p>
           </div>
+          )}
 
           {/* Campaign Selector - Only show if 'specific' is selected */}
           {benchmarkForm.applyTo === "specific" && (

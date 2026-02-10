@@ -6721,8 +6721,12 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   {goalHealth && (Number((goalHealth as any)?.kpis?.onTrack || 0) > 0 || Number((goalHealth as any)?.benchmarks?.onTrack || 0) > 0) ? (
                                     <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20">
                                       <CardHeader>
-                                        <CardTitle className="text-emerald-900 dark:text-emerald-200">Success stories</CardTitle>
-                                        <CardDescription className="text-emerald-700 dark:text-emerald-300">
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                            Success stories
+                                          </div>
+                                        </div>
+                                        <CardDescription className="text-emerald-700 dark:text-emerald-300 mt-1">
                                           KPIs and Benchmarks currently meeting or exceeding targets
                                         </CardDescription>
                                       </CardHeader>

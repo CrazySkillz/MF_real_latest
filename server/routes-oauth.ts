@@ -2915,14 +2915,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             behind: evaluatedKpis.filter((x: any) => x.status === "behind").length,
             blocked: evaluatedKpis.filter((x: any) => x.status === "blocked").length,
             onTrack: evaluatedKpis.filter((x: any) => x.status === "on_track").length,
-            sample: evaluatedKpis.filter((x: any) => x.status === "behind" || x.status === "blocked" || x.status === "on_track").slice(0, 10),
+            all: evaluatedKpis,
           },
           benchmarks: {
             total: evaluatedBenchmarks.length,
             behind: evaluatedBenchmarks.filter((x: any) => x.status === "behind").length,
             blocked: evaluatedBenchmarks.filter((x: any) => x.status === "blocked").length,
             onTrack: evaluatedBenchmarks.filter((x: any) => x.status === "on_track").length,
-            sample: evaluatedBenchmarks.filter((x: any) => x.status === "behind" || x.status === "blocked" || x.status === "on_track").slice(0, 10),
+            all: evaluatedBenchmarks,
           },
         };
       } catch {

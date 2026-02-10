@@ -6588,7 +6588,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                           </div>
 
                                           {(() => {
-                                            const raw = (goalHealth as any)?.kpis?.sample;
+                                            const raw = (goalHealth as any)?.kpis?.all;
                                             const list = Array.isArray(raw) ? raw : [];
                                             const behindOrBlocked = list.filter((x: any) => {
                                               const status = String(x?.status || "");
@@ -6609,7 +6609,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                               .map((x: any) => ({ x, d: gapPct(x) }))
                                               .filter((o: any) => o.d !== null && Number.isFinite(o.d))
                                               .sort((a: any, b: any) => Math.abs(Number(b.d)) - Math.abs(Number(a.d)))
-                                              .slice(0, 3);
+                                              .slice(0, 5);
 
                                             if (rows.length === 0) return null;
 
@@ -6653,7 +6653,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                           </div>
 
                                           {(() => {
-                                            const raw = (goalHealth as any)?.benchmarks?.sample;
+                                            const raw = (goalHealth as any)?.benchmarks?.all;
                                             const list = Array.isArray(raw) ? raw : [];
                                             const behindOrBlocked = list.filter((x: any) => {
                                               const status = String(x?.status || "");
@@ -6674,7 +6674,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                               .map((x: any) => ({ x, d: gapPct(x) }))
                                               .filter((o: any) => o.d !== null && Number.isFinite(o.d))
                                               .sort((a: any, b: any) => Math.abs(Number(b.d)) - Math.abs(Number(a.d)))
-                                              .slice(0, 3);
+                                              .slice(0, 5);
 
                                             if (rows.length === 0) return null;
 
@@ -6741,9 +6741,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                 </Badge>
                                               </div>
                                               {(() => {
-                                                const raw = (goalHealth as any)?.kpis?.sample;
+                                                const raw = (goalHealth as any)?.kpis?.all;
                                                 const list = Array.isArray(raw) ? raw : [];
-                                                const onTrack = list.filter((x: any) => String(x?.status || "") === "on_track").slice(0, 3);
+                                                const onTrack = list.filter((x: any) => String(x?.status || "") === "on_track").slice(0, 5);
                                                 if (onTrack.length === 0) return null;
                                                 return (
                                                   <div className="mt-3 space-y-2">
@@ -6774,9 +6774,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                 </Badge>
                                               </div>
                                               {(() => {
-                                                const raw = (goalHealth as any)?.benchmarks?.sample;
+                                                const raw = (goalHealth as any)?.benchmarks?.all;
                                                 const list = Array.isArray(raw) ? raw : [];
-                                                const onTrack = list.filter((x: any) => String(x?.status || "") === "on_track").slice(0, 3);
+                                                const onTrack = list.filter((x: any) => String(x?.status || "") === "on_track").slice(0, 5);
                                                 if (onTrack.length === 0) return null;
                                                 return (
                                                   <div className="mt-3 space-y-2">

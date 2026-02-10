@@ -366,60 +366,60 @@ export function LinkedInBenchmarkModal(props: any) {
 
           {/* Apply To Section - Only show if multiple campaigns */}
           {availableCampaigns.length > 1 && (
-          <div className="space-y-2">
-            <Label htmlFor="benchmark-apply-to" className="text-base font-semibold">
-              Apply Benchmark To
-            </Label>
-            <Select
-              value={benchmarkForm.applyTo}
-              onValueChange={(value) => {
-                const nextApplyTo = value as "all" | "specific";
-                // When switching scope, recompute Current Value from the same source-of-truth used elsewhere.
-                if (!benchmarkForm.metric) {
-                  setBenchmarkForm({
-                    ...benchmarkForm,
-                    applyTo: nextApplyTo,
-                    specificCampaignId: nextApplyTo === "all" ? "" : "",
-                    // Clear currentValue when switching to specific until a campaign is selected.
-                    currentValue: nextApplyTo === "specific" ? "" : benchmarkForm.currentValue,
-                  });
-                  return;
-                }
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-apply-to" className="text-base font-semibold">
+                Apply Benchmark To
+              </Label>
+              <Select
+                value={benchmarkForm.applyTo}
+                onValueChange={(value) => {
+                  const nextApplyTo = value as "all" | "specific";
+                  // When switching scope, recompute Current Value from the same source-of-truth used elsewhere.
+                  if (!benchmarkForm.metric) {
+                    setBenchmarkForm({
+                      ...benchmarkForm,
+                      applyTo: nextApplyTo,
+                      specificCampaignId: nextApplyTo === "all" ? "" : "",
+                      // Clear currentValue when switching to specific until a campaign is selected.
+                      currentValue: nextApplyTo === "specific" ? "" : benchmarkForm.currentValue,
+                    });
+                    return;
+                  }
 
-                if (nextApplyTo === "all") {
-                  const next = getBenchmarkModalCurrentValue(benchmarkForm.metric, "all");
+                  if (nextApplyTo === "all") {
+                    const next = getBenchmarkModalCurrentValue(benchmarkForm.metric, "all");
+                    setBenchmarkForm({
+                      ...benchmarkForm,
+                      applyTo: "all",
+                      specificCampaignId: "",
+                      currentValue: next.currentValue,
+                      unit: next.unit,
+                    });
+                    return;
+                  }
+
+                  // specific
                   setBenchmarkForm({
                     ...benchmarkForm,
-                    applyTo: "all",
+                    applyTo: "specific",
                     specificCampaignId: "",
-                    currentValue: next.currentValue,
-                    unit: next.unit,
+                    currentValue: "",
+                    unit: getBenchmarkUnitForMetric(benchmarkForm.metric),
                   });
-                  return;
-                }
-
-                // specific
-                setBenchmarkForm({
-                  ...benchmarkForm,
-                  applyTo: "specific",
-                  specificCampaignId: "",
-                  currentValue: "",
-                  unit: getBenchmarkUnitForMetric(benchmarkForm.metric),
-                });
-              }}
-            >
-              <SelectTrigger id="benchmark-apply-to" data-testid="select-benchmark-apply-to">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Campaigns (Aggregate)</SelectItem>
-                <SelectItem value="specific">Specific Campaign</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-slate-600 dark:text-slate-400">
-              Choose whether this benchmark applies to all campaigns combined or a specific individual campaign
-            </p>
-          </div>
+                }}
+              >
+                <SelectTrigger id="benchmark-apply-to" data-testid="select-benchmark-apply-to">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Campaigns (Aggregate)</SelectItem>
+                  <SelectItem value="specific">Specific Campaign</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Choose whether this benchmark applies to all campaigns combined or a specific individual campaign
+              </p>
+            </div>
           )}
 
           {/* Campaign Selector - Only show if 'specific' is selected */}

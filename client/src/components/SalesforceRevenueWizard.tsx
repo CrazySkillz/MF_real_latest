@@ -902,6 +902,9 @@ export function SalesforceRevenueWizard(props: {
           {step === "value-source" && isLinkedIn && (
             <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-2">
               <div className="text-sm font-medium">What do you want MetricMind to pull from Salesforce?</div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.
+              </div>
               <RadioGroup
                 value={salesforceSourceMode}
                 onValueChange={(v: any) => {

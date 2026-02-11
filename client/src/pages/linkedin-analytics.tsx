@@ -5985,6 +5985,40 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           </p>
                         </div>
 
+                        {(() => {
+                          const availableDays = Number((linkedInInsightsRollups as any)?.availableDays || 0);
+                          const campaignBudget = campaign?.budget ? parseFloat(String(campaign.budget)) : null;
+                          const showBudgetInfo = availableDays >= 7 && !campaignBudget;
+                          
+                          if (!showBudgetInfo) return null;
+                          
+                          return (
+                            <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20">
+                              <CardContent className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+                                      Add Campaign Budget to Unlock Spend Pacing Alerts
+                                    </div>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                                      Set a monthly budget to enable spend pacing alerts that warn you when projected spend exceeds your budget or when you're underspending.
+                                    </p>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                                      onClick={() => setLocation(`/campaigns/${encodeURIComponent(String(campaignId || ""))}`)}
+                                    >
+                                      Edit Campaign Settings
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })()}
+
                         <Card className="border-slate-200 dark:border-slate-700">
                           <CardHeader>
                             <CardTitle>Executive financials</CardTitle>
@@ -7371,6 +7405,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               const progressFill = Math.min(progressPct, 100);
                               const progressColor =
                                 p.status === 'on_track' ? 'bg-green-500' : p.status === 'needs_attention' ? 'bg-amber-500' : p.status === 'behind' ? 'bg-red-500' : 'bg-slate-300';
+                              const isRevenueBlocked =
+                                isRevenueDependentBenchmarkMetric(String(benchmark.metric || '')) &&
+                                aggregated?.hasRevenueTracking !== 1;
                               return (
                                 <Card key={benchmark.id} data-testid={`benchmark-card-${benchmark.id}`}>
                                   <CardContent className="p-6">
@@ -7481,6 +7518,12 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                       </div>
                                     </div>
 
+                                    {isRevenueBlocked && (
+                                      <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                                        This metric is unavailable because revenue tracking is disabled (no revenue source / conversion value).
+                                      </div>
+                                    )}
+
                                     <div className="grid gap-4 md:grid-cols-3">
                                       <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                                         <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
@@ -7488,6 +7531,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         </div>
                                         <div className="text-lg font-bold text-slate-900 dark:text-white">
                                           {(() => {
+                                            if (isRevenueBlocked) return '—';
                                             // Enterprise-grade: Current Value must always reflect the live Overview aggregates.
                                             const currentVal = getLiveCurrentForBenchmark(benchmark);
                                             return formatMetricValueForDisplay(benchmark.metric, currentVal);

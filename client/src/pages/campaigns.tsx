@@ -1525,6 +1525,9 @@ export default function Campaigns() {
                         {form.formState.errors.budget && (
                           <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
                         )}
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Add a monthly budget to enable spend pacing alerts in Insights.
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="currency">Currency</Label>

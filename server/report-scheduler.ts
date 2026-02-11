@@ -445,7 +445,7 @@ async function sendReportEmailWithRetry(
   maxRetries: number = 3
 ): Promise<boolean> {
   const delays = [1000, 2000, 4000]; // Exponential backoff: 1s, 2s, 4s
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const result = await sendReportEmail(report, recipients, meta);
@@ -455,7 +455,7 @@ async function sendReportEmailWithRetry(
         }
         return true;
       }
-      
+
       if (attempt < maxRetries) {
         const delay = delays[attempt - 1];
         console.warn(`[Report Scheduler] ⚠️ Email send failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`);
@@ -469,7 +469,7 @@ async function sendReportEmailWithRetry(
       }
     }
   }
-  
+
   console.error(`[Report Scheduler] ❌ Email failed after ${maxRetries} attempts`);
   return false;
 }
@@ -653,14 +653,14 @@ async function sendReportEmail(
                   </div>
                   <div class="info-row">
                     <span class="info-label">Generated:</span>
-                    <span class="info-value">${new Date().toLocaleString('en-US', { 
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}</span>
+                    <span class="info-value">${new Date().toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })}</span>
                   </div>
                 </div>
               </div>
@@ -735,7 +735,7 @@ export async function checkScheduledReports(): Promise<void> {
 
     // Get all active reports with schedules - try both storage methods
     let allReports: any[] = [];
-    
+
     try {
       // Try LinkedIn-specific reports first
       const linkedInReports = await storage.getLinkedInReports();
@@ -744,7 +744,7 @@ export async function checkScheduledReports(): Promise<void> {
     } catch (error) {
       console.log('[Report Scheduler] No LinkedIn reports found');
     }
-    
+
     try {
       // Also check platform reports
       const platformReports = await storage.getPlatformReports('linkedin');
@@ -753,14 +753,14 @@ export async function checkScheduledReports(): Promise<void> {
     } catch (error) {
       console.log('[Report Scheduler] No platform reports found');
     }
-    
+
     if (allReports.length === 0) {
       console.log('[Report Scheduler] No reports found in either storage');
       return;
     }
 
     const scheduledReports = allReports.filter(r => r.scheduleEnabled && r.status === 'active');
-    
+
     if (scheduledReports.length === 0) {
       console.log('[Report Scheduler] No scheduled reports found');
       return;
@@ -791,110 +791,110 @@ export async function checkScheduledReports(): Promise<void> {
 
       console.log(`[Report Scheduler] Report "${report.name}" is due now (${due.scheduledKey})`);
 
-        // Get recipients
-        const recipients = report.scheduleRecipients || [];
-        
-        if (!recipients || recipients.length === 0) {
-          console.warn(`[Report Scheduler] Report "${report.name}" has no recipients, skipping`);
-          continue;
+      // Get recipients
+      const recipients = report.scheduleRecipients || [];
+
+      if (!recipients || recipients.length === 0) {
+        console.warn(`[Report Scheduler] Report "${report.name}" has no recipients, skipping`);
+        continue;
+      }
+
+      // Compute report window (align to LinkedIn analytics: last 30 complete UTC days)
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+      const start = new Date(end.getTime());
+      start.setUTCDate(start.getUTCDate() - 29);
+      const windowStart = start.toISOString().slice(0, 10);
+      const windowEnd = end.toISOString().slice(0, 10);
+
+      // Snapshot (what was sent)
+      let campaignName: string | null = null;
+      try {
+        if ((report as any).campaignId) {
+          const [c] = await db.select().from(campaigns).where(eq(campaigns.id, String((report as any).campaignId)));
+          campaignName = (c as any)?.name || null;
         }
+      } catch {
+        campaignName = null;
+      }
 
-        // Compute report window (align to LinkedIn analytics: last 30 complete UTC days)
-        const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
-        const start = new Date(end.getTime());
-        start.setUTCDate(start.getUTCDate() - 29);
-        const windowStart = start.toISOString().slice(0, 10);
-        const windowEnd = end.toISOString().slice(0, 10);
+      const snapshotPayload = {
+        reportId: String((report as any).id),
+        reportName: String((report as any).name || ""),
+        reportType: String((report as any).reportType || ""),
+        platformType: String((report as any).platformType || "linkedin"),
+        campaignId: (report as any).campaignId || null,
+        campaignName,
+        windowStart,
+        windowEnd,
+        generatedAt: now.toISOString(),
+        scheduledKey: due.scheduledKey,
+      };
 
-        // Snapshot (what was sent)
-        let campaignName: string | null = null;
-        try {
-          if ((report as any).campaignId) {
-            const [c] = await db.select().from(campaigns).where(eq(campaigns.id, String((report as any).campaignId)));
-            campaignName = (c as any)?.name || null;
-          }
-        } catch {
-          campaignName = null;
-        }
-
-        const snapshotPayload = {
-          reportId: String((report as any).id),
-          reportName: String((report as any).name || ""),
-          reportType: String((report as any).reportType || ""),
-          platformType: String((report as any).platformType || "linkedin"),
-          campaignId: (report as any).campaignId || null,
-          campaignName,
+      const [snap] = await db
+        .insert(reportSnapshots)
+        .values({
+          reportId: snapshotPayload.reportId,
+          campaignId: snapshotPayload.campaignId,
+          platformType: snapshotPayload.platformType,
+          reportType: snapshotPayload.reportType,
           windowStart,
           windowEnd,
-          generatedAt: now.toISOString(),
-          scheduledKey: due.scheduledKey,
-        };
+          snapshotJson: JSON.stringify(snapshotPayload),
+          hasEstimated: false,
+        } as any)
+        .returning()
+        .catch(() => []);
 
-        const [snap] = await db
-          .insert(reportSnapshots)
-          .values({
-            reportId: snapshotPayload.reportId,
-            campaignId: snapshotPayload.campaignId,
-            platformType: snapshotPayload.platformType,
-            reportType: snapshotPayload.reportType,
-            windowStart,
-            windowEnd,
-            snapshotJson: JSON.stringify(snapshotPayload),
-            hasEstimated: false,
-          } as any)
-          .returning()
-          .catch(() => []);
+      const pdfBuffer = await buildPdfAttachmentForReport({
+        report,
+        windowStart,
+        windowEnd,
+        campaignName,
+        isTest: false,
+      });
+      console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
 
-        const pdfBuffer = await buildPdfAttachmentForReport({
-          report,
-          windowStart,
-          windowEnd,
-          campaignName,
-          isTest: false,
-        });
-        console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
+      // Send email with retry mechanism (with PDF attachment when possible)
+      const sent = await sendReportEmailWithRetry(report, recipients, {
+        windowStart,
+        windowEnd,
+        campaignName,
+        snapshotId: (snap as any)?.id ? String((snap as any).id) : undefined,
+        attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\s+/g, "_")}_${windowEnd}.pdf`, content: pdfBuffer } : null,
+      });
 
-        // Send email with retry mechanism (with PDF attachment when possible)
-        const sent = await sendReportEmailWithRetry(report, recipients, {
-          windowStart,
-          windowEnd,
-          campaignName,
-          snapshotId: (snap as any)?.id ? String((snap as any).id) : undefined,
-          attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\s+/g, "_")}_${windowEnd}.pdf`, content: pdfBuffer } : null,
-        });
+      // Update metrics
+      if (sent) {
+        schedulerMetrics.totalSent++;
+        schedulerMetrics.lastSuccessTime = new Date();
+      } else {
+        schedulerMetrics.totalFailed++;
+        schedulerMetrics.lastErrorTime = new Date();
+        schedulerMetrics.lastError = "Email send failed after retries";
+      }
 
-        // Update metrics
-        if (sent) {
-          schedulerMetrics.totalSent++;
-          schedulerMetrics.lastSuccessTime = new Date();
-        } else {
-          schedulerMetrics.totalFailed++;
-          schedulerMetrics.lastErrorTime = new Date();
-          schedulerMetrics.lastError = "Email send failed after retries";
-        }
+      await db
+        .update(reportSendEvents)
+        .set({
+          status: sent ? "sent" : "failed",
+          error: sent ? null : "Email send failed after retries",
+          sentAt: sent ? new Date() : null,
+          snapshotId: (snap as any)?.id ? String((snap as any).id) : null,
+        } as any)
+        .where(and(eq(reportSendEvents.reportId, snapshotPayload.reportId), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+        .catch(() => { });
 
+      if (sent) {
+        // Update report book-keeping
         await db
-          .update(reportSendEvents)
-          .set({
-            status: sent ? "sent" : "failed",
-            error: sent ? null : "Email send failed after retries",
-            sentAt: sent ? new Date() : null,
-            snapshotId: (snap as any)?.id ? String((snap as any).id) : null,
-          } as any)
-          .where(and(eq(reportSendEvents.reportId, snapshotPayload.reportId), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
-          .catch(() => {});
+          .update(linkedinReports)
+          .set({ lastSentAt: new Date() } as any)
+          .where(eq(linkedinReports.id, snapshotPayload.reportId))
+          .catch(() => { });
+      }
 
-        if (sent) {
-          // Update report book-keeping
-          await db
-            .update(linkedinReports)
-            .set({ lastSentAt: new Date() } as any)
-            .where(eq(linkedinReports.id, snapshotPayload.reportId))
-            .catch(() => {});
-        }
-
-        // Add a small delay between emails to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add a small delay between emails to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     console.log('[Report Scheduler] ✅ Due reports check completed');
@@ -924,14 +924,14 @@ export function getSchedulerMetrics() {
 export async function sendTestReport(reportId: string): Promise<boolean> {
   try {
     console.log(`[Report Scheduler] Sending test report: ${reportId}`);
-    
+
     // Check email configuration
     const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
-    const hasEmailConfig = 
+    const hasEmailConfig =
       (emailProvider === 'mailgun' && process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS) ||
       (emailProvider === 'sendgrid' && process.env.SENDGRID_API_KEY) ||
       (emailProvider === 'smtp' && process.env.SMTP_USER && process.env.SMTP_PASS);
-    
+
     if (!hasEmailConfig) {
       console.error(`[Report Scheduler] ❌ Email provider configured as "${emailProvider}" but credentials are missing`);
       console.error('[Report Scheduler] Please configure email environment variables on Render:');
@@ -940,10 +940,10 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       console.error('  - For SMTP: SMTP_USER, SMTP_PASS');
       return false;
     }
-    
+
     // Try both storage methods - LinkedIn-specific first, then platform-generic
     console.log(`[Report Scheduler] Fetching report from storage...`);
-    
+
     let report;
     try {
       // First try LinkedIn-specific reports (used by /api/linkedin/reports)
@@ -952,7 +952,7 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
     } catch (error) {
       console.log(`[Report Scheduler] LinkedIn report fetch failed, trying platform reports...`);
     }
-    
+
     // If not found, try platform reports
     if (!report) {
       const allReports = await storage.getPlatformReports('linkedin');
@@ -962,7 +962,7 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
 
     if (!report) {
       console.error(`[Report Scheduler] Report not found in either storage method: ${reportId}`);
-      
+
       // Debug: List all available reports
       try {
         const linkedInReports = await storage.getLinkedInReports();
@@ -978,7 +978,7 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       } catch (debugError) {
         console.error(`[Report Scheduler] DEBUG - Error listing reports:`, debugError);
       }
-      
+
       return false;
     }
 
@@ -987,7 +987,7 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
     console.log(`[Report Scheduler] Schedule recipients:`, report.scheduleRecipients);
 
     const recipients = report.scheduleRecipients || [];
-    
+
     if (recipients.length === 0) {
       console.error(`[Report Scheduler] No recipients configured for report: ${reportId}`);
       return false;
@@ -1031,7 +1031,7 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       attachment: pdfBuffer ? { filename: `${safeName}_${windowEnd}.pdf`, content: pdfBuffer } : null,
     });
     console.log(`[Report Scheduler] Send result: ${result ? 'SUCCESS ✅' : 'FAILED ❌'}`);
-    
+
     return result;
   } catch (error) {
     console.error('[Report Scheduler] Error sending test report:', error);
@@ -1045,7 +1045,7 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
  */
 export function startReportScheduler(): void {
   console.log('[Report Scheduler] 🚀 Starting enterprise-grade report scheduler...');
-  
+
   // Optionally run immediately on startup
   if (process.env.RUN_REPORT_SCHEDULER_ON_STARTUP === "true") {
     void checkScheduledReports();
@@ -1054,7 +1054,7 @@ export function startReportScheduler(): void {
   // Enterprise-grade: Use node-cron for guaranteed execution times
   // Run every minute for precision (idempotency prevents duplicates)
   const cronSchedule = process.env.REPORT_SCHEDULER_CRON || '* * * * *'; // Default: every minute
-  
+
   cron.schedule(cronSchedule, () => {
     void checkScheduledReports();
   }, {

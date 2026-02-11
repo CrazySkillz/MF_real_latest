@@ -186,7 +186,7 @@ process.on('uncaughtException', (error: Error) => {
     const port = parseInt(process.env.PORT || '5000', 10);
     server.listen(port, "0.0.0.0", () => {
       log(`serving on port ${port}`);
-      
+
       // Run database migrations on startup
       setTimeout(async () => {
         try {
@@ -234,7 +234,7 @@ process.on('uncaughtException', (error: Error) => {
             ALTER TABLE meta_connections
             ADD COLUMN IF NOT EXISTS encrypted_tokens JSONB;
           `);
-          
+
           // Migration 1: Add KPI campaign scope columns
           await db.execute(sql`
             ALTER TABLE kpis 
@@ -262,7 +262,7 @@ process.on('uncaughtException', (error: Error) => {
             ALTER COLUMN last_computed_value TYPE DECIMAL(18, 2),
             ALTER COLUMN alert_threshold TYPE DECIMAL(18, 2);
           `);
-          
+
           // Migration 2: Add notifications metadata column
           await db.execute(sql`
             ALTER TABLE notifications 
@@ -456,7 +456,7 @@ process.on('uncaughtException', (error: Error) => {
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
           `);
-          
+
           // Migration 3: Create KPI periods table
           await db.execute(sql`
             CREATE TABLE IF NOT EXISTS kpi_periods (
@@ -481,12 +481,12 @@ process.on('uncaughtException', (error: Error) => {
               updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
           `);
-          
+
           // Create indexes
           await db.execute(sql`
             CREATE INDEX IF NOT EXISTS idx_kpi_periods_kpi_id ON kpi_periods(kpi_id);
           `);
-          
+
           // Migration 4: Create conversion_events table
           await db.execute(sql`
             CREATE TABLE IF NOT EXISTS conversion_events (
@@ -503,27 +503,27 @@ process.on('uncaughtException', (error: Error) => {
               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
           `);
-          
+
           // Create index for conversion_events
           await db.execute(sql`
             CREATE INDEX IF NOT EXISTS idx_conversion_events_campaign_id ON conversion_events(campaign_id);
           `);
-          
+
           await db.execute(sql`
             CREATE INDEX IF NOT EXISTS idx_conversion_events_occurred_at ON conversion_events(occurred_at);
           `);
-          
+
           // Migration 5: Add conversionValue to platform connection tables
           await db.execute(sql`
             ALTER TABLE linkedin_connections 
             ADD COLUMN IF NOT EXISTS conversion_value DECIMAL(10, 2);
           `);
-          
+
           await db.execute(sql`
             ALTER TABLE meta_connections 
             ADD COLUMN IF NOT EXISTS conversion_value DECIMAL(10, 2);
           `);
-          
+
           // Migration 6: Add isPrimary and isActive to google_sheets_connections for multiple sheets support
           await db.execute(sql`
             ALTER TABLE google_sheets_connections 
@@ -543,14 +543,14 @@ process.on('uncaughtException', (error: Error) => {
             ALTER TABLE google_sheets_connections
             ADD COLUMN IF NOT EXISTS purpose TEXT;
           `);
-          
+
           // Set existing connections as primary and active (backward compatibility)
           await db.execute(sql`
             UPDATE google_sheets_connections 
             SET is_primary = true, is_active = true 
             WHERE is_primary IS NULL OR is_active IS NULL;
           `);
-          
+
           // Migration 7: Create mapping_templates table
           await db.execute(sql`
             CREATE TABLE IF NOT EXISTS mapping_templates (
@@ -646,40 +646,40 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS mapping_config TEXT,
             ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
           `);
-          
+
           log('✅ Database migrations completed successfully');
         } catch (error) {
           console.error('⚠️  Migration warning (may already exist):', error.message);
         }
-        
+
         // Start automated snapshot scheduler
         try {
           snapshotScheduler.start();
         } catch (error) {
           console.error('Failed to start snapshot scheduler:', error);
         }
-        
+
         // Start KPI scheduler
         try {
           startKPIScheduler();
         } catch (error) {
           console.error('Failed to start KPI scheduler:', error);
         }
-        
+
         // Start Report scheduler
         try {
           startReportScheduler();
         } catch (error) {
           console.error('Failed to start report scheduler:', error);
         }
-        
+
         // Start LinkedIn data refresh scheduler
         try {
           startLinkedInScheduler();
         } catch (error) {
           console.error('Failed to start LinkedIn scheduler:', error);
         }
-        
+
         // Start Google Sheets token refresh scheduler
         try {
           startGoogleSheetsTokenScheduler();

@@ -1526,7 +1526,7 @@ export default function Campaigns() {
                             <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
                           )}
                           <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Add a monthly budget to enable spend pacing alerts in Insights.
+                            Add your total campaign budget to enable spend tracking and pacing alerts in Insights.
                           </p>
                         </div>
                         <div className="space-y-2">

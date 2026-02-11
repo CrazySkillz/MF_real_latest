@@ -263,54 +263,88 @@ export function computeExecWowSignals(params: {
     });
   }
 
-  // Spend pacing alerts
+  // Spend pacing alerts - Total campaign budget tracking
   if (params.campaignBudget && params.campaignBudget > 0 && availableDays >= 7) {
-    const totalSpend = cur.spend;
-    const avgDailySpend = totalSpend / 7;
+    // Calculate total campaign spend from all available daily facts
+    const totalCampaignSpend = byDate.reduce((sum, day) => sum + day.spend, 0);
+    const budgetRemaining = params.campaignBudget - totalCampaignSpend;
+    const budgetUsedPct = (totalCampaignSpend / params.campaignBudget) * 100;
 
-    const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const dayOfMonth = now.getDate();
+    // Use last 7 days for rate calculations
+    const last7DaysSpend = cur.spend;
+    const avgDailySpend = last7DaysSpend / 7;
 
-    const projectedMonthlySpend = avgDailySpend * daysInMonth;
-    const pacingRatio = projectedMonthlySpend / params.campaignBudget;
-
-    if (dayOfMonth >= 7) {
-      if (pacingRatio >= 1.15) {
-        signals.push({
-          id: "budget:overpacing",
-          severity: pacingRatio >= 1.3 ? "high" : "medium",
-          title: `Spend pacing ${Math.abs((pacingRatio - 1) * 100).toFixed(0)}% over monthly budget`,
-          description: `At current rate (${fmtMoney(avgDailySpend)}/day), projected month-end spend is ${fmtMoney(projectedMonthlySpend)} vs budget ${fmtMoney(params.campaignBudget)}`,
-          confidence: dayOfMonth >= 14 ? "high" : "medium",
-          evidence: [
-            `Monthly budget: ${fmtMoney(params.campaignBudget)}`,
-            `Avg daily spend (last 7d): ${fmtMoney(avgDailySpend)}`,
-            `Projected month-end: ${fmtMoney(projectedMonthlySpend)}`,
-            `Day ${dayOfMonth} of ${daysInMonth}`
-          ],
-          recommendation: "Reduce daily budgets, pause underperforming ads/campaigns, or increase monthly budget to avoid mid-month cutoff",
-          actions: [
-            { label: "View Ad Performance", kind: "go", tab: "ads" },
-            { label: "Review KPIs", kind: "go", tab: "kpis" }
-          ]
-        });
-      } else if (pacingRatio <= 0.7 && dayOfMonth >= 14) {
-        signals.push({
-          id: "budget:underpacing",
-          severity: "medium",
-          title: `Spend pacing ${Math.abs((1 - pacingRatio) * 100).toFixed(0)}% under monthly budget`,
-          description: `Only ${((totalSpend / params.campaignBudget) * 100).toFixed(0)}% of monthly budget used by day ${dayOfMonth}. Projected spend: ${fmtMoney(projectedMonthlySpend)}`,
-          confidence: "medium",
-          evidence: [
-            `Monthly budget: ${fmtMoney(params.campaignBudget)}`,
-            `Spend to date (last 7d): ${fmtMoney(totalSpend)}`,
-            `Projected month-end: ${fmtMoney(projectedMonthlySpend)}`
-          ],
-          recommendation: "Consider increasing daily budgets or expanding targeting to fully utilize allocated budget",
-          actions: [{ label: "View Benchmarks", kind: "go", tab: "benchmarks" }]
-        });
-      }
+    // Overspending: Total spend exceeds budget
+    if (totalCampaignSpend > params.campaignBudget) {
+      const overspendAmount = totalCampaignSpend - params.campaignBudget;
+      const overspendPct = (overspendAmount / params.campaignBudget) * 100;
+      
+      signals.push({
+        id: "budget:exceeded",
+        severity: overspendPct >= 15 ? "high" : "medium",
+        title: `Campaign budget exceeded by ${fmtMoney(overspendAmount)}`,
+        description: `Total spend ${fmtMoney(totalCampaignSpend)} has exceeded campaign budget ${fmtMoney(params.campaignBudget)} by ${overspendPct.toFixed(0)}%`,
+        confidence: "high",
+        evidence: [
+          `Campaign budget: ${fmtMoney(params.campaignBudget)}`,
+          `Total spend: ${fmtMoney(totalCampaignSpend)} (${budgetUsedPct.toFixed(0)}% of budget)`,
+          `Budget exceeded by: ${fmtMoney(overspendAmount)}`,
+          `Avg daily spend (last 7d): ${fmtMoney(avgDailySpend)}`
+        ],
+        recommendation: "Pause campaign immediately or increase budget to avoid further overspending. Review high-spend ads and consider reducing daily budgets.",
+        actions: [
+          { label: "View Ad Performance", kind: "go", tab: "ads" },
+          { label: "Review KPIs", kind: "go", tab: "kpis" }
+        ]
+      });
+    }
+    // High burn rate warning: 80%+ budget used with spend continuing
+    else if (budgetUsedPct >= 80 && avgDailySpend > 0) {
+      const daysRemainingAtCurrentRate = budgetRemaining / avgDailySpend;
+      
+      signals.push({
+        id: "budget:high_burn",
+        severity: budgetUsedPct >= 90 ? "high" : "medium",
+        title: `${budgetUsedPct.toFixed(0)}% of campaign budget used`,
+        description: `At current rate (${fmtMoney(avgDailySpend)}/day), budget will be exhausted in ${Math.ceil(daysRemainingAtCurrentRate)} days. Budget remaining: ${fmtMoney(budgetRemaining)}`,
+        confidence: "high",
+        evidence: [
+          `Campaign budget: ${fmtMoney(params.campaignBudget)}`,
+          `Total spend: ${fmtMoney(totalCampaignSpend)} (${budgetUsedPct.toFixed(0)}%)`,
+          `Budget remaining: ${fmtMoney(budgetRemaining)}`,
+          `Avg daily spend (last 7d): ${fmtMoney(avgDailySpend)}`,
+          `Days until budget exhausted: ~${Math.ceil(daysRemainingAtCurrentRate)}`
+        ],
+        recommendation: budgetUsedPct >= 90 
+          ? "Reduce daily budgets now to extend campaign lifespan, or increase budget allocation if performance justifies it."
+          : "Monitor spend closely. Consider reducing daily budgets or pausing underperforming ads to preserve budget.",
+        actions: [
+          { label: "View Ad Performance", kind: "go", tab: "ads" },
+          { label: "View Benchmarks", kind: "go", tab: "benchmarks" }
+        ]
+      });
+    }
+    // Low utilization: Using <50% of budget with significant history
+    else if (availableDays >= 14 && budgetUsedPct < 50) {
+      signals.push({
+        id: "budget:underutilized",
+        severity: "low",
+        title: `Campaign is underutilizing budget (${budgetUsedPct.toFixed(0)}% used)`,
+        description: `Only ${fmtMoney(totalCampaignSpend)} of ${fmtMoney(params.campaignBudget)} budget used after ${availableDays} days. Budget remaining: ${fmtMoney(budgetRemaining)}`,
+        confidence: "medium",
+        evidence: [
+          `Campaign budget: ${fmtMoney(params.campaignBudget)}`,
+          `Total spend: ${fmtMoney(totalCampaignSpend)} (${budgetUsedPct.toFixed(0)}%)`,
+          `Budget remaining: ${fmtMoney(budgetRemaining)}`,
+          `Days of data: ${availableDays}`,
+          `Avg daily spend (last 7d): ${fmtMoney(avgDailySpend)}`
+        ],
+        recommendation: "Consider increasing daily budgets, expanding targeting, or testing new ad creatives to fully utilize allocated budget and maximize campaign reach.",
+        actions: [
+          { label: "View Overview", kind: "go", tab: "overview" },
+          { label: "View Benchmarks", kind: "go", tab: "benchmarks" }
+        ]
+      });
     }
   }
 

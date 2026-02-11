@@ -6002,7 +6002,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                       Add Campaign Budget to Unlock Spend Pacing Alerts
                                     </div>
                                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                                      Set a monthly budget to enable spend pacing alerts that warn you when projected spend exceeds your budget or when you're underspending.
+                                      Set your total campaign budget to track spending and get alerts when you're exceeding or underspending your budget.
                                     </p>
                                     <Button
                                       variant="outline"

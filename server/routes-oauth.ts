@@ -2686,9 +2686,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversions: Number(r?.conversions || 0) || 0,
         spend: typeof r?.spend === "string" ? parseFloat(r.spend) : Number(r?.spend || 0) || 0,
         engagements: Number(r?.engagements || 0) || 0,
+        reach: Number(r?.reach || 0) || 0,
       }));
 
-      const computed = computeExecWowSignals({ dailyFacts: facts });
+      // Get campaign budget for spend pacing alerts
+      const campaign = await storage.getCampaign(campaignId).catch(() => undefined);
+      const monthlyBudget = campaign?.budget ? parseFloat(String(campaign.budget)) : undefined;
+
+      const computed = computeExecWowSignals({
+        dailyFacts: facts,
+        campaignBudget: monthlyBudget
+      });
 
       // --------------------------------------------------------------------
       // Enterprise-grade agility + auditability:
@@ -2936,7 +2944,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         window: { startDate, endDate, days },
         availableDays: computed.availableDays,
         signals: computed.signals,
-        rollups: computed.cur7 && computed.prev7 ? { last7: computed.cur7, prior7: computed.prev7 } : null,
+        rollups: computed.cur7 && computed.prev7 ? {
+          last7: computed.cur7,
+          prior7: computed.prev7,
+          last30: computed.cur30,
+          prior30: computed.prev30
+        } : null,
         thresholds: DEFAULT_EXEC_WOW_THRESHOLDS,
         goalHealth,
       });

@@ -130,7 +130,7 @@ export default function GA4Metrics() {
   const [deleteBenchmarkId, setDeleteBenchmarkId] = useState<string | null>(null);
   const [showDeleteBenchmarkDialog, setShowDeleteBenchmarkDialog] = useState(false);
   // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
-  
+
   // Benchmark-related state
   const [showCreateBenchmark, setShowCreateBenchmark] = useState(false);
   const [selectedBenchmarkTemplate, setSelectedBenchmarkTemplate] = useState<any>(null);
@@ -165,7 +165,7 @@ export default function GA4Metrics() {
     description: "",
     source: ""
   });
-  
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -366,7 +366,7 @@ export default function GA4Metrics() {
           console.error("Error fetching platform data for KPI calculation:", error);
         }
       }
-      
+
       const response = await fetch(`/api/platforms/google_analytics/kpis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -382,12 +382,12 @@ export default function GA4Metrics() {
           targetValue: stripNumberFormatting((data as any)?.targetValue),
         }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to create KPI");
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -398,10 +398,10 @@ export default function GA4Metrics() {
     },
     onError: (error) => {
       console.error("KPI creation error:", error);
-      toast({ 
-        title: "Failed to create KPI", 
+      toast({
+        title: "Failed to create KPI",
         description: error.message || "An unexpected error occurred",
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
@@ -450,7 +450,7 @@ export default function GA4Metrics() {
           "Content-Type": "application/json",
         },
       });
-      
+
       if (!response.ok) {
         let errorMessage = "Failed to delete KPI";
         try {
@@ -462,7 +462,7 @@ export default function GA4Metrics() {
         }
         throw new Error(errorMessage);
       }
-      
+
       // Handle successful response
       try {
         return await response.json();
@@ -477,10 +477,10 @@ export default function GA4Metrics() {
     },
     onError: (error) => {
       console.error("KPI deletion error:", error);
-      toast({ 
-        title: "Failed to delete KPI", 
+      toast({
+        title: "Failed to delete KPI",
         description: error.message || "An unexpected error occurred",
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
@@ -1014,7 +1014,7 @@ export default function GA4Metrics() {
     if (!value) return "N/A";
     const numValue = parseFloat(value);
     if (isNaN(numValue)) return "N/A";
-    
+
     switch (unit) {
       case "%":
         return `${numValue.toFixed(1)}%`;
@@ -1672,12 +1672,12 @@ export default function GA4Metrics() {
     const pct = Math.max(0, Math.min(ratio * 100, 100));
     const status =
       ratio >= 0.9 ? "on_track" :
-      ratio >= 0.7 ? "needs_attention" :
-      "behind";
+        ratio >= 0.7 ? "needs_attention" :
+          "behind";
     const color =
       ratio >= 0.9 ? "bg-green-500" :
-      ratio >= 0.7 ? "bg-yellow-500" :
-      "bg-red-500";
+        ratio >= 0.7 ? "bg-yellow-500" :
+          "bg-red-500";
 
     // Positive means "better than benchmark" (direction-aware).
     const deltaPct =
@@ -1778,12 +1778,12 @@ export default function GA4Metrics() {
       reportType === "custom"
         ? (cfg?.sections || { overview: true })
         : {
-            overview: reportType === "overview",
-            acquisition: reportType === "acquisition",
-            trends: reportType === "trends",
-            kpis: reportType === "kpis",
-            benchmarks: reportType === "benchmarks",
-          };
+          overview: reportType === "overview",
+          acquisition: reportType === "acquisition",
+          trends: reportType === "trends",
+          kpis: reportType === "kpis",
+          benchmarks: reportType === "benchmarks",
+        };
 
     // Overview section
     if (sections.overview) {
@@ -1923,7 +1923,7 @@ export default function GA4Metrics() {
         )}`
       );
       const data = await response.json();
-      
+
       // Professional platforms show geographic data even during connectivity issues
       return data;
     },
@@ -2205,8 +2205,8 @@ export default function GA4Metrics() {
       const trendNote =
         analytics?.trendAnalysis
           ? ` Trend ${String(analytics.trendAnalysis.direction || "neutral")} (${Number(analytics.trendAnalysis.percentage || 0).toFixed(1)}% over ${String(
-              analytics.trendAnalysis.period || "30d"
-            )}).`
+            analytics.trendAnalysis.period || "30d"
+          )}).`
           : "";
       const streakNote = streak > 1 ? ` Streak: ${streak} days.` : "";
 
@@ -2543,7 +2543,7 @@ export default function GA4Metrics() {
                 <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md">
                   Connect your Google Analytics account to view detailed metrics and insights for this campaign.
                 </p>
-                <GA4ConnectionFlow 
+                <GA4ConnectionFlow
                   campaignId={campaign.id}
                   onConnectionSuccess={() => {
                     window.location.reload();
@@ -2560,10 +2560,10 @@ export default function GA4Metrics() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <Navigation />
-      
+
       <div className="flex">
         <Sidebar />
-        
+
         <main className="flex-1 p-8">
           {/* Header */}
           <div className="mb-8">
@@ -2584,36 +2584,36 @@ export default function GA4Metrics() {
 
                 </div>
               </div>
-              
-                  <div className="flex items-center space-x-3">
-                    {Array.isArray(availableGA4Properties) && availableGA4Properties.length >= 1 ? (
-                      <Select value={selectedGA4PropertyId} onValueChange={setSelectedGA4PropertyId}>
-                        <SelectTrigger className="w-64 relative z-[50]" onPointerDown={(e) => e.stopPropagation()}>
-                          <SelectValue placeholder="Select GA4 property" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-64 z-[10000]" onPointerDown={(e) => e.stopPropagation()}>
-                          {availableGA4Properties.map((p) => (
-                            <SelectItem key={String(p.propertyId)} value={String(p.propertyId)}>
-                              {String(p.displayName || p.propertyName || p.propertyId)}
-                              {p.isPrimary ? " (Primary)" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : null}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedGa4Campaigns(selectedGa4CampaignFilterList);
-                        setGa4CampaignSearch("");
-                        setShowGa4CampaignPicker(true);
-                      }}
-                      disabled={!selectedGA4PropertyId}
-                      title={!selectedGA4PropertyId ? "Select a GA4 property first" : "Select GA4 campaigns to import"}
-                    >
-                      Campaigns
-                    </Button>
+
+              <div className="flex items-center space-x-3">
+                {Array.isArray(availableGA4Properties) && availableGA4Properties.length >= 1 ? (
+                  <Select value={selectedGA4PropertyId} onValueChange={setSelectedGA4PropertyId}>
+                    <SelectTrigger className="w-64 relative z-[50]" onPointerDown={(e) => e.stopPropagation()}>
+                      <SelectValue placeholder="Select GA4 property" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64 z-[10000]" onPointerDown={(e) => e.stopPropagation()}>
+                      {availableGA4Properties.map((p) => (
+                        <SelectItem key={String(p.propertyId)} value={String(p.propertyId)}>
+                          {String(p.displayName || p.propertyName || p.propertyId)}
+                          {p.isPrimary ? " (Primary)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedGa4Campaigns(selectedGa4CampaignFilterList);
+                    setGa4CampaignSearch("");
+                    setShowGa4CampaignPicker(true);
+                  }}
+                  disabled={!selectedGA4PropertyId}
+                  title={!selectedGA4PropertyId ? "Select a GA4 property first" : "Select GA4 campaigns to import"}
+                >
+                  Campaigns
+                </Button>
                 <div className="px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900">
                   Daily
                 </div>
@@ -2672,11 +2672,10 @@ export default function GA4Metrics() {
                   {ga4Connection?.connections?.map((connection: any, index: number) => (
                     <div
                       key={connection.id}
-                      className={`p-4 rounded-lg border ${
-                        connection.isPrimary
+                      className={`p-4 rounded-lg border ${connection.isPrimary
                           ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950'
                           : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800'
-                      }`}
+                        }`}
                       data-testid={`property-card-${connection.id}`}
                     >
                       <div className="flex items-start justify-between">
@@ -2703,7 +2702,7 @@ export default function GA4Metrics() {
                             Connected {new Date(connection.connectedAt).toLocaleDateString()}
                           </p>
                         </div>
-                        
+
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" data-testid={`menu-${connection.id}`}>
@@ -3050,9 +3049,6 @@ export default function GA4Metrics() {
                         <CardContent className="p-6">
                           {Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0 ? (
                             <div className="space-y-2">
-                              <div className="text-xs text-slate-500 dark:text-slate-400">
-                                Note: <span className="font-medium">Users</span> is non-additive across rows in GA4 (unique users can appear on multiple landing pages).
-                              </div>
                               <div className="overflow-hidden border rounded-md">
                                 <table className="w-full text-sm table-fixed">
                                   <thead className="bg-slate-50 dark:bg-slate-800 border-b">
@@ -3060,7 +3056,12 @@ export default function GA4Metrics() {
                                       <th className="text-left p-3 w-[34%]">Landing page</th>
                                       <th className="text-left p-3 w-[16%]">Source/Medium</th>
                                       <th className="text-right p-3">Sessions</th>
-                                      <th className="text-right p-3">Users</th>
+                                      <th className="text-right p-3">
+                                        <div className="flex items-center justify-end gap-1">
+                                          Users
+                                          <AlertCircle className="w-3.5 h-3.5 text-slate-400" title="Non-additive: Unique users can appear on multiple landing pages" />
+                                        </div>
+                                      </th>
                                       <th className="text-right p-3">Conversions</th>
                                       <th className="text-right p-3">Conv. rate</th>
                                       <th className="text-right p-3">Revenue</th>
@@ -3088,12 +3089,19 @@ export default function GA4Metrics() {
                                           <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
                                           <td className="p-3 text-right">{formatPercentage(cr)}</td>
                                           <td className="p-3 text-right">
-                                          {formatMoney(Number(r?.revenue || 0))}
+                                            {formatMoney(Number(r?.revenue || 0))}
                                           </td>
                                         </tr>
                                       );
                                     })}
                                   </tbody>
+                                  <tfoot className="bg-slate-50 dark:bg-slate-800 border-t">
+                                    <tr>
+                                      <td colspan="7" className="p-3 text-xs text-slate-500 dark:text-slate-400">
+                                        Note: <span className="font-medium">Users</span> is non-additive across rows (unique users can appear on multiple landing pages)
+                                      </td>
+                                    </tr>
+                                  </tfoot>
                                 </table>
                               </div>
                             </div>
@@ -3234,11 +3242,17 @@ export default function GA4Metrics() {
                                         r.sessionsDeltaPct >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300";
                                       const crDeltaColor =
                                         r.crDeltaPct >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300";
+                                      const isDramaticShift = Math.abs(r.sessionsDeltaPct) > 50;
                                       return (
                                         <tr key={r.ch} className="border-b">
                                           <td className="p-3">
-                                            <div className="font-medium text-slate-900 dark:text-white truncate" title={r.ch}>
-                                              {r.ch}
+                                            <div className="flex items-center gap-2">
+                                              <div className="font-medium text-slate-900 dark:text-white truncate" title={r.ch}>
+                                                {r.ch}
+                                              </div>
+                                              {isDramaticShift && (
+                                                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" title="Dramatic shift detected (>50% change)" />
+                                              )}
                                             </div>
                                           </td>
                                           <td className="p-3 text-right">{formatNumber(Number(r.cur.sessions || 0))}</td>
@@ -3444,7 +3458,7 @@ export default function GA4Metrics() {
                           ) : Array.isArray(ga4Breakdown?.rows) && ga4Breakdown.rows.length > 0 ? (
                             <div className="rounded-md border overflow-hidden">
                               <div className="max-h-[420px] overflow-auto">
-                              <table className="w-full text-sm table-fixed">
+                                <table className="w-full text-sm table-fixed">
                                   <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
                                     <tr>
                                       <th className="text-left font-medium px-3 py-2">Date</th>
@@ -3470,7 +3484,7 @@ export default function GA4Metrics() {
                                         <td className="px-3 py-2 whitespace-nowrap">{r.channel}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{r.source}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{r.medium}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap max-w-[260px] truncate" title={String(r.campaign || '')}>
+                                        <td className="px-3 py-2 whitespace-nowrap max-w-[320px] truncate" title={String(r.campaign || '')}>
                                           {r.campaign}
                                         </td>
                                         <td className="px-3 py-2 whitespace-nowrap">{r.device}</td>
@@ -3673,37 +3687,25 @@ export default function GA4Metrics() {
                                 </span>
                               </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
                               {/* Map Section */}
                               <div className="lg:col-span-2 p-4">
-                                <InteractiveWorldMap 
-                                  data={geographicData?.topCountries && geographicData.topCountries.length > 5 && geographicData.topCountries.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)') ? geographicData.topCountries : [
-                                    { country: "United States of America", users: 1247, sessions: 1856 },
-                                    { country: "United Kingdom", users: 834, sessions: 1243 },
-                                    { country: "Canada", users: 567, sessions: 892 },
-                                    { country: "Germany", users: 445, sessions: 678 },
-                                    { country: "France", users: 389, sessions: 523 },
-                                    { country: "Australia", users: 234, sessions: 356 },
-                                    { country: "Japan", users: 198, sessions: 289 },
-                                    { country: "Netherlands", users: 167, sessions: 245 },
-                                    { country: "Sweden", users: 143, sessions: 201 },
-                                    { country: "Brazil", users: 134, sessions: 198 },
-                                    { country: "India", users: 112, sessions: 167 },
-                                    { country: "Spain", users: 98, sessions: 143 },
-                                    { country: "Italy", users: 87, sessions: 128 },
-                                    { country: "Norway", users: 76, sessions: 112 },
-                                    { country: "Denmark", users: 65, sessions: 94 },
-                                    { country: "Finland", users: 54, sessions: 78 },
-                                    { country: "Belgium", users: 43, sessions: 62 },
-                                    { country: "Switzerland", users: 32, sessions: 47 },
-                                    { country: "Austria", users: 28, sessions: 41 },
-                                    { country: "Portugal", users: 21, sessions: 34 }
-                                  ]} 
-                                  metric="users"
-                                />
+                                {geographicData?.topCountries && geographicData.topCountries.length > 0 && geographicData.topCountries.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)') ? (
+                                  <InteractiveWorldMap
+                                    data={geographicData.topCountries}
+                                    metric="users"
+                                  />
+                                ) : (
+                                  <div className="h-64 flex items-center justify-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg">
+                                    <div className="text-center">
+                                      <Globe className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                                      <p className="text-sm">No geographic data available for the selected date range</p>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                              
+
                               {/* Data Table Section */}
                               <div className="border-l border-slate-200 dark:border-slate-700">
                                 <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
@@ -3713,33 +3715,18 @@ export default function GA4Metrics() {
                                   </div>
                                 </div>
                                 <div className="max-h-64 overflow-y-auto">
-                                  {(geographicData?.topCountries?.length > 5 && geographicData.topCountries.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)')
-                                    ? geographicData.topCountries 
-                                    : [
-                                        { country: "United States of America", users: 1247, sessions: 1856 },
-                                        { country: "United Kingdom", users: 834, sessions: 1243 },
-                                        { country: "Canada", users: 567, sessions: 892 },
-                                        { country: "Germany", users: 445, sessions: 678 },
-                                        { country: "France", users: 389, sessions: 523 },
-                                        { country: "Australia", users: 234, sessions: 356 },
-                                        { country: "Japan", users: 198, sessions: 289 },
-                                        { country: "Netherlands", users: 167, sessions: 245 },
-                                        { country: "Sweden", users: 143, sessions: 201 },
-                                        { country: "Brazil", users: 134, sessions: 198 }
-                                      ]
-                                  ).slice(0, 10).map((location: any, index: number) => (
-                                    <div key={index} className="grid grid-cols-2 gap-4 p-3 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 text-sm">
-                                      <div className="font-medium text-slate-900 dark:text-white">
-                                        {location.country}
+                                  {geographicData?.topCountries && geographicData.topCountries.length > 0 && geographicData.topCountries.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)') ? (
+                                    geographicData.topCountries.slice(0, 10).map((location: any, index: number) => (
+                                      <div key={index} className="grid grid-cols-2 gap-4 p-3 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 text-sm">
+                                        <div className="font-medium text-slate-900 dark:text-white">
+                                          {location.country}
+                                        </div>
+                                        <div className="text-right font-semibold text-slate-900 dark:text-white">
+                                          {formatNumber(location.users)}
+                                        </div>
                                       </div>
-                                      <div className="text-right font-semibold text-slate-900 dark:text-white">
-                                        {formatNumber(location.users)}
-                                      </div>
-                                    </div>
-                                  ))}
-                                  
-                                  {/* No data message if empty */}
-                                  {!geographicData?.topCountries?.length && (
+                                    ))
+                                  ) : (
                                     <div className="p-8 text-center text-slate-500 dark:text-slate-400">
                                       No data available
                                     </div>
@@ -3754,24 +3741,21 @@ export default function GA4Metrics() {
                             <div>
                               <h4 className="font-medium text-slate-900 dark:text-white mb-3">Top Countries</h4>
                               <div className="space-y-2">
-                                {(geographicData?.topCountries?.length > 5 && geographicData.topCountries.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)')
-                                  ? geographicData.topCountries 
-                                  : [
-                                      { country: "United States of America", users: 1247, sessions: 1856 },
-                                      { country: "United Kingdom", users: 834, sessions: 1243 },
-                                      { country: "Canada", users: 567, sessions: 892 },
-                                      { country: "Germany", users: 445, sessions: 678 },
-                                      { country: "France", users: 389, sessions: 523 }
-                                    ]
-                                ).slice(0, 5).map((location: any, index: number) => (
-                                  <div key={index} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-800 rounded">
-                                    <span className="font-medium">{location.country}</span>
-                                    <div className="text-right">
-                                      <div className="text-sm font-semibold">{formatNumber(location.users)} users</div>
-                                      <div className="text-xs text-slate-600 dark:text-slate-400">{formatNumber(location.sessions)} sessions</div>
+                                {geographicData?.topCountries && geographicData.topCountries.length > 0 && geographicData.topCountries.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)') ? (
+                                  geographicData.topCountries.slice(0, 5).map((location: any, index: number) => (
+                                    <div key={index} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                                      <span className="font-medium">{location.country}</span>
+                                      <div className="text-right">
+                                        <div className="text-sm font-semibold">{formatNumber(location.users)} users</div>
+                                        <div className="text-xs text-slate-600 dark:text-slate-400">{formatNumber(location.sessions)} sessions</div>
+                                      </div>
                                     </div>
+                                  ))
+                                ) : (
+                                  <div className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+                                    No country data available
                                   </div>
-                                ))}
+                                )}
                               </div>
                             </div>
 
@@ -3779,30 +3763,22 @@ export default function GA4Metrics() {
                             <div>
                               <h4 className="font-medium text-slate-900 dark:text-white mb-3">Location Details</h4>
                               <div className="max-h-64 overflow-y-auto space-y-1">
-                                {(geographicData?.data?.length > 5 && geographicData.data.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)')
-                                  ? geographicData.data 
-                                  : [
-                                      { city: "New York", region: "New York", country: "United States of America", users: 347, pageviews: 892 },
-                                      { city: "London", region: "England", country: "United Kingdom", users: 234, pageviews: 612 },
-                                      { city: "Toronto", region: "Ontario", country: "Canada", users: 198, pageviews: 456 },
-                                      { city: "Berlin", region: "Berlin", country: "Germany", users: 167, pageviews: 389 },
-                                      { city: "Paris", region: "Île-de-France", country: "France", users: 143, pageviews: 324 },
-                                      { city: "Sydney", region: "New South Wales", country: "Australia", users: 112, pageviews: 267 },
-                                      { city: "Tokyo", region: "Tokyo", country: "Japan", users: 98, pageviews: 234 },
-                                      { city: "Amsterdam", region: "North Holland", country: "Netherlands", users: 87, pageviews: 198 },
-                                      { city: "Stockholm", region: "Stockholm", country: "Sweden", users: 76, pageviews: 167 },
-                                      { city: "São Paulo", region: "São Paulo", country: "Brazil", users: 65, pageviews: 143 }
-                                    ]
-                                ).slice(0, 10).map((location: any, index: number) => (
-                                  <div key={index} className="text-sm p-2 border-b border-slate-200 dark:border-slate-700">
-                                    <div className="font-medium">{location.city}, {location.region}</div>
-                                    <div className="text-slate-600 dark:text-slate-400">{location.country}</div>
-                                    <div className="flex justify-between mt-1">
-                                      <span className="text-xs">{formatNumber(location.users)} users</span>
-                                      <span className="text-xs">{formatNumber(location.pageviews)} pageviews</span>
+                                {geographicData?.data && geographicData.data.length > 0 && geographicData.data.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)') ? (
+                                  geographicData.data.slice(0, 10).map((location: any, index: number) => (
+                                    <div key={index} className="text-sm p-2 border-b border-slate-200 dark:border-slate-700">
+                                      <div className="font-medium">{location.city}, {location.region}</div>
+                                      <div className="text-slate-600 dark:text-slate-400">{location.country}</div>
+                                      <div className="flex justify-between mt-1">
+                                        <span className="text-xs">{formatNumber(location.users)} users</span>
+                                        <span className="text-xs">{formatNumber(location.pageviews)} pageviews</span>
+                                      </div>
                                     </div>
+                                  ))
+                                ) : (
+                                  <div className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+                                    No city-level data available
                                   </div>
-                                ))}
+                                )}
                               </div>
                             </div>
                           </div>
@@ -3844,256 +3820,256 @@ export default function GA4Metrics() {
 
                     <Card>
                       <CardContent>
-                      {kpisLoading ? (
-                        <div className="space-y-4">
-                          {[...Array(3)].map((_, i) => (
-                            <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {/* KPI performance tracker (exec snapshot) */}
-                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                            <Card>
-                              <CardContent className="p-5">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total KPIs</p>
-                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpiTracker.total}</p>
-                                  </div>
-                                  <Target className="w-7 h-7 text-slate-500" />
-                                </div>
-                              </CardContent>
-                            </Card>
-
-                            <Card>
-                              <CardContent className="p-5">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">On Track</p>
-                                    <p className="text-2xl font-bold text-emerald-600">{kpiTracker.onTrack}</p>
-                                  </div>
-                                  <BadgeCheck className="w-7 h-7 text-emerald-600" />
-                                </div>
-                              </CardContent>
-                            </Card>
-
-                            <Card>
-                              <CardContent className="p-5">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs Attention</p>
-                                    <p className="text-2xl font-bold text-amber-600">{kpiTracker.needsAttention}</p>
-                                  </div>
-                                  <AlertTriangle className="w-7 h-7 text-amber-600" />
-                                </div>
-                              </CardContent>
-                            </Card>
-
-                            <Card>
-                              <CardContent className="p-5">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Behind</p>
-                                    <p className="text-2xl font-bold text-red-600">{kpiTracker.behind}</p>
-                                  </div>
-                                  <TrendingDown className="w-7 h-7 text-red-600" />
-                                </div>
-                              </CardContent>
-                            </Card>
-
-                            <Card>
-                              <CardContent className="p-5">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Progress</p>
-                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                      {kpiTracker.avgPct.toFixed(1)}%
-                                    </p>
-                                  </div>
-                                  <TrendingUp className="w-7 h-7 text-violet-600" />
-                                </div>
-                              </CardContent>
-                            </Card>
+                        {kpisLoading ? (
+                          <div className="space-y-4">
+                            {[...Array(3)].map((_, i) => (
+                              <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                            ))}
                           </div>
-
-                          {kpiTracker.blocked > 0 ? (
-                            <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="font-semibold text-slate-900 dark:text-white">Some KPIs are Blocked</div>
-                                  <div className="text-sm text-slate-700 dark:text-slate-300 mt-1">
-                                    {kpiTracker.blocked} KPI{kpiTracker.blocked === 1 ? "" : "s"} can’t be evaluated because Spend and/or Revenue was removed.
-                                    Blocked KPIs are excluded from performance scoring to avoid misleading executives.
+                        ) : (
+                          <div className="space-y-4">
+                            {/* KPI performance tracker (exec snapshot) */}
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                              <Card>
+                                <CardContent className="p-5">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total KPIs</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpiTracker.total}</p>
+                                    </div>
+                                    <Target className="w-7 h-7 text-slate-500" />
                                   </div>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
-                                    Add Spend
-                                  </Button>
-                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
-                                    Add Revenue
-                                  </Button>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardContent className="p-5">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">On Track</p>
+                                      <p className="text-2xl font-bold text-emerald-600">{kpiTracker.onTrack}</p>
+                                    </div>
+                                    <BadgeCheck className="w-7 h-7 text-emerald-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardContent className="p-5">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs Attention</p>
+                                      <p className="text-2xl font-bold text-amber-600">{kpiTracker.needsAttention}</p>
+                                    </div>
+                                    <AlertTriangle className="w-7 h-7 text-amber-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardContent className="p-5">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Behind</p>
+                                      <p className="text-2xl font-bold text-red-600">{kpiTracker.behind}</p>
+                                    </div>
+                                    <TrendingDown className="w-7 h-7 text-red-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardContent className="p-5">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {kpiTracker.avgPct.toFixed(1)}%
+                                      </p>
+                                    </div>
+                                    <TrendingUp className="w-7 h-7 text-violet-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+
+                            {kpiTracker.blocked > 0 ? (
+                              <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-slate-900 dark:text-white">Some KPIs are Blocked</div>
+                                    <div className="text-sm text-slate-700 dark:text-slate-300 mt-1">
+                                      {kpiTracker.blocked} KPI{kpiTracker.blocked === 1 ? "" : "s"} can’t be evaluated because Spend and/or Revenue was removed.
+                                      Blocked KPIs are excluded from performance scoring to avoid misleading executives.
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
+                                      Add Spend
+                                    </Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
+                                      Add Revenue
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ) : null}
+                            ) : null}
 
-                          {platformKPIs.length === 0 ? (
-                            <div className="text-center text-slate-500 dark:text-slate-400 py-8">
-                              <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No KPIs yet</h3>
-                              <p className="text-slate-600 dark:text-slate-400 mb-4">
-                                Create your first KPI to track GA4 performance for this campaign.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="grid gap-4 md:grid-cols-2">
-                              {platformKPIs.map((kpi: any) => {
-                              const deps = getMissingDependenciesForMetric(String(kpi?.metric || kpi?.name || ""));
-                              const isBlocked = deps.missing.length > 0;
-                              const p = isBlocked ? null : computeKpiProgress(kpi);
-                              const t = getKpiEffectiveTarget(kpi);
-                              const metricKey = String(kpi?.metric || kpi?.name || "");
-                              const { Icon, color } = getKpiIcon(metricKey);
-                              const statusLabel = isBlocked
-                                ? "Blocked"
-                                : p!.status === "on_track"
-                                  ? "On Track"
-                                  : p!.status === "needs_attention"
-                                    ? "Needs Attention"
-                                    : "Behind";
-                              const statusColor = isBlocked
-                                ? "text-slate-700 dark:text-slate-300"
-                                : p!.status === "on_track"
-                                  ? "text-emerald-700 dark:text-emerald-300"
-                                  : p!.status === "needs_attention"
-                                    ? "text-amber-700 dark:text-amber-300"
-                                    : "text-red-700 dark:text-red-300";
+                            {platformKPIs.length === 0 ? (
+                              <div className="text-center text-slate-500 dark:text-slate-400 py-8">
+                                <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No KPIs yet</h3>
+                                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                                  Create your first KPI to track GA4 performance for this campaign.
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="grid gap-4 md:grid-cols-2">
+                                {platformKPIs.map((kpi: any) => {
+                                  const deps = getMissingDependenciesForMetric(String(kpi?.metric || kpi?.name || ""));
+                                  const isBlocked = deps.missing.length > 0;
+                                  const p = isBlocked ? null : computeKpiProgress(kpi);
+                                  const t = getKpiEffectiveTarget(kpi);
+                                  const metricKey = String(kpi?.metric || kpi?.name || "");
+                                  const { Icon, color } = getKpiIcon(metricKey);
+                                  const statusLabel = isBlocked
+                                    ? "Blocked"
+                                    : p!.status === "on_track"
+                                      ? "On Track"
+                                      : p!.status === "needs_attention"
+                                        ? "Needs Attention"
+                                        : "Behind";
+                                  const statusColor = isBlocked
+                                    ? "text-slate-700 dark:text-slate-300"
+                                    : p!.status === "on_track"
+                                      ? "text-emerald-700 dark:text-emerald-300"
+                                      : p!.status === "needs_attention"
+                                        ? "text-amber-700 dark:text-amber-300"
+                                        : "text-red-700 dark:text-red-300";
 
-                              return (
-                                <Card key={kpi.id} className="border-slate-200 dark:border-slate-700">
-                                  <CardContent className="p-5">
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="flex items-start gap-3">
-                                        <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                                          <Icon className={`w-5 h-5 ${color}`} />
-                                        </div>
-                                        <div>
-                                          <div className="flex items-center gap-2 flex-wrap">
-                                            <h4 className="text-base font-semibold text-slate-900 dark:text-white">
-                                              {kpi.name}
-                                            </h4>
-                            <Badge className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-                              {String(kpi?.metric || kpi?.name || "Custom")}
-                            </Badge>
+                                  return (
+                                    <Card key={kpi.id} className="border-slate-200 dark:border-slate-700">
+                                      <CardContent className="p-5">
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div className="flex items-start gap-3">
+                                            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                              <Icon className={`w-5 h-5 ${color}`} />
+                                            </div>
+                                            <div>
+                                              <div className="flex items-center gap-2 flex-wrap">
+                                                <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+                                                  {kpi.name}
+                                                </h4>
+                                                <Badge className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                                                  {String(kpi?.metric || kpi?.name || "Custom")}
+                                                </Badge>
+                                              </div>
+                                              {kpi.description ? (
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                                  {kpi.description}
+                                                </p>
+                                              ) : null}
+                                            </div>
                                           </div>
-                                          {kpi.description ? (
-                                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                                              {kpi.description}
-                                            </p>
+
+                                          <div className="flex items-center gap-2">
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => {
+                                                setEditingKPI(kpi);
+                                                setSelectedKPITemplate(null);
+                                                kpiForm.reset({
+                                                  ...kpiForm.getValues(),
+                                                  name: String(kpi?.name || ""),
+                                                  metric: String(kpi?.metric || kpi?.name || ""),
+                                                  description: String(kpi?.description || ""),
+                                                  unit: String(kpi?.unit || "%"),
+                                                  currentValue: formatNumberByUnit(String(getLiveKpiValue(kpi) || "0"), String(kpi?.unit || "%")),
+                                                  targetValue: formatNumberByUnit(String(kpi?.targetValue || ""), String(kpi?.unit || "%")),
+                                                  priority: (kpi?.priority || "medium") as any,
+                                                  alertsEnabled: Boolean(kpi?.alertsEnabled ?? true),
+                                                  alertThreshold: typeof kpi?.alertThreshold === "number" ? kpi.alertThreshold : Number(kpi?.alertThreshold || 80),
+                                                  emailNotifications: Boolean(kpi?.emailNotifications ?? false),
+                                                  slackNotifications: Boolean(kpi?.slackNotifications ?? false),
+                                                  alertFrequency: (kpi?.alertFrequency || "daily") as any,
+                                                });
+                                                setShowKPIDialog(true);
+                                              }}
+                                              title="Edit KPI"
+                                              aria-label="Edit KPI"
+                                            >
+                                              <Edit className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => onDeleteKPI(kpi.id)}
+                                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                              disabled={deleteKPIMutation.isPending}
+                                              title="Delete KPI"
+                                              aria-label="Delete KPI"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                          </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 mt-4">
+                                          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                                            <div className="text-xs text-slate-500 dark:text-slate-400">Current</div>
+                                            <div className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+                                              {isBlocked ? "—" : formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
+                                            </div>
+                                          </div>
+                                          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                                            <div className="text-xs text-slate-500 dark:text-slate-400">Target</div>
+                                            <div className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+                                              {formatValue(String(t.effectiveTarget), kpi.unit)}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="mt-4">
+                                          <div className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-700 dark:text-slate-300">Progress</span>
+                                            <span className="text-slate-700 dark:text-slate-300">{isBlocked ? "—" : `${p!.labelPct}%`}</span>
+                                          </div>
+                                          <div className="mt-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                            <div
+                                              className={`h-2.5 rounded-full ${isBlocked ? "bg-slate-400" : p!.color}`}
+                                              style={{ width: `${isBlocked ? 0 : p!.pct}%` }}
+                                            />
+                                          </div>
+                                          <div className={`mt-3 text-sm font-medium ${statusColor}`}>
+                                            {statusLabel}
+                                          </div>
+                                          {isBlocked ? (
+                                            <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                                              Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This KPI is paused until inputs are restored.
+                                              <div className="mt-2 flex items-center gap-2">
+                                                {deps.missing.includes("Spend") ? (
+                                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
+                                                    Add Spend
+                                                  </Button>
+                                                ) : null}
+                                                {deps.missing.includes("Revenue") ? (
+                                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
+                                                    Add Revenue
+                                                  </Button>
+                                                ) : null}
+                                              </div>
+                                            </div>
                                           ) : null}
                                         </div>
-                                      </div>
-
-                                      <div className="flex items-center gap-2">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => {
-                                            setEditingKPI(kpi);
-                                            setSelectedKPITemplate(null);
-                                            kpiForm.reset({
-                                              ...kpiForm.getValues(),
-                                              name: String(kpi?.name || ""),
-                                              metric: String(kpi?.metric || kpi?.name || ""),
-                                              description: String(kpi?.description || ""),
-                                              unit: String(kpi?.unit || "%"),
-                                              currentValue: formatNumberByUnit(String(getLiveKpiValue(kpi) || "0"), String(kpi?.unit || "%")),
-                                              targetValue: formatNumberByUnit(String(kpi?.targetValue || ""), String(kpi?.unit || "%")),
-                                              priority: (kpi?.priority || "medium") as any,
-                                              alertsEnabled: Boolean(kpi?.alertsEnabled ?? true),
-                                              alertThreshold: typeof kpi?.alertThreshold === "number" ? kpi.alertThreshold : Number(kpi?.alertThreshold || 80),
-                                              emailNotifications: Boolean(kpi?.emailNotifications ?? false),
-                                              slackNotifications: Boolean(kpi?.slackNotifications ?? false),
-                                              alertFrequency: (kpi?.alertFrequency || "daily") as any,
-                                            });
-                                            setShowKPIDialog(true);
-                                          }}
-                                          title="Edit KPI"
-                                          aria-label="Edit KPI"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => onDeleteKPI(kpi.id)}
-                                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                          disabled={deleteKPIMutation.isPending}
-                                          title="Delete KPI"
-                                          aria-label="Delete KPI"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4 mt-4">
-                                      <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                        <div className="text-xs text-slate-500 dark:text-slate-400">Current</div>
-                                        <div className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
-                                          {isBlocked ? "—" : formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
-                                        </div>
-                                      </div>
-                                      <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                        <div className="text-xs text-slate-500 dark:text-slate-400">Target</div>
-                                        <div className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
-                                          {formatValue(String(t.effectiveTarget), kpi.unit)}
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <div className="mt-4">
-                                      <div className="flex items-center justify-between text-sm">
-                                        <span className="text-slate-700 dark:text-slate-300">Progress</span>
-                                        <span className="text-slate-700 dark:text-slate-300">{isBlocked ? "—" : `${p!.labelPct}%`}</span>
-                                      </div>
-                                      <div className="mt-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
-                                        <div
-                                          className={`h-2.5 rounded-full ${isBlocked ? "bg-slate-400" : p!.color}`}
-                                          style={{ width: `${isBlocked ? 0 : p!.pct}%` }}
-                                        />
-                                      </div>
-                                      <div className={`mt-3 text-sm font-medium ${statusColor}`}>
-                                        {statusLabel}
-                                      </div>
-                                      {isBlocked ? (
-                                        <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                                          Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This KPI is paused until inputs are restored.
-                                          <div className="mt-2 flex items-center gap-2">
-                                            {deps.missing.includes("Spend") ? (
-                                              <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
-                                                Add Spend
-                                              </Button>
-                                            ) : null}
-                                            {deps.missing.includes("Revenue") ? (
-                                              <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
-                                                Add Revenue
-                                              </Button>
-                                            ) : null}
-                                          </div>
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                                      </CardContent>
+                                    </Card>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
@@ -4215,13 +4191,11 @@ export default function GA4Metrics() {
                                   return (
                                     <div
                                       key={template.metric}
-                                      className={`p-3 border-2 rounded-lg transition-all ${
-                                        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                                      } ${
-                                        !isCustom && selectedBenchmarkTemplate?.metric === template.metric
+                                      className={`p-3 border-2 rounded-lg transition-all ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                                        } ${!isCustom && selectedBenchmarkTemplate?.metric === template.metric
                                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                                           : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
-                                      }`}
+                                        }`}
                                       onClick={() => {
                                         if (disabled) return;
                                         if (isCustom) {
@@ -4597,147 +4571,147 @@ export default function GA4Metrics() {
 
                           {benchmarks && benchmarks.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {benchmarks.map((benchmark) => (
-                              <Card key={benchmark.id} className="hover:shadow-lg transition-shadow">
-                                <CardContent className="p-6">
-                                <div className="flex items-start justify-between mb-4">
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</h4>
-                                    {benchmark.description ? (
-                                      <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                                        {benchmark.description}
+                              {benchmarks.map((benchmark) => (
+                                <Card key={benchmark.id} className="hover:shadow-lg transition-shadow">
+                                  <CardContent className="p-6">
+                                    <div className="flex items-start justify-between mb-4">
+                                      <div className="flex-1">
+                                        <h4 className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</h4>
+                                        {benchmark.description ? (
+                                          <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                            {benchmark.description}
+                                          </div>
+                                        ) : null}
+                                        <div className="flex items-center space-x-2 mt-1">
+                                          <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                                            {getBenchmarkMetricLabel((benchmark as any)?.metric, benchmark.name)}
+                                          </span>
+                                        </div>
                                       </div>
-                                    ) : null}
-                                    <div className="flex items-center space-x-2 mt-1">
-                                      <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                                        {getBenchmarkMetricLabel((benchmark as any)?.metric, benchmark.name)}
-                                      </span>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <MoreVertical className="h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem onClick={() => handleEditBenchmark(benchmark)}>
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            Edit
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => handleDeleteBenchmark(benchmark.id)}
+                                            className="text-red-600 dark:text-red-400"
+                                          >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
                                     </div>
-                                  </div>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={() => handleEditBenchmark(benchmark)}>
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        Edit
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        onClick={() => handleDeleteBenchmark(benchmark.id)}
-                                        className="text-red-600 dark:text-red-400"
-                                      >
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
 
-                                <div className="space-y-3">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">Benchmark</span>
-                                    <span className="font-medium text-slate-900 dark:text-white">
-                                      {formatBenchmarkValue(benchmark.benchmarkValue, benchmark.unit)}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">Current</span>
-                                    <span className="font-medium text-slate-900 dark:text-white">
+                                    <div className="space-y-3">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-slate-600 dark:text-slate-400">Benchmark</span>
+                                        <span className="font-medium text-slate-900 dark:text-white">
+                                          {formatBenchmarkValue(benchmark.benchmarkValue, benchmark.unit)}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-slate-600 dark:text-slate-400">Current</span>
+                                        <span className="font-medium text-slate-900 dark:text-white">
+                                          {(() => {
+                                            const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
+                                            const isBlocked = deps.missing.length > 0;
+                                            return isBlocked ? "—" : formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit);
+                                          })()}
+                                        </span>
+                                      </div>
+
                                       {(() => {
                                         const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
                                         const isBlocked = deps.missing.length > 0;
-                                        return isBlocked ? "—" : formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit);
+                                        if (isBlocked) {
+                                          return (
+                                            <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-3">
+                                              <div className="text-sm font-medium text-slate-900 dark:text-white">Blocked</div>
+                                              <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                                Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. Restore inputs to resume accurate tracking.
+                                              </div>
+                                              <div className="mt-2 flex items-center gap-2">
+                                                {deps.missing.includes("Spend") ? (
+                                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
+                                                    Add Spend
+                                                  </Button>
+                                                ) : null}
+                                                {deps.missing.includes("Revenue") ? (
+                                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
+                                                    Add Revenue
+                                                  </Button>
+                                                ) : null}
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                        const bench = parseFloat(stripNumberFormatting(String((benchmark as any)?.benchmarkValue || "0")));
+                                        if (!Number.isFinite(bench) || bench <= 0) return null;
+                                        const p = computeBenchmarkProgress(benchmark);
+                                        const statusLabel =
+                                          p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
+                                        const statusColor =
+                                          p.status === "on_track"
+                                            ? "text-green-600 dark:text-green-400"
+                                            : p.status === "needs_attention"
+                                              ? "text-yellow-600 dark:text-yellow-400"
+                                              : "text-red-600 dark:text-red-400";
+
+                                        const delta = Number.isFinite(p.deltaPct) ? p.deltaPct : 0;
+                                        const deltaLabel = `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`;
+
+                                        return (
+                                          <>
+                                            <div className="space-y-2 pt-1">
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Progress to Benchmark</span>
+                                                <span className="text-sm text-slate-500 dark:text-slate-400">{p.labelPct}%</span>
+                                              </div>
+                                              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                                <div className={`h-2 rounded-full ${p.color}`} style={{ width: `${p.pct}%` }} />
+                                              </div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-sm text-slate-600 dark:text-slate-400">Performance</span>
+                                              <div className="flex items-center space-x-2">
+                                                <span className={`font-medium ${statusColor}`}>{deltaLabel}</span>
+                                                {delta >= 0 ? (
+                                                  <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                                ) : (
+                                                  <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                                )}
+                                                <span className={`text-xs font-medium ${statusColor}`}>{statusLabel}</span>
+                                              </div>
+                                            </div>
+                                          </>
+                                        );
                                       })()}
-                                    </span>
-                                  </div>
 
-                                  {(() => {
-                                    const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
-                                    const isBlocked = deps.missing.length > 0;
-                                    if (isBlocked) {
-                                      return (
-                                        <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-3">
-                                          <div className="text-sm font-medium text-slate-900 dark:text-white">Blocked</div>
-                                          <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                                            Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. Restore inputs to resume accurate tracking.
-                                          </div>
-                                          <div className="mt-2 flex items-center gap-2">
-                                            {deps.missing.includes("Spend") ? (
-                                              <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
-                                                Add Spend
-                                              </Button>
-                                            ) : null}
-                                            {deps.missing.includes("Revenue") ? (
-                                              <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
-                                                Add Revenue
-                                              </Button>
-                                            ) : null}
-                                          </div>
+                                      {benchmark.industry && (
+                                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                                          Industry: {benchmark.industry}
                                         </div>
-                                      );
-                                    }
-                                    const bench = parseFloat(stripNumberFormatting(String((benchmark as any)?.benchmarkValue || "0")));
-                                    if (!Number.isFinite(bench) || bench <= 0) return null;
-                                    const p = computeBenchmarkProgress(benchmark);
-                                    const statusLabel =
-                                      p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
-                                    const statusColor =
-                                      p.status === "on_track"
-                                        ? "text-green-600 dark:text-green-400"
-                                        : p.status === "needs_attention"
-                                        ? "text-yellow-600 dark:text-yellow-400"
-                                        : "text-red-600 dark:text-red-400";
+                                      )}
 
-                                    const delta = Number.isFinite(p.deltaPct) ? p.deltaPct : 0;
-                                    const deltaLabel = `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`;
-
-                                    return (
-                                      <>
-                                        <div className="space-y-2 pt-1">
-                                          <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Progress to Benchmark</span>
-                                            <span className="text-sm text-slate-500 dark:text-slate-400">{p.labelPct}%</span>
-                                          </div>
-                                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                            <div className={`h-2 rounded-full ${p.color}`} style={{ width: `${p.pct}%` }} />
-                                          </div>
+                                      {benchmark.source && (
+                                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                                          Source: {benchmark.source}
                                         </div>
-
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-sm text-slate-600 dark:text-slate-400">Performance</span>
-                                          <div className="flex items-center space-x-2">
-                                            <span className={`font-medium ${statusColor}`}>{deltaLabel}</span>
-                                            {delta >= 0 ? (
-                                              <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                            ) : (
-                                              <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
-                                            )}
-                                            <span className={`text-xs font-medium ${statusColor}`}>{statusLabel}</span>
-                                          </div>
-                                        </div>
-                                      </>
-                                    );
-                                  })()}
-
-                                  {benchmark.industry && (
-                                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                                      Industry: {benchmark.industry}
+                                      )}
                                     </div>
-                                  )}
-                                  
-                                  {benchmark.source && (
-                                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                                      Source: {benchmark.source}
-                                    </div>
-                                  )}
-                                </div>
-                                </CardContent>
-                              </Card>
-                            ))}
+                                  </CardContent>
+                                </Card>
+                              ))}
                             </div>
                           ) : (
                             <Card>
@@ -5152,7 +5126,7 @@ export default function GA4Metrics() {
               Set up a key performance indicator for Google Analytics.
             </DialogDescription>
           </DialogHeader>
-          
+
           <Form {...kpiForm}>
             <form onSubmit={kpiForm.handleSubmit(onSubmitKPI)} className="space-y-6">
               {/* KPI Template Selection */}
@@ -5183,10 +5157,10 @@ export default function GA4Metrics() {
                 <p className="text-sm text-slate-600 dark:text-slate-400">
                   Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.
                 </p>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { 
+                    {
                       name: "ROAS",
                       formula: "Revenue ÷ Spend × 100",
                       unit: "%",
@@ -5255,77 +5229,75 @@ export default function GA4Metrics() {
                       (requiresSpend && !spendMetricAvailable) ||
                       (requiresRevenue && !revenueMetricAvailable);
                     return (
-                    <div
-                      key={template.name}
-                      className={`p-3 border-2 rounded-lg transition-all ${
-                        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                      } ${
-                        !isCustom && selectedKPITemplate?.name === template.name
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                          : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
-                      }`}
-                      onClick={() => {
-                        if (disabled) return;
-                        if (isCustom) {
-                          setSelectedKPITemplate(null);
-                          kpiForm.reset({
-                            ...kpiForm.getValues(),
-                            name: "",
-                            metric: "",
-                            description: "",
-                            unit: SELECT_UNIT as any,
-                            currentValue: "",
-                            targetValue: "",
-                            priority: "medium",
+                      <div
+                        key={template.name}
+                        className={`p-3 border-2 rounded-lg transition-all ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                          } ${!isCustom && selectedKPITemplate?.name === template.name
+                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                            : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                          }`}
+                        onClick={() => {
+                          if (disabled) return;
+                          if (isCustom) {
+                            setSelectedKPITemplate(null);
+                            kpiForm.reset({
+                              ...kpiForm.getValues(),
+                              name: "",
+                              metric: "",
+                              description: "",
+                              unit: SELECT_UNIT as any,
+                              currentValue: "",
+                              targetValue: "",
+                              priority: "medium",
+                            });
+                            return;
+                          }
+                          const campaignCurrencyCode = String((campaign as any)?.currency || "USD");
+                          const resolvedUnit = template.unit === "$" ? campaignCurrencyCode : template.unit;
+                          setSelectedKPITemplate(template);
+                          kpiForm.setValue("name", template.name);
+                          kpiForm.setValue("metric", template.name);
+                          kpiForm.setValue("unit", resolvedUnit);
+                          kpiForm.setValue("description", template.description);
+                          // Target is intentionally left blank for new KPIs (user must set it explicitly).
+                          kpiForm.setValue("targetValue", "");
+                          // Prefill current value from the same live sources as the GA4 Overview (no extra fetch).
+                          const useLifetimeRevenue = template.name === "Revenue" || template.name === "ROAS" || template.name === "ROI";
+                          // Only CPA needs conversions-to-date (because Spend is to-date). "Total Conversions" KPI matches the Overview conversions card (daily).
+                          const useLifetimeConversions = template.name === "CPA";
+                          const liveCurrent = calculateKPIValueFromSources(template.name, {
+                            revenue: useLifetimeRevenue ? Number(financialRevenue || 0) : Number(breakdownTotals.revenue || 0),
+                            conversions: useLifetimeConversions
+                              ? Number(financialConversions || 0)
+                              : Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
+                            sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
+                            users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
+                            engagementRate: Number((ga4Metrics as any)?.engagementRate || 0),
+                            spend: Number(financialSpend || 0),
                           });
-                          return;
-                        }
-                        const campaignCurrencyCode = String((campaign as any)?.currency || "USD");
-                        const resolvedUnit = template.unit === "$" ? campaignCurrencyCode : template.unit;
-                        setSelectedKPITemplate(template);
-                        kpiForm.setValue("name", template.name);
-                        kpiForm.setValue("metric", template.name);
-                        kpiForm.setValue("unit", resolvedUnit);
-                        kpiForm.setValue("description", template.description);
-                        // Target is intentionally left blank for new KPIs (user must set it explicitly).
-                        kpiForm.setValue("targetValue", "");
-                        // Prefill current value from the same live sources as the GA4 Overview (no extra fetch).
-                        const useLifetimeRevenue = template.name === "Revenue" || template.name === "ROAS" || template.name === "ROI";
-                        // Only CPA needs conversions-to-date (because Spend is to-date). "Total Conversions" KPI matches the Overview conversions card (daily).
-                        const useLifetimeConversions = template.name === "CPA";
-                        const liveCurrent = calculateKPIValueFromSources(template.name, {
-                          revenue: useLifetimeRevenue ? Number(financialRevenue || 0) : Number(breakdownTotals.revenue || 0),
-                          conversions: useLifetimeConversions
-                            ? Number(financialConversions || 0)
-                            : Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
-                          sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
-                          users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
-                          engagementRate: Number((ga4Metrics as any)?.engagementRate || 0),
-                          spend: Number(financialSpend || 0),
-                        });
-                        kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit));
-                      }}
-                    >
-                      <div className="font-medium text-sm text-slate-900 dark:text-white">
-                        {template.name}
+                          kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit));
+                        }}
+                      >
+                        <div className="font-medium text-sm text-slate-900 dark:text-white">
+                          {template.name}
+                        </div>
+                        {isCustom && (
+                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                            Choose name + unit, then set values
+                          </div>
+                        )}
+                        {!isCustom && disabled && (
+                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                            {requiresSpend && !spendMetricAvailable && requiresRevenue && !revenueMetricAvailable
+                              ? "Spend + Revenue required (add both to unlock)"
+                              : requiresSpend && !spendMetricAvailable
+                                ? "Spend required (add spend to unlock)"
+                                : requiresRevenue && !revenueMetricAvailable
+                                  ? "Revenue required (add GA4 revenue metric or import revenue)"
+                                  : "Unavailable"}
+                          </div>
+                        )}
                       </div>
-                      {isCustom && (
-                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                          Choose name + unit, then set values
-                        </div>
-                      )}
-                      {!isCustom && disabled && (
-                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                          {requiresSpend && !spendMetricAvailable && requiresRevenue && !revenueMetricAvailable
-                            ? "Spend + Revenue required (add both to unlock)"
-                            : requiresSpend && !spendMetricAvailable
-                              ? "Spend required (add spend to unlock)"
-                              : requiresRevenue && !revenueMetricAvailable
-                                ? "Revenue required (add GA4 revenue metric or import revenue)"
-                                : "Unavailable"}
-                        </div>
-                      )}
-                    </div>
                     );
                   })}
                 </div>
@@ -5345,7 +5317,7 @@ export default function GA4Metrics() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={kpiForm.control}
                   name="unit"
@@ -5372,7 +5344,7 @@ export default function GA4Metrics() {
                   )}
                 />
               </div>
-              
+
               <FormField
                 control={kpiForm.control}
                 name="description"
@@ -5395,7 +5367,7 @@ export default function GA4Metrics() {
                   </FormItem>
                 )}
               />
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={kpiForm.control}
@@ -5418,7 +5390,7 @@ export default function GA4Metrics() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={kpiForm.control}
                   name="targetValue"
@@ -5467,10 +5439,10 @@ export default function GA4Metrics() {
                   </FormItem>
                 )}
               />
-              
+
               <div className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
                 <h4 className="font-medium text-slate-900 dark:text-white">Alert Settings</h4>
-                
+
                 <div className="grid grid-cols-1 gap-4">
                   <div className="flex items-center space-x-3">
                     <FormField
@@ -5493,7 +5465,7 @@ export default function GA4Metrics() {
                       )}
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={kpiForm.control}
@@ -5517,7 +5489,7 @@ export default function GA4Metrics() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={kpiForm.control}
                       name="alertFrequency"
@@ -5541,7 +5513,7 @@ export default function GA4Metrics() {
                       )}
                     />
                   </div>
-                  
+
                   <div className="flex items-center space-x-6">
                     <FormField
                       control={kpiForm.control}
@@ -5562,7 +5534,7 @@ export default function GA4Metrics() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={kpiForm.control}
                       name="slackNotifications"
@@ -5585,7 +5557,7 @@ export default function GA4Metrics() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex justify-end space-x-3 pt-4">
                 <Button variant="outline" onClick={() => setShowKPIDialog(false)}>
                   Cancel
@@ -5611,13 +5583,13 @@ export default function GA4Metrics() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel 
+            <AlertDialogCancel
               onClick={() => setDeleteKPIId(null)}
               className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700"
             >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmDeleteKPI}
               disabled={deleteKPIMutation.isPending}
               className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
@@ -5644,11 +5616,10 @@ export default function GA4Metrics() {
           <div className="py-4">
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div
-                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${
-                  ga4ReportModalStep === "standard"
+                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${ga4ReportModalStep === "standard"
                     ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
                     : "border-slate-200 dark:border-slate-700"
-                }`}
+                  }`}
                 onClick={() => {
                   setGa4ReportModalStep("standard");
                   setGa4ReportForm((p) => ({
@@ -5668,11 +5639,10 @@ export default function GA4Metrics() {
               </div>
 
               <div
-                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${
-                  ga4ReportModalStep === "custom"
+                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${ga4ReportModalStep === "custom"
                     ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
                     : "border-slate-200 dark:border-slate-700"
-                }`}
+                  }`}
                 onClick={() => {
                   setGa4ReportModalStep("custom");
                   setGa4ReportForm((p) => ({
@@ -5740,9 +5710,8 @@ export default function GA4Metrics() {
                       return (
                         <div
                           key={t.key}
-                          className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
-                            selected ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-slate-200 dark:border-slate-700"
-                          }`}
+                          className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${selected ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-slate-200 dark:border-slate-700"
+                            }`}
                           onClick={() => {
                             const nextType = String(t.key);
                             setGa4ReportForm((p) => ({
@@ -5878,8 +5847,8 @@ export default function GA4Metrics() {
                       ? "Updating..."
                       : "Update Report"
                     : createGA4ReportMutation.isPending
-                    ? "Saving..."
-                    : "Save Report"}
+                      ? "Saving..."
+                      : "Save Report"}
                 </Button>
               </div>
             </div>
@@ -6037,4 +6006,3 @@ export default function GA4Metrics() {
     </div>
   );
 }
- 

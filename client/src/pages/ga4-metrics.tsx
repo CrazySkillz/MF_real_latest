@@ -3303,6 +3303,7 @@ export default function GA4Metrics() {
                       currency={(campaign as any)?.currency || "USD"}
                       dateRange={dateRange}
                       initialSource={activeRevenueSource || undefined}
+                      platformContext="ga4"
                       onSuccess={() => {
                         queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
                         queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
@@ -3458,7 +3459,7 @@ export default function GA4Metrics() {
                           ) : Array.isArray(ga4Breakdown?.rows) && ga4Breakdown.rows.length > 0 ? (
                             <div className="rounded-md border overflow-hidden">
                               <div className="max-h-[420px] overflow-auto">
-                                <table className="w-full text-sm table-fixed">
+                                <table className="w-full text-sm">
                                   <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
                                     <tr>
                                       <th className="text-left font-medium px-3 py-2">Date</th>
@@ -3484,9 +3485,7 @@ export default function GA4Metrics() {
                                         <td className="px-3 py-2 whitespace-nowrap">{r.channel}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{r.source}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{r.medium}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap max-w-[320px] truncate" title={String(r.campaign || '')}>
-                                          {r.campaign}
-                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{r.campaign}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{r.device}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{r.country}</td>
                                         <td className="px-3 py-2 text-right tabular-nums">{formatNumber(Number(r.sessions || 0))}</td>

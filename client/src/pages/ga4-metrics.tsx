@@ -3453,29 +3453,28 @@ export default function GA4Metrics() {
                             Date / Channel / Source / Medium / Campaign / Device / Country — Sessions / Users / Conversions / Revenue
                           </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-0">
                           {breakdownLoading ? (
-                            <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                            <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse m-6" />
                           ) : Array.isArray(ga4Breakdown?.rows) && ga4Breakdown.rows.length > 0 ? (
                             <div className="w-full overflow-x-auto">
-                              <div className="rounded-md border overflow-hidden">
-                                <div className="max-h-[420px] overflow-y-auto">
-                                  <table className="w-full text-sm min-w-max">
-                                    <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
-                                      <tr>
-                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Date</th>
-                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Channel</th>
-                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Source</th>
-                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Medium</th>
-                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Campaign</th>
-                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Device</th>
-                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Country</th>
-                                        <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap">Sessions</th>
-                                        <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap">Users</th>
-                                        <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap">Conversions</th>
-                                        <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap">Revenue</th>
-                                      </tr>
-                                    </thead>
+                              <div className="max-h-[420px] overflow-y-auto">
+                                <table className="w-full text-sm border-collapse">
+                                  <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
+                                    <tr>
+                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[100px]">Date</th>
+                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[120px]">Channel</th>
+                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[120px]">Source</th>
+                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[100px]">Medium</th>
+                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[200px]">Campaign</th>
+                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[100px]">Device</th>
+                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[120px]">Country</th>
+                                      <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap min-w-[100px]">Sessions</th>
+                                      <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap min-w-[80px]">Users</th>
+                                      <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap min-w-[110px]">Conversions</th>
+                                      <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap min-w-[120px]">Revenue</th>
+                                    </tr>
+                                  </thead>
                                   <tbody>
                                     {ga4Breakdown.rows.slice(0, 200).map((r: any, idx: number) => (
                                       <tr
@@ -3501,9 +3500,8 @@ export default function GA4Metrics() {
                                 </table>
                               </div>
                             </div>
-                            </div>
                           ) : (
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                            <div className="text-sm text-slate-600 dark:text-slate-400 p-6">
                               No GA4 breakdown rows returned for this date range. If you expect rows, verify that GA4 has data for the selected period and that revenue/conversions are configured as GA4 metrics.
                             </div>
                           )}

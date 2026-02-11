@@ -160,8 +160,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const handlePlatformClick = (platformId: string) => {
     if (connectedPlatforms.includes(platformId)) {
       // Already connected, just toggle selection
-      setSelectedPlatforms(prev => 
-        prev.includes(platformId) 
+      setSelectedPlatforms(prev =>
+        prev.includes(platformId)
           ? prev.filter(id => id !== platformId)
           : [...prev, platformId]
       );
@@ -241,14 +241,14 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
 
   const handleCustomIntegrationConnect = async () => {
     setIsConnecting(prev => ({ ...prev, 'custom-integration': true }));
-    
+
     try {
       // Parse allowed email addresses (comma-separated or newline-separated)
       const emailList = allowedEmailAddresses
         .split(/[,\n]/)
         .map(e => e.trim())
         .filter(e => e.length > 0);
-      
+
       const response = await fetch('/api/custom-integration/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -258,20 +258,20 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
           allowedEmailAddresses: emailList.length > 0 ? emailList : undefined
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setConnectedPlatforms(prev => [...prev, 'custom-integration']);
         setSelectedPlatforms(prev => [...prev, 'custom-integration']);
         setShowCustomIntegrationModal(false);
         setCustomIntegrationEmail('');
         setAllowedEmailAddresses('');
-        
-        const securityMsg = emailList.length > 0 
+
+        const securityMsg = emailList.length > 0
           ? ` Only emails from ${emailList.length} whitelisted address${emailList.length !== 1 ? 'es' : ''} will be accepted.`
           : '';
-        
+
         toast({
           title: "Custom Integration Connected!",
           description: `Successfully connected.${securityMsg}`
@@ -402,18 +402,18 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
             Connect your marketing platforms to pull real-time metrics and performance data for this campaign.
           </p>
         </div>
-        
+
         {platforms.map((platform) => {
           const Icon = platform.icon;
           const isSelected = selectedPlatforms.includes(platform.id);
           const isConnected = connectedPlatforms.includes(platform.id);
           const isExpanded = expandedPlatforms[platform.id];
           const platformConnecting = isConnecting[platform.id] || false;
-          
+
           return (
             <div key={platform.id} className="border rounded-lg overflow-hidden">
               {/* Platform Header - Always Visible */}
-              <div 
+              <div
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 onClick={() => handlePlatformClick(platform.id)}
               >
@@ -427,7 +427,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                     <div className="text-sm text-slate-500">{platform.description}</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   {!isConnected && (
                     <div className="flex items-center gap-2">
@@ -439,7 +439,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   )}
                 </div>
               </div>
-              
+
               {/* Credential Input Section - Only show when expanded and not connected */}
               {isExpanded && !isConnected && (
                 <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-4">
@@ -458,7 +458,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                       }}
                     />
                   )}
-                  
+
                   {platform.id === 'google-sheets' && (
                     <SimpleGoogleSheetsAuth
                       campaignId={campaignId}
@@ -490,7 +490,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                       }}
                     />
                   )}
-                  
+
                   {platform.id === 'linkedin' && (
                     <LinkedInConnectionFlow
                       campaignId={campaignId}
@@ -521,7 +521,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                       }}
                     />
                   )}
-                  
+
                   {platform.id === 'facebook' && (
                     <SimpleMetaAuth
                       campaignId={campaignId}
@@ -543,7 +543,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                       }}
                     />
                   )}
-                  
+
                   {!['google-analytics', 'google-sheets', 'linkedin', 'facebook'].includes(platform.id) && (
                     <div className="text-center py-6">
                       <div className="text-slate-600 dark:text-slate-400 mb-3">
@@ -568,9 +568,9 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
             </div>
           );
         })}
-        
+
         {/* Custom Integration Link */}
-        <div 
+        <div
           className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
           onClick={() => setShowCustomIntegrationModal(true)}
           data-testid="button-custom-integration"
@@ -591,7 +591,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
           </div>
         </div>
       </div>
-      
+
       {/* Custom Integration Modal */}
       <Dialog open={showCustomIntegrationModal} onOpenChange={setShowCustomIntegrationModal}>
         <DialogContent className="sm:max-w-lg">
@@ -612,10 +612,10 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   input.onchange = async (e) => {
                     const file = (e.target as HTMLInputElement).files?.[0];
                     if (!file) return;
-                    
+
                     try {
                       setIsConnecting(prev => ({ ...prev, 'custom-integration': true }));
-                      
+
                       // First, create the custom integration connection
                       const connectResponse = await fetch(`/api/custom-integration/${encodeURIComponent(String(campaignId))}/connect`, {
                         method: 'POST',
@@ -624,38 +624,38 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                           allowedEmailAddresses: []
                         })
                       });
-                      
+
                       if (!connectResponse.ok) {
                         throw new Error('Failed to create custom integration');
                       }
-                      
+
                       // Upload the PDF
                       const formData = new FormData();
                       formData.append('pdf', file);
-                      
+
                       const uploadResponse = await fetch(`/api/custom-integration/${encodeURIComponent(String(campaignId))}/upload-pdf`, {
                         method: 'POST',
                         body: formData
                       });
-                      
+
                       if (!uploadResponse.ok) {
                         throw new Error('Failed to upload PDF');
                       }
-                      
+
                       const result = await uploadResponse.json();
-                      
+
                       // Mark as connected
                       setConnectedPlatforms(prev => [...prev, 'custom-integration']);
                       setSelectedPlatforms(prev => [...prev, 'custom-integration']);
                       setShowCustomIntegrationModal(false);
-                      
+
                       toast({
                         title: "PDF Uploaded Successfully!",
-                        description: result._confidence 
+                        description: result._confidence
                           ? `Metrics extracted with ${result._confidence}% confidence`
                           : "Metrics extracted successfully"
                       });
-                      
+
                     } catch (error: any) {
                       console.error('PDF upload error:', error);
                       toast({
@@ -686,12 +686,12 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   <Upload className="w-5 h-5 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-shrink-0" />
                 </div>
               </button>
-              
+
               <button
                 onClick={async () => {
                   try {
                     setIsConnecting(prev => ({ ...prev, 'custom-integration': true }));
-                    
+
                     const response = await fetch(`/api/custom-integration/${encodeURIComponent(String(campaignId))}/connect`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -699,24 +699,24 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                         allowedEmailAddresses: allowedEmailAddresses.split(/[\n,]/).map(e => e.trim()).filter(Boolean)
                       })
                     });
-                    
+
                     if (!response.ok) {
                       throw new Error('Failed to create custom integration');
                     }
-                    
+
                     const data = await response.json();
-                    
+
                     setConnectedPlatforms(prev => [...prev, 'custom-integration']);
                     setSelectedPlatforms(prev => [...prev, 'custom-integration']);
                     setShowCustomIntegrationModal(false);
                     setShowEmailForwardingInstructions(true);
                     setCustomIntegrationEmail(data.campaignEmail || `${campaignId}@import.mforensics.com`);
-                    
+
                     toast({
                       title: "Email Forwarding Configured!",
                       description: "Forward PDFs to your unique email address."
                     });
-                    
+
                   } catch (error: any) {
                     console.error('Custom integration connection error:', error);
                     toast({
@@ -795,7 +795,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
               Your unique email address has been generated
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             {/* Email Address Display */}
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -821,7 +821,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 </Button>
               </div>
             </div>
-            
+
             {/* How it Works */}
             <div className="space-y-3">
               <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
@@ -843,7 +843,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 </li>
               </ul>
             </div>
-            
+
             {/* Tip */}
             <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
               <p className="text-sm text-amber-900 dark:text-amber-100 flex items-start gap-2">
@@ -853,7 +853,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 </span>
               </p>
             </div>
-            
+
             <div className="flex justify-end">
               <Button
                 onClick={() => setShowEmailForwardingInstructions(false)}
@@ -865,9 +865,9 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Buttons removed - now handled by parent component for better UX */}
-      
+
       {/* GA4 Property Selection Modal */}
       {showPropertySelector && (
         <Dialog open={showPropertySelector} onOpenChange={setShowPropertySelector}>
@@ -878,7 +878,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 Choose which Google Analytics property to connect for this campaign
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="ga4-property-select">GA4 Property</Label>
@@ -910,14 +910,14 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setShowPropertySelector(false)}
                   className="flex-1"
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={handlePropertySelection}
                   disabled={!selectedGA4Property || isGA4PropertyLoading}
                   className="flex-1"
@@ -1001,7 +1001,7 @@ export default function Campaigns() {
   const [linkedInImportComplete, setLinkedInImportComplete] = useState(false);
   const [connectedPlatformsInDialog, setConnectedPlatformsInDialog] = useState<string[]>([]);
   const [ga4CampaignFilterForNewCampaign, setGa4CampaignFilterForNewCampaign] = useState<string>("");
-  
+
   // Debug: log whenever connectedPlatformsInDialog changes
   useEffect(() => {
     console.log('🎯 connectedPlatformsInDialog updated:', connectedPlatformsInDialog);
@@ -1179,7 +1179,7 @@ export default function Campaigns() {
     onError: (error: any) => {
       console.error("Delete campaign error:", error);
       toast({
-        title: "Error", 
+        title: "Error",
         description: error.message || "Failed to delete campaign. Please try again.",
         variant: "destructive",
       });
@@ -1276,7 +1276,7 @@ export default function Campaigns() {
         ...data,
         budget: data.budget ? data.budget.replace(/,/g, '') : data.budget,
       };
-      
+
       updateCampaignMutation.mutate({
         id: editingCampaign.id,
         ...cleanedData,
@@ -1293,21 +1293,21 @@ export default function Campaigns() {
         const budgetStr = editingCampaign.budget.toString();
         const parts = budgetStr.split('.');
         const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        formattedBudget = parts[1] !== undefined 
+        formattedBudget = parts[1] !== undefined
           ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
           : `${integerPart}.00`;
       }
-      
-      const startDateValue = editingCampaign.startDate 
-        ? (editingCampaign.startDate instanceof Date 
-            ? editingCampaign.startDate.toISOString().slice(0, 10)
-            : new Date(editingCampaign.startDate).toISOString().slice(0, 10))
+
+      const startDateValue = editingCampaign.startDate
+        ? (editingCampaign.startDate instanceof Date
+          ? editingCampaign.startDate.toISOString().slice(0, 10)
+          : new Date(editingCampaign.startDate).toISOString().slice(0, 10))
         : "";
 
-      const endDateValue = editingCampaign.endDate 
-        ? (editingCampaign.endDate instanceof Date 
-            ? editingCampaign.endDate.toISOString().slice(0, 10)
-            : new Date(editingCampaign.endDate).toISOString().slice(0, 10))
+      const endDateValue = editingCampaign.endDate
+        ? (editingCampaign.endDate instanceof Date
+          ? editingCampaign.endDate.toISOString().slice(0, 10)
+          : new Date(editingCampaign.endDate).toISOString().slice(0, 10))
         : "";
 
       editForm.reset({
@@ -1398,10 +1398,10 @@ export default function Campaigns() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
 
       <Navigation />
-      
+
       <div className="flex">
         <Sidebar />
-        
+
         <main className="flex-1 p-8">
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
@@ -1409,12 +1409,12 @@ export default function Campaigns() {
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Campaign Management</h1>
                 <p className="text-slate-600 dark:text-slate-400 mt-1">Create, manage, and optimize your marketing campaigns</p>
               </div>
-              
+
               <Button onClick={() => setIsCreateModalOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 New Campaign
               </Button>
-              
+
               <Dialog open={isCreateModalOpen} onOpenChange={handleCreateModalChange}>
                 <DialogContent className={`${showConnectorsStep ? "sm:max-w-4xl" : "sm:max-w-md"} max-h-[90vh] overflow-y-auto pr-12`}>
                   <DialogHeader className="sticky top-0 bg-background z-10 pb-4 pr-8">
@@ -1422,195 +1422,195 @@ export default function Campaigns() {
                       {showConnectorsStep ? "Connect Data Sources" : "Create New Campaign"}
                     </DialogTitle>
                     <DialogDescription>
-                      {showConnectorsStep 
+                      {showConnectorsStep
                         ? "Select social media platforms and enter your credentials to connect your data sources."
                         : "Set up a new marketing campaign with your preferred settings."
                       }
                     </DialogDescription>
                   </DialogHeader>
-                  
+
                   {!showConnectorsStep ? (
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="name">Campaign Name *</Label>
-                        <div className="group relative">
-                          <Info className="w-4 h-4 text-slate-400 cursor-help" />
-                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-2 bg-slate-900 text-white text-xs rounded shadow-lg">
-                            <p className="font-medium mb-1">Campaign Name Tip</p>
-                            <p>Using the same campaign name across all data sources (Google Sheets, LinkedIn, etc.) improves automatic conversion value calculation accuracy.</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="name">Campaign Name *</Label>
+                          <div className="group relative">
+                            <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-2 bg-slate-900 text-white text-xs rounded shadow-lg">
+                              <p className="font-medium mb-1">Campaign Name Tip</p>
+                              <p>Using the same campaign name across all data sources (Google Sheets, LinkedIn, etc.) improves automatic conversion value calculation accuracy.</p>
+                            </div>
                           </div>
                         </div>
+                        <Input
+                          id="name"
+                          placeholder="Enter campaign name"
+                          {...form.register("name")}
+                        />
+                        {form.formState.errors.name && (
+                          <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+                        )}
                       </div>
-                      <Input
-                        id="name"
-                        placeholder="Enter campaign name"
-                        {...form.register("name")}
-                      />
-                      {form.formState.errors.name && (
-                        <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="clientWebsite">Client's Website (optional)</Label>
-                      <Input
-                        id="clientWebsite"
-                        type="url"
-                        placeholder="https://example.com"
-                        {...form.register("clientWebsite")}
-                      />
-                      {form.formState.errors.clientWebsite && (
-                        <p className="text-sm text-destructive">{form.formState.errors.clientWebsite.message}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="label">Label (optional)</Label>
-                      <Input
-                        id="label"
-                        placeholder="Add a label or tag"
-                        {...form.register("label")}
-                      />
-                      {form.formState.errors.label && (
-                        <p className="text-sm text-destructive">{form.formState.errors.label.message}</p>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="col-span-2 space-y-2">
-                        <Label htmlFor="budget">Budget (optional)</Label>
-                        {(() => {
-                          const budgetRegister = form.register("budget");
-                          return (
-                            <Input
-                              id="budget"
-                              {...budgetRegister}
-                              onChange={(e) => {
-                                budgetRegister.onChange(e);
-                                const value = e.target.value.replace(/[^0-9.]/g, '');
-                                const parts = value.split('.');
-                                
-                                if (parts[1]?.length > 2) {
-                                  const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
-                                  form.setValue("budget", formatted);
-                                  e.target.value = formatted;
-                                } else {
-                                  form.setValue("budget", value);
-                                }
-                              }}
-                              onBlur={(e) => {
-                                budgetRegister.onBlur(e);
-                                const value = e.target.value.replace(/[^0-9.]/g, '');
-                                if (value) {
+
+                      <div className="space-y-2">
+                        <Label htmlFor="clientWebsite">Client's Website (optional)</Label>
+                        <Input
+                          id="clientWebsite"
+                          type="url"
+                          placeholder="https://example.com"
+                          {...form.register("clientWebsite")}
+                        />
+                        {form.formState.errors.clientWebsite && (
+                          <p className="text-sm text-destructive">{form.formState.errors.clientWebsite.message}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="label">Label (optional)</Label>
+                        <Input
+                          id="label"
+                          placeholder="Add a label or tag"
+                          {...form.register("label")}
+                        />
+                        {form.formState.errors.label && (
+                          <p className="text-sm text-destructive">{form.formState.errors.label.message}</p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2 space-y-2">
+                          <Label htmlFor="budget">Budget (optional)</Label>
+                          {(() => {
+                            const budgetRegister = form.register("budget");
+                            return (
+                              <Input
+                                id="budget"
+                                {...budgetRegister}
+                                onChange={(e) => {
+                                  budgetRegister.onChange(e);
+                                  const value = e.target.value.replace(/[^0-9.]/g, '');
                                   const parts = value.split('.');
-                                  const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                                  const formatted = parts[1] !== undefined 
-                                    ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
-                                    : `${integerPart}.00`;
-                                  form.setValue("budget", value);
-                                  e.target.value = formatted;
-                                }
-                              }}
-                              onFocus={(e: FocusEvent<HTMLInputElement>) => {
-                                const value = e.target.value.replace(/,/g, '');
-                                e.target.value = value;
-                              }}
-                              placeholder="0.00"
-                              type="text"
-                              inputMode="decimal"
-                            />
-                          );
-                        })()}
-                        {form.formState.errors.budget && (
-                          <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
-                        )}
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Add a monthly budget to enable spend pacing alerts in Insights.
-                        </p>
+
+                                  if (parts[1]?.length > 2) {
+                                    const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
+                                    form.setValue("budget", formatted);
+                                    e.target.value = formatted;
+                                  } else {
+                                    form.setValue("budget", value);
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  budgetRegister.onBlur(e);
+                                  const value = e.target.value.replace(/[^0-9.]/g, '');
+                                  if (value) {
+                                    const parts = value.split('.');
+                                    const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                    const formatted = parts[1] !== undefined
+                                      ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
+                                      : `${integerPart}.00`;
+                                    form.setValue("budget", value);
+                                    e.target.value = formatted;
+                                  }
+                                }}
+                                onFocus={(e: FocusEvent<HTMLInputElement>) => {
+                                  const value = e.target.value.replace(/,/g, '');
+                                  e.target.value = value;
+                                }}
+                                placeholder="0.00"
+                                type="text"
+                                inputMode="decimal"
+                              />
+                            );
+                          })()}
+                          {form.formState.errors.budget && (
+                            <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
+                          )}
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Add a monthly budget to enable spend pacing alerts in Insights.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="currency">Currency</Label>
+                          <Select
+                            value={form.watch("currency") || "USD"}
+                            onValueChange={(value) => form.setValue("currency", value)}
+                          >
+                            <SelectTrigger id="currency">
+                              <SelectValue placeholder="USD - US Dollar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="USD">USD - US Dollar</SelectItem>
+                              <SelectItem value="EUR">EUR - Euro</SelectItem>
+                              <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                              <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
+                              <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                              <SelectItem value="INR">INR - Indian Rupee</SelectItem>
+                              <SelectItem value="CNY">CNY - Chinese Yuan</SelectItem>
+                              <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
+                              <SelectItem value="MXN">MXN - Mexican Peso</SelectItem>
+                              <SelectItem value="CHF">CHF - Swiss Franc</SelectItem>
+                              <SelectItem value="SEK">SEK - Swedish Krona</SelectItem>
+                              <SelectItem value="NZD">NZD - New Zealand Dollar</SelectItem>
+                              <SelectItem value="SGD">SGD - Singapore Dollar</SelectItem>
+                              <SelectItem value="HKD">HKD - Hong Kong Dollar</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="currency">Currency</Label>
-                        <Select
-                          value={form.watch("currency") || "USD"}
-                          onValueChange={(value) => form.setValue("currency", value)}
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="startDate">Start Date (optional)</Label>
+                          <Input
+                            id="startDate"
+                            type="date"
+                            {...form.register("startDate")}
+                          />
+                          {form.formState.errors.startDate && (
+                            <p className="text-sm text-destructive">{form.formState.errors.startDate.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="endDate">End Date (optional)</Label>
+                          <Input
+                            id="endDate"
+                            type="date"
+                            {...form.register("endDate")}
+                          />
+                          {form.formState.errors.endDate && (
+                            <p className="text-sm text-destructive">{form.formState.errors.endDate.message}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            setIsCreateModalOpen(false);
+                            setConnectedPlatformsInDialog([]);
+                            setShowConnectorsStep(false);
+                            setCampaignData(null);
+                            setLinkedInImportComplete(false);
+                          }}
                         >
-                          <SelectTrigger id="currency">
-                            <SelectValue placeholder="USD - US Dollar" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="USD">USD - US Dollar</SelectItem>
-                            <SelectItem value="EUR">EUR - Euro</SelectItem>
-                            <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                            <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
-                            <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
-                            <SelectItem value="INR">INR - Indian Rupee</SelectItem>
-                            <SelectItem value="CNY">CNY - Chinese Yuan</SelectItem>
-                            <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
-                            <SelectItem value="MXN">MXN - Mexican Peso</SelectItem>
-                            <SelectItem value="CHF">CHF - Swiss Franc</SelectItem>
-                            <SelectItem value="SEK">SEK - Swedish Krona</SelectItem>
-                            <SelectItem value="NZD">NZD - New Zealand Dollar</SelectItem>
-                            <SelectItem value="SGD">SGD - Singapore Dollar</SelectItem>
-                            <SelectItem value="HKD">HKD - Hong Kong Dollar</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="flex-1"
+                        >
+                          Next
+                        </Button>
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="startDate">Start Date (optional)</Label>
-                        <Input
-                          id="startDate"
-                          type="date"
-                          {...form.register("startDate")}
-                        />
-                        {form.formState.errors.startDate && (
-                          <p className="text-sm text-destructive">{form.formState.errors.startDate.message}</p>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="endDate">End Date (optional)</Label>
-                        <Input
-                          id="endDate"
-                          type="date"
-                          {...form.register("endDate")}
-                        />
-                        {form.formState.errors.endDate && (
-                          <p className="text-sm text-destructive">{form.formState.errors.endDate.message}</p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-3 pt-4">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => {
-                          setIsCreateModalOpen(false);
-                          setConnectedPlatformsInDialog([]);
-                          setShowConnectorsStep(false);
-                          setCampaignData(null);
-                          setLinkedInImportComplete(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button 
-                        type="submit" 
-                        className="flex-1"
-                      >
-                        Next
-                      </Button>
-                    </div>
                     </form>
                   ) : (
                     <div className="space-y-4">
                       <div className="max-h-[60vh] overflow-y-auto pr-2">
-                        <DataConnectorsStep 
+                        <DataConnectorsStep
                           onComplete={handleConnectorsComplete}
                           onBack={handleBackToForm}
                           isLoading={createCampaignMutation.isPending}
@@ -1621,27 +1621,27 @@ export default function Campaigns() {
                           onGA4CampaignFilterSelected={(value) => setGa4CampaignFilterForNewCampaign(value)}
                         />
                       </div>
-                      
+
                       {/* Single unified button for campaign creation */}
                       <div className="flex items-center space-x-3 pt-4 border-t bg-background">
-                        <Button 
-                          type="button" 
-                          variant="outline" 
+                        <Button
+                          type="button"
+                          variant="outline"
                           className="flex-1"
                           onClick={handleBackToForm}
                         >
                           <ArrowLeft className="w-4 h-4 mr-2" />
                           Back
                         </Button>
-                      {connectedPlatformsInDialog.includes("linkedin") && !linkedInImportComplete ? (
-                        <div className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4" />
-                          Finish LinkedIn import to enable campaign creation.
-                        </div>
-                      ) : null}
+                        {connectedPlatformsInDialog.includes("linkedin") && !linkedInImportComplete ? (
+                          <div className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" />
+                            Finish LinkedIn import to enable campaign creation.
+                          </div>
+                        ) : null}
 
-                      <Button 
-                          type="button" 
+                        <Button
+                          type="button"
                           className="flex-1"
                           onClick={() => {
                             // Use the platforms tracked by DataConnectorsStep
@@ -1709,24 +1709,23 @@ export default function Campaigns() {
                   <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
                     <Card
                       data-campaign-id={campaign.id}
-                      className={`hover:shadow-md transition-shadow cursor-pointer ${
-                        highlightCampaignId && String(highlightCampaignId) === String(campaign.id)
+                      className={`hover:shadow-md transition-shadow cursor-pointer ${highlightCampaignId && String(highlightCampaignId) === String(campaign.id)
                           ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-background"
                           : ""
-                      }`}
+                        }`}
                     >
                       <CardContent className="p-6">
                         <div className="mb-4">
                           <h3 className="font-semibold text-slate-900 dark:text-white">{campaign.name}</h3>
                         </div>
-                        
+
                         <div className="flex items-center justify-between">
                           <div className="text-sm text-slate-500 dark:text-slate-400">
                             Budget: {formatCurrency(campaign.budget, campaign.currency)}
                           </div>
                           <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={(e) => {
                                 e.preventDefault();
@@ -1736,8 +1735,8 @@ export default function Campaigns() {
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={(e) => {
                                 e.preventDefault();
@@ -1759,7 +1758,7 @@ export default function Campaigns() {
           </div>
         </main>
       </div>
-      
+
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!campaignToDelete} onOpenChange={() => setCampaignToDelete(null)}>
         <DialogContent className="sm:max-w-md">
@@ -1772,17 +1771,17 @@ export default function Campaigns() {
               Are you sure you want to delete <strong>"{campaignToDelete?.name}"</strong>? This action cannot be undone and will permanently remove all campaign data and analytics connections.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex justify-end gap-3 mt-6">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setCampaignToDelete(null)}
               disabled={deleteCampaignMutation.isPending}
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={confirmDelete}
               disabled={deleteCampaignMutation.isPending}
             >
@@ -1804,7 +1803,7 @@ export default function Campaigns() {
               Update the campaign details below.
             </DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="edit-name">Campaign Name</Label>
@@ -1818,7 +1817,7 @@ export default function Campaigns() {
                 <p className="text-sm text-red-500">{editForm.formState.errors.name.message}</p>
               )}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="edit-website">Client Website</Label>
               <Input
@@ -1828,7 +1827,7 @@ export default function Campaigns() {
                 data-testid="input-edit-client-website"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="edit-label">Label/Tag</Label>
               <Input
@@ -1838,7 +1837,7 @@ export default function Campaigns() {
                 data-testid="input-edit-label"
               />
             </div>
-            
+
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2 space-y-2">
                 <Label htmlFor="edit-budget">Budget</Label>
@@ -1852,7 +1851,7 @@ export default function Campaigns() {
                         budgetRegister.onChange(e);
                         const value = e.target.value.replace(/[^0-9.]/g, '');
                         const parts = value.split('.');
-                        
+
                         if (parts[1]?.length > 2) {
                           const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
                           editForm.setValue("budget", formatted);
@@ -1867,7 +1866,7 @@ export default function Campaigns() {
                         if (value) {
                           const parts = value.split('.');
                           const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                          const formatted = parts[1] !== undefined 
+                          const formatted = parts[1] !== undefined
                             ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
                             : `${integerPart}.00`;
                           editForm.setValue("budget", value);
@@ -1915,14 +1914,14 @@ export default function Campaigns() {
                 </Select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2 space-y-2">
                 <Label htmlFor="edit-conversionValue">Conversion Value (optional)</Label>
                 {(() => {
                   const connectedPlatforms = editDialogPlatformsData?.statuses?.filter(p => p.connected) || [];
                   const hasMultiplePlatforms = connectedPlatforms.length > 1;
-                  
+
                   // If multiple platforms, disable the field and show message
                   if (hasMultiplePlatforms) {
                     return (
@@ -1940,7 +1939,7 @@ export default function Campaigns() {
                       </div>
                     );
                   }
-                  
+
                   const conversionValueRegister = editForm.register("conversionValue");
                   return (
                     <Input
@@ -1950,7 +1949,7 @@ export default function Campaigns() {
                         conversionValueRegister.onChange(e);
                         const value = e.target.value.replace(/[^0-9.]/g, '');
                         const parts = value.split('.');
-                        
+
                         if (parts[1]?.length > 2) {
                           const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
                           editForm.setValue("conversionValue", formatted);
@@ -1965,7 +1964,7 @@ export default function Campaigns() {
                         if (value) {
                           const parts = value.split('.');
                           const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                          const formatted = parts[1] !== undefined 
+                          const formatted = parts[1] !== undefined
                             ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
                             : `${integerPart}.00`;
                           editForm.setValue("conversionValue", value);
@@ -2017,7 +2016,7 @@ export default function Campaigns() {
                 </Select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-startDate">Start Date</Label>
@@ -2028,7 +2027,7 @@ export default function Campaigns() {
                   data-testid="input-edit-start-date"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-endDate">End Date</Label>
                 <Input
@@ -2039,18 +2038,18 @@ export default function Campaigns() {
                 />
               </div>
             </div>
-            
+
             <div className="flex justify-end gap-3 mt-6">
-              <Button 
+              <Button
                 type="button"
-                variant="outline" 
+                variant="outline"
                 onClick={() => setEditingCampaign(null)}
                 disabled={updateCampaignMutation.isPending}
                 data-testid="button-cancel-edit"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 type="submit"
                 disabled={updateCampaignMutation.isPending}
                 data-testid="button-save-edit"

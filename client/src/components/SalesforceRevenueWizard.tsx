@@ -348,7 +348,7 @@ export function SalesforceRevenueWizard(props: {
         try {
           bc?.removeEventListener("message", onBcMessage as any);
           bc?.close();
-        } catch {}
+        } catch { }
         if (pollTimer) window.clearInterval(pollTimer);
         if (pollTimeout) window.clearTimeout(pollTimeout);
       };
@@ -766,28 +766,26 @@ export function SalesforceRevenueWizard(props: {
             <div key={s.id} className="flex items-center flex-1">
               <div className="flex flex-col items-center flex-1">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-                    isDisabled
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isDisabled
                       ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
                       : isActive
-                      ? "bg-blue-600 border-blue-600 text-white"
-                      : isCompleted
-                      ? "bg-green-600 border-green-600 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400"
-                  }`}
+                        ? "bg-blue-600 border-blue-600 text-white"
+                        : isCompleted
+                          ? "bg-green-600 border-green-600 text-white"
+                          : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400"
+                    }`}
                 >
                   {!isDisabled && isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
                 </div>
                 <p
-                  className={`text-xs mt-2 text-center whitespace-nowrap ${
-                    isDisabled
+                  className={`text-xs mt-2 text-center whitespace-nowrap ${isDisabled
                       ? "text-slate-400"
                       : isActive
-                      ? "text-blue-600 font-medium"
-                      : isCompleted
-                      ? "text-green-600"
-                      : "text-slate-400"
-                  }`}
+                        ? "text-blue-600 font-medium"
+                        : isCompleted
+                          ? "text-green-600"
+                          : "text-slate-400"
+                    }`}
                 >
                   {s.label}
                 </p>
@@ -972,8 +970,8 @@ export function SalesforceRevenueWizard(props: {
                         statusLoading
                           ? "Checking connection…"
                           : !isConnected
-                          ? "Connect Salesforce to load fields…"
-                          : "Select a Salesforce Opportunity field…"
+                            ? "Connect Salesforce to load fields…"
+                            : "Select a Salesforce Opportunity field…"
                       }
                     />
                   </SelectTrigger>
@@ -1228,10 +1226,10 @@ export function SalesforceRevenueWizard(props: {
                         {previewHeaders
                           .filter((h) => String(h).toLowerCase() !== "id")
                           .map((h) => (
-                          <TableHead key={h} className="whitespace-nowrap">
-                            {h.toLowerCase() === "name" ? "Opportunity Name" : h}
-                          </TableHead>
-                        ))}
+                            <TableHead key={h} className="whitespace-nowrap">
+                              {h.toLowerCase() === "name" ? "Opportunity Name" : h}
+                            </TableHead>
+                          ))}
                       </TableRow>
                     </TableHeader>
                     <TableBody>

@@ -5989,9 +5989,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           const availableDays = Number((linkedInInsightsRollups as any)?.availableDays || 0);
                           const campaignBudget = campaign?.budget ? parseFloat(String(campaign.budget)) : null;
                           const showBudgetInfo = availableDays >= 7 && !campaignBudget;
-                          
+
                           if (!showBudgetInfo) return null;
-                          
+
                           return (
                             <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20">
                               <CardContent className="p-4">

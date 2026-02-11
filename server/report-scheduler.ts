@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { campaigns, linkedinReports, reportSendEvents, reportSnapshots } from "../shared/schema";
 import { and, eq } from "drizzle-orm";
 import type { LinkedInReport } from "../shared/schema";
+import * as cron from "node-cron";
+import { DateTime } from "luxon";
 
 /**
  * Report Scheduler - Automated Email Reports
@@ -14,6 +16,17 @@ interface ReportWithCampaign extends LinkedInReport {
   campaignId?: string | null;
   platformType?: string;
 }
+
+// Monitoring metrics for scheduler health
+const schedulerMetrics = {
+  totalChecks: 0,
+  totalSent: 0,
+  totalFailed: 0,
+  lastCheckTime: null as Date | null,
+  lastSuccessTime: null as Date | null,
+  lastErrorTime: null as Date | null,
+  lastError: null as string | null,
+};
 
 function coercePdfBufferFromDoc(doc: any): Buffer | null {
   // Try the most reliable forms across Node runtimes and bundlers.
@@ -297,7 +310,7 @@ async function buildPdfAttachmentForReport(args: {
 }
 
 /**
- * Scheduling helpers (timezone-aware, idempotent).
+ * Scheduling helpers (timezone-aware, idempotent) - Enterprise-grade with Luxon
  */
 function getZonedParts(now: Date, timeZone: string): {
   year: number;
@@ -308,35 +321,30 @@ function getZonedParts(now: Date, timeZone: string): {
   minute: number; // 0-59
   localDate: string; // YYYY-MM-DD
 } {
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    weekday: "short",
-  });
-  const parts = dtf.formatToParts(now);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value;
-  const year = parseInt(get("year") || "0", 10);
-  const month = parseInt(get("month") || "0", 10);
-  const day = parseInt(get("day") || "0", 10);
-  const hour = parseInt(get("hour") || "0", 10);
-  const minute = parseInt(get("minute") || "0", 10);
-  const wd = String(get("weekday") || "").toLowerCase();
-  const weekday =
-    wd.startsWith("sun") ? 0 :
-    wd.startsWith("mon") ? 1 :
-    wd.startsWith("tue") ? 2 :
-    wd.startsWith("wed") ? 3 :
-    wd.startsWith("thu") ? 4 :
-    wd.startsWith("fri") ? 5 :
-    wd.startsWith("sat") ? 6 : now.getUTCDay();
-  const mm = String(month).padStart(2, "0");
-  const dd = String(day).padStart(2, "0");
-  return { year, month, day, weekday, hour, minute, localDate: `${year}-${mm}-${dd}` };
+  try {
+    const dt = DateTime.fromJSDate(now, { zone: timeZone });
+    return {
+      year: dt.year,
+      month: dt.month, // Luxon uses 1-12
+      day: dt.day,
+      weekday: dt.weekday === 7 ? 0 : dt.weekday, // Convert Sunday from 7 to 0
+      hour: dt.hour,
+      minute: dt.minute,
+      localDate: dt.toISODate() || `${dt.year}-${String(dt.month).padStart(2, "0")}-${String(dt.day).padStart(2, "0")}`,
+    };
+  } catch (error) {
+    console.error(`[Report Scheduler] Invalid timezone "${timeZone}", falling back to UTC:`, error);
+    const dt = DateTime.fromJSDate(now, { zone: "UTC" });
+    return {
+      year: dt.year,
+      month: dt.month,
+      day: dt.day,
+      weekday: dt.weekday === 7 ? 0 : dt.weekday,
+      hour: dt.hour,
+      minute: dt.minute,
+      localDate: dt.toISODate() || `${dt.year}-${String(dt.month).padStart(2, "0")}-${String(dt.day).padStart(2, "0")}`,
+    };
+  }
 }
 
 function parseHHMM(s: any): { hh: number; mm: number } | null {
@@ -422,7 +430,52 @@ function getReportViewUrl(report: ReportWithCampaign): string {
 }
 
 /**
- * Send report email
+ * Send report email with retry mechanism (exponential backoff)
+ */
+async function sendReportEmailWithRetry(
+  report: ReportWithCampaign,
+  recipients: string[],
+  meta?: {
+    windowStart?: string;
+    windowEnd?: string;
+    campaignName?: string | null;
+    snapshotId?: string;
+    attachment?: { filename: string; content: Buffer } | null;
+  },
+  maxRetries: number = 3
+): Promise<boolean> {
+  const delays = [1000, 2000, 4000]; // Exponential backoff: 1s, 2s, 4s
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await sendReportEmail(report, recipients, meta);
+      if (result) {
+        if (attempt > 1) {
+          console.log(`[Report Scheduler] ✅ Email sent successfully on attempt ${attempt}/${maxRetries}`);
+        }
+        return true;
+      }
+      
+      if (attempt < maxRetries) {
+        const delay = delays[attempt - 1];
+        console.warn(`[Report Scheduler] ⚠️ Email send failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    } catch (error) {
+      console.error(`[Report Scheduler] ❌ Email send error (attempt ${attempt}/${maxRetries}):`, error);
+      if (attempt < maxRetries) {
+        const delay = delays[attempt - 1];
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  console.error(`[Report Scheduler] ❌ Email failed after ${maxRetries} attempts`);
+  return false;
+}
+
+/**
+ * Send report email (single attempt)
  */
 async function sendReportEmail(
   report: ReportWithCampaign,
@@ -801,8 +854,8 @@ export async function checkScheduledReports(): Promise<void> {
         });
         console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
 
-        // Send email (with PDF attachment when possible)
-        const sent = await sendReportEmail(report, recipients, {
+        // Send email with retry mechanism (with PDF attachment when possible)
+        const sent = await sendReportEmailWithRetry(report, recipients, {
           windowStart,
           windowEnd,
           campaignName,
@@ -810,11 +863,21 @@ export async function checkScheduledReports(): Promise<void> {
           attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\s+/g, "_")}_${windowEnd}.pdf`, content: pdfBuffer } : null,
         });
 
+        // Update metrics
+        if (sent) {
+          schedulerMetrics.totalSent++;
+          schedulerMetrics.lastSuccessTime = new Date();
+        } else {
+          schedulerMetrics.totalFailed++;
+          schedulerMetrics.lastErrorTime = new Date();
+          schedulerMetrics.lastError = "Email send failed after retries";
+        }
+
         await db
           .update(reportSendEvents)
           .set({
             status: sent ? "sent" : "failed",
-            error: sent ? null : "Email send failed",
+            error: sent ? null : "Email send failed after retries",
             sentAt: sent ? new Date() : null,
             snapshotId: (snap as any)?.id ? String((snap as any).id) : null,
           } as any)
@@ -837,7 +900,22 @@ export async function checkScheduledReports(): Promise<void> {
     console.log('[Report Scheduler] ✅ Due reports check completed');
   } catch (error) {
     console.error('[Report Scheduler] Error in checkScheduledReports:', error);
+    schedulerMetrics.lastErrorTime = new Date();
+    schedulerMetrics.lastError = error instanceof Error ? error.message : String(error);
   }
+}
+
+/**
+ * Get scheduler health metrics for monitoring
+ */
+export function getSchedulerMetrics() {
+  return {
+    ...schedulerMetrics,
+    uptime: schedulerMetrics.lastCheckTime ? Date.now() - schedulerMetrics.lastCheckTime.getTime() : null,
+    successRate: schedulerMetrics.totalSent + schedulerMetrics.totalFailed > 0
+      ? (schedulerMetrics.totalSent / (schedulerMetrics.totalSent + schedulerMetrics.totalFailed) * 100).toFixed(2) + '%'
+      : 'N/A',
+  };
 }
 
 /**
@@ -963,23 +1041,31 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
 }
 
 /**
- * Start the report scheduler - runs daily to check for scheduled reports
+ * Start the report scheduler - Enterprise-grade with node-cron
  */
 export function startReportScheduler(): void {
-  console.log('[Report Scheduler] Starting report scheduler...');
-  // Production-grade scheduling: check due reports frequently (per-report timezone + HH:MM).
-  // We rely on idempotent send-events to prevent duplicate sends.
-  const intervalMs = Math.max(15000, parseInt(process.env.REPORT_SCHEDULER_POLL_MS || "60000", 10) || 60000);
-
+  console.log('[Report Scheduler] 🚀 Starting enterprise-grade report scheduler...');
+  
   // Optionally run immediately on startup
   if (process.env.RUN_REPORT_SCHEDULER_ON_STARTUP === "true") {
     void checkScheduledReports();
   }
 
-  setInterval(() => {
+  // Enterprise-grade: Use node-cron for guaranteed execution times
+  // Run every minute for precision (idempotency prevents duplicates)
+  const cronSchedule = process.env.REPORT_SCHEDULER_CRON || '* * * * *'; // Default: every minute
+  
+  cron.schedule(cronSchedule, () => {
     void checkScheduledReports();
-  }, intervalMs);
+  }, {
+    scheduled: true,
+    timezone: 'UTC', // Cron runs in UTC, per-report timezones handled in isReportDueNow
+  });
 
-  console.log(`[Report Scheduler] ✅ Report scheduler started (poll=${intervalMs}ms)`);
+  console.log(`[Report Scheduler] ✅ Report scheduler started with cron schedule: "${cronSchedule}" (UTC)`);
+  console.log('[Report Scheduler] 📊 Health metrics available via getSchedulerMetrics()');
+  console.log('[Report Scheduler] 🔒 Idempotency: report_send_events prevents duplicate sends');
+  console.log('[Report Scheduler] 🔄 Retry: 3 attempts with exponential backoff (1s, 2s, 4s)');
+  console.log('[Report Scheduler] 🌍 Timezones: Luxon-powered DST-safe timezone handling');
 }
 

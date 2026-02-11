@@ -498,22 +498,20 @@ export function HubSpotRevenueWizard(props: {
             <div key={s.id} className="flex items-center flex-1">
               <div className="flex flex-col items-center flex-1">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-                    isDisabled
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isDisabled
                       ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
                       : isActive
-                      ? "bg-blue-600 border-blue-600 text-white"
-                      : isCompleted
-                      ? "bg-green-600 border-green-600 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400"
-                  }`}
+                        ? "bg-blue-600 border-blue-600 text-white"
+                        : isCompleted
+                          ? "bg-green-600 border-green-600 text-white"
+                          : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400"
+                    }`}
                 >
                   {!isDisabled && isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
                 </div>
                 <p
-                  className={`text-xs mt-2 text-center whitespace-nowrap ${
-                    isDisabled ? "text-slate-400" : isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-slate-400"
-                  }`}
+                  className={`text-xs mt-2 text-center whitespace-nowrap ${isDisabled ? "text-slate-400" : isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-slate-400"
+                    }`}
                 >
                   {s.label}
                 </p>
@@ -584,8 +582,8 @@ export function HubSpotRevenueWizard(props: {
               (statusLoading
                 ? "Checking HubSpot connection…"
                 : isConnected
-                ? `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : ""}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`
-                : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
+                  ? `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : ""}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`
+                  : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
             {step === "pipeline" &&
@@ -603,390 +601,390 @@ export function HubSpotRevenueWizard(props: {
         <CardContent className="flex-1 flex flex-col min-h-0">
           {/* Scrollable step body to keep footer always visible */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-1 space-y-4">
-          {step === "value-source" && isLinkedIn && (
-            <div className="space-y-3">
-              <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-2">
-                <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">
-                  <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <RadioGroup
-                    value={hubspotSourceMode}
-                    onValueChange={(v: any) => {
-                      const next = String(v || "");
-                      // Revenue modes
-                      setValueSource("revenue");
-                      setConversionValueProperty("");
-                      if (next === "revenue_plus_pipeline") {
-                        setPipelineEnabled(true);
-                      } else {
-                        setPipelineEnabled(false);
-                        setPipelineStageId("");
-                        setPipelineStageLabel("");
-                      }
-                    }}
-                    className="space-y-2 flex-1"
-                  >
-                    <div className="flex items-start gap-2">
-                      <RadioGroupItem id="hs-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
-                      <label htmlFor="hs-mode-revenue-pipeline" className="cursor-pointer">
-                        <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
-                        <div className="text-xs text-slate-500 leading-snug">
-                          Total Revenue comes from mapped deal Amounts (to date). Adds a Pipeline (Proxy) card using a stage like SQL as an early signal.
-                        </div>
-                      </label>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <RadioGroupItem id="hs-mode-revenue-only" value="revenue_only" className="mt-0.5" />
-                      <label htmlFor="hs-mode-revenue-only" className="cursor-pointer">
-                        <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
-                        <div className="text-xs text-slate-500 leading-snug">
-                          Imports revenue-to-date from mapped deal Amounts. No Pipeline (Proxy) section in Overview.
-                        </div>
-                      </label>
-                    </div>
-                  </RadioGroup>
-
-                  {isConnected && (
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="px-0 h-auto"
-                      onClick={() => void openOAuthWindow()}
-                      disabled={isConnecting}
+            {step === "value-source" && isLinkedIn && (
+              <div className="space-y-3">
+                <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-2">
+                  <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                    <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <RadioGroup
+                      value={hubspotSourceMode}
+                      onValueChange={(v: any) => {
+                        const next = String(v || "");
+                        // Revenue modes
+                        setValueSource("revenue");
+                        setConversionValueProperty("");
+                        if (next === "revenue_plus_pipeline") {
+                          setPipelineEnabled(true);
+                        } else {
+                          setPipelineEnabled(false);
+                          setPipelineStageId("");
+                          setPipelineStageLabel("");
+                        }
+                      }}
+                      className="space-y-2 flex-1"
                     >
-                      {isConnecting ? "Reconnecting…" : "Reconnect"}
-                    </Button>
-                  )}
-                </div>
+                      <div className="flex items-start gap-2">
+                        <RadioGroupItem id="hs-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
+                        <label htmlFor="hs-mode-revenue-pipeline" className="cursor-pointer">
+                          <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
+                          <div className="text-xs text-slate-500 leading-snug">
+                            Total Revenue comes from mapped deal Amounts (to date). Adds a Pipeline (Proxy) card using a stage like SQL as an early signal.
+                          </div>
+                        </label>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <RadioGroupItem id="hs-mode-revenue-only" value="revenue_only" className="mt-0.5" />
+                        <label htmlFor="hs-mode-revenue-only" className="cursor-pointer">
+                          <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
+                          <div className="text-xs text-slate-500 leading-snug">
+                            Imports revenue-to-date from mapped deal Amounts. No Pipeline (Proxy) section in Overview.
+                          </div>
+                        </label>
+                      </div>
+                    </RadioGroup>
 
-                <div className="text-xs text-slate-500">
-                  {hubspotSourceMode === "revenue_plus_pipeline"
-                    ? "Next, you’ll choose which Pipeline stage should count as “pipeline created”."
-                    : "Next, you’ll map HubSpot deals to this campaign."}
-                </div>
-              </div>
-            </div>
-          )}
-          {step === "campaign-field" && (
-            <div className="space-y-3">
-              {!statusLoading && !isConnected ? (
-                <div className="rounded-lg border bg-white dark:bg-slate-950 p-4">
-                  <div className="text-sm font-medium flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-blue-600" />
-                    Connect HubSpot to continue
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    HubSpot must be connected before we can load Deal properties.
-                  </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                      {isConnecting ? "Connecting…" : "Connect HubSpot"}
-                    </Button>
-                    {onBack && (
-                      <Button variant="outline" onClick={onBack} disabled={isConnecting}>
-                        Back
+                    {isConnected && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="px-0 h-auto"
+                        onClick={() => void openOAuthWindow()}
+                        disabled={isConnecting}
+                      >
+                        {isConnecting ? "Reconnecting…" : "Reconnect"}
                       </Button>
                     )}
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label>HubSpot deal field used to attribute deals to this campaign</Label>
-                    <div className="w-4 h-4">{/* reserved space to avoid layout shift */}</div>
-                  </div>
-                  <Select
-                    value={campaignProperty}
-                    onValueChange={(v) => setCampaignProperty(v)}
-                    disabled={!isConnected || statusLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={statusLoading ? "Loading…" : "Select a HubSpot deal field…"} />
-                    </SelectTrigger>
-                    <SelectContent
-                      className="z-[10000]"
-                      side="bottom"
-                      align="start"
-                      sideOffset={4}
-                      avoidCollisions={false}
-                    >
-                      {properties.map((p) => (
-                        <SelectItem key={p.name} value={p.name}>
-                          {p.label} ({p.name})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="text-xs text-slate-500">
-                    Tip: pick the HubSpot property your team uses for “LinkedIn campaign” or “UTM campaign”.
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
-          {step === "crosswalk" && (
-            <div className="flex flex-col gap-3 min-h-0">
-                <div className="flex items-center justify-between gap-2 shrink-0">
-                <div className="text-sm text-slate-600">
-                  Selected: <strong>{selectedValues.length}</strong>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void fetchUniqueValues(campaignProperty)}
-                    disabled={valuesLoading}
-                  >
-                    {valuesLoading ? "Refreshing…" : "Refresh values"}
-                  </Button>
+                  <div className="text-xs text-slate-500">
+                    {hubspotSourceMode === "revenue_plus_pipeline"
+                      ? "Next, you’ll choose which Pipeline stage should count as “pipeline created”."
+                      : "Next, you’ll map HubSpot deals to this campaign."}
+                  </div>
                 </div>
               </div>
-
-              <div className="border rounded p-3 flex-1 min-h-0 overflow-y-auto">
-                {valuesLoading ? (
-                  <div className="text-sm text-slate-500">Loading values…</div>
-                ) : uniqueValues.length === 0 ? (
-                  <div className="text-sm text-slate-500">No values found.</div>
+            )}
+            {step === "campaign-field" && (
+              <div className="space-y-3">
+                {!statusLoading && !isConnected ? (
+                  <div className="rounded-lg border bg-white dark:bg-slate-950 p-4">
+                    <div className="text-sm font-medium flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      Connect HubSpot to continue
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      HubSpot must be connected before we can load Deal properties.
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                        {isConnecting ? "Connecting…" : "Connect HubSpot"}
+                      </Button>
+                      {onBack && (
+                        <Button variant="outline" onClick={onBack} disabled={isConnecting}>
+                          Back
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-2">
-                    {uniqueValues.map((v) => {
-                      const value = String(v.value);
-                      const checked = selectedValues.includes(value);
-                      return (
-                        <div key={value} className="flex items-start gap-2">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(next) => {
-                              setSelectedValues((prev) => {
-                                if (next) return Array.from(new Set([...prev, value]));
-                                return prev.filter((x) => x !== value);
-                              });
-                            }}
-                          />
-                          <div className="flex-1">
-                            <div className="text-sm">{value}</div>
-                            <div className="text-xs text-slate-500">{v.count} deal(s)</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div className="text-xs text-slate-500 shrink-0">
-                Tip: after you update deals in HubSpot, use “Refresh values” to reload this list.
-              </div>
-            </div>
-          )}
-
-          {step === "pipeline" && isLinkedIn && (
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-3">
-                <div className="text-sm font-medium">Pipeline stage total (daily signal)</div>
-                <div className="text-xs text-slate-500">
-                  Pipeline (Proxy) is <span className="font-medium">not</span> Closed Won revenue. It’s an early indicator (deals currently in a stage like SQL/Opportunity).
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Stage that counts as “pipeline created”</Label>
-                  <Select
-                    value={pipelineStageId}
-                    onValueChange={(v) => {
-                      setPipelineStageId(v);
-                      // best-effort label lookup
-                      const flat: Array<{ id: string; label: string }> = [];
-                      for (const p of pipelines || []) {
-                        const stages = Array.isArray((p as any)?.stages) ? (p as any).stages : [];
-                        for (const s of stages) {
-                          const id = String((s as any)?.id || "");
-                          const label = String((s as any)?.label || (s as any)?.name || id);
-                          if (id) flat.push({ id, label });
-                        }
-                      }
-                      const hit = flat.find((x) => x.id === v);
-                      setPipelineStageLabel(hit?.label || "");
-                    }}
-                    disabled={pipelinesLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={pipelinesLoading ? "Loading…" : "Select a stage…"} />
-                    </SelectTrigger>
-                    <SelectContent className="z-[10000] max-h-[320px]">
-                      {(pipelines || []).flatMap((p: any) => {
-                        const stages = Array.isArray(p?.stages) ? p.stages : [];
-                        const pLabel = String(p?.label || p?.name || "Pipeline");
-                        return stages.map((s: any) => {
-                          const id = String(s?.id || "");
-                          const label = String(s?.label || s?.name || id);
-                          return (
-                            <SelectItem key={`${pLabel}-${id}`} value={id}>
-                              {pLabel} — {label}
-                            </SelectItem>
-                          );
-                        });
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <div className="text-xs text-slate-500">
-                    MetricMind will sum Deal Amounts for deals currently in this stage (stage subset).
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === "revenue" && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>
-                  Revenue field
-                </Label>
-                <Select
-                  value={revenueProperty}
-                  onValueChange={(v) => {
-                    setRevenueProperty(v);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[10000]">
-                    {properties
-                      .filter((p) => p.type === "number" || p.name === "amount")
-                      .map((p) => (
-                        <SelectItem key={p.name} value={p.name}>
-                          {p.label} ({p.name})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                <div className="text-xs text-slate-500">
-                  Default (recommended): Deal amount.
-                </div>
-              </div>
-
-              <div className="text-xs text-slate-500">
-                Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
-              </div>
-
-              {showAdvanced && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-3">
-                  <div className="space-y-2">
-                    <Label>Revenue classification</Label>
-                    <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>HubSpot deal field used to attribute deals to this campaign</Label>
+                      <div className="w-4 h-4">{/* reserved space to avoid layout shift */}</div>
+                    </div>
+                    <Select
+                      value={campaignProperty}
+                      onValueChange={(v) => setCampaignProperty(v)}
+                      disabled={!isConnected || statusLoading}
+                    >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder={statusLoading ? "Loading…" : "Select a HubSpot deal field…"} />
                       </SelectTrigger>
-                      <SelectContent className="z-[10000]">
-                        <SelectItem value="offsite_not_in_ga4">Offsite (NOT tracked in GA4)</SelectItem>
-                        <SelectItem value="onsite_in_ga4">Onsite (also tracked in GA4)</SelectItem>
+                      <SelectContent
+                        className="z-[10000]"
+                        side="bottom"
+                        align="start"
+                        sideOffset={4}
+                        avoidCollisions={false}
+                      >
+                        {properties.map((p) => (
+                          <SelectItem key={p.name} value={p.name}>
+                            {p.label} ({p.name})
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <div className="text-xs text-slate-500">
-                      Default is Offsite. Change only if this HubSpot revenue is already included in GA4 to avoid double counting in campaign totals.
+                      Tip: pick the HubSpot property your team uses for “LinkedIn campaign” or “UTM campaign”.
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
 
-          {step === "review" && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4">
-                <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                  Review HubSpot revenue settings
+            {step === "crosswalk" && (
+              <div className="flex flex-col gap-3 min-h-0">
+                <div className="flex items-center justify-between gap-2 shrink-0">
+                  <div className="text-sm text-slate-600">
+                    Selected: <strong>{selectedValues.length}</strong>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void fetchUniqueValues(campaignProperty)}
+                      disabled={valuesLoading}
+                    >
+                      {valuesLoading ? "Refreshing…" : "Refresh values"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                  Confirm these details before saving.
-                  {isLinkedIn ? (
-                    <>
-                      {" "}
-                      Source of truth: <span className="font-medium">Revenue (to date)</span>.
-                    </>
+
+                <div className="border rounded p-3 flex-1 min-h-0 overflow-y-auto">
+                  {valuesLoading ? (
+                    <div className="text-sm text-slate-500">Loading values…</div>
+                  ) : uniqueValues.length === 0 ? (
+                    <div className="text-sm text-slate-500">No values found.</div>
                   ) : (
-                    <>
-                      {" "}
-                      Revenue will be treated as <span className="font-medium">revenue-to-date</span> for this campaign.
-                    </>
+                    <div className="space-y-2">
+                      {uniqueValues.map((v) => {
+                        const value = String(v.value);
+                        const checked = selectedValues.includes(value);
+                        return (
+                          <div key={value} className="flex items-start gap-2">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(next) => {
+                                setSelectedValues((prev) => {
+                                  if (next) return Array.from(new Set([...prev, value]));
+                                  return prev.filter((x) => x !== value);
+                                });
+                              }}
+                            />
+                            <div className="flex-1">
+                              <div className="text-sm">{value}</div>
+                              <div className="text-xs text-slate-500">{v.count} deal(s)</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
 
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">HubSpot account</div>
-                    <div className="font-medium text-slate-900 dark:text-white">
-                      {portalName ? portalName : portalId ? `Portal ${portalId}` : "—"}
-                    </div>
+                <div className="text-xs text-slate-500 shrink-0">
+                  Tip: after you update deals in HubSpot, use “Refresh values” to reload this list.
+                </div>
+              </div>
+            )}
+
+            {step === "pipeline" && isLinkedIn && (
+              <div className="space-y-4">
+                <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-3">
+                  <div className="text-sm font-medium">Pipeline stage total (daily signal)</div>
+                  <div className="text-xs text-slate-500">
+                    Pipeline (Proxy) is <span className="font-medium">not</span> Closed Won revenue. It’s an early indicator (deals currently in a stage like SQL/Opportunity).
                   </div>
 
-                  <div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                      Revenue field
-                    </div>
-                    <div className="font-medium text-slate-900 dark:text-white">
-                      {revenuePropertyLabel}
+                  <div className="space-y-2">
+                    <Label>Stage that counts as “pipeline created”</Label>
+                    <Select
+                      value={pipelineStageId}
+                      onValueChange={(v) => {
+                        setPipelineStageId(v);
+                        // best-effort label lookup
+                        const flat: Array<{ id: string; label: string }> = [];
+                        for (const p of pipelines || []) {
+                          const stages = Array.isArray((p as any)?.stages) ? (p as any).stages : [];
+                          for (const s of stages) {
+                            const id = String((s as any)?.id || "");
+                            const label = String((s as any)?.label || (s as any)?.name || id);
+                            if (id) flat.push({ id, label });
+                          }
+                        }
+                        const hit = flat.find((x) => x.id === v);
+                        setPipelineStageLabel(hit?.label || "");
+                      }}
+                      disabled={pipelinesLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={pipelinesLoading ? "Loading…" : "Select a stage…"} />
+                      </SelectTrigger>
+                      <SelectContent className="z-[10000] max-h-[320px]">
+                        {(pipelines || []).flatMap((p: any) => {
+                          const stages = Array.isArray(p?.stages) ? p.stages : [];
+                          const pLabel = String(p?.label || p?.name || "Pipeline");
+                          return stages.map((s: any) => {
+                            const id = String(s?.id || "");
+                            const label = String(s?.label || s?.name || id);
+                            return (
+                              <SelectItem key={`${pLabel}-${id}`} value={id}>
+                                {pLabel} — {label}
+                              </SelectItem>
+                            );
+                          });
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-slate-500">
+                      MetricMind will sum Deal Amounts for deals currently in this stage (stage subset).
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
 
-                  <div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">Campaign identifier field</div>
-                    <div className="font-medium text-slate-900 dark:text-white">{campaignPropertyLabel}</div>
+            {step === "revenue" && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>
+                    Revenue field
+                  </Label>
+                  <Select
+                    value={revenueProperty}
+                    onValueChange={(v) => {
+                      setRevenueProperty(v);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[10000]">
+                      {properties
+                        .filter((p) => p.type === "number" || p.name === "amount")
+                        .map((p) => (
+                          <SelectItem key={p.name} value={p.name}>
+                            {p.label} ({p.name})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-slate-500">
+                    Default (recommended): Deal amount.
+                  </div>
+                </div>
+
+                <div className="text-xs text-slate-500">
+                  Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
+                </div>
+
+                {showAdvanced && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-3">
+                    <div className="space-y-2">
+                      <Label>Revenue classification</Label>
+                      <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[10000]">
+                          <SelectItem value="offsite_not_in_ga4">Offsite (NOT tracked in GA4)</SelectItem>
+                          <SelectItem value="onsite_in_ga4">Onsite (also tracked in GA4)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="text-xs text-slate-500">
+                        Default is Offsite. Change only if this HubSpot revenue is already included in GA4 to avoid double counting in campaign totals.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === "review" && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Review HubSpot revenue settings
+                  </div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    Confirm these details before saving.
+                    {isLinkedIn ? (
+                      <>
+                        {" "}
+                        Source of truth: <span className="font-medium">Revenue (to date)</span>.
+                      </>
+                    ) : (
+                      <>
+                        {" "}
+                        Revenue will be treated as <span className="font-medium">revenue-to-date</span> for this campaign.
+                      </>
+                    )}
                   </div>
 
-                  {isLinkedIn && pipelineEnabled && (
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Pipeline proxy</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">HubSpot account</div>
                       <div className="font-medium text-slate-900 dark:text-white">
-                        {pipelineStageLabel || pipelineStageId || "—"}
+                        {portalName ? portalName : portalId ? `Portal ${portalId}` : "—"}
                       </div>
                     </div>
-                  )}
 
-                  <div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">Selected value(s)</div>
-                    <div className="font-medium text-slate-900 dark:text-white">
-                      {selectedValues.length.toLocaleString()}
-                    </div>
-                    {selectedValues.length > 0 ? (
-                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                        {selectedValues.slice(0, 6).join(", ")}
-                        {selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        Revenue field
                       </div>
-                    ) : null}
+                      <div className="font-medium text-slate-900 dark:text-white">
+                        {revenuePropertyLabel}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Campaign identifier field</div>
+                      <div className="font-medium text-slate-900 dark:text-white">{campaignPropertyLabel}</div>
+                    </div>
+
+                    {isLinkedIn && pipelineEnabled && (
+                      <div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Pipeline proxy</div>
+                        <div className="font-medium text-slate-900 dark:text-white">
+                          {pipelineStageLabel || pipelineStageId || "—"}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Selected value(s)</div>
+                      <div className="font-medium text-slate-900 dark:text-white">
+                        {selectedValues.length.toLocaleString()}
+                      </div>
+                      {selectedValues.length > 0 ? (
+                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                          {selectedValues.slice(0, 6).join(", ")}
+                          {selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
+
                 </div>
+              </div>
+            )}
 
+            {step === "complete" && (
+              <div className="space-y-3">
+                <div className="text-sm text-slate-700">
+                  Revenue connected:{" "}
+                  <strong>
+                    ${Number(lastSaveResult?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </strong>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => {
+                      onClose?.();
+                    }}
+                  >
+                    Back to Campaign Overview
+                  </Button>
+                  <Button variant="outline" onClick={() => setStep("review")}>
+                    View settings
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-
-          {step === "complete" && (
-            <div className="space-y-3">
-              <div className="text-sm text-slate-700">
-                Revenue connected:{" "}
-                <strong>
-                  ${Number(lastSaveResult?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </strong>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => {
-                    onClose?.();
-                  }}
-                >
-                  Back to Campaign Overview
-                </Button>
-                <Button variant="outline" onClick={() => setStep("review")}>
-                  View settings
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
           </div>
 
           {/* Footer nav (hide on connect/complete) */}
@@ -1002,10 +1000,10 @@ export function HubSpotRevenueWizard(props: {
                   isSaving ||
                   statusLoading ||
                   (step === "campaign-field" ? (!isConnected || !campaignProperty) :
-                   step === "crosswalk" ? (selectedValues.length === 0) :
-                   step === "pipeline" ? (!pipelineStageId) :
-                   step === "revenue" ? (!revenueProperty) :
-                   false)
+                    step === "crosswalk" ? (selectedValues.length === 0) :
+                      step === "pipeline" ? (!pipelineStageId) :
+                        step === "revenue" ? (!revenueProperty) :
+                          false)
                 }
               >
                 {step === "review" ? (isSaving ? "Saving…" : "Save Mappings") : "Continue"}

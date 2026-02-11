@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes-oauth";
 import { setupVite, serveStatic, log } from "./vite";
 import { snapshotScheduler } from "./scheduler";
 import { startKPIScheduler } from "./kpi-scheduler";
-import { startReportScheduler } from "./report-scheduler";
+import { startReportScheduler, getSchedulerMetrics } from "./report-scheduler";
 import { startLinkedInScheduler } from "./linkedin-scheduler";
 import { startGoogleSheetsTokenScheduler } from "./google-sheets-token-scheduler";
 import { startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
@@ -143,6 +143,24 @@ process.on('uncaughtException', (error: Error) => {
 (async () => {
   try {
     const server = await registerRoutes(app);
+
+    // Health check endpoint for monitoring
+    app.get('/health/scheduler', (_req: Request, res: Response) => {
+      try {
+        const metrics = getSchedulerMetrics();
+        res.json({
+          status: 'healthy',
+          scheduler: metrics,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        res.status(500).json({
+          status: 'unhealthy',
+          error: error instanceof Error ? error.message : String(error),
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;

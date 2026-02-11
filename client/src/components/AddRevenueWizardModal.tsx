@@ -771,14 +771,14 @@ export function AddRevenueWizardModal(props: {
 
   const title = step === "select" ? "Add revenue source" :
     step === "manual" ? (isEditing ? "Edit manual revenue" : "Manual revenue") :
-    step === "csv" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
-    step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
-    step === "sheets_choose" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
-    step === "sheets_map" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
-    step === "hubspot" ? "HubSpot revenue" :
-    step === "salesforce" ? "Salesforce revenue" :
-    step === "shopify" ? "Shopify revenue" :
-    "Add revenue source";
+      step === "csv" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
+        step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
+          step === "sheets_choose" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
+            step === "sheets_map" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
+              step === "hubspot" ? "HubSpot revenue" :
+                step === "salesforce" ? "Salesforce revenue" :
+                  step === "shopify" ? "Shopify revenue" :
+                    "Add revenue source";
 
   const description = step === "select"
     ? "Choose where your revenue data comes from."
@@ -810,34 +810,17 @@ export function AddRevenueWizardModal(props: {
               // Embedded wizards manage their own internal scroll, but we still allow
               // parent scrolling as a safety net to avoid clipped footers on smaller viewports.
               isEmbeddedWizardStep ? "overflow-y-auto" : "overflow-y-auto"
-            }`}
+              }`}
           >
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Manual</CardTitle>
-                    <CardDescription>Enter revenue to date (campaign lifetime).</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("shopify")}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Upload className="w-4 h-4" />
-                      Upload CSV
+                      <ShoppingCart className="w-4 h-4" />
+                      Shopify (Ecommerce)
                     </CardTitle>
-                    <CardDescription>Import revenue from a CSV (date column optional).</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileSpreadsheet className="w-4 h-4" />
-                      Google Sheets
-                    </CardTitle>
-                    <CardDescription>Import revenue from a connected Google Sheet tab.</CardDescription>
+                    <CardDescription>Attribute order revenue to this campaign.</CardDescription>
                   </CardHeader>
                 </Card>
 
@@ -861,13 +844,40 @@ export function AddRevenueWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("shopify")}>
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <ShoppingCart className="w-4 h-4" />
-                      Shopify (Ecommerce)
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Google Sheets
                     </CardTitle>
-                    <CardDescription>Attribute order revenue to this campaign.</CardDescription>
+                    <CardDescription>Import revenue from a connected Google Sheet tab.</CardDescription>
+                  </CardHeader>
+                </Card>
+
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Upload className="w-4 h-4" />
+                      Upload CSV
+                    </CardTitle>
+                    <CardDescription>
+                      <div className="flex items-start gap-2">
+                        <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
+                        <span>Import revenue from a CSV. Requires manual re-upload to update.</span>
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Manual</CardTitle>
+                    <CardDescription>
+                      <div className="flex items-start gap-2">
+                        <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
+                        <span>Enter revenue manually. Requires manual updates (best for testing only).</span>
+                      </div>
+                    </CardDescription>
                   </CardHeader>
                 </Card>
               </div>

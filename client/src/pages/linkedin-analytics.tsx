@@ -6630,8 +6630,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                         </div>
                                                       </div>
                                                       <Badge className={`text-xs border ${isBlocked
-                                                          ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
-                                                          : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
+                                                        ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
+                                                        : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
                                                         }`}>
                                                         {isBlocked ? "Blocked" : "Behind"}
                                                       </Badge>
@@ -6694,8 +6694,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                         </div>
                                                       </div>
                                                       <Badge className={`text-xs border ${isBlocked
-                                                          ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
-                                                          : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
+                                                        ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
+                                                        : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
                                                         }`}>
                                                         {isBlocked ? "Blocked" : "Behind"}
                                                       </Badge>

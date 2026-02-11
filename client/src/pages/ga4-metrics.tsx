@@ -3457,24 +3457,25 @@ export default function GA4Metrics() {
                           {breakdownLoading ? (
                             <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
                           ) : Array.isArray(ga4Breakdown?.rows) && ga4Breakdown.rows.length > 0 ? (
-                            <div className="rounded-md border overflow-hidden">
-                              <div className="max-h-[420px] overflow-auto">
-                                <table className="w-full text-sm">
-                                  <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
-                                    <tr>
-                                      <th className="text-left font-medium px-3 py-2">Date</th>
-                                      <th className="text-left font-medium px-3 py-2">Channel</th>
-                                      <th className="text-left font-medium px-3 py-2">Source</th>
-                                      <th className="text-left font-medium px-3 py-2">Medium</th>
-                                      <th className="text-left font-medium px-3 py-2">Campaign</th>
-                                      <th className="text-left font-medium px-3 py-2">Device</th>
-                                      <th className="text-left font-medium px-3 py-2">Country</th>
-                                      <th className="text-right font-medium px-3 py-2 tabular-nums">Sessions</th>
-                                      <th className="text-right font-medium px-3 py-2 tabular-nums">Users</th>
-                                      <th className="text-right font-medium px-3 py-2 tabular-nums">Conversions</th>
-                                      <th className="text-right font-medium px-3 py-2 tabular-nums">Revenue</th>
-                                    </tr>
-                                  </thead>
+                            <div className="w-full overflow-x-auto">
+                              <div className="rounded-md border overflow-hidden">
+                                <div className="max-h-[420px] overflow-y-auto">
+                                  <table className="w-full text-sm min-w-max">
+                                    <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
+                                      <tr>
+                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Date</th>
+                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Channel</th>
+                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Source</th>
+                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Medium</th>
+                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Campaign</th>
+                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Device</th>
+                                        <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Country</th>
+                                        <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap">Sessions</th>
+                                        <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap">Users</th>
+                                        <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap">Conversions</th>
+                                        <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap">Revenue</th>
+                                      </tr>
+                                    </thead>
                                   <tbody>
                                     {ga4Breakdown.rows.slice(0, 200).map((r: any, idx: number) => (
                                       <tr
@@ -3499,6 +3500,7 @@ export default function GA4Metrics() {
                                   </tbody>
                                 </table>
                               </div>
+                            </div>
                             </div>
                           ) : (
                             <div className="text-sm text-slate-600 dark:text-slate-400">

@@ -278,7 +278,7 @@ export function computeExecWowSignals(params: {
     if (totalCampaignSpend > params.campaignBudget) {
       const overspendAmount = totalCampaignSpend - params.campaignBudget;
       const overspendPct = (overspendAmount / params.campaignBudget) * 100;
-      
+
       signals.push({
         id: "budget:exceeded",
         severity: overspendPct >= 15 ? "high" : "medium",
@@ -301,7 +301,7 @@ export function computeExecWowSignals(params: {
     // High burn rate warning: 80%+ budget used with spend continuing
     else if (budgetUsedPct >= 80 && avgDailySpend > 0) {
       const daysRemainingAtCurrentRate = budgetRemaining / avgDailySpend;
-      
+
       signals.push({
         id: "budget:high_burn",
         severity: budgetUsedPct >= 90 ? "high" : "medium",
@@ -315,7 +315,7 @@ export function computeExecWowSignals(params: {
           `Avg daily spend (last 7d): ${fmtMoney(avgDailySpend)}`,
           `Days until budget exhausted: ~${Math.ceil(daysRemainingAtCurrentRate)}`
         ],
-        recommendation: budgetUsedPct >= 90 
+        recommendation: budgetUsedPct >= 90
           ? "Reduce daily budgets now to extend campaign lifespan, or increase budget allocation if performance justifies it."
           : "Monitor spend closely. Consider reducing daily budgets or pausing underperforming ads to preserve budget.",
         actions: [

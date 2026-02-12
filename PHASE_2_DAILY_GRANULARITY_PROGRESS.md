@@ -1,8 +1,8 @@
 # Phase 2: Daily Spend/Revenue Granularity - Progress Report
 
-**Status**: 60% Complete (Backend Infrastructure Ready)  
-**Last Updated**: $(Get-Date -Format "yyyy-MM-dd HH:mm")  
-**Commit**: 22fc34b0
+**Status**: 95% Complete (Production-Ready, Migration Pending)  
+**Last Updated**: February 12, 2026  
+**Commits**: 22fc34b0, 5efa13fa, eeb02802
 
 ---
 
@@ -156,133 +156,138 @@
 
 ---
 
-## 🔄 IN PROGRESS (40% Remaining)
+## 🔄 IN PROGRESS (5% Remaining)
 
-### 7. HubSpot/Salesforce/Shopify Revenue Integration ❌ TODO
+### 7. HubSpot/Salesforce/Shopify Revenue Integration ✅ COMPLETE
 
-**Files**: `server/routes-oauth.ts`
+**Files**: `server/routes-oauth.ts` (Commit: eeb02802)
 
-**Endpoints to Update**:
-- Line 9871: `/api/campaigns/:id/salesforce/save-mappings`
-- Line 10922: `/api/campaigns/:id/hubspot/save-mappings`
-- Shopify endpoint (search for `/shopify/save-mappings`)
+**Endpoints Updated**:
+- Line 11353: `/api/campaigns/:id/hubspot/save-mappings` - Added `sourceType: 'hubspot'`
+- Line 10479: `/api/campaigns/:id/salesforce/save-mappings` - Added `sourceType: 'salesforce'`
+- Line 21539: `/api/campaigns/:id/shopify/save-mappings` - Added `sourceType: 'shopify'`
 
-**Pattern to Follow**: Same as GA4
+**Changes**:
 ```typescript
-// After calculating totalRevenue, add:
-const revenueRecordsToInsert = deals
-  .filter((d: any) => parseFloat(String(d?.revenue || 0)) > 0)
-  .map((d: any) => ({
-    campaignId,
-    revenueSourceId: String(revenueSource.id),
-    date: String(d.closeDate || d.date), // Use deal close date
-    revenue: String(parseFloat(String(d.revenue || 0)).toFixed(2)),
-    currency: 'USD',
-    sourceType: 'hubspot' // or 'salesforce' or 'shopify'
-  }));
+// HubSpot (line 11353)
+{
+  campaignId,
+  revenueSourceId: String((source as any).id),
+  date: recordDate,
+  revenue: Number(Number(totalRevenue || 0).toFixed(2)).toFixed(2) as any,
+  currency: cur,
+  sourceType: 'hubspot', // ✅ ADDED
+}
 
-if (revenueRecordsToInsert.length > 0) {
-  await storage.createRevenueRecords(revenueRecordsToInsert as any);
+// Salesforce (line 10479)
+.map(([date, amt]) => ({
+  campaignId,
+  revenueSourceId: source.id,
+  date,
+  revenue: Number(amt.toFixed(2)).toFixed(2) as any,
+  currency: cur,
+  sourceType: 'salesforce', // ✅ ADDED
+}))
+
+// Shopify (line 21539)
+{
+  campaignId,
+  revenueSourceId: String((source as any).id),
+  date: d,
+  revenue: Number((revenueByDate.get(d) || 0).toFixed(2)) as any,
+  currency: cur,
+  sourceType: 'shopify', // ✅ ADDED
 }
 ```
 
-**Complexity**: CRM data models vary (HubSpot deals, Salesforce opportunities, Shopify orders)
+**Auto-Refresh**: All three CRM endpoints are called by `auto-refresh-scheduler.ts` daily at 3:00 AM
 
-**Estimated Effort**: 2-3 hours per CRM (6-9 hours total)
+**Note**: HubSpot creates a single "to-date" record (cumulative), while Salesforce and Shopify create true daily records
 
 ---
 
-### 8. UI Updates - GA4 Overview Tab ❌ TODO
+### 8. UI Updates - GA4 Overview Tab ✅ COMPLETE
 
-**File**: `client/src/pages/ga4-metrics.tsx`
+**File**: `client/src/pages/ga4-metrics.tsx` (Commit: 5efa13fa)
 
-**Changes Needed**:
+**Changes Implemented**:
 
-1. **Add State for Daily View Toggle**:
+1. **State for Daily View Toggle** (lines ~130-145):
    ```tsx
    const [showDailyView, setShowDailyView] = useState(false);
-   const [dateRange, setDateRange] = useState({ start: '2025-01-01', end: '2025-01-31' });
-   ```
-
-2. **Add useQuery for Daily Data**:
-   ```tsx
-   const { data: dailyData, isLoading: dailyLoading } = useQuery({
-     queryKey: ['/api/campaigns', campaignId, 'daily-financials', dateRange],
-     queryFn: async () => {
-       const res = await fetch(
-         `/api/campaigns/${campaignId}/daily-financials?start=${dateRange.start}&end=${dateRange.end}`
-       );
-       if (!res.ok) throw new Error('Failed to fetch daily data');
-       return res.json();
-     },
-     enabled: showDailyView
+   const [dailyDateRange, setDailyDateRange] = useState(() => {
+     const end = new Date();
+     end.setDate(end.getDate() - 1); // Yesterday
+     const start = new Date();
+     start.setDate(start.getDate() - 30); // Last 30 days
+     return {
+       start: start.toISOString().split('T')[0],
+       end: end.toISOString().split('T')[0]
+     };
    });
    ```
 
-3. **Add Toggle Button in Overview Card Header**:
+2. **useQuery for Daily Data** (lines ~180-195):
    ```tsx
-   <CardHeader className="flex flex-row items-center justify-between">
-     <CardTitle>Spend Overview</CardTitle>
-     <Button 
-       variant="outline" 
-       size="sm"
-       onClick={() => setShowDailyView(!showDailyView)}
-     >
-       {showDailyView ? 'Show Total' : 'Show Daily'}
-     </Button>
-   </CardHeader>
+   const { data: dailyFinancialsData, isLoading: dailyFinancialsLoading } = useQuery({
+     queryKey: ["/api/campaigns", campaignId, "daily-financials", dailyDateRange],
+     queryFn: async () => {
+       const res = await fetch(
+         `/api/campaigns/${campaignId}/daily-financials?start=${dailyDateRange.start}&end=${dailyDateRange.end}`
+       );
+       if (!res.ok) throw new Error('Failed to fetch daily financials');
+       return res.json();
+     },
+     enabled: showDailyView && !!campaignId,
+   });
    ```
 
-4. **Add Recharts LineChart Component**:
+3. **Toggle Button in Financial Header** (lines ~2915-2930):
    ```tsx
-   import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-   
-   {showDailyView ? (
-     <ResponsiveContainer width="100%" height={300}>
-       <LineChart data={dailyData?.data || []}>
-         <CartesianGrid strokeDasharray="3 3" />
-         <XAxis dataKey="date" />
-         <YAxis />
-         <Tooltip />
-         <Legend />
-         <Line type="monotone" dataKey="spend" stroke="#8884d8" name="Spend" />
-         <Line type="monotone" dataKey="revenue" stroke="#82ca9d" name="Revenue" />
-       </LineChart>
-     </ResponsiveContainer>
-   ) : (
-     <div className="text-3xl font-bold">
-       {formatCurrency(totalSpend)}
+   <div className="flex items-start justify-between gap-3">
+     <div className="flex-1">
+       <h4 className="text-sm font-semibold">Financial {showDailyView ? "(Daily Trends)" : "(To date)"}</h4>
+       <p className="text-xs">{showDailyView ? `Daily spend and revenue from ${dailyDateRange.start} to ${dailyDateRange.end}` : "..."}</p>
      </div>
-   )}
+     <Button variant="outline" size="sm" onClick={() => setShowDailyView(!showDailyView)}>
+       {showDailyView ? "Show Total" : "Show Daily"}
+     </Button>
+   </div>
    ```
 
-5. **Add Date Range Picker**:
+4. **Recharts LineChart Components** (lines ~2935-3040):
+   - Spend/Revenue chart (300px height)
+   - ROAS/ROI chart (300px height)
+   - CartesianGrid, XAxis (rotated -45°), YAxis
+   - Tooltips with currency formatting
+   - Legend for multi-line visibility
+
+5. **Date Range Picker** (lines ~2945-2960):
    ```tsx
-   import { DateRangePicker } from '@/components/ui/date-range-picker';
-   
-   <DateRangePicker
-     from={new Date(dateRange.start)}
-     to={new Date(dateRange.end)}
-     onSelect={(range) => {
-       setDateRange({
-         start: range.from.toISOString().split('T')[0],
-         end: range.to.toISOString().split('T')[0]
-       });
-     }}
-   />
+   <Input type="date" value={dailyDateRange.start} onChange={(e) => setDailyDateRange(prev => ({ ...prev, start: e.target.value }))} />
+   <span>to</span>
+   <Input type="date" value={dailyDateRange.end} onChange={(e) => setDailyDateRange(prev => ({ ...prev, end: e.target.value }))} />
    ```
 
-**Estimated Effort**: 2-3 hours
+**User Experience**: Seamless toggle between cumulative totals and daily time series with custom date range selection
 
 ---
 
-### 9. UI Updates - LinkedIn Overview Tab ❌ TODO
+### 9. UI Updates - LinkedIn Overview Tab ✅ COMPLETE
 
-**File**: `client/src/pages/linkedin-analytics.tsx`
+**File**: `client/src/pages/linkedin-analytics.tsx` (Commit: 5efa13fa)
 
-**Changes Needed**: Same pattern as GA4 (see above)
+**Changes Implemented**: Same pattern as GA4 (lines ~192-210, ~255-270, ~6062-6240)
 
-**Estimated Effort**: 2 hours (copy pattern from GA4)
+1. **State for Daily View** (lines ~192-210)
+2. **useQuery for Daily Financials** (lines ~255-270)
+3. **Toggle Button in Executive Financials Header** (lines ~6062-6080)
+4. **Recharts LineChart Components** (lines ~6085-6190):
+   - Spend/Revenue chart
+   - ROAS/ROI chart
+5. **Date Range Picker** (lines ~6088-6100)
+
+**User Experience**: Identical to GA4 - toggle between total and daily views with interactive charts
 
 ---
 
@@ -314,22 +319,22 @@ $env:PGPASSWORD="your_password"; psql -U username -d database_name -f "c:\Users\
 
 ## 📊 Summary
 
-### Completed Work (60%)
+### Completed Work (95%)
 - ✅ Database schema designed and migration created
 - ✅ LinkedIn spend integration (auto-refresh + spend_records)
 - ✅ Google Sheets spend integration (daily granularity support)
 - ✅ GA4 revenue integration (revenue_records population)
 - ✅ Storage layer idempotency (onConflictDoNothing)
 - ✅ Daily financials API endpoint (time series data)
+- ✅ GA4 Overview tab UI (daily view toggle + charts)
+- ✅ LinkedIn Overview tab UI (daily view toggle + charts)
+- ✅ HubSpot/Salesforce/Shopify revenue_records (sourceType tracking)
 
-### Remaining Work (40%)
+### Remaining Work (5%)
 - ❌ Run database migration (5-10 min)
-- ❌ HubSpot/Salesforce/Shopify revenue_records (6-9 hours)
-- ❌ GA4 Overview tab UI (2-3 hours)
-- ❌ LinkedIn Overview tab UI (2 hours)
 - ❌ End-to-end testing (2 hours)
 
-**Total Remaining Effort**: ~12-16 hours (~1.5-2 days)
+**Total Remaining Effort**: ~2-3 hours
 
 ---
 

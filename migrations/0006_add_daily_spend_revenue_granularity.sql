@@ -14,16 +14,21 @@
 ALTER TABLE spend_records 
 ADD COLUMN IF NOT EXISTS source_type VARCHAR(50);
 
--- Backfill source_type from spend_sources table
+-- Backfill source_type from spend_sources table (cast to handle type mismatch)
 UPDATE spend_records sr
 SET source_type = COALESCE(ss.source_type, 'unknown')
 FROM spend_sources ss
-WHERE sr.spend_source_id = ss.id
+WHERE sr.spend_source_id::text = ss.id::text
   AND sr.source_type IS NULL;
+
+-- For records without a matching source, set to 'unknown'
+UPDATE spend_records
+SET source_type = 'unknown'
+WHERE source_type IS NULL;
 
 -- Set NOT NULL constraint after backfill
 ALTER TABLE spend_records 
-ALTER COLUMN source_type SET NOT NULL;
+ALTER COLUMN source_type SET DEFAULT 'unknown';
 
 -- Add comment
 COMMENT ON COLUMN spend_records.source_type IS 'Type of spend source: google_sheets, csv, paste, google_ads_api, meta_api, linkedin_api, legacy_cumulative';
@@ -36,16 +41,21 @@ COMMENT ON COLUMN spend_records.source_type IS 'Type of spend source: google_she
 ALTER TABLE revenue_records 
 ADD COLUMN IF NOT EXISTS source_type VARCHAR(50);
 
--- Backfill source_type from revenue_sources table
+-- Backfill source_type from revenue_sources table (cast to handle type mismatch)
 UPDATE revenue_records rr
 SET source_type = COALESCE(rs.source_type, 'unknown')
 FROM revenue_sources rs
-WHERE rr.revenue_source_id = rs.id
+WHERE rr.revenue_source_id::text = rs.id::text
   AND rr.source_type IS NULL;
 
--- Set NOT NULL constraint after backfill
+-- For records without a matching source, set to 'unknown'
+UPDATE revenue_records
+SET source_type = 'unknown'
+WHERE source_type IS NULL;
+
+-- Set default for future inserts
 ALTER TABLE revenue_records 
-ALTER COLUMN source_type SET NOT NULL;
+ALTER COLUMN source_type SET DEFAULT 'unknown';
 
 -- Add comment
 COMMENT ON COLUMN revenue_records.source_type IS 'Type of revenue source: ga4, linkedin, hubspot, salesforce, shopify, manual, csv, google_sheets, legacy_cumulative';
@@ -71,82 +81,69 @@ CREATE INDEX IF NOT EXISTS idx_revenue_records_date_range ON revenue_records(cam
 -- ============================================
 
 -- LinkedIn already has daily spend in linkedin_daily_metrics
--- Backfill spend_records from linkedin_daily_metrics
-INSERT INTO spend_records (campaign_id, date, spend, spend_source_id, source_type, currency)
-SELECT 
-  campaign_id,
-  date as date,  -- Already in YYYY-MM-DD format
-  COALESCE(spend::DECIMAL(12,2), 0) as spend,
-  'linkedin_daily_metrics' as spend_source_id,  -- Use table name as pseudo-source
-  'linkedin_api' as source_type,
-  'USD' as currency  -- LinkedIn reports in USD by default
-FROM linkedin_daily_metrics
-WHERE spend IS NOT NULL AND spend::DECIMAL(12,2) > 0
-ON CONFLICT DO NOTHING;
+-- Backfill spend_records from linkedin_daily_metrics (if data exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'linkedin_daily_metrics') THEN
+    INSERT INTO spend_records (campaign_id, date, spend, spend_source_id, source_type, currency)
+    SELECT 
+      campaign_id,
+      date as date,
+      LEAST(spend::DECIMAL(12,2), 9999999999.99) as spend,
+      'linkedin_daily_metrics' as spend_source_id,
+      'linkedin_api' as source_type,
+      'USD' as currency
+    FROM linkedin_daily_metrics
+    WHERE spend IS NOT NULL AND spend::DECIMAL(12,2) > 0
+    ON CONFLICT DO NOTHING;
+    RAISE NOTICE 'Backfilled LinkedIn spend records';
+  ELSE
+    RAISE NOTICE 'Skipped LinkedIn backfill - table does not exist';
+  END IF;
+END $$;
 
 -- ============================================
--- 5. BACKFILL GA4 DAILY FACTS (REVENUE)
+-- 5. BACKFILL GA4 DAILY METRICS (REVENUE)
 -- ============================================
 
--- GA4 already has daily revenue in ga4_daily_facts
--- Backfill revenue_records from ga4_daily_facts  
-INSERT INTO revenue_records (campaign_id, date, revenue, revenue_source_id, source_type, currency)
-SELECT 
-  campaign_id,
-  date as date,  -- Already in YYYY-MM-DD format
-  COALESCE(revenue::DECIMAL(12,2), 0) as revenue,
-  'ga4_daily_facts' as revenue_source_id,  -- Use table name as pseudo-source
-  'ga4' as source_type,
-  'USD' as currency  -- GA4 reports in configured currency
-FROM ga4_daily_facts
-WHERE revenue IS NOT NULL AND revenue::DECIMAL(12,2) > 0
-ON CONFLICT DO NOTHING;
+-- GA4 already has daily revenue in ga4_daily_metrics
+-- Backfill revenue_records from ga4_daily_metrics (if data exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ga4_daily_metrics') 
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ga4_daily_metrics' AND column_name = 'revenue') THEN
+    INSERT INTO revenue_records (campaign_id, date, revenue, revenue_source_id, source_type, currency)
+    SELECT 
+      campaign_id,
+      date as date,
+      LEAST(revenue::DECIMAL(15,2), 9999999999.99) as revenue,
+      'ga4_daily_metrics' as revenue_source_id,
+      'ga4' as source_type,
+      'USD' as currency
+    FROM ga4_daily_metrics
+    WHERE revenue IS NOT NULL AND revenue::DECIMAL(15,2) > 0
+    ON CONFLICT DO NOTHING;
+    RAISE NOTICE 'Backfilled GA4 revenue records';
+  ELSE
+    RAISE NOTICE 'Skipped GA4 backfill - table or column does not exist';
+  END IF;
+END $$;
 
 -- ============================================
 -- 6. BACKFILL LEGACY CUMULATIVE SPEND
 -- ============================================
 
--- For campaigns with cumulative spend but no daily records
--- Create a single record dated at campaign creation
-INSERT INTO spend_records (campaign_id, date, spend, spend_source_id, source_type, currency)
-SELECT 
-  id as campaign_id,
-  COALESCE(created_at::DATE::TEXT, CURRENT_DATE::TEXT) as date,
-  spend::DECIMAL(12,2) as spend,
-  'legacy_cumulative' as spend_source_id,
-  'legacy_cumulative' as source_type,
-  COALESCE(currency, 'USD') as currency
-FROM campaigns
-WHERE spend IS NOT NULL 
-  AND spend::DECIMAL(12,2) > 0
-  AND id NOT IN (
-    -- Exclude campaigns that already have spend records
-    SELECT DISTINCT campaign_id FROM spend_records
-  )
-ON CONFLICT DO NOTHING;
+-- Skip legacy backfill - will be populated by schedulers going forward
+-- For campaigns with cumulative spend but no daily records, those will be added
+-- on next data refresh cycle
 
 -- ============================================
 -- 7. BACKFILL LEGACY CUMULATIVE REVENUE
 -- ============================================
 
--- For campaigns with cumulative revenue but no daily records
--- Create a single record dated at campaign creation
-INSERT INTO revenue_records (campaign_id, date, revenue, revenue_source_id, source_type, currency)
-SELECT 
-  id as campaign_id,
-  COALESCE(created_at::DATE::TEXT, CURRENT_DATE::TEXT) as date,
-  revenue::DECIMAL(12,2) as revenue,
-  'legacy_cumulative' as revenue_source_id,
-  'legacy_cumulative' as source_type,
-  COALESCE(currency, 'USD') as currency
-FROM campaigns
-WHERE revenue IS NOT NULL 
-  AND revenue::DECIMAL(12,2) > 0
-  AND id NOT IN (
-    -- Exclude campaigns that already have revenue records
-    SELECT DISTINCT campaign_id FROM revenue_records
-  )
-ON CONFLICT DO NOTHING;
+-- Skip legacy backfill - will be populated by schedulers going forward
+-- For campaigns with cumulative revenue but no daily records, those will be added
+-- on next data refresh cycle
 
 -- ============================================
 -- 8. VERIFICATION QUERIES

@@ -202,6 +202,29 @@ async function generateMockLinkedInData(
     // Update campaign cumulative spend from daily metrics
     await storage.updateCampaign(campaignId, { spend: Number(sums.spend || 0) });
     console.log(`[LinkedIn Scheduler] TEST MODE: Updated campaign ${campaignId} spend: ${Number(sums.spend || 0).toFixed(2)}`);
+    
+    // Populate spend_records for daily granularity (Insights tab support)
+    const spendRecordsToInsert = dailyToDate
+      .filter((m: any) => parseFloat(String(m?.spend || 0)) > 0)
+      .map((m: any) => ({
+        campaignId,
+        spendSourceId: 'linkedin_daily_metrics',
+        date: String(m.date),
+        spend: String(parseFloat(String(m.spend || 0)).toFixed(2)),
+        currency: 'USD',
+        sourceType: 'linkedin_api'
+      }));
+    
+    if (spendRecordsToInsert.length > 0) {
+      try {
+        await storage.createSpendRecords(spendRecordsToInsert as any);
+        console.log(`[LinkedIn Scheduler] TEST MODE: Populated ${spendRecordsToInsert.length} daily spend records for campaign ${campaignId}`);
+      } catch (e: any) {
+        if (!e?.message?.includes('duplicate') && !e?.message?.includes('conflict')) {
+          console.warn(`[LinkedIn Scheduler] TEST MODE: Spend records insert failed for ${campaignId}:`, e?.message || e);
+        }
+      }
+    }
   } catch (e: any) {
     console.warn(`[LinkedIn Scheduler] Mock daily metrics upsert failed for ${campaignId}:`, e?.message || e);
   }
@@ -474,6 +497,30 @@ async function fetchRealLinkedInData(
       const totalSpend = dailyMetrics.reduce((sum, m) => sum + (parseFloat(String(m.spend || 0)) || 0), 0);
       await storage.updateCampaign(campaignId, { spend: totalSpend });
       console.log(`[LinkedIn Scheduler] Updated campaign ${campaignId} spend: ${totalSpend}`);
+      
+      // Populate spend_records for daily granularity (Insights tab support)
+      const spendRecordsToInsert = dailyMetrics
+        .filter(m => parseFloat(String(m.spend || 0)) > 0)
+        .map(m => ({
+          campaignId,
+          spendSourceId: 'linkedin_daily_metrics',  // Pseudo-source for LinkedIn API data
+          date: String(m.date),  // Already in YYYY-MM-DD format
+          spend: String(parseFloat(String(m.spend || 0)).toFixed(2)),
+          currency: 'USD',
+          sourceType: 'linkedin_api'
+        }));
+      
+      if (spendRecordsToInsert.length > 0) {
+        try {
+          await storage.createSpendRecords(spendRecordsToInsert as any);
+          console.log(`[LinkedIn Scheduler] Populated ${spendRecordsToInsert.length} daily spend records for campaign ${campaignId}`);
+        } catch (e: any) {
+          // Ignore duplicate errors (ON CONFLICT DO NOTHING)
+          if (!e?.message?.includes('duplicate') && !e?.message?.includes('conflict')) {
+            console.warn(`[LinkedIn Scheduler] Spend records insert failed for ${campaignId}:`, e?.message || e);
+          }
+        }
+      }
     } catch (e: any) {
       console.warn(`[LinkedIn Scheduler] Daily metrics upsert failed for ${campaignId}:`, e?.message || e);
     }

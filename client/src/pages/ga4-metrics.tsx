@@ -29,7 +29,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent } from "@shared/metric-math";
 
 interface Campaign {
@@ -742,12 +741,15 @@ export default function GA4Metrics() {
   const runGA4RefreshMutation = useMutation({
     mutationFn: async () => {
       if (!campaignId) throw new Error("Missing campaign id");
-      const resp = await apiRequest(
-        "POST",
+      const resp = await fetch(
         `/api/campaigns/${encodeURIComponent(String(campaignId))}/ga4/refresh`,
-        {}
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        }
       );
-      const json = await (resp as any).json?.().catch(() => ({} as any));
+      const json = await resp.json().catch(() => ({} as any));
       if (!resp.ok || json?.success === false) {
         throw new Error(json?.error || json?.message || "Failed to refresh GA4 data");
       }

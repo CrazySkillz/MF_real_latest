@@ -254,19 +254,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     enabled: showDailyFinancialsView && !!campaignId,
   });
 
-  // Daily financials query for LinkedIn
-  const { data: dailyFinancialsData, isLoading: dailyFinancialsLoading } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "daily-financials", dailyFinancialsDateRange],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/campaigns/${campaignId}/daily-financials?start=${dailyFinancialsDateRange.start}&end=${dailyFinancialsDateRange.end}`
-      );
-      if (!res.ok) throw new Error('Failed to fetch daily financials');
-      return res.json();
-    },
-    enabled: showDailyFinancialsView && !!campaignId,
-  });
-
   const KPI_DESC_MAX = 200;
   const BENCHMARK_DESC_MAX = 200;
   const getDefaultKpiDescription = (metricKey: string) => {
@@ -6236,8 +6223,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     </div>
                                   </div>
                                 </div>
+                              </>
                             )}
-                              </CardContent>
+                          </CardContent>
                         </Card>
 
                         <Card className="border-slate-200 dark:border-slate-700">

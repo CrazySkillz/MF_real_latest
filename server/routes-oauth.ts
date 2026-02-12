@@ -699,6 +699,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return today.toISOString().slice(0, 10);
   };
 
+  // Daily financials (spend + revenue) for time series charts
+  // Returns array of {date, spend, revenue, roas, roi, cpa} for Overview tab daily views
+  app.get("/api/campaigns/:id/daily-financials", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const startDate = String(req.query.start || "");
+      const endDate = String(req.query.end || "");
+      
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+        return res.status(400).json({ success: false, error: "start and end must be YYYY-MM-DD format" });
+      }
+
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
+
+      // Fetch spend_records and revenue_records for the date range
+      const spendData = await db.execute(sql`
+        SELECT 
+          sr.date,
+          COALESCE(SUM(sr.spend::NUMERIC), 0) as total_spend,
+          sr.currency
+        FROM spend_records sr
+        INNER JOIN spend_sources ss ON ss.id::text = sr.spend_source_id
+        WHERE sr.campaign_id = ${campaignId}
+          AND ss.is_active = true
+          AND sr.date >= ${startDate}
+          AND sr.date <= ${endDate}
+        GROUP BY sr.date, sr.currency
+        ORDER BY sr.date ASC
+      `);
+
+      const revenueData = await db.execute(sql`
+        SELECT 
+          rr.date,
+          COALESCE(SUM(rr.revenue::NUMERIC), 0) as total_revenue,
+          rr.currency
+        FROM revenue_records rr
+        INNER JOIN revenue_sources rs ON rs.id::text = rr.revenue_source_id
+        WHERE rr.campaign_id = ${campaignId}
+          AND rs.is_active = true
+          AND rr.date >= ${startDate}
+          AND rr.date <= ${endDate}
+        GROUP BY rr.date, rr.currency
+        ORDER BY rr.date ASC
+      `);
+
+      // Merge spend and revenue by date
+      const dateMap = new Map<string, { spend: number; revenue: number; currency?: string }>();
+      
+      for (const row of (spendData.rows as any[])) {
+        const date = String(row.date);
+        const spend = parseFloat(String(row.total_spend || 0));
+        const currency = String(row.currency || "USD");
+        dateMap.set(date, { spend, revenue: 0, currency });
+      }
+      
+      for (const row of (revenueData.rows as any[])) {
+        const date = String(row.date);
+        const revenue = parseFloat(String(row.total_revenue || 0));
+        const existing = dateMap.get(date) || { spend: 0, revenue: 0 };
+        dateMap.set(date, { ...existing, revenue });
+      }
+
+      // Calculate metrics for each day
+      const dailyData = Array.from(dateMap.entries())
+        .map(([date, data]) => {
+          const spend = data.spend || 0;
+          const revenue = data.revenue || 0;
+          const roas = spend > 0 ? (revenue / spend) * 100 : 0;
+          const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+          const cpa = 0; // TODO: Calculate from conversions when available
+          
+          return {
+            date,
+            spend: Number(spend.toFixed(2)),
+            revenue: Number(revenue.toFixed(2)),
+            roas: Number(roas.toFixed(2)),
+            roi: Number(roi.toFixed(2)),
+            cpa: Number(cpa.toFixed(2)),
+            currency: data.currency || "USD"
+          };
+        })
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      res.json({
+        success: true,
+        campaignId,
+        startDate,
+        endDate,
+        data: dailyData
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch daily financials" });
+    }
+  });
+
   // Limits + timeouts (DoS protection / reliability)
   const EXTERNAL_API_TIMEOUT_MS = 15_000;
   const MAX_CSV_ROWS_PREVIEW = 5_000; // header + sample rows (keeps preview fast)
@@ -2222,7 +2319,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let kept = 0;
       const spendCol = String(mapping.spendColumn);
+      const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
       let totalSpend = 0;
+      const dailySpendMap = new Map<string, number>(); // date -> spend
 
       for (const row of rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -2237,6 +2336,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!(spend > 0)) continue;
         kept++;
         totalSpend += spend;
+
+        // Track daily spend if date column provided
+        if (dateCol) {
+          const dateStr = String((row as any)[dateCol] ?? "").trim();
+          if (dateStr) {
+            // Normalize date to YYYY-MM-DD format
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+              const normalizedDate = date.toISOString().split('T')[0];
+              dailySpendMap.set(normalizedDate, (dailySpendMap.get(normalizedDate) || 0) + spend);
+            }
+          }
+        }
       }
 
       const campaign = await storage.getCampaign(campaignId);
@@ -2288,6 +2400,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mappingConfig: nextSpendMappingConfig,
           isActive: true,
         } as any);
+      }
+
+      // Populate spend_records with daily granularity if date column provided
+      if (dateCol && dailySpendMap.size > 0) {
+        const spendRecordsToInsert = Array.from(dailySpendMap.entries())
+          .filter(([date, spend]) => spend > 0)
+          .map(([date, spend]) => ({
+            campaignId,
+            spendSourceId: String((source as any).id),
+            date,
+            spend: String(Number(spend.toFixed(2))),
+            currency,
+            sourceType: 'google_sheets'
+          }));
+        
+        if (spendRecordsToInsert.length > 0) {
+          await storage.createSpendRecords(spendRecordsToInsert);
+        }
       }
 
       res.json({
@@ -3932,6 +4062,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (upserts.length > 0) {
           await storage.upsertGA4DailyMetrics(upserts as any);
+          
+          // Populate revenue_records from GA4 daily metrics
+          const revenueRecordsToInsert = upserts
+            .filter((m: any) => parseFloat(String(m?.revenue || 0)) > 0)
+            .map((m: any) => ({
+              campaignId,
+              revenueSourceId: 'ga4_daily_metrics',
+              date: String(m.date),
+              revenue: String(parseFloat(String(m.revenue || 0)).toFixed(2)),
+              currency: 'USD',
+              sourceType: 'ga4'
+            }));
+          
+          if (revenueRecordsToInsert.length > 0) {
+            await storage.createRevenueRecords(revenueRecordsToInsert as any);
+          }
         }
         stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
       }

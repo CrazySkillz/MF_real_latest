@@ -2945,10 +2945,15 @@ export class DatabaseStorage implements IStorage {
 
   async createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]> {
     if (!records.length) return [];
-    return db
+    
+    // Use onConflictDoNothing for idempotent inserts (auto-refresh scheduler may re-run)
+    const results = await db
       .insert(spendRecords)
       .values(records as any)
+      .onConflictDoNothing()
       .returning();
+    
+    return results;
   }
 
   async getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }> {
@@ -3040,10 +3045,15 @@ export class DatabaseStorage implements IStorage {
 
   async createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]> {
     if (!records.length) return [];
-    return db
+    
+    // Use onConflictDoNothing for idempotent inserts (auto-refresh scheduler may re-run)
+    const results = await db
       .insert(revenueRecords)
       .values(records as any)
+      .onConflictDoNothing()
       .returning();
+    
+    return results;
   }
 
   async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext: 'ga4' | 'linkedin' = 'ga4'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {

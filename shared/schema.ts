@@ -117,6 +117,7 @@ export const spendRecords = pgTable("spend_records", {
   date: text("date").notNull(), // YYYY-MM-DD
   spend: decimal("spend", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency"),
+  sourceType: varchar("source_type", { length: 50 }), // 'google_sheets', 'csv', 'paste', 'google_ads_api', 'meta_api', 'linkedin_api', 'legacy_cumulative'
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -145,6 +146,7 @@ export const revenueRecords = pgTable("revenue_records", {
   revenue: decimal("revenue", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency"),
   externalId: text("external_id"), // e.g., Shopify order ID, HubSpot deal ID
+  sourceType: varchar("source_type", { length: 50 }), // 'ga4', 'linkedin', 'hubspot', 'salesforce', 'shopify', 'manual', 'csv', 'google_sheets', 'legacy_cumulative'
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

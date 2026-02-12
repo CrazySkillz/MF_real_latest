@@ -737,46 +737,6 @@ export default function GA4Metrics() {
     },
   });
 
-  // GA4 refresh mutation
-  const runGA4RefreshMutation = useMutation({
-    mutationFn: async () => {
-      if (!campaignId) throw new Error("Missing campaign id");
-      const resp = await fetch(
-        `/api/campaigns/${encodeURIComponent(String(campaignId))}/ga4/refresh`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({})
-        }
-      );
-      const json = await resp.json().catch(() => ({} as any));
-      if (!resp.ok || json?.success === false) {
-        throw new Error(json?.error || json?.message || "Failed to refresh GA4 data");
-      }
-      return json;
-    },
-    onSuccess: async () => {
-      toast({
-        title: "Refresh complete",
-        description: "GA4 metrics have been updated.",
-      });
-
-      // Invalidate all GA4-related queries to force refetch
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-connections"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-to-date"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-metrics"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Failed to refresh GA4 data",
-        description: error.message,
-        variant: "destructive"
-      });
-    },
-  });
-
   // Benchmark handlers
   const handleCreateBenchmark = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2855,38 +2815,21 @@ export default function GA4Metrics() {
 
                 <TabsContent value="overview">
                   {/* Aggregated Multi-Property Campaign Metrics */}
-                  <div className="mb-6 space-y-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex-shrink-0">
-                            <Globe className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                              {'GA4 Property Analytics'}
-                            </h3>
-                            <p className="text-sm text-blue-700 dark:text-blue-300">
-                              {`Showing metrics for the selected GA4 property for ${campaign?.name}`}
-                            </p>
-                          </div>
+                  <div className="mb-6">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0">
+                          <Globe className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                            {'GA4 Property Analytics'}
+                          </h3>
+                          <p className="text-sm text-blue-700 dark:text-blue-300">
+                            {`Showing metrics for the selected GA4 property for ${campaign?.name}`}
+                          </p>
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={!campaignId || runGA4RefreshMutation.isPending}
-                        onClick={() => runGA4RefreshMutation.mutate()}
-                        className="border-slate-300 dark:border-slate-700"
-                      >
-                        {runGA4RefreshMutation.isPending ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                        )}
-                        Run refresh
-                      </Button>
                     </div>
                   </div>
 

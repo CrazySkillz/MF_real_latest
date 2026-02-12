@@ -3209,7 +3209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get GA4 connection for this campaign
       const connections = await storage.getGA4Connections(campaignId);
       const primaryConn = connections.find((c: any) => c.isPrimary) || connections[0];
-      
+
       if (!primaryConn) {
         return res.status(404).json({ success: false, error: "No GA4 connection found for this campaign" });
       }
@@ -3225,7 +3225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateStr = yesterday.toISOString().slice(0, 10);
 
       const campaignFilter = campaign.ga4CampaignFilter || campaign.name;
-      
+
       try {
         const metrics = await ga4Service.getMetricsWithAutoRefresh(
           campaignId,
@@ -3265,8 +3265,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         ]);
 
-        res.json({ 
-          success: true, 
+        res.json({
+          success: true,
           message: "GA4 metrics refreshed successfully",
           metrics: {
             users,

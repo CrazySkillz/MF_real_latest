@@ -198,6 +198,10 @@ async function generateMockLinkedInData(
       viralImpressions: Math.round(Number(sums.viralImpressions || 0)),
       spend: Number(Number(sums.spend || 0).toFixed(2)),
     };
+    
+    // Update campaign cumulative spend from daily metrics
+    await storage.updateCampaign(campaignId, { spend: Number(sums.spend || 0) });
+    console.log(`[LinkedIn Scheduler] TEST MODE: Updated campaign ${campaignId} spend: ${Number(sums.spend || 0).toFixed(2)}`);
   } catch (e: any) {
     console.warn(`[LinkedIn Scheduler] Mock daily metrics upsert failed for ${campaignId}:`, e?.message || e);
   }
@@ -460,6 +464,16 @@ async function fetchRealLinkedInData(
       );
       const { upsertLinkedInDailyTotals } = await import("./linkedin-daily-metrics");
       await upsertLinkedInDailyTotals({ campaignId, dailyElements: Array.isArray(dailyElements) ? dailyElements : [] });
+      
+      // Update campaign cumulative spend from daily metrics (for cross-platform comparisons)
+      const dailyMetrics = await storage.getLinkedInDailyMetrics(
+        campaignId, 
+        dailyStart.toISOString().split('T')[0], 
+        dailyEnd.toISOString().split('T')[0]
+      );
+      const totalSpend = dailyMetrics.reduce((sum, m) => sum + (parseFloat(String(m.spend || 0)) || 0), 0);
+      await storage.updateCampaign(campaignId, { spend: totalSpend });
+      console.log(`[LinkedIn Scheduler] Updated campaign ${campaignId} spend: ${totalSpend}`);
     } catch (e: any) {
       console.warn(`[LinkedIn Scheduler] Daily metrics upsert failed for ${campaignId}:`, e?.message || e);
     }

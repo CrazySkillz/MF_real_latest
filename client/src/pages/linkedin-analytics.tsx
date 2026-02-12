@@ -188,6 +188,18 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   const [isHubspotRevenueWizardOpen, setIsHubspotRevenueWizardOpen] = useState(false);
   const [isShopifyViewerOpen, setIsShopifyViewerOpen] = useState(false);
   const [isShopifyRevenueWizardOpen, setIsShopifyRevenueWizardOpen] = useState(false);
+  // Daily financials view state
+  const [showDailyFinancialsView, setShowDailyFinancialsView] = useState(false);
+  const [dailyFinancialsDateRange, setDailyFinancialsDateRange] = useState(() => {
+    const end = new Date();
+    end.setDate(end.getDate() - 1); // Yesterday
+    const start = new Date();
+    start.setDate(start.getDate() - 30); // Last 30 days
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    };
+  });
   // LinkedIn revenue metrics are unlocked by connecting a revenue/conversion-value source.
   const [revenueModalIntent, setRevenueModalIntent] = useState<'add' | 'edit'>('add');
 
@@ -228,6 +240,32 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
   const [editingKPI, setEditingKPI] = useState<any>(null);
   const { toast } = useToast();
+
+  // Daily financials query for LinkedIn
+  const { data: dailyFinancialsData, isLoading: dailyFinancialsLoading } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "daily-financials", dailyFinancialsDateRange],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/campaigns/${campaignId}/daily-financials?start=${dailyFinancialsDateRange.start}&end=${dailyFinancialsDateRange.end}`
+      );
+      if (!res.ok) throw new Error('Failed to fetch daily financials');
+      return res.json();
+    },
+    enabled: showDailyFinancialsView && !!campaignId,
+  });
+
+  // Daily financials query for LinkedIn
+  const { data: dailyFinancialsData, isLoading: dailyFinancialsLoading } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "daily-financials", dailyFinancialsDateRange],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/campaigns/${campaignId}/daily-financials?start=${dailyFinancialsDateRange.start}&end=${dailyFinancialsDateRange.end}`
+      );
+      if (!res.ok) throw new Error('Failed to fetch daily financials');
+      return res.json();
+    },
+    enabled: showDailyFinancialsView && !!campaignId,
+  });
 
   const KPI_DESC_MAX = 200;
   const BENCHMARK_DESC_MAX = 200;
@@ -6021,12 +6059,131 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
                         <Card className="border-slate-200 dark:border-slate-700">
                           <CardHeader>
-                            <CardTitle>Executive financials</CardTitle>
-                            <CardDescription>
-                              Spend comes from LinkedIn imports. Revenue metrics appear only when a LinkedIn revenue source is connected.
-                            </CardDescription>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <CardTitle>Executive financials</CardTitle>
+                                <CardDescription>
+                                  {showDailyFinancialsView
+                                    ? `Daily spend and revenue from ${dailyFinancialsDateRange.start} to ${dailyFinancialsDateRange.end}`
+                                    : "Spend comes from LinkedIn imports. Revenue metrics appear only when a LinkedIn revenue source is connected."
+                                  }
+                                </CardDescription>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowDailyFinancialsView(!showDailyFinancialsView)}
+                                className="shrink-0"
+                              >
+                                {showDailyFinancialsView ? "Show Total" : "Show Daily"}
+                              </Button>
+                            </div>
                           </CardHeader>
                           <CardContent>
+                            {showDailyFinancialsView && dailyFinancialsData?.data ? (
+                              <div className="space-y-4">
+                                {/* Date range selector */}
+                                <div className="flex items-center gap-3">
+                                  <Label className="text-sm font-medium">Date Range:</Label>
+                                  <Input
+                                    type="date"
+                                    value={dailyFinancialsDateRange.start}
+                                    onChange={(e) => setDailyFinancialsDateRange(prev => ({ ...prev, start: e.target.value }))}
+                                    className="w-auto"
+                                  />
+                                  <span className="text-sm text-slate-600 dark:text-slate-400">to</span>
+                                  <Input
+                                    type="date"
+                                    value={dailyFinancialsDateRange.end}
+                                    onChange={(e) => setDailyFinancialsDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                    className="w-auto"
+                                  />
+                                </div>
+
+                                {/* Daily spend/revenue chart */}
+                                <Card>
+                                  <CardContent className="p-6">
+                                    <ResponsiveContainer width="100%" height={300}>
+                                      <LineChart data={dailyFinancialsData.data}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                          dataKey="date" 
+                                          tick={{ fontSize: 12 }}
+                                          angle={-45}
+                                          textAnchor="end"
+                                          height={80}
+                                        />
+                                        <YAxis tick={{ fontSize: 12 }} />
+                                        <Tooltip 
+                                          formatter={(value: any) => [
+                                            typeof value === 'number' ? `$${value.toFixed(2)}` : value,
+                                          ]}
+                                        />
+                                        <Legend />
+                                        <Line 
+                                          type="monotone" 
+                                          dataKey="spend" 
+                                          stroke="#8884d8" 
+                                          name="Spend"
+                                          strokeWidth={2}
+                                        />
+                                        <Line 
+                                          type="monotone" 
+                                          dataKey="revenue" 
+                                          stroke="#82ca9d" 
+                                          name="Revenue"
+                                          strokeWidth={2}
+                                        />
+                                      </LineChart>
+                                    </ResponsiveContainer>
+                                  </CardContent>
+                                </Card>
+
+                                {/* Daily ROAS/ROI chart */}
+                                <Card>
+                                  <CardContent className="p-6">
+                                    <ResponsiveContainer width="100%" height={300}>
+                                      <LineChart data={dailyFinancialsData.data}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                          dataKey="date" 
+                                          tick={{ fontSize: 12 }}
+                                          angle={-45}
+                                          textAnchor="end"
+                                          height={80}
+                                        />
+                                        <YAxis tick={{ fontSize: 12 }} />
+                                        <Tooltip 
+                                          formatter={(value: any) => [
+                                            typeof value === 'number' ? `${value.toFixed(2)}%` : value,
+                                          ]}
+                                        />
+                                        <Legend />
+                                        <Line 
+                                          type="monotone" 
+                                          dataKey="roas" 
+                                          stroke="#fbbf24" 
+                                          name="ROAS %"
+                                          strokeWidth={2}
+                                        />
+                                        <Line 
+                                          type="monotone" 
+                                          dataKey="roi" 
+                                          stroke="#10b981" 
+                                          name="ROI %"
+                                          strokeWidth={2}
+                                        />
+                                      </LineChart>
+                                    </ResponsiveContainer>
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            ) : showDailyFinancialsView && dailyFinancialsLoading ? (
+                              <div className="flex items-center justify-center p-12">
+                                <div className="text-sm text-slate-600 dark:text-slate-400">Loading daily data...</div>
+                              </div>
+                            ) : (
+                              <>
                             <div className="grid gap-4 md:grid-cols-4">
                               <Card>
                                 <CardContent className="p-5">
@@ -6079,6 +6236,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 </div>
                               </div>
                             </div>
+                            )}
                           </CardContent>
                         </Card>
 

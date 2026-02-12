@@ -129,6 +129,18 @@ export default function GA4Metrics() {
   const [showDeleteRevenueDialog, setShowDeleteRevenueDialog] = useState(false);
   const [deleteBenchmarkId, setDeleteBenchmarkId] = useState<string | null>(null);
   const [showDeleteBenchmarkDialog, setShowDeleteBenchmarkDialog] = useState(false);
+  // Daily view state
+  const [showDailyView, setShowDailyView] = useState(false);
+  const [dailyDateRange, setDailyDateRange] = useState(() => {
+    const end = new Date();
+    end.setDate(end.getDate() - 1); // Yesterday
+    const start = new Date();
+    start.setDate(start.getDate() - 30); // Last 30 days
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    };
+  });
   // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
 
   // Benchmark-related state
@@ -170,6 +182,19 @@ export default function GA4Metrics() {
   const queryClient = useQueryClient();
 
   const [selectedGA4PropertyId, setSelectedGA4PropertyId] = useState<string>("");
+
+  // Daily financials query
+  const { data: dailyFinancialsData, isLoading: dailyFinancialsLoading } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "daily-financials", dailyDateRange],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/campaigns/${campaignId}/daily-financials?start=${dailyDateRange.start}&end=${dailyDateRange.end}`
+      );
+      if (!res.ok) throw new Error('Failed to fetch daily financials');
+      return res.json();
+    },
+    enabled: showDailyView && !!campaignId,
+  });
 
   const parseStoredGa4CampaignFilter = (raw: any): string[] => {
     if (raw === null || raw === undefined) return [];
@@ -2918,15 +2943,129 @@ export default function GA4Metrics() {
                           <>
                             <div className="mb-3">
                               <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial (To date)</h4>
+                                <div className="flex-1">
+                                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial {showDailyView ? "(Daily Trends)" : "(To date)"}</h4>
                                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                                    Spend source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} · Revenue range: {(ga4ToDateResp as any)?.startDate ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}` : "to date"}
+                                    {showDailyView 
+                                      ? `Daily spend and revenue from ${dailyDateRange.start} to ${dailyDateRange.end}`
+                                      : `Spend source: ${spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} · Revenue range: ${(ga4ToDateResp as any)?.startDate ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}` : "to date"}`
+                                    }
                                   </p>
                                 </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowDailyView(!showDailyView)}
+                                  className="shrink-0"
+                                >
+                                  {showDailyView ? "Show Total" : "Show Daily"}
+                                </Button>
                               </div>
                             </div>
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            {showDailyView && dailyFinancialsData?.data ? (
+                              <div className="space-y-4">
+                                {/* Date range selector */}
+                                <div className="flex items-center gap-3">
+                                  <Label className="text-sm font-medium">Date Range:</Label>
+                                  <Input
+                                    type="date"
+                                    value={dailyDateRange.start}
+                                    onChange={(e) => setDailyDateRange(prev => ({ ...prev, start: e.target.value }))}
+                                    className="w-auto"
+                                  />
+                                  <span className="text-sm text-slate-600 dark:text-slate-400">to</span>
+                                  <Input
+                                    type="date"
+                                    value={dailyDateRange.end}
+                                    onChange={(e) => setDailyDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                    className="w-auto"
+                                  />
+                                </div>
+
+                                {/* Daily spend/revenue chart */}
+                                <Card>
+                                  <CardContent className="p-6">
+                                    <ResponsiveContainer width="100%" height={300}>
+                                      <LineChart data={dailyFinancialsData.data}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                          dataKey="date" 
+                                          tick={{ fontSize: 12 }}
+                                          angle={-45}
+                                          textAnchor="end"
+                                          height={80}
+                                        />
+                                        <YAxis tick={{ fontSize: 12 }} />
+                                        <Tooltip 
+                                          formatter={(value: any) => [
+                                            typeof value === 'number' ? `$${value.toFixed(2)}` : value,
+                                          ]}
+                                        />
+                                        <Legend />
+                                        <Line 
+                                          type="monotone" 
+                                          dataKey="spend" 
+                                          stroke="#8884d8" 
+                                          name="Spend"
+                                          strokeWidth={2}
+                                        />
+                                        <Line 
+                                          type="monotone" 
+                                          dataKey="revenue" 
+                                          stroke="#82ca9d" 
+                                          name="Revenue"
+                                          strokeWidth={2}
+                                        />
+                                      </LineChart>
+                                    </ResponsiveContainer>
+                                  </CardContent>
+                                </Card>
+
+                                {/* Daily ROAS/ROI chart */}
+                                <Card>
+                                  <CardContent className="p-6">
+                                    <ResponsiveContainer width="100%" height={300}>
+                                      <LineChart data={dailyFinancialsData.data}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                          dataKey="date" 
+                                          tick={{ fontSize: 12 }}
+                                          angle={-45}
+                                          textAnchor="end"
+                                          height={80}
+                                        />
+                                        <YAxis tick={{ fontSize: 12 }} />
+                                        <Tooltip 
+                                          formatter={(value: any) => [
+                                            typeof value === 'number' ? `${value.toFixed(2)}%` : value,
+                                          ]}
+                                        />
+                                        <Legend />
+                                        <Line 
+                                          type="monotone" 
+                                          dataKey="roas" 
+                                          stroke="#fbbf24" 
+                                          name="ROAS %"
+                                          strokeWidth={2}
+                                        />
+                                        <Line 
+                                          type="monotone" 
+                                          dataKey="roi" 
+                                          stroke="#10b981" 
+                                          name="ROI %"
+                                          strokeWidth={2}
+                                        />
+                                      </LineChart>
+                                    </ResponsiveContainer>
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            ) : showDailyView && dailyFinancialsLoading ? (
+                              <div className="flex items-center justify-center p-12">
+                                <div className="text-sm text-slate-600 dark:text-slate-400">Loading daily data...</div>
+                              </div>
+                            ) : (
+                              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                               <Card>
                                 <CardContent className="p-6">
                                   <div className="flex items-center justify-between gap-4">
@@ -3015,6 +3154,7 @@ export default function GA4Metrics() {
                                 </CardContent>
                               </Card>
                             </div>
+                            )}
                           </>
                         ) : (
                           <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">

@@ -407,7 +407,7 @@ export const conversionEvents = pgTable("conversion_events", {
 export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
-  
+
   // Legacy Social Media Metrics (kept for backward compatibility)
   impressions: integer("impressions").default(0),
   reach: integer("reach").default(0),
@@ -418,7 +418,7 @@ export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
   leads: integer("leads").default(0),
   videoViews: integer("video_views").default(0),
   viralImpressions: integer("viral_impressions").default(0),
-  
+
   // Audience & Traffic Metrics (GA4 style)
   users: integer("users").default(0), // Unique browsers/devices
   sessions: integer("sessions").default(0), // Total sessions
@@ -426,7 +426,7 @@ export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
   avgSessionDuration: text("avg_session_duration"), // Format: "00:02:38"
   pagesPerSession: decimal("pages_per_session", { precision: 5, scale: 2 }).default("0"), // e.g., 2.05
   bounceRate: decimal("bounce_rate", { precision: 5, scale: 2 }).default("0"), // Percentage
-  
+
   // Traffic Sources (by channel, stored as percentages)
   organicSearchShare: decimal("organic_search_share", { precision: 5, scale: 2 }).default("0"), // e.g., 39.00
   directBrandedShare: decimal("direct_branded_share", { precision: 5, scale: 2 }).default("0"), // e.g., 26.00
@@ -434,7 +434,7 @@ export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
   referralShare: decimal("referral_share", { precision: 5, scale: 2 }).default("0"), // e.g., 11.00
   paidShare: decimal("paid_share", { precision: 5, scale: 2 }).default("0"), // e.g., 7.00
   socialShare: decimal("social_share", { precision: 5, scale: 2 }).default("0"), // e.g., 3.00
-  
+
   // Email & Newsletter Performance Metrics
   emailsDelivered: integer("emails_delivered").default(0),
   openRate: decimal("open_rate", { precision: 5, scale: 2 }).default("0"), // Percentage
@@ -443,7 +443,7 @@ export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
   hardBounces: decimal("hard_bounces", { precision: 5, scale: 2 }).default("0"), // Percentage
   spamComplaints: decimal("spam_complaints", { precision: 5, scale: 2 }).default("0"), // Percentage
   listGrowth: integer("list_growth").default(0), // Net new subscribers
-  
+
   // Metadata
   pdfFileName: text("pdf_file_name"),
   emailSubject: text("email_subject"),
@@ -721,7 +721,7 @@ export const touchpoints = pgTable("touchpoints", {
   position: integer("position").notNull(), // Order in the customer journey (1, 2, 3...)
   timestamp: timestamp("timestamp").notNull(),
   deviceType: text("device_type"), // 'desktop', 'mobile', 'tablet'
-  userAgent: text("user_agent"), 
+  userAgent: text("user_agent"),
   ipAddress: text("ip_address"),
   referrer: text("referrer"),
   landingPage: text("landing_page"),
@@ -865,35 +865,35 @@ export const insertCampaignSchema = createInsertSchema(campaigns)
     endDate: true,
   })
   .extend({
-  startDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
-    if (!val || val === null || val === undefined) return null;
-    if (typeof val === 'string') {
-      const trimmed = val.trim();
-      if (!trimmed) return null;
-      const date = new Date(trimmed);
-      if (Number.isNaN(date.getTime())) return null;
-      return date;
-    }
-    if (val instanceof Date && !Number.isNaN(val.getTime())) {
-      return val;
-    }
-    return null;
-  }).nullable().optional(),
-  endDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
-    if (!val || val === null || val === undefined) return null;
-    if (typeof val === 'string') {
-      const trimmed = val.trim();
-      if (!trimmed) return null;
-      const date = new Date(trimmed);
-      if (Number.isNaN(date.getTime())) return null;
-      return date;
-    }
-    if (val instanceof Date && !Number.isNaN(val.getTime())) {
-      return val;
-    }
-    return null;
-  }).nullable().optional(),
-});
+    startDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
+      if (!val || val === null || val === undefined) return null;
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (!trimmed) return null;
+        const date = new Date(trimmed);
+        if (Number.isNaN(date.getTime())) return null;
+        return date;
+      }
+      if (val instanceof Date && !Number.isNaN(val.getTime())) {
+        return val;
+      }
+      return null;
+    }).nullable().optional(),
+    endDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
+      if (!val || val === null || val === undefined) return null;
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (!trimmed) return null;
+        const date = new Date(trimmed);
+        if (Number.isNaN(date.getTime())) return null;
+        return date;
+      }
+      if (val instanceof Date && !Number.isNaN(val.getTime())) {
+        return val;
+      }
+      return null;
+    }).nullable().optional(),
+  });
 
 export const insertMetricSchema = createInsertSchema(metrics).pick({
   name: true,

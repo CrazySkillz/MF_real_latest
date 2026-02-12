@@ -181,8 +181,8 @@ export function AddSpendWizardModal(props: {
       setStep("choose");
       const savedAmount =
         (mapping && typeof (mapping as any).amount === "number") ? Number((mapping as any).amount) :
-        (mapping && typeof (mapping as any).amount === "string") ? parseFloat(String((mapping as any).amount)) :
-        null;
+          (mapping && typeof (mapping as any).amount === "string") ? parseFloat(String((mapping as any).amount)) :
+            null;
       if (savedAmount && Number.isFinite(savedAmount)) {
         setManualAmount(String(savedAmount));
       }
@@ -905,95 +905,95 @@ export function AddSpendWizardModal(props: {
               </div>
             ) : (
               <div className="rounded-lg border p-4 space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="text-sm font-medium">Columns</div>
-                  <div className="text-sm text-slate-700 dark:text-slate-300">
-                    Spend: <span className="font-medium">{spendColumn || "—"}</span>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="text-sm font-medium">Columns</div>
+                    <div className="text-sm text-slate-700 dark:text-slate-300">
+                      Spend: <span className="font-medium">{spendColumn || "—"}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      We’ll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    We’ll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
-                  </p>
-                </div>
-                <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
-                  {showColumnMapping ? "Hide" : "Edit"} columns
-                </Button>
-              </div>
-
-              {showColumnMapping && (
-                <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
-                  <div className="space-y-2">
-                    <Label>Spend column</Label>
-                    <Select value={spendColumn} onValueChange={setSpendColumn}>
-                      <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
-                      <SelectContent className="z-[10000]">
-                        {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-2 border-t space-y-3">
-                <div className="space-y-1">
-                  <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign.
-                  </p>
+                  <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
+                    {showColumnMapping ? "Hide" : "Edit"} columns
+                  </Button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Campaign identifier for multi-campaign datasets</Label>
-                    <Select
-                      value={campaignKeyColumn || CAMPAIGN_COL_NONE}
-                      onValueChange={(v) => {
-                        campaignKeyTouchedRef.current = true;
-                        setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
-                      }}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
-                      <SelectContent className="z-[10000]">
-                        <SelectItem value={CAMPAIGN_COL_NONE}>Search values...</SelectItem>
-                        {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                {showColumnMapping && (
+                  <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
+                    <div className="space-y-2">
+                      <Label>Spend column</Label>
+                      <Select value={spendColumn} onValueChange={setSpendColumn}>
+                        <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
+                        <SelectContent className="z-[10000]">
+                          {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Campaign value(s)</Label>
-                    <Input
-                      value={campaignKeySearch}
-                      onChange={(e) => setCampaignKeySearch(e.target.value)}
-                      placeholder="Search values…"
-                      disabled={!effectiveCampaignColumn}
-                    />
-                    <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
-                      {!effectiveCampaignColumn ? (
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Upload/preview data to see campaign values.</div>
-                      ) : uniqueCampaignKeyValues.length === 0 ? (
-                        <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
-                      ) : (
-                        uniqueCampaignKeyValues.map((val) => (
-                          <div key={val} className="flex items-start gap-2">
-                            <Checkbox
-                              checked={campaignKeyValues.includes(val)}
-                              onCheckedChange={(checked) => {
-                                const next = Boolean(checked);
-                                setCampaignKeyValues((prev) => {
-                                  if (next) return prev.includes(val) ? prev : [...prev, val];
-                                  return prev.filter((x) => x !== val);
-                                });
-                              }}
-                            />
-                            <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
-                          </div>
-                        ))
-                      )}
+                )}
+
+                <div className="pt-2 border-t space-y-3">
+                  <div className="space-y-1">
+                    <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Campaign identifier for multi-campaign datasets</Label>
+                      <Select
+                        value={campaignKeyColumn || CAMPAIGN_COL_NONE}
+                        onValueChange={(v) => {
+                          campaignKeyTouchedRef.current = true;
+                          setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
+                        }}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
+                        <SelectContent className="z-[10000]">
+                          <SelectItem value={CAMPAIGN_COL_NONE}>Search values...</SelectItem>
+                          {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Campaign value(s)</Label>
+                      <Input
+                        value={campaignKeySearch}
+                        onChange={(e) => setCampaignKeySearch(e.target.value)}
+                        placeholder="Search values…"
+                        disabled={!effectiveCampaignColumn}
+                      />
+                      <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
+                        {!effectiveCampaignColumn ? (
+                          <div className="text-xs text-slate-500 dark:text-slate-400">Upload/preview data to see campaign values.</div>
+                        ) : uniqueCampaignKeyValues.length === 0 ? (
+                          <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
+                        ) : (
+                          uniqueCampaignKeyValues.map((val) => (
+                            <div key={val} className="flex items-start gap-2">
+                              <Checkbox
+                                checked={campaignKeyValues.includes(val)}
+                                onCheckedChange={(checked) => {
+                                  const next = Boolean(checked);
+                                  setCampaignKeyValues((prev) => {
+                                    if (next) return prev.includes(val) ? prev : [...prev, val];
+                                    return prev.filter((x) => x !== val);
+                                  });
+                                }}
+                              />
+                              <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
             )}
 
             {previewRows.length > 0 && (

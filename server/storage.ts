@@ -29,21 +29,21 @@ export interface IStorage {
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
   deleteCampaign(id: string): Promise<boolean>;
-  
+
   // Metrics
   getMetrics(): Promise<Metric[]>;
   createMetric(metric: InsertMetric): Promise<Metric>;
-  
+
   // Integrations
   getIntegrations(): Promise<Integration[]>;
   getIntegration(id: string): Promise<Integration | undefined>;
   createIntegration(integration: InsertIntegration): Promise<Integration>;
   updateIntegration(id: string, integration: Partial<InsertIntegration>): Promise<Integration | undefined>;
-  
+
   // Performance Data
   getPerformanceData(): Promise<PerformanceData[]>;
   createPerformanceData(data: InsertPerformanceData): Promise<PerformanceData>;
-  
+
   // GA4 Connections
   getGA4Connections(campaignId: string): Promise<GA4Connection[]>;
   getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined>;
@@ -82,7 +82,7 @@ export interface IStorage {
   deleteRevenueRecordsBySource(sourceId: string): Promise<boolean>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
   getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: 'ga4' | 'linkedin'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
-  
+
   // Google Sheets Connections
   getGoogleSheetsConnections(campaignId: string, purpose?: string): Promise<GoogleSheetsConnection[]>;
   getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined>;
@@ -112,47 +112,47 @@ export interface IStorage {
   createShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection>;
   updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>): Promise<ShopifyConnection | undefined>;
   deleteShopifyConnection(connectionId: string): Promise<boolean>;
-  
+
   // LinkedIn Connections
   getLinkedInConnection(campaignId: string): Promise<LinkedInConnection | undefined>;
   createLinkedInConnection(connection: InsertLinkedInConnection): Promise<LinkedInConnection>;
   updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined>;
   deleteLinkedInConnection(campaignId: string): Promise<boolean>;
-  
+
   // Meta Connections
   getMetaConnection(campaignId: string): Promise<MetaConnection | undefined>;
   createMetaConnection(connection: InsertMetaConnection): Promise<MetaConnection>;
   updateMetaConnection(campaignId: string, connection: Partial<InsertMetaConnection>): Promise<MetaConnection | undefined>;
   deleteMetaConnection(campaignId: string): Promise<boolean>;
-  
+
   // LinkedIn Import Sessions
   getLinkedInImportSession(sessionId: string): Promise<LinkedInImportSession | undefined>;
   getCampaignLinkedInImportSessions(campaignId: string): Promise<LinkedInImportSession[]>;
   getLatestLinkedInImportSession(campaignId: string): Promise<LinkedInImportSession | undefined>;
   createLinkedInImportSession(session: InsertLinkedInImportSession): Promise<LinkedInImportSession>;
   updateLinkedInImportSession(sessionId: string, updates: Partial<InsertLinkedInImportSession>): Promise<LinkedInImportSession | undefined>;
-  
+
   // LinkedIn Import Metrics
   getLinkedInImportMetrics(sessionId: string): Promise<LinkedInImportMetric[]>;
   createLinkedInImportMetric(metric: InsertLinkedInImportMetric): Promise<LinkedInImportMetric>;
-  
+
   // LinkedIn Ad Performance
   getLinkedInAdPerformance(sessionId: string): Promise<LinkedInAdPerformance[]>;
   createLinkedInAdPerformance(ad: InsertLinkedInAdPerformance): Promise<LinkedInAdPerformance>;
-  
+
   // LinkedIn Reports
   getLinkedInReports(): Promise<LinkedInReport[]>;
   getLinkedInReport(id: string): Promise<LinkedInReport | undefined>;
   createLinkedInReport(report: InsertLinkedInReport): Promise<LinkedInReport>;
   updateLinkedInReport(id: string, report: Partial<InsertLinkedInReport>): Promise<LinkedInReport | undefined>;
   deleteLinkedInReport(id: string): Promise<boolean>;
-  
+
   // Platform Reports
   getPlatformReports(platformType: string, campaignId?: string): Promise<LinkedInReport[]>;
   createPlatformReport(report: any): Promise<LinkedInReport>;
   updatePlatformReport(id: string, report: any): Promise<LinkedInReport | undefined>;
   deletePlatformReport(id: string): Promise<boolean>;
-  
+
   // Custom Integrations
   getCustomIntegration(campaignId: string): Promise<CustomIntegration | undefined>;
   getCustomIntegrationById(integrationId: string): Promise<CustomIntegration | undefined>;
@@ -161,19 +161,19 @@ export interface IStorage {
   getAllCustomIntegrations(): Promise<CustomIntegration[]>;
   createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration>;
   deleteCustomIntegration(campaignId: string): Promise<boolean>;
-  
+
   // Custom Integration Metrics
   getCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
   getAllCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics[]>;
   createCustomIntegrationMetrics(metrics: InsertCustomIntegrationMetrics): Promise<CustomIntegrationMetrics>;
   getLatestCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
-  
+
   // Conversion Events
   getConversionEvents(campaignId: string, startDate?: Date, endDate?: Date): Promise<ConversionEvent[]>;
   createConversionEvent(event: InsertConversionEvent): Promise<ConversionEvent>;
   getConversionEventTotalValue(campaignId: string, startDate?: Date, endDate?: Date): Promise<number>;
   getConversionEventCount(campaignId: string, startDate?: Date, endDate?: Date): Promise<number>;
-  
+
   // KPIs
   getCampaignKPIs(campaignId: string): Promise<KPI[]>;
   getPlatformKPIs(platformType: string, campaignId?: string): Promise<KPI[]>;
@@ -181,12 +181,12 @@ export interface IStorage {
   createKPI(kpi: InsertKPI): Promise<KPI>;
   updateKPI(id: string, kpi: Partial<InsertKPI>): Promise<KPI | undefined>;
   deleteKPI(id: string): Promise<boolean>;
-  
+
   // KPI Progress
   getKPIProgress(kpiId: string): Promise<KPIProgress[]>;
   getLatestKPIPeriod(kpiId: string): Promise<KPIPeriod | null>;
   recordKPIProgress(progress: InsertKPIProgress): Promise<KPIProgress>;
-  
+
   // KPI Alerts
   getKPIAlerts(kpiId?: string, activeOnly?: boolean): Promise<KPIAlert[]>;
   createKPIAlert(alert: InsertKPIAlert): Promise<KPIAlert>;
@@ -211,7 +211,7 @@ export interface IStorage {
   createBenchmark(benchmark: InsertBenchmark): Promise<Benchmark>;
   updateBenchmark(id: string, benchmark: Partial<InsertBenchmark>): Promise<Benchmark | undefined>;
   deleteBenchmark(id: string): Promise<boolean>;
-  
+
   // Benchmark History
   getBenchmarkHistory(benchmarkId: string): Promise<BenchmarkHistory[]>;
   recordBenchmarkHistory(history: InsertBenchmarkHistory): Promise<BenchmarkHistory>;
@@ -253,22 +253,22 @@ export interface IStorage {
   createABTest(test: InsertABTest): Promise<ABTest>;
   updateABTest(testId: string, test: Partial<InsertABTest>): Promise<ABTest | undefined>;
   deleteABTest(testId: string): Promise<boolean>;
-  
+
   // A/B Test Variants
   getABTestVariants(testId: string): Promise<ABTestVariant[]>;
   createABTestVariant(variant: InsertABTestVariant): Promise<ABTestVariant>;
   updateABTestVariant(variantId: string, variant: Partial<InsertABTestVariant>): Promise<ABTestVariant | undefined>;
   deleteABTestVariant(variantId: string): Promise<boolean>;
-  
+
   // A/B Test Results
   getABTestResults(testId: string): Promise<ABTestResult[]>;
   getABTestResult(testId: string, variantId: string): Promise<ABTestResult | undefined>;
   updateABTestResult(testId: string, variantId: string, result: Partial<InsertABTestResult>): Promise<ABTestResult>;
-  
+
   // A/B Test Events
   recordABTestEvent(event: InsertABTestEvent): Promise<ABTestEvent>;
   getABTestEvents(testId: string, variantId?: string): Promise<ABTestEvent[]>;
-  
+
   // A/B Test Analytics
   getABTestAnalytics(testId: string): Promise<{
     test: ABTest;
@@ -310,14 +310,14 @@ export interface IStorage {
   getAttributionInsights(modelId?: string, period?: string): Promise<AttributionInsight[]>;
   getCampaignAttributionInsights(campaignId: string, modelId?: string): Promise<AttributionInsight[]>;
   generateAttributionInsights(modelId: string, startDate: Date, endDate: Date): Promise<AttributionInsight[]>;
-  
+
   // Attribution Analytics
   getAttributionComparison(journeyId: string): Promise<{
     journey: CustomerJourney;
     touchpoints: Touchpoint[];
     modelResults: { model: AttributionModel; results: AttributionResult[] }[];
   }>;
-  
+
   getChannelPerformanceAttribution(startDate: Date, endDate: Date, modelId?: string): Promise<{
     channel: string;
     totalAttributedValue: number;
@@ -327,7 +327,7 @@ export interface IStorage {
     lastClickConversions: number;
     firstClickConversions: number;
   }[]>;
-  
+
   // Notifications
   getNotifications(): Promise<Notification[]>;
 }
@@ -415,7 +415,7 @@ export class MemStorage implements IStorage {
     this.touchpoints = new Map();
     this.attributionResults = new Map();
     this.attributionInsights = new Map();
-    
+
     // Initialize with empty data - no mock data
     this.initializeEmptyData();
   }
@@ -423,7 +423,7 @@ export class MemStorage implements IStorage {
   private initializeEmptyData() {
     // Create sample notifications for development purposes
     const now = new Date();
-    
+
     // Sample notifications to demonstrate the feature
     this.createNotification({
       title: "Campaign Performance Alert",
@@ -433,7 +433,7 @@ export class MemStorage implements IStorage {
       priority: "high",
       read: false,
     });
-    
+
     this.createNotification({
       title: "New Integration Connected",
       message: "Google Analytics has been successfully connected to your account",
@@ -441,7 +441,7 @@ export class MemStorage implements IStorage {
       priority: "normal",
       read: false,
     });
-    
+
     this.createNotification({
       title: "Weekly Report Available",
       message: "Your weekly performance report is ready for review",
@@ -455,7 +455,7 @@ export class MemStorage implements IStorage {
 
     // Initialize default attribution models
     this.initializeDefaultAttributionModels();
-    
+
     // Initialize sample attribution data for demonstration
     this.initializeSampleAttributionData();
   }
@@ -464,7 +464,7 @@ export class MemStorage implements IStorage {
     // Create realistic metrics based on Summer Splash fashion e-commerce campaign
     // Campaign data: 847,520 impressions, 21,840 clicks, $12,847.65 spend
     // CTR: 2.58%, CPC: $0.59, Conversion Rate: 3.47%, ROAS: 4.85x
-    
+
     const metricsData = [
       {
         id: randomUUID(),
@@ -566,7 +566,7 @@ export class MemStorage implements IStorage {
     this.attributionModels.set(lastTouchId, {
       id: lastTouchId,
       name: "Last Touch",
-      type: "last_touch", 
+      type: "last_touch",
       description: "100% credit to the final touchpoint before conversion",
       configuration: JSON.stringify({ weight: 1.0 }),
       isDefault: true,
@@ -638,7 +638,7 @@ export class MemStorage implements IStorage {
         ]
       },
       {
-        customerId: "CUST_002", 
+        customerId: "CUST_002",
         sessionId: "session_def456",
         journeyStart: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000), // 21 days ago
         journeyEnd: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
@@ -654,11 +654,11 @@ export class MemStorage implements IStorage {
       },
       {
         customerId: "CUST_003",
-        sessionId: "session_ghi789", 
+        sessionId: "session_ghi789",
         journeyStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
         journeyEnd: new Date(),
         conversionValue: "450.00",
-        conversionType: "purchase", 
+        conversionType: "purchase",
         status: "completed",
         touchpoints: [
           { channel: "Instagram Ads", platform: "facebook", medium: "social", source: "instagram", campaign: "visual_showcase", position: 1, hours: 7 * 24 },
@@ -721,14 +721,14 @@ export class MemStorage implements IStorage {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      
+
       this.customerJourneys.set(journeyId, journey);
 
       // Create touchpoints for this journey
       journeyData.touchpoints.forEach(touchpointData => {
         const touchpointId = randomUUID();
         const timestamp = new Date(journeyData.journeyStart.getTime() + (journeyData.touchpoints.length * 24 * 60 * 60 * 1000 - touchpointData.hours * 60 * 60 * 1000));
-        
+
         const touchpoint: Touchpoint = {
           id: touchpointId,
           journeyId,
@@ -752,7 +752,7 @@ export class MemStorage implements IStorage {
           metadata: JSON.stringify({ sample: true }),
           createdAt: new Date(),
         };
-        
+
         this.touchpoints.set(touchpointId, touchpoint);
       });
 
@@ -769,7 +769,7 @@ export class MemStorage implements IStorage {
 
   // Campaign methods
   async getCampaigns(): Promise<Campaign[]> {
-    return Array.from(this.campaigns.values()).sort((a, b) => 
+    return Array.from(this.campaigns.values()).sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -780,7 +780,7 @@ export class MemStorage implements IStorage {
 
   async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
     const id = randomUUID();
-    const campaign: Campaign = { 
+    const campaign: Campaign = {
       id,
       name: insertCampaign.name,
       clientWebsite: insertCampaign.clientWebsite || null,
@@ -801,7 +801,7 @@ export class MemStorage implements IStorage {
   async updateCampaign(id: string, updateData: Partial<InsertCampaign>): Promise<Campaign | undefined> {
     const campaign = this.campaigns.get(id);
     if (!campaign) return undefined;
-    
+
     const updatedCampaign = { ...campaign, ...updateData };
     this.campaigns.set(id, updatedCampaign);
     return updatedCampaign;
@@ -813,15 +813,15 @@ export class MemStorage implements IStorage {
 
   // Metrics methods
   async getMetrics(): Promise<Metric[]> {
-    return Array.from(this.metrics.values()).sort((a, b) => 
+    return Array.from(this.metrics.values()).sort((a, b) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
   }
 
   async createMetric(insertMetric: InsertMetric): Promise<Metric> {
     const id = randomUUID();
-    const metric: Metric = { 
-      ...insertMetric, 
+    const metric: Metric = {
+      ...insertMetric,
       id,
       date: new Date()
     };
@@ -831,7 +831,7 @@ export class MemStorage implements IStorage {
 
   // Integration methods
   async getIntegrations(): Promise<Integration[]> {
-    return Array.from(this.integrations.values()).sort((a, b) => 
+    return Array.from(this.integrations.values()).sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -842,8 +842,8 @@ export class MemStorage implements IStorage {
 
   async createIntegration(insertIntegration: InsertIntegration): Promise<Integration> {
     const id = randomUUID();
-    const integration: Integration = { 
-      ...insertIntegration, 
+    const integration: Integration = {
+      ...insertIntegration,
       id,
       credentials: insertIntegration.credentials || null,
       connected: insertIntegration.connected || false,
@@ -857,9 +857,9 @@ export class MemStorage implements IStorage {
   async updateIntegration(id: string, updateData: Partial<InsertIntegration>): Promise<Integration | undefined> {
     const integration = this.integrations.get(id);
     if (!integration) return undefined;
-    
-    const updatedIntegration = { 
-      ...integration, 
+
+    const updatedIntegration = {
+      ...integration,
       ...updateData,
       lastSync: new Date()
     };
@@ -902,7 +902,7 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const existingConnections = await this.getGA4Connections(connection.campaignId);
     const isFirstConnection = existingConnections.length === 0;
-    
+
     const ga4Connection: GA4Connection = {
       id,
       campaignId: connection.campaignId,
@@ -922,7 +922,7 @@ export class MemStorage implements IStorage {
       connectedAt: new Date(),
       createdAt: new Date(),
     };
-    
+
     this.ga4Connections.set(id, ga4Connection);
     return ga4Connection;
   }
@@ -930,12 +930,12 @@ export class MemStorage implements IStorage {
   async updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined> {
     const existing = this.ga4Connections.get(connectionId);
     if (!existing) return undefined;
-    
+
     const updated: GA4Connection = {
       ...existing,
       ...connection,
     };
-    
+
     this.ga4Connections.set(connectionId, updated);
     return updated;
   }
@@ -943,14 +943,14 @@ export class MemStorage implements IStorage {
   async updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined> {
     const existing = this.ga4Connections.get(connectionId);
     if (!existing) return undefined;
-    
+
     const updated: GA4Connection = {
       ...existing,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken || existing.refreshToken,
       expiresAt: tokens.expiresAt || existing.expiresAt,
     };
-    
+
     this.ga4Connections.set(connectionId, updated);
     return updated;
   }
@@ -958,14 +958,14 @@ export class MemStorage implements IStorage {
   async setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean> {
     const connections = await this.getGA4Connections(campaignId);
     let found = false;
-    
+
     // Set all connections for this campaign to non-primary, then set the specified one as primary
     for (const conn of connections) {
       const updated = { ...conn, isPrimary: conn.id === connectionId };
       this.ga4Connections.set(conn.id, updated);
       if (conn.id === connectionId) found = true;
     }
-    
+
     return found;
   }
 
@@ -1331,7 +1331,7 @@ export class MemStorage implements IStorage {
         connections.push(connection);
       }
     }
-    return connections.sort((a, b) => 
+    return connections.sort((a, b) =>
       new Date(a.connectedAt).getTime() - new Date(b.connectedAt).getTime()
     );
   }
@@ -1339,39 +1339,39 @@ export class MemStorage implements IStorage {
   async getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined> {
     if (spreadsheetId) {
       for (const connection of this.googleSheetsConnections.values()) {
-        if (connection.campaignId === campaignId && 
-            connection.spreadsheetId === spreadsheetId && 
-            connection.isActive) {
+        if (connection.campaignId === campaignId &&
+          connection.spreadsheetId === spreadsheetId &&
+          connection.isActive) {
           return connection;
         }
       }
       return undefined;
     }
-    
+
     // Return the primary connection if no spreadsheetId specified
     for (const connection of this.googleSheetsConnections.values()) {
-      if (connection.campaignId === campaignId && 
-          connection.isPrimary && 
-          connection.isActive) {
+      if (connection.campaignId === campaignId &&
+        connection.isPrimary &&
+        connection.isActive) {
         return connection;
       }
     }
-    
+
     // Fallback to first active connection if no primary
     for (const connection of this.googleSheetsConnections.values()) {
       if (connection.campaignId === campaignId && connection.isActive) {
         return connection;
       }
     }
-    
+
     return undefined;
   }
 
   async getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {
     for (const connection of this.googleSheetsConnections.values()) {
-      if (connection.campaignId === campaignId && 
-          connection.isPrimary && 
-          connection.isActive) {
+      if (connection.campaignId === campaignId &&
+        connection.isPrimary &&
+        connection.isActive) {
         return connection;
       }
     }
@@ -1380,18 +1380,18 @@ export class MemStorage implements IStorage {
 
   async createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection> {
     const id = randomUUID();
-    
+
     // Check connection limit (10 sheets per campaign)
     const MAX_CONNECTIONS = 10;
     const existingConnections = await this.getGoogleSheetsConnections(connection.campaignId);
-    
+
     if (existingConnections.length >= MAX_CONNECTIONS) {
       throw new Error(`Maximum limit of ${MAX_CONNECTIONS} Google Sheets connections per campaign reached. Please remove an existing connection first.`);
     }
-    
+
     // Check if this is the first connection for this campaign - make it primary
     const isPrimary = existingConnections.length === 0;
-    
+
     const sheetsConnection: GoogleSheetsConnection = {
       id,
       campaignId: connection.campaignId,
@@ -1409,7 +1409,7 @@ export class MemStorage implements IStorage {
       connectedAt: new Date(),
       createdAt: new Date(),
     };
-    
+
     this.googleSheetsConnections.set(id, sheetsConnection);
     return sheetsConnection;
   }
@@ -1417,14 +1417,14 @@ export class MemStorage implements IStorage {
   async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
     const existing = this.googleSheetsConnections.get(connectionId);
     if (!existing) return undefined;
-    
+
     const updated: GoogleSheetsConnection = {
       ...existing,
       ...connection,
       id: existing.id,
       campaignId: existing.campaignId,
     };
-    
+
     this.googleSheetsConnections.set(connectionId, updated);
     return updated;
   }
@@ -1432,28 +1432,28 @@ export class MemStorage implements IStorage {
   async setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string): Promise<boolean> {
     const connections = await this.getGoogleSheetsConnections(campaignId);
     let found = false;
-    
+
     // Set all connections for this campaign to non-primary, then set the specified one as primary
     for (const conn of connections) {
       const updated = { ...conn, isPrimary: conn.id === connectionId };
       this.googleSheetsConnections.set(conn.id, updated);
       if (conn.id === connectionId) found = true;
     }
-    
+
     return found;
   }
 
   async deleteGoogleSheetsConnection(connectionId: string): Promise<boolean> {
     const connection = this.googleSheetsConnections.get(connectionId);
     if (!connection) return false;
-    
+
     // Soft delete by setting isActive to false
     const updated: GoogleSheetsConnection = {
       ...connection,
       isActive: false
     };
     this.googleSheetsConnections.set(connectionId, updated);
-    
+
     // If this was the primary connection, make the first remaining connection primary
     if (connection.isPrimary) {
       const remainingConnections = await this.getGoogleSheetsConnections(connection.campaignId);
@@ -1462,7 +1462,7 @@ export class MemStorage implements IStorage {
         await this.setPrimaryGoogleSheetsConnection(connection.campaignId, newPrimary.id);
       }
     }
-    
+
     return true;
   }
 
@@ -1673,7 +1673,7 @@ export class MemStorage implements IStorage {
       connectedAt: new Date(),
       createdAt: new Date(),
     };
-    
+
     this.linkedinConnections.set(connection.campaignId, linkedinConnection);
     return linkedinConnection;
   }
@@ -1681,12 +1681,12 @@ export class MemStorage implements IStorage {
   async updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined> {
     const existing = this.linkedinConnections.get(campaignId);
     if (!existing) return undefined;
-    
+
     const updated: LinkedInConnection = {
       ...existing,
       ...connection,
     };
-    
+
     this.linkedinConnections.set(campaignId, updated);
     return updated;
   }
@@ -1714,7 +1714,7 @@ export class MemStorage implements IStorage {
       connectedAt: new Date(),
       createdAt: new Date(),
     };
-    
+
     this.metaConnections.set(connection.campaignId, metaConnection);
     return metaConnection;
   }
@@ -1722,12 +1722,12 @@ export class MemStorage implements IStorage {
   async updateMetaConnection(campaignId: string, connection: Partial<InsertMetaConnection>): Promise<MetaConnection | undefined> {
     const existing = this.metaConnections.get(campaignId);
     if (!existing) return undefined;
-    
+
     const updated: MetaConnection = {
       ...existing,
       ...connection,
     };
-    
+
     this.metaConnections.set(campaignId, updated);
     return updated;
   }
@@ -1770,7 +1770,7 @@ export class MemStorage implements IStorage {
       selectedMetricKeys: session.selectedMetricKeys || null,
       importedAt: new Date(),
     };
-    
+
     this.linkedinImportSessions.set(id, importSession);
     return importSession;
   }
@@ -1778,12 +1778,12 @@ export class MemStorage implements IStorage {
   async updateLinkedInImportSession(sessionId: string, updates: Partial<InsertLinkedInImportSession>): Promise<LinkedInImportSession | undefined> {
     const existing = this.linkedinImportSessions.get(sessionId);
     if (!existing) return undefined;
-    
+
     const updated: LinkedInImportSession = {
       ...existing,
       ...updates,
     };
-    
+
     this.linkedinImportSessions.set(sessionId, updated);
     return updated;
   }
@@ -1807,7 +1807,7 @@ export class MemStorage implements IStorage {
       metricValue: metric.metricValue,
       importedAt: new Date(),
     };
-    
+
     this.linkedinImportMetrics.set(id, importMetric);
     return importMetric;
   }
@@ -1853,7 +1853,7 @@ export class MemStorage implements IStorage {
       conversionRate: ad.conversionRate || "0",
       importedAt: new Date(),
     };
-    
+
     this.linkedinAdPerformance.set(id, adPerformance);
     return adPerformance;
   }
@@ -1888,7 +1888,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     this.linkedinReports.set(id, linkedinReport);
     return linkedinReport;
   }
@@ -1896,7 +1896,7 @@ export class MemStorage implements IStorage {
   async updateLinkedInReport(id: string, report: Partial<InsertLinkedInReport>): Promise<LinkedInReport | undefined> {
     const existing = this.linkedinReports.get(id);
     if (!existing) return undefined;
-    
+
     const updated: LinkedInReport = {
       ...existing,
       ...report,
@@ -1904,7 +1904,7 @@ export class MemStorage implements IStorage {
       createdAt: existing.createdAt,
       updatedAt: new Date(),
     };
-    
+
     this.linkedinReports.set(id, updated);
     return updated;
   }
@@ -1976,7 +1976,7 @@ export class MemStorage implements IStorage {
       this.customIntegrations.set(existing.id, existing);
       return existing;
     }
-    
+
     const id = randomUUID();
     const customIntegration: CustomIntegration = {
       id,
@@ -1986,7 +1986,7 @@ export class MemStorage implements IStorage {
       connectedAt: new Date(),
       createdAt: new Date(),
     };
-    
+
     this.customIntegrations.set(id, customIntegration);
     return customIntegration;
   }
@@ -2025,7 +2025,7 @@ export class MemStorage implements IStorage {
       emailId: metricsData.emailId || null,
       uploadedAt: new Date(),
     };
-    
+
     this.customIntegrationMetrics.set(id, metrics);
     return metrics;
   }
@@ -2034,21 +2034,21 @@ export class MemStorage implements IStorage {
     const allMetrics = Array.from(this.customIntegrationMetrics.values())
       .filter(m => m.campaignId === campaignId)
       .sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime());
-    
+
     return allMetrics[0];
   }
 
   // Conversion Events methods
   async getConversionEvents(campaignId: string, startDate?: Date, endDate?: Date): Promise<ConversionEvent[]> {
     let events = Array.from(this.conversionEvents.values()).filter(e => e.campaignId === campaignId);
-    
+
     if (startDate) {
       events = events.filter(e => new Date(e.occurredAt) >= startDate);
     }
     if (endDate) {
       events = events.filter(e => new Date(e.occurredAt) <= endDate);
     }
-    
+
     return events.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
   }
 
@@ -2067,7 +2067,7 @@ export class MemStorage implements IStorage {
       receivedAt: new Date(),
       createdAt: new Date(),
     };
-    
+
     this.conversionEvents.set(id, event);
     return event;
   }
@@ -2129,7 +2129,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     this.kpis.set(id, kpi);
     return kpi;
   }
@@ -2137,13 +2137,13 @@ export class MemStorage implements IStorage {
   async updateKPI(id: string, kpiData: Partial<InsertKPI>): Promise<KPI | undefined> {
     const existing = this.kpis.get(id);
     if (!existing) return undefined;
-    
+
     const updated: KPI = {
       ...existing,
       ...kpiData,
       updatedAt: new Date(),
     };
-    
+
     this.kpis.set(id, updated);
     return updated;
   }
@@ -2152,7 +2152,7 @@ export class MemStorage implements IStorage {
     // Also delete related progress records
     const progressRecords = Array.from(this.kpiProgress.values()).filter(p => p.kpiId === id);
     progressRecords.forEach(p => this.kpiProgress.delete(p.id));
-    
+
     return this.kpis.delete(id);
   }
 
@@ -2169,15 +2169,15 @@ export class MemStorage implements IStorage {
 
   async recordKPIProgress(progressData: InsertKPIProgress): Promise<KPIProgress> {
     const id = randomUUID();
-    
+
     // Calculate rolling averages
     const existingProgress = await this.getKPIProgress(progressData.kpiId);
     const rollingAverage7d = this.calculateRollingAverage(existingProgress, 7, progressData.value);
     const rollingAverage30d = this.calculateRollingAverage(existingProgress, 30, progressData.value);
-    
+
     // Determine trend direction
     const trendDirection = this.calculateTrendDirection(existingProgress, progressData.value);
-    
+
     const progress: KPIProgress = {
       id,
       kpiId: progressData.kpiId,
@@ -2188,9 +2188,9 @@ export class MemStorage implements IStorage {
       recordedAt: new Date(),
       notes: progressData.notes || null,
     };
-    
+
     this.kpiProgress.set(id, progress);
-    
+
     // Update the KPI's current value
     const kpi = this.kpis.get(progressData.kpiId);
     if (kpi) {
@@ -2200,26 +2200,26 @@ export class MemStorage implements IStorage {
         updatedAt: new Date(),
       };
       this.kpis.set(kpi.id, updated);
-      
+
       // Check if we need to create alerts
       await this.checkKPIAlerts(progressData.kpiId);
     }
-    
+
     return progress;
   }
 
   // KPI Alert methods
   async getKPIAlerts(kpiId?: string, activeOnly?: boolean): Promise<KPIAlert[]> {
     let alerts = Array.from(this.kpiAlerts.values());
-    
+
     if (kpiId) {
       alerts = alerts.filter(alert => alert.kpiId === kpiId);
     }
-    
+
     if (activeOnly) {
       alerts = alerts.filter(alert => alert.isActive);
     }
-    
+
     return alerts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
@@ -2242,7 +2242,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     this.kpiAlerts.set(id, alert);
     return alert;
   }
@@ -2250,13 +2250,13 @@ export class MemStorage implements IStorage {
   async acknowledgeKPIAlert(alertId: string): Promise<boolean> {
     const alert = this.kpiAlerts.get(alertId);
     if (!alert) return false;
-    
+
     const updated: KPIAlert = {
       ...alert,
       acknowledgedAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     this.kpiAlerts.set(alertId, updated);
     return true;
   }
@@ -2264,14 +2264,14 @@ export class MemStorage implements IStorage {
   async resolveKPIAlert(alertId: string): Promise<boolean> {
     const alert = this.kpiAlerts.get(alertId);
     if (!alert) return false;
-    
+
     const updated: KPIAlert = {
       ...alert,
       isActive: false,
       resolvedAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     this.kpiAlerts.set(alertId, updated);
     return true;
   }
@@ -2279,16 +2279,16 @@ export class MemStorage implements IStorage {
   async checkKPIAlerts(kpiId: string): Promise<KPIAlert[]> {
     const kpi = this.kpis.get(kpiId);
     if (!kpi || !kpi.alertsEnabled) return [];
-    
+
     const alerts: KPIAlert[] = [];
     const currentValue = parseFloat(kpi.currentValue || "0");
     const targetValue = parseFloat(kpi.targetValue);
-    
+
     // Check threshold breach
     if (kpi.alertThreshold) {
       const thresholdValue = parseFloat(kpi.alertThreshold);
       const thresholdPercentage = thresholdValue / 100;
-      
+
       if (currentValue < targetValue * thresholdPercentage) {
         const alert = await this.createKPIAlert({
           kpiId: kpi.id,
@@ -2302,11 +2302,11 @@ export class MemStorage implements IStorage {
         alerts.push(alert);
       }
     }
-    
+
     // Check deadline approaching
     if (kpi.targetDate) {
       const daysUntilTarget = Math.ceil((new Date(kpi.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-      
+
       if (daysUntilTarget <= 7 && currentValue < targetValue) {
         const alert = await this.createKPIAlert({
           kpiId: kpi.id,
@@ -2319,15 +2319,15 @@ export class MemStorage implements IStorage {
         alerts.push(alert);
       }
     }
-    
+
     // Check negative trend
     const progress = await this.getKPIProgress(kpiId);
     if (progress.length >= 3) {
       const recentTrend = progress.slice(0, 3);
-      const allDecreasing = recentTrend.every((p, i) => 
+      const allDecreasing = recentTrend.every((p, i) =>
         i === 0 || parseFloat(p.value) < parseFloat(recentTrend[i - 1].value)
       );
-      
+
       if (allDecreasing) {
         const alert = await this.createKPIAlert({
           kpiId: kpi.id,
@@ -2340,32 +2340,32 @@ export class MemStorage implements IStorage {
         alerts.push(alert);
       }
     }
-    
+
     return alerts;
   }
 
   private calculateRollingAverage(existingProgress: KPIProgress[], days: number, newValue: string): string {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
-    
+
     // Get progress records within the rolling window
     const recentProgress = existingProgress.filter(p => new Date(p.recordedAt) >= cutoffDate);
-    
+
     // Add the new value
     const allValues = [...recentProgress.map(p => parseFloat(p.value)), parseFloat(newValue)];
-    
+
     if (allValues.length === 0) return newValue;
-    
+
     const average = allValues.reduce((sum, val) => sum + val, 0) / allValues.length;
     return average.toFixed(2);
   }
 
   private calculateTrendDirection(existingProgress: KPIProgress[], newValue: string): string {
     if (existingProgress.length === 0) return "neutral";
-    
+
     const lastValue = parseFloat(existingProgress[0].value); // Most recent is first
     const currentValue = parseFloat(newValue);
-    
+
     if (currentValue > lastValue) return "up";
     if (currentValue < lastValue) return "down";
     return "neutral";
@@ -2384,7 +2384,7 @@ export class MemStorage implements IStorage {
   }> {
     const progress = await this.getKPIProgress(kpiId);
     const latest = progress[0];
-    
+
     if (!latest) {
       return {
         progress: [],
@@ -2393,7 +2393,7 @@ export class MemStorage implements IStorage {
         trendAnalysis: { direction: "neutral", percentage: 0, period: timeframe }
       };
     }
-    
+
     return {
       progress,
       rollingAverage7d: parseFloat(latest.rollingAverage7d || "0"),
@@ -2408,24 +2408,24 @@ export class MemStorage implements IStorage {
 
   private calculateTrendPercentage(progress: KPIProgress[], timeframe: string): number {
     if (progress.length < 2) return 0;
-    
+
     const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 7;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
-    
+
     const recentProgress = progress.filter(p => new Date(p.recordedAt) >= cutoffDate);
     if (recentProgress.length < 2) return 0;
-    
+
     const latest = parseFloat(recentProgress[0].value);
     const earliest = parseFloat(recentProgress[recentProgress.length - 1].value);
-    
+
     if (earliest === 0) return 0;
     return ((latest - earliest) / earliest) * 100;
   }
 
   // Notification methods
   async getNotifications(): Promise<Notification[]> {
-    return Array.from(this.notifications_.values()).sort((a, b) => 
+    return Array.from(this.notifications_.values()).sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -2611,7 +2611,7 @@ export class DatabaseStorage implements IStorage {
         ));
       return connection ? (hydrateDecryptedTokens(connection) as any) : undefined;
     }
-    
+
     // Return the primary connection if no propertyId specified
     const [primary] = await db.select().from(ga4Connections)
       .where(and(
@@ -2619,9 +2619,9 @@ export class DatabaseStorage implements IStorage {
         eq(ga4Connections.isPrimary, true),
         eq(ga4Connections.isActive, true)
       ));
-    
+
     if (primary) return hydrateDecryptedTokens(primary) as any;
-    
+
     // If no primary, return the first active connection
     const [first] = await db.select().from(ga4Connections)
       .where(and(
@@ -2640,9 +2640,9 @@ export class DatabaseStorage implements IStorage {
         eq(ga4Connections.isPrimary, true),
         eq(ga4Connections.isActive, true)
       ));
-    
+
     if (primary) return hydrateDecryptedTokens(primary) as any;
-    
+
     // If no primary, return the first active connection
     const [first] = await db.select().from(ga4Connections)
       .where(and(
@@ -2658,7 +2658,7 @@ export class DatabaseStorage implements IStorage {
     // Check if this is the first connection for this campaign
     const existingConnections = await this.getGA4Connections(connection.campaignId);
     const isFirstConnection = existingConnections.length === 0;
-    
+
     const enc = buildEncryptedTokens({
       accessToken: (connection as any).accessToken,
       refreshToken: (connection as any).refreshToken,
@@ -2676,7 +2676,7 @@ export class DatabaseStorage implements IStorage {
       isActive: connection.isActive !== undefined ? connection.isActive : true,
       displayName: connection.displayName || connection.propertyName || null,
     };
-    
+
     const [ga4Connection] = await db
       .insert(ga4Connections)
       .values(connectionData)
@@ -2748,14 +2748,14 @@ export class DatabaseStorage implements IStorage {
       .update(ga4Connections)
       .set({ isPrimary: false })
       .where(eq(ga4Connections.campaignId, campaignId));
-    
+
     // Then set the specified connection as primary
     const [updated] = await db
       .update(ga4Connections)
       .set({ isPrimary: true })
       .where(eq(ga4Connections.id, connectionId))
       .returning();
-    
+
     return !!updated;
   }
 
@@ -2945,14 +2945,14 @@ export class DatabaseStorage implements IStorage {
 
   async createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]> {
     if (!records.length) return [];
-    
+
     // Use onConflictDoNothing for idempotent inserts (auto-refresh scheduler may re-run)
     const results = await db
       .insert(spendRecords)
       .values(records as any)
       .onConflictDoNothing()
       .returning();
-    
+
     return results;
   }
 
@@ -3045,14 +3045,14 @@ export class DatabaseStorage implements IStorage {
 
   async createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]> {
     if (!records.length) return [];
-    
+
     // Use onConflictDoNothing for idempotent inserts (auto-refresh scheduler may re-run)
     const results = await db
       .insert(revenueRecords)
       .values(records as any)
       .onConflictDoNothing()
       .returning();
-    
+
     return results;
   }
 
@@ -3095,8 +3095,8 @@ export class DatabaseStorage implements IStorage {
       const purposeCol = (googleSheetsConnections as any).purpose;
       const purposeFilter = purpose
         ? (purpose === "spend"
-            ? or(eq(purposeCol, "spend"), isNull(purposeCol))
-            : eq(purposeCol, purpose))
+          ? or(eq(purposeCol, "spend"), isNull(purposeCol))
+          : eq(purposeCol, purpose))
         : undefined;
 
       const rows = await db.select({
@@ -3118,12 +3118,12 @@ export class DatabaseStorage implements IStorage {
         connectedAt: googleSheetsConnections.connectedAt,
         createdAt: googleSheetsConnections.createdAt,
       }).from(googleSheetsConnections)
-      .where(and(
-        eq(googleSheetsConnections.campaignId, campaignId),
-        eq(googleSheetsConnections.isActive, true),
-        ...(purposeFilter ? [purposeFilter] : [])
-      ))
-      .orderBy(googleSheetsConnections.connectedAt);
+        .where(and(
+          eq(googleSheetsConnections.campaignId, campaignId),
+          eq(googleSheetsConnections.isActive, true),
+          ...(purposeFilter ? [purposeFilter] : [])
+        ))
+        .orderBy(googleSheetsConnections.connectedAt);
       // Lazy backfill: encrypt legacy plaintext tokens.
       await Promise.all(
         rows.map(async (r: any) => {
@@ -3190,35 +3190,35 @@ export class DatabaseStorage implements IStorage {
 
   async getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined> {
     try {
-    if (spreadsheetId) {
-      const [connection] = await db.select().from(googleSheetsConnections)
+      if (spreadsheetId) {
+        const [connection] = await db.select().from(googleSheetsConnections)
+          .where(and(
+            eq(googleSheetsConnections.campaignId, campaignId),
+            eq(googleSheetsConnections.spreadsheetId, spreadsheetId),
+            eq(googleSheetsConnections.isActive, true)
+          ));
+        return connection ? (hydrateDecryptedTokens(connection) as any) : undefined;
+      }
+
+      // Return the primary connection if no spreadsheetId specified
+      const [primary] = await db.select().from(googleSheetsConnections)
         .where(and(
           eq(googleSheetsConnections.campaignId, campaignId),
-          eq(googleSheetsConnections.spreadsheetId, spreadsheetId),
+          eq(googleSheetsConnections.isPrimary, true),
           eq(googleSheetsConnections.isActive, true)
         ));
-      return connection ? (hydrateDecryptedTokens(connection) as any) : undefined;
-    }
-    
-    // Return the primary connection if no spreadsheetId specified
-    const [primary] = await db.select().from(googleSheetsConnections)
-      .where(and(
-        eq(googleSheetsConnections.campaignId, campaignId),
-        eq(googleSheetsConnections.isPrimary, true),
-        eq(googleSheetsConnections.isActive, true)
-      ));
-    
-    if (primary) return hydrateDecryptedTokens(primary) as any;
-    
-    // Fallback to first active connection if no primary
-    const [first] = await db.select().from(googleSheetsConnections)
-      .where(and(
-        eq(googleSheetsConnections.campaignId, campaignId),
-        eq(googleSheetsConnections.isActive, true)
-      ))
-      .limit(1);
-    
-    return first ? (hydrateDecryptedTokens(first) as any) : undefined;
+
+      if (primary) return hydrateDecryptedTokens(primary) as any;
+
+      // Fallback to first active connection if no primary
+      const [first] = await db.select().from(googleSheetsConnections)
+        .where(and(
+          eq(googleSheetsConnections.campaignId, campaignId),
+          eq(googleSheetsConnections.isActive, true)
+        ))
+        .limit(1);
+
+      return first ? (hydrateDecryptedTokens(first) as any) : undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -3303,13 +3303,13 @@ export class DatabaseStorage implements IStorage {
 
   async getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {
     try {
-    const [primary] = await db.select().from(googleSheetsConnections)
-      .where(and(
-        eq(googleSheetsConnections.campaignId, campaignId),
-        eq(googleSheetsConnections.isPrimary, true),
-        eq(googleSheetsConnections.isActive, true)
-      ));
-    return primary || undefined;
+      const [primary] = await db.select().from(googleSheetsConnections)
+        .where(and(
+          eq(googleSheetsConnections.campaignId, campaignId),
+          eq(googleSheetsConnections.isPrimary, true),
+          eq(googleSheetsConnections.isActive, true)
+        ));
+      return primary || undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -3350,28 +3350,28 @@ export class DatabaseStorage implements IStorage {
     // Check if this is the first connection for this campaign - make it primary
     const existingConnections = await this.getGoogleSheetsConnections(connection.campaignId);
     const isPrimary = existingConnections.length === 0;
-    
+
     try {
       // Try to insert - Drizzle will include all fields from schema, which may fail if sheet_name doesn't exist
-    const enc = buildEncryptedTokens({
-      accessToken: (connection as any).accessToken,
-      refreshToken: (connection as any).refreshToken,
-      clientSecret: (connection as any).clientSecret,
-    });
+      const enc = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        clientSecret: (connection as any).clientSecret,
+      });
 
-    const [sheetsConnection] = await db
-      .insert(googleSheetsConnections)
-      .values({
-        ...connection,
-        accessToken: null,
-        refreshToken: null,
-        clientSecret: null,
-        encryptedTokens: enc,
-        isPrimary: isPrimary,
-        isActive: true
-      })
-      .returning();
-    return hydrateDecryptedTokens(sheetsConnection) as any;
+      const [sheetsConnection] = await db
+        .insert(googleSheetsConnections)
+        .values({
+          ...connection,
+          accessToken: null,
+          refreshToken: null,
+          clientSecret: null,
+          encryptedTokens: enc,
+          isPrimary: isPrimary,
+          isActive: true
+        })
+        .returning();
+      return hydrateDecryptedTokens(sheetsConnection) as any;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL insert
       if (error.message?.includes('sheet_name') || error.message?.includes('purpose') || error.message?.includes('column') || error.code === '42703') {
@@ -3427,64 +3427,64 @@ export class DatabaseStorage implements IStorage {
 
   async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
     try {
-    const [existing] = await db.select().from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
-    if (!existing) return undefined;
+      const [existing] = await db.select().from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
+      if (!existing) return undefined;
 
-    // Build the set object with explicit field mapping for columnMappings
-    const setData: any = {};
-    if (connection.spreadsheetId !== undefined) setData.spreadsheetId = connection.spreadsheetId;
-    if (connection.spreadsheetName !== undefined) setData.spreadsheetName = connection.spreadsheetName;
-    if ((connection as any).sheetName !== undefined) setData.sheetName = (connection as any).sheetName;
-    if ((connection as any).purpose !== undefined) setData.purpose = (connection as any).purpose;
-    const tokenFieldsProvided =
-      Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
-      Object.prototype.hasOwnProperty.call(connection, "refreshToken") ||
-      Object.prototype.hasOwnProperty.call(connection, "clientSecret");
+      // Build the set object with explicit field mapping for columnMappings
+      const setData: any = {};
+      if (connection.spreadsheetId !== undefined) setData.spreadsheetId = connection.spreadsheetId;
+      if (connection.spreadsheetName !== undefined) setData.spreadsheetName = connection.spreadsheetName;
+      if ((connection as any).sheetName !== undefined) setData.sheetName = (connection as any).sheetName;
+      if ((connection as any).purpose !== undefined) setData.purpose = (connection as any).purpose;
+      const tokenFieldsProvided =
+        Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+        Object.prototype.hasOwnProperty.call(connection, "refreshToken") ||
+        Object.prototype.hasOwnProperty.call(connection, "clientSecret");
 
-    if (tokenFieldsProvided || (existing as any).encryptedTokens) {
-      setData.encryptedTokens = buildEncryptedTokens({
-        accessToken: (connection as any).accessToken,
-        refreshToken: (connection as any).refreshToken,
-        clientSecret: (connection as any).clientSecret,
-        prev: (existing as any).encryptedTokens,
-      });
-      setData.accessToken = null;
-      setData.refreshToken = null;
-      setData.clientSecret = null;
-    }
-    if (connection.clientId !== undefined) setData.clientId = connection.clientId;
-    if (connection.expiresAt !== undefined) setData.expiresAt = connection.expiresAt;
-    if (connection.isPrimary !== undefined) setData.isPrimary = connection.isPrimary;
-    if (connection.isActive !== undefined) setData.isActive = connection.isActive;
-    // CRITICAL: Explicitly include columnMappings
-    if ((connection as any).columnMappings !== undefined) {
-      setData.columnMappings = (connection as any).columnMappings;
-    }
-      
-    const [updated] = await db
-      .update(googleSheetsConnections)
+      if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+        setData.encryptedTokens = buildEncryptedTokens({
+          accessToken: (connection as any).accessToken,
+          refreshToken: (connection as any).refreshToken,
+          clientSecret: (connection as any).clientSecret,
+          prev: (existing as any).encryptedTokens,
+        });
+        setData.accessToken = null;
+        setData.refreshToken = null;
+        setData.clientSecret = null;
+      }
+      if (connection.clientId !== undefined) setData.clientId = connection.clientId;
+      if (connection.expiresAt !== undefined) setData.expiresAt = connection.expiresAt;
+      if (connection.isPrimary !== undefined) setData.isPrimary = connection.isPrimary;
+      if (connection.isActive !== undefined) setData.isActive = connection.isActive;
+      // CRITICAL: Explicitly include columnMappings
+      if ((connection as any).columnMappings !== undefined) {
+        setData.columnMappings = (connection as any).columnMappings;
+      }
+
+      const [updated] = await db
+        .update(googleSheetsConnections)
         .set(setData)
-      .where(eq(googleSheetsConnections.id, connectionId))
-      .returning({
-        id: googleSheetsConnections.id,
-        campaignId: googleSheetsConnections.campaignId,
-        spreadsheetId: googleSheetsConnections.spreadsheetId,
-        spreadsheetName: googleSheetsConnections.spreadsheetName,
-        sheetName: googleSheetsConnections.sheetName,
-        purpose: (googleSheetsConnections as any).purpose,
-        accessToken: googleSheetsConnections.accessToken,
-        refreshToken: googleSheetsConnections.refreshToken,
-        clientId: googleSheetsConnections.clientId,
-        clientSecret: googleSheetsConnections.clientSecret,
-        encryptedTokens: (googleSheetsConnections as any).encryptedTokens,
-        expiresAt: googleSheetsConnections.expiresAt,
-        isPrimary: googleSheetsConnections.isPrimary,
-        isActive: googleSheetsConnections.isActive,
-        columnMappings: googleSheetsConnections.columnMappings,
-        connectedAt: googleSheetsConnections.connectedAt,
-        createdAt: googleSheetsConnections.createdAt,
-      });
-    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+        .where(eq(googleSheetsConnections.id, connectionId))
+        .returning({
+          id: googleSheetsConnections.id,
+          campaignId: googleSheetsConnections.campaignId,
+          spreadsheetId: googleSheetsConnections.spreadsheetId,
+          spreadsheetName: googleSheetsConnections.spreadsheetName,
+          sheetName: googleSheetsConnections.sheetName,
+          purpose: (googleSheetsConnections as any).purpose,
+          accessToken: googleSheetsConnections.accessToken,
+          refreshToken: googleSheetsConnections.refreshToken,
+          clientId: googleSheetsConnections.clientId,
+          clientSecret: googleSheetsConnections.clientSecret,
+          encryptedTokens: (googleSheetsConnections as any).encryptedTokens,
+          expiresAt: googleSheetsConnections.expiresAt,
+          isPrimary: googleSheetsConnections.isPrimary,
+          isActive: googleSheetsConnections.isActive,
+          columnMappings: googleSheetsConnections.columnMappings,
+          connectedAt: googleSheetsConnections.connectedAt,
+          createdAt: googleSheetsConnections.createdAt,
+        });
+      return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL update
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -3493,7 +3493,7 @@ export class DatabaseStorage implements IStorage {
         const updates: string[] = [];
         const values: any[] = [];
         let paramIndex = 1;
-        
+
         if (connection.spreadsheetId !== undefined) {
           updates.push(`spreadsheet_id = $${paramIndex++}`);
           values.push(connection.spreadsheetId);
@@ -3534,7 +3534,7 @@ export class DatabaseStorage implements IStorage {
           updates.push(`is_active = $${paramIndex++}`);
           values.push(connection.isActive);
         }
-        
+
         if (updates.length === 0) {
           // No updates to make, just fetch the connection
           const [conn] = await db.select().from(googleSheetsConnections)
@@ -3544,14 +3544,14 @@ export class DatabaseStorage implements IStorage {
           // Map to include sheetName as null
           return { ...conn, sheetName: null } as GoogleSheetsConnection;
         }
-        
+
         // Use pool.query for dynamic SQL with proper parameterization
         const updateClause = updates.join(', ');
         values.push(connectionId);
         const queryText = `UPDATE google_sheets_connections SET ${updateClause} WHERE id = $${paramIndex} RETURNING id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, client_id, client_secret, expires_at, is_primary, is_active, column_mappings, connected_at, created_at`;
-        
+
         const result = await pool.query(queryText, values);
-        
+
         if (result.rows.length === 0) return undefined;
         const row = result.rows[0] as any;
         return {
@@ -3582,7 +3582,7 @@ export class DatabaseStorage implements IStorage {
       .update(googleSheetsConnections)
       .set({ isPrimary: false })
       .where(eq(googleSheetsConnections.campaignId, campaignId));
-    
+
     // Then set the specified connection as primary
     const result = await db
       .update(googleSheetsConnections)
@@ -3591,36 +3591,36 @@ export class DatabaseStorage implements IStorage {
         eq(googleSheetsConnections.id, connectionId),
         eq(googleSheetsConnections.campaignId, campaignId)
       ));
-    
+
     return (result.rowCount || 0) > 0;
   }
 
   async deleteGoogleSheetsConnection(connectionId: string): Promise<boolean> {
     try {
-    const connection = await db.select().from(googleSheetsConnections)
-      .where(eq(googleSheetsConnections.id, connectionId))
-      .limit(1);
-    
-    if (connection.length === 0) return false;
-    
-    const wasPrimary = connection[0].isPrimary;
-    const campaignId = connection[0].campaignId;
-    
-    // Soft delete by setting isActive to false
-    await db
-      .update(googleSheetsConnections)
-      .set({ isActive: false })
-      .where(eq(googleSheetsConnections.id, connectionId));
-    
-    // If this was the primary connection, make the first remaining connection primary
-    if (wasPrimary) {
-      const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
-      if (remainingConnections.length > 0) {
-        await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
+      const connection = await db.select().from(googleSheetsConnections)
+        .where(eq(googleSheetsConnections.id, connectionId))
+        .limit(1);
+
+      if (connection.length === 0) return false;
+
+      const wasPrimary = connection[0].isPrimary;
+      const campaignId = connection[0].campaignId;
+
+      // Soft delete by setting isActive to false
+      await db
+        .update(googleSheetsConnections)
+        .set({ isActive: false })
+        .where(eq(googleSheetsConnections.id, connectionId));
+
+      // If this was the primary connection, make the first remaining connection primary
+      if (wasPrimary) {
+        const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
+        if (remainingConnections.length > 0) {
+          await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
+        }
       }
-    }
-    
-    return true;
+
+      return true;
     } catch (error: any) {
       // Fallback if sheet_name column doesn't exist
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -3633,20 +3633,20 @@ export class DatabaseStorage implements IStorage {
             WHERE id = ${connectionId} AND is_active = true
             LIMIT 1
           `);
-          
+
           if (selectResult.rows.length === 0) return false;
-          
+
           const row = selectResult.rows[0] as any;
           const wasPrimary = row.is_primary;
           const campaignId = row.campaign_id;
-          
+
           // Soft delete using raw SQL
           await db.execute(sql`
             UPDATE google_sheets_connections
             SET is_active = false
             WHERE id = ${connectionId}
           `);
-          
+
           // If this was the primary connection, make the first remaining connection primary
           if (wasPrimary) {
             const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
@@ -3654,7 +3654,7 @@ export class DatabaseStorage implements IStorage {
               await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
             }
           }
-          
+
           return true;
         } catch (fallbackError: any) {
           console.error('[Storage] Fallback delete also failed:', fallbackError);
@@ -4342,16 +4342,16 @@ export class DatabaseStorage implements IStorage {
       // Update existing integration with new email and webhook token
       const [updated] = await db
         .update(customIntegrations)
-        .set({ 
-          email: integration.email, 
+        .set({
+          email: integration.email,
           webhookToken: integration.webhookToken,
-          connectedAt: new Date() 
+          connectedAt: new Date()
         })
         .where(eq(customIntegrations.id, existing.id))
         .returning();
       return updated;
     }
-    
+
     const [customIntegration] = await db
       .insert(customIntegrations)
       .values(integration)
@@ -4402,11 +4402,11 @@ export class DatabaseStorage implements IStorage {
     let query = db.select()
       .from(conversionEvents)
       .where(eq(conversionEvents.campaignId, campaignId));
-    
+
     // Note: Date filtering would need to be added with proper SQL conditions
     // For now, we'll filter in memory for MVP
     const events = await query;
-    
+
     let filtered = events;
     if (startDate) {
       filtered = filtered.filter(e => new Date(e.occurredAt) >= startDate);
@@ -4414,7 +4414,7 @@ export class DatabaseStorage implements IStorage {
     if (endDate) {
       filtered = filtered.filter(e => new Date(e.occurredAt) <= endDate);
     }
-    
+
     return filtered.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
   }
 
@@ -4480,14 +4480,14 @@ export class DatabaseStorage implements IStorage {
     try {
       // Delete related progress records first
       const progressResult = await db.delete(kpiProgress).where(eq(kpiProgress.kpiId, id));
-      
+
       // Delete the KPI itself
       const result = await db
         .delete(kpis)
         .where(eq(kpis.id, id));
-      
+
       const deleted = (result.rowCount || 0) > 0;
-      
+
       return deleted;
     } catch (error) {
       console.error(`Error in DatabaseStorage.deleteKPI:`, error);
@@ -4505,7 +4505,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(kpiPeriods.kpiId, kpiId))
       .orderBy(desc(kpiPeriods.periodEnd))
       .limit(1);
-    
+
     return periods[0] || null;
   }
 
@@ -4514,13 +4514,13 @@ export class DatabaseStorage implements IStorage {
       .insert(kpiProgress)
       .values(progressData)
       .returning();
-    
+
     // Update the KPI's current value
     await db
       .update(kpis)
       .set({ currentValue: progressData.value, updatedAt: new Date() })
       .where(eq(kpis.id, progressData.kpiId));
-    
+
     return progress;
   }
 
@@ -4536,7 +4536,7 @@ export class DatabaseStorage implements IStorage {
   }> {
     const progress = await this.getKPIProgress(kpiId);
     const latest = progress[0];
-    
+
     if (!latest) {
       return {
         progress: [],
@@ -4545,7 +4545,7 @@ export class DatabaseStorage implements IStorage {
         trendAnalysis: { direction: "neutral", percentage: 0, period: timeframe }
       };
     }
-    
+
     return {
       progress,
       rollingAverage7d: parseFloat(latest.rollingAverage7d || "0"),
@@ -4560,17 +4560,17 @@ export class DatabaseStorage implements IStorage {
 
   private calculateTrendPercentage(progress: KPIProgress[], timeframe: string): number {
     if (progress.length < 2) return 0;
-    
+
     const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 7;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
-    
+
     const recentProgress = progress.filter(p => new Date(p.recordedAt) >= cutoffDate);
     if (recentProgress.length < 2) return 0;
-    
+
     const latest = parseFloat(recentProgress[0].value);
     const earliest = parseFloat(recentProgress[recentProgress.length - 1].value);
-    
+
     if (earliest === 0) return 0;
     return ((latest - earliest) / earliest) * 100;
   }
@@ -4578,15 +4578,15 @@ export class DatabaseStorage implements IStorage {
   // KPI Alert methods for DatabaseStorage
   async getKPIAlerts(kpiId?: string, activeOnly?: boolean): Promise<KPIAlert[]> {
     let query = db.select().from(kpiAlerts);
-    
+
     if (kpiId) {
       query = query.where(eq(kpiAlerts.kpiId, kpiId));
     }
-    
+
     if (activeOnly) {
       query = query.where(eq(kpiAlerts.isActive, true));
     }
-    
+
     return query.orderBy(kpiAlerts.createdAt);
   }
 
@@ -4641,7 +4641,7 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(benchmarks.category, benchmarks.name);
-    
+
     return results;
   }
 
@@ -4808,7 +4808,7 @@ export class DatabaseStorage implements IStorage {
     lastPerformanceRating: string;
   }> {
     const history = await this.getBenchmarkHistory(benchmarkId);
-    
+
     if (history.length === 0) {
       return {
         history: [],
@@ -4820,10 +4820,10 @@ export class DatabaseStorage implements IStorage {
 
     const totalVariance = history.reduce((sum, h) => sum + parseFloat(h.variance), 0);
     const averageVariance = totalVariance / history.length;
-    
+
     const latest = history[history.length - 1];
     const lastPerformanceRating = latest.performanceRating;
-    
+
     // Calculate trend based on recent history
     let performanceTrend = "neutral";
     if (history.length >= 2) {
@@ -4831,7 +4831,7 @@ export class DatabaseStorage implements IStorage {
       const recentVariances = recent.map(h => parseFloat(h.variance));
       const isImproving = recentVariances.every((v, i) => i === 0 || v >= recentVariances[i - 1]);
       const isDeclining = recentVariances.every((v, i) => i === 0 || v <= recentVariances[i - 1]);
-      
+
       if (isImproving) performanceTrend = "improving";
       else if (isDeclining) performanceTrend = "declining";
     }
@@ -4953,7 +4953,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(abTestEvents).where(eq(abTestEvents.testId, testId));
     await db.delete(abTestResults).where(eq(abTestResults.testId, testId));
     await db.delete(abTestVariants).where(eq(abTestVariants.testId, testId));
-    
+
     const result = await db.delete(abTests).where(eq(abTests.id, testId));
     return (result.rowCount || 0) > 0;
   }
@@ -4984,7 +4984,7 @@ export class DatabaseStorage implements IStorage {
     // Also delete related results and events
     await db.delete(abTestEvents).where(eq(abTestEvents.variantId, variantId));
     await db.delete(abTestResults).where(eq(abTestResults.variantId, variantId));
-    
+
     const result = await db.delete(abTestVariants).where(eq(abTestVariants.id, variantId));
     return (result.rowCount || 0) > 0;
   }
@@ -5022,7 +5022,7 @@ export class DatabaseStorage implements IStorage {
         ...resultData,
       } as InsertABTestResult)
       .returning();
-    
+
     return newResult;
   }
 
@@ -5032,10 +5032,10 @@ export class DatabaseStorage implements IStorage {
       .insert(abTestEvents)
       .values(eventData)
       .returning();
-    
+
     // Update aggregate results
     await this.updateAggregateResults(eventData.testId, eventData.variantId, eventData.eventType, parseFloat(eventData.eventValue?.toString() || "0"));
-    
+
     return event;
   }
 
@@ -5046,7 +5046,7 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(abTestEvents.testId, testId), eq(abTestEvents.variantId, variantId)))
         .orderBy(abTestEvents.occurredAt);
     }
-    
+
     return await db.select()
       .from(abTestEvents)
       .where(eq(abTestEvents.testId, testId))
@@ -5056,9 +5056,9 @@ export class DatabaseStorage implements IStorage {
   // Helper method to update aggregate results
   private async updateAggregateResults(testId: string, variantId: string, eventType: string, eventValue: number): Promise<void> {
     const existingResult = await this.getABTestResult(testId, variantId);
-    
+
     const updateData: Partial<InsertABTestResult> = {};
-    
+
     switch (eventType) {
       case 'impression':
         updateData.impressions = (existingResult?.impressions || 0) + 1;
@@ -5071,24 +5071,24 @@ export class DatabaseStorage implements IStorage {
         updateData.revenue = ((parseFloat(existingResult?.revenue?.toString() || "0") + eventValue).toFixed(2));
         break;
     }
-    
+
     // Calculate derived metrics
     if (updateData.impressions || updateData.clicks || updateData.conversions) {
       const impressions = updateData.impressions || existingResult?.impressions || 0;
       const clicks = updateData.clicks || existingResult?.clicks || 0;
       const conversions = updateData.conversions || existingResult?.conversions || 0;
-      
+
       if (impressions > 0) {
         updateData.clickThroughRate = (((clicks / impressions) * 100).toFixed(2));
         updateData.conversionRate = (((conversions / impressions) * 100).toFixed(2));
       }
-      
+
       if (clicks > 0) {
         const revenue = parseFloat(updateData.revenue?.toString() || existingResult?.revenue?.toString() || "0");
         updateData.revenuePerVisitor = (revenue / clicks).toFixed(2);
       }
     }
-    
+
     await this.updateABTestResult(testId, variantId, updateData);
   }
 
@@ -5140,19 +5140,19 @@ export class DatabaseStorage implements IStorage {
       // Calculate conversion rates
       const controlRate = controlResult.impressions > 0 ? (controlResult.conversions / controlResult.impressions) : 0;
       const testRate = testResult.impressions > 0 ? (testResult.conversions / testResult.impressions) : 0;
-      
+
       // Simple significance check: 
       // - Minimum sample size of 100 per variant
       // - At least 20% difference in conversion rates
       // - Both variants have reasonable sample sizes
       const minSampleSize = 100;
       const minDifference = 0.2; // 20%
-      
-      if (controlResult.impressions >= minSampleSize && 
-          testResult.impressions >= minSampleSize) {
+
+      if (controlResult.impressions >= minSampleSize &&
+        testResult.impressions >= minSampleSize) {
         const difference = Math.abs(testRate - controlRate);
         const relativeDifference = controlRate > 0 ? difference / controlRate : 0;
-        
+
         if (relativeDifference >= minDifference) {
           significantDifference = true;
           if (testRate > controlRate && testResult.conversions > bestResult.conversions) {
@@ -5170,7 +5170,7 @@ export class DatabaseStorage implements IStorage {
 
   // Attribution Model methods
   async getAttributionModels(): Promise<AttributionModel[]> {
-    return Array.from(this.attributionModels.values()).sort((a, b) => 
+    return Array.from(this.attributionModels.values()).sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -5192,7 +5192,7 @@ export class DatabaseStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     this.attributionModels.set(id, model);
     return model;
   }
@@ -5200,13 +5200,13 @@ export class DatabaseStorage implements IStorage {
   async updateAttributionModel(id: string, modelData: Partial<InsertAttributionModel>): Promise<AttributionModel | undefined> {
     const existing = this.attributionModels.get(id);
     if (!existing) return undefined;
-    
+
     const updated: AttributionModel = {
       ...existing,
       ...modelData,
       updatedAt: new Date(),
     };
-    
+
     this.attributionModels.set(id, updated);
     return updated;
   }
@@ -5223,11 +5223,11 @@ export class DatabaseStorage implements IStorage {
         this.attributionModels.set(key, updated);
       }
     }
-    
+
     // Set new default
     const model = this.attributionModels.get(id);
     if (!model) return false;
-    
+
     const updated = { ...model, isDefault: true, updatedAt: new Date() };
     this.attributionModels.set(id, updated);
     return true;
@@ -5236,12 +5236,12 @@ export class DatabaseStorage implements IStorage {
   // Customer Journey methods
   async getCustomerJourneys(status?: string): Promise<CustomerJourney[]> {
     let journeys = Array.from(this.customerJourneys.values());
-    
+
     if (status) {
       journeys = journeys.filter(journey => journey.status === status);
     }
-    
-    return journeys.sort((a, b) => 
+
+    return journeys.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -5267,7 +5267,7 @@ export class DatabaseStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     this.customerJourneys.set(id, journey);
     return journey;
   }
@@ -5275,13 +5275,13 @@ export class DatabaseStorage implements IStorage {
   async updateCustomerJourney(id: string, journeyData: Partial<InsertCustomerJourney>): Promise<CustomerJourney | undefined> {
     const existing = this.customerJourneys.get(id);
     if (!existing) return undefined;
-    
+
     const updated: CustomerJourney = {
       ...existing,
       ...journeyData,
       updatedAt: new Date(),
     };
-    
+
     this.customerJourneys.set(id, updated);
     return updated;
   }
@@ -5290,10 +5290,10 @@ export class DatabaseStorage implements IStorage {
     // Also delete related touchpoints and attribution results
     const touchpoints = Array.from(this.touchpoints.values()).filter(t => t.journeyId === id);
     touchpoints.forEach(t => this.touchpoints.delete(t.id));
-    
+
     const results = Array.from(this.attributionResults.values()).filter(r => r.journeyId === id);
     results.forEach(r => this.attributionResults.delete(r.id));
-    
+
     return this.customerJourneys.delete(id);
   }
 
@@ -5335,32 +5335,32 @@ export class DatabaseStorage implements IStorage {
       metadata: touchpointData.metadata || null,
       createdAt: new Date(),
     };
-    
+
     this.touchpoints.set(id, touchpoint);
-    
+
     // Update journey touchpoint count
     const journey = this.customerJourneys.get(touchpointData.journeyId);
     if (journey) {
-      const updated = { 
-        ...journey, 
+      const updated = {
+        ...journey,
         totalTouchpoints: journey.totalTouchpoints + 1,
         updatedAt: new Date()
       };
       this.customerJourneys.set(journey.id, updated);
     }
-    
+
     return touchpoint;
   }
 
   async updateTouchpoint(id: string, touchpointData: Partial<InsertTouchpoint>): Promise<Touchpoint | undefined> {
     const existing = this.touchpoints.get(id);
     if (!existing) return undefined;
-    
+
     const updated: Touchpoint = {
       ...existing,
       ...touchpointData,
     };
-    
+
     this.touchpoints.set(id, updated);
     return updated;
   }
@@ -5368,34 +5368,34 @@ export class DatabaseStorage implements IStorage {
   async deleteTouchpoint(id: string): Promise<boolean> {
     const touchpoint = this.touchpoints.get(id);
     if (!touchpoint) return false;
-    
+
     // Update journey touchpoint count
     const journey = this.customerJourneys.get(touchpoint.journeyId);
     if (journey) {
-      const updated = { 
-        ...journey, 
+      const updated = {
+        ...journey,
         totalTouchpoints: Math.max(0, journey.totalTouchpoints - 1),
         updatedAt: new Date()
       };
       this.customerJourneys.set(journey.id, updated);
     }
-    
+
     return this.touchpoints.delete(id);
   }
 
   // Attribution Result methods
   async getAttributionResults(journeyId?: string, modelId?: string): Promise<AttributionResult[]> {
     let results = Array.from(this.attributionResults.values());
-    
+
     if (journeyId) {
       results = results.filter(result => result.journeyId === journeyId);
     }
-    
+
     if (modelId) {
       results = results.filter(result => result.attributionModelId === modelId);
     }
-    
-    return results.sort((a, b) => 
+
+    return results.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -5404,7 +5404,7 @@ export class DatabaseStorage implements IStorage {
     const journey = await this.getCustomerJourney(journeyId);
     const model = await this.getAttributionModel(modelId);
     const touchpoints = await this.getJourneyTouchpoints(journeyId);
-    
+
     if (!journey || !model || touchpoints.length === 0) {
       return [];
     }
@@ -5426,30 +5426,30 @@ export class DatabaseStorage implements IStorage {
         case 'first_touch':
           credit = i === 0 ? 1.0 : 0.0;
           break;
-        
+
         case 'last_touch':
           credit = i === touchpoints.length - 1 ? 1.0 : 0.0;
           break;
-        
+
         case 'linear':
           credit = 1.0 / touchpoints.length;
           break;
-        
+
         case 'time_decay':
           const config = JSON.parse(model.configuration || '{"decayRate": 0.5, "halfLife": 7}');
-          const daysSinceTouch = Math.max(0, 
-            (new Date(journey.journeyEnd || new Date()).getTime() - new Date(touchpoint.timestamp).getTime()) 
+          const daysSinceTouch = Math.max(0,
+            (new Date(journey.journeyEnd || new Date()).getTime() - new Date(touchpoint.timestamp).getTime())
             / (1000 * 60 * 60 * 24)
           );
           credit = Math.pow(config.decayRate, daysSinceTouch / config.halfLife);
           break;
-        
+
         case 'position_based':
           const posConfig = JSON.parse(model.configuration || '{"firstWeight": 0.4, "lastWeight": 0.4, "middleWeight": 0.2}');
           if (touchpoints.length === 1) {
             credit = 1.0;
           } else if (touchpoints.length === 2) {
-            credit = i === 0 ? posConfig.firstWeight + posConfig.middleWeight/2 : posConfig.lastWeight + posConfig.middleWeight/2;
+            credit = i === 0 ? posConfig.firstWeight + posConfig.middleWeight / 2 : posConfig.lastWeight + posConfig.middleWeight / 2;
           } else {
             if (i === 0) credit = posConfig.firstWeight;
             else if (i === touchpoints.length - 1) credit = posConfig.lastWeight;
@@ -5462,17 +5462,17 @@ export class DatabaseStorage implements IStorage {
       if (model.type === 'time_decay' && touchpoints.length > 1) {
         const totalCredits = touchpoints.reduce((sum, tp, idx) => {
           const config = JSON.parse(model.configuration || '{"decayRate": 0.5, "halfLife": 7}');
-          const daysSinceTouch = Math.max(0, 
-            (new Date(journey.journeyEnd || new Date()).getTime() - new Date(tp.timestamp).getTime()) 
+          const daysSinceTouch = Math.max(0,
+            (new Date(journey.journeyEnd || new Date()).getTime() - new Date(tp.timestamp).getTime())
             / (1000 * 60 * 60 * 24)
           );
           return sum + Math.pow(config.decayRate, daysSinceTouch / config.halfLife);
         }, 0);
-        
+
         if (totalCredits > 0) {
           const config = JSON.parse(model.configuration || '{"decayRate": 0.5, "halfLife": 7}');
-          const daysSinceTouch = Math.max(0, 
-            (new Date(journey.journeyEnd || new Date()).getTime() - new Date(touchpoint.timestamp).getTime()) 
+          const daysSinceTouch = Math.max(0,
+            (new Date(journey.journeyEnd || new Date()).getTime() - new Date(touchpoint.timestamp).getTime())
             / (1000 * 60 * 60 * 24)
           );
           credit = Math.pow(config.decayRate, daysSinceTouch / config.halfLife) / totalCredits;
@@ -5503,12 +5503,12 @@ export class DatabaseStorage implements IStorage {
   async getChannelAttributionResults(channel: string, modelId?: string): Promise<AttributionResult[]> {
     let results = Array.from(this.attributionResults.values())
       .filter(result => result.channel === channel);
-    
+
     if (modelId) {
       results = results.filter(result => result.attributionModelId === modelId);
     }
-    
-    return results.sort((a, b) => 
+
+    return results.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -5516,16 +5516,16 @@ export class DatabaseStorage implements IStorage {
   // Attribution Insight methods
   async getAttributionInsights(modelId?: string, period?: string): Promise<AttributionInsight[]> {
     let insights = Array.from(this.attributionInsights.values());
-    
+
     if (modelId) {
       insights = insights.filter(insight => insight.attributionModelId === modelId);
     }
-    
+
     if (period) {
       insights = insights.filter(insight => insight.period === period);
     }
-    
-    return insights.sort((a, b) => 
+
+    return insights.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -5533,12 +5533,12 @@ export class DatabaseStorage implements IStorage {
   async getCampaignAttributionInsights(campaignId: string, modelId?: string): Promise<AttributionInsight[]> {
     let insights = Array.from(this.attributionInsights.values())
       .filter(insight => insight.campaignId === campaignId);
-    
+
     if (modelId) {
       insights = insights.filter(insight => insight.attributionModelId === modelId);
     }
-    
-    return insights.sort((a, b) => 
+
+    return insights.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -5568,11 +5568,11 @@ export class DatabaseStorage implements IStorage {
     const insights: AttributionInsight[] = [];
 
     for (const [channel, channelResults] of channelGroups) {
-      const totalAttributedValue = channelResults.reduce((sum, result) => 
+      const totalAttributedValue = channelResults.reduce((sum, result) =>
         sum + parseFloat(result.attributedValue), 0);
       const totalTouchpoints = channelResults.length;
       const totalConversions = new Set(channelResults.map(r => r.journeyId)).size;
-      const averageCredit = channelResults.reduce((sum, result) => 
+      const averageCredit = channelResults.reduce((sum, result) =>
         sum + parseFloat(result.attributionCredit), 0) / channelResults.length;
 
       const insightId = randomUUID();
@@ -5618,17 +5618,17 @@ export class DatabaseStorage implements IStorage {
 
     const touchpoints = await this.getJourneyTouchpoints(journeyId);
     const models = await this.getAttributionModels();
-    
+
     const modelResults: { model: AttributionModel; results: AttributionResult[] }[] = [];
-    
+
     for (const model of models.filter(m => m.isActive)) {
       let results = await this.getAttributionResults(journeyId, model.id);
-      
+
       // If no results exist, calculate them
       if (results.length === 0) {
         results = await this.calculateAttributionResults(journeyId, model.id);
       }
-      
+
       modelResults.push({ model, results });
     }
 
@@ -5679,10 +5679,10 @@ export class DatabaseStorage implements IStorage {
     }[] = [];
 
     for (const [channel, channelResults] of channelGroups) {
-      const totalAttributedValue = channelResults.reduce((sum, result) => 
+      const totalAttributedValue = channelResults.reduce((sum, result) =>
         sum + parseFloat(result.attributedValue), 0);
       const totalTouchpoints = channelResults.length;
-      const averageCredit = channelResults.reduce((sum, result) => 
+      const averageCredit = channelResults.reduce((sum, result) =>
         sum + parseFloat(result.attributionCredit), 0) / channelResults.length;
 
       // Calculate assisted conversions (any non-last-touch attribution)
@@ -5700,13 +5700,13 @@ export class DatabaseStorage implements IStorage {
       for (const journeyId of journeyIds) {
         const journeyTouchpoints = await this.getJourneyTouchpoints(journeyId);
         const channelTouchpoints = journeyTouchpoints.filter(tp => tp.channel === channel);
-        
+
         if (channelTouchpoints.length > 0) {
           // Check if this channel was the first touchpoint
           if (journeyTouchpoints[0]?.channel === channel) {
             firstClickConversions++;
           }
-          
+
           // Check if this channel was the last touchpoint
           const lastTouchpoint = journeyTouchpoints[journeyTouchpoints.length - 1];
           if (lastTouchpoint?.channel === channel) {

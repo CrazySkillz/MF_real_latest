@@ -2946,7 +2946,7 @@ export default function GA4Metrics() {
                                 <div className="flex-1">
                                   <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial {showDailyView ? "(Daily Trends)" : "(To date)"}</h4>
                                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                                    {showDailyView 
+                                    {showDailyView
                                       ? `Daily spend and revenue from ${dailyDateRange.start} to ${dailyDateRange.end}`
                                       : `Spend source: ${spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} · Revenue range: ${(ga4ToDateResp as any)?.startDate ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}` : "to date"}`
                                     }
@@ -2988,31 +2988,31 @@ export default function GA4Metrics() {
                                     <ResponsiveContainer width="100%" height={300}>
                                       <LineChart data={dailyFinancialsData.data}>
                                         <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis 
-                                          dataKey="date" 
+                                        <XAxis
+                                          dataKey="date"
                                           tick={{ fontSize: 12 }}
                                           angle={-45}
                                           textAnchor="end"
                                           height={80}
                                         />
                                         <YAxis tick={{ fontSize: 12 }} />
-                                        <Tooltip 
+                                        <Tooltip
                                           formatter={(value: any) => [
                                             typeof value === 'number' ? `$${value.toFixed(2)}` : value,
                                           ]}
                                         />
                                         <Legend />
-                                        <Line 
-                                          type="monotone" 
-                                          dataKey="spend" 
-                                          stroke="#8884d8" 
+                                        <Line
+                                          type="monotone"
+                                          dataKey="spend"
+                                          stroke="#8884d8"
                                           name="Spend"
                                           strokeWidth={2}
                                         />
-                                        <Line 
-                                          type="monotone" 
-                                          dataKey="revenue" 
-                                          stroke="#82ca9d" 
+                                        <Line
+                                          type="monotone"
+                                          dataKey="revenue"
+                                          stroke="#82ca9d"
                                           name="Revenue"
                                           strokeWidth={2}
                                         />
@@ -3027,31 +3027,31 @@ export default function GA4Metrics() {
                                     <ResponsiveContainer width="100%" height={300}>
                                       <LineChart data={dailyFinancialsData.data}>
                                         <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis 
-                                          dataKey="date" 
+                                        <XAxis
+                                          dataKey="date"
                                           tick={{ fontSize: 12 }}
                                           angle={-45}
                                           textAnchor="end"
                                           height={80}
                                         />
                                         <YAxis tick={{ fontSize: 12 }} />
-                                        <Tooltip 
+                                        <Tooltip
                                           formatter={(value: any) => [
                                             typeof value === 'number' ? `${value.toFixed(2)}%` : value,
                                           ]}
                                         />
                                         <Legend />
-                                        <Line 
-                                          type="monotone" 
-                                          dataKey="roas" 
-                                          stroke="#fbbf24" 
+                                        <Line
+                                          type="monotone"
+                                          dataKey="roas"
+                                          stroke="#fbbf24"
                                           name="ROAS %"
                                           strokeWidth={2}
                                         />
-                                        <Line 
-                                          type="monotone" 
-                                          dataKey="roi" 
-                                          stroke="#10b981" 
+                                        <Line
+                                          type="monotone"
+                                          dataKey="roi"
+                                          stroke="#10b981"
                                           name="ROI %"
                                           strokeWidth={2}
                                         />
@@ -3066,94 +3066,94 @@ export default function GA4Metrics() {
                               </div>
                             ) : (
                               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatMoney(Number(financialSpend || 0))}
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                        Source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
-                                      </p>
+                                <Card>
+                                  <CardContent className="p-6">
+                                    <div className="flex items-center justify-between gap-4">
+                                      <div>
+                                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                          {formatMoney(Number(financialSpend || 0))}
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                          Source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
+                                        </p>
+                                      </div>
+                                      <div className="flex flex-col items-end gap-2 shrink-0">
+                                        {totalSpendForFinancials > 0 && activeSpendSource ? (
+                                          <div className="flex items-center gap-1">
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              aria-label="Edit spend"
+                                              title="Edit spend"
+                                              onClick={() => setShowSpendDialog(true)}
+                                            >
+                                              <Edit className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              aria-label="Remove spend"
+                                              title="Remove spend"
+                                              onClick={() => setShowDeleteSpendDialog(true)}
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                          </div>
+                                        ) : null}
+                                        <DollarSign className="w-8 h-8 text-slate-500" />
+                                      </div>
                                     </div>
-                                    <div className="flex flex-col items-end gap-2 shrink-0">
-                                      {totalSpendForFinancials > 0 && activeSpendSource ? (
-                                        <div className="flex items-center gap-1">
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            aria-label="Edit spend"
-                                            title="Edit spend"
-                                            onClick={() => setShowSpendDialog(true)}
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            aria-label="Remove spend"
-                                            title="Remove spend"
-                                            onClick={() => setShowDeleteSpendDialog(true)}
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      ) : null}
-                                      <DollarSign className="w-8 h-8 text-slate-500" />
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
+                                  </CardContent>
+                                </Card>
 
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {financialROAS.toFixed(2)}x
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</p>
+                                <Card>
+                                  <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                          {financialROAS.toFixed(2)}x
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</p>
+                                      </div>
+                                      <TrendingUp className="w-8 h-8 text-green-600" />
                                     </div>
-                                    <TrendingUp className="w-8 h-8 text-green-600" />
-                                  </div>
-                                </CardContent>
-                              </Card>
+                                  </CardContent>
+                                </Card>
 
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatPercentage(financialROI)}
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</p>
+                                <Card>
+                                  <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                          {formatPercentage(financialROI)}
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</p>
+                                      </div>
+                                      <TrendingUp className="w-8 h-8 text-emerald-600" />
                                     </div>
-                                    <TrendingUp className="w-8 h-8 text-emerald-600" />
-                                  </div>
-                                </CardContent>
-                              </Card>
+                                  </CardContent>
+                                </Card>
 
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                        Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions-to-date > 0)" : ""}
-                                      </p>
+                                <Card>
+                                  <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                          {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                          Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions-to-date > 0)" : ""}
+                                        </p>
+                                      </div>
+                                      <Target className="w-8 h-8 text-blue-600" />
                                     </div>
-                                    <Target className="w-8 h-8 text-blue-600" />
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </div>
+                                  </CardContent>
+                                </Card>
+                              </div>
                             )}
                           </>
                         ) : (

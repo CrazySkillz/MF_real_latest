@@ -6106,31 +6106,31 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     <ResponsiveContainer width="100%" height={300}>
                                       <LineChart data={dailyFinancialsData.data}>
                                         <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis 
-                                          dataKey="date" 
+                                        <XAxis
+                                          dataKey="date"
                                           tick={{ fontSize: 12 }}
                                           angle={-45}
                                           textAnchor="end"
                                           height={80}
                                         />
                                         <YAxis tick={{ fontSize: 12 }} />
-                                        <Tooltip 
+                                        <Tooltip
                                           formatter={(value: any) => [
                                             typeof value === 'number' ? `$${value.toFixed(2)}` : value,
                                           ]}
                                         />
                                         <Legend />
-                                        <Line 
-                                          type="monotone" 
-                                          dataKey="spend" 
-                                          stroke="#8884d8" 
+                                        <Line
+                                          type="monotone"
+                                          dataKey="spend"
+                                          stroke="#8884d8"
                                           name="Spend"
                                           strokeWidth={2}
                                         />
-                                        <Line 
-                                          type="monotone" 
-                                          dataKey="revenue" 
-                                          stroke="#82ca9d" 
+                                        <Line
+                                          type="monotone"
+                                          dataKey="revenue"
+                                          stroke="#82ca9d"
                                           name="Revenue"
                                           strokeWidth={2}
                                         />
@@ -6145,31 +6145,31 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     <ResponsiveContainer width="100%" height={300}>
                                       <LineChart data={dailyFinancialsData.data}>
                                         <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis 
-                                          dataKey="date" 
+                                        <XAxis
+                                          dataKey="date"
                                           tick={{ fontSize: 12 }}
                                           angle={-45}
                                           textAnchor="end"
                                           height={80}
                                         />
                                         <YAxis tick={{ fontSize: 12 }} />
-                                        <Tooltip 
+                                        <Tooltip
                                           formatter={(value: any) => [
                                             typeof value === 'number' ? `${value.toFixed(2)}%` : value,
                                           ]}
                                         />
                                         <Legend />
-                                        <Line 
-                                          type="monotone" 
-                                          dataKey="roas" 
-                                          stroke="#fbbf24" 
+                                        <Line
+                                          type="monotone"
+                                          dataKey="roas"
+                                          stroke="#fbbf24"
                                           name="ROAS %"
                                           strokeWidth={2}
                                         />
-                                        <Line 
-                                          type="monotone" 
-                                          dataKey="roi" 
-                                          stroke="#10b981" 
+                                        <Line
+                                          type="monotone"
+                                          dataKey="roi"
+                                          stroke="#10b981"
                                           name="ROI %"
                                           strokeWidth={2}
                                         />
@@ -6184,60 +6184,60 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               </div>
                             ) : (
                               <>
-                            <div className="grid gap-4 md:grid-cols-4">
-                              <Card>
-                                <CardContent className="p-5">
-                                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</div>
-                                  <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatCurrency(Number((aggregated as any)?.totalSpend || 0))}
-                                  </div>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Source: LinkedIn Ads</div>
-                                </CardContent>
-                              </Card>
-                              <Card>
-                                <CardContent className="p-5">
-                                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</div>
-                                  <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatCurrency(Number((aggregated as any)?.totalRevenue || 0))}
-                                  </div>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    {(aggregated as any)?.hasRevenueTracking === 1 ? "From connected revenue source" : "Not connected"}
-                                  </div>
-                                </CardContent>
-                              </Card>
-                              <Card>
-                                <CardContent className="p-5">
-                                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</div>
-                                  <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {Number((aggregated as any)?.roas || 0).toFixed(2)}x
-                                  </div>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</div>
-                                </CardContent>
-                              </Card>
-                              <Card>
-                                <CardContent className="p-5">
-                                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</div>
-                                  <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatPercentage(Number((aggregated as any)?.roi || 0))}
-                                  </div>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">(\(Revenue - Spend\)) ÷ Spend</div>
-                                </CardContent>
-                              </Card>
-                            </div>
+                                <div className="grid gap-4 md:grid-cols-4">
+                                  <Card>
+                                    <CardContent className="p-5">
+                                      <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</div>
+                                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {formatCurrency(Number((aggregated as any)?.totalSpend || 0))}
+                                      </div>
+                                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Source: LinkedIn Ads</div>
+                                    </CardContent>
+                                  </Card>
+                                  <Card>
+                                    <CardContent className="p-5">
+                                      <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</div>
+                                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {formatCurrency(Number((aggregated as any)?.totalRevenue || 0))}
+                                      </div>
+                                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        {(aggregated as any)?.hasRevenueTracking === 1 ? "From connected revenue source" : "Not connected"}
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                  <Card>
+                                    <CardContent className="p-5">
+                                      <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</div>
+                                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {Number((aggregated as any)?.roas || 0).toFixed(2)}x
+                                      </div>
+                                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</div>
+                                    </CardContent>
+                                  </Card>
+                                  <Card>
+                                    <CardContent className="p-5">
+                                      <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</div>
+                                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {formatPercentage(Number((aggregated as any)?.roi || 0))}
+                                      </div>
+                                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">(\(Revenue - Spend\)) ÷ Spend</div>
+                                    </CardContent>
+                                  </Card>
+                                </div>
 
-                            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
-                              <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Sources used</div>
-                              <div className="grid gap-1">
-                                <div>
-                                  <span className="font-medium">Spend</span>: LinkedIn import session
+                                <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
+                                  <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Sources used</div>
+                                  <div className="grid gap-1">
+                                    <div>
+                                      <span className="font-medium">Spend</span>: LinkedIn import session
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">Revenue</span>: {(aggregated as any)?.hasRevenueTracking === 1 ? "Connected revenue source" : "Not connected"}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div>
-                                  <span className="font-medium">Revenue</span>: {(aggregated as any)?.hasRevenueTracking === 1 ? "Connected revenue source" : "Not connected"}
-                                </div>
-                              </div>
-                            </div>
                             )}
-                          </CardContent>
+                              </CardContent>
                         </Card>
 
                         <Card className="border-slate-200 dark:border-slate-700">

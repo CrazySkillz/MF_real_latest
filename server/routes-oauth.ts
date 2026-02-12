@@ -707,7 +707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const startDate = String(req.query.start || "");
       const endDate = String(req.query.end || "");
-      
+
       if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
         return res.status(400).json({ success: false, error: "start and end must be YYYY-MM-DD format" });
       }
@@ -748,14 +748,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Merge spend and revenue by date
       const dateMap = new Map<string, { spend: number; revenue: number; currency?: string }>();
-      
+
       for (const row of (spendData.rows as any[])) {
         const date = String(row.date);
         const spend = parseFloat(String(row.total_spend || 0));
         const currency = String(row.currency || "USD");
         dateMap.set(date, { spend, revenue: 0, currency });
       }
-      
+
       for (const row of (revenueData.rows as any[])) {
         const date = String(row.date);
         const revenue = parseFloat(String(row.total_revenue || 0));
@@ -771,7 +771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const roas = spend > 0 ? (revenue / spend) * 100 : 0;
           const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
           const cpa = 0; // TODO: Calculate from conversions when available
-          
+
           return {
             date,
             spend: Number(spend.toFixed(2)),
@@ -2414,7 +2414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             currency,
             sourceType: 'google_sheets'
           }));
-        
+
         if (spendRecordsToInsert.length > 0) {
           await storage.createSpendRecords(spendRecordsToInsert);
         }
@@ -4062,7 +4062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (upserts.length > 0) {
           await storage.upsertGA4DailyMetrics(upserts as any);
-          
+
           // Populate revenue_records from GA4 daily metrics
           const revenueRecordsToInsert = upserts
             .filter((m: any) => parseFloat(String(m?.revenue || 0)) > 0)
@@ -4074,7 +4074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               currency: 'USD',
               sourceType: 'ga4'
             }));
-          
+
           if (revenueRecordsToInsert.length > 0) {
             await storage.createRevenueRecords(revenueRecordsToInsert as any);
           }

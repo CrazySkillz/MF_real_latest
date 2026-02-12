@@ -198,11 +198,11 @@ async function generateMockLinkedInData(
       viralImpressions: Math.round(Number(sums.viralImpressions || 0)),
       spend: Number(Number(sums.spend || 0).toFixed(2)),
     };
-    
+
     // Update campaign cumulative spend from daily metrics
     await storage.updateCampaign(campaignId, { spend: Number(sums.spend || 0) });
     console.log(`[LinkedIn Scheduler] TEST MODE: Updated campaign ${campaignId} spend: ${Number(sums.spend || 0).toFixed(2)}`);
-    
+
     // Populate spend_records for daily granularity (Insights tab support)
     const spendRecordsToInsert = dailyToDate
       .filter((m: any) => parseFloat(String(m?.spend || 0)) > 0)
@@ -214,7 +214,7 @@ async function generateMockLinkedInData(
         currency: 'USD',
         sourceType: 'linkedin_api'
       }));
-    
+
     if (spendRecordsToInsert.length > 0) {
       try {
         await storage.createSpendRecords(spendRecordsToInsert as any);
@@ -247,19 +247,19 @@ async function generateMockLinkedInData(
   const prevMetrics = await storage.getLinkedInImportMetrics(latestSession.id).catch(() => []);
   const prevCampaigns = Array.isArray(prevMetrics)
     ? Array.from(
-        prevMetrics.reduce((acc: Map<string, any>, m: any) => {
-          const urn = String(m?.campaignUrn || "").trim();
-          if (!urn) return acc;
-          if (!acc.has(urn)) {
-            acc.set(urn, {
-              urn,
-              name: String(m?.campaignName || "Test Campaign"),
-              status: String(m?.campaignStatus || "active"),
-            });
-          }
-          return acc;
-        }, new Map()).values()
-      )
+      prevMetrics.reduce((acc: Map<string, any>, m: any) => {
+        const urn = String(m?.campaignUrn || "").trim();
+        if (!urn) return acc;
+        if (!acc.has(urn)) {
+          acc.set(urn, {
+            urn,
+            name: String(m?.campaignName || "Test Campaign"),
+            status: String(m?.campaignStatus || "active"),
+          });
+        }
+        return acc;
+      }, new Map()).values()
+    )
     : [];
 
   const campaigns =
@@ -430,7 +430,7 @@ async function fetchRealLinkedInData(
 
     // Get all campaigns from LinkedIn to match with previous imports
     const allLinkedInCampaigns = await linkedInClient.getCampaigns(connection.adAccountId);
-    
+
     if (!allLinkedInCampaigns || allLinkedInCampaigns.length === 0) {
       console.log(`[LinkedIn Scheduler] No campaigns found for ad account ${connection.adAccountId}`);
       return;
@@ -438,7 +438,7 @@ async function fetchRealLinkedInData(
 
     // Match previous campaigns with current LinkedIn campaigns
     const campaignsToRefresh = previousCampaigns.map(prevCampaign => {
-      const linkedInCampaign = allLinkedInCampaigns.find((c: any) => 
+      const linkedInCampaign = allLinkedInCampaigns.find((c: any) =>
         c.id === prevCampaign.id || c.id.includes(prevCampaign.id) || prevCampaign.id.includes(c.id)
       );
       return linkedInCampaign ? {
@@ -487,17 +487,17 @@ async function fetchRealLinkedInData(
       );
       const { upsertLinkedInDailyTotals } = await import("./linkedin-daily-metrics");
       await upsertLinkedInDailyTotals({ campaignId, dailyElements: Array.isArray(dailyElements) ? dailyElements : [] });
-      
+
       // Update campaign cumulative spend from daily metrics (for cross-platform comparisons)
       const dailyMetrics = await storage.getLinkedInDailyMetrics(
-        campaignId, 
-        dailyStart.toISOString().split('T')[0], 
+        campaignId,
+        dailyStart.toISOString().split('T')[0],
         dailyEnd.toISOString().split('T')[0]
       );
       const totalSpend = dailyMetrics.reduce((sum, m) => sum + (parseFloat(String(m.spend || 0)) || 0), 0);
       await storage.updateCampaign(campaignId, { spend: totalSpend });
       console.log(`[LinkedIn Scheduler] Updated campaign ${campaignId} spend: ${totalSpend}`);
-      
+
       // Populate spend_records for daily granularity (Insights tab support)
       const spendRecordsToInsert = dailyMetrics
         .filter(m => parseFloat(String(m.spend || 0)) > 0)
@@ -509,7 +509,7 @@ async function fetchRealLinkedInData(
           currency: 'USD',
           sourceType: 'linkedin_api'
         }));
-      
+
       if (spendRecordsToInsert.length > 0) {
         try {
           await storage.createSpendRecords(spendRecordsToInsert as any);
@@ -536,7 +536,7 @@ async function fetchRealLinkedInData(
     );
 
     // Count selected metrics
-    const selectedMetricsCount = campaignsToRefresh.reduce((sum, c) => 
+    const selectedMetricsCount = campaignsToRefresh.reduce((sum, c) =>
       sum + (c.selectedMetrics?.length || 0), 0
     );
 
@@ -557,19 +557,19 @@ async function fetchRealLinkedInData(
         continue;
       }
 
-      const campAnalytics = campaignAnalytics.find((a: any) => 
-        a.pivotValues?.includes(campaign.id) || 
+      const campAnalytics = campaignAnalytics.find((a: any) =>
+        a.pivotValues?.includes(campaign.id) ||
         a.pivotValues?.some((pv: string) => pv.includes(campaign.id) || campaign.id.includes(pv))
       ) || {};
 
       // Filter out calculated metrics (CTR, CPC, CPM) - these should only be calculated, not imported
-      const coreMetrics = campaign.selectedMetrics.filter((m: string) => 
+      const coreMetrics = campaign.selectedMetrics.filter((m: string) =>
         !['ctr', 'cpc', 'cpm'].includes(m.toLowerCase())
       );
 
       for (const metricKey of coreMetrics) {
         let rawValue: any = 0;
-        
+
         switch (metricKey.toLowerCase()) {
           case 'impressions':
             rawValue = campAnalytics.impressions || 0;
@@ -614,7 +614,7 @@ async function fetchRealLinkedInData(
         }
 
         const metricValue = normalizeLinkedInMetricValue(metricKey, rawValue);
-        
+
         await storage.createLinkedInImportMetric({
           sessionId: session.id,
           campaignUrn: campaign.id,
@@ -626,30 +626,30 @@ async function fetchRealLinkedInData(
       }
 
       // Store ad/creative performance
-      const campaignCreatives = creatives.filter((c: any) => 
-        c.campaignId === campaign.id || 
+      const campaignCreatives = creatives.filter((c: any) =>
+        c.campaignId === campaign.id ||
         (c.campaign && (c.campaign.id === campaign.id || c.campaign.includes(campaign.id)))
       );
-      
+
       for (const creative of campaignCreatives) {
-        const creativeStats = creativeAnalytics.find((a: any) => 
+        const creativeStats = creativeAnalytics.find((a: any) =>
           a.pivotValues?.includes(creative.id) ||
           a.pivotValues?.some((pv: string) => pv.includes(creative.id) || creative.id.includes(pv))
         ) || {};
-        
+
         const impressions = creativeStats.impressions || 0;
         const clicks = creativeStats.clicks || 0;
         const spend = String(creativeStats.costInLocalCurrency || 0);
         const conversions = creativeStats.externalWebsiteConversions || 0;
-        
+
         // Calculate conversion value if available
         const conversionValue = latestSession.conversionValue ? parseFloat(latestSession.conversionValue) : 150;
         const revenue = String(conversions * conversionValue);
-        
+
         const ctr = impressions > 0 ? String((clicks / impressions) * 100) : '0';
         const cpc = clicks > 0 ? String(parseFloat(spend) / clicks) : '0';
         const conversionRate = clicks > 0 ? String((conversions / clicks) * 100) : '0';
-        
+
         await storage.createLinkedInAdPerformance({
           sessionId: session.id,
           adId: creative.id,
@@ -696,7 +696,7 @@ export async function refreshLinkedInDataForCampaign(
     if (!connection) {
       connection = await storage.getLinkedInConnection(campaignId);
     }
-    
+
     if (!connection) {
       console.log(`[LinkedIn Scheduler] No LinkedIn connection found for campaign ${campaignId}`);
       return;
@@ -749,7 +749,7 @@ export async function refreshAllLinkedInData(): Promise<void> {
   try {
     // Get all LinkedIn connections from database
     const allConnections = await db.select({ campaignId: linkedinConnections.campaignId }).from(linkedinConnections);
-    
+
     if (!allConnections || allConnections.length === 0) {
       console.log('[LinkedIn Scheduler] No LinkedIn connections found');
       return;
@@ -765,7 +765,7 @@ export async function refreshAllLinkedInData(): Promise<void> {
       const connection = await storage.getLinkedInConnection(campaignId);
       await refreshLinkedInDataForCampaign(campaignId, connection);
     }
-    
+
     console.log('[LinkedIn Scheduler] ✅ LinkedIn data refresh completed for all campaigns');
   } catch (error: any) {
     console.error('[LinkedIn Scheduler] Error in scheduled refresh:', error);

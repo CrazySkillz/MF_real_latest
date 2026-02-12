@@ -2673,8 +2673,8 @@ export default function GA4Metrics() {
                     <div
                       key={connection.id}
                       className={`p-4 rounded-lg border ${connection.isPrimary
-                          ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950'
-                          : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800'
+                        ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950'
+                        : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800'
                         }`}
                       data-testid={`property-card-${connection.id}`}
                     >
@@ -3453,26 +3453,26 @@ export default function GA4Metrics() {
                             Date / Channel / Source / Medium / Campaign / Device / Country — Sessions / Users / Conversions / Revenue
                           </CardDescription>
                         </CardHeader>
-                        <CardContent className="p-0">
+                        <CardContent className="p-6">
                           {breakdownLoading ? (
-                            <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse m-6" />
+                            <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
                           ) : Array.isArray(ga4Breakdown?.rows) && ga4Breakdown.rows.length > 0 ? (
-                            <div className="w-full overflow-x-auto">
+                            <div className="overflow-hidden border rounded-md">
                               <div className="max-h-[420px] overflow-y-auto">
-                                <table className="w-full text-sm border-collapse">
+                                <table className="w-full text-sm table-fixed">
                                   <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
                                     <tr>
-                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[100px]">Date</th>
-                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[120px]">Channel</th>
-                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[120px]">Source</th>
-                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[100px]">Medium</th>
-                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[200px]">Campaign</th>
-                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[100px]">Device</th>
-                                      <th className="text-left font-medium px-3 py-2 whitespace-nowrap min-w-[120px]">Country</th>
-                                      <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap min-w-[100px]">Sessions</th>
-                                      <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap min-w-[80px]">Users</th>
-                                      <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap min-w-[110px]">Conversions</th>
-                                      <th className="text-right font-medium px-3 py-2 tabular-nums whitespace-nowrap min-w-[120px]">Revenue</th>
+                                      <th className="text-left font-medium px-2 py-2 w-[90px]">Date</th>
+                                      <th className="text-left font-medium px-2 py-2 w-[100px]">Channel</th>
+                                      <th className="text-left font-medium px-2 py-2 w-[90px]">Source</th>
+                                      <th className="text-left font-medium px-2 py-2 w-[80px]">Medium</th>
+                                      <th className="text-left font-medium px-2 py-2">Campaign</th>
+                                      <th className="text-left font-medium px-2 py-2 w-[80px]">Device</th>
+                                      <th className="text-left font-medium px-2 py-2 w-[100px]">Country</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[85px]">Sessions</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[70px]">Users</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[90px]">Convs</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[100px]">Revenue</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -3481,17 +3481,17 @@ export default function GA4Metrics() {
                                         key={`${r.date}-${r.channel}-${r.source}-${r.medium}-${r.campaign}-${r.device}-${r.country}-${idx}`}
                                         className="border-b last:border-b-0"
                                       >
-                                        <td className="px-3 py-2 whitespace-nowrap">{r.date}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{r.channel}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{r.source}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{r.medium}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{r.campaign}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{r.device}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{r.country}</td>
-                                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(Number(r.sessions || 0))}</td>
-                                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(Number(r.users || 0))}</td>
-                                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(Number(r.conversions || 0))}</td>
-                                        <td className="px-3 py-2 text-right tabular-nums">
+                                        <td className="px-2 py-2 truncate" title={r.date}>{r.date}</td>
+                                        <td className="px-2 py-2 truncate" title={r.channel}>{r.channel}</td>
+                                        <td className="px-2 py-2 truncate" title={r.source}>{r.source}</td>
+                                        <td className="px-2 py-2 truncate" title={r.medium}>{r.medium}</td>
+                                        <td className="px-2 py-2 truncate" title={r.campaign}>{r.campaign}</td>
+                                        <td className="px-2 py-2 truncate" title={r.device}>{r.device}</td>
+                                        <td className="px-2 py-2 truncate" title={r.country}>{r.country}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(Number(r.sessions || 0))}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(Number(r.users || 0))}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(Number(r.conversions || 0))}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">
                                           {formatMoney(Number(r.revenue || 0))}
                                         </td>
                                       </tr>
@@ -3501,7 +3501,7 @@ export default function GA4Metrics() {
                               </div>
                             </div>
                           ) : (
-                            <div className="text-sm text-slate-600 dark:text-slate-400 p-6">
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
                               No GA4 breakdown rows returned for this date range. If you expect rows, verify that GA4 has data for the selected period and that revenue/conversions are configured as GA4 metrics.
                             </div>
                           )}
@@ -5616,8 +5616,8 @@ export default function GA4Metrics() {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div
                 className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${ga4ReportModalStep === "standard"
-                    ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                    : "border-slate-200 dark:border-slate-700"
+                  ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
+                  : "border-slate-200 dark:border-slate-700"
                   }`}
                 onClick={() => {
                   setGa4ReportModalStep("standard");
@@ -5639,8 +5639,8 @@ export default function GA4Metrics() {
 
               <div
                 className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${ga4ReportModalStep === "custom"
-                    ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                    : "border-slate-200 dark:border-slate-700"
+                  ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
+                  : "border-slate-200 dark:border-slate-700"
                   }`}
                 onClick={() => {
                   setGa4ReportModalStep("custom");

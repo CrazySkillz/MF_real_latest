@@ -10479,6 +10479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             date,
             revenue: Number(amt.toFixed(2)).toFixed(2) as any,
             currency: cur,
+            sourceType: 'salesforce',
           })) as any[];
         if (records.length > 0) {
           await storage.createRevenueRecords(records);
@@ -11351,6 +11352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             date: recordDate,
             revenue: Number(Number(totalRevenue || 0).toFixed(2)).toFixed(2) as any,
             currency: cur,
+            sourceType: 'hubspot',
           } as any,
         ]);
 
@@ -21537,6 +21539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           date: d,
           revenue: Number((revenueByDate.get(d) || 0).toFixed(2)) as any,
           currency: cur,
+          sourceType: 'shopify',
         } as any));
         await storage.createRevenueRecords(records);
 

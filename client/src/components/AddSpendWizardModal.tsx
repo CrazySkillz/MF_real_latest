@@ -8,9 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
-type SpendSourceMode = "google_sheets" | "upload" | "paste" | "manual";
+type SpendSourceMode = "google_sheets" | "upload" | "paste";
 
 type CsvPreview = {
   success: boolean;
@@ -620,9 +620,6 @@ export function AddSpendWizardModal(props: {
                 <Button type="button" variant={mode === "upload" ? "default" : "outline"} onClick={() => setMode("upload")}>
                   Upload file (CSV)
                 </Button>
-                <Button type="button" variant={mode === "manual" ? "default" : "outline"} onClick={() => setMode("manual")}>
-                  Manual
-                </Button>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 These options work for spend exports from any platform (Google Ads, TikTok, X, DV360, Amazon, etc.).
@@ -755,6 +752,14 @@ export function AddSpendWizardModal(props: {
 
             {mode === "upload" && (
               <div className="rounded-lg border p-4 space-y-4">
+                <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-amber-800 dark:text-amber-300">
+                      <strong>CSV data won't auto-update.</strong> Consider using Google Sheets for automatic daily refreshes.
+                    </div>
+                  </div>
+                </div>
                 {csvEditNotice && (
                   <div className="text-xs text-slate-600 dark:text-slate-400">
                     {csvEditNotice}
@@ -786,6 +791,14 @@ export function AddSpendWizardModal(props: {
 
             {mode === "paste" && (
               <div className="rounded-lg border p-4 space-y-4">
+                <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-amber-800 dark:text-amber-300">
+                      <strong>Pasted data won't auto-update.</strong> Consider using Google Sheets for automatic daily refreshes.
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="paste-table">Paste table</Label>
                   <Textarea
@@ -799,21 +812,6 @@ export function AddSpendWizardModal(props: {
                     Works with tab-delimited (copy/paste) or comma-delimited text. We’ll preview it before processing.
                   </p>
                 </div>
-              </div>
-            )}
-
-            {mode === "manual" && (
-              <div className="rounded-lg border p-4 space-y-2">
-                <Label htmlFor="manual-amount">Spend amount ({props.currency || "USD"})</Label>
-                <Input
-                  id="manual-amount"
-                  value={manualAmount}
-                  onChange={(e) => setManualAmount(e.target.value)}
-                  placeholder="e.g., 2500"
-                />
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  This saves a spend record for today. (Best for quick testing; CSV is best for daily spend.)
-                </p>
               </div>
             )}
 
@@ -832,11 +830,6 @@ export function AddSpendWizardModal(props: {
               {mode === "google_sheets" && (
                 <Button onClick={previewSheet} disabled={!selectedSheetConnectionId || isSheetsLoading}>
                   {isSheetsLoading ? "Loading..." : "Next"}
-                </Button>
-              )}
-              {mode === "manual" && (
-                <Button onClick={processManual} disabled={isProcessing}>
-                  {isProcessing ? "Saving..." : (isEditing ? "Update spend" : "Import spend")}
                 </Button>
               )}
             </div>

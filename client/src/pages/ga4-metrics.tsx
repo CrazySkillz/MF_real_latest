@@ -1488,13 +1488,14 @@ export default function GA4Metrics() {
     },
   });
 
-  // Daily headline totals (strict daily values for the selected GA4 report date).
+  // Daily headline totals (cumulative/lifetime values for Overview tab).
+  // Note: These should be cumulative totals, not daily values, to match the Financial section
   const breakdownTotals = {
     date: ga4ReportDate,
-    sessions: Number(ga4Metrics?.sessions || 0),
-    conversions: Number(ga4Metrics?.conversions || 0),
-    revenue: Number(ga4Metrics?.revenue || 0),
-    users: Number(ga4Metrics?.users || 0),
+    sessions: Number((ga4ToDateResp as any)?.totals?.sessions || ga4Metrics?.sessions || 0),
+    conversions: Number((ga4ToDateResp as any)?.totals?.conversions || ga4Metrics?.conversions || 0),
+    revenue: Number((ga4ToDateResp as any)?.totals?.revenue || ga4Metrics?.revenue || 0),
+    users: Number((ga4ToDateResp as any)?.totals?.users || ga4Metrics?.users || 0),
   };
 
   // Spend/Revenue to-date for executive financial metrics (lifetime).

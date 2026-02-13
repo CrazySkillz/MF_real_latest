@@ -148,6 +148,23 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, mappingConfig: A
   return true;
 }
 
+async function reprocessLinkedInSpend(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
+  const body: AnyRecord = {
+    currency: mappingConfig?.currency || "USD",
+  };
+  // If specific campaigns were selected during initial import, re-use them
+  if (Array.isArray(mappingConfig?.selectedCampaignIds) && mappingConfig.selectedCampaignIds.length > 0) {
+    body.campaignIds = mappingConfig.selectedCampaignIds;
+  }
+  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/spend/linkedin/process`, body);
+  if (!result.ok) {
+    console.error(`[Auto Refresh] LinkedIn spend reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
+    return false;
+  }
+  console.log(`[Auto Refresh] ✅ LinkedIn spend refreshed for campaign ${campaignId}: ${result.json?.currency || "USD"} ${result.json?.totalSpend || 0} from ${result.json?.campaignCount || 0} campaigns`);
+  return true;
+}
+
 export async function runDailyAutoRefreshOnce(): Promise<void> {
   // Prevent overlapping runs (e.g. slow API + interval overlap).
   if ((global as any).__autoRefreshInProgress) {
@@ -223,6 +240,23 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
           if (sheetSpend && spendCfg?.connectionId && spendCfg?.spendColumn) {
             attempted++;
             if (await reprocessGoogleSheetsSpend(campaignId, spendCfg)) { succeeded++; anyUpdated = true; }
+          } else {
+            skipped++;
+          }
+        } catch {
+          // ignore
+        }
+
+        // LinkedIn Ads (Spend)
+        try {
+          const spendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+          const linkedInSpend = (Array.isArray(spendSources) ? spendSources : []).find((s: any) => {
+            return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "linkedin_api";
+          });
+          const liCfg = safeJsonParse(linkedInSpend?.mappingConfig);
+          if (linkedInSpend && liCfg?.platform === "linkedin") {
+            attempted++;
+            if (await reprocessLinkedInSpend(campaignId, liCfg)) { succeeded++; anyUpdated = true; }
           } else {
             skipped++;
           }

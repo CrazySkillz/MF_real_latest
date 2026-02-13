@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import {
-  Loader2, AlertCircle, ExternalLink, Clock,
+  Loader2, AlertCircle, Clock,
   ArrowLeft, Upload, FileSpreadsheet, Zap,
 } from "lucide-react";
 
@@ -98,6 +98,12 @@ export function AddSpendWizardModal(props: {
   const [linkedInConnectionStatus, setLinkedInConnectionStatus] = useState<{ connected: boolean; adAccountName?: string } | null>(null);
   const [metaStatus, setMetaStatus] = useState<{ connected: boolean; testMode?: boolean; message?: string } | null>(null);
 
+  // LinkedIn OAuth in-modal flow
+  const [linkedInAuthStep, setLinkedInAuthStep] = useState<"idle" | "connecting" | "select_account">("idle");
+  const [linkedInAdAccounts, setLinkedInAdAccounts] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedLinkedInAdAccount, setSelectedLinkedInAdAccount] = useState<string>("");
+  const [isLinkedInConnecting, setIsLinkedInConnecting] = useState(false);
+
   const prefillKeyRef = useRef<string | null>(null);
   const suppressCampaignResetRef = useRef(false);
   const campaignKeyTouchedRef = useRef(false);
@@ -138,6 +144,10 @@ export function AddSpendWizardModal(props: {
       setIsLinkedInLoading(false);
       setLinkedInConnectionStatus(null);
       setMetaStatus(null);
+      setLinkedInAuthStep("idle");
+      setLinkedInAdAccounts([]);
+      setSelectedLinkedInAdAccount("");
+      setIsLinkedInConnecting(false);
     }
   }, [props.open]);
 
@@ -854,21 +864,165 @@ export function AddSpendWizardModal(props: {
                       <div className="rounded-lg border p-4 space-y-4">
                         {!linkedInConnectionStatus?.connected ? (
                           <div className="space-y-3">
-                            <div className="text-sm font-medium">LinkedIn Ads — Not connected</div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              You need to connect your LinkedIn Ads account first. Go to your campaign settings to connect via OAuth.
-                            </p>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                window.open(`/campaigns/${props.campaignId}`, "_blank");
-                              }}
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                              Connect LinkedIn Ads
-                            </Button>
+                            {linkedInAuthStep === "idle" && (
+                              <>
+                                <div className="text-sm font-medium">LinkedIn Ads — Not connected</div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  Connect your LinkedIn Ads account to pull spend data directly.
+                                </p>
+                                <Button
+                                  type="button"
+                                  variant="default"
+                                  size="sm"
+                                  disabled={isLinkedInConnecting}
+                                  onClick={async () => {
+                                    setIsLinkedInConnecting(true);
+                                    setLinkedInAuthStep("connecting");
+                                    try {
+                                      const resp = await fetch("/api/auth/linkedin/connect", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ campaignId: props.campaignId }),
+                                      });
+                                      const data = await resp.json().catch(() => ({}));
+                                      if (!resp.ok || !data?.authUrl) throw new Error(data?.message || "Failed to start LinkedIn connection");
+
+                                      const popup = window.open(data.authUrl, "linkedin-oauth", "width=500,height=600");
+                                      if (!popup) {
+                                        toast({ title: "Popup blocked", description: "Please allow popups for this site and try again.", variant: "destructive" });
+                                        setLinkedInAuthStep("idle");
+                                        setIsLinkedInConnecting(false);
+                                        return;
+                                      }
+
+                                      const handleMessage = async (event: MessageEvent) => {
+                                        if (event.origin !== window.location.origin) return;
+                                        if (event.data.type === "linkedin_auth_success") {
+                                          try {
+                                            const acResp = await fetch("/api/linkedin/ad-accounts", {
+                                              method: "POST",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ campaignId: props.campaignId }),
+                                            });
+                                            const acData = await acResp.json();
+                                            if (acData.success && acData.adAccounts?.length > 0) {
+                                              setLinkedInAdAccounts(acData.adAccounts);
+                                              if (acData.adAccounts.length === 1) {
+                                                setSelectedLinkedInAdAccount(acData.adAccounts[0].id);
+                                              }
+                                              setLinkedInAuthStep("select_account");
+                                              toast({ title: "Connected to LinkedIn!", description: "Now select an ad account to continue." });
+                                            } else {
+                                              throw new Error("No ad accounts found");
+                                            }
+                                          } catch (err: any) {
+                                            toast({ title: "Connection failed", description: err?.message || "Could not fetch ad accounts.", variant: "destructive" });
+                                            setLinkedInAuthStep("idle");
+                                          }
+                                        } else if (event.data.type === "linkedin_auth_error") {
+                                          toast({ title: "OAuth error", description: event.data.error || "Authentication failed", variant: "destructive" });
+                                          setLinkedInAuthStep("idle");
+                                        }
+                                        cleanup();
+                                      };
+
+                                      const cleanup = () => {
+                                        window.removeEventListener("message", handleMessage);
+                                        if (popup && !popup.closed) popup.close();
+                                        setIsLinkedInConnecting(false);
+                                        clearInterval(checkClosed);
+                                        clearTimeout(timeoutId);
+                                      };
+
+                                      window.addEventListener("message", handleMessage);
+
+                                      const checkClosed = setInterval(() => {
+                                        if (popup?.closed) {
+                                          clearInterval(checkClosed);
+                                          window.removeEventListener("message", handleMessage);
+                                          setIsLinkedInConnecting(false);
+                                          setLinkedInAuthStep("idle");
+                                          clearTimeout(timeoutId);
+                                        }
+                                      }, 1000);
+
+                                      const timeoutId = setTimeout(() => {
+                                        toast({ title: "Connection timeout", description: "The connection process timed out. Please try again.", variant: "destructive" });
+                                        setLinkedInAuthStep("idle");
+                                        cleanup();
+                                      }, 5 * 60 * 1000);
+                                    } catch (err: any) {
+                                      toast({ title: "Connection failed", description: err?.message || "Failed to start LinkedIn connection", variant: "destructive" });
+                                      setIsLinkedInConnecting(false);
+                                      setLinkedInAuthStep("idle");
+                                    }
+                                  }}
+                                >
+                                  <Zap className="w-3.5 h-3.5 mr-1.5" />
+                                  Connect LinkedIn Ads
+                                </Button>
+                              </>
+                            )}
+
+                            {linkedInAuthStep === "connecting" && (
+                              <div className="flex items-center gap-3">
+                                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                                <div>
+                                  <div className="text-sm font-medium">Connecting to LinkedIn…</div>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">Complete the authorization in the popup window.</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {linkedInAuthStep === "select_account" && (
+                              <div className="space-y-3">
+                                <div className="text-sm font-medium">Select an ad account</div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  Choose which LinkedIn ad account to use for pulling spend data.
+                                </p>
+                                <Select value={selectedLinkedInAdAccount} onValueChange={setSelectedLinkedInAdAccount}>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Choose an ad account…" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {linkedInAdAccounts.map((acc) => (
+                                      <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={!selectedLinkedInAdAccount || isLinkedInConnecting}
+                                  onClick={async () => {
+                                    setIsLinkedInConnecting(true);
+                                    try {
+                                      const resp = await fetch(`/api/linkedin/${props.campaignId}/select-ad-account`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ adAccountId: selectedLinkedInAdAccount }),
+                                      });
+                                      const data = await resp.json().catch(() => ({}));
+                                      if (!resp.ok || !data?.success) throw new Error(data?.error || "Failed to select ad account");
+                                      toast({ title: "Ad account connected", description: "LinkedIn Ads is ready. Fetching spend data…" });
+                                      setLinkedInAuthStep("idle");
+                                      // Refresh connection status so the panel switches to the "connected" state
+                                      await checkLinkedInConnection();
+                                      // Auto-start the spend preview fetch
+                                      previewLinkedInSpend();
+                                    } catch (err: any) {
+                                      toast({ title: "Failed", description: err?.message || "Could not set ad account.", variant: "destructive" });
+                                    } finally {
+                                      setIsLinkedInConnecting(false);
+                                    }
+                                  }}
+                                >
+                                  {isLinkedInConnecting ? (
+                                    <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Connecting…</>
+                                  ) : "Continue"}
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         ) : !linkedInPreview ? (
                           <div className="space-y-3">

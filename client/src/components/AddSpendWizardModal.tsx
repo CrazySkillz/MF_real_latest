@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import {
   Loader2, AlertCircle, ExternalLink, CheckCircle2, Clock,
-  ArrowLeft, Upload, FileSpreadsheet, ClipboardPaste, Zap,
+  ArrowLeft, Upload, FileSpreadsheet, Zap,
 } from "lucide-react";
 
 type Step =
@@ -740,7 +740,7 @@ export function AddSpendWizardModal(props: {
           <DialogHeader className="px-6 py-4 border-b">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <DialogTitle className="truncate">{title}</DialogTitle>
+                <DialogTitle className="truncate leading-normal">{title}</DialogTitle>
                 <DialogDescription className="mt-1">{description}</DialogDescription>
               </div>
               {step !== "select" && (
@@ -767,13 +767,33 @@ export function AddSpendWizardModal(props: {
             {/* ═══════════════════ STEP: SELECT SOURCE ═══════════════════ */}
             {!isEditPrefillLoading && step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("ad_platform")}>
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => { setSelectedPlatform("linkedin"); setStep("ad_platform"); }}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Zap className="w-4 h-4" />
-                      Ad platforms
+                      LinkedIn Ads
                     </CardTitle>
-                    <CardDescription>Pull spend directly from LinkedIn Ads, Meta, or Google Ads.</CardDescription>
+                    <CardDescription>Pull spend directly from LinkedIn Marketing API.</CardDescription>
+                  </CardHeader>
+                </Card>
+
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => { setSelectedPlatform("meta"); setStep("ad_platform"); }}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      Meta / Facebook
+                    </CardTitle>
+                    <CardDescription>Pull spend via Meta Marketing API (coming soon).</CardDescription>
+                  </CardHeader>
+                </Card>
+
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => { setSelectedPlatform("google_ads"); setStep("ad_platform"); }}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      Google Ads
+                    </CardTitle>
+                    <CardDescription>Pull spend via Google Ads API (coming soon).</CardDescription>
                   </CardHeader>
                 </Card>
 
@@ -802,21 +822,6 @@ export function AddSpendWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("paste")}>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <ClipboardPaste className="w-4 h-4" />
-                      Paste table
-                    </CardTitle>
-                    <CardDescription>
-                      <div className="flex items-start gap-2">
-                        <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
-                        <span>Paste from Excel / Google Sheets. Requires manual re-paste to update.</span>
-                      </div>
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>
                   <CardHeader>
                     <CardTitle className="text-lg">Manual</CardTitle>
@@ -840,252 +845,252 @@ export function AddSpendWizardModal(props: {
                     <CardDescription>Select the platform to pull spend data from.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                {/* Platform picker */}
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {/* LinkedIn */}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPlatform("linkedin")}
-                    className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "linkedin"
-                      ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
-                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                      }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">🔗</span>
-                      <span className="font-medium text-sm">LinkedIn Ads</span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Pull spend via LinkedIn Marketing API
-                    </p>
-                    {linkedInConnectionStatus?.connected ? (
-                      <Badge variant="secondary" className="absolute top-2 right-2 text-[10px] bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
-                        <CheckCircle2 className="w-3 h-3 mr-1" /> Connected
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
-                        Setup required
-                      </Badge>
-                    )}
-                  </button>
-
-                  {/* Meta/Facebook */}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPlatform("meta")}
-                    className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "meta"
-                      ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
-                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                      }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">📘</span>
-                      <span className="font-medium text-sm">Meta / Facebook</span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Pull spend via Meta Marketing API
-                    </p>
-                    <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
-                      <Clock className="w-3 h-3 mr-1" /> Coming soon
-                    </Badge>
-                  </button>
-
-                  {/* Google Ads */}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPlatform("google_ads")}
-                    className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "google_ads"
-                      ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
-                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                      }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">📊</span>
-                      <span className="font-medium text-sm">Google Ads</span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Pull spend via Google Ads API
-                    </p>
-                    <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
-                      <Clock className="w-3 h-3 mr-1" /> Coming soon
-                    </Badge>
-                  </button>
-                </div>
-
-                {/* ── LinkedIn panel ── */}
-                {selectedPlatform === "linkedin" && (
-                  <div className="rounded-lg border p-4 space-y-4">
-                    {!linkedInConnectionStatus?.connected ? (
-                      <div className="space-y-3">
-                        <div className="text-sm font-medium">LinkedIn Ads — Not connected</div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          You need to connect your LinkedIn Ads account first. Go to your campaign settings to connect via OAuth.
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            window.open(`/campaigns/${props.campaignId}`, "_blank");
-                          }}
-                        >
-                          <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                          Connect LinkedIn Ads
-                        </Button>
-                      </div>
-                    ) : !linkedInPreview ? (
-                      <div className="space-y-3">
-                        <div className="text-sm font-medium">LinkedIn Ads — Connected</div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {linkedInConnectionStatus.adAccountName
-                            ? `Ad account: ${linkedInConnectionStatus.adAccountName}`
-                            : "Your LinkedIn Ads account is connected."}
-                          {" "}We'll fetch the last 90 days of campaign spend.
-                        </p>
-                        <Button
-                          type="button"
-                          variant="default"
-                          size="sm"
-                          onClick={previewLinkedInSpend}
-                          disabled={isLinkedInLoading}
-                        >
-                          {isLinkedInLoading ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                              Fetching spend data…
-                            </>
-                          ) : "Fetch LinkedIn spend"}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-medium">LinkedIn Ads spend</div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {linkedInPreview.adAccountName || "Ad account"} · {linkedInPreview.dateRange || "Last 90 days"}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-semibold">
-                              {linkedInPreview.currency} {(() => {
-                                const selectedSpend = linkedInPreview.campaigns
-                                  .filter((c) => selectedLinkedInCampaignIds.includes(c.id))
-                                  .reduce((sum, c) => sum + c.spend, 0);
-                                return selectedSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                              })()}
-                            </div>
-                            <div className="text-xs text-slate-500">{selectedLinkedInCampaignIds.length} of {linkedInPreview.campaigns.length} campaigns selected</div>
-                          </div>
+                    {/* Platform picker */}
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {/* LinkedIn */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPlatform("linkedin")}
+                        className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "linkedin"
+                          ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                          }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-lg">🔗</span>
+                          <span className="font-medium text-sm">LinkedIn Ads</span>
                         </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Pull spend via LinkedIn Marketing API
+                        </p>
+                        {linkedInConnectionStatus?.connected ? (
+                          <Badge variant="secondary" className="absolute top-2 right-2 text-[10px] bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> Connected
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
+                            Setup required
+                          </Badge>
+                        )}
+                      </button>
 
-                        {linkedInPreview.campaigns.length === 0 ? (
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                            No campaigns with spend found in the last 90 days.
+                      {/* Meta/Facebook */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPlatform("meta")}
+                        className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "meta"
+                          ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                          }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-lg">📘</span>
+                          <span className="font-medium text-sm">Meta / Facebook</span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Pull spend via Meta Marketing API
+                        </p>
+                        <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
+                          <Clock className="w-3 h-3 mr-1" /> Coming soon
+                        </Badge>
+                      </button>
+
+                      {/* Google Ads */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPlatform("google_ads")}
+                        className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "google_ads"
+                          ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                          }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-lg">📊</span>
+                          <span className="font-medium text-sm">Google Ads</span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Pull spend via Google Ads API
+                        </p>
+                        <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
+                          <Clock className="w-3 h-3 mr-1" /> Coming soon
+                        </Badge>
+                      </button>
+                    </div>
+
+                    {/* ── LinkedIn panel ── */}
+                    {selectedPlatform === "linkedin" && (
+                      <div className="rounded-lg border p-4 space-y-4">
+                        {!linkedInConnectionStatus?.connected ? (
+                          <div className="space-y-3">
+                            <div className="text-sm font-medium">LinkedIn Ads — Not connected</div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              You need to connect your LinkedIn Ads account first. Go to your campaign settings to connect via OAuth.
+                            </p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                window.open(`/campaigns/${props.campaignId}`, "_blank");
+                              }}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                              Connect LinkedIn Ads
+                            </Button>
+                          </div>
+                        ) : !linkedInPreview ? (
+                          <div className="space-y-3">
+                            <div className="text-sm font-medium">LinkedIn Ads — Connected</div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {linkedInConnectionStatus.adAccountName
+                                ? `Ad account: ${linkedInConnectionStatus.adAccountName}`
+                                : "Your LinkedIn Ads account is connected."}
+                              {" "}We'll fetch the last 90 days of campaign spend.
+                            </p>
+                            <Button
+                              type="button"
+                              variant="default"
+                              size="sm"
+                              onClick={previewLinkedInSpend}
+                              disabled={isLinkedInLoading}
+                            >
+                              {isLinkedInLoading ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                  Fetching spend data…
+                                </>
+                              ) : "Fetch LinkedIn spend"}
+                            </Button>
                           </div>
                         ) : (
-                          <div className="rounded-md border max-h-64 overflow-y-auto">
-                            <table className="w-full text-sm">
-                              <thead className="sticky top-0 bg-white dark:bg-slate-950">
-                                <tr className="border-b">
-                                  <th className="text-left py-2 px-3 w-8">
-                                    <Checkbox
-                                      checked={selectedLinkedInCampaignIds.length === linkedInPreview.campaigns.length}
-                                      onCheckedChange={(checked) => {
-                                        setSelectedLinkedInCampaignIds(
-                                          checked ? linkedInPreview.campaigns.map((c) => c.id) : []
-                                        );
-                                      }}
-                                    />
-                                  </th>
-                                  <th className="text-left py-2 px-3 font-medium">Campaign</th>
-                                  <th className="text-right py-2 px-3 font-medium">Spend</th>
-                                  <th className="text-right py-2 px-3 font-medium">Impressions</th>
-                                  <th className="text-right py-2 px-3 font-medium">Clicks</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {linkedInPreview.campaigns.map((c) => (
-                                  <tr key={c.id} className="border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                                    <td className="py-2 px-3">
-                                      <Checkbox
-                                        checked={selectedLinkedInCampaignIds.includes(c.id)}
-                                        onCheckedChange={(checked) => {
-                                          setSelectedLinkedInCampaignIds((prev) =>
-                                            checked ? [...prev, c.id] : prev.filter((x) => x !== c.id)
-                                          );
-                                        }}
-                                      />
-                                    </td>
-                                    <td className="py-2 px-3">
-                                      <div className="font-medium text-xs">{c.name}</div>
-                                      <div className="text-[10px] text-slate-400">{c.status}</div>
-                                    </td>
-                                    <td className="py-2 px-3 text-right tabular-nums">{c.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                    <td className="py-2 px-3 text-right tabular-nums">{c.impressions.toLocaleString()}</td>
-                                    <td className="py-2 px-3 text-right tabular-nums">{c.clicks.toLocaleString()}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-sm font-medium">LinkedIn Ads spend</div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  {linkedInPreview.adAccountName || "Ad account"} · {linkedInPreview.dateRange || "Last 90 days"}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-lg font-semibold">
+                                  {linkedInPreview.currency} {(() => {
+                                    const selectedSpend = linkedInPreview.campaigns
+                                      .filter((c) => selectedLinkedInCampaignIds.includes(c.id))
+                                      .reduce((sum, c) => sum + c.spend, 0);
+                                    return selectedSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                  })()}
+                                </div>
+                                <div className="text-xs text-slate-500">{selectedLinkedInCampaignIds.length} of {linkedInPreview.campaigns.length} campaigns selected</div>
+                              </div>
+                            </div>
+
+                            {linkedInPreview.campaigns.length === 0 ? (
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                No campaigns with spend found in the last 90 days.
+                              </div>
+                            ) : (
+                              <div className="rounded-md border max-h-64 overflow-y-auto">
+                                <table className="w-full text-sm">
+                                  <thead className="sticky top-0 bg-white dark:bg-slate-950">
+                                    <tr className="border-b">
+                                      <th className="text-left py-2 px-3 w-8">
+                                        <Checkbox
+                                          checked={selectedLinkedInCampaignIds.length === linkedInPreview.campaigns.length}
+                                          onCheckedChange={(checked) => {
+                                            setSelectedLinkedInCampaignIds(
+                                              checked ? linkedInPreview.campaigns.map((c) => c.id) : []
+                                            );
+                                          }}
+                                        />
+                                      </th>
+                                      <th className="text-left py-2 px-3 font-medium">Campaign</th>
+                                      <th className="text-right py-2 px-3 font-medium">Spend</th>
+                                      <th className="text-right py-2 px-3 font-medium">Impressions</th>
+                                      <th className="text-right py-2 px-3 font-medium">Clicks</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {linkedInPreview.campaigns.map((c) => (
+                                      <tr key={c.id} className="border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                                        <td className="py-2 px-3">
+                                          <Checkbox
+                                            checked={selectedLinkedInCampaignIds.includes(c.id)}
+                                            onCheckedChange={(checked) => {
+                                              setSelectedLinkedInCampaignIds((prev) =>
+                                                checked ? [...prev, c.id] : prev.filter((x) => x !== c.id)
+                                              );
+                                            }}
+                                          />
+                                        </td>
+                                        <td className="py-2 px-3">
+                                          <div className="font-medium text-xs">{c.name}</div>
+                                          <div className="text-[10px] text-slate-400">{c.status}</div>
+                                        </td>
+                                        <td className="py-2 px-3 text-right tabular-nums">{c.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 px-3 text-right tabular-nums">{c.impressions.toLocaleString()}</td>
+                                        <td className="py-2 px-3 text-right tabular-nums">{c.clicks.toLocaleString()}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
-                )}
 
-                {/* ── Meta panel ── */}
-                {selectedPlatform === "meta" && (
-                  <div className="rounded-lg border p-4 space-y-3">
-                    <div className="text-sm font-medium">Meta / Facebook Ads</div>
-                    <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
-                      <div className="flex items-start gap-2">
-                        <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                        <div className="text-xs text-amber-800 dark:text-amber-300">
-                          <strong>Coming soon.</strong> Direct Meta Marketing API integration for spend import is under development.
-                          {metaStatus?.connected && metaStatus.testMode && (
-                            <span className="block mt-1">Your Meta account is connected in test mode.</span>
-                          )}
+                    {/* ── Meta panel ── */}
+                    {selectedPlatform === "meta" && (
+                      <div className="rounded-lg border p-4 space-y-3">
+                        <div className="text-sm font-medium">Meta / Facebook Ads</div>
+                        <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                          <div className="flex items-start gap-2">
+                            <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                            <div className="text-xs text-amber-800 dark:text-amber-300">
+                              <strong>Coming soon.</strong> Direct Meta Marketing API integration for spend import is under development.
+                              {metaStatus?.connected && metaStatus.testMode && (
+                                <span className="block mt-1">Your Meta account is connected in test mode.</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          In the meantime, you can export your Meta Ads spend as a CSV and import it using the <strong>Upload file</strong> or <strong>Paste table</strong> options above.
+                        </p>
                       </div>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      In the meantime, you can export your Meta Ads spend as a CSV and import it using the <strong>Upload file</strong> or <strong>Paste table</strong> options above.
-                    </p>
-                  </div>
-                )}
+                    )}
 
-                {/* ── Google Ads panel ── */}
-                {selectedPlatform === "google_ads" && (
-                  <div className="rounded-lg border p-4 space-y-3">
-                    <div className="text-sm font-medium">Google Ads</div>
-                    <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
-                      <div className="flex items-start gap-2">
-                        <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                        <div className="text-xs text-amber-800 dark:text-amber-300">
-                          <strong>Coming soon.</strong> Direct Google Ads API integration for spend import is under development.
+                    {/* ── Google Ads panel ── */}
+                    {selectedPlatform === "google_ads" && (
+                      <div className="rounded-lg border p-4 space-y-3">
+                        <div className="text-sm font-medium">Google Ads</div>
+                        <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                          <div className="flex items-start gap-2">
+                            <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                            <div className="text-xs text-amber-800 dark:text-amber-300">
+                              <strong>Coming soon.</strong> Direct Google Ads API integration for spend import is under development.
+                            </div>
+                          </div>
                         </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          In the meantime, you can export your Google Ads spend as a CSV and import it using the <strong>Upload file</strong> or <strong>Paste table</strong> options above.
+                        </p>
                       </div>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      In the meantime, you can export your Google Ads spend as a CSV and import it using the <strong>Upload file</strong> or <strong>Paste table</strong> options above.
-                    </p>
-                  </div>
-                )}
+                    )}
 
-                {/* Action buttons */}
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
-                  {selectedPlatform === "linkedin" && linkedInPreview && (
-                    <Button
-                      onClick={processLinkedInSpend}
-                      disabled={isProcessing || selectedLinkedInCampaignIds.length === 0}
-                    >
-                      {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
-                    </Button>
-                  )}
-                </div>
+                    {/* Action buttons */}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
+                      {selectedPlatform === "linkedin" && linkedInPreview && (
+                        <Button
+                          onClick={processLinkedInSpend}
+                          disabled={isProcessing || selectedLinkedInCampaignIds.length === 0}
+                        >
+                          {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -1099,132 +1104,132 @@ export function AddSpendWizardModal(props: {
                     <CardDescription>Choose the Google Sheet tab that contains your spend data.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                {sheetsConnections.length === 0 ? (
-                  <div className="space-y-3">
-                    <div className="text-sm font-medium">Google Sheets</div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      No Sheets are connected to this campaign yet.
-                    </p>
-                    {!showSheetsConnect ? (
-                      <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
-                        Connect Google Sheets
-                      </Button>
-                    ) : (
-                      <SimpleGoogleSheetsAuth
-                        campaignId={props.campaignId}
-                        selectionMode="append"
-                        purpose="spend"
-                        onSuccess={async (info) => {
-                          setShowSheetsConnect(false);
-                          const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
-                          if (preferredId) {
-                            setSelectedSheetConnectionId(preferredId);
-                            setSheetsConnections((prev) => {
-                              const exists = prev.some((c: any) => String(c?.id) === preferredId);
-                              if (exists) return prev;
-                              const optimistic = {
-                                id: preferredId,
-                                spreadsheetId: info?.spreadsheetId || "",
-                                spreadsheetName: info?.spreadsheetId || "Google Sheet",
-                                sheetName: Array.isArray(info?.sheetNames) ? info?.sheetNames?.[0] : undefined,
-                                isActive: true,
-                              };
-                              return [optimistic, ...prev];
-                            });
-                          }
-                          await refreshSheetsConnections();
-                          toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
-                        }}
-                        onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
-                      />
-                    )}
-                  </div>
-                ) : showSheetsConnect ? (
-                  <div className="space-y-3">
-                    <div className="text-sm font-medium">Connect Google Sheets</div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      No Sheets are connected to this campaign yet. Connect once, then we’ll let you pick a sheet/tab.
-                    </p>
-                    <SimpleGoogleSheetsAuth
-                      campaignId={props.campaignId}
-                      selectionMode="append"
-                      purpose="spend"
-                      onSuccess={async (info) => {
-                        setShowSheetsConnect(false);
-                        const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
-                        // Optimistically select the just-created connection so the field immediately shows a value
-                        // (even before we finish refreshing the connections list).
-                        if (preferredId) {
-                          setSelectedSheetConnectionId(preferredId);
-                          setSheetsConnections((prev) => {
-                            const exists = prev.some((c: any) => String(c?.id) === preferredId);
-                            if (exists) return prev;
-                            const optimistic = {
-                              id: preferredId,
-                              spreadsheetId: info?.spreadsheetId || "",
-                              spreadsheetName: info?.spreadsheetId || "Google Sheet",
-                              sheetName: Array.isArray(info?.sheetNames) ? info?.sheetNames?.[0] : undefined,
-                              isActive: true,
-                            };
-                            return [optimistic, ...prev];
-                          });
-                        }
-                        try {
-                          const filtered = await refreshSheetsConnections();
-                          // If we don't have a selection yet, auto-select when there's only one option.
-                          if (!preferredId && !selectedSheetConnectionId && filtered && filtered.length === 1) {
-                            setSelectedSheetConnectionId(String(filtered[0].id));
-                          }
-                          toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
-                        } catch {
-                          // ignore
-                        }
-                      }}
-                      onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label>Choose Google Sheet</Label>
-                      <div className="flex items-center gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
-                          Change sheet/tab
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={removeSelectedSheetConnection}
-                          disabled={!selectedSheetConnectionId || isRemovingSheet}
-                        >
-                          {isRemovingSheet ? "Removing..." : "Remove"}
-                        </Button>
+                    {sheetsConnections.length === 0 ? (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">Google Sheets</div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          No Sheets are connected to this campaign yet.
+                        </p>
+                        {!showSheetsConnect ? (
+                          <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
+                            Connect Google Sheets
+                          </Button>
+                        ) : (
+                          <SimpleGoogleSheetsAuth
+                            campaignId={props.campaignId}
+                            selectionMode="append"
+                            purpose="spend"
+                            onSuccess={async (info) => {
+                              setShowSheetsConnect(false);
+                              const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
+                              if (preferredId) {
+                                setSelectedSheetConnectionId(preferredId);
+                                setSheetsConnections((prev) => {
+                                  const exists = prev.some((c: any) => String(c?.id) === preferredId);
+                                  if (exists) return prev;
+                                  const optimistic = {
+                                    id: preferredId,
+                                    spreadsheetId: info?.spreadsheetId || "",
+                                    spreadsheetName: info?.spreadsheetId || "Google Sheet",
+                                    sheetName: Array.isArray(info?.sheetNames) ? info?.sheetNames?.[0] : undefined,
+                                    isActive: true,
+                                  };
+                                  return [optimistic, ...prev];
+                                });
+                              }
+                              await refreshSheetsConnections();
+                              toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
+                            }}
+                            onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
+                          />
+                        )}
                       </div>
+                    ) : showSheetsConnect ? (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">Connect Google Sheets</div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          No Sheets are connected to this campaign yet. Connect once, then we’ll let you pick a sheet/tab.
+                        </p>
+                        <SimpleGoogleSheetsAuth
+                          campaignId={props.campaignId}
+                          selectionMode="append"
+                          purpose="spend"
+                          onSuccess={async (info) => {
+                            setShowSheetsConnect(false);
+                            const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
+                            // Optimistically select the just-created connection so the field immediately shows a value
+                            // (even before we finish refreshing the connections list).
+                            if (preferredId) {
+                              setSelectedSheetConnectionId(preferredId);
+                              setSheetsConnections((prev) => {
+                                const exists = prev.some((c: any) => String(c?.id) === preferredId);
+                                if (exists) return prev;
+                                const optimistic = {
+                                  id: preferredId,
+                                  spreadsheetId: info?.spreadsheetId || "",
+                                  spreadsheetName: info?.spreadsheetId || "Google Sheet",
+                                  sheetName: Array.isArray(info?.sheetNames) ? info?.sheetNames?.[0] : undefined,
+                                  isActive: true,
+                                };
+                                return [optimistic, ...prev];
+                              });
+                            }
+                            try {
+                              const filtered = await refreshSheetsConnections();
+                              // If we don't have a selection yet, auto-select when there's only one option.
+                              if (!preferredId && !selectedSheetConnectionId && filtered && filtered.length === 1) {
+                                setSelectedSheetConnectionId(String(filtered[0].id));
+                              }
+                              toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
+                            } catch {
+                              // ignore
+                            }
+                          }}
+                          onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <Label>Choose Google Sheet</Label>
+                          <div className="flex items-center gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
+                              Change sheet/tab
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={removeSelectedSheetConnection}
+                              disabled={!selectedSheetConnectionId || isRemovingSheet}
+                            >
+                              {isRemovingSheet ? "Removing..." : "Remove"}
+                            </Button>
+                          </div>
+                        </div>
+                        <Select value={selectedSheetConnectionId} onValueChange={setSelectedSheetConnectionId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder={"Select a connected sheet"} />
+                          </SelectTrigger>
+                          <SelectContent className="z-[10000]">
+                            {sheetsConnections.map((c: any) => (
+                              <SelectItem key={c.id} value={String(c.id)}>
+                                {c.spreadsheetName || c.spreadsheetId}{c.sheetName ? ` — ${c.sheetName}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          This uses your Google Sheets connection for this campaign.
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
+                      <Button onClick={previewSheet} disabled={!selectedSheetConnectionId || isSheetsLoading}>
+                        {isSheetsLoading ? "Loading..." : "Next"}
+                      </Button>
                     </div>
-                    <Select value={selectedSheetConnectionId} onValueChange={setSelectedSheetConnectionId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={"Select a connected sheet"} />
-                      </SelectTrigger>
-                      <SelectContent className="z-[10000]">
-                        {sheetsConnections.map((c: any) => (
-                          <SelectItem key={c.id} value={String(c.id)}>
-                            {c.spreadsheetName || c.spreadsheetId}{c.sheetName ? ` — ${c.sheetName}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      This uses your Google Sheets connection for this campaign.
-                    </p>
-                  </div>
-                )}
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
-                  <Button onClick={previewSheet} disabled={!selectedSheetConnectionId || isSheetsLoading}>
-                    {isSheetsLoading ? "Loading..." : "Next"}
-                  </Button>
-                </div>
                   </CardContent>
                 </Card>
               </div>
@@ -1234,46 +1239,46 @@ export function AddSpendWizardModal(props: {
               <div className="space-y-4">
                 <Card>
                   <CardContent className="space-y-3 pt-6">
-                <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                    <div className="text-xs text-amber-800 dark:text-amber-300">
-                      <strong>CSV data won't auto-update.</strong> Consider using Google Sheets for automatic daily refreshes.
+                    <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-amber-800 dark:text-amber-300">
+                          <strong>CSV data won't auto-update.</strong> Consider using Google Sheets for automatic daily refreshes.
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                {csvEditNotice && (
-                  <div className="text-xs text-slate-600 dark:text-slate-400">
-                    {csvEditNotice}
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="csv-file">Upload file (CSV)</Label>
-                    {csvFile && (
-                      <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
-                        Remove file
-                      </Button>
+                    {csvEditNotice && (
+                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                        {csvEditNotice}
+                      </div>
                     )}
-                  </div>
-                  <Input
-                    key={`csv-file-${csvInputKey}`}
-                    id="csv-file"
-                    type="file"
-                    accept=".csv,text/csv"
-                    className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700"
-                    onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                  />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Required columns: Spend. Optional: Date + Campaign (for multi-campaign files).
-                  </p>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
-                  <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
-                    {isCsvPreviewing ? "Previewing..." : "Next"}
-                  </Button>
-                </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="csv-file">Upload file (CSV)</Label>
+                        {csvFile && (
+                          <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
+                            Remove file
+                          </Button>
+                        )}
+                      </div>
+                      <Input
+                        key={`csv-file-${csvInputKey}`}
+                        id="csv-file"
+                        type="file"
+                        accept=".csv,text/csv"
+                        className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700"
+                        onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Required columns: Spend. Optional: Date + Campaign (for multi-campaign files).
+                      </p>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
+                      <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
+                        {isCsvPreviewing ? "Previewing..." : "Next"}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -1283,33 +1288,33 @@ export function AddSpendWizardModal(props: {
               <div className="space-y-4">
                 <Card>
                   <CardContent className="space-y-3 pt-6">
-                <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                    <div className="text-xs text-amber-800 dark:text-amber-300">
-                      <strong>Pasted data won't auto-update.</strong> Consider using Google Sheets for automatic daily refreshes.
+                    <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-amber-800 dark:text-amber-300">
+                          <strong>Pasted data won't auto-update.</strong> Consider using Google Sheets for automatic daily refreshes.
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paste-table">Paste table</Label>
-                  <Textarea
-                    id="paste-table"
-                    value={pasteText}
-                    onChange={(e) => setPasteText(e.target.value)}
-                    placeholder={"Paste from Excel/Google Sheets with a header row.\nExample:\nDate\tSpend\tCampaign\n2026-01-01\t125.50\tbrand_awareness"}
-                    className="min-h-[140px] font-mono text-xs"
-                  />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Works with tab-delimited (copy/paste) or comma-delimited text. We’ll preview it before processing.
-                  </p>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
-                  <Button onClick={previewPaste} disabled={!pasteText.trim() || isCsvPreviewing}>
-                    {isCsvPreviewing ? "Previewing..." : "Next"}
-                  </Button>
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="paste-table">Paste table</Label>
+                      <Textarea
+                        id="paste-table"
+                        value={pasteText}
+                        onChange={(e) => setPasteText(e.target.value)}
+                        placeholder={"Paste from Excel/Google Sheets with a header row.\nExample:\nDate\tSpend\tCampaign\n2026-01-01\t125.50\tbrand_awareness"}
+                        className="min-h-[140px] font-mono text-xs"
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Works with tab-delimited (copy/paste) or comma-delimited text. We’ll preview it before processing.
+                      </p>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
+                      <Button onClick={previewPaste} disabled={!pasteText.trim() || isCsvPreviewing}>
+                        {isCsvPreviewing ? "Previewing..." : "Next"}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -1354,196 +1359,196 @@ export function AddSpendWizardModal(props: {
               <div className="space-y-4">
                 <Card>
                   <CardContent className="space-y-4 pt-6">
-                {step === "csv_map" && !csvPreview?.success ? (
-                  <div className="space-y-4">
-                    {csvEditNotice && (
-                      <div className="text-xs text-slate-600 dark:text-slate-400">
-                        {csvEditNotice}
-                      </div>
-                    )}
-                    {(spendColumn || campaignKeyColumn || campaignKeyValues.length > 0) && (
-                      <div className="rounded-md bg-slate-50 dark:bg-slate-900 border p-3">
-                        <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Current mapping</div>
-                        <div className="text-xs text-slate-600 dark:text-slate-400">
-                          Spend: <span className="font-medium">{spendColumn || "—"}</span>
-                          {campaignKeyColumn ? (
-                            <>
-                              {" "}· Campaign: <span className="font-medium">{campaignKeyColumn}</span>
-                            </>
-                          ) : null}
-                        </div>
-                        {campaignKeyValues.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {campaignKeyValues.slice(0, 6).map((v) => (
-                              <span key={v} className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-700 dark:text-slate-300">
-                                {v}
-                              </span>
-                            ))}
-                            {campaignKeyValues.length > 6 && (
-                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-500 dark:text-slate-400">
-                                +{campaignKeyValues.length - 6} more
-                              </span>
+                    {step === "csv_map" && !csvPreview?.success ? (
+                      <div className="space-y-4">
+                        {csvEditNotice && (
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            {csvEditNotice}
+                          </div>
+                        )}
+                        {(spendColumn || campaignKeyColumn || campaignKeyValues.length > 0) && (
+                          <div className="rounded-md bg-slate-50 dark:bg-slate-900 border p-3">
+                            <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Current mapping</div>
+                            <div className="text-xs text-slate-600 dark:text-slate-400">
+                              Spend: <span className="font-medium">{spendColumn || "—"}</span>
+                              {campaignKeyColumn ? (
+                                <>
+                                  {" "}· Campaign: <span className="font-medium">{campaignKeyColumn}</span>
+                                </>
+                              ) : null}
+                            </div>
+                            {campaignKeyValues.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {campaignKeyValues.slice(0, 6).map((v) => (
+                                  <span key={v} className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-700 dark:text-slate-300">
+                                    {v}
+                                  </span>
+                                ))}
+                                {campaignKeyValues.length > 6 && (
+                                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-500 dark:text-slate-400">
+                                    +{campaignKeyValues.length - 6} more
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <Label htmlFor="csv-file-remap">Upload file (CSV)</Label>
-                        {csvFile && (
-                          <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
-                            Remove file
-                          </Button>
-                        )}
-                      </div>
-                      <Input
-                        key={`csv-file-remap-${csvInputKey}`}
-                        id="csv-file-remap"
-                        type="file"
-                        accept=".csv,text/csv"
-                        className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700"
-                        onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                      />
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Re-upload the CSV to preview rows, adjust columns, and re-process spend.
-                      </p>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
-                      <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
-                        {isCsvPreviewing ? "Previewing..." : "Preview"}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">Columns</div>
-                        <div className="text-sm text-slate-700 dark:text-slate-300">
-                          Spend: <span className="font-medium">{spendColumn || "—"}</span>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          We’ll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
-                        </p>
-                      </div>
-                      <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
-                        {showColumnMapping ? "Hide" : "Edit"} columns
-                      </Button>
-                    </div>
-
-                    {showColumnMapping && (
-                      <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
                         <div className="space-y-2">
-                          <Label>Spend column</Label>
-                          <Select value={spendColumn} onValueChange={setSpendColumn}>
-                            <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
-                            <SelectContent className="z-[10000]">
-                              {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="pt-2 border-t space-y-3">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign.
-                        </p>
-                      </div>
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Campaign identifier for multi-campaign datasets</Label>
-                          <Select
-                            value={campaignKeyColumn || CAMPAIGN_COL_NONE}
-                            onValueChange={(v) => {
-                              campaignKeyTouchedRef.current = true;
-                              setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
-                            }}
-                          >
-                            <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
-                            <SelectContent className="z-[10000]">
-                              <SelectItem value={CAMPAIGN_COL_NONE}>Search values...</SelectItem>
-                              {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Campaign value(s)</Label>
+                          <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor="csv-file-remap">Upload file (CSV)</Label>
+                            {csvFile && (
+                              <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
+                                Remove file
+                              </Button>
+                            )}
+                          </div>
                           <Input
-                            value={campaignKeySearch}
-                            onChange={(e) => setCampaignKeySearch(e.target.value)}
-                            placeholder="Search values…"
-                            disabled={!effectiveCampaignColumn}
+                            key={`csv-file-remap-${csvInputKey}`}
+                            id="csv-file-remap"
+                            type="file"
+                            accept=".csv,text/csv"
+                            className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700"
+                            onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
                           />
-                          <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
-                            {!effectiveCampaignColumn ? (
-                              <div className="text-xs text-slate-500 dark:text-slate-400">Upload/preview data to see campaign values.</div>
-                            ) : uniqueCampaignKeyValues.length === 0 ? (
-                              <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
-                            ) : (
-                              uniqueCampaignKeyValues.map((val) => (
-                                <div key={val} className="flex items-start gap-2">
-                                  <Checkbox
-                                    checked={campaignKeyValues.includes(val)}
-                                    onCheckedChange={(checked) => {
-                                      const next = Boolean(checked);
-                                      setCampaignKeyValues((prev) => {
-                                        if (next) return prev.includes(val) ? prev : [...prev, val];
-                                        return prev.filter((x) => x !== val);
-                                      });
-                                    }}
-                                  />
-                                  <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
-                                </div>
-                              ))
-                            )}
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Re-upload the CSV to preview rows, adjust columns, and re-process spend.
+                          </p>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
+                          <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
+                            {isCsvPreviewing ? "Previewing..." : "Preview"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="text-sm font-medium">Columns</div>
+                            <div className="text-sm text-slate-700 dark:text-slate-300">
+                              Spend: <span className="font-medium">{spendColumn || "—"}</span>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              We’ll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
+                            </p>
+                          </div>
+                          <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
+                            {showColumnMapping ? "Hide" : "Edit"} columns
+                          </Button>
+                        </div>
+
+                        {showColumnMapping && (
+                          <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
+                            <div className="space-y-2">
+                              <Label>Spend column</Label>
+                              <Select value={spendColumn} onValueChange={setSpendColumn}>
+                                <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
+                                <SelectContent className="z-[10000]">
+                                  {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="pt-2 border-t space-y-3">
+                          <div className="space-y-1">
+                            <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign.
+                            </p>
+                          </div>
+
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label>Campaign identifier for multi-campaign datasets</Label>
+                              <Select
+                                value={campaignKeyColumn || CAMPAIGN_COL_NONE}
+                                onValueChange={(v) => {
+                                  campaignKeyTouchedRef.current = true;
+                                  setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
+                                }}
+                              >
+                                <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
+                                <SelectContent className="z-[10000]">
+                                  <SelectItem value={CAMPAIGN_COL_NONE}>Search values...</SelectItem>
+                                  {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Campaign value(s)</Label>
+                              <Input
+                                value={campaignKeySearch}
+                                onChange={(e) => setCampaignKeySearch(e.target.value)}
+                                placeholder="Search values…"
+                                disabled={!effectiveCampaignColumn}
+                              />
+                              <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
+                                {!effectiveCampaignColumn ? (
+                                  <div className="text-xs text-slate-500 dark:text-slate-400">Upload/preview data to see campaign values.</div>
+                                ) : uniqueCampaignKeyValues.length === 0 ? (
+                                  <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
+                                ) : (
+                                  uniqueCampaignKeyValues.map((val) => (
+                                    <div key={val} className="flex items-start gap-2">
+                                      <Checkbox
+                                        checked={campaignKeyValues.includes(val)}
+                                        onCheckedChange={(checked) => {
+                                          const next = Boolean(checked);
+                                          setCampaignKeyValues((prev) => {
+                                            if (next) return prev.includes(val) ? prev : [...prev, val];
+                                            return prev.filter((x) => x !== val);
+                                          });
+                                        }}
+                                      />
+                                      <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                )}
+                    )}
 
-                {previewRows.length > 0 && (
-                  <div className="rounded-md border overflow-hidden">
-                    <div className="text-sm font-medium mb-3">Preview (first {Math.min(previewRows.length, 5)} rows)</div>
-                    <div className="overflow-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            {headers.slice(0, 6).map((h) => (
-                              <th key={h} className="text-left py-2 pr-4 font-medium">{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {previewRows.slice(0, 5).map((r, idx) => (
-                            <tr key={idx} className="border-b last:border-b-0">
-                              {headers.slice(0, 6).map((h) => (
-                                <td key={h} className="py-2 pr-4 text-slate-700 dark:text-slate-300">{String((r as any)[h] ?? "")}</td>
+                    {previewRows.length > 0 && (
+                      <div className="rounded-md border overflow-hidden">
+                        <div className="text-sm font-medium mb-3">Preview (first {Math.min(previewRows.length, 5)} rows)</div>
+                        <div className="overflow-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b">
+                                {headers.slice(0, 6).map((h) => (
+                                  <th key={h} className="text-left py-2 pr-4 font-medium">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {previewRows.slice(0, 5).map((r, idx) => (
+                                <tr key={idx} className="border-b last:border-b-0">
+                                  {headers.slice(0, 6).map((h) => (
+                                    <td key={h} className="py-2 pr-4 text-slate-700 dark:text-slate-300">{String((r as any)[h] ?? "")}</td>
+                                  ))}
+                                </tr>
                               ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                      Processing will automatically **sum spend by day**, so unaggregated rows are OK.
-                    </p>
-                  </div>
-                )}
+                            </tbody>
+                          </table>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                          Processing will automatically **sum spend by day**, so unaggregated rows are OK.
+                        </p>
+                      </div>
+                    )}
 
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setStep("select")} disabled={isProcessing}>Cancel</Button>
-                  <Button onClick={step === "csv_map" ? processCsv : processSheets} disabled={isProcessing}>
-                    {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}
-                  </Button>
-                </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")} disabled={isProcessing}>Cancel</Button>
+                      <Button onClick={step === "csv_map" ? processCsv : processSheets} disabled={isProcessing}>
+                        {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>

@@ -2112,6 +2112,205 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Backwards-compatible alias (older clients may still call this)
   app.post("/api/campaigns/:id/spend/process/ad-platforms", processConnectorDerivedSpend);
 
+  // ============================================================================
+  // AD PLATFORM SPEND — LINKEDIN
+  // Preview LinkedIn spend (read-only) so user can review before committing
+  // ============================================================================
+  app.post("/api/campaigns/:id/spend/linkedin/preview", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      const connection = await storage.getLinkedInConnection(campaignId);
+      if (!connection?.accessToken || !connection?.adAccountId) {
+        return res.status(404).json({ success: false, error: "LinkedIn is not connected for this campaign. Connect LinkedIn first." });
+      }
+
+      const { LinkedInClient } = await import("./linkedinClient");
+      const linkedInClient = new LinkedInClient(String(connection.accessToken));
+
+      // Get campaigns for this ad account
+      const campaigns = await linkedInClient.getCampaigns(String(connection.adAccountId));
+      const campaignIds = campaigns.map((c: any) => c.id);
+
+      if (campaignIds.length === 0) {
+        return res.json({ success: true, campaigns: [], totalSpend: 0, currency: "USD", adAccountName: connection.adAccountName || connection.adAccountId });
+      }
+
+      // Fetch last 90 days of analytics so user can pick a date range
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 90);
+
+      let analytics: any[] = [];
+      try {
+        analytics = await linkedInClient.getCampaignAnalytics(
+          campaignIds,
+          startDate.toISOString().split("T")[0],
+          endDate.toISOString().split("T")[0]
+        );
+      } catch { /* ignore - might be no data */ }
+
+      const campaignsWithSpend = campaigns.map((c: any) => {
+        const match = analytics.find((a: any) => a.pivotValues?.includes(c.id)) || {};
+        const spend = parseFloat(String(match.costInLocalCurrency || "0"));
+        return {
+          id: c.id,
+          name: c.name || c.id,
+          status: String(c.status || "").toLowerCase(),
+          spend: Number(spend.toFixed(2)),
+          impressions: match.impressions || 0,
+          clicks: match.clicks || 0,
+        };
+      }).filter((c: any) => c.spend > 0 || c.impressions > 0);
+
+      const totalSpend = campaignsWithSpend.reduce((sum: number, c: any) => sum + c.spend, 0);
+
+      res.json({
+        success: true,
+        adAccountId: connection.adAccountId,
+        adAccountName: connection.adAccountName || connection.adAccountId,
+        campaigns: campaignsWithSpend,
+        totalSpend: Number(totalSpend.toFixed(2)),
+        currency: (await storage.getCampaign(campaignId) as any)?.currency || "USD",
+        dateRange: `${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]}`,
+      });
+    } catch (e: any) {
+      console.error("[LinkedIn Spend Preview]", e);
+      res.status(500).json({ success: false, error: e?.message || "Failed to preview LinkedIn spend" });
+    }
+  });
+
+  // Commit LinkedIn spend — fetches from API and writes to spend_sources/spend_records
+  app.post("/api/campaigns/:id/spend/linkedin/process", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      const selectedCampaignIds: string[] = Array.isArray((req.body as any)?.campaignIds)
+        ? (req.body as any).campaignIds.map((v: any) => String(v))
+        : [];
+      const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
+
+      const connection = await storage.getLinkedInConnection(campaignId);
+      if (!connection?.accessToken || !connection?.adAccountId) {
+        return res.status(404).json({ success: false, error: "LinkedIn is not connected for this campaign." });
+      }
+
+      const { LinkedInClient } = await import("./linkedinClient");
+      const linkedInClient = new LinkedInClient(String(connection.accessToken));
+
+      // Determine which campaign IDs to fetch spend for
+      let targetIds = selectedCampaignIds;
+      if (targetIds.length === 0) {
+        const allCampaigns = await linkedInClient.getCampaigns(String(connection.adAccountId));
+        targetIds = allCampaigns.map((c: any) => c.id);
+      }
+
+      if (targetIds.length === 0) {
+        return res.status(400).json({ success: false, error: "No LinkedIn campaigns found in this ad account." });
+      }
+
+      // Fetch aggregated spend (last 90 days)
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 90);
+
+      const analytics = await linkedInClient.getCampaignAnalytics(
+        targetIds,
+        startDate.toISOString().split("T")[0],
+        endDate.toISOString().split("T")[0]
+      );
+
+      let totalSpend = 0;
+      const breakdown: any[] = [];
+      for (const a of analytics) {
+        const spend = parseFloat(String(a.costInLocalCurrency || "0"));
+        if (spend > 0) {
+          totalSpend += spend;
+          breakdown.push({
+            campaignId: a.pivotValues?.[0] || "unknown",
+            spend: Number(spend.toFixed(2)),
+            impressions: a.impressions || 0,
+            clicks: a.clicks || 0,
+          });
+        }
+      }
+
+      if (!(totalSpend > 0)) {
+        return res.status(400).json({ success: false, error: "No spend data found for the selected LinkedIn campaigns in the last 90 days." });
+      }
+
+      const campaign = await storage.getCampaign(campaignId);
+      const cur = currency || (campaign as any)?.currency || "USD";
+
+      // Deactivate old spend sources, update campaign spend, create new source
+      await deactivateSpendSourcesForCampaign(campaignId);
+      await storage.updateCampaign(campaignId, { spend: Number(totalSpend.toFixed(2)).toFixed(2) as any, currency: cur } as any);
+
+      const selectedNames = breakdown.map((b: any) => b.campaignId).slice(0, 3).join(", ");
+      const source = await storage.createSpendSource({
+        campaignId,
+        sourceType: "linkedin_api",
+        displayName: `LinkedIn Ads spend${selectedCampaignIds.length > 0 ? ` (${selectedCampaignIds.length} campaigns)` : " (all campaigns)"}`,
+        currency: cur,
+        mappingConfig: JSON.stringify({
+          platform: "linkedin",
+          adAccountId: connection.adAccountId,
+          adAccountName: connection.adAccountName,
+          selectedCampaignIds: selectedCampaignIds.length > 0 ? selectedCampaignIds : null,
+          breakdown,
+          dateRange: `${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]}`,
+          fetchedAt: new Date().toISOString(),
+        }),
+        isActive: true,
+      } as any);
+
+      res.json({
+        success: true,
+        sourceId: source.id,
+        totalSpend: Number(totalSpend.toFixed(2)),
+        currency: cur,
+        campaignCount: breakdown.length,
+      });
+    } catch (e: any) {
+      console.error("[LinkedIn Spend Process]", e);
+      res.status(500).json({ success: false, error: e?.message || "Failed to process LinkedIn spend" });
+    }
+  });
+
+  // ============================================================================
+  // AD PLATFORM SPEND — META (PLACEHOLDER — returns connection status)
+  // ============================================================================
+  app.post("/api/campaigns/:id/spend/meta/preview", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      const connection = await storage.getMetaConnection(campaignId);
+      if (!connection) {
+        return res.json({ success: true, connected: false, message: "Meta Ads is not connected yet. Connect from the campaign settings page." });
+      }
+
+      // Meta is currently test-mode only — return a helpful status
+      res.json({
+        success: true,
+        connected: true,
+        testMode: connection.method === "test_mode",
+        adAccountId: connection.adAccountId,
+        adAccountName: connection.adAccountName,
+        message: connection.method === "test_mode"
+          ? "Meta Ads is in test mode. Full API spend import is coming soon."
+          : "Meta Ads spend import is coming soon.",
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to check Meta connection" });
+    }
+  });
+
   app.post("/api/campaigns/:id/spend/csv/preview", importRateLimiter, uploadCsv.single("file"), async (req, res) => {
     try {
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });

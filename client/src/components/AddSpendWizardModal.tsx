@@ -8,9 +8,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, ExternalLink, CheckCircle2, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-type SpendSourceMode = "google_sheets" | "upload" | "paste";
+type SpendSourceMode = "google_sheets" | "upload" | "paste" | "ad_platform" | "manual";
+type AdPlatform = "linkedin" | "meta" | "google_ads";
+
+type LinkedInSpendCampaign = {
+  id: string;
+  name: string;
+  status: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+};
 
 type CsvPreview = {
   success: boolean;
@@ -60,6 +71,21 @@ export function AddSpendWizardModal(props: {
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
   const [isRemovingSheet, setIsRemovingSheet] = useState(false);
 
+  // Ad platform state
+  const [selectedPlatform, setSelectedPlatform] = useState<AdPlatform | null>(null);
+  const [linkedInPreview, setLinkedInPreview] = useState<{
+    adAccountId?: string;
+    adAccountName?: string;
+    campaigns: LinkedInSpendCampaign[];
+    totalSpend: number;
+    currency: string;
+    dateRange?: string;
+  } | null>(null);
+  const [selectedLinkedInCampaignIds, setSelectedLinkedInCampaignIds] = useState<string[]>([]);
+  const [isLinkedInLoading, setIsLinkedInLoading] = useState(false);
+  const [linkedInConnectionStatus, setLinkedInConnectionStatus] = useState<{ connected: boolean; adAccountName?: string } | null>(null);
+  const [metaStatus, setMetaStatus] = useState<{ connected: boolean; testMode?: boolean; message?: string } | null>(null);
+
   const prefillKeyRef = useRef<string | null>(null);
   const suppressCampaignResetRef = useRef(false);
   const campaignKeyTouchedRef = useRef(false);
@@ -95,6 +121,12 @@ export function AddSpendWizardModal(props: {
       setAutoPreviewSheetOnOpen(false);
       setCsvPrefillMapping(null);
       setCsvEditNotice("");
+      setSelectedPlatform(null);
+      setLinkedInPreview(null);
+      setSelectedLinkedInCampaignIds([]);
+      setIsLinkedInLoading(false);
+      setLinkedInConnectionStatus(null);
+      setMetaStatus(null);
     }
   }, [props.open]);
 
@@ -173,6 +205,13 @@ export function AddSpendWizardModal(props: {
       }
       if (mapCampaignVals.length) setCampaignKeyValues(mapCampaignVals);
       if (mapSpend) setSpendColumn(mapSpend);
+      return;
+    }
+
+    if (sourceType === "linkedin_api") {
+      setMode("ad_platform");
+      setSelectedPlatform("linkedin");
+      setStep("choose");
       return;
     }
 
@@ -543,6 +582,104 @@ export function AddSpendWizardModal(props: {
     }
   };
 
+  // ── Ad Platform: LinkedIn spend preview ──
+  const previewLinkedInSpend = async () => {
+    setIsLinkedInLoading(true);
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/linkedin/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || !json?.success) {
+        throw new Error(json?.error || "Failed to fetch LinkedIn spend data");
+      }
+      setLinkedInPreview({
+        adAccountId: json.adAccountId,
+        adAccountName: json.adAccountName,
+        campaigns: json.campaigns || [],
+        totalSpend: json.totalSpend || 0,
+        currency: json.currency || props.currency || "USD",
+        dateRange: json.dateRange,
+      });
+      // Auto-select all campaigns
+      setSelectedLinkedInCampaignIds((json.campaigns || []).map((c: any) => c.id));
+    } catch (e: any) {
+      toast({ title: "LinkedIn preview failed", description: e?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsLinkedInLoading(false);
+    }
+  };
+
+  const processLinkedInSpend = async () => {
+    if (!linkedInPreview || selectedLinkedInCampaignIds.length === 0) {
+      toast({ title: "No campaigns selected", description: "Select at least one LinkedIn campaign to import spend from.", variant: "destructive" });
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/linkedin/process`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignIds: selectedLinkedInCampaignIds,
+          currency: props.currency || "USD",
+        }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to import LinkedIn spend");
+      toast({
+        title: isEditing ? "Spend updated" : "Spend imported",
+        description: `Imported ${props.currency || "USD"} ${json.totalSpend} from ${json.campaignCount} LinkedIn campaign(s).`,
+      });
+      props.onProcessed?.();
+      props.onOpenChange(false);
+    } catch (e: any) {
+      toast({ title: "Import failed", description: e?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ── Ad Platform: Check LinkedIn connection status ──
+  const checkLinkedInConnection = async () => {
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/connected-platforms`);
+      const json = await resp.json().catch(() => null);
+      const platforms = json?.platforms || json?.statuses || [];
+      const li = platforms.find((p: any) => p.id === "linkedin");
+      setLinkedInConnectionStatus(li ? { connected: !!li.connected, adAccountName: li.adAccountName } : { connected: false });
+      const meta = platforms.find((p: any) => p.id === "facebook");
+      if (meta) {
+        setMetaStatus({ connected: !!meta.connected, message: meta.connected ? "Connected" : undefined });
+      }
+    } catch {
+      setLinkedInConnectionStatus({ connected: false });
+    }
+  };
+
+  // ── Ad Platform: Check Meta status ──
+  const checkMetaStatus = async () => {
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/meta/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await resp.json().catch(() => null);
+      if (json?.success) {
+        setMetaStatus({ connected: json.connected, testMode: json.testMode, message: json.message });
+      }
+    } catch { /* ignore */ }
+  };
+
+  // Load platform connection statuses when ad_platform mode is selected
+  useEffect(() => {
+    if (!props.open || mode !== "ad_platform") return;
+    checkLinkedInConnection();
+    checkMetaStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.open, mode]);
+
   const processManual = async () => {
     const amount = parseFloat(String(manualAmount || "").replace(/[$,]/g, "").trim());
     if (!Number.isFinite(amount) || !(amount > 0)) {
@@ -590,8 +727,19 @@ export function AddSpendWizardModal(props: {
         {!isEditPrefillLoading && step === "choose" && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <Label>Import spend dataset (recommended)</Label>
+              <Label>Import method</Label>
               <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={mode === "ad_platform" ? "default" : "outline"}
+                  onClick={() => {
+                    setMode("ad_platform");
+                    setLinkedInPreview(null);
+                    setSelectedLinkedInCampaignIds([]);
+                  }}
+                >
+                  🔌 Ad platforms
+                </Button>
                 <Button type="button" variant={mode === "paste" ? "default" : "outline"} onClick={() => setMode("paste")}>
                   Paste table (Excel / Sheets)
                 </Button>
@@ -599,13 +747,10 @@ export function AddSpendWizardModal(props: {
                   type="button"
                   variant={mode === "google_sheets" ? "default" : "outline"}
                   onClick={() => {
-                    // UX: if the current spend source is NOT a sheets-based source, don't preselect a sheet
-                    // just because a Sheets connection exists (connections can be reused across flows).
                     const sourceType = String((props.initialSource as any)?.sourceType || "").toLowerCase();
                     if (sourceType !== "google_sheets") {
                       setSelectedSheetConnectionId("");
                       setSheetsPreview(null);
-                      // Keep the connections list (so user can choose), but clear any stale preview/mapping state.
                       setCsvPreview(null);
                       setSpendColumn("");
                       setCampaignKeyColumn("");
@@ -622,9 +767,249 @@ export function AddSpendWizardModal(props: {
                 </Button>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                These options work for spend exports from any platform (Google Ads, TikTok, X, DV360, Amazon, etc.).
+                Pull spend directly from ad platforms, or import from a file/sheet.
               </p>
             </div>
+
+            {/* ── AD PLATFORM MODE ── */}
+            {mode === "ad_platform" && (
+              <div className="space-y-4">
+                {/* Platform picker */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {/* LinkedIn */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlatform("linkedin")}
+                    className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "linkedin"
+                        ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                      }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">🔗</span>
+                      <span className="font-medium text-sm">LinkedIn Ads</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Pull spend via LinkedIn Marketing API
+                    </p>
+                    {linkedInConnectionStatus?.connected ? (
+                      <Badge variant="secondary" className="absolute top-2 right-2 text-[10px] bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                        <CheckCircle2 className="w-3 h-3 mr-1" /> Connected
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
+                        Setup required
+                      </Badge>
+                    )}
+                  </button>
+
+                  {/* Meta/Facebook */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlatform("meta")}
+                    className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "meta"
+                        ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                      }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">📘</span>
+                      <span className="font-medium text-sm">Meta / Facebook</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Pull spend via Meta Marketing API
+                    </p>
+                    <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
+                      <Clock className="w-3 h-3 mr-1" /> Coming soon
+                    </Badge>
+                  </button>
+
+                  {/* Google Ads */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlatform("google_ads")}
+                    className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "google_ads"
+                        ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                      }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">📊</span>
+                      <span className="font-medium text-sm">Google Ads</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Pull spend via Google Ads API
+                    </p>
+                    <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
+                      <Clock className="w-3 h-3 mr-1" /> Coming soon
+                    </Badge>
+                  </button>
+                </div>
+
+                {/* ── LinkedIn panel ── */}
+                {selectedPlatform === "linkedin" && (
+                  <div className="rounded-lg border p-4 space-y-4">
+                    {!linkedInConnectionStatus?.connected ? (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">LinkedIn Ads — Not connected</div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          You need to connect your LinkedIn Ads account first. Go to your campaign settings to connect via OAuth.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            window.open(`/campaigns/${props.campaignId}`, "_blank");
+                          }}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                          Connect LinkedIn Ads
+                        </Button>
+                      </div>
+                    ) : !linkedInPreview ? (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">LinkedIn Ads — Connected</div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {linkedInConnectionStatus.adAccountName
+                            ? `Ad account: ${linkedInConnectionStatus.adAccountName}`
+                            : "Your LinkedIn Ads account is connected."}
+                          {" "}We'll fetch the last 90 days of campaign spend.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          onClick={previewLinkedInSpend}
+                          disabled={isLinkedInLoading}
+                        >
+                          {isLinkedInLoading ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                              Fetching spend data…
+                            </>
+                          ) : "Fetch LinkedIn spend"}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-medium">LinkedIn Ads spend</div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {linkedInPreview.adAccountName || "Ad account"} · {linkedInPreview.dateRange || "Last 90 days"}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-semibold">
+                              {linkedInPreview.currency} {(() => {
+                                const selectedSpend = linkedInPreview.campaigns
+                                  .filter((c) => selectedLinkedInCampaignIds.includes(c.id))
+                                  .reduce((sum, c) => sum + c.spend, 0);
+                                return selectedSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                              })()}
+                            </div>
+                            <div className="text-xs text-slate-500">{selectedLinkedInCampaignIds.length} of {linkedInPreview.campaigns.length} campaigns selected</div>
+                          </div>
+                        </div>
+
+                        {linkedInPreview.campaigns.length === 0 ? (
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            No campaigns with spend found in the last 90 days.
+                          </div>
+                        ) : (
+                          <div className="rounded-md border max-h-64 overflow-y-auto">
+                            <table className="w-full text-sm">
+                              <thead className="sticky top-0 bg-white dark:bg-slate-950">
+                                <tr className="border-b">
+                                  <th className="text-left py-2 px-3 w-8">
+                                    <Checkbox
+                                      checked={selectedLinkedInCampaignIds.length === linkedInPreview.campaigns.length}
+                                      onCheckedChange={(checked) => {
+                                        setSelectedLinkedInCampaignIds(
+                                          checked ? linkedInPreview.campaigns.map((c) => c.id) : []
+                                        );
+                                      }}
+                                    />
+                                  </th>
+                                  <th className="text-left py-2 px-3 font-medium">Campaign</th>
+                                  <th className="text-right py-2 px-3 font-medium">Spend</th>
+                                  <th className="text-right py-2 px-3 font-medium">Impressions</th>
+                                  <th className="text-right py-2 px-3 font-medium">Clicks</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {linkedInPreview.campaigns.map((c) => (
+                                  <tr key={c.id} className="border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                                    <td className="py-2 px-3">
+                                      <Checkbox
+                                        checked={selectedLinkedInCampaignIds.includes(c.id)}
+                                        onCheckedChange={(checked) => {
+                                          setSelectedLinkedInCampaignIds((prev) =>
+                                            checked ? [...prev, c.id] : prev.filter((x) => x !== c.id)
+                                          );
+                                        }}
+                                      />
+                                    </td>
+                                    <td className="py-2 px-3">
+                                      <div className="font-medium text-xs">{c.name}</div>
+                                      <div className="text-[10px] text-slate-400">{c.status}</div>
+                                    </td>
+                                    <td className="py-2 px-3 text-right tabular-nums">{c.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                    <td className="py-2 px-3 text-right tabular-nums">{c.impressions.toLocaleString()}</td>
+                                    <td className="py-2 px-3 text-right tabular-nums">{c.clicks.toLocaleString()}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Meta panel ── */}
+                {selectedPlatform === "meta" && (
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <div className="text-sm font-medium">Meta / Facebook Ads</div>
+                    <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                      <div className="flex items-start gap-2">
+                        <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-amber-800 dark:text-amber-300">
+                          <strong>Coming soon.</strong> Direct Meta Marketing API integration for spend import is under development.
+                          {metaStatus?.connected && metaStatus.testMode && (
+                            <span className="block mt-1">Your Meta account is connected in test mode.</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      In the meantime, you can export your Meta Ads spend as a CSV and import it using the <strong>Upload file</strong> or <strong>Paste table</strong> options above.
+                    </p>
+                  </div>
+                )}
+
+                {/* ── Google Ads panel ── */}
+                {selectedPlatform === "google_ads" && (
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <div className="text-sm font-medium">Google Ads</div>
+                    <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                      <div className="flex items-start gap-2">
+                        <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-amber-800 dark:text-amber-300">
+                          <strong>Coming soon.</strong> Direct Google Ads API integration for spend import is under development.
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      In the meantime, you can export your Google Ads spend as a CSV and import it using the <strong>Upload file</strong> or <strong>Paste table</strong> options above.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {mode === "google_sheets" && (
               <div className="rounded-lg border p-4 space-y-4">
                 {sheetsConnections.length === 0 ? (
@@ -830,6 +1215,14 @@ export function AddSpendWizardModal(props: {
               {mode === "google_sheets" && (
                 <Button onClick={previewSheet} disabled={!selectedSheetConnectionId || isSheetsLoading}>
                   {isSheetsLoading ? "Loading..." : "Next"}
+                </Button>
+              )}
+              {mode === "ad_platform" && selectedPlatform === "linkedin" && linkedInPreview && (
+                <Button
+                  onClick={processLinkedInSpend}
+                  disabled={isProcessing || selectedLinkedInCampaignIds.length === 0}
+                >
+                  {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
                 </Button>
               )}
             </div>

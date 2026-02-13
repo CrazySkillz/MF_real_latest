@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import {
-  Loader2, AlertCircle, ExternalLink, CheckCircle2, Clock,
+  Loader2, AlertCircle, ExternalLink, Clock,
   ArrowLeft, Upload, FileSpreadsheet, Zap,
 } from "lucide-react";
 
@@ -718,7 +718,7 @@ export function AddSpendWizardModal(props: {
   // ── Dynamic title / description ──
   const title =
     step === "select" ? "Add spend source" :
-      step === "ad_platform" ? "Ad platform spend" :
+      step === "ad_platform" ? (selectedPlatform === "linkedin" ? "LinkedIn Ads" : selectedPlatform === "meta" ? "Meta / Facebook" : selectedPlatform === "google_ads" ? "Google Ads" : "Ad platform spend") :
         step === "csv" ? (isEditing ? "Edit CSV spend" : "Upload CSV") :
           step === "csv_map" ? (isEditing ? "Edit CSV spend" : "Map CSV columns") :
             step === "paste" ? "Paste table" :
@@ -841,82 +841,14 @@ export function AddSpendWizardModal(props: {
               <div className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Choose ad platform</CardTitle>
-                    <CardDescription>Select the platform to pull spend data from.</CardDescription>
+                    <CardTitle className="text-base">
+                      {selectedPlatform === "linkedin" ? "LinkedIn Ads" : selectedPlatform === "meta" ? "Meta / Facebook" : "Google Ads"} spend
+                    </CardTitle>
+                    <CardDescription>
+                      {selectedPlatform === "linkedin" ? "Pull spend directly from LinkedIn Marketing API." : selectedPlatform === "meta" ? "Pull spend via Meta Marketing API." : "Pull spend via Google Ads API."}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Platform picker */}
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      {/* LinkedIn */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPlatform("linkedin")}
-                        className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "linkedin"
-                          ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
-                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                          }`}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg">🔗</span>
-                          <span className="font-medium text-sm">LinkedIn Ads</span>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Pull spend via LinkedIn Marketing API
-                        </p>
-                        {linkedInConnectionStatus?.connected ? (
-                          <Badge variant="secondary" className="absolute top-2 right-2 text-[10px] bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
-                            <CheckCircle2 className="w-3 h-3 mr-1" /> Connected
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
-                            Setup required
-                          </Badge>
-                        )}
-                      </button>
-
-                      {/* Meta/Facebook */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPlatform("meta")}
-                        className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "meta"
-                          ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
-                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                          }`}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg">📘</span>
-                          <span className="font-medium text-sm">Meta / Facebook</span>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Pull spend via Meta Marketing API
-                        </p>
-                        <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
-                          <Clock className="w-3 h-3 mr-1" /> Coming soon
-                        </Badge>
-                      </button>
-
-                      {/* Google Ads */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPlatform("google_ads")}
-                        className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "google_ads"
-                          ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
-                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                          }`}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg">📊</span>
-                          <span className="font-medium text-sm">Google Ads</span>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Pull spend via Google Ads API
-                        </p>
-                        <Badge variant="outline" className="absolute top-2 right-2 text-[10px]">
-                          <Clock className="w-3 h-3 mr-1" /> Coming soon
-                        </Badge>
-                      </button>
-                    </div>
-
                     {/* ── LinkedIn panel ── */}
                     {selectedPlatform === "linkedin" && (
                       <div className="rounded-lg border p-4 space-y-4">

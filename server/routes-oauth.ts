@@ -234,27 +234,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "yesop_email_nurture": "yesop-email",
         "yesop_paid_social": "yesop-social",
       };
-      // Try by campaign ID first, then by UTM filter name
-      let profile = campaignProfiles[opts.campaignId];
-      if (!profile && opts.ga4CampaignFilter) {
-        // Support single string or first element of a JSON array
-        let filterVal = String(opts.ga4CampaignFilter || "").trim();
-        if (filterVal.startsWith("[")) {
+
+      // Resolve all UTM campaign names from the filter (single string or JSON array)
+      const resolveFilterNames = (): string[] => {
+        if (!opts.ga4CampaignFilter) return [];
+        const raw = String(opts.ga4CampaignFilter || "").trim();
+        if (raw.startsWith("[")) {
           try {
-            const arr = JSON.parse(filterVal);
-            if (Array.isArray(arr) && arr.length > 0) filterVal = String(arr[0]).trim();
-          } catch { /* keep original */ }
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) return arr.map((v: any) => String(v || "").trim().toLowerCase()).filter(Boolean);
+          } catch { /* fall through */ }
         }
-        const mappedId = utmToProfile[filterVal.toLowerCase()];
-        if (mappedId) profile = campaignProfiles[mappedId];
+        return raw ? [raw.toLowerCase()] : [];
+      };
+
+      // Build list of profiles to sum: match by campaignId first, then by UTM filter names
+      const filterNames = resolveFilterNames();
+      let profilesToSum: { label: string; scale: number; engagementDelta: number }[] = [];
+
+      // Direct match by MetricMind campaign ID (seeded campaigns like yesop-brand)
+      if (campaignProfiles[opts.campaignId]) {
+        profilesToSum = [campaignProfiles[opts.campaignId]];
+      } else if (filterNames.length > 0) {
+        // Match each UTM name to a profile
+        for (const fn of filterNames) {
+          const mappedId = utmToProfile[fn];
+          if (mappedId && campaignProfiles[mappedId]) {
+            profilesToSum.push(campaignProfiles[mappedId]);
+          }
+        }
       }
-      if (!profile) profile = { label: "Default", scale: 1.0, engagementDelta: 0 };
-      const sc = profile.scale;
+      // Fallback: default 1x profile
+      if (profilesToSum.length === 0) {
+        profilesToSum = [{ label: "Default", scale: 1.0, engagementDelta: 0 }];
+      }
+
+      // Compute combined scale and weighted engagement delta
+      const totalScale = profilesToSum.reduce((s, p) => s + p.scale, 0);
+      const weightedEngDelta = profilesToSum.reduce((s, p) => s + p.engagementDelta * p.scale, 0) / (totalScale || 1);
+      const sc = totalScale;
+      const combinedProfile = { label: profilesToSum.map(p => p.label).join("+"), scale: sc, engagementDelta: weightedEngDelta };
 
       const configByRange: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; engagementRate: number; bounceRate: number; avgSessionDuration: number }> = {
-        "7days": { users: Math.round(2450 * sc), sessions: Math.round(3278 * sc), pageviews: Math.round(9820 * sc), conversions: Math.round(131 * sc), revenue: Number((9828.8 * sc).toFixed(2)), engagementRate: Math.min(1, Math.max(0, 0.62 + profile.engagementDelta)), bounceRate: Math.min(1, Math.max(0, 0.38 - profile.engagementDelta)), avgSessionDuration: 124 },
-        "30days": { users: Math.round(10800 * sc), sessions: Math.round(14075 * sc), pageviews: Math.round(42110 * sc), conversions: Math.round(553 * sc), revenue: Number((54680.78 * sc).toFixed(2)), engagementRate: Math.min(1, Math.max(0, 0.59 + profile.engagementDelta)), bounceRate: Math.min(1, Math.max(0, 0.41 - profile.engagementDelta)), avgSessionDuration: 118 },
-        "90days": { users: Math.round(31800 * sc), sessions: Math.round(41000 * sc), pageviews: Math.round(123400 * sc), conversions: Math.round(1620 * sc), revenue: Number((150220.15 * sc).toFixed(2)), engagementRate: Math.min(1, Math.max(0, 0.57 + profile.engagementDelta)), bounceRate: Math.min(1, Math.max(0, 0.43 - profile.engagementDelta)), avgSessionDuration: 113 },
+        "7days": { users: Math.round(2450 * sc), sessions: Math.round(3278 * sc), pageviews: Math.round(9820 * sc), conversions: Math.round(131 * sc), revenue: Number((9828.8 * sc).toFixed(2)), engagementRate: Math.min(1, Math.max(0, 0.62 + combinedProfile.engagementDelta)), bounceRate: Math.min(1, Math.max(0, 0.38 - combinedProfile.engagementDelta)), avgSessionDuration: 124 },
+        "30days": { users: Math.round(10800 * sc), sessions: Math.round(14075 * sc), pageviews: Math.round(42110 * sc), conversions: Math.round(553 * sc), revenue: Number((54680.78 * sc).toFixed(2)), engagementRate: Math.min(1, Math.max(0, 0.59 + combinedProfile.engagementDelta)), bounceRate: Math.min(1, Math.max(0, 0.41 - combinedProfile.engagementDelta)), avgSessionDuration: 118 },
+        "90days": { users: Math.round(31800 * sc), sessions: Math.round(41000 * sc), pageviews: Math.round(123400 * sc), conversions: Math.round(1620 * sc), revenue: Number((150220.15 * sc).toFixed(2)), engagementRate: Math.min(1, Math.max(0, 0.57 + combinedProfile.engagementDelta)), bounceRate: Math.min(1, Math.max(0, 0.43 - combinedProfile.engagementDelta)), avgSessionDuration: 113 },
       };
       const cfg = configByRange[String(opts.dateRange || "30days")] || configByRange["30days"];
 
@@ -309,14 +333,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversionsDaily = distributeInt(cfg.conversions, days);
       const revenueDaily = noRevenue ? Array.from({ length: days }, () => 0) : distributeCents(cfg.revenue, days);
 
-      const timeSeries = dates.map((date, i) => ({
-        date,
-        users: usersDaily[i] || 0,
-        sessions: sessionsDaily[i] || 0,
-        pageviews: pageviewsDaily[i] || 0,
-        conversions: conversionsDaily[i] || 0,
-        revenue: Number((revenueDaily[i] || 0).toFixed(2)),
-      }));
+      const timeSeries = dates.map((date, i) => {
+        const daySessions = sessionsDaily[i] || 0;
+        const dayPageviews = pageviewsDaily[i] || 0;
+        const dayEngagedSessions = Math.max(0, Math.round(daySessions * cfg.engagementRate));
+        const dayEventCount = Math.max(0, Math.round(dayPageviews * 3.4));
+        return {
+          date,
+          users: usersDaily[i] || 0,
+          sessions: daySessions,
+          pageviews: dayPageviews,
+          conversions: conversionsDaily[i] || 0,
+          revenue: Number((revenueDaily[i] || 0).toFixed(2)),
+          engagementRate: cfg.engagementRate,
+          engagedSessions: dayEngagedSessions,
+          eventCount: dayEventCount,
+          eventsPerSession: daySessions > 0 ? Number((dayEventCount / daySessions).toFixed(2)) : 0,
+          bounceRate: cfg.bounceRate,
+          avgSessionDuration: cfg.avgSessionDuration,
+        };
+      });
 
       const totals = {
         users: cfg.users,
@@ -4298,6 +4334,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversions: Number(sim?.totals?.conversions || 0),
           revenue: Number(sim?.totals?.revenue || 0),
           pageviews: Number(sim?.totals?.pageviews || 0),
+          engagementRate: Number(sim?.metrics?.engagementRate || 0),
+          engagedSessions: Number(sim?.metrics?.engagedSessions || 0),
+          eventCount: Number(sim?.metrics?.eventCount || 0),
+          eventsPerSession: Number(sim?.metrics?.eventsPerSession || 0),
+          bounceRate: Number(sim?.metrics?.bounceRate || 0),
+          avgSessionDuration: Number(sim?.metrics?.averageSessionDuration || 0),
         };
         return res.json({
           success: true,

@@ -1334,6 +1334,11 @@ export default function GA4Metrics() {
         conversions: Number(r?.conversions || 0) || 0,
         revenue: Number(r?.revenue || 0) || 0,
         engagementRate: Number(r?.engagementRate || 0) || 0,
+        engagedSessions: Number(r?.engagedSessions || 0) || 0,
+        eventCount: Number(r?.eventCount || 0) || 0,
+        eventsPerSession: Number(r?.eventsPerSession || 0) || 0,
+        bounceRate: Number(r?.bounceRate || 0) || 0,
+        avgSessionDuration: Number(r?.avgSessionDuration || 0) || 0,
         _raw: r,
       }))
       .filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r.date || "")))
@@ -1364,6 +1369,11 @@ export default function GA4Metrics() {
       conversions: row.conversions,
       revenue: row.revenue,
       engagementRate: row.engagementRate,
+      engagedSessions: row.engagedSessions,
+      eventCount: row.eventCount,
+      eventsPerSession: row.eventsPerSession,
+      bounceRate: row.bounceRate,
+      avgSessionDuration: row.avgSessionDuration,
       propertyId: ga4DailyResp?.propertyId,
       displayName: ga4DailyResp?.displayName,
       propertyName: ga4DailyResp?.propertyName,

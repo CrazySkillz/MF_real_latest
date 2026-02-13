@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import {
   Loader2, AlertCircle, ExternalLink, CheckCircle2, Clock,
-  ArrowLeft, Upload, FileSpreadsheet, ClipboardPaste, DollarSign, Zap,
+  ArrowLeft, Upload, FileSpreadsheet, ClipboardPaste, Zap,
 } from "lucide-react";
 
 type Step =
@@ -718,142 +718,19 @@ export function AddSpendWizardModal(props: {
   // ── Dynamic title / description ──
   const title =
     step === "select" ? "Add spend source" :
-    step === "ad_platform" ? "Ad platform spend" :
-    step === "csv" ? (isEditing ? "Edit CSV spend" : "Upload CSV") :
-    step === "csv_map" ? (isEditing ? "Edit CSV spend" : "Map CSV columns") :
-    step === "paste" ? "Paste table" :
-    step === "sheets_choose" ? (isEditing ? "Edit Google Sheets spend" : "Google Sheets") :
-    step === "sheets_map" ? (isEditing ? "Edit Google Sheets spend" : "Map sheet columns") :
-    step === "manual" ? (isEditing ? "Edit manual spend" : "Manual spend") :
-    "Add spend source";
+      step === "ad_platform" ? "Ad platform spend" :
+        step === "csv" ? (isEditing ? "Edit CSV spend" : "Upload CSV") :
+          step === "csv_map" ? (isEditing ? "Edit CSV spend" : "Map CSV columns") :
+            step === "paste" ? "Paste table" :
+              step === "sheets_choose" ? (isEditing ? "Edit Google Sheets spend" : "Google Sheets") :
+                step === "sheets_map" ? (isEditing ? "Edit Google Sheets spend" : "Map sheet columns") :
+                  step === "manual" ? (isEditing ? "Edit manual spend" : "Manual spend") :
+                    "Add spend source";
 
   const description =
     step === "select"
       ? "Choose where your spend data comes from."
       : `Currency: ${props.currency || "USD"} • Spend is treated as "to date" (campaign lifetime)`;
-
-  // ── Column mapping UI (shared between CSV map and Sheets map) ──
-  const renderColumnMapping = () => (
-    <>
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <div className="text-sm font-medium">Columns</div>
-          <div className="text-sm text-slate-700 dark:text-slate-300">
-            Spend: <span className="font-medium">{spendColumn || "—"}</span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            We'll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
-          </p>
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => setShowColumnMapping((v) => !v)}>
-          {showColumnMapping ? "Hide" : "Edit"} columns
-        </Button>
-      </div>
-
-      {showColumnMapping && (
-        <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
-          <div className="space-y-2">
-            <Label>Spend column</Label>
-            <Select value={spendColumn} onValueChange={setSpendColumn}>
-              <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
-              <SelectContent className="z-[10000]">
-                {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      )}
-
-      <div className="pt-2 border-t space-y-3">
-        <div className="space-y-1">
-          <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column and the value(s) for this campaign.
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Campaign identifier column</Label>
-            <Select
-              value={campaignKeyColumn || CAMPAIGN_COL_NONE}
-              onValueChange={(v) => {
-                campaignKeyTouchedRef.current = true;
-                setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
-              }}
-            >
-              <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-              <SelectContent className="z-[10000]">
-                <SelectItem value={CAMPAIGN_COL_NONE}>None</SelectItem>
-                {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Campaign value(s)</Label>
-            <Input
-              value={campaignKeySearch}
-              onChange={(e) => setCampaignKeySearch(e.target.value)}
-              placeholder="Search values…"
-              disabled={!effectiveCampaignColumn}
-            />
-            <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
-              {!effectiveCampaignColumn ? (
-                <div className="text-xs text-slate-500 dark:text-slate-400">Upload/preview data to see campaign values.</div>
-              ) : uniqueCampaignKeyValues.length === 0 ? (
-                <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
-              ) : (
-                uniqueCampaignKeyValues.map((val) => (
-                  <div key={val} className="flex items-start gap-2">
-                    <Checkbox
-                      checked={campaignKeyValues.includes(val)}
-                      onCheckedChange={(checked) => {
-                        setCampaignKeyValues((prev) =>
-                          checked ? (prev.includes(val) ? prev : [...prev, val]) : prev.filter((x) => x !== val)
-                        );
-                      }}
-                    />
-                    <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-
-  const renderPreviewTable = () => {
-    if (previewRows.length === 0) return null;
-    return (
-      <div className="rounded-lg border p-4 mt-4">
-        <div className="text-sm font-medium mb-3">Preview (first {Math.min(previewRows.length, 5)} rows)</div>
-        <div className="overflow-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                {headers.slice(0, 6).map((h) => (
-                  <th key={h} className="text-left py-2 pr-4 font-medium">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {previewRows.slice(0, 5).map((r, idx) => (
-                <tr key={idx} className="border-b last:border-b-0">
-                  {headers.slice(0, 6).map((h) => (
-                    <td key={h} className="py-2 pr-4 text-slate-700 dark:text-slate-300">{String((r as any)[h] ?? "")}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-          Processing will automatically sum spend by day, so unaggregated rows are OK.
-        </p>
-      </div>
-    );
-  };
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -876,90 +753,93 @@ export function AddSpendWizardModal(props: {
           </DialogHeader>
 
           {/* ── Body ── */}
-          <div className="px-6 py-5 flex-1 min-h-0 overflow-y-auto">
+          <div className="px-6 py-5 flex-1 min-h-0 flex flex-col overflow-y-auto">
 
-        {isEditPrefillLoading && (
-          <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
-            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Loading your sheet preview…
-            </div>
-          </div>
-        )}
+            {isEditPrefillLoading && (
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
+                <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading your sheet preview…
+                </div>
+              </div>
+            )}
 
-        {/* ═══════════════════ STEP: SELECT SOURCE ═══════════════════ */}
-        {!isEditPrefillLoading && step === "select" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("ad_platform")}>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Zap className="w-4 h-4" />
-                  Ad platforms
-                </CardTitle>
-                <CardDescription>Pull spend directly from LinkedIn Ads, Meta, or Google Ads.</CardDescription>
-              </CardHeader>
-            </Card>
+            {/* ═══════════════════ STEP: SELECT SOURCE ═══════════════════ */}
+            {!isEditPrefillLoading && step === "select" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("ad_platform")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      Ad platforms
+                    </CardTitle>
+                    <CardDescription>Pull spend directly from LinkedIn Ads, Meta, or Google Ads.</CardDescription>
+                  </CardHeader>
+                </Card>
 
-            <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileSpreadsheet className="w-4 h-4" />
-                  Google Sheets
-                </CardTitle>
-                <CardDescription>Import spend from a connected Google Sheet tab.</CardDescription>
-              </CardHeader>
-            </Card>
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Google Sheets
+                    </CardTitle>
+                    <CardDescription>Import spend from a connected Google Sheet tab.</CardDescription>
+                  </CardHeader>
+                </Card>
 
-            <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
-                  Upload CSV
-                </CardTitle>
-                <CardDescription>
-                  <div className="flex items-start gap-2">
-                    <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
-                    <span>Import spend from a CSV. Requires manual re-upload to update.</span>
-                  </div>
-                </CardDescription>
-              </CardHeader>
-            </Card>
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Upload className="w-4 h-4" />
+                      Upload CSV
+                    </CardTitle>
+                    <CardDescription>
+                      <div className="flex items-start gap-2">
+                        <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
+                        <span>Import spend from a CSV. Requires manual re-upload to update.</span>
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
 
-            <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("paste")}>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <ClipboardPaste className="w-4 h-4" />
-                  Paste table
-                </CardTitle>
-                <CardDescription>
-                  <div className="flex items-start gap-2">
-                    <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
-                    <span>Paste from Excel / Google Sheets. Requires manual re-paste to update.</span>
-                  </div>
-                </CardDescription>
-              </CardHeader>
-            </Card>
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("paste")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <ClipboardPaste className="w-4 h-4" />
+                      Paste table
+                    </CardTitle>
+                    <CardDescription>
+                      <div className="flex items-start gap-2">
+                        <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
+                        <span>Paste from Excel / Google Sheets. Requires manual re-paste to update.</span>
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
 
-            <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <DollarSign className="w-4 h-4" />
-                  Manual
-                </CardTitle>
-                <CardDescription>
-                  <div className="flex items-start gap-2">
-                    <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
-                    <span>Enter spend manually. Requires manual updates (best for testing only).</span>
-                  </div>
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        )}
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Manual</CardTitle>
+                    <CardDescription>
+                      <div className="flex items-start gap-2">
+                        <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
+                        <span>Enter spend manually. Requires manual updates (best for testing only).</span>
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </div>
+            )}
 
             {/* ── AD PLATFORM STEP ── */}
             {step === "ad_platform" && (
               <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Choose ad platform</CardTitle>
+                    <CardDescription>Select the platform to pull spend data from.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                 {/* Platform picker */}
                 <div className="grid gap-3 sm:grid-cols-3">
                   {/* LinkedIn */}
@@ -967,8 +847,8 @@ export function AddSpendWizardModal(props: {
                     type="button"
                     onClick={() => setSelectedPlatform("linkedin")}
                     className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "linkedin"
-                        ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
-                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                      ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
+                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                       }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -994,8 +874,8 @@ export function AddSpendWizardModal(props: {
                     type="button"
                     onClick={() => setSelectedPlatform("meta")}
                     className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "meta"
-                        ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
-                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                      ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
+                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                       }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -1015,8 +895,8 @@ export function AddSpendWizardModal(props: {
                     type="button"
                     onClick={() => setSelectedPlatform("google_ads")}
                     className={`relative rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm ${selectedPlatform === "google_ads"
-                        ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
-                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                      ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
+                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                       }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -1195,21 +1075,30 @@ export function AddSpendWizardModal(props: {
                 )}
 
                 {/* Action buttons */}
-                {selectedPlatform === "linkedin" && linkedInPreview && (
-                  <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
+                  {selectedPlatform === "linkedin" && linkedInPreview && (
                     <Button
                       onClick={processLinkedInSpend}
                       disabled={isProcessing || selectedLinkedInCampaignIds.length === 0}
                     >
                       {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
 
             {step === "sheets_choose" && (
-              <div className="rounded-lg border p-4 space-y-4">
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Google Sheets</CardTitle>
+                    <CardDescription>Choose the Google Sheet tab that contains your spend data.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                 {sheetsConnections.length === 0 ? (
                   <div className="space-y-3">
                     <div className="text-sm font-medium">Google Sheets</div>
@@ -1330,16 +1219,21 @@ export function AddSpendWizardModal(props: {
                     </p>
                   </div>
                 )}
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
                   <Button onClick={previewSheet} disabled={!selectedSheetConnectionId || isSheetsLoading}>
                     {isSheetsLoading ? "Loading..." : "Next"}
                   </Button>
                 </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
 
             {step === "csv" && (
-              <div className="rounded-lg border p-4 space-y-4">
+              <div className="space-y-4">
+                <Card>
+                  <CardContent className="space-y-3 pt-6">
                 <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
@@ -1374,16 +1268,21 @@ export function AddSpendWizardModal(props: {
                     Required columns: Spend. Optional: Date + Campaign (for multi-campaign files).
                   </p>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
                   <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
                     {isCsvPreviewing ? "Previewing..." : "Next"}
                   </Button>
                 </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
 
             {step === "paste" && (
-              <div className="rounded-lg border p-4 space-y-4">
+              <div className="space-y-4">
+                <Card>
+                  <CardContent className="space-y-3 pt-6">
                 <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
@@ -1405,260 +1304,250 @@ export function AddSpendWizardModal(props: {
                     Works with tab-delimited (copy/paste) or comma-delimited text. We’ll preview it before processing.
                   </p>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
                   <Button onClick={previewPaste} disabled={!pasteText.trim() || isCsvPreviewing}>
                     {isCsvPreviewing ? "Previewing..." : "Next"}
                   </Button>
                 </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
 
-        {/* ═══════════════════ STEP: MANUAL ═══════════════════ */}
-        {!isEditPrefillLoading && step === "manual" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
-                Manual spend
-              </CardTitle>
-              <CardDescription>Enter a fixed spend amount for this campaign.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-xs text-amber-800 dark:text-amber-300">
-                    <strong>Manual spend won't auto-update.</strong> You'll need to edit this value when it changes.
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="manual-spend">Total spend amount</Label>
-                <Input
-                  id="manual-spend"
-                  type="text"
-                  inputMode="decimal"
-                  value={manualAmount}
-                  onChange={(e) => setManualAmount(e.target.value)}
-                  placeholder="e.g. 1500.00"
-                  className="max-w-xs"
-                />
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  We'll distribute this evenly across the current GA4 window ({props.dateRange || "30days"}).
-                </p>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  onClick={processManual}
-                  disabled={isProcessing || !manualAmount || isNaN(parseFloat(String(manualAmount).replace(/[$,]/g, "")))}
-                >
-                  {isProcessing ? "Saving..." : (isEditing ? "Update spend" : "Save spend")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {(step === "csv_map" || step === "sheets_map") && (
-          <div className="space-y-6">
-            {step === "csv_map" && !csvPreview?.success ? (
-              <div className="rounded-lg border p-4 space-y-4">
-                {csvEditNotice && (
-                  <div className="text-xs text-slate-600 dark:text-slate-400">
-                    {csvEditNotice}
-                  </div>
-                )}
-                {(spendColumn || campaignKeyColumn || campaignKeyValues.length > 0) && (
-                  <div className="rounded-md bg-slate-50 dark:bg-slate-900 border p-3">
-                    <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Current mapping</div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400">
-                      Spend: <span className="font-medium">{spendColumn || "—"}</span>
-                      {campaignKeyColumn ? (
-                        <>
-                          {" "}· Campaign: <span className="font-medium">{campaignKeyColumn}</span>
-                        </>
-                      ) : null}
+            {/* ═══════════════════ STEP: MANUAL ═══════════════════ */}
+            {step === "manual" && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Enter spend</CardTitle>
+                    <CardDescription>Spend to date for this campaign (lifetime). You can update it any time.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="manual-spend">Total spend amount ({props.currency || "USD"})</Label>
+                      <Input
+                        id="manual-spend"
+                        type="text"
+                        inputMode="decimal"
+                        value={manualAmount}
+                        onChange={(e) => setManualAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="max-w-xs"
+                      />
                     </div>
-                    {campaignKeyValues.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {campaignKeyValues.slice(0, 6).map((v) => (
-                          <span key={v} className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-700 dark:text-slate-300">
-                            {v}
-                          </span>
-                        ))}
-                        {campaignKeyValues.length > 6 && (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-500 dark:text-slate-400">
-                            +{campaignKeyValues.length - 6} more
-                          </span>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
+                      <Button
+                        onClick={processManual}
+                        disabled={isProcessing || !manualAmount || isNaN(parseFloat(String(manualAmount).replace(/[$,]/g, "")))}
+                      >
+                        {isProcessing ? "Saving..." : (isEditing ? "Update spend" : "Save spend")}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {(step === "csv_map" || step === "sheets_map") && (
+              <div className="space-y-4">
+                <Card>
+                  <CardContent className="space-y-4 pt-6">
+                {step === "csv_map" && !csvPreview?.success ? (
+                  <div className="space-y-4">
+                    {csvEditNotice && (
+                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                        {csvEditNotice}
+                      </div>
+                    )}
+                    {(spendColumn || campaignKeyColumn || campaignKeyValues.length > 0) && (
+                      <div className="rounded-md bg-slate-50 dark:bg-slate-900 border p-3">
+                        <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Current mapping</div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400">
+                          Spend: <span className="font-medium">{spendColumn || "—"}</span>
+                          {campaignKeyColumn ? (
+                            <>
+                              {" "}· Campaign: <span className="font-medium">{campaignKeyColumn}</span>
+                            </>
+                          ) : null}
+                        </div>
+                        {campaignKeyValues.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {campaignKeyValues.slice(0, 6).map((v) => (
+                              <span key={v} className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-700 dark:text-slate-300">
+                                {v}
+                              </span>
+                            ))}
+                            {campaignKeyValues.length > 6 && (
+                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-500 dark:text-slate-400">
+                                +{campaignKeyValues.length - 6} more
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="csv-file-remap">Upload file (CSV)</Label>
+                        {csvFile && (
+                          <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
+                            Remove file
+                          </Button>
+                        )}
+                      </div>
+                      <Input
+                        key={`csv-file-remap-${csvInputKey}`}
+                        id="csv-file-remap"
+                        type="file"
+                        accept=".csv,text/csv"
+                        className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700"
+                        onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Re-upload the CSV to preview rows, adjust columns, and re-process spend.
+                      </p>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
+                      <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
+                        {isCsvPreviewing ? "Previewing..." : "Preview"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">Columns</div>
+                        <div className="text-sm text-slate-700 dark:text-slate-300">
+                          Spend: <span className="font-medium">{spendColumn || "—"}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          We’ll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
+                        </p>
+                      </div>
+                      <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
+                        {showColumnMapping ? "Hide" : "Edit"} columns
+                      </Button>
+                    </div>
+
+                    {showColumnMapping && (
+                      <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
+                        <div className="space-y-2">
+                          <Label>Spend column</Label>
+                          <Select value={spendColumn} onValueChange={setSpendColumn}>
+                            <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
+                            <SelectContent className="z-[10000]">
+                              {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-2 border-t space-y-3">
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign.
+                        </p>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Campaign identifier for multi-campaign datasets</Label>
+                          <Select
+                            value={campaignKeyColumn || CAMPAIGN_COL_NONE}
+                            onValueChange={(v) => {
+                              campaignKeyTouchedRef.current = true;
+                              setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
+                            }}
+                          >
+                            <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
+                            <SelectContent className="z-[10000]">
+                              <SelectItem value={CAMPAIGN_COL_NONE}>Search values...</SelectItem>
+                              {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Campaign value(s)</Label>
+                          <Input
+                            value={campaignKeySearch}
+                            onChange={(e) => setCampaignKeySearch(e.target.value)}
+                            placeholder="Search values…"
+                            disabled={!effectiveCampaignColumn}
+                          />
+                          <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
+                            {!effectiveCampaignColumn ? (
+                              <div className="text-xs text-slate-500 dark:text-slate-400">Upload/preview data to see campaign values.</div>
+                            ) : uniqueCampaignKeyValues.length === 0 ? (
+                              <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
+                            ) : (
+                              uniqueCampaignKeyValues.map((val) => (
+                                <div key={val} className="flex items-start gap-2">
+                                  <Checkbox
+                                    checked={campaignKeyValues.includes(val)}
+                                    onCheckedChange={(checked) => {
+                                      const next = Boolean(checked);
+                                      setCampaignKeyValues((prev) => {
+                                        if (next) return prev.includes(val) ? prev : [...prev, val];
+                                        return prev.filter((x) => x !== val);
+                                      });
+                                    }}
+                                  />
+                                  <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="csv-file-remap">Upload file (CSV)</Label>
-                    {csvFile && (
-                      <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
-                        Remove file
-                      </Button>
-                    )}
-                  </div>
-                  <Input
-                    key={`csv-file-remap-${csvInputKey}`}
-                    id="csv-file-remap"
-                    type="file"
-                    accept=".csv,text/csv"
-                    className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700"
-                    onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                  />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Re-upload the CSV to preview rows, adjust columns, and re-process spend.
-                  </p>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <Button variant="outline" onClick={() => setStep("select")}>Back</Button>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
-                      {isCsvPreviewing ? "Previewing..." : "Preview"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-lg border p-4 space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="text-sm font-medium">Columns</div>
-                    <div className="text-sm text-slate-700 dark:text-slate-300">
-                      Spend: <span className="font-medium">{spendColumn || "—"}</span>
+
+                {previewRows.length > 0 && (
+                  <div className="rounded-md border overflow-hidden">
+                    <div className="text-sm font-medium mb-3">Preview (first {Math.min(previewRows.length, 5)} rows)</div>
+                    <div className="overflow-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            {headers.slice(0, 6).map((h) => (
+                              <th key={h} className="text-left py-2 pr-4 font-medium">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {previewRows.slice(0, 5).map((r, idx) => (
+                            <tr key={idx} className="border-b last:border-b-0">
+                              {headers.slice(0, 6).map((h) => (
+                                <td key={h} className="py-2 pr-4 text-slate-700 dark:text-slate-300">{String((r as any)[h] ?? "")}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      We’ll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                      Processing will automatically **sum spend by day**, so unaggregated rows are OK.
                     </p>
                   </div>
-                  <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
-                    {showColumnMapping ? "Hide" : "Edit"} columns
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setStep("select")} disabled={isProcessing}>Cancel</Button>
+                  <Button onClick={step === "csv_map" ? processCsv : processSheets} disabled={isProcessing}>
+                    {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}
                   </Button>
                 </div>
-
-                {showColumnMapping && (
-                  <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
-                    <div className="space-y-2">
-                      <Label>Spend column</Label>
-                      <Select value={spendColumn} onValueChange={setSpendColumn}>
-                        <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
-                        <SelectContent className="z-[10000]">
-                          {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-
-                <div className="pt-2 border-t space-y-3">
-                  <div className="space-y-1">
-                    <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign.
-                    </p>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Campaign identifier for multi-campaign datasets</Label>
-                      <Select
-                        value={campaignKeyColumn || CAMPAIGN_COL_NONE}
-                        onValueChange={(v) => {
-                          campaignKeyTouchedRef.current = true;
-                          setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
-                        }}
-                      >
-                        <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
-                        <SelectContent className="z-[10000]">
-                          <SelectItem value={CAMPAIGN_COL_NONE}>Search values...</SelectItem>
-                          {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Campaign value(s)</Label>
-                      <Input
-                        value={campaignKeySearch}
-                        onChange={(e) => setCampaignKeySearch(e.target.value)}
-                        placeholder="Search values…"
-                        disabled={!effectiveCampaignColumn}
-                      />
-                      <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
-                        {!effectiveCampaignColumn ? (
-                          <div className="text-xs text-slate-500 dark:text-slate-400">Upload/preview data to see campaign values.</div>
-                        ) : uniqueCampaignKeyValues.length === 0 ? (
-                          <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
-                        ) : (
-                          uniqueCampaignKeyValues.map((val) => (
-                            <div key={val} className="flex items-start gap-2">
-                              <Checkbox
-                                checked={campaignKeyValues.includes(val)}
-                                onCheckedChange={(checked) => {
-                                  const next = Boolean(checked);
-                                  setCampaignKeyValues((prev) => {
-                                    if (next) return prev.includes(val) ? prev : [...prev, val];
-                                    return prev.filter((x) => x !== val);
-                                  });
-                                }}
-                              />
-                              <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
-
-            {previewRows.length > 0 && (
-              <div className="rounded-lg border p-4">
-                <div className="text-sm font-medium mb-3">Preview (first {Math.min(previewRows.length, 5)} rows)</div>
-                <div className="overflow-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        {headers.slice(0, 6).map((h) => (
-                          <th key={h} className="text-left py-2 pr-4 font-medium">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewRows.slice(0, 5).map((r, idx) => (
-                        <tr key={idx} className="border-b last:border-b-0">
-                          {headers.slice(0, 6).map((h) => (
-                            <td key={h} className="py-2 pr-4 text-slate-700 dark:text-slate-300">{String((r as any)[h] ?? "")}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                  Processing will automatically **sum spend by day**, so unaggregated rows are OK.
-                </p>
-              </div>
-            )}
-
-            <div className="flex justify-between gap-2">
-              <Button variant="outline" onClick={() => setStep("select")} disabled={isProcessing}>Back</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => props.onOpenChange(false)} disabled={isProcessing}>Cancel</Button>
-                <Button onClick={step === "csv_map" ? processCsv : processSheets} disabled={isProcessing}>
-                  {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
 
           </div>
         </div>

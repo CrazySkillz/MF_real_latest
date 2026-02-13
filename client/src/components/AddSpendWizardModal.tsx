@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import {
@@ -103,6 +104,7 @@ export function AddSpendWizardModal(props: {
   const [linkedInAdAccounts, setLinkedInAdAccounts] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedLinkedInAdAccount, setSelectedLinkedInAdAccount] = useState<string>("");
   const [isLinkedInConnecting, setIsLinkedInConnecting] = useState(false);
+  const [isLinkedInTestMode, setIsLinkedInTestMode] = useState(false);
 
   const prefillKeyRef = useRef<string | null>(null);
   const suppressCampaignResetRef = useRef(false);
@@ -148,6 +150,7 @@ export function AddSpendWizardModal(props: {
       setLinkedInAdAccounts([]);
       setSelectedLinkedInAdAccount("");
       setIsLinkedInConnecting(false);
+      setIsLinkedInTestMode(false);
     }
   }, [props.open]);
 
@@ -630,6 +633,31 @@ export function AddSpendWizardModal(props: {
     }
     setIsProcessing(true);
     try {
+      // In test mode, save via manual spend endpoint since there's no real LinkedIn connection
+      if (isLinkedInTestMode) {
+        const selectedSpend = linkedInPreview.campaigns
+          .filter((c) => selectedLinkedInCampaignIds.includes(c.id))
+          .reduce((sum, c) => sum + c.spend, 0);
+        const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/manual`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: Number(selectedSpend.toFixed(2)),
+            currency: props.currency || "USD",
+            dateRange: props.dateRange || "30days",
+          }),
+        });
+        const json = await resp.json().catch(() => null);
+        if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save test spend");
+        toast({
+          title: "Test spend imported",
+          description: `Saved ${props.currency || "USD"} ${selectedSpend.toFixed(2)} from ${selectedLinkedInCampaignIds.length} mock campaign(s).`,
+        });
+        props.onProcessed?.();
+        props.onOpenChange(false);
+        return;
+      }
+
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/linkedin/process`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -862,11 +890,43 @@ export function AddSpendWizardModal(props: {
                     {/* ── LinkedIn panel ── */}
                     {selectedPlatform === "linkedin" && (
                       <div className="rounded-lg border p-4 space-y-4">
-                        {!linkedInConnectionStatus?.connected ? (
+                        {!linkedInConnectionStatus?.connected && !isLinkedInTestMode ? (
                           <div className="space-y-3">
                             {linkedInAuthStep === "idle" && (
                               <>
-                                <div className="text-sm font-medium">LinkedIn Ads — Not connected</div>
+                                <div className="flex items-center justify-between">
+                                  <div className="text-sm font-medium">LinkedIn Ads — Not connected</div>
+                                  <div className="flex items-center gap-2">
+                                    <Label htmlFor="li-test-mode" className="text-xs text-slate-500 cursor-pointer">Test mode</Label>
+                                    <Switch
+                                      id="li-test-mode"
+                                      checked={isLinkedInTestMode}
+                                      onCheckedChange={(checked) => {
+                                        setIsLinkedInTestMode(checked);
+                                        if (checked) {
+                                          // Immediately populate mock data
+                                          const mockCampaigns = [
+                                            { id: "mock-001", name: "Brand Awareness Q1 2025", status: "active", spend: 4250.50, impressions: 145230, clicks: 3845 },
+                                            { id: "mock-002", name: "Lead Generation - Tech Professionals", status: "active", spend: 3180.25, impressions: 89420, clicks: 2156 },
+                                            { id: "mock-003", name: "Product Launch - Enterprise Software", status: "active", spend: 6890.75, impressions: 203450, clicks: 5234 },
+                                            { id: "mock-004", name: "Recruitment Marketing Campaign", status: "paused", spend: 1250.00, impressions: 45120, clicks: 892 },
+                                          ];
+                                          setLinkedInPreview({
+                                            adAccountId: "mock-account-001",
+                                            adAccountName: "Test Ad Account",
+                                            campaigns: mockCampaigns,
+                                            totalSpend: mockCampaigns.reduce((s, c) => s + c.spend, 0),
+                                            currency: props.currency || "USD",
+                                            dateRange: "Last 90 days (test data)",
+                                          });
+                                          setSelectedLinkedInCampaignIds(mockCampaigns.map(c => c.id));
+                                          setLinkedInConnectionStatus({ connected: true, adAccountName: "Test Ad Account" });
+                                          toast({ title: "Test mode enabled", description: "Using mock LinkedIn Ads data. You can test the full import flow." });
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                </div>
                                 <p className="text-xs text-slate-500 dark:text-slate-400">
                                   Connect your LinkedIn Ads account to pull spend data directly.
                                 </p>
@@ -1026,9 +1086,12 @@ export function AddSpendWizardModal(props: {
                           </div>
                         ) : !linkedInPreview ? (
                           <div className="space-y-3">
-                            <div className="text-sm font-medium">LinkedIn Ads — Connected</div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-medium">LinkedIn Ads — Connected</div>
+                              {isLinkedInTestMode && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">Test mode</Badge>}
+                            </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {linkedInConnectionStatus.adAccountName
+                              {linkedInConnectionStatus?.adAccountName
                                 ? `Ad account: ${linkedInConnectionStatus.adAccountName}`
                                 : "Your LinkedIn Ads account is connected."}
                               {" "}We'll fetch the last 90 days of campaign spend.
@@ -1052,7 +1115,10 @@ export function AddSpendWizardModal(props: {
                           <div className="space-y-4">
                             <div className="flex items-center justify-between">
                               <div>
-                                <div className="text-sm font-medium">LinkedIn Ads spend</div>
+                                <div className="flex items-center gap-2">
+                                  <div className="text-sm font-medium">LinkedIn Ads spend</div>
+                                  {isLinkedInTestMode && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">Test data</Badge>}
+                                </div>
                                 <p className="text-xs text-slate-500 dark:text-slate-400">
                                   {linkedInPreview.adAccountName || "Ad account"} · {linkedInPreview.dateRange || "Last 90 days"}
                                 </p>

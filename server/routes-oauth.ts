@@ -187,7 +187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return s.includes("no_revenue") || s.includes("no-revenue") || s.includes("no revenue");
   };
 
-  const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string; noRevenue?: boolean; endOffsetDays?: number }) => {
+  const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string; noRevenue?: boolean; endOffsetDays?: number; ga4CampaignFilter?: string }) => {
     // IMPORTANT: normalize the propertyId so "yesop" and its numeric form don't produce different datasets.
     const pid = normalizePropertyIdForMock(opts.propertyId);
     const days = dateRangeToDays(opts.dateRange);
@@ -226,7 +226,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "yesop-email": { label: "Email Nurture", scale: 0.25, engagementDelta: 0.05 },
         "yesop-social": { label: "Paid Social", scale: 0.5, engagementDelta: -0.04 },
       };
-      const profile = campaignProfiles[opts.campaignId] || { label: "Default", scale: 1.0, engagementDelta: 0 };
+      // Also allow lookup by UTM campaign name so user-created campaigns get the right profile
+      const utmToProfile: Record<string, string> = {
+        "yesop_brand_search": "yesop-brand",
+        "yesop_prospecting": "yesop-prospecting",
+        "yesop_retargeting": "yesop-retargeting",
+        "yesop_email_nurture": "yesop-email",
+        "yesop_paid_social": "yesop-social",
+      };
+      // Try by campaign ID first, then by UTM filter name
+      let profile = campaignProfiles[opts.campaignId];
+      if (!profile && opts.ga4CampaignFilter) {
+        // Support single string or first element of a JSON array
+        let filterVal = String(opts.ga4CampaignFilter || "").trim();
+        if (filterVal.startsWith("[")) {
+          try {
+            const arr = JSON.parse(filterVal);
+            if (Array.isArray(arr) && arr.length > 0) filterVal = String(arr[0]).trim();
+          } catch { /* keep original */ }
+        }
+        const mappedId = utmToProfile[filterVal.toLowerCase()];
+        if (mappedId) profile = campaignProfiles[mappedId];
+      }
+      if (!profile) profile = { label: "Default", scale: 1.0, engagementDelta: 0 };
       const sc = profile.scale;
 
       const configByRange: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; engagementRate: number; bounceRate: number; avgSessionDuration: number }> = {
@@ -3892,7 +3914,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaigns = await storage.getCampaigns();
       const visible = (Array.isArray(campaigns) ? campaigns : []).filter((c: any) => {
         const ownerId = String(c?.ownerId || "").trim();
-        return !ownerId || ownerId === actorId;
+        if (ownerId && ownerId !== actorId) return false;
+        // Hide draft campaigns – they only become visible after the user
+        // clicks the final "Create" button which PATCHes status → "active".
+        const status = String(c?.status || "").trim().toLowerCase();
+        if (status === "draft") return false;
+        return true;
       });
 
       // Backward compatibility: claim any un-owned campaigns shown to this session.
@@ -4088,7 +4115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
         const simRange = days >= 90 ? "90days" : days >= 30 ? "30days" : "7days";
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: simRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: simRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const pid = requestedPropertyId || "yesop";
         return res.json({
           success: true,
@@ -4264,7 +4291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pidNormalized = normalizePropertyIdForMock(requestedPropertyId);
       if (mock || isYesopMockProperty(pidNormalized)) {
         // For to-date in mocks, we just sum the latest 90-day simulated daily series and label it as "to date".
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: "90days", noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const totals = {
           sessions: Number(sim?.totals?.sessions || 0),
           users: Number(sim?.totals?.users || 0),
@@ -4487,11 +4514,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Idempotent: skips campaigns that already exist (matched by stable ID).
   // ============================================================================
   const YESOP_CAMPAIGNS = [
-    { id: "yesop-brand", name: "Yesop — Brand Search", spend: "4200.00", industry: "digital marketing" },
-    { id: "yesop-prospecting", name: "Yesop — Prospecting", spend: "2800.00", industry: "digital marketing" },
-    { id: "yesop-retargeting", name: "Yesop — Retargeting", spend: "1500.00", industry: "e-commerce" },
-    { id: "yesop-email", name: "Yesop — Email Nurture", spend: "600.00", industry: "e-commerce" },
-    { id: "yesop-social", name: "Yesop — Paid Social", spend: "3100.00", industry: "saas" },
+    { id: "yesop-brand",        name: "Yesop — Brand Search", spend: "4200.00", industry: "digital marketing", utmCampaign: "yesop_brand_search" },
+    { id: "yesop-prospecting",  name: "Yesop — Prospecting",  spend: "2800.00", industry: "digital marketing", utmCampaign: "yesop_prospecting" },
+    { id: "yesop-retargeting",  name: "Yesop — Retargeting",  spend: "1500.00", industry: "e-commerce",        utmCampaign: "yesop_retargeting" },
+    { id: "yesop-email",        name: "Yesop — Email Nurture", spend: "600.00",  industry: "e-commerce",        utmCampaign: "yesop_email_nurture" },
+    { id: "yesop-social",       name: "Yesop — Paid Social",  spend: "3100.00", industry: "saas",              utmCampaign: "yesop_paid_social" },
   ];
 
   app.post("/api/seed-yesop-campaigns", async (req, res) => {
@@ -4516,8 +4543,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 1) Create campaign with stable ID
         // Use raw SQL insert to set the specific ID
         await db.execute(sql`
-          INSERT INTO campaigns (id, owner_id, name, spend, currency, status, industry, platform, start_date, created_at)
-          VALUES (${def.id}, ${actorId}, ${def.name}, ${def.spend}, 'USD', 'active', ${def.industry}, 'google_analytics', NOW() - INTERVAL '90 days', NOW())
+          INSERT INTO campaigns (id, owner_id, name, spend, currency, status, industry, platform, ga4_campaign_filter, start_date, created_at)
+          VALUES (${def.id}, ${actorId}, ${def.name}, ${def.spend}, 'USD', 'active', ${def.industry}, 'google_analytics', ${def.utmCampaign}, NOW() - INTERVAL '90 days', NOW())
           ON CONFLICT (id) DO NOTHING
         `);
 
@@ -4577,7 +4604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // 5) Seed initial GA4 daily metrics (last 7 days) with distinct per-campaign values
-        const sim = simulateGA4({ campaignId: def.id, propertyId: "yesop", dateRange: "7days" });
+        const sim = simulateGA4({ campaignId: def.id, propertyId: "yesop", dateRange: "7days", ga4CampaignFilter: def.utmCampaign });
         if (sim.timeSeries?.length > 0) {
           const rows = sim.timeSeries.map((d: any) => ({
             campaignId: def.id,
@@ -4630,7 +4657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader('Cache-Control', 'no-store');
         const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
           success: true,
@@ -6638,7 +6665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader('Cache-Control', 'no-store');
         const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
           success: true,
@@ -6748,14 +6775,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const seed = hashToSeed(`mock:ga4-campaign-values:${campaignId}:${normalizePropertyIdForMock(pid)}`);
         const rand = mulberry32(seed);
         const base = [
-          // Agency-realistic naming examples (UTM campaign values)
-          'yesop_prospecting_q1',
-          'yesop_retargeting',
-          'yesop_brand_search',
-          'yesop_partner_webinar',
-          // Special test case: selecting this will trigger the existing no-revenue simulator branch
-          // because isNoRevenueFilter() checks for "no_revenue" substring in the stored ga4CampaignFilter.
-          'yesop_no_revenue',
+          // UTM campaign values aligned with the 5 seeded YESOP_CAMPAIGNS
+          'yesop_brand_search',      // → yesop-brand  ("Yesop — Brand Search")
+          'yesop_prospecting',       // → yesop-prospecting
+          'yesop_retargeting',       // → yesop-retargeting
+          'yesop_email_nurture',     // → yesop-email  ("Yesop — Email Nurture")
+          'yesop_paid_social',       // → yesop-social ("Yesop — Paid Social")
         ];
         const campaigns = base
           .slice(0, Math.min(base.length, limit))
@@ -6821,7 +6846,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
 
         const pages = [
           '/',
@@ -6925,7 +6950,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
 
         const events = [
           { name: 'purchase', weight: 1.0 },
@@ -7005,7 +7030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue });
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const pid = requestedPropertyId || 'yesop';
         return res.json({
           success: true,

@@ -1256,7 +1256,7 @@ export default function Campaigns() {
         ga4CampaignFilter: ga4CampaignFilterForNewCampaign || undefined,
         industry: data.industry || undefined,
         platform: "manual", // will be updated after connectors are completed
-        status: "active" as const,
+        status: "draft" as const,  // draft until user clicks final "Create" button
         type: "campaign" as const,
         impressions: 0,
         clicks: 0,
@@ -1293,6 +1293,7 @@ export default function Campaigns() {
       await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
         platform: selectedPlatforms.join(", "),
         ga4CampaignFilter: ga4CampaignFilterForNewCampaign || null,
+        status: "active",  // promote from draft → active so it appears in Campaign Management
       });
     } catch (e: any) {
       console.warn("Failed to finalize campaign platforms:", e?.message || e);

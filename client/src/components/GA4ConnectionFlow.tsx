@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,7 +35,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [showClientIdInput, setShowClientIdInput] = useState(false);
-  const [ga4CampaignFilter, setGa4CampaignFilter] = useState('');
+  const [ga4CampaignFilter, setGa4CampaignFilter] = useState<string[]>([]);
   const [isSavingFilter, setIsSavingFilter] = useState(false);
   const [availableCampaigns, setAvailableCampaigns] = useState<Array<{ name: string; users: number }>>([]);
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
@@ -52,7 +53,18 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         if (!mounted || !c) return;
         const existing = String(c.ga4CampaignFilter || '').trim();
         const fallback = String(c.name || '').trim();
-        setGa4CampaignFilter(existing || fallback);
+        // Parse existing filter: could be JSON array or single string
+        const raw = existing || fallback;
+        if (raw.startsWith('[') && raw.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              setGa4CampaignFilter(parsed.map((v: any) => String(v || '').trim()).filter(Boolean));
+              return;
+            }
+          } catch { /* fall through */ }
+        }
+        setGa4CampaignFilter(raw ? [raw] : []);
       } catch {
         // ignore
       }
@@ -63,11 +75,11 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   }, [campaignId]);
 
   const saveCampaignFilter = async () => {
-    const value = String(ga4CampaignFilter || '').trim();
-    if (!value) {
+    const values = ga4CampaignFilter.map(v => v.trim()).filter(Boolean);
+    if (values.length === 0) {
       toast({
         title: "Campaign filter required",
-        description: "Enter the GA4 campaign name (typically your utm_campaign value).",
+        description: "Select at least one GA4 campaign name (typically your utm_campaign value).",
         variant: "destructive",
       });
       return;
@@ -75,10 +87,14 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
 
     setIsSavingFilter(true);
     try {
-      await apiRequest("PATCH", `/api/campaigns/${campaignId}`, { ga4CampaignFilter: value });
+      // Single value: plain string for backward compat. Multiple: JSON array.
+      const filterValue = values.length === 1 ? values[0] : JSON.stringify(values);
+      await apiRequest("PATCH", `/api/campaigns/${campaignId}`, { ga4CampaignFilter: filterValue });
       toast({
-        title: "GA4 campaign selected",
-        description: "MetricMind will now filter GA4 analytics to this campaign only.",
+        title: "GA4 campaign(s) selected",
+        description: values.length === 1
+          ? "MetricMind will now filter GA4 analytics to this campaign only."
+          : `MetricMind will now filter GA4 analytics to ${values.length} campaigns.`,
       });
       setConnectionStep('connected');
       onConnectionSuccess?.();
@@ -453,42 +469,74 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
             <BarChart3 className="w-6 h-6 text-blue-600" />
           </div>
-          <CardTitle>Choose GA4 campaign to track</CardTitle>
+          <CardTitle>Choose GA4 campaigns to track</CardTitle>
           <CardDescription>
-            GA4 properties include many campaigns. MetricMind will filter analytics to a single GA4 campaign for this campaign.
+            GA4 properties include many campaigns. Select one or more GA4 campaigns for MetricMind to track.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="ga4-campaign-filter">GA4 Campaign name (utm_campaign)</Label>
+            <Label htmlFor="ga4-campaign-filter">GA4 Campaign name(s) (utm_campaign)</Label>
             {availableCampaigns.length > 0 ? (
-              <select
-                id="ga4-campaign-filter"
-                value={ga4CampaignFilter}
-                onChange={(e) => setGa4CampaignFilter(e.target.value)}
-                className="w-full mt-2 p-2 border rounded-md bg-white dark:bg-slate-800"
-              >
-                <option value="">Choose a campaign…</option>
-                {availableCampaigns.map((c) => (
-                  <option key={c.name} value={c.name}>
-                    {c.name} (users: {c.users})
-                  </option>
-                ))}
-              </select>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setGa4CampaignFilter(availableCampaigns.map(c => c.name))}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setGa4CampaignFilter([])}
+                  >
+                    Clear
+                  </Button>
+                  <span className="text-xs text-slate-500 ml-auto">
+                    {ga4CampaignFilter.length} of {availableCampaigns.length} selected
+                  </span>
+                </div>
+                <div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1">
+                  {availableCampaigns.map((c) => {
+                    const checked = ga4CampaignFilter.includes(c.name);
+                    return (
+                      <label
+                        key={c.name}
+                        className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(val) => {
+                            if (val) {
+                              setGa4CampaignFilter(prev => [...prev, c.name]);
+                            } else {
+                              setGa4CampaignFilter(prev => prev.filter(v => v !== c.name));
+                            }
+                          }}
+                        />
+                        <span className="text-sm flex-1">{c.name}</span>
+                        <span className="text-xs text-slate-500">{c.users.toLocaleString()} users</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             ) : (
               <Input
                 id="ga4-campaign-filter"
-                value={ga4CampaignFilter}
-                onChange={(e) => setGa4CampaignFilter(e.target.value)}
-                placeholder={isLoadingCampaigns ? "Loading campaigns…" : "e.g., brand_awareness"}
+                value={ga4CampaignFilter[0] || ''}
+                onChange={(e) => setGa4CampaignFilter(e.target.value ? [e.target.value] : [])}
+                placeholder={isLoadingCampaigns ? "Loading campaigns\u2026" : "e.g., brand_awareness"}
               />
             )}
             <p className="text-xs text-slate-600 dark:text-slate-400">
               Tip: This usually matches the UTM campaign used in your links (e.g., <code className="px-1">utm_campaign</code>).
             </p>
           </div>
-          <Button className="w-full" onClick={saveCampaignFilter} disabled={isSavingFilter}>
-            {isSavingFilter ? "Saving..." : "Save and finish"}
+          <Button className="w-full" onClick={saveCampaignFilter} disabled={isSavingFilter || ga4CampaignFilter.length === 0}>
+            {isSavingFilter ? "Saving..." : ga4CampaignFilter.length > 1 ? `Save ${ga4CampaignFilter.length} campaigns` : "Save and finish"}
           </Button>
         </CardContent>
       </Card>

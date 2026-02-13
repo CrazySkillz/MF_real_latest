@@ -138,8 +138,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   const [isGA4PropertyLoading, setIsGA4PropertyLoading] = useState(false);
   const [showGA4CampaignSelector, setShowGA4CampaignSelector] = useState(false);
   const [ga4CampaignValues, setGA4CampaignValues] = useState<Array<{ name: string; users: number }>>([]);
-  const [selectedGA4CampaignValue, setSelectedGA4CampaignValue] = useState<string>('');
-  // Campaign filter to scope GA4 to a single campaignName (utm_campaign)
+  const [selectedGA4CampaignValues, setSelectedGA4CampaignValues] = useState<string[]>([]);
+  // Campaign filter to scope GA4 to one or more campaignName values (utm_campaign)
   const [isGA4CampaignLoading, setIsGA4CampaignLoading] = useState(false);
   const [showCustomIntegrationModal, setShowCustomIntegrationModal] = useState(false);
   const [customIntegrationEmail, setCustomIntegrationEmail] = useState('');
@@ -335,12 +335,12 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
           const valsJson = await valsResp.json().catch(() => null);
           const vals = Array.isArray(valsJson?.campaigns) ? valsJson.campaigns : [];
           setGA4CampaignValues(vals);
-          setSelectedGA4CampaignValue(vals[0]?.name || '');
+          setSelectedGA4CampaignValues(vals.length > 0 ? [vals[0].name] : []);
           setShowGA4CampaignSelector(true);
         } catch (e) {
           console.warn('Failed to fetch GA4 campaign values:', e);
           setGA4CampaignValues([]);
-          setSelectedGA4CampaignValue('');
+          setSelectedGA4CampaignValues([]);
           setShowGA4CampaignSelector(true);
         } finally {
           setIsGA4CampaignLoading(false);
@@ -368,20 +368,24 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
   };
 
   const saveGA4CampaignFilter = async () => {
-    const value = String(selectedGA4CampaignValue || '').trim();
-    if (!value) {
+    const values = selectedGA4CampaignValues.map(v => v.trim()).filter(Boolean);
+    if (values.length === 0) {
       toast({
         title: "GA4 campaign required",
-        description: "Select a GA4 campaign (campaignName) to scope analytics for this campaign.",
+        description: "Select at least one GA4 campaign (campaignName) to scope analytics for this campaign.",
         variant: "destructive"
       });
       return;
     }
     try {
-      onGA4CampaignFilterSelected?.(value);
+      // Single value: plain string for backward compat. Multiple: JSON array.
+      const filterValue = values.length === 1 ? values[0] : JSON.stringify(values);
+      onGA4CampaignFilterSelected?.(filterValue);
       toast({
-        title: "GA4 campaign selected",
-        description: `This campaign will track GA4 campaign "${value}".`
+        title: "GA4 campaign(s) selected",
+        description: values.length === 1
+          ? `This campaign will track GA4 campaign "${values[0]}".`
+          : `This campaign will track ${values.length} GA4 campaigns: ${values.join(", ")}.`
       });
       setShowGA4CampaignSelector(false);
     } catch (e: any) {
@@ -935,9 +939,9 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
         <Dialog open={showGA4CampaignSelector} onOpenChange={setShowGA4CampaignSelector}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Select GA4 campaign to track</DialogTitle>
+              <DialogTitle>Select GA4 campaigns to track</DialogTitle>
               <DialogDescription>
-                Choose the GA4 <strong>campaignName</strong> value you want this MetricMind campaign to track (e.g., <code>brand_awareness</code>).
+                Choose one or more GA4 <strong>campaignName</strong> values you want this MetricMind campaign to track.
               </DialogDescription>
             </DialogHeader>
 
@@ -946,27 +950,58 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 <p className="text-sm text-slate-600 dark:text-slate-400">Loading GA4 campaigns…</p>
               ) : ga4CampaignValues.length > 0 ? (
                 <div className="space-y-2">
-                  <Label>GA4 campaignName</Label>
-                  <Select value={selectedGA4CampaignValue} onValueChange={setSelectedGA4CampaignValue}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a GA4 campaign" />
-                    </SelectTrigger>
-                    <SelectContent className="z-[10000]">
-                      {ga4CampaignValues.map((c) => (
-                        <SelectItem key={c.name} value={c.name}>
-                          {c.name} (users: {c.users})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>GA4 campaignName(s)</Label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedGA4CampaignValues(ga4CampaignValues.map(c => c.name))}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedGA4CampaignValues([])}
+                    >
+                      Clear
+                    </Button>
+                    <span className="text-xs text-slate-500 ml-auto">
+                      {selectedGA4CampaignValues.length} of {ga4CampaignValues.length} selected
+                    </span>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1">
+                    {ga4CampaignValues.map((c) => {
+                      const checked = selectedGA4CampaignValues.includes(c.name);
+                      return (
+                        <label
+                          key={c.name}
+                          className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(val) => {
+                              if (val) {
+                                setSelectedGA4CampaignValues(prev => [...prev, c.name]);
+                              } else {
+                                setSelectedGA4CampaignValues(prev => prev.filter(v => v !== c.name));
+                              }
+                            }}
+                          />
+                          <span className="text-sm flex-1">{c.name}</span>
+                          <span className="text-xs text-slate-500">{c.users.toLocaleString()} users</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <Label htmlFor="ga4-campaign-input">GA4 campaignName</Label>
                   <Input
                     id="ga4-campaign-input"
-                    value={selectedGA4CampaignValue}
-                    onChange={(e) => setSelectedGA4CampaignValue(e.target.value)}
+                    value={selectedGA4CampaignValues[0] || ''}
+                    onChange={(e) => setSelectedGA4CampaignValues(e.target.value ? [e.target.value] : [])}
                     placeholder="e.g., brand_awareness"
                   />
                   <p className="text-xs text-slate-600 dark:text-slate-400">
@@ -976,8 +1011,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
               )}
 
               <div className="flex gap-2 pt-2">
-                <Button className="flex-1" onClick={saveGA4CampaignFilter} disabled={isGA4CampaignLoading}>
-                  Save
+                <Button className="flex-1" onClick={saveGA4CampaignFilter} disabled={isGA4CampaignLoading || selectedGA4CampaignValues.length === 0}>
+                  {selectedGA4CampaignValues.length > 1 ? `Save ${selectedGA4CampaignValues.length} campaigns` : 'Save'}
                 </Button>
               </div>
             </div>

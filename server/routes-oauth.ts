@@ -4558,11 +4558,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Idempotent: skips campaigns that already exist (matched by stable ID).
   // ============================================================================
   const YESOP_CAMPAIGNS = [
-    { id: "yesop-brand",        name: "Yesop — Brand Search", spend: "4200.00", industry: "digital marketing", utmCampaign: "yesop_brand_search" },
-    { id: "yesop-prospecting",  name: "Yesop — Prospecting",  spend: "2800.00", industry: "digital marketing", utmCampaign: "yesop_prospecting" },
-    { id: "yesop-retargeting",  name: "Yesop — Retargeting",  spend: "1500.00", industry: "e-commerce",        utmCampaign: "yesop_retargeting" },
-    { id: "yesop-email",        name: "Yesop — Email Nurture", spend: "600.00",  industry: "e-commerce",        utmCampaign: "yesop_email_nurture" },
-    { id: "yesop-social",       name: "Yesop — Paid Social",  spend: "3100.00", industry: "saas",              utmCampaign: "yesop_paid_social" },
+    { id: "yesop-brand", name: "Yesop — Brand Search", spend: "4200.00", industry: "digital marketing", utmCampaign: "yesop_brand_search" },
+    { id: "yesop-prospecting", name: "Yesop — Prospecting", spend: "2800.00", industry: "digital marketing", utmCampaign: "yesop_prospecting" },
+    { id: "yesop-retargeting", name: "Yesop — Retargeting", spend: "1500.00", industry: "e-commerce", utmCampaign: "yesop_retargeting" },
+    { id: "yesop-email", name: "Yesop — Email Nurture", spend: "600.00", industry: "e-commerce", utmCampaign: "yesop_email_nurture" },
+    { id: "yesop-social", name: "Yesop — Paid Social", spend: "3100.00", industry: "saas", utmCampaign: "yesop_paid_social" },
   ];
 
   app.post("/api/seed-yesop-campaigns", async (req, res) => {
@@ -7430,30 +7430,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // If GA4 geo is empty/unknown/single-country (common for MP test data), return simulated geo so the UI can be tested.
+      // Flag sparse geo data so the UI can show an appropriate message,
+      // but never replace real data with simulated numbers — that would be misleading.
       if (!hasUsefulGeo(geographicData)) {
-        let totalUsers = 2500;
-        let totalSessions = 4000;
-        let totalPageviews = 6000;
-        try {
-          const m = await ga4Service.getMetricsWithAutoRefresh(id, storage, toGa4StartDate(String(dateRange)), primaryConnection.propertyId, campaignFilter);
-          totalUsers = Math.max(0, Math.floor(Number((m as any)?.impressions || 0)));
-          totalSessions = Math.max(0, Math.floor(Number((m as any)?.sessions || 0)));
-          totalPageviews = Math.max(0, Math.floor(Number((m as any)?.pageviews || 0)));
-          // Ensure at least a small dataset for demos
-          if (totalUsers < 50) totalUsers = 2500;
-          if (totalSessions < 50) totalSessions = 4000;
-          if (totalPageviews < 50) totalPageviews = 6000;
-        } catch (e) {
-          // ignore and use defaults
-        }
-
-        geographicData = simulateGeo({
-          totalUsers,
-          totalSessions,
-          totalPageviews,
-          seedKey: `${id}:${primaryConnection.propertyId}:${String(dateRange)}`,
-        });
+        geographicData.isSparse = true;
+        geographicData.sparseReason = 'GA4 returned fewer than 6 unique countries for this property/date range. The data shown is real but limited.';
       }
 
       res.json({
@@ -7471,44 +7452,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastUpdated: new Date().toISOString()
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('GA4 geographic data error:', error);
-      // Provide simulated geographic data instead of failing the UI (demo/testing friendly).
-      res.json({
-        success: true,
-        isSimulated: true,
-        simulationReason: 'GA4 geographic fetch failed; showing simulated geo for demo/testing.',
-        topCountries: [
-          { country: 'United States of America', users: 1247, sessions: 1856, pageviews: 3122 },
-          { country: 'United Kingdom', users: 834, sessions: 1243, pageviews: 2101 },
-          { country: 'Canada', users: 567, sessions: 892, pageviews: 1467 },
-          { country: 'Germany', users: 445, sessions: 678, pageviews: 1099 },
-          { country: 'France', users: 389, sessions: 523, pageviews: 947 },
-          { country: 'Australia', users: 234, sessions: 356, pageviews: 612 },
-          { country: 'Japan', users: 198, sessions: 289, pageviews: 501 },
-          { country: 'Netherlands', users: 167, sessions: 245, pageviews: 419 },
-          { country: 'Sweden', users: 143, sessions: 201, pageviews: 362 },
-          { country: 'Brazil', users: 134, sessions: 198, pageviews: 347 },
-        ],
-        data: [
-          { city: 'New York', region: 'New York', country: 'United States of America', users: 347, sessions: 512, pageviews: 892 },
-          { city: 'London', region: 'England', country: 'United Kingdom', users: 234, sessions: 361, pageviews: 612 },
-          { city: 'Toronto', region: 'Ontario', country: 'Canada', users: 198, sessions: 289, pageviews: 456 },
-          { city: 'Berlin', region: 'Berlin', country: 'Germany', users: 167, sessions: 245, pageviews: 389 },
-          { city: 'Paris', region: 'Île-de-France', country: 'France', users: 143, sessions: 198, pageviews: 324 },
-          { city: 'Sydney', region: 'New South Wales', country: 'Australia', users: 112, sessions: 156, pageviews: 267 },
-          { city: 'Tokyo', region: 'Tokyo', country: 'Japan', users: 98, sessions: 143, pageviews: 234 },
-          { city: 'Amsterdam', region: 'North Holland', country: 'Netherlands', users: 87, sessions: 128, pageviews: 198 },
-          { city: 'Stockholm', region: 'Stockholm', country: 'Sweden', users: 76, sessions: 112, pageviews: 167 },
-          { city: 'São Paulo', region: 'São Paulo', country: 'Brazil', users: 65, sessions: 94, pageviews: 143 },
-        ],
-        totalLocations: 20,
-        totalUsers: 2280,
-        totalSessions: 3875,
-        totalPageviews: 6200,
-        _isFallbackData: true,
-        _message: 'Using simulated geographic data - connection refresh in progress',
-        lastUpdated: new Date().toISOString(),
+
+      // Return an honest error — never fabricate geo data.
+      if (error instanceof Error && (error.message === 'AUTO_REFRESH_NEEDED' || (error as any).isAutoRefreshNeeded)) {
+        return res.status(401).json({ success: false, error: 'AUTO_REFRESH_NEEDED', requiresReauthorization: true });
+      }
+      if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
+        return res.status(401).json({ success: false, error: 'TOKEN_EXPIRED', requiresReauthorization: true });
+      }
+      res.status(500).json({
+        success: false,
+        error: error?.message || 'Failed to fetch GA4 geographic data',
       });
     }
   });

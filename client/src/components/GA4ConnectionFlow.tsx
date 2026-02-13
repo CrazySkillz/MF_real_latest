@@ -133,7 +133,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
 
   const handleTokenConnect = async () => {
     console.log('GA4 Connect button clicked!', { campaignId, accessToken: accessToken.substring(0, 10) + '...', propertyId });
-    
+
     if (!accessToken || !propertyId) {
       toast({
         title: "Missing Information",
@@ -144,7 +144,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     }
 
     setIsConnecting(true);
-    
+
     try {
       console.log('Making GA4 connection request...');
       const response = await fetch('/api/ga4/connect-token', {
@@ -157,7 +157,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           propertyId
         })
       });
-      
+
       console.log('GA4 response received:', response.status);
       const data = await response.json();
       console.log('GA4 response data:', data);
@@ -168,7 +168,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           title: "GA4 Connected!",
           description: "Successfully connected! Your real Google Analytics data will now be available."
         });
-        
+
         // Test the connection by fetching metrics
         try {
           const metricsResponse = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
@@ -210,18 +210,18 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     }
 
     setIsOAuthLoading(true);
-    
+
     try {
       // Generate OAuth URL directly on client side
       const redirectUri = `${window.location.origin}/oauth-callback.html`;
       const scope = 'https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/analytics.edit';
       const responseType = 'code';
       const state = `campaign_${campaignId}`;
-      
+
       // Debug: Log the redirect URI being used
       console.log('OAuth Debug - Redirect URI being used:', redirectUri);
       console.log('OAuth Debug - Client ID:', clientId);
-      
+
       const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(clientId)}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
@@ -230,23 +230,23 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         `state=${encodeURIComponent(state)}&` +
         `access_type=offline&` +
         `prompt=consent`;
-      
+
       console.log('OAuth Debug - Full OAuth URL:', oauthUrl);
-      
+
       // Create OAuth callback handler
       const handleOAuthCallback = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
-        
+
         if (event.data.type === 'OAUTH_SUCCESS') {
           window.removeEventListener('message', handleOAuthCallback);
           setIsOAuthLoading(false);
-          
+
           const { code } = event.data;
           exchangeCodeForTokens(code);
         } else if (event.data.type === 'OAUTH_ERROR') {
           window.removeEventListener('message', handleOAuthCallback);
           setIsOAuthLoading(false);
-          
+
           toast({
             title: "OAuth Failed",
             description: event.data.error || "Authentication failed",
@@ -254,16 +254,16 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           });
         }
       };
-      
+
       window.addEventListener('message', handleOAuthCallback);
-      
+
       // Open OAuth in popup window
       const popup = window.open(
         oauthUrl,
         'google_oauth',
         'width=500,height=600,scrollbars=yes,resizable=yes'
       );
-      
+
       // Check if popup was blocked
       if (!popup) {
         window.removeEventListener('message', handleOAuthCallback);
@@ -275,7 +275,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         });
         return;
       }
-      
+
       // Monitor popup closure
       const checkClosed = setInterval(() => {
         if (popup.closed) {
@@ -284,13 +284,13 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           setIsOAuthLoading(false);
         }
       }, 1000);
-      
+
       toast({
         title: "Authenticate with Google",
         description: "Complete the authentication in the popup window.",
         duration: 3000,
       });
-      
+
     } catch (error) {
       console.error('OAuth initiation error:', error);
       setIsOAuthLoading(false);
@@ -301,7 +301,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       });
     }
   };
-  
+
   const exchangeCodeForTokens = async (authCode: string) => {
     try {
       // Debug: Log what we're sending to backend
@@ -312,7 +312,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         clientSecret,
         redirectUri: `${window.location.origin}/oauth-callback.html`
       };
-      
+
       console.log('Frontend Debug - Sending to backend:', {
         campaignId: !!requestData.campaignId,
         authCode: !!requestData.authCode,
@@ -321,16 +321,16 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         clientSecretLength: requestData.clientSecret?.length || 0,
         redirectUri: !!requestData.redirectUri
       });
-      
+
       // Exchange authorization code for tokens using backend
       const response = await fetch('/api/ga4/oauth-exchange', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData)
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success && data.properties) {
         setOauthProperties(data.properties);
         setShowPropertySelection(true);
@@ -350,13 +350,13 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       });
     }
   };
-  
+
   const checkOAuthSuccess = async () => {
     try {
       // Check if OAuth connection exists
       const response = await fetch(`/api/ga4/check-connection/${campaignId}`);
       const data = await response.json();
-      
+
       if (data.connected && data.properties) {
         setOauthProperties(data.properties);
         setShowPropertySelection(true);
@@ -369,7 +369,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       console.error('OAuth check error:', error);
     }
   };
-  
+
   const handlePropertySelection = async () => {
     if (!selectedProperty) {
       toast({
@@ -379,7 +379,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       });
       return;
     }
-    
+
     try {
       const response = await fetch('/api/ga4/select-property', {
         method: 'POST',
@@ -389,9 +389,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           propertyId: selectedProperty
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setConnectionStep('filter');
         toast({
@@ -422,7 +422,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     }
 
     setIsConnecting(true);
-    
+
     try {
       const response = await fetch('/api/ga4/connect-service-account', {
         method: 'POST',
@@ -433,7 +433,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           propertyId
         })
       });
-      
+
       const data = await response.json();
 
       if (data.success) {
@@ -603,7 +603,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               Service Account
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="oauth" className="space-y-4 mt-6">
             <div className="text-center space-y-4">
               <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
@@ -614,15 +614,15 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   One-Click Authentication
                 </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-                  Securely connect your Google Analytics with automatic token refresh. 
+                  Securely connect your Google Analytics with automatic token refresh.
                   Perfect for marketing professionals who need constant access to their data.
                 </p>
               </div>
-              
+
               {!showPropertySelection ? (
                 <div className="space-y-4">
 
-                  
+
                   {showClientIdInput && (
                     <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border">
                       <div className="space-y-2">
@@ -649,8 +649,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                       </p>
                     </div>
                   )}
-                  
-                  <Button 
+
+                  <Button
                     onClick={handleGoogleOAuth}
                     disabled={isOAuthLoading || (!clientId || !clientSecret) && showClientIdInput}
                     size="lg"
@@ -668,9 +668,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                       </>
                     )}
                   </Button>
-                  
+
                   {!showClientIdInput && (
-                    <Button 
+                    <Button
                       variant="outline"
                       onClick={() => setShowClientIdInput(true)}
                       className="w-full"
@@ -684,7 +684,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                 <div className="space-y-4">
                   <div className="text-left">
                     <Label htmlFor="property-select">Select GA4 Property</Label>
-                    <select 
+                    <select
                       id="property-select"
                       value={selectedProperty}
                       onChange={(e) => setSelectedProperty(e.target.value)}
@@ -698,8 +698,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                       ))}
                     </select>
                   </div>
-                  
-                  <Button 
+
+                  <Button
                     onClick={handlePropertySelection}
                     className="w-full"
                     disabled={!selectedProperty}
@@ -710,7 +710,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               )}
             </div>
           </TabsContent>
-          
+
           <TabsContent value="access-token" className="space-y-4 mt-6">
             <div className="space-y-4">
               <div className="space-y-2">
@@ -725,7 +725,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   Find this in GA4: Admin → Property Settings → Property ID
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="access-token">Access Token *</Label>
                 <Textarea
@@ -739,7 +739,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   Get from Google Cloud Console or OAuth Playground
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="refresh-token">Refresh Token (Optional)</Label>
                 <Input
@@ -752,8 +752,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   <strong>Highly recommended:</strong> Enables automatic token renewal so connection never expires
                 </p>
               </div>
-              
-              <Button 
+
+              <Button
                 onClick={handleTokenConnect}
                 disabled={isConnecting}
                 className="w-full"
@@ -762,7 +762,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               </Button>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="service-account" className="space-y-4 mt-6">
             <div className="space-y-4">
               <div className="space-y-2">
@@ -774,7 +774,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   onChange={(e) => setPropertyId(e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="service-account">Service Account JSON *</Label>
                 <Textarea
@@ -788,8 +788,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   Paste your service account JSON key from Google Cloud Console
                 </p>
               </div>
-              
-              <Button 
+
+              <Button
                 onClick={handleServiceAccountConnect}
                 disabled={isConnecting}
                 className="w-full"

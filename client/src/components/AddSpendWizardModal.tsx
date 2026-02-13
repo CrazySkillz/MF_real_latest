@@ -1,17 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
-import { Loader2, AlertCircle, ExternalLink, CheckCircle2, Clock } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import {
+  Loader2, AlertCircle, ExternalLink, CheckCircle2, Clock,
+  ArrowLeft, Upload, FileSpreadsheet, ClipboardPaste, DollarSign, Zap,
+} from "lucide-react";
 
-type SpendSourceMode = "google_sheets" | "upload" | "paste" | "ad_platform" | "manual";
+type Step =
+  | "select"
+  | "ad_platform"
+  | "csv"
+  | "csv_map"
+  | "paste"
+  | "sheets_choose"
+  | "sheets_map"
+  | "manual";
+
 type AdPlatform = "linkedin" | "meta" | "google_ads";
 
 type LinkedInSpendCampaign = {
@@ -43,8 +56,7 @@ export function AddSpendWizardModal(props: {
 }) {
   const { toast } = useToast();
   const isEditing = Boolean(props.initialSource?.id);
-  const [step, setStep] = useState<"choose" | "csv_map" | "sheets_pick" | "sheets_map">("choose");
-  const [mode, setMode] = useState<SpendSourceMode>("upload");
+  const [step, setStep] = useState<Step>("select");
 
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null);
@@ -99,8 +111,7 @@ export function AddSpendWizardModal(props: {
     if (!props.open) {
       prefillKeyRef.current = null;
       autoDateDecisionRef.current = null;
-      setStep("choose");
-      setMode("upload");
+      setStep("select");
       setCsvFile(null);
       setCsvPreview(null);
       setCsvInputKey((k) => k + 1);
@@ -155,8 +166,7 @@ export function AddSpendWizardModal(props: {
       : (mapping?.campaignValue ? [String(mapping.campaignValue).trim()] : []);
 
     if (sourceType === "google_sheets") {
-      setMode("google_sheets");
-      setStep("choose");
+      setStep("sheets_map");
       if (mapSpend) setSpendColumn(mapSpend);
       if (mapCampaignCol) {
         // Prevent the "campaign column changed" effect from wiping prefilled values.
@@ -170,16 +180,11 @@ export function AddSpendWizardModal(props: {
         setSelectedSheetConnectionId(connectionId);
         setIsEditPrefillLoading(true);
         setAutoPreviewSheetOnOpen(true);
-      } else {
-        // If we don't know the connection id, user can re-select in the sheet picker.
-        setShowSheetsConnect(false);
       }
       return;
     }
 
     if (sourceType === "csv") {
-      // CSV cannot be reprocessed without re-uploading the file. But we can still show the saved mappings immediately.
-      setMode("upload");
       setStep("csv_map");
       setCsvFile(null);
       setCsvPrefillMapping(mapping);
@@ -209,15 +214,13 @@ export function AddSpendWizardModal(props: {
     }
 
     if (sourceType === "linkedin_api") {
-      setMode("ad_platform");
+      setStep("ad_platform");
       setSelectedPlatform("linkedin");
-      setStep("choose");
       return;
     }
 
     if (sourceType === "manual") {
-      setMode("manual");
-      setStep("choose");
+      setStep("manual");
       const savedAmount =
         (mapping && typeof (mapping as any).amount === "number") ? Number((mapping as any).amount) :
           (mapping && typeof (mapping as any).amount === "string") ? parseFloat(String((mapping as any).amount)) :
@@ -231,6 +234,7 @@ export function AddSpendWizardModal(props: {
 
   useEffect(() => {
     if (!props.open) return;
+    if (step !== "sheets_choose" && step !== "sheets_map") return;
     let mounted = true;
     (async () => {
       try {
@@ -246,7 +250,7 @@ export function AddSpendWizardModal(props: {
       }
     })();
     return () => { mounted = false; };
-  }, [props.open, props.campaignId]);
+  }, [props.open, props.campaignId, step]);
 
   const headers = csvPreview?.headers || [];
   const sampleRows = csvPreview?.sampleRows || [];
@@ -466,11 +470,9 @@ export function AddSpendWizardModal(props: {
       setSelectedSheetConnectionId("");
       setSheetsPreview(null);
       setCsvPreview(null);
-      setStep("choose");
-      // Stay on the Google Sheets view, but don't force the connect flow open.
-      // We'll show a lightweight empty state with a Connect button instead.
+      // Stay on the sheets_choose view
       if (!filtered || filtered.length === 0) setShowSheetsConnect(false);
-      toast({ title: "Google Sheet removed", description: "You can now upload a CSV or connect a different sheet." });
+      toast({ title: "Google Sheet removed", description: "You can now connect a different sheet." });
     } catch (e: any) {
       toast({ title: "Remove failed", description: e?.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -482,13 +484,13 @@ export function AddSpendWizardModal(props: {
   useEffect(() => {
     if (!props.open) return;
     if (!autoPreviewSheetOnOpen) return;
-    if (mode !== "google_sheets") return;
+    if (step !== "sheets_map") return;
     if (!selectedSheetConnectionId) return;
     setAutoPreviewSheetOnOpen(false);
     // Fire and forget; it will set step to sheets_map.
     previewSheet().finally(() => setIsEditPrefillLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.open, autoPreviewSheetOnOpen, mode, selectedSheetConnectionId]);
+  }, [props.open, autoPreviewSheetOnOpen, step, selectedSheetConnectionId]);
 
   const processCsv = async () => {
     if (!csvFile) return;
@@ -672,13 +674,13 @@ export function AddSpendWizardModal(props: {
     } catch { /* ignore */ }
   };
 
-  // Load platform connection statuses when ad_platform mode is selected
+  // Load platform connection statuses when ad_platform step is entered
   useEffect(() => {
-    if (!props.open || mode !== "ad_platform") return;
+    if (!props.open || step !== "ad_platform") return;
     checkLinkedInConnection();
     checkMetaStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.open, mode]);
+  }, [props.open, step]);
 
   const processManual = async () => {
     const amount = parseFloat(String(manualAmount || "").replace(/[$,]/g, "").trim());
@@ -705,74 +707,258 @@ export function AddSpendWizardModal(props: {
     }
   };
 
+  // ── Navigation ──
+  const handleBack = () => {
+    if (step === "select") return;
+    if (step === "csv_map") return setStep("csv");
+    if (step === "sheets_map") return setStep("sheets_choose");
+    setStep("select");
+  };
+
+  // ── Dynamic title / description ──
+  const title =
+    step === "select" ? "Add spend source" :
+    step === "ad_platform" ? "Ad platform spend" :
+    step === "csv" ? (isEditing ? "Edit CSV spend" : "Upload CSV") :
+    step === "csv_map" ? (isEditing ? "Edit CSV spend" : "Map CSV columns") :
+    step === "paste" ? "Paste table" :
+    step === "sheets_choose" ? (isEditing ? "Edit Google Sheets spend" : "Google Sheets") :
+    step === "sheets_map" ? (isEditing ? "Edit Google Sheets spend" : "Map sheet columns") :
+    step === "manual" ? (isEditing ? "Edit manual spend" : "Manual spend") :
+    "Add spend source";
+
+  const description =
+    step === "select"
+      ? "Choose where your spend data comes from."
+      : `Currency: ${props.currency || "USD"} • Spend is treated as "to date" (campaign lifetime)`;
+
+  // ── Column mapping UI (shared between CSV map and Sheets map) ──
+  const renderColumnMapping = () => (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <div className="text-sm font-medium">Columns</div>
+          <div className="text-sm text-slate-700 dark:text-slate-300">
+            Spend: <span className="font-medium">{spendColumn || "—"}</span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            We'll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
+          </p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => setShowColumnMapping((v) => !v)}>
+          {showColumnMapping ? "Hide" : "Edit"} columns
+        </Button>
+      </div>
+
+      {showColumnMapping && (
+        <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
+          <div className="space-y-2">
+            <Label>Spend column</Label>
+            <Select value={spendColumn} onValueChange={setSpendColumn}>
+              <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
+              <SelectContent className="z-[10000]">
+                {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      <div className="pt-2 border-t space-y-3">
+        <div className="space-y-1">
+          <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column and the value(s) for this campaign.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Campaign identifier column</Label>
+            <Select
+              value={campaignKeyColumn || CAMPAIGN_COL_NONE}
+              onValueChange={(v) => {
+                campaignKeyTouchedRef.current = true;
+                setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
+              }}
+            >
+              <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent className="z-[10000]">
+                <SelectItem value={CAMPAIGN_COL_NONE}>None</SelectItem>
+                {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Campaign value(s)</Label>
+            <Input
+              value={campaignKeySearch}
+              onChange={(e) => setCampaignKeySearch(e.target.value)}
+              placeholder="Search values…"
+              disabled={!effectiveCampaignColumn}
+            />
+            <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
+              {!effectiveCampaignColumn ? (
+                <div className="text-xs text-slate-500 dark:text-slate-400">Upload/preview data to see campaign values.</div>
+              ) : uniqueCampaignKeyValues.length === 0 ? (
+                <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
+              ) : (
+                uniqueCampaignKeyValues.map((val) => (
+                  <div key={val} className="flex items-start gap-2">
+                    <Checkbox
+                      checked={campaignKeyValues.includes(val)}
+                      onCheckedChange={(checked) => {
+                        setCampaignKeyValues((prev) =>
+                          checked ? (prev.includes(val) ? prev : [...prev, val]) : prev.filter((x) => x !== val)
+                        );
+                      }}
+                    />
+                    <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderPreviewTable = () => {
+    if (previewRows.length === 0) return null;
+    return (
+      <div className="rounded-lg border p-4 mt-4">
+        <div className="text-sm font-medium mb-3">Preview (first {Math.min(previewRows.length, 5)} rows)</div>
+        <div className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                {headers.slice(0, 6).map((h) => (
+                  <th key={h} className="text-left py-2 pr-4 font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {previewRows.slice(0, 5).map((r, idx) => (
+                <tr key={idx} className="border-b last:border-b-0">
+                  {headers.slice(0, 6).map((h) => (
+                    <td key={h} className="py-2 pr-4 text-slate-700 dark:text-slate-300">{String((r as any)[h] ?? "")}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+          Processing will automatically sum spend by day, so unaggregated rows are OK.
+        </p>
+      </div>
+    );
+  };
+
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Add spend</DialogTitle>
-          <DialogDescription>
-            Import spend for this MetricMind campaign. If your dataset includes multiple campaigns, you can filter it to the right one.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="w-[980px] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex flex-col h-full">
+          {/* ── Header ── */}
+          <DialogHeader className="px-6 py-4 border-b">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <DialogTitle className="truncate">{title}</DialogTitle>
+                <DialogDescription className="mt-1">{description}</DialogDescription>
+              </div>
+              {step !== "select" && (
+                <Button variant="ghost" onClick={handleBack}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
 
-        {isEditPrefillLoading ? (
+          {/* ── Body ── */}
+          <div className="px-6 py-5 flex-1 min-h-0 overflow-y-auto">
+
+        {isEditPrefillLoading && (
           <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
             <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
               <Loader2 className="w-4 h-4 animate-spin" />
               Loading your sheet preview…
             </div>
           </div>
-        ) : null}
+        )}
 
-        {!isEditPrefillLoading && step === "choose" && (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>Import method</Label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant={mode === "ad_platform" ? "default" : "outline"}
-                  onClick={() => {
-                    setMode("ad_platform");
-                    setLinkedInPreview(null);
-                    setSelectedLinkedInCampaignIds([]);
-                  }}
-                >
-                  🔌 Ad platforms
-                </Button>
-                <Button type="button" variant={mode === "paste" ? "default" : "outline"} onClick={() => setMode("paste")}>
-                  Paste table (Excel / Sheets)
-                </Button>
-                <Button
-                  type="button"
-                  variant={mode === "google_sheets" ? "default" : "outline"}
-                  onClick={() => {
-                    const sourceType = String((props.initialSource as any)?.sourceType || "").toLowerCase();
-                    if (sourceType !== "google_sheets") {
-                      setSelectedSheetConnectionId("");
-                      setSheetsPreview(null);
-                      setCsvPreview(null);
-                      setSpendColumn("");
-                      setCampaignKeyColumn("");
-                      setCampaignKeyValues([]);
-                      setCampaignKeySearch("");
-                    }
-                    setMode("google_sheets");
-                  }}
-                >
+        {/* ═══════════════════ STEP: SELECT SOURCE ═══════════════════ */}
+        {!isEditPrefillLoading && step === "select" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("ad_platform")}>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  Ad platforms
+                </CardTitle>
+                <CardDescription>Pull spend directly from LinkedIn Ads, Meta, or Google Ads.</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4" />
                   Google Sheets
-                </Button>
-                <Button type="button" variant={mode === "upload" ? "default" : "outline"} onClick={() => setMode("upload")}>
-                  Upload file (CSV)
-                </Button>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Pull spend directly from ad platforms, or import from a file/sheet.
-              </p>
-            </div>
+                </CardTitle>
+                <CardDescription>Import spend from a connected Google Sheet tab.</CardDescription>
+              </CardHeader>
+            </Card>
 
-            {/* ── AD PLATFORM MODE ── */}
-            {mode === "ad_platform" && (
+            <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  Upload CSV
+                </CardTitle>
+                <CardDescription>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
+                    <span>Import spend from a CSV. Requires manual re-upload to update.</span>
+                  </div>
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("paste")}>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <ClipboardPaste className="w-4 h-4" />
+                  Paste table
+                </CardTitle>
+                <CardDescription>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
+                    <span>Paste from Excel / Google Sheets. Requires manual re-paste to update.</span>
+                  </div>
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Manual
+                </CardTitle>
+                <CardDescription>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
+                    <span>Enter spend manually. Requires manual updates (best for testing only).</span>
+                  </div>
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        )}
+
+            {/* ── AD PLATFORM STEP ── */}
+            {step === "ad_platform" && (
               <div className="space-y-4">
                 {/* Platform picker */}
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -1007,10 +1193,22 @@ export function AddSpendWizardModal(props: {
                     </p>
                   </div>
                 )}
+
+                {/* Action buttons */}
+                {selectedPlatform === "linkedin" && linkedInPreview && (
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={processLinkedInSpend}
+                      disabled={isProcessing || selectedLinkedInCampaignIds.length === 0}
+                    >
+                      {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
-            {mode === "google_sheets" && (
+            {step === "sheets_choose" && (
               <div className="rounded-lg border p-4 space-y-4">
                 {sheetsConnections.length === 0 ? (
                   <div className="space-y-3">
@@ -1132,10 +1330,15 @@ export function AddSpendWizardModal(props: {
                     </p>
                   </div>
                 )}
+                <div className="flex justify-end">
+                  <Button onClick={previewSheet} disabled={!selectedSheetConnectionId || isSheetsLoading}>
+                    {isSheetsLoading ? "Loading..." : "Next"}
+                  </Button>
+                </div>
               </div>
             )}
 
-            {mode === "upload" && (
+            {step === "csv" && (
               <div className="rounded-lg border p-4 space-y-4">
                 <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
                   <div className="flex items-start gap-2">
@@ -1171,10 +1374,15 @@ export function AddSpendWizardModal(props: {
                     Required columns: Spend. Optional: Date + Campaign (for multi-campaign files).
                   </p>
                 </div>
+                <div className="flex justify-end">
+                  <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
+                    {isCsvPreviewing ? "Previewing..." : "Next"}
+                  </Button>
+                </div>
               </div>
             )}
 
-            {mode === "paste" && (
+            {step === "paste" && (
               <div className="rounded-lg border p-4 space-y-4">
                 <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
                   <div className="flex items-start gap-2">
@@ -1197,36 +1405,58 @@ export function AddSpendWizardModal(props: {
                     Works with tab-delimited (copy/paste) or comma-delimited text. We’ll preview it before processing.
                   </p>
                 </div>
+                <div className="flex justify-end">
+                  <Button onClick={previewPaste} disabled={!pasteText.trim() || isCsvPreviewing}>
+                    {isCsvPreviewing ? "Previewing..." : "Next"}
+                  </Button>
+                </div>
               </div>
             )}
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
-              {mode === "upload" && (
-                <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
-                  {isCsvPreviewing ? "Previewing..." : "Next"}
-                </Button>
-              )}
-              {mode === "paste" && (
-                <Button onClick={previewPaste} disabled={!pasteText.trim() || isCsvPreviewing}>
-                  {isCsvPreviewing ? "Previewing..." : "Next"}
-                </Button>
-              )}
-              {mode === "google_sheets" && (
-                <Button onClick={previewSheet} disabled={!selectedSheetConnectionId || isSheetsLoading}>
-                  {isSheetsLoading ? "Loading..." : "Next"}
-                </Button>
-              )}
-              {mode === "ad_platform" && selectedPlatform === "linkedin" && linkedInPreview && (
+        {/* ═══════════════════ STEP: MANUAL ═══════════════════ */}
+        {!isEditPrefillLoading && step === "manual" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                Manual spend
+              </CardTitle>
+              <CardDescription>Enter a fixed spend amount for this campaign.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-800 dark:text-amber-300">
+                    <strong>Manual spend won't auto-update.</strong> You'll need to edit this value when it changes.
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="manual-spend">Total spend amount</Label>
+                <Input
+                  id="manual-spend"
+                  type="text"
+                  inputMode="decimal"
+                  value={manualAmount}
+                  onChange={(e) => setManualAmount(e.target.value)}
+                  placeholder="e.g. 1500.00"
+                  className="max-w-xs"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  We'll distribute this evenly across the current GA4 window ({props.dateRange || "30days"}).
+                </p>
+              </div>
+              <div className="flex justify-end gap-2">
                 <Button
-                  onClick={processLinkedInSpend}
-                  disabled={isProcessing || selectedLinkedInCampaignIds.length === 0}
+                  onClick={processManual}
+                  disabled={isProcessing || !manualAmount || isNaN(parseFloat(String(manualAmount).replace(/[$,]/g, "")))}
                 >
-                  {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
+                  {isProcessing ? "Saving..." : (isEditing ? "Update spend" : "Save spend")}
                 </Button>
-              )}
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {(step === "csv_map" || step === "sheets_map") && (
@@ -1287,7 +1517,7 @@ export function AddSpendWizardModal(props: {
                   </p>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <Button variant="outline" onClick={() => setStep("choose")}>Back</Button>
+                  <Button variant="outline" onClick={() => setStep("select")}>Back</Button>
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
                     <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
@@ -1419,7 +1649,7 @@ export function AddSpendWizardModal(props: {
             )}
 
             <div className="flex justify-between gap-2">
-              <Button variant="outline" onClick={() => setStep("choose")} disabled={isProcessing}>Back</Button>
+              <Button variant="outline" onClick={() => setStep("select")} disabled={isProcessing}>Back</Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => props.onOpenChange(false)} disabled={isProcessing}>Cancel</Button>
                 <Button onClick={step === "csv_map" ? processCsv : processSheets} disabled={isProcessing}>
@@ -1429,6 +1659,9 @@ export function AddSpendWizardModal(props: {
             </div>
           </div>
         )}
+
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

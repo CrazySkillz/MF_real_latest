@@ -4324,10 +4324,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Simulated mode: reuse mock generator when property is yesop/test.
       const debug = String(req.query.debug || "").trim() === "1";
       const mock = String(req.query.mock || "").trim() === "1";
+      const toDateRange = String(req.query.dateRange || "30days").trim();
       const pidNormalized = normalizePropertyIdForMock(requestedPropertyId);
       if (mock || isYesopMockProperty(pidNormalized)) {
-        // For to-date in mocks, we just sum the latest 90-day simulated daily series and label it as "to date".
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        // Use the requested dateRange (default 30days) so totals match the user's selected period.
+        const simDateRange = ["7days", "30days", "90days"].includes(toDateRange) ? toDateRange : "30days";
+        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: simDateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const totals = {
           sessions: Number(sim?.totals?.sessions || 0),
           users: Number(sim?.totals?.users || 0),
@@ -6814,8 +6816,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
         const pid = requestedPropertyId || 'yesop';
-        const seed = hashToSeed(`mock:ga4-campaign-values:${campaignId}:${normalizePropertyIdForMock(pid)}`);
-        const rand = mulberry32(seed);
         const base = [
           // UTM campaign values aligned with the 5 seeded YESOP_CAMPAIGNS
           'yesop_brand_search',      // → yesop-brand  ("Yesop — Brand Search")
@@ -6824,11 +6824,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'yesop_email_nurture',     // → yesop-email  ("Yesop — Email Nurture")
           'yesop_paid_social',       // → yesop-social ("Yesop — Paid Social")
         ];
+        // Map UTM names to their profile scale factors for consistent user counts
+        const utmScaleMap: Record<string, number> = {
+          'yesop_brand_search': 1.0,
+          'yesop_prospecting': 0.6,
+          'yesop_retargeting': 0.35,
+          'yesop_email_nurture': 0.25,
+          'yesop_paid_social': 0.5,
+        };
+        // Use 30-day base users (10,800) × scale to produce consistent user counts
+        const baseUsers30d = 10800;
         const campaigns = base
           .slice(0, Math.min(base.length, limit))
           .map((name) => ({
             name,
-            users: Math.max(10, Math.floor(250 + rand() * 12000)),
+            users: Math.round(baseUsers30d * (utmScaleMap[name] || 1.0)),
           }))
           .sort((a, b) => (b.users || 0) - (a.users || 0));
 

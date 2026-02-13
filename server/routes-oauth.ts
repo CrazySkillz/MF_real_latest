@@ -216,10 +216,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // - Values do NOT drift over time.
     // ============================================================================
     if (isYesopMockProperty(pid)) {
+      // Campaign-specific profiles for seeded Yesop mock campaigns.
+      // Each profile scales the base config so every campaign gets distinct, known values.
+      // Campaigns not in this table use the default (1x) profile.
+      const campaignProfiles: Record<string, { label: string; scale: number; engagementDelta: number }> = {
+        "yesop-brand":        { label: "Brand Search",        scale: 1.0,  engagementDelta: 0.0  },
+        "yesop-prospecting":  { label: "Prospecting",         scale: 0.6,  engagementDelta: -0.08 },
+        "yesop-retargeting":  { label: "Retargeting",         scale: 0.35, engagementDelta: 0.12 },
+        "yesop-email":        { label: "Email Nurture",       scale: 0.25, engagementDelta: 0.05 },
+        "yesop-social":       { label: "Paid Social",         scale: 0.5,  engagementDelta: -0.04 },
+      };
+      const profile = campaignProfiles[opts.campaignId] || { label: "Default", scale: 1.0, engagementDelta: 0 };
+      const sc = profile.scale;
+
       const configByRange: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; engagementRate: number; bounceRate: number; avgSessionDuration: number }> = {
-        "7days": { users: 2450, sessions: 3278, pageviews: 9820, conversions: 131, revenue: 9828.8, engagementRate: 0.62, bounceRate: 0.38, avgSessionDuration: 124 },
-        "30days": { users: 10800, sessions: 14075, pageviews: 42110, conversions: 553, revenue: 54680.78, engagementRate: 0.59, bounceRate: 0.41, avgSessionDuration: 118 },
-        "90days": { users: 31800, sessions: 41000, pageviews: 123400, conversions: 1620, revenue: 150220.15, engagementRate: 0.57, bounceRate: 0.43, avgSessionDuration: 113 },
+        "7days":  { users: Math.round(2450 * sc),  sessions: Math.round(3278 * sc),  pageviews: Math.round(9820 * sc),   conversions: Math.round(131 * sc),  revenue: Number((9828.8 * sc).toFixed(2)),   engagementRate: Math.min(1, Math.max(0, 0.62 + profile.engagementDelta)), bounceRate: Math.min(1, Math.max(0, 0.38 - profile.engagementDelta)), avgSessionDuration: 124 },
+        "30days": { users: Math.round(10800 * sc), sessions: Math.round(14075 * sc), pageviews: Math.round(42110 * sc),  conversions: Math.round(553 * sc),  revenue: Number((54680.78 * sc).toFixed(2)), engagementRate: Math.min(1, Math.max(0, 0.59 + profile.engagementDelta)), bounceRate: Math.min(1, Math.max(0, 0.41 - profile.engagementDelta)), avgSessionDuration: 118 },
+        "90days": { users: Math.round(31800 * sc), sessions: Math.round(41000 * sc), pageviews: Math.round(123400 * sc), conversions: Math.round(1620 * sc), revenue: Number((150220.15 * sc).toFixed(2)), engagementRate: Math.min(1, Math.max(0, 0.57 + profile.engagementDelta)), bounceRate: Math.min(1, Math.max(0, 0.43 - profile.engagementDelta)), avgSessionDuration: 113 },
       };
       const cfg = configByRange[String(opts.dateRange || "30days")] || configByRange["30days"];
 
@@ -4373,15 +4386,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       yesterday.setUTCDate(yesterday.getUTCDate() - 1);
       const dateStr = formatISODateUTC(yesterday);
 
-      // Deterministic known values — easy to verify in the UI
-      const mockDay = {
-        users: 500,
-        sessions: 750,
-        pageviews: 2250,
-        conversions: 38,
-        revenue: 2850.00,
-        spend: 950.00,
+      // Deterministic known values per campaign — easy to verify in the UI
+      const mockProfiles: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; spend: number }> = {
+        "yesop-brand":       { users: 500, sessions: 750,  pageviews: 2250, conversions: 38, revenue: 2850.00, spend: 950.00 },
+        "yesop-prospecting": { users: 300, sessions: 420,  pageviews: 1260, conversions: 18, revenue: 1350.00, spend: 680.00 },
+        "yesop-retargeting": { users: 175, sessions: 260,  pageviews: 780,  conversions: 22, revenue: 1650.00, spend: 410.00 },
+        "yesop-email":       { users: 125, sessions: 180,  pageviews: 540,  conversions: 12, revenue: 900.00,  spend: 150.00 },
+        "yesop-social":      { users: 250, sessions: 375,  pageviews: 1125, conversions: 15, revenue: 1125.00, spend: 750.00 },
       };
+      const mockDay = mockProfiles[campaignId] || { users: 500, sessions: 750, pageviews: 2250, conversions: 38, revenue: 2850.00, spend: 950.00 };
 
       // 1) Upsert GA4 daily metric row
       await storage.upsertGA4DailyMetrics([{
@@ -4464,6 +4477,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (e: any) {
       console.error("[mock-refresh] Error:", e);
       res.status(500).json({ success: false, error: e?.message || "Mock refresh failed" });
+    }
+  });
+
+  // ============================================================================
+  // Seed Yesop Demo Campaigns
+  // Creates 5 pre-seeded campaigns with GA4 "yesop" connections, spend sources,
+  // revenue sources, and initial daily data so each has distinct known values.
+  // Idempotent: skips campaigns that already exist (matched by stable ID).
+  // ============================================================================
+  const YESOP_CAMPAIGNS = [
+    { id: "yesop-brand",       name: "Yesop — Brand Search",     spend: "4200.00", industry: "digital marketing" },
+    { id: "yesop-prospecting", name: "Yesop — Prospecting",      spend: "2800.00", industry: "digital marketing" },
+    { id: "yesop-retargeting", name: "Yesop — Retargeting",      spend: "1500.00", industry: "e-commerce" },
+    { id: "yesop-email",       name: "Yesop — Email Nurture",    spend: "600.00",  industry: "e-commerce" },
+    { id: "yesop-social",      name: "Yesop — Paid Social",      spend: "3100.00", industry: "saas" },
+  ];
+
+  app.post("/api/seed-yesop-campaigns", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, error: "Session required. Please refresh and try again." });
+      }
+
+      const created: string[] = [];
+      const skipped: string[] = [];
+
+      for (const def of YESOP_CAMPAIGNS) {
+        // Check if already exists
+        const existing = await storage.getCampaign(def.id).catch(() => null as any);
+        if (existing) {
+          skipped.push(def.name);
+          continue;
+        }
+
+        // 1) Create campaign with stable ID
+        // Use raw SQL insert to set the specific ID
+        await db.execute(sql`
+          INSERT INTO campaigns (id, owner_id, name, spend, currency, status, industry, platform, start_date, created_at)
+          VALUES (${def.id}, ${actorId}, ${def.name}, ${def.spend}, 'USD', 'active', ${def.industry}, 'google_analytics', NOW() - INTERVAL '90 days', NOW())
+          ON CONFLICT (id) DO NOTHING
+        `);
+
+        // 2) Create GA4 connection pointing to yesop
+        const existingConns = await storage.getGA4Connections(def.id).catch(() => [] as any[]);
+        if (!existingConns || existingConns.length === 0) {
+          await storage.createGA4Connection({
+            campaignId: def.id,
+            propertyId: "yesop",
+            method: "access_token",
+            accessToken: "mock-token-yesop",
+            propertyName: "Yesop Demo Property",
+            displayName: "Yesop (Mock GA4)",
+            isPrimary: true,
+            isActive: true,
+          } as any);
+        }
+
+        // 3) Create spend source + initial spend record
+        let sources = await storage.getSpendSources(def.id).catch(() => [] as any[]);
+        if (!sources || sources.length === 0) {
+          await storage.createSpendSource({
+            campaignId: def.id,
+            sourceType: "manual",
+            displayName: "Seeded Spend",
+            isActive: true,
+            currency: "USD",
+          } as any);
+          sources = await storage.getSpendSources(def.id).catch(() => [] as any[]);
+        }
+        const spendSrc = (sources as any[])?.[0];
+        if (spendSrc) {
+          const now = new Date();
+          const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+          yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+          const dateStr = formatISODateUTC(yesterday);
+          await storage.createSpendRecords([{
+            campaignId: def.id,
+            spendSourceId: String((spendSrc as any).id),
+            date: dateStr,
+            spend: def.spend,
+            currency: "USD",
+            sourceType: "manual",
+          }]).catch(() => null);
+        }
+
+        // 4) Create revenue source
+        let revSources = await storage.getRevenueSources(def.id).catch(() => [] as any[]);
+        if (!revSources || revSources.length === 0) {
+          await storage.createRevenueSource({
+            campaignId: def.id,
+            sourceType: "ga4",
+            displayName: "GA4 Revenue",
+            isActive: true,
+            currency: "USD",
+          } as any);
+        }
+
+        // 5) Seed initial GA4 daily metrics (last 7 days) with distinct per-campaign values
+        const sim = simulateGA4({ campaignId: def.id, propertyId: "yesop", dateRange: "7days" });
+        if (sim.timeSeries?.length > 0) {
+          const rows = sim.timeSeries.map((d: any) => ({
+            campaignId: def.id,
+            propertyId: "yesop",
+            date: d.date,
+            users: d.users,
+            sessions: d.sessions,
+            pageviews: d.pageviews,
+            conversions: d.conversions,
+            revenue: String(Number(d.revenue || 0).toFixed(2)),
+            engagementRate: "0.60",
+            revenueMetric: "totalRevenue",
+            isSimulated: true,
+          }));
+          await storage.upsertGA4DailyMetrics(rows as any).catch(() => null);
+        }
+
+        created.push(def.name);
+      }
+
+      res.json({
+        success: true,
+        created,
+        skipped,
+        message: `Created ${created.length} campaign(s), skipped ${skipped.length} (already exist).`,
+        campaigns: YESOP_CAMPAIGNS.map((d) => ({
+          id: d.id,
+          name: d.name,
+          spend: d.spend,
+          propertyId: "yesop",
+        })),
+      });
+    } catch (e: any) {
+      console.error("[seed-yesop] Error:", e);
+      res.status(500).json({ success: false, error: e?.message || "Failed to seed Yesop campaigns" });
     }
   });
 

@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink, Shield, Upload, Mail, Info, AlertCircle } from "lucide-react";
+import { Plus, Play, Pause, Edit, Trash2, BarChart3, DollarSign, Target, Eye, ArrowLeft, CheckCircle, ChevronDown, ExternalLink, Shield, Upload, Mail, Info, AlertCircle, Loader2 } from "lucide-react";
 import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -1186,6 +1186,27 @@ export default function Campaigns() {
     },
   });
 
+  const seedDemoMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/seed-yesop-campaigns", { method: "POST", headers: { "Content-Type": "application/json" } });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(err.error || "Failed to seed demo campaigns");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      toast({
+        title: "Demo campaigns seeded",
+        description: data?.message || `Created ${data?.created?.length || 0} campaign(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Seeding failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleSubmit = async (data: CampaignFormData) => {
     console.log('📋 Form submitted with data:', data);
     console.log('📋 Industry value:', data.industry);
@@ -1684,6 +1705,20 @@ export default function Campaigns() {
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">All Campaigns</h2>
                 <p className="text-slate-600 dark:text-slate-400">Manage and monitor your marketing campaigns</p>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => seedDemoMutation.mutate()}
+                disabled={seedDemoMutation.isPending}
+                title="Create 5 pre-seeded Yesop demo campaigns with GA4 connections and known data values"
+              >
+                {seedDemoMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4 mr-2" />
+                )}
+                Seed Demo Campaigns
+              </Button>
             </div>
 
             {isLoading ? (

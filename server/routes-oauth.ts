@@ -4355,6 +4355,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mock refresh: inject a deterministic daily data point (yesterday UTC) with KNOWN values for data-flow validation.
+  // Values are deliberately simple round numbers so you can cross-reference them in the UI.
+  app.post("/api/campaigns/:id/ga4/mock-refresh", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = String(req.params.id || "");
+      const propertyId = String(req.body?.propertyId || "yesop").trim();
+
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
+
+      // Use yesterday UTC as the mock day (avoids partial-day issues)
+      const now = new Date();
+      const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const yesterday = new Date(todayUtc);
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      const dateStr = formatISODateUTC(yesterday);
+
+      // Deterministic known values — easy to verify in the UI
+      const mockDay = {
+        users: 500,
+        sessions: 750,
+        pageviews: 2250,
+        conversions: 38,
+        revenue: 2850.00,
+        spend: 950.00,
+      };
+
+      // 1) Upsert GA4 daily metric row
+      await storage.upsertGA4DailyMetrics([{
+        campaignId,
+        propertyId,
+        date: dateStr,
+        users: mockDay.users,
+        sessions: mockDay.sessions,
+        pageviews: mockDay.pageviews,
+        conversions: mockDay.conversions,
+        revenue: String(mockDay.revenue.toFixed(2)),
+        engagementRate: "0.62",
+        revenueMetric: "totalRevenue",
+        isSimulated: true,
+      }]);
+
+      // 2) Ensure a spend source exists, then insert a spend record for the day
+      let sources = await storage.getSpendSources(campaignId);
+      let spendSource = (sources as any[])?.[0];
+      if (!spendSource) {
+        spendSource = await storage.createSpendSource({
+          campaignId,
+          sourceType: "manual",
+          displayName: "Mock Spend",
+          isActive: true,
+          currency: "USD",
+        } as any);
+      }
+      if (spendSource) {
+        await storage.createSpendRecords([{
+          campaignId,
+          spendSourceId: String((spendSource as any).id),
+          date: dateStr,
+          spend: String(mockDay.spend.toFixed(2)),
+          currency: "USD",
+          sourceType: "manual",
+        }]);
+        // Update campaign.spend (cumulative lifetime)
+        const currentSpend = parseNum((campaign as any)?.spend);
+        const newSpend = currentSpend + mockDay.spend;
+        await storage.updateCampaign(campaignId, { spend: newSpend.toFixed(2) as any } as any);
+      }
+
+      // 3) Insert a revenue record for the day
+      let revSources = await storage.getRevenueSources(campaignId);
+      let revSource = (revSources as any[])?.[0];
+      if (!revSource) {
+        revSource = await storage.createRevenueSource({
+          campaignId,
+          sourceType: "ga4",
+          displayName: "GA4 Revenue",
+          isActive: true,
+          currency: "USD",
+        } as any);
+      }
+      if (revSource) {
+        await storage.createRevenueRecords([{
+          campaignId,
+          revenueSourceId: String((revSource as any).id),
+          date: dateStr,
+          revenue: String(mockDay.revenue.toFixed(2)),
+          currency: "USD",
+          sourceType: "ga4",
+        }]);
+      }
+
+      // 4) Run KPI / benchmark jobs for completeness
+      const insightsResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date: dateStr }).catch(() => null);
+
+      const roas = mockDay.spend > 0 ? (mockDay.revenue / mockDay.spend).toFixed(2) : "N/A";
+      const roi = mockDay.spend > 0 ? (((mockDay.revenue - mockDay.spend) / mockDay.spend) * 100).toFixed(1) : "N/A";
+
+      res.json({
+        success: true,
+        date: dateStr,
+        injected: mockDay,
+        summary: `${dateStr}: Revenue $${mockDay.revenue.toFixed(2)}, Spend $${mockDay.spend.toFixed(2)}, ROAS ${roas}x, ROI ${roi}%, ${mockDay.conversions} conversions, ${mockDay.sessions} sessions`,
+        kpiJobResult: insightsResult,
+      });
+    } catch (e: any) {
+      console.error("[mock-refresh] Error:", e);
+      res.status(500).json({ success: false, error: e?.message || "Mock refresh failed" });
+    }
+  });
+
   // Get real GA4 metrics for a campaign - Updated for multiple connections
   app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {
     try {

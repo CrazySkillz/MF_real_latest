@@ -129,18 +129,6 @@ export default function GA4Metrics() {
   const [showDeleteRevenueDialog, setShowDeleteRevenueDialog] = useState(false);
   const [deleteBenchmarkId, setDeleteBenchmarkId] = useState<string | null>(null);
   const [showDeleteBenchmarkDialog, setShowDeleteBenchmarkDialog] = useState(false);
-  // Daily view state
-  const [showDailyView, setShowDailyView] = useState(false);
-  const [dailyDateRange, setDailyDateRange] = useState(() => {
-    const end = new Date();
-    end.setDate(end.getDate() - 1); // Yesterday
-    const start = new Date();
-    start.setDate(start.getDate() - 30); // Last 30 days
-    return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
-    };
-  });
   // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
 
   // Benchmark-related state
@@ -182,19 +170,6 @@ export default function GA4Metrics() {
   const queryClient = useQueryClient();
 
   const [selectedGA4PropertyId, setSelectedGA4PropertyId] = useState<string>("");
-
-  // Daily financials query
-  const { data: dailyFinancialsData, isLoading: dailyFinancialsLoading } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "daily-financials", dailyDateRange],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/campaigns/${campaignId}/daily-financials?start=${dailyDateRange.start}&end=${dailyDateRange.end}`
-      );
-      if (!res.ok) throw new Error('Failed to fetch daily financials');
-      return res.json();
-    },
-    enabled: showDailyView && !!campaignId,
-  });
 
   const parseStoredGa4CampaignFilter = (raw: any): string[] => {
     if (raw === null || raw === undefined) return [];
@@ -507,6 +482,36 @@ export default function GA4Metrics() {
         description: error.message || "An unexpected error occurred",
         variant: "destructive"
       });
+    },
+  });
+
+  // Mock refresh mutation: simulate a daily data update with known values
+  const mockRefreshMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/campaigns/${campaignId}/ga4/mock-refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ propertyId: selectedGA4PropertyId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(err.error || "Mock refresh failed");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      // Invalidate all GA4 queries so the UI picks up the new data
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`] });
+      toast({
+        title: "Mock Refresh Complete",
+        description: data?.summary || "Daily mock data injected. Check cards for updated values.",
+      });
+    },
+    onError: (error) => {
+      toast({ title: "Mock refresh failed", description: error.message, variant: "destructive" });
     },
   });
 
@@ -2817,18 +2822,35 @@ export default function GA4Metrics() {
                   {/* Aggregated Multi-Property Campaign Metrics */}
                   <div className="mb-6">
                     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <Globe className="w-5 h-5 text-blue-600" />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0">
+                            <Globe className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                              {'GA4 Property Analytics'}
+                            </h3>
+                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                              {`Showing metrics for the selected GA4 property for ${campaign?.name}`}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                            {'GA4 Property Analytics'}
-                          </h3>
-                          <p className="text-sm text-blue-700 dark:text-blue-300">
-                            {`Showing metrics for the selected GA4 property for ${campaign?.name}`}
-                          </p>
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => mockRefreshMutation.mutate()}
+                          disabled={mockRefreshMutation.isPending}
+                          className="shrink-0 bg-white dark:bg-slate-800"
+                          title="Simulate a daily data refresh with known values for validation"
+                        >
+                          {mockRefreshMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                          )}
+                          Run Refresh
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -2945,217 +2967,142 @@ export default function GA4Metrics() {
                             <div className="mb-3">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1">
-                                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial {showDailyView ? "(Daily Trends)" : "(To date)"}</h4>
+                                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial (To date)</h4>
                                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                                    {showDailyView
-                                      ? `Daily spend and revenue from ${dailyDateRange.start} to ${dailyDateRange.end}`
-                                      : `Spend source: ${spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} · Revenue range: ${(ga4ToDateResp as any)?.startDate ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}` : "to date"}`
-                                    }
+                                    {`Spend source: ${spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} · Revenue range: ${(ga4ToDateResp as any)?.startDate ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}` : "to date"}`}
                                   </p>
                                 </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setShowDailyView(!showDailyView)}
-                                  className="shrink-0"
-                                >
-                                  {showDailyView ? "Show Total" : "Show Daily"}
-                                </Button>
                               </div>
                             </div>
-                            {showDailyView && dailyFinancialsData?.data ? (
-                              <div className="space-y-4">
-                                {/* Date range selector */}
-                                <div className="flex items-center gap-3">
-                                  <Label className="text-sm font-medium">Date Range:</Label>
-                                  <Input
-                                    type="date"
-                                    value={dailyDateRange.start}
-                                    onChange={(e) => setDailyDateRange(prev => ({ ...prev, start: e.target.value }))}
-                                    className="w-auto"
-                                  />
-                                  <span className="text-sm text-slate-600 dark:text-slate-400">to</span>
-                                  <Input
-                                    type="date"
-                                    value={dailyDateRange.end}
-                                    onChange={(e) => setDailyDateRange(prev => ({ ...prev, end: e.target.value }))}
-                                    className="w-auto"
-                                  />
-                                </div>
-
-                                {/* Daily spend/revenue chart */}
-                                <Card>
-                                  <CardContent className="p-6">
-                                    <ResponsiveContainer width="100%" height={300}>
-                                      <LineChart data={dailyFinancialsData.data}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis
-                                          dataKey="date"
-                                          tick={{ fontSize: 12 }}
-                                          angle={-45}
-                                          textAnchor="end"
-                                          height={80}
-                                        />
-                                        <YAxis tick={{ fontSize: 12 }} />
-                                        <Tooltip
-                                          formatter={(value: any) => [
-                                            typeof value === 'number' ? `$${value.toFixed(2)}` : value,
-                                          ]}
-                                        />
-                                        <Legend />
-                                        <Line
-                                          type="monotone"
-                                          dataKey="spend"
-                                          stroke="#8884d8"
-                                          name="Spend"
-                                          strokeWidth={2}
-                                        />
-                                        <Line
-                                          type="monotone"
-                                          dataKey="revenue"
-                                          stroke="#82ca9d"
-                                          name="Revenue"
-                                          strokeWidth={2}
-                                        />
-                                      </LineChart>
-                                    </ResponsiveContainer>
-                                  </CardContent>
-                                </Card>
-
-                                {/* Daily ROAS/ROI chart */}
-                                <Card>
-                                  <CardContent className="p-6">
-                                    <ResponsiveContainer width="100%" height={300}>
-                                      <LineChart data={dailyFinancialsData.data}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis
-                                          dataKey="date"
-                                          tick={{ fontSize: 12 }}
-                                          angle={-45}
-                                          textAnchor="end"
-                                          height={80}
-                                        />
-                                        <YAxis tick={{ fontSize: 12 }} />
-                                        <Tooltip
-                                          formatter={(value: any) => [
-                                            typeof value === 'number' ? `${value.toFixed(2)}%` : value,
-                                          ]}
-                                        />
-                                        <Legend />
-                                        <Line
-                                          type="monotone"
-                                          dataKey="roas"
-                                          stroke="#fbbf24"
-                                          name="ROAS %"
-                                          strokeWidth={2}
-                                        />
-                                        <Line
-                                          type="monotone"
-                                          dataKey="roi"
-                                          stroke="#10b981"
-                                          name="ROI %"
-                                          strokeWidth={2}
-                                        />
-                                      </LineChart>
-                                    </ResponsiveContainer>
-                                  </CardContent>
-                                </Card>
-                              </div>
-                            ) : showDailyView && dailyFinancialsLoading ? (
-                              <div className="flex items-center justify-center p-12">
-                                <div className="text-sm text-slate-600 dark:text-slate-400">Loading daily data...</div>
-                              </div>
-                            ) : (
-                              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                                <Card>
-                                  <CardContent className="p-6">
-                                    <div className="flex items-center justify-between gap-4">
-                                      <div>
-                                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</p>
-                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                          {formatMoney(Number(financialSpend || 0))}
-                                        </p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                          Source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
-                                        </p>
-                                      </div>
-                                      <div className="flex flex-col items-end gap-2 shrink-0">
-                                        {totalSpendForFinancials > 0 && activeSpendSource ? (
-                                          <div className="flex items-center gap-1">
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              aria-label="Edit spend"
-                                              title="Edit spend"
-                                              onClick={() => setShowSpendDialog(true)}
-                                            >
-                                              <Edit className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              aria-label="Remove spend"
-                                              title="Remove spend"
-                                              onClick={() => setShowDeleteSpendDialog(true)}
-                                            >
-                                              <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                          </div>
-                                        ) : null}
-                                        <DollarSign className="w-8 h-8 text-slate-500" />
-                                      </div>
+                            {/* Cumulative totals + latest day cards */}
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {formatMoney(Number(financialRevenue || 0))}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cumulative to date</p>
                                     </div>
-                                  </CardContent>
-                                </Card>
+                                    <DollarSign className="w-8 h-8 text-green-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
 
-                                <Card>
-                                  <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
-                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                          {financialROAS.toFixed(2)}x
-                                        </p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</p>
-                                      </div>
-                                      <TrendingUp className="w-8 h-8 text-green-600" />
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {formatMoney(Number(financialSpend || 0))}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        Source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
+                                      </p>
                                     </div>
-                                  </CardContent>
-                                </Card>
+                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                      {totalSpendForFinancials > 0 && activeSpendSource ? (
+                                        <div className="flex items-center gap-1">
+                                          <Button variant="ghost" size="icon" aria-label="Edit spend" title="Edit spend" onClick={() => setShowSpendDialog(true)}>
+                                            <Edit className="w-4 h-4" />
+                                          </Button>
+                                          <Button variant="ghost" size="icon" aria-label="Remove spend" title="Remove spend" onClick={() => setShowDeleteSpendDialog(true)}>
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      ) : null}
+                                      <DollarSign className="w-8 h-8 text-slate-500" />
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
 
-                                <Card>
-                                  <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
-                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                          {formatPercentage(financialROI)}
-                                        </p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</p>
-                                      </div>
-                                      <TrendingUp className="w-8 h-8 text-emerald-600" />
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Revenue</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.revenue || 0 : 0))}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
+                                      </p>
                                     </div>
-                                  </CardContent>
-                                </Card>
+                                    <TrendingUp className="w-8 h-8 text-green-500" />
+                                  </div>
+                                </CardContent>
+                              </Card>
 
-                                <Card>
-                                  <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
-                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                          {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
-                                        </p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                          Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions-to-date > 0)" : ""}
-                                        </p>
-                                      </div>
-                                      <Target className="w-8 h-8 text-blue-600" />
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Spend</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?._raw?.spend || 0 : 0))}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
+                                      </p>
                                     </div>
-                                  </CardContent>
-                                </Card>
-                              </div>
-                            )}
+                                    <TrendingDown className="w-8 h-8 text-orange-500" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+                            {/* ROAS / ROI / CPA cards */}
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {financialROAS.toFixed(2)}x
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</p>
+                                    </div>
+                                    <TrendingUp className="w-8 h-8 text-green-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {formatPercentage(financialROI)}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</p>
+                                    </div>
+                                    <TrendingUp className="w-8 h-8 text-emerald-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardContent className="p-6">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
+                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                        {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions-to-date > 0)" : ""}
+                                      </p>
+                                    </div>
+                                    <Target className="w-8 h-8 text-blue-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
                           </>
                         ) : (
                           <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">

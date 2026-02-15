@@ -10,6 +10,8 @@ import {
   SignIn,
   SignUp,
   UserButton,
+  ClerkLoaded,
+  ClerkLoading,
 } from "@clerk/clerk-react";
 import Dashboard from "@/pages/dashboard";
 import Campaigns from "@/pages/campaigns";
@@ -93,22 +95,34 @@ function App() {
         <TooltipProvider>
           <Toaster />
 
-          {/* Public auth routes */}
-          <SignedOut>
-            <Switch>
-              <Route path="/sign-in" component={AuthPage} />
-              <Route path="/sign-up" component={AuthPage} />
-              {/* Redirect everything else to sign-in */}
-              <Route>
-                <AuthPage />
-              </Route>
-            </Switch>
-          </SignedOut>
+          {/* Loading state while Clerk initializes */}
+          <ClerkLoading>
+            <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+              <div className="text-center">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-slate-600">Loading...</p>
+              </div>
+            </div>
+          </ClerkLoading>
 
-          {/* Protected app routes */}
-          <SignedIn>
-            <ProtectedRouter />
-          </SignedIn>
+          <ClerkLoaded>
+            {/* Public auth routes */}
+            <SignedOut>
+              <Switch>
+                <Route path="/sign-in" component={AuthPage} />
+                <Route path="/sign-up" component={AuthPage} />
+                {/* Redirect everything else to sign-in */}
+                <Route>
+                  <AuthPage />
+                </Route>
+              </Switch>
+            </SignedOut>
+
+            {/* Protected app routes */}
+            <SignedIn>
+              <ProtectedRouter />
+            </SignedIn>
+          </ClerkLoaded>
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>

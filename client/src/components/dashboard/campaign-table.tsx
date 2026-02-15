@@ -5,10 +5,21 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus } from "lucide-react";
 import { Campaign } from "@shared/schema";
+import { useClient } from "@/lib/clientContext";
 
 export default function CampaignTable() {
+  const { selectedClientId } = useClient();
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
-    queryKey: ["/api/campaigns"],
+    queryKey: ["/api/campaigns", { clientId: selectedClientId }],
+    queryFn: async () => {
+      const url = selectedClientId
+        ? `/api/campaigns?clientId=${encodeURIComponent(selectedClientId)}`
+        : "/api/campaigns";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch campaigns");
+      return res.json();
+    },
+    enabled: !!selectedClientId,
   });
 
   const formatCurrency = (value: string) => {

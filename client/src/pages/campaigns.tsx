@@ -22,6 +22,7 @@ import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useClient } from "@/lib/clientContext";
 import { IntegratedGA4Auth } from "@/components/IntegratedGA4Auth";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
@@ -1024,6 +1025,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
 }
 
 export default function Campaigns() {
+  const { selectedClientId } = useClient();
   const [, setLocation] = useLocation();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showConnectorsStep, setShowConnectorsStep] = useState(false);
@@ -1044,7 +1046,16 @@ export default function Campaigns() {
   const { toast } = useToast();
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
-    queryKey: ["/api/campaigns"],
+    queryKey: ["/api/campaigns", { clientId: selectedClientId }],
+    queryFn: async () => {
+      const url = selectedClientId
+        ? `/api/campaigns?clientId=${encodeURIComponent(selectedClientId)}`
+        : "/api/campaigns";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch campaigns");
+      return res.json();
+    },
+    enabled: !!selectedClientId,
   });
 
   // If we arrive on /campaigns?created=..., highlight the new campaign card.
@@ -1103,6 +1114,7 @@ export default function Campaigns() {
       console.log('🚀 [Frontend] Creating campaign with data:', data);
       const payload = {
         name: data.name,
+        clientId: selectedClientId || null,
         clientWebsite: data.clientWebsite || null,
         label: data.label || null,
         budget: data.budget ? parseFloat(data.budget) : null,

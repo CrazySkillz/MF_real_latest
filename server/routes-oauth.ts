@@ -4144,6 +4144,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return report;
   };
 
+  // Client routes
+  app.get("/api/clients", async (req, res) => {
+    try {
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
+      const clientList = await storage.getClients(actorId);
+      res.json(clientList);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch clients" });
+    }
+  });
+
+  app.post("/api/clients", async (req, res) => {
+    try {
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
+      const { name } = req.body;
+      if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ message: "Client name is required" });
+      }
+      const client = await storage.createClient({ ownerId: actorId, name: name.trim() });
+      res.status(201).json(client);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create client" });
+    }
+  });
+
   app.get("/api/campaigns", async (req, res) => {
     try {
       const actorId = getActorId(req as any);
@@ -4151,6 +4182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
       }
 
+      const clientId = req.query.clientId ? String(req.query.clientId) : null;
       const campaigns = await storage.getCampaigns();
       const visible = (Array.isArray(campaigns) ? campaigns : []).filter((c: any) => {
         const ownerId = String(c?.ownerId || "").trim();
@@ -4159,6 +4191,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // clicks the final "Create" button which PATCHes status → "active".
         const status = String(c?.status || "").trim().toLowerCase();
         if (status === "draft") return false;
+        // Filter by clientId if provided — only show campaigns belonging to that client
+        if (clientId && String(c?.clientId || "") !== clientId) return false;
         return true;
       });
 

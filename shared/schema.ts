@@ -3,11 +3,28 @@ import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb } f
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Clients table — top-level account entity scoped to a user
+export const clients = pgTable("clients", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  ownerId: text("owner_id").notNull(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = typeof clients.$inferInsert;
+
+export const insertClientSchema = createInsertSchema(clients).pick({
+  ownerId: true,
+  name: true,
+});
+
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   // Authorization: campaigns are owned by the caller identity (mmUserId session).
   // Nullable for backward compatibility; the first authorized access will "claim" it.
   ownerId: text("owner_id"),
+  clientId: text("client_id"), // references clients.id — scopes campaign to a client
   name: text("name").notNull(),
   clientWebsite: text("client_website"),
   label: text("label"),

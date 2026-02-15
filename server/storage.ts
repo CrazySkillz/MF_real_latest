@@ -1,4 +1,4 @@
-import { type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
@@ -330,6 +330,10 @@ export interface IStorage {
 
   // Notifications
   getNotifications(): Promise<Notification[]>;
+
+  // Clients
+  getClients(ownerId: string): Promise<Client[]>;
+  createClient(data: InsertClient): Promise<Client>;
 }
 
 export class MemStorage implements IStorage {
@@ -373,9 +377,11 @@ export class MemStorage implements IStorage {
   private touchpoints: Map<string, Touchpoint>;
   private attributionResults: Map<string, AttributionResult>;
   private attributionInsights: Map<string, AttributionInsight>;
+  private clientsMap: Map<string, Client>;
 
   constructor() {
     this.campaigns = new Map();
+    this.clientsMap = new Map();
     this.metrics = new Map();
     this.integrations = new Map();
     this.performanceData = new Map();
@@ -2478,6 +2484,25 @@ export class MemStorage implements IStorage {
       }
     });
     return true;
+  }
+
+  // Client methods
+  async getClients(ownerId: string): Promise<Client[]> {
+    return Array.from(this.clientsMap.values())
+      .filter(c => c.ownerId === ownerId)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+
+  async createClient(data: InsertClient): Promise<Client> {
+    const id = randomUUID();
+    const client: Client = {
+      id,
+      ownerId: data.ownerId,
+      name: data.name,
+      createdAt: new Date(),
+    };
+    this.clientsMap.set(id, client);
+    return client;
   }
 }
 
@@ -4919,6 +4944,16 @@ export class DatabaseStorage implements IStorage {
       .update(notifications)
       .set({ read: true });
     return true;
+  }
+
+  // Client methods
+  async getClients(ownerId: string): Promise<Client[]> {
+    return db.select().from(clients).where(eq(clients.ownerId, ownerId)).orderBy(clients.createdAt);
+  }
+
+  async createClient(data: InsertClient): Promise<Client> {
+    const [client] = await db.insert(clients).values(data).returning();
+    return client;
   }
 
   // A/B Test methods

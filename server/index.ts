@@ -23,6 +23,10 @@ app.set("trust proxy", 1);
 // ----------------------------------------------------------------------------
 // Clerk authentication middleware
 // ----------------------------------------------------------------------------
+// @clerk/express looks for CLERK_PUBLISHABLE_KEY; fall back to VITE_ prefixed var
+if (!process.env.CLERK_PUBLISHABLE_KEY && process.env.VITE_CLERK_PUBLISHABLE_KEY) {
+  process.env.CLERK_PUBLISHABLE_KEY = process.env.VITE_CLERK_PUBLISHABLE_KEY;
+}
 app.use(clerkMiddleware());
 
 // Conditionally apply body parsing - skip for webhook routes that use multer

@@ -35,22 +35,24 @@ import GoogleAuthCallback from "@/pages/auth/google-callback";
 import NotFound from "@/pages/not-found";
 
 function AuthPage() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const isSignUp = location === "/sign-up";
+
+  // Redirect any non-auth URL to /sign-in
+  if (location !== "/sign-in" && location !== "/sign-up") {
+    setLocation("/sign-in");
+    return null;
+  }
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
       {isSignUp ? (
         <SignUp
-          routing="path"
-          path="/sign-up"
-          signInUrl="/sign-in"
+          signInUrl="/sign-up"
           fallbackRedirectUrl="/"
         />
       ) : (
         <SignIn
-          routing="path"
-          path="/sign-in"
           signUpUrl="/sign-up"
           fallbackRedirectUrl="/"
         />

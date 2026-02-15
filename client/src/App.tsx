@@ -1,9 +1,16 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import {
+  SignedIn,
+  SignedOut,
+  SignIn,
+  SignUp,
+  UserButton,
+} from "@clerk/clerk-react";
 import Dashboard from "@/pages/dashboard";
 import Campaigns from "@/pages/campaigns";
 import CampaignDetail from "@/pages/campaign-detail";
@@ -25,7 +32,32 @@ import Notifications from "@/pages/notifications";
 import GoogleAuthCallback from "@/pages/auth/google-callback";
 import NotFound from "@/pages/not-found";
 
-function Router() {
+function AuthPage() {
+  const [location] = useLocation();
+  const isSignUp = location === "/sign-up";
+
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+      {isSignUp ? (
+        <SignUp
+          routing="path"
+          path="/sign-up"
+          signInUrl="/sign-in"
+          fallbackRedirectUrl="/"
+        />
+      ) : (
+        <SignIn
+          routing="path"
+          path="/sign-in"
+          signUpUrl="/sign-up"
+          fallbackRedirectUrl="/"
+        />
+      )}
+    </div>
+  );
+}
+
+function ProtectedRouter() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
@@ -60,7 +92,23 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          <Router />
+
+          {/* Public auth routes */}
+          <SignedOut>
+            <Switch>
+              <Route path="/sign-in" component={AuthPage} />
+              <Route path="/sign-up" component={AuthPage} />
+              {/* Redirect everything else to sign-in */}
+              <Route>
+                <AuthPage />
+              </Route>
+            </Switch>
+          </SignedOut>
+
+          {/* Protected app routes */}
+          <SignedIn>
+            <ProtectedRouter />
+          </SignedIn>
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>

@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { getAuth } from "@clerk/express";
 import { storage } from "./storage";
 import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertKPIReportSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema } from "@shared/schema";
 import { z } from "zod";
@@ -987,8 +988,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const sessionIdSchema = z.string().uuid("Invalid session ID");
 
   const getActorId = (req: any): string => {
-    const id = String(req?.session?.mmUserId || "").trim();
-    return id;
+    try {
+      const auth = getAuth(req);
+      return auth?.userId || "";
+    } catch {
+      return "";
+    }
   };
 
   const ensureCampaignAccess = async (
@@ -5321,9 +5326,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       };
 
-      const actorId = String((req as any)?.session?.mmUserId || "").trim();
+      const actorId = getActorId(req);
       if (!actorId) {
-        return sendPopupError("Your session expired. Please refresh and try again.");
+        return sendPopupError("You must be signed in. Please sign in and try again.");
       }
       const campaign = await storage.getCampaign(String(campaignId));
       if (!campaign) {

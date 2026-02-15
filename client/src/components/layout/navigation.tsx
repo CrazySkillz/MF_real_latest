@@ -24,7 +24,7 @@ export default function Navigation() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [showClearAllDialog, setShowClearAllDialog] = useState(false);
-  
+
   // Fetch notifications to get unread count
   const { data: allNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -34,7 +34,7 @@ export default function Navigation() {
   const notifications = allNotifications;
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  
+
   // Mark notification as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: string) => {
@@ -50,13 +50,13 @@ export default function Navigation() {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
     },
   });
-  
+
   // Mark all as read mutation
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
       const unread = notifications.filter(n => !n.read);
       await Promise.all(
-        unread.map(n => 
+        unread.map(n =>
           fetch(`/api/notifications/${n.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -69,7 +69,7 @@ export default function Navigation() {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
     },
   });
-  
+
   // Delete all notifications mutation
   const deleteAllNotificationsMutation = useMutation({
     mutationFn: async () => {
@@ -96,7 +96,7 @@ export default function Navigation() {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     },
   });
-  
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'alert':
@@ -112,13 +112,13 @@ export default function Navigation() {
         return <Bell className="w-4 h-4 text-slate-500" />;
     }
   };
-  
+
   const handleNotificationClick = (notification: Notification) => {
     // Mark as read
     if (!notification.read) {
       markAsReadMutation.mutate(notification.id);
     }
-    
+
     // Parse metadata if it's a string
     let metadata = notification.metadata;
     if (typeof metadata === 'string') {
@@ -128,7 +128,7 @@ export default function Navigation() {
         console.error('Failed to parse notification metadata:', e);
       }
     }
-    
+
     // Navigate (prefer actionUrl, but avoid the legacy non-campaign /linkedin-analytics route when possible)
     if (metadata && typeof metadata === 'object' && 'actionUrl' in metadata) {
       const actionUrl = String((metadata as any).actionUrl || '');
@@ -155,20 +155,20 @@ export default function Navigation() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{background: 'var(--gradient-primary)'}}>
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'var(--gradient-primary)' }}>
               <i className="fas fa-chart-line text-white text-sm"></i>
             </div>
             <span className="text-2xl font-bold text-gradient-primary">PerformanceCore</span>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="relative" data-testid="button-notifications">
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
-                  <Badge 
+                  <Badge
                     className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center p-0 px-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold"
                   >
                     {unreadCount > 99 ? '99+' : unreadCount}
@@ -218,9 +218,8 @@ export default function Navigation() {
                         key={notification.id}
                         role="button"
                         tabIndex={0}
-                        className={`w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${
-                          !notification.read ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''
-                        }`}
+                        className={`w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''
+                          }`}
                         onClick={() => handleNotificationClick(notification)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -279,11 +278,11 @@ export default function Navigation() {
               </ScrollArea>
             </PopoverContent>
           </Popover>
-          
+
           <UserButton afterSignOutUrl="/sign-in" />
         </div>
       </div>
-      
+
       {/* Clear All Confirmation Dialog */}
       <AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
         <AlertDialogContent>

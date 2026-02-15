@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +32,7 @@ interface GoogleSheetsDatasetsViewProps {
 // Component to show "Back to Campaign Overview" link after mappings are saved  
 function BackToOverviewSection({ campaignId, onClose, onNavigate }: { campaignId: string; onClose: () => void; onNavigate?: () => void }) {
   const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
-  
+
   // Check if conversion values have been calculated (only once, no polling)
   const { data: sheetsData } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
@@ -88,7 +87,7 @@ function BackToOverviewSection({ campaignId, onClose, onNavigate }: { campaignId
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          
+
           // Call the navigation callback if provided, otherwise close and navigate
           if (onNavigate) {
             onNavigate();
@@ -215,11 +214,10 @@ export function GoogleSheetsDatasetsView({
           return (
             <Card
               key={conn.id}
-              className={`${
-                mapped
+              className={`${mapped
                   ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"
                   : "border-slate-200 dark:border-slate-700"
-              }`}
+                }`}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -374,8 +372,8 @@ export function GoogleSheetsDatasetsView({
       {/* Back to Campaign Overview Link - Show after mappings saved, in the main view */}
       {mappingsJustSaved && (
         <div className="mt-6 pt-4 border-t">
-          <BackToOverviewSection 
-            campaignId={campaignId} 
+          <BackToOverviewSection
+            campaignId={campaignId}
             onClose={() => {
               setMappingsJustSaved(false);
             }}

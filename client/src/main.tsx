@@ -5,10 +5,6 @@ import "./index.css";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-if (!CLERK_PUBLISHABLE_KEY) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY environment variable");
-}
-
 // Error handler for unhandled errors
 window.addEventListener("error", (event) => {
   console.error("Global error:", event.error);
@@ -25,6 +21,10 @@ if (!rootElement) {
 }
 
 try {
+  if (!CLERK_PUBLISHABLE_KEY) {
+    throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY environment variable. Make sure it is set in your Render environment variables and redeploy.");
+  }
+
   const root = createRoot(rootElement);
   root.render(
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>

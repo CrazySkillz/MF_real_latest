@@ -246,6 +246,31 @@ After:  Profit Margin = ((Sum of Webhook Values) - Ad Spend) / (Sum of Webhook V
 2. **Revenue Calculations:** Uses actual values from webhook events (if available)
 3. **Fallback:** Uses fixed conversion value if no webhook events exist
 
+### Conversion Value Priority (Implementation):
+The system uses the most accurate revenue source available in this priority order:
+
+**Priority 1: Webhook Events (MOST ACCURATE)**
+- Sum of actual conversion values from webhook events
+- Available when webhook integration is set up (Shopify/HubSpot/Salesforce)
+- 100% accurate - uses real transaction amounts
+
+**Priority 2: LinkedIn Connection Conversion Value**
+- Set in LinkedIn connection settings
+- User-configured explicit value
+
+**Priority 3: LinkedIn Session Conversion Value**
+- Set in LinkedIn import session
+- Used when no connection-level value exists
+
+**Priority 4: Shopify/Imported Derived Value**
+- Calculated from imported revenue data
+- Average Order Value from Shopify or deal amounts from CRM
+
+**Priority 5: Imported Revenue (Fallback)**
+- Total revenue imported from Google Sheets/HubSpot/Salesforce
+- Used directly without conversion multiplication
+- Maintains cent-level accuracy for executive reporting
+
 ### The Webhook Advantage:
 - Sends **actual values** for each conversion (not averages)
 - Makes revenue calculations **100% accurate**

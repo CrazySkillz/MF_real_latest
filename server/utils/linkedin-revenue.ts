@@ -43,10 +43,12 @@ export type LinkedInRevenueContext = {
   hasRevenueTracking: boolean;
   totalRevenue: number;
   conversionValue: number;
-  conversionValueSource: "connection" | "session" | "derived" | "none";
+  conversionValueSource: "webhook_events" | "connection" | "session" | "derived" | "none";
   importedRevenueToDate: number;
   windowStartDate: string;
   windowEndDate: string;
+  webhookEventCount?: number;
+  webhookRevenueUsed?: boolean;
 };
 
 /**
@@ -194,24 +196,54 @@ export async function resolveLinkedInRevenueContext(opts: {
   conversionValue = Number(Number(conversionValue || 0).toFixed(2));
   importedRevenueToDate = Number(Number(importedRevenueToDate || 0).toFixed(2));
 
-  const hasRevenueTracking = conversionValue > 0 || importedRevenueToDate > 0;
+  // Check for webhook conversion events (HIGHEST PRIORITY for accuracy)
+  let webhookEventCount = 0;
+  let webhookRevenueUsed = false;
+  let webhookRevenue = 0;
+  try {
+    const startDateObj = new Date(`${startDate}T00:00:00.000Z`);
+    const endDateObj = new Date(`${endDate}T23:59:59.999Z`);
+    const webhookEvents = await storage.getConversionEvents(campaignId, startDateObj, endDateObj);
+    webhookEventCount = webhookEvents.length;
+    if (webhookEventCount > 0) {
+      webhookRevenue = webhookEvents.reduce((sum, evt) => sum + parseFloat(evt.value || "0"), 0);
+      webhookRevenue = Number(Number(webhookRevenue || 0).toFixed(2));
+    }
+  } catch (err) {
+    // Webhook events optional - continue with fallback logic
+    webhookEventCount = 0;
+    webhookRevenue = 0;
+  }
+
+  const hasRevenueTracking = webhookRevenue > 0 || conversionValue > 0 || importedRevenueToDate > 0;
 
   let totalRevenue = 0;
+  let finalConversionValueSource = conversionValueSource;
   if (hasRevenueTracking) {
-    // IMPORTANT: When we have an imported revenue-to-date (e.g., HubSpot deal Amounts), that imported
-    // value is the source of truth for Total Revenue. We may still *derive* conversionValue for display,
-    // but we must not recompute Total Revenue from conversions × (rounded) conversionValue, or the UI
-    // will drift by cents (exec-facing accuracy requirement).
-    //
-    // Only use conversions × conversionValue when conversionValue is explicitly configured by the user.
-    const hasImportedToDate = importedRevenueToDate > 0;
-    const hasExplicitConversionValue = conversionValueSource === "connection" || conversionValueSource === "session";
-    if (hasImportedToDate && !hasExplicitConversionValue) {
-      totalRevenue = importedRevenueToDate;
-    } else if (conversionValue > 0) {
-      totalRevenue = conversionsTotal * conversionValue;
-    } else {
-      totalRevenue = importedRevenueToDate;
+    // PRIORITY 1: Webhook events (most accurate - actual conversion values)
+    if (webhookRevenue > 0) {
+      totalRevenue = webhookRevenue;
+      webhookRevenueUsed = true;
+      finalConversionValueSource = "webhook_events";
+    }
+    // PRIORITY 2: Imported revenue-to-date (e.g., HubSpot deal Amounts, Shopify orders)
+    // IMPORTANT: When we have an imported revenue-to-date, that imported value is the source of truth
+    // for Total Revenue. We may still *derive* conversionValue for display, but we must not recompute
+    // Total Revenue from conversions × (rounded) conversionValue, or the UI will drift by cents
+    // (exec-facing accuracy requirement).
+    else {
+      const hasImportedToDate = importedRevenueToDate > 0;
+      const hasExplicitConversionValue = conversionValueSource === "connection" || conversionValueSource === "session";
+      // PRIORITY 3: Explicit conversion value (connection or session) × conversions
+      if (hasImportedToDate && !hasExplicitConversionValue) {
+        totalRevenue = importedRevenueToDate;
+      } else if (conversionValue > 0) {
+        totalRevenue = conversionsTotal * conversionValue;
+      }
+      // PRIORITY 4: Imported revenue fallback
+      else {
+        totalRevenue = importedRevenueToDate;
+      }
     }
   }
   totalRevenue = Number(Number(totalRevenue || 0).toFixed(2));
@@ -220,10 +252,12 @@ export async function resolveLinkedInRevenueContext(opts: {
     hasRevenueTracking,
     totalRevenue,
     conversionValue,
-    conversionValueSource,
+    conversionValueSource: finalConversionValueSource,
     importedRevenueToDate,
     windowStartDate: startDate,
     windowEndDate: endDate,
+    webhookEventCount,
+    webhookRevenueUsed,
   };
 }
 

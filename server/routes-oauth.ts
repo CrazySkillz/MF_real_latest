@@ -18578,6 +18578,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         relationshipValidation.errors.length
       );
 
+      // Add data quality to aggregated object for frontend access
+      aggregated.dataQuality = {
+        score: finalDataQuality.score,
+        grade: finalDataQuality.grade,
+        validMetrics: validatedMetrics.length,
+        totalMetrics: rawMetrics.length,
+        relationshipErrors: relationshipValidation.errors.length,
+        warnings: relationshipValidation.errors.map((e: any) => e.message || String(e))
+      };
+
       // Prepare validation summary
       const validationSummary = validationErrors.length > 0 ? {
         totalMetrics: rawMetrics.length,

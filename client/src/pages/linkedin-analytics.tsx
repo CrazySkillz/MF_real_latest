@@ -4874,9 +4874,29 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
                         {/* Core Metrics Section */}
                         <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Eye className="w-5 h-5 text-slate-600" />
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Core Metrics</h3>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Eye className="w-5 h-5 text-slate-600" />
+                              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Core Metrics</h3>
+                            </div>
+                            {/* Data Quality Badge */}
+                            {aggregated.dataQuality && (
+                              <Badge
+                                variant={
+                                  aggregated.dataQuality.grade === 'A' ? 'default' :
+                                  aggregated.dataQuality.grade === 'B' ? 'secondary' :
+                                  aggregated.dataQuality.grade === 'C' ? 'outline' : 'destructive'
+                                }
+                                className={
+                                  aggregated.dataQuality.grade === 'A' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                  aggregated.dataQuality.grade === 'B' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                  aggregated.dataQuality.grade === 'C' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                }
+                              >
+                                Data Quality: {aggregated.dataQuality.score.toFixed(1)}% ({aggregated.dataQuality.grade})
+                              </Badge>
+                            )}
                           </div>
 
                           {/* LinkedIn Metrics Grid - 3 columns - Core Metrics Only */}
@@ -5808,16 +5828,36 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                               const campaignProfit = campaignRevenue - spend;
                                               const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
                                               const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;
+                                              const campaignProfitMargin = campaignRevenue > 0 ? (campaignProfit / campaignRevenue) * 100 : 0;
+                                              const campaignRevenuePerLead = leads > 0 ? campaignRevenue / leads : 0;
 
                                               return (
                                                 <div className="pt-4 border-t border-green-200 dark:border-green-800">
-                                                  <div className="flex items-center gap-2 mb-3">
-                                                    <h5 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Revenue Metrics</h5>
-                                                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                      💰
-                                                    </Badge>
+                                                  <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                      <h5 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Revenue Metrics</h5>
+                                                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                        💰
+                                                      </Badge>
+                                                    </div>
+                                                    {/* Webhook Status Indicator */}
+                                                    {aggregated.webhookRevenueUsed ? (
+                                                      <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                        </svg>
+                                                        Actual values ({aggregated.webhookEventCount} events)
+                                                      </div>
+                                                    ) : aggregated.conversionValue > 0 ? (
+                                                      <div className="text-xs text-orange-500 dark:text-orange-400 flex items-center gap-1">
+                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                        </svg>
+                                                        Fixed value (${aggregated.conversionValue})
+                                                      </div>
+                                                    ) : null}
                                                   </div>
-                                                  <div className="grid grid-cols-4 gap-3">
+                                                  <div className="grid grid-cols-3 gap-3">
                                                     <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-lg">
                                                       <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Revenue</p>
                                                       <p className="text-sm font-bold text-green-700 dark:text-green-400">
@@ -5846,6 +5886,21 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                         : 'text-red-700 dark:text-red-400'
                                                         }`}>
                                                         {formatCurrency(campaignProfit)}
+                                                      </p>
+                                                    </div>
+                                                    <div className="bg-indigo-50 dark:bg-indigo-900/10 p-3 rounded-lg">
+                                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit Margin</p>
+                                                      <p className={`text-sm font-bold ${campaignProfitMargin >= 0
+                                                        ? 'text-indigo-700 dark:text-indigo-400'
+                                                        : 'text-red-700 dark:text-red-400'
+                                                        }`}>
+                                                        {campaignProfitMargin.toFixed(1)}%
+                                                      </p>
+                                                    </div>
+                                                    <div className="bg-teal-50 dark:bg-teal-900/10 p-3 rounded-lg">
+                                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Revenue/Lead</p>
+                                                      <p className="text-sm font-bold text-teal-700 dark:text-teal-400">
+                                                        {formatCurrency(campaignRevenuePerLead)}
                                                       </p>
                                                     </div>
                                                   </div>

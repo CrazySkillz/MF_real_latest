@@ -38,6 +38,21 @@ export default function CampaignTable() {
     return ((clicks / impressions) * 100).toFixed(2) + "%";
   };
 
+  const getHealthBadge = (health: string | null) => {
+    if (!health) return <Badge variant="outline">Unknown</Badge>;
+
+    switch (health.toLowerCase()) {
+      case "on_track":
+        return <Badge className="bg-green-100 text-green-700 border-green-200">On Track</Badge>;
+      case "needs_attention":
+        return <Badge className="bg-orange-100 text-orange-700 border-orange-200">Needs Attention</Badge>;
+      case "behind":
+        return <Badge className="bg-red-100 text-red-700 border-red-200">Behind</Badge>;
+      default:
+        return <Badge variant="outline">{health}</Badge>;
+    }
+  };
+
   const getPlatformIcon = (platform: string | null) => {
     if (!platform) {
       return "fas fa-ad text-slate-500";
@@ -121,9 +136,12 @@ export default function CampaignTable() {
                   <TableHead>Campaign</TableHead>
                   <TableHead>Platform</TableHead>
                   <TableHead>Impressions</TableHead>
+                  <TableHead>Conversions</TableHead>
                   <TableHead>CTR</TableHead>
                   <TableHead>Spend</TableHead>
+                  <TableHead>Revenue</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Health</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -145,13 +163,22 @@ export default function CampaignTable() {
                       {formatNumber(campaign.impressions)}
                     </TableCell>
                     <TableCell className="text-sm">
+                      {formatNumber((campaign as any).conversions || 0)}
+                    </TableCell>
+                    <TableCell className="text-sm">
                       {calculateCTR(campaign.clicks, campaign.impressions)}
                     </TableCell>
                     <TableCell className="text-sm">
                       {formatCurrency(campaign.spend)}
                     </TableCell>
+                    <TableCell className="text-sm">
+                      {(campaign as any).revenue ? formatCurrency(String((campaign as any).revenue)) : '$0.00'}
+                    </TableCell>
                     <TableCell>
                       {getStatusBadge(campaign.status)}
+                    </TableCell>
+                    <TableCell>
+                      {getHealthBadge((campaign as any).health || null)}
                     </TableCell>
                   </TableRow>
                 ))}

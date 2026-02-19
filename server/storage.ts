@@ -125,6 +125,32 @@ export interface IStorage {
   updateMetaConnection(campaignId: string, connection: Partial<InsertMetaConnection>): Promise<MetaConnection | undefined>;
   deleteMetaConnection(campaignId: string): Promise<boolean>;
 
+  // Meta KPIs
+  getMetaKPIs(campaignId: string): Promise<MetaKpi[]>;
+  getMetaKPIById(id: string): Promise<MetaKpi | undefined>;
+  createMetaKPI(kpi: InsertMetaKpi): Promise<MetaKpi>;
+  updateMetaKPI(id: string, kpi: Partial<InsertMetaKpi>): Promise<MetaKpi | undefined>;
+  deleteMetaKPI(id: string): Promise<boolean>;
+
+  // Meta Benchmarks
+  getMetaBenchmarks(campaignId: string): Promise<MetaBenchmark[]>;
+  getMetaBenchmarkById(id: string): Promise<MetaBenchmark | undefined>;
+  createMetaBenchmark(benchmark: InsertMetaBenchmark): Promise<MetaBenchmark>;
+  updateMetaBenchmark(id: string, benchmark: Partial<InsertMetaBenchmark>): Promise<MetaBenchmark | undefined>;
+  deleteMetaBenchmark(id: string): Promise<boolean>;
+
+  // Meta Reports
+  getMetaReports(campaignId: string): Promise<MetaReport[]>;
+  getMetaReportById(id: string): Promise<MetaReport | undefined>;
+  createMetaReport(report: InsertMetaReport): Promise<MetaReport>;
+  updateMetaReport(id: string, report: Partial<InsertMetaReport>): Promise<MetaReport | undefined>;
+  deleteMetaReport(id: string): Promise<boolean>;
+
+  // Meta Daily Metrics
+  getMetaDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<MetaDailyMetric[]>;
+  createMetaDailyMetric(metric: InsertMetaDailyMetric): Promise<MetaDailyMetric>;
+  upsertMetaDailyMetrics(metrics: InsertMetaDailyMetric[]): Promise<void>;
+
   // LinkedIn Import Sessions
   getLinkedInImportSession(sessionId: string): Promise<LinkedInImportSession | undefined>;
   getCampaignLinkedInImportSessions(campaignId: string): Promise<LinkedInImportSession[]>;
@@ -1740,6 +1766,147 @@ export class MemStorage implements IStorage {
 
   async deleteMetaConnection(campaignId: string): Promise<boolean> {
     return this.metaConnections.delete(campaignId);
+  }
+
+  // Meta KPIs
+  private metaKpis: Map<string, MetaKpi> = new Map();
+
+  async getMetaKPIs(campaignId: string): Promise<MetaKpi[]> {
+    return Array.from(this.metaKpis.values()).filter(kpi => kpi.campaignId === campaignId);
+  }
+
+  async getMetaKPIById(id: string): Promise<MetaKpi | undefined> {
+    return this.metaKpis.get(id);
+  }
+
+  async createMetaKPI(kpi: InsertMetaKpi): Promise<MetaKpi> {
+    const id = nanoid();
+    const newKpi: MetaKpi = {
+      id,
+      ...kpi,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.metaKpis.set(id, newKpi);
+    return newKpi;
+  }
+
+  async updateMetaKPI(id: string, kpi: Partial<InsertMetaKpi>): Promise<MetaKpi | undefined> {
+    const existing = this.metaKpis.get(id);
+    if (!existing) return undefined;
+    const updated: MetaKpi = { ...existing, ...kpi, updatedAt: new Date() };
+    this.metaKpis.set(id, updated);
+    return updated;
+  }
+
+  async deleteMetaKPI(id: string): Promise<boolean> {
+    return this.metaKpis.delete(id);
+  }
+
+  // Meta Benchmarks
+  private metaBenchmarks: Map<string, MetaBenchmark> = new Map();
+
+  async getMetaBenchmarks(campaignId: string): Promise<MetaBenchmark[]> {
+    return Array.from(this.metaBenchmarks.values()).filter(b => b.campaignId === campaignId);
+  }
+
+  async getMetaBenchmarkById(id: string): Promise<MetaBenchmark | undefined> {
+    return this.metaBenchmarks.get(id);
+  }
+
+  async createMetaBenchmark(benchmark: InsertMetaBenchmark): Promise<MetaBenchmark> {
+    const id = nanoid();
+    const newBenchmark: MetaBenchmark = {
+      id,
+      ...benchmark,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.metaBenchmarks.set(id, newBenchmark);
+    return newBenchmark;
+  }
+
+  async updateMetaBenchmark(id: string, benchmark: Partial<InsertMetaBenchmark>): Promise<MetaBenchmark | undefined> {
+    const existing = this.metaBenchmarks.get(id);
+    if (!existing) return undefined;
+    const updated: MetaBenchmark = { ...existing, ...benchmark, updatedAt: new Date() };
+    this.metaBenchmarks.set(id, updated);
+    return updated;
+  }
+
+  async deleteMetaBenchmark(id: string): Promise<boolean> {
+    return this.metaBenchmarks.delete(id);
+  }
+
+  // Meta Reports
+  private metaReports: Map<string, MetaReport> = new Map();
+
+  async getMetaReports(campaignId: string): Promise<MetaReport[]> {
+    return Array.from(this.metaReports.values()).filter(r => r.campaignId === campaignId);
+  }
+
+  async getMetaReportById(id: string): Promise<MetaReport | undefined> {
+    return this.metaReports.get(id);
+  }
+
+  async createMetaReport(report: InsertMetaReport): Promise<MetaReport> {
+    const id = nanoid();
+    const newReport: MetaReport = {
+      id,
+      ...report,
+      lastSent: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.metaReports.set(id, newReport);
+    return newReport;
+  }
+
+  async updateMetaReport(id: string, report: Partial<InsertMetaReport>): Promise<MetaReport | undefined> {
+    const existing = this.metaReports.get(id);
+    if (!existing) return undefined;
+    const updated: MetaReport = { ...existing, ...report, updatedAt: new Date() };
+    this.metaReports.set(id, updated);
+    return updated;
+  }
+
+  async deleteMetaReport(id: string): Promise<boolean> {
+    return this.metaReports.delete(id);
+  }
+
+  // Meta Daily Metrics
+  private metaDailyMetrics: Map<string, MetaDailyMetric> = new Map();
+
+  async getMetaDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<MetaDailyMetric[]> {
+    return Array.from(this.metaDailyMetrics.values()).filter(
+      m => m.campaignId === campaignId && m.date >= startDate && m.date <= endDate
+    );
+  }
+
+  async createMetaDailyMetric(metric: InsertMetaDailyMetric): Promise<MetaDailyMetric> {
+    const id = nanoid();
+    const newMetric: MetaDailyMetric = {
+      id,
+      ...metric,
+      importedAt: new Date(),
+    };
+    this.metaDailyMetrics.set(id, newMetric);
+    return newMetric;
+  }
+
+  async upsertMetaDailyMetrics(metrics: InsertMetaDailyMetric[]): Promise<void> {
+    for (const metric of metrics) {
+      const existing = Array.from(this.metaDailyMetrics.values()).find(
+        m => m.campaignId === metric.campaignId && m.metaCampaignId === metric.metaCampaignId && m.date === metric.date
+      );
+
+      if (existing) {
+        const updated: MetaDailyMetric = { ...existing, ...metric, importedAt: new Date() };
+        this.metaDailyMetrics.set(existing.id, updated);
+      } else {
+        await this.createMetaDailyMetric(metric);
+      }
+    }
   }
 
   // LinkedIn Import Session methods
@@ -4183,6 +4350,144 @@ export class DatabaseStorage implements IStorage {
       .delete(metaConnections)
       .where(eq(metaConnections.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
+  }
+
+  // Meta KPIs
+  async getMetaKPIs(campaignId: string): Promise<MetaKpi[]> {
+    return await db.select().from(metaKpis).where(eq(metaKpis.campaignId, campaignId));
+  }
+
+  async getMetaKPIById(id: string): Promise<MetaKpi | undefined> {
+    const [kpi] = await db.select().from(metaKpis).where(eq(metaKpis.id, id));
+    return kpi || undefined;
+  }
+
+  async createMetaKPI(kpi: InsertMetaKpi): Promise<MetaKpi> {
+    const [newKpi] = await db.insert(metaKpis).values(kpi).returning();
+    return newKpi;
+  }
+
+  async updateMetaKPI(id: string, kpi: Partial<InsertMetaKpi>): Promise<MetaKpi | undefined> {
+    const [updated] = await db
+      .update(metaKpis)
+      .set({ ...kpi, updatedAt: new Date() })
+      .where(eq(metaKpis.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteMetaKPI(id: string): Promise<boolean> {
+    const result = await db.delete(metaKpis).where(eq(metaKpis.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Meta Benchmarks
+  async getMetaBenchmarks(campaignId: string): Promise<MetaBenchmark[]> {
+    return await db.select().from(metaBenchmarks).where(eq(metaBenchmarks.campaignId, campaignId));
+  }
+
+  async getMetaBenchmarkById(id: string): Promise<MetaBenchmark | undefined> {
+    const [benchmark] = await db.select().from(metaBenchmarks).where(eq(metaBenchmarks.id, id));
+    return benchmark || undefined;
+  }
+
+  async createMetaBenchmark(benchmark: InsertMetaBenchmark): Promise<MetaBenchmark> {
+    const [newBenchmark] = await db.insert(metaBenchmarks).values(benchmark).returning();
+    return newBenchmark;
+  }
+
+  async updateMetaBenchmark(id: string, benchmark: Partial<InsertMetaBenchmark>): Promise<MetaBenchmark | undefined> {
+    const [updated] = await db
+      .update(metaBenchmarks)
+      .set({ ...benchmark, updatedAt: new Date() })
+      .where(eq(metaBenchmarks.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteMetaBenchmark(id: string): Promise<boolean> {
+    const result = await db.delete(metaBenchmarks).where(eq(metaBenchmarks.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Meta Reports
+  async getMetaReports(campaignId: string): Promise<MetaReport[]> {
+    return await db.select().from(metaReports).where(eq(metaReports.campaignId, campaignId));
+  }
+
+  async getMetaReportById(id: string): Promise<MetaReport | undefined> {
+    const [report] = await db.select().from(metaReports).where(eq(metaReports.id, id));
+    return report || undefined;
+  }
+
+  async createMetaReport(report: InsertMetaReport): Promise<MetaReport> {
+    const [newReport] = await db.insert(metaReports).values(report).returning();
+    return newReport;
+  }
+
+  async updateMetaReport(id: string, report: Partial<InsertMetaReport>): Promise<MetaReport | undefined> {
+    const [updated] = await db
+      .update(metaReports)
+      .set({ ...report, updatedAt: new Date() })
+      .where(eq(metaReports.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteMetaReport(id: string): Promise<boolean> {
+    const result = await db.delete(metaReports).where(eq(metaReports.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Meta Daily Metrics
+  async getMetaDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<MetaDailyMetric[]> {
+    return await db
+      .select()
+      .from(metaDailyMetrics)
+      .where(
+        and(
+          eq(metaDailyMetrics.campaignId, campaignId),
+          gte(metaDailyMetrics.date, startDate),
+          lte(metaDailyMetrics.date, endDate)
+        )
+      );
+  }
+
+  async createMetaDailyMetric(metric: InsertMetaDailyMetric): Promise<MetaDailyMetric> {
+    const [newMetric] = await db.insert(metaDailyMetrics).values(metric).returning();
+    return newMetric;
+  }
+
+  async upsertMetaDailyMetrics(metrics: InsertMetaDailyMetric[]): Promise<void> {
+    if (metrics.length === 0) return;
+
+    // Use INSERT ... ON CONFLICT for efficient upserts
+    await db
+      .insert(metaDailyMetrics)
+      .values(metrics)
+      .onConflictDoUpdate({
+        target: [metaDailyMetrics.campaignId, metaDailyMetrics.metaCampaignId, metaDailyMetrics.date],
+        set: {
+          impressions: sql`EXCLUDED.impressions`,
+          reach: sql`EXCLUDED.reach`,
+          clicks: sql`EXCLUDED.clicks`,
+          spend: sql`EXCLUDED.spend`,
+          conversions: sql`EXCLUDED.conversions`,
+          videoViews: sql`EXCLUDED.video_views`,
+          postEngagement: sql`EXCLUDED.post_engagement`,
+          linkClicks: sql`EXCLUDED.link_clicks`,
+          ctr: sql`EXCLUDED.ctr`,
+          cpc: sql`EXCLUDED.cpc`,
+          cpm: sql`EXCLUDED.cpm`,
+          cpp: sql`EXCLUDED.cpp`,
+          frequency: sql`EXCLUDED.frequency`,
+          costPerConversion: sql`EXCLUDED.cost_per_conversion`,
+          conversionRate: sql`EXCLUDED.conversion_rate`,
+          revenue: sql`EXCLUDED.revenue`,
+          roas: sql`EXCLUDED.roas`,
+          importedAt: sql`CURRENT_TIMESTAMP`,
+        },
+      });
   }
 
   // LinkedIn Import Session methods

@@ -322,6 +322,92 @@ export const metaConnections = pgTable("meta_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Meta KPIs - Track performance targets for Meta/Facebook campaigns
+export const metaKpis = pgTable("meta_kpis", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  name: text("name").notNull(),
+  metricType: text("metric_type").notNull(), // 'roas', 'roi', 'cpa', 'ctr', 'cpm', 'frequency', 'reach', 'video_view_rate'
+  targetValue: decimal("target_value", { precision: 15, scale: 2 }).notNull(),
+  currentValue: decimal("current_value", { precision: 15, scale: 2 }),
+  status: text("status").notNull().default("pending"), // 'on_track', 'needs_attention', 'behind', 'pending'
+  progress: decimal("progress", { precision: 5, scale: 2 }), // Percentage (0-100)
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  frequency: text("frequency").notNull().default("daily"), // 'daily', 'weekly', 'monthly', 'quarterly'
+  alertEnabled: boolean("alert_enabled").notNull().default(false),
+  alertThreshold: decimal("alert_threshold", { precision: 5, scale: 2 }), // Threshold for alerts (e.g., 80%)
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Meta Benchmarks - Industry comparison standards for Meta/Facebook ads
+export const metaBenchmarks = pgTable("meta_benchmarks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  name: text("name").notNull(),
+  metricType: text("metric_type").notNull(), // 'ctr', 'cpc', 'cpm', 'conversion_rate', 'roas', 'frequency'
+  benchmarkValue: decimal("benchmark_value", { precision: 15, scale: 2 }).notNull(),
+  currentValue: decimal("current_value", { precision: 15, scale: 2 }),
+  industry: text("industry"), // 'ecommerce', 'lead_generation', 'brand_awareness', 'traffic', 'engagement'
+  source: text("source").notNull().default("custom"), // 'industry', 'custom', 'template'
+  comparisonType: text("comparison_type").notNull().default("greater_than"), // 'greater_than', 'less_than', 'equals'
+  status: text("status"), // 'above_average', 'average', 'below_average'
+  percentageDiff: decimal("percentage_diff", { precision: 5, scale: 2 }), // Percentage difference from benchmark
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Meta Reports - Scheduled report configurations for Meta/Facebook campaigns
+export const metaReports = pgTable("meta_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  name: text("name").notNull(),
+  template: text("template").notNull(), // 'campaign_performance', 'creative_performance', 'audience_insights', 'budget_utilization', 'conversion_funnel', 'competitive_analysis'
+  frequency: text("frequency").notNull(), // 'daily', 'weekly', 'monthly', 'quarterly', 'ad_hoc'
+  schedule: text("schedule"), // Cron expression or schedule description (e.g., 'Every Monday at 8 AM')
+  recipients: text("recipients").array().notNull(), // Email addresses
+  format: text("format").notNull().default("pdf"), // 'pdf', 'csv', 'email', 'pdf_csv'
+  includeCharts: boolean("include_charts").notNull().default(true),
+  includeDemographics: boolean("include_demographics").notNull().default(true),
+  includeGeographics: boolean("include_geographics").notNull().default(true),
+  includePlacements: boolean("include_placements").notNull().default(true),
+  dateRange: text("date_range").notNull().default("last_30_days"), // 'last_7_days', 'last_30_days', 'last_90_days', 'custom'
+  customStartDate: timestamp("custom_start_date"),
+  customEndDate: timestamp("custom_end_date"),
+  enabled: boolean("enabled").notNull().default(true),
+  lastSent: timestamp("last_sent"),
+  nextScheduled: timestamp("next_scheduled"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Meta Daily Metrics - Persisted daily facts for Insights and anomaly detection
+export const metaDailyMetrics = pgTable("meta_daily_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(), // MetricMind campaign id
+  metaCampaignId: text("meta_campaign_id").notNull(), // Meta/Facebook campaign id
+  date: text("date").notNull(), // YYYY-MM-DD (UTC)
+  impressions: integer("impressions").notNull().default(0),
+  reach: integer("reach").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default(sql`0`),
+  conversions: integer("conversions").notNull().default(0),
+  videoViews: integer("video_views").notNull().default(0),
+  postEngagement: integer("post_engagement").notNull().default(0),
+  linkClicks: integer("link_clicks").notNull().default(0),
+  ctr: decimal("ctr", { precision: 5, scale: 2 }), // Click-through rate (percentage)
+  cpc: decimal("cpc", { precision: 10, scale: 2 }), // Cost per click
+  cpm: decimal("cpm", { precision: 10, scale: 2 }), // Cost per 1000 impressions
+  cpp: decimal("cpp", { precision: 10, scale: 2 }), // Cost per 1000 people reached
+  frequency: decimal("frequency", { precision: 5, scale: 2 }), // Impressions / Reach
+  costPerConversion: decimal("cost_per_conversion", { precision: 10, scale: 2 }),
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }), // Conversions / Clicks * 100
+  revenue: decimal("revenue", { precision: 10, scale: 2 }), // Revenue from conversions (if tracked)
+  roas: decimal("roas", { precision: 5, scale: 2 }), // Return on ad spend
+  importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const linkedinImportSessions = pgTable("linkedin_import_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
@@ -1072,6 +1158,76 @@ export const insertMetaConnectionSchema = createInsertSchema(metaConnections).pi
   expiresAt: true,
 });
 
+export const insertMetaKpiSchema = createInsertSchema(metaKpis).pick({
+  campaignId: true,
+  name: true,
+  metricType: true,
+  targetValue: true,
+  currentValue: true,
+  status: true,
+  progress: true,
+  startDate: true,
+  endDate: true,
+  frequency: true,
+  alertEnabled: true,
+  alertThreshold: true,
+});
+
+export const insertMetaBenchmarkSchema = createInsertSchema(metaBenchmarks).pick({
+  campaignId: true,
+  name: true,
+  metricType: true,
+  benchmarkValue: true,
+  currentValue: true,
+  industry: true,
+  source: true,
+  comparisonType: true,
+  status: true,
+  percentageDiff: true,
+});
+
+export const insertMetaReportSchema = createInsertSchema(metaReports).pick({
+  campaignId: true,
+  name: true,
+  template: true,
+  frequency: true,
+  schedule: true,
+  recipients: true,
+  format: true,
+  includeCharts: true,
+  includeDemographics: true,
+  includeGeographics: true,
+  includePlacements: true,
+  dateRange: true,
+  customStartDate: true,
+  customEndDate: true,
+  enabled: true,
+  nextScheduled: true,
+});
+
+export const insertMetaDailyMetricSchema = createInsertSchema(metaDailyMetrics).pick({
+  campaignId: true,
+  metaCampaignId: true,
+  date: true,
+  impressions: true,
+  reach: true,
+  clicks: true,
+  spend: true,
+  conversions: true,
+  videoViews: true,
+  postEngagement: true,
+  linkClicks: true,
+  ctr: true,
+  cpc: true,
+  cpm: true,
+  cpp: true,
+  frequency: true,
+  costPerConversion: true,
+  conversionRate: true,
+  revenue: true,
+  roas: true,
+});
+
 export const insertKPISchema = createInsertSchema(kpis).pick({
   campaignId: true,
   platformType: true,
@@ -1479,6 +1635,14 @@ export type LinkedInConnection = typeof linkedinConnections.$inferSelect;
 export type InsertLinkedInConnection = z.infer<typeof insertLinkedInConnectionSchema>;
 export type MetaConnection = typeof metaConnections.$inferSelect;
 export type InsertMetaConnection = z.infer<typeof insertMetaConnectionSchema>;
+export type MetaKpi = typeof metaKpis.$inferSelect;
+export type InsertMetaKpi = z.infer<typeof insertMetaKpiSchema>;
+export type MetaBenchmark = typeof metaBenchmarks.$inferSelect;
+export type InsertMetaBenchmark = z.infer<typeof insertMetaBenchmarkSchema>;
+export type MetaReport = typeof metaReports.$inferSelect;
+export type InsertMetaReport = z.infer<typeof insertMetaReportSchema>;
+export type MetaDailyMetric = typeof metaDailyMetrics.$inferSelect;
+export type InsertMetaDailyMetric = z.infer<typeof insertMetaDailyMetricSchema>;
 export type KPI = typeof kpis.$inferSelect;
 export type InsertKPI = z.infer<typeof insertKPISchema>;
 export type KPIProgress = typeof kpiProgress.$inferSelect;

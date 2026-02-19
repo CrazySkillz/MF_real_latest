@@ -4206,11 +4206,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
-      // Return with ownerId populated for consistency.
+      // Return with ownerId populated for consistency + calculated fields for dashboard table
       res.json(
         visible.map((c: any) => ({
           ...c,
           ownerId: String(c?.ownerId || "").trim() ? c.ownerId : actorId,
+          // TODO: Calculate real values from platform connections and KPIs
+          conversions: c.conversions || 0,
+          revenue: c.revenue || 0,
+          health: c.health || null, // Will be calculated based on KPI/benchmark performance
         }))
       );
     } catch (error) {
@@ -14531,6 +14535,460 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // ============================================================================
+  // CENTRALIZED META/FACEBOOK OAUTH (mirrors LinkedIn pattern)
+  // ============================================================================
+  const META_OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+  const signMetaOAuthState = (campaignId: string): string => {
+    const secret =
+      process.env.META_OAUTH_STATE_SECRET ||
+      process.env.SESSION_SECRET ||
+      process.env.APP_SECRET ||
+      "dev-meta-oauth-state-secret";
+
+    // Stateless, tamper-proof state payload to prevent callback spoofing/replays.
+    const payload = {
+      c: String(campaignId || "").trim(),
+      t: Date.now(),
+      n: randomBytes(12).toString("hex"),
+    };
+    const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+    const sig = createHmac("sha256", secret).update(payloadB64).digest();
+    const sigB64 = Buffer.from(sig).toString("base64url");
+    return `${payloadB64}.${sigB64}`;
+  };
+
+  const verifyMetaOAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
+    const secret =
+      process.env.META_OAUTH_STATE_SECRET ||
+      process.env.SESSION_SECRET ||
+      process.env.APP_SECRET ||
+      "dev-meta-oauth-state-secret";
+
+    const state = String(stateRaw || "").trim();
+    const parts = state.split(".");
+    if (parts.length !== 2) return { ok: false, error: "Invalid state" };
+    const [payloadB64, sigB64] = parts;
+    if (!payloadB64 || !sigB64) return { ok: false, error: "Invalid state" };
+
+    const expectedSig = createHmac("sha256", secret).update(payloadB64).digest();
+    const providedSig = Buffer.from(sigB64, "base64url");
+    if (providedSig.length !== expectedSig.length || !timingSafeEqual(providedSig, expectedSig)) {
+      return { ok: false, error: "Tampered state" };
+    }
+
+    let payload: any;
+    try {
+      const payloadJson = Buffer.from(payloadB64, "base64url").toString("utf8");
+      payload = JSON.parse(payloadJson);
+    } catch {
+      return { ok: false, error: "Invalid state" };
+    }
+
+    if (!payload.c || !payload.t) {
+      return { ok: false, error: "Invalid state" };
+    }
+
+    const age = Date.now() - Number(payload.t);
+    if (age > META_OAUTH_STATE_TTL_MS) {
+      return { ok: false, error: "State expired" };
+    }
+
+    return { ok: true, campaignId: payload.c };
+  };
+
+  /**
+   * Initiate Meta/Facebook OAuth flow with centralized credentials
+   * Similar to LinkedIn and Google Analytics - credentials stored in env vars
+   */
+  app.post("/api/auth/meta/connect", oauthRateLimiter, async (req, res) => {
+    try {
+      const { campaignId } = req.body;
+      const parsedCampaignId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedCampaignId.success) {
+        return res.status(400).json({ success: false, message: "Campaign ID is required" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedCampaignId.data);
+      if (!ok) return;
+
+      console.log(`[Meta OAuth] Starting flow for campaign ${campaignId}`);
+
+      // Check for centralized Meta/Facebook credentials
+      const appId = process.env.META_APP_ID || process.env.FACEBOOK_APP_ID;
+      const appSecret = process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET;
+
+      if (!appId || !appSecret) {
+        console.log('[Meta OAuth] Credentials not configured in environment variables');
+        return res.status(500).json({
+          message: "Meta OAuth not configured. Please add META_APP_ID and META_APP_SECRET to environment variables.",
+          setupRequired: true
+        });
+      }
+
+      // Determine base URL
+      const rawBaseUrl = process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/meta/callback`;
+
+      console.log(`[Meta OAuth] Using redirect URI: ${redirectUri}`);
+
+      const state = signMetaOAuthState(String(campaignId));
+
+      // Build Meta/Facebook OAuth URL
+      // Scopes: ads_read (read ad account data), ads_management (manage campaigns)
+      const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?` +
+        `client_id=${encodeURIComponent(appId)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `scope=${encodeURIComponent('ads_read,ads_management')}&` +
+        `state=${encodeURIComponent(state)}`;
+
+      res.json({ authUrl, message: "Meta OAuth flow initiated" });
+    } catch (error) {
+      console.error('[Meta OAuth] Initiation error:', error);
+      res.status(500).json({ success: false, message: "Failed to initiate authentication" });
+    }
+  });
+
+  /**
+   * Handle Meta/Facebook OAuth callback
+   * Exchanges authorization code for access token using centralized credentials
+   */
+  app.get("/api/auth/meta/callback", oauthRateLimiter, async (req, res) => {
+    try {
+      const { code, state, error, error_description } = req.query;
+
+      if (error) {
+        console.error(`[Meta OAuth] Error from Meta: ${error} - ${error_description}`);
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>${error_description || error}</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({
+                    type: 'meta_auth_error',
+                    error: '${error_description || error}'
+                  }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      if (!code || !state) {
+        console.error('[Meta OAuth] Missing code or state parameter');
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>Missing authorization code or state parameter.</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'meta_auth_error', error: 'Missing parameters' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      const verified = verifyMetaOAuthState(state);
+      if (!verified.ok) {
+        console.error(`[Meta OAuth] Invalid state: ${verified.error}`);
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>${verified.error}</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'meta_auth_error', error: '${verified.error}' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      const campaignId = verified.campaignId;
+      console.log(`[Meta OAuth] Processing callback for campaign ${campaignId}`);
+
+      const accessOk = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!accessOk) {
+        return res.send(`
+          <html>
+            <head><title>Authentication Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Error</h2>
+              <p>Session expired or campaign access denied.</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'meta_auth_error', error: 'Session expired or access denied' }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      // Get centralized credentials
+      const appId = process.env.META_APP_ID || process.env.FACEBOOK_APP_ID;
+      const appSecret = process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET;
+
+      if (!appId || !appSecret) {
+        throw new Error('Meta OAuth credentials not configured');
+      }
+
+      // Determine redirect URI (must match what was used in authorization)
+      const rawBaseUrl = process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/meta/callback`;
+
+      console.log(`[Meta OAuth] Using redirect URI for token exchange: ${redirectUri}`);
+
+      // Exchange code for short-lived access token
+      const { retryOAuthExchange } = await import('./utils/retry');
+
+      const shortTokenResponse = await retryOAuthExchange(async () => {
+        console.log('[Meta OAuth] Attempting token exchange...');
+        const response = await fetch(
+          `https://graph.facebook.com/v19.0/oauth/access_token?` +
+          `client_id=${encodeURIComponent(appId)}&` +
+          `client_secret=${encodeURIComponent(appSecret)}&` +
+          `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+          `code=${encodeURIComponent(code as string)}`
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[Meta OAuth] Token exchange failed:', errorText);
+          throw new Error(`Token exchange failed: ${errorText}`);
+        }
+
+        return await response.json();
+      });
+
+      console.log('[Meta OAuth] Short-lived token exchange successful');
+
+      if (!shortTokenResponse.access_token) {
+        throw new Error('Failed to obtain access token');
+      }
+
+      // Exchange short-lived token for long-lived token (60 days)
+      const longTokenResponse = await retryOAuthExchange(async () => {
+        console.log('[Meta OAuth] Exchanging for long-lived token...');
+        const response = await fetch(
+          `https://graph.facebook.com/v19.0/oauth/access_token?` +
+          `grant_type=fb_exchange_token&` +
+          `client_id=${encodeURIComponent(appId)}&` +
+          `client_secret=${encodeURIComponent(appSecret)}&` +
+          `fb_exchange_token=${encodeURIComponent(shortTokenResponse.access_token)}`
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[Meta OAuth] Long-lived token exchange failed:', errorText);
+          // Fall back to short-lived token if long-lived exchange fails
+          return shortTokenResponse;
+        }
+
+        return await response.json();
+      });
+
+      const accessToken = longTokenResponse.access_token;
+      const expiresIn = longTokenResponse.expires_in || 5184000; // Default 60 days
+
+      console.log('[Meta OAuth] Long-lived token obtained (expires in', expiresIn, 'seconds)');
+
+      // Fetch ad accounts accessible to this token
+      const { MetaGraphAPIClient } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(accessToken);
+
+      // Get user's ad accounts
+      const adAccountsResponse = await fetch(
+        `https://graph.facebook.com/v19.0/me/adaccounts?access_token=${encodeURIComponent(accessToken)}&fields=id,name,account_status`
+      );
+
+      if (!adAccountsResponse.ok) {
+        const errorText = await adAccountsResponse.text();
+        console.error('[Meta OAuth] Failed to fetch ad accounts:', errorText);
+        throw new Error('Failed to fetch ad accounts');
+      }
+
+      const adAccountsData = await adAccountsResponse.json();
+      const adAccounts = adAccountsData.data || [];
+
+      if (adAccounts.length === 0) {
+        return res.send(`
+          <html>
+            <head><title>No Ad Accounts Found</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2>No Ad Accounts Found</h2>
+              <p>Your Facebook account doesn't have access to any ad accounts.</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({
+                    type: 'meta_auth_error',
+                    error: 'No ad accounts found'
+                  }, window.location.origin);
+                }
+                setTimeout(() => window.close(), 3000);
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      // Use first active ad account
+      const activeAccount = adAccounts.find((acc: any) => acc.account_status === 1) || adAccounts[0];
+      const adAccountId = activeAccount.id.replace('act_', ''); // Remove act_ prefix for storage
+      const adAccountName = activeAccount.name;
+
+      console.log(`[Meta OAuth] Selected ad account: ${adAccountName} (${adAccountId})`);
+
+      // Calculate expiration timestamp
+      const expiresAt = new Date(Date.now() + expiresIn * 1000);
+
+      // Store Meta connection
+      await storage.createMetaConnection({
+        campaignId,
+        adAccountId,
+        adAccountName,
+        accessToken,
+        expiresAt,
+      });
+
+      console.log(`[Meta OAuth] Connection saved for campaign ${campaignId}`);
+
+      // Success page with ad account info
+      res.send(`
+        <html>
+          <head><title>Meta Connected</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2 style="color: #1877f2;">✓ Meta Ads Connected</h2>
+            <p><strong>Ad Account:</strong> ${adAccountName}</p>
+            <p><strong>Account ID:</strong> ${adAccountId}</p>
+            <p style="color: #666; font-size: 14px;">Token expires: ${expiresAt.toLocaleDateString()}</p>
+            <p style="margin-top: 30px; color: #666;">You can close this window now.</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({
+                  type: 'meta_auth_success',
+                  adAccountId: '${adAccountId}',
+                  adAccountName: '${adAccountName}'
+                }, window.location.origin);
+              }
+              setTimeout(() => window.close(), 3000);
+            </script>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      console.error('[Meta OAuth] Callback error:', error);
+      res.send(`
+        <html>
+          <head><title>Authentication Error</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2>Authentication Error</h2>
+            <p>${error.message || 'An unexpected error occurred'}</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({
+                  type: 'meta_auth_error',
+                  error: '${error.message || 'Unknown error'}'
+                }, window.location.origin);
+              }
+              setTimeout(() => window.close(), 3000);
+            </script>
+          </body>
+        </html>
+      `);
+    }
+  });
+
+  /**
+   * Get Meta connection status for a campaign
+   */
+  app.get("/api/campaigns/:campaignId/meta/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+
+      if (!connection) {
+        return res.json({ connected: false });
+      }
+
+      // Check if token is expired
+      const now = new Date();
+      const expiresAt = new Date(connection.expiresAt);
+      const isExpired = expiresAt < now;
+
+      res.json({
+        connected: true,
+        adAccountId: connection.adAccountId,
+        adAccountName: connection.adAccountName,
+        expiresAt: connection.expiresAt,
+        isExpired,
+      });
+    } catch (error: any) {
+      console.error('[Meta] Get connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to get connection status' });
+    }
+  });
+
+  /**
+   * Delete Meta connection for a campaign
+   */
+  app.delete("/api/campaigns/:campaignId/meta/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      await storage.deleteMetaConnection(parsedId.data);
+
+      console.log(`[Meta] Connection deleted successfully for campaign ${campaignId}`);
+      res.json({ success: true, message: 'Connection deleted' });
+    } catch (error: any) {
+      console.error('[Meta] Delete connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete connection' });
+    }
+  });
+
+  // ============================================================================
+  // END CENTRALIZED META/FACEBOOK OAUTH
+  // ============================================================================
+
+  // ============================================================================
   // META/FACEBOOK ADS INTEGRATION
   // ============================================================================
 
@@ -14663,6 +15121,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/meta/:campaignId/analytics", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const { useMock } = req.query;
+
       console.log(`[Meta Analytics] Fetching analytics for campaign ${campaignId}`);
 
       const connection = await storage.getMetaConnection(campaignId);
@@ -14671,14 +15131,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Meta connection not found for this campaign" });
       }
 
-      // Generate mock data based on the connected ad account
-      const { generateMetaMockData } = await import('./utils/metaMockData');
-      const mockData = generateMetaMockData(connection.adAccountId, connection.adAccountName || 'Meta Ad Account');
+      // Fallback to mock data if requested or if in test mode
+      if (useMock === '1' || connection.method === 'test_mode') {
+        const { generateMetaMockData } = await import('./utils/metaMockData');
+        const mockData = generateMetaMockData(connection.adAccountId, connection.adAccountName || 'Meta Ad Account');
+        console.log(`[Meta Analytics] Using mock data for ${mockData.campaigns.length} campaigns`);
+        return res.json(mockData);
+      }
 
-      console.log(`[Meta Analytics] Generated mock data for ${mockData.campaigns.length} campaigns`);
-      res.json(mockData);
+      // Real Meta Graph API integration
+      const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const dateRange = getLastNDaysRange(30);
+
+      console.log(`[Meta Analytics] Fetching real data from Meta Graph API`);
+
+      // Fetch campaigns from Meta
+      const campaigns = await metaClient.getCampaigns(connection.adAccountId, dateRange);
+
+      if (campaigns.length === 0) {
+        console.log(`[Meta Analytics] No campaigns found for ad account ${connection.adAccountId}`);
+        return res.json({
+          adAccountId: connection.adAccountId,
+          adAccountName: connection.adAccountName,
+          campaigns: [],
+          summary: {
+            totalCampaigns: 0,
+            activeCampaigns: 0,
+            totalSpend: 0,
+            totalImpressions: 0,
+            totalReach: 0,
+            totalClicks: 0,
+            totalConversions: 0,
+            totalVideoViews: 0,
+            avgCTR: 0,
+            avgCPC: 0,
+            avgCPM: 0,
+            avgCPP: 0,
+            avgFrequency: 0,
+            costPerConversion: 0,
+            conversionRate: 0,
+          },
+        });
+      }
+
+      // Fetch insights for each campaign in batches
+      const campaignInsights = await metaClient.getBatchCampaignInsights(
+        campaigns.map(c => c.id),
+        dateRange
+      );
+
+      // Fetch demographics, geographics, placements for each campaign
+      const campaignData = await Promise.all(
+        campaigns.map(async (campaign) => {
+          const insights = campaignInsights.get(campaign.id);
+
+          if (!insights || insights.impressions === 0) {
+            // Return empty data for campaigns with no insights
+            return {
+              campaign,
+              totals: {
+                impressions: 0,
+                reach: 0,
+                clicks: 0,
+                spend: 0,
+                conversions: 0,
+                videoViews: 0,
+                postEngagement: 0,
+                linkClicks: 0,
+                ctr: 0,
+                cpc: 0,
+                cpm: 0,
+                cpp: 0,
+                frequency: 0,
+                costPerConversion: 0,
+                conversionRate: 0,
+              },
+              demographics: [],
+              geographics: [],
+              placements: [],
+            };
+          }
+
+          // Fetch breakdowns (run in parallel)
+          const [demographics, geographics, placements] = await Promise.all([
+            metaClient.getDemographicInsights(campaign.id, dateRange).catch(() => []),
+            metaClient.getGeographicInsights(campaign.id, dateRange).catch(() => []),
+            metaClient.getPlacementInsights(campaign.id, dateRange).catch(() => []),
+          ]);
+
+          // Calculate conversions from actions
+          const conversions = insights.actions
+            ? insights.actions.reduce((sum, action) => {
+                if (
+                  action.actionType?.includes('purchase') ||
+                  action.actionType?.includes('lead') ||
+                  action.actionType?.includes('conversion')
+                ) {
+                  return sum + (parseInt(action.value) || 0);
+                }
+                return sum;
+              }, 0)
+            : 0;
+
+          // Calculate derived metrics
+          const ctr = insights.impressions > 0 ? (insights.clicks / insights.impressions) * 100 : 0;
+          const cpc = insights.clicks > 0 ? insights.spend / insights.clicks : 0;
+          const cpm = insights.impressions > 0 ? (insights.spend / insights.impressions) * 1000 : 0;
+          const cpp = insights.reach > 0 ? (insights.spend / insights.reach) * 1000 : 0;
+          const frequency = insights.reach > 0 ? insights.impressions / insights.reach : 0;
+          const costPerConversion = conversions > 0 ? insights.spend / conversions : 0;
+          const conversionRate = insights.clicks > 0 ? (conversions / insights.clicks) * 100 : 0;
+
+          return {
+            campaign,
+            totals: {
+              impressions: insights.impressions,
+              reach: insights.reach,
+              clicks: insights.clicks,
+              spend: insights.spend,
+              conversions,
+              videoViews: insights.videoViews || 0,
+              postEngagement: 0, // Not directly available in standard insights
+              linkClicks: Math.round(insights.clicks * 0.9), // Estimate: 90% of clicks are link clicks
+              ctr: parseFloat(ctr.toFixed(2)),
+              cpc: parseFloat(cpc.toFixed(2)),
+              cpm: parseFloat(cpm.toFixed(2)),
+              cpp: parseFloat(cpp.toFixed(2)),
+              frequency: parseFloat(frequency.toFixed(2)),
+              costPerConversion: parseFloat(costPerConversion.toFixed(2)),
+              conversionRate: parseFloat(conversionRate.toFixed(2)),
+            },
+            demographics,
+            geographics,
+            placements,
+          };
+        })
+      );
+
+      // Calculate summary metrics
+      const totalSpend = campaignData.reduce((sum, c) => sum + c.totals.spend, 0);
+      const totalImpressions = campaignData.reduce((sum, c) => sum + c.totals.impressions, 0);
+      const totalReach = campaignData.reduce((sum, c) => sum + c.totals.reach, 0);
+      const totalClicks = campaignData.reduce((sum, c) => sum + c.totals.clicks, 0);
+      const totalConversions = campaignData.reduce((sum, c) => sum + c.totals.conversions, 0);
+      const totalVideoViews = campaignData.reduce((sum, c) => sum + c.totals.videoViews, 0);
+
+      const summary = {
+        totalCampaigns: campaigns.length,
+        activeCampaigns: campaigns.filter(c => c.status === 'ACTIVE').length,
+        totalSpend: parseFloat(totalSpend.toFixed(2)),
+        totalImpressions,
+        totalReach,
+        totalClicks,
+        totalConversions,
+        totalVideoViews,
+        avgCTR: totalImpressions > 0 ? parseFloat(((totalClicks / totalImpressions) * 100).toFixed(2)) : 0,
+        avgCPC: totalClicks > 0 ? parseFloat((totalSpend / totalClicks).toFixed(2)) : 0,
+        avgCPM: totalImpressions > 0 ? parseFloat(((totalSpend / totalImpressions) * 1000).toFixed(2)) : 0,
+        avgCPP: totalReach > 0 ? parseFloat(((totalSpend / totalReach) * 1000).toFixed(2)) : 0,
+        avgFrequency: totalReach > 0 ? parseFloat((totalImpressions / totalReach).toFixed(2)) : 0,
+        costPerConversion: totalConversions > 0 ? parseFloat((totalSpend / totalConversions).toFixed(2)) : 0,
+        conversionRate: totalClicks > 0 ? parseFloat(((totalConversions / totalClicks) * 100).toFixed(2)) : 0,
+      };
+
+      console.log(`[Meta Analytics] Fetched ${campaigns.length} campaigns from Meta Graph API`);
+
+      res.json({
+        adAccountId: connection.adAccountId,
+        adAccountName: connection.adAccountName,
+        campaigns: campaignData,
+        summary,
+      });
     } catch (error: any) {
       console.error('[Meta Analytics] Error:', error);
+
+      // Fallback to mock data on error
+      if (error.message?.includes('Meta API')) {
+        console.log('[Meta Analytics] Meta API error, falling back to mock data');
+        const { generateMetaMockData } = await import('./utils/metaMockData');
+        const connection = await storage.getMetaConnection(req.params.campaignId);
+        if (connection) {
+          const mockData = generateMetaMockData(connection.adAccountId, connection.adAccountName || 'Meta Ad Account');
+          return res.json(mockData);
+        }
+      }
+
       res.status(500).json({ error: error.message || 'Failed to fetch Meta analytics' });
     }
   });
@@ -14723,6 +15361,939 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[Meta Summary] Error:', error);
       res.status(500).json({ error: error.message || 'Failed to fetch Meta summary' });
+    }
+  });
+
+  /**
+   * Get Meta campaigns list with real API integration
+   */
+  app.get("/api/meta/:campaignId/campaigns", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId ||"").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const dateRange = getLastNDaysRange(90);
+
+      const campaigns = await metaClient.getCampaigns(connection.adAccountId, dateRange);
+
+      res.json({ campaigns, adAccountName: connection.adAccountName });
+    } catch (error: any) {
+      console.error('[Meta] Get campaigns error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch campaigns' });
+    }
+  });
+
+  /**
+   * Get Meta campaign insights (daily time-series)
+   */
+  app.get("/api/meta/:campaignId/insights/daily", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { metaCampaignId, days } = req.query;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      if (!metaCampaignId) {
+        return res.status(400).json({ error: "Meta campaign ID is required" });
+      }
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const dateRange = getLastNDaysRange(Number(days) || 30);
+
+      const dailyInsights = await metaClient.getCampaignDailyInsights(
+        String(metaCampaignId),
+        dateRange
+      );
+
+      res.json({ dailyInsights, dateRange });
+    } catch (error: any) {
+      console.error('[Meta] Get daily insights error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch daily insights' });
+    }
+  });
+
+  /**
+   * Get Meta demographic breakdown
+   */
+  app.get("/api/meta/:campaignId/demographics", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { metaCampaignId } = req.query;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      if (!metaCampaignId) {
+        return res.status(400).json({ error: "Meta campaign ID is required" });
+      }
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const dateRange = getLastNDaysRange(30);
+
+      const demographics = await metaClient.getDemographicInsights(
+        String(metaCampaignId),
+        dateRange
+      );
+
+      res.json({ demographics });
+    } catch (error: any) {
+      console.error('[Meta] Get demographics error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch demographics' });
+    }
+  });
+
+  /**
+   * Get Meta geographic breakdown
+   */
+  app.get("/api/meta/:campaignId/geographics", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { metaCampaignId } = req.query;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      if (!metaCampaignId) {
+        return res.status(400).json({ error: "Meta campaign ID is required" });
+      }
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const dateRange = getLastNDaysRange(30);
+
+      const geographics = await metaClient.getGeographicInsights(
+        String(metaCampaignId),
+        dateRange
+      );
+
+      res.json({ geographics });
+    } catch (error: any) {
+      console.error('[Meta] Get geographics error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch geographics' });
+    }
+  });
+
+  /**
+   * Get Meta placement breakdown
+   */
+  app.get("/api/meta/:campaignId/placements", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { metaCampaignId } = req.query;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      if (!metaCampaignId) {
+        return res.status(400).json({ error: "Meta campaign ID is required" });
+      }
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const dateRange = getLastNDaysRange(30);
+
+      const placements = await metaClient.getPlacementInsights(
+        String(metaCampaignId),
+        dateRange
+      );
+
+      res.json({ placements });
+    } catch (error: any) {
+      console.error('[Meta] Get placements error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch placements' });
+    }
+  });
+
+  /**
+   * Get Meta ad sets for a campaign
+   */
+  app.get("/api/meta/:campaignId/adsets", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { metaCampaignId } = req.query;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      if (!metaCampaignId) {
+        return res.status(400).json({ error: "Meta campaign ID is required" });
+      }
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      const { MetaGraphAPIClient } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+
+      const adSets = await metaClient.getAdSets(String(metaCampaignId));
+
+      res.json({ adSets });
+    } catch (error: any) {
+      console.error('[Meta] Get ad sets error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch ad sets' });
+    }
+  });
+
+  /**
+   * Get Meta ads for an ad set
+   */
+  app.get("/api/meta/:campaignId/ads", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { adSetId } = req.query;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      if (!adSetId) {
+        return res.status(400).json({ error: "Ad set ID is required" });
+      }
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      const { MetaGraphAPIClient } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+
+      const ads = await metaClient.getAds(String(adSetId));
+
+      res.json({ ads });
+    } catch (error: any) {
+      console.error('[Meta] Get ads error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch ads' });
+    }
+  });
+
+  /**
+   * Get Meta ad insights
+   */
+  app.get("/api/meta/:campaignId/ad-insights", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { adId } = req.query;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      if (!adId) {
+        return res.status(400).json({ error: "Ad ID is required" });
+      }
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const dateRange = getLastNDaysRange(30);
+
+      const insights = await metaClient.getAdInsights(String(adId), dateRange);
+
+      res.json({ insights });
+    } catch (error: any) {
+      console.error('[Meta] Get ad insights error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch ad insights' });
+    }
+  });
+
+  /**
+   * Manual refresh Meta campaign data
+   */
+  app.post("/api/meta/:campaignId/refresh", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      console.log(`[Meta] Manual refresh triggered for campaign ${campaignId}`);
+
+      // Import and call the refresh function
+      const { refreshMetaDataForCampaign } = await import('./meta-scheduler');
+
+      // Trigger refresh asynchronously
+      refreshMetaDataForCampaign(parsedId.data, connection, { advanceTestDay: true })
+        .catch((err: any) => {
+          console.error(`[Meta] Background refresh failed for campaign ${campaignId}:`, err);
+        });
+
+      res.json({
+        success: true,
+        message: "Refresh initiated - data will be updated shortly",
+        lastRefresh: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error('[Meta] Refresh error:', error);
+      res.status(500).json({ error: error.message || 'Failed to refresh Meta data' });
+    }
+  });
+
+  /**
+   * Verify Meta access token
+   */
+  app.get("/api/meta/:campaignId/verify-token", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getMetaConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      const { MetaGraphAPIClient } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+
+      const tokenInfo = await metaClient.verifyToken();
+
+      res.json({
+        isValid: tokenInfo.isValid,
+        expiresAt: tokenInfo.expiresAt,
+        scopes: tokenInfo.scopes,
+        storedExpiresAt: connection.expiresAt,
+      });
+    } catch (error: any) {
+      console.error('[Meta] Token verification error:', error);
+      res.status(500).json({ error: error.message || 'Failed to verify token' });
+    }
+  });
+
+  // ============================================================================
+  // META KPIs, BENCHMARKS, REPORTS, REVENUE
+  // ============================================================================
+
+  /**
+   * Get Meta KPIs for a campaign
+   */
+  app.get("/api/platforms/meta/kpis/:campaignId", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const kpis = await storage.getMetaKPIs(parsedId.data);
+      res.json({ kpis });
+    } catch (error: any) {
+      console.error('[Meta KPIs] Get error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch Meta KPIs' });
+    }
+  });
+
+  /**
+   * Create Meta KPI
+   */
+  app.post("/api/platforms/meta/kpis", async (req, res) => {
+    try {
+      const kpiData = req.body;
+
+      const parsedId = campaignIdSchema.safeParse(String(kpiData.campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const kpi = await storage.createMetaKPI(kpiData);
+      res.json({ kpi });
+    } catch (error: any) {
+      console.error('[Meta KPIs] Create error:', error);
+      res.status(500).json({ error: error.message || 'Failed to create Meta KPI' });
+    }
+  });
+
+  /**
+   * Update Meta KPI
+   */
+  app.patch("/api/platforms/meta/kpis/:kpiId", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+      const updates = req.body;
+
+      // Verify KPI exists and get campaignId for access check
+      const existingKPI = await storage.getMetaKPIById(kpiId);
+      if (!existingKPI) {
+        return res.status(404).json({ error: "KPI not found" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, existingKPI.campaignId);
+      if (!ok) return;
+
+      const updatedKPI = await storage.updateMetaKPI(kpiId, updates);
+      res.json({ kpi: updatedKPI });
+    } catch (error: any) {
+      console.error('[Meta KPIs] Update error:', error);
+      res.status(500).json({ error: error.message || 'Failed to update Meta KPI' });
+    }
+  });
+
+  /**
+   * Delete Meta KPI
+   */
+  app.delete("/api/platforms/meta/kpis/:kpiId", async (req, res) => {
+    try {
+      const { kpiId } = req.params;
+
+      // Verify KPI exists and get campaignId for access check
+      const existingKPI = await storage.getMetaKPIById(kpiId);
+      if (!existingKPI) {
+        return res.status(404).json({ error: "KPI not found" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, existingKPI.campaignId);
+      if (!ok) return;
+
+      await storage.deleteMetaKPI(kpiId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[Meta KPIs] Delete error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete Meta KPI' });
+    }
+  });
+
+  /**
+   * Get Meta benchmarks for a campaign
+   */
+  app.get("/api/campaigns/:id/benchmarks/evaluated", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { platform } = req.query;
+
+      if (platform !== 'meta' && platform !== 'facebook') {
+        // Not a Meta request, skip
+        return res.status(400).json({ error: "Invalid platform" });
+      }
+
+      const parsedId = campaignIdSchema.safeParse(String(id || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const benchmarks = await storage.getMetaBenchmarks(parsedId.data);
+      res.json({ benchmarks });
+    } catch (error: any) {
+      console.error('[Meta Benchmarks] Get error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch Meta benchmarks' });
+    }
+  });
+
+  /**
+   * Create Meta benchmark
+   */
+  app.post("/api/campaigns/:id/benchmarks", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const benchmarkData = req.body;
+
+      if (benchmarkData.platform !== 'meta' && benchmarkData.platform !== 'facebook') {
+        // Not a Meta request, skip
+        return res.status(400).json({ error: "Invalid platform" });
+      }
+
+      const parsedId = campaignIdSchema.safeParse(String(id || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const benchmark = await storage.createMetaBenchmark({
+        ...benchmarkData,
+        campaignId: parsedId.data,
+      });
+      res.json({ benchmark });
+    } catch (error: any) {
+      console.error('[Meta Benchmarks] Create error:', error);
+      res.status(500).json({ error: error.message || 'Failed to create Meta benchmark' });
+    }
+  });
+
+  /**
+   * Update Meta benchmark
+   */
+  app.patch("/api/benchmarks/:benchmarkId", async (req, res) => {
+    try {
+      const { benchmarkId } = req.params;
+      const updates = req.body;
+
+      // Verify benchmark exists and get campaignId for access check
+      const existingBenchmark = await storage.getMetaBenchmarkById(benchmarkId);
+      if (!existingBenchmark) {
+        return res.status(404).json({ error: "Benchmark not found" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, existingBenchmark.campaignId);
+      if (!ok) return;
+
+      const updatedBenchmark = await storage.updateMetaBenchmark(benchmarkId, updates);
+      res.json({ benchmark: updatedBenchmark });
+    } catch (error: any) {
+      console.error('[Meta Benchmarks] Update error:', error);
+      res.status(500).json({ error: error.message || 'Failed to update Meta benchmark' });
+    }
+  });
+
+  /**
+   * Delete Meta benchmark
+   */
+  app.delete("/api/benchmarks/:benchmarkId", async (req, res) => {
+    try {
+      const { benchmarkId } = req.params;
+
+      // Verify benchmark exists and get campaignId for access check
+      const existingBenchmark = await storage.getMetaBenchmarkById(benchmarkId);
+      if (!existingBenchmark) {
+        return res.status(404).json({ error: "Benchmark not found" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, existingBenchmark.campaignId);
+      if (!ok) return;
+
+      await storage.deleteMetaBenchmark(benchmarkId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[Meta Benchmarks] Delete error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete Meta benchmark' });
+    }
+  });
+
+  /**
+   * Get Meta reports
+   */
+  app.get("/api/meta/reports", async (req, res) => {
+    try {
+      const { campaignId } = req.query;
+
+      if (!campaignId) {
+        return res.status(400).json({ error: "Campaign ID is required" });
+      }
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const reports = await storage.getMetaReports(parsedId.data);
+      res.json({ reports });
+    } catch (error: any) {
+      console.error('[Meta Reports] Get error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch Meta reports' });
+    }
+  });
+
+  /**
+   * Create Meta report
+   */
+  app.post("/api/meta/reports", async (req, res) => {
+    try {
+      const reportData = req.body;
+
+      const parsedId = campaignIdSchema.safeParse(String(reportData.campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const report = await storage.createMetaReport(reportData);
+      res.json({ report });
+    } catch (error: any) {
+      console.error('[Meta Reports] Create error:', error);
+      res.status(500).json({ error: error.message || 'Failed to create Meta report' });
+    }
+  });
+
+  /**
+   * Update Meta report
+   */
+  app.patch("/api/meta/reports/:reportId", async (req, res) => {
+    try {
+      const { reportId } = req.params;
+      const updates = req.body;
+
+      // Verify report exists and get campaignId for access check
+      const existingReport = await storage.getMetaReportById(reportId);
+      if (!existingReport) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, existingReport.campaignId);
+      if (!ok) return;
+
+      const updatedReport = await storage.updateMetaReport(reportId, updates);
+      res.json({ report: updatedReport });
+    } catch (error: any) {
+      console.error('[Meta Reports] Update error:', error);
+      res.status(500).json({ error: error.message || 'Failed to update Meta report' });
+    }
+  });
+
+  /**
+   * Delete Meta report
+   */
+  app.delete("/api/meta/reports/:reportId", async (req, res) => {
+    try {
+      const { reportId } = req.params;
+
+      // Verify report exists and get campaignId for access check
+      const existingReport = await storage.getMetaReportById(reportId);
+      if (!existingReport) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, existingReport.campaignId);
+      if (!ok) return;
+
+      await storage.deleteMetaReport(reportId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[Meta Reports] Delete error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete Meta report' });
+    }
+  });
+
+  /**
+   * Send Meta report immediately
+   */
+  app.post("/api/meta/reports/:reportId/send", async (req, res) => {
+    try {
+      const { reportId } = req.params;
+
+      const existingReport = await storage.getMetaReportById(reportId);
+      if (!existingReport) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, existingReport.campaignId);
+      if (!ok) return;
+
+      // TODO: Implement actual report generation and email sending
+      console.log(`[Meta Reports] Sending report ${reportId} immediately`);
+
+      res.json({ success: true, message: "Report sent successfully" });
+    } catch (error: any) {
+      console.error('[Meta Reports] Send error:', error);
+      res.status(500).json({ error: error.message || 'Failed to send Meta report' });
+    }
+  });
+
+  /**
+   * Preview Meta report
+   */
+  app.get("/api/meta/reports/:reportId/preview", async (req, res) => {
+    try {
+      const { reportId } = req.params;
+
+      const existingReport = await storage.getMetaReportById(reportId);
+      if (!existingReport) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, existingReport.campaignId);
+      if (!ok) return;
+
+      // TODO: Implement actual report preview generation
+      res.json({
+        report: existingReport,
+        preview: "Report preview HTML would be generated here",
+      });
+    } catch (error: any) {
+      console.error('[Meta Reports] Preview error:', error);
+      res.status(500).json({ error: error.message || 'Failed to preview Meta report' });
+    }
+  });
+
+  /**
+   * Manual revenue entry for Meta campaigns
+   */
+  app.post("/api/meta/:campaignId/revenue/manual", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { amount, date, metaCampaignId, metaCampaignName } = req.body;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      // Validate amount
+      const revenueAmount = parseFloat(amount);
+      if (isNaN(revenueAmount) || revenueAmount <= 0) {
+        return res.status(400).json({ error: "Invalid revenue amount" });
+      }
+
+      // Validate date
+      const revenueDate = date || new Date().toISOString().split('T')[0];
+
+      // Store manual revenue entry in daily metrics
+      try {
+        await storage.upsertMetaDailyMetrics([{
+          campaignId: parsedId.data,
+          metaCampaignId: metaCampaignId || 'manual_entry',
+          date: revenueDate,
+          impressions: 0,
+          reach: 0,
+          clicks: 0,
+          spend: "0",
+          conversions: 0,
+          videoViews: 0,
+          revenue: revenueAmount.toFixed(2),
+        }]);
+
+        console.log(`[Meta Revenue] Manual entry: $${revenueAmount} for campaign ${campaignId} on ${revenueDate}`);
+
+        res.json({
+          success: true,
+          revenue: {
+            amount: revenueAmount,
+            date: revenueDate,
+            metaCampaignId: metaCampaignId || 'manual_entry',
+            metaCampaignName: metaCampaignName || 'Manual Entry',
+            source: 'manual',
+          },
+        });
+      } catch (storageError: any) {
+        console.error('[Meta Revenue] Storage error:', storageError);
+        throw new Error('Failed to store revenue data');
+      }
+    } catch (error: any) {
+      console.error('[Meta Revenue] Manual entry error:', error);
+      res.status(500).json({ error: error.message || 'Failed to add revenue' });
+    }
+  });
+
+  /**
+   * CSV upload for Meta revenue
+   */
+  app.post("/api/meta/:campaignId/revenue/csv", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { csvData, campaignColumn, revenueColumn } = req.body;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      // Validate CSV data
+      if (!csvData || typeof csvData !== 'string') {
+        return res.status(400).json({ error: "Invalid CSV data" });
+      }
+
+      if (!campaignColumn || !revenueColumn) {
+        return res.status(400).json({
+          error: "Campaign column and revenue column are required"
+        });
+      }
+
+      // Import the revenue processing utility
+      const { processMetaRevenueCSV } = await import('./utils/meta-revenue');
+
+      // Process CSV with crosswalk matching
+      const result = await processMetaRevenueCSV({
+        campaignId: parsedId.data,
+        csvData,
+        campaignColumn,
+        revenueColumn,
+      });
+
+      console.log(`[Meta Revenue] CSV upload for campaign ${campaignId}: ${result.rowsProcessed} rows, $${result.totalRevenue} total`);
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          error: result.errors?.[0] || 'Failed to process CSV',
+          errors: result.errors,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Revenue data imported successfully",
+        rowsProcessed: result.rowsProcessed,
+        totalRevenue: result.totalRevenue,
+        matchedCampaigns: result.matchedCampaigns,
+        warnings: result.errors,
+      });
+    } catch (error: any) {
+      console.error('[Meta Revenue] CSV upload error:', error);
+      res.status(500).json({ error: error.message || 'Failed to import revenue CSV' });
+    }
+  });
+
+  /**
+   * Get Meta revenue summary
+   */
+  app.get("/api/meta/:campaignId/revenue/summary", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      // Get Meta daily metrics to calculate total conversions
+      let totalConversions = 0;
+      try {
+        const dailyMetrics = await storage.getMetaDailyMetrics(parsedId.data);
+        totalConversions = dailyMetrics.reduce((sum, metric) => sum + (metric.conversions || 0), 0);
+      } catch {
+        totalConversions = 0;
+      }
+
+      // Import the revenue context resolver
+      const { resolveMetaRevenueContext } = await import('./utils/meta-revenue');
+
+      // Resolve revenue context
+      const revenueContext = await resolveMetaRevenueContext({
+        campaignId: parsedId.data,
+        conversionsTotal: totalConversions,
+      });
+
+      // Get revenue sources for detailed breakdown
+      let sources: any[] = [];
+      try {
+        sources = await (storage as any).getRevenueSources?.(parsedId.data, "meta") || [];
+      } catch {
+        sources = [];
+      }
+
+      res.json({
+        hasRevenueTracking: revenueContext.hasRevenueTracking,
+        totalRevenue: revenueContext.totalRevenue,
+        conversionValue: revenueContext.conversionValue,
+        conversionValueSource: revenueContext.conversionValueSource,
+        importedRevenueToDate: revenueContext.importedRevenueToDate,
+        webhookEventCount: revenueContext.webhookEventCount,
+        webhookRevenueUsed: revenueContext.webhookRevenueUsed,
+        windowStartDate: revenueContext.windowStartDate,
+        windowEndDate: revenueContext.windowEndDate,
+        sources: sources.map((s: any) => ({
+          id: s.id,
+          sourceType: s.sourceType,
+          isActive: s.isActive,
+          createdAt: s.createdAt,
+        })),
+      });
+    } catch (error: any) {
+      console.error('[Meta Revenue] Summary error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch revenue summary' });
     }
   });
 

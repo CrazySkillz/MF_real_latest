@@ -5,6 +5,7 @@ import { snapshotScheduler } from "./scheduler";
 import { startKPIScheduler } from "./kpi-scheduler";
 import { startReportScheduler, getSchedulerMetrics } from "./report-scheduler";
 import { startLinkedInScheduler } from "./linkedin-scheduler";
+import { startMetaScheduler } from "./meta-scheduler";
 import { startGoogleSheetsTokenScheduler } from "./google-sheets-token-scheduler";
 import { startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
 import { startGA4DailyScheduler } from "./ga4-daily-scheduler";
@@ -623,6 +624,13 @@ process.on('uncaughtException', (error: Error) => {
           startLinkedInScheduler();
         } catch (error) {
           console.error('Failed to start LinkedIn scheduler:', error);
+        }
+
+        // Start Meta/Facebook data refresh scheduler
+        try {
+          startMetaScheduler();
+        } catch (error) {
+          console.error('Failed to start Meta scheduler:', error);
         }
 
         // Start Google Sheets token refresh scheduler

@@ -30,7 +30,6 @@ import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
-import { ABTestManager } from "@/components/ABTestManager";
 import { WebhookTester } from "@/components/WebhookTester";
 import { AttributionDashboard } from "@/components/AttributionDashboard";
 
@@ -130,9 +129,75 @@ const parseFormattedNumber = (value: string): number => {
 // Scheduled Reports Section Component
 function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { data: reports = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignId}/kpi-reports`],
     enabled: !!campaignId,
+  });
+
+  const [showForm, setShowForm] = useState(false);
+  const [editingReport, setEditingReport] = useState<any>(null);
+  const [formName, setFormName] = useState('');
+  const [formFrequency, setFormFrequency] = useState('weekly');
+  const [formDay, setFormDay] = useState('1'); // day of week (0-6) or day of month
+  const [formTime, setFormTime] = useState('09:00');
+  const [formRecipients, setFormRecipients] = useState('');
+  const [formSections, setFormSections] = useState<string[]>(['kpis', 'benchmarks', 'overview']);
+
+  const resetForm = () => {
+    setFormName('');
+    setFormFrequency('weekly');
+    setFormDay('1');
+    setFormTime('09:00');
+    setFormRecipients('');
+    setFormSections(['kpis', 'benchmarks', 'overview']);
+    setEditingReport(null);
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setShowForm(true);
+  };
+
+  const openEdit = (report: any) => {
+    setEditingReport(report);
+    setFormName(report.name || '');
+    setFormFrequency(report.scheduleFrequency || 'weekly');
+    setFormDay(String(report.scheduleDayOfWeek ?? report.scheduleDayOfMonth ?? '1'));
+    setFormTime(report.scheduleTime || '09:00');
+    setFormRecipients(Array.isArray(report.scheduleRecipients) ? report.scheduleRecipients.join(', ') : '');
+    setFormSections(report.sections || ['kpis', 'benchmarks', 'overview']);
+    setShowForm(true);
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await apiRequest('POST', `/api/campaigns/${campaignId}/kpi-reports`, data);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpi-reports`] });
+      toast({ title: "Report Created", description: "Scheduled report has been created." });
+      setShowForm(false);
+      resetForm();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create report.", variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiRequest('PATCH', `/api/campaigns/${campaignId}/kpi-reports/${id}`, data);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpi-reports`] });
+      toast({ title: "Report Updated", description: "Scheduled report has been updated." });
+      setShowForm(false);
+      resetForm();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update report.", variant: "destructive" });
+    },
   });
 
   const deleteReportMutation = useMutation({
@@ -140,39 +205,52 @@ function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
       await apiRequest('DELETE', `/api/campaigns/${campaignId}/kpi-reports/${reportId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpi-reports`] });
-      toast({
-        title: "Report Deleted",
-        description: "Scheduled report has been removed.",
-      });
+      qc.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpi-reports`] });
+      toast({ title: "Report Deleted", description: "Scheduled report has been removed." });
     },
   });
 
+  const handleSubmit = () => {
+    const recipients = formRecipients.split(',').map(e => e.trim()).filter(Boolean);
+    const payload: any = {
+      name: formName || 'KPI Report',
+      scheduleFrequency: formFrequency,
+      scheduleTime: formTime,
+      scheduleRecipients: recipients,
+      sections: formSections,
+    };
+    if (formFrequency === 'weekly') {
+      payload.scheduleDayOfWeek = parseInt(formDay);
+    } else if (formFrequency === 'monthly' || formFrequency === 'quarterly') {
+      payload.scheduleDayOfMonth = parseInt(formDay);
+    }
+    if (editingReport) {
+      updateMutation.mutate({ id: editingReport.id, data: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  };
+
   const formatScheduleDetails = (report: any) => {
     const parts = [];
-    
-    // Frequency
     if (report.scheduleFrequency) {
       parts.push(report.scheduleFrequency.charAt(0).toUpperCase() + report.scheduleFrequency.slice(1));
     }
-    
-    // Day of week for weekly
     if (report.scheduleFrequency === 'weekly' && report.scheduleDayOfWeek !== null) {
       const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       parts.push(`on ${days[report.scheduleDayOfWeek]}`);
     }
-    
-    // Day of month for monthly/quarterly
     if ((report.scheduleFrequency === 'monthly' || report.scheduleFrequency === 'quarterly') && report.scheduleDayOfMonth) {
       parts.push(`on day ${report.scheduleDayOfMonth}`);
     }
-    
-    // Time
     if (report.scheduleTime) {
       parts.push(`at ${report.scheduleTime}`);
     }
-    
     return parts.join(' ');
+  };
+
+  const toggleSection = (section: string) => {
+    setFormSections(prev => prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]);
   };
 
   if (isLoading) {
@@ -187,65 +265,149 @@ function ScheduledReportsSection({ campaignId }: { campaignId: string }) {
     );
   }
 
-  if (reports.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-12">
-          <div className="text-center">
-            <Calendar className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-              No Scheduled Reports Created
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-4">
-              Schedule automated reports to have them delivered to your inbox on a regular basis.
-            </p>
-            <p className="text-sm text-slate-500 dark:text-slate-500">
-              Scheduled reports will appear here once created.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <div>
-      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-        Scheduled Reports
-      </h3>
-      <div className="grid gap-4">
-        {reports.map((report) => (
-          <Card key={report.id}>
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="flex items-center space-x-4">
-                <Calendar className="w-5 h-5 text-slate-500" />
-                <div>
-                  <div className="font-medium text-slate-900 dark:text-white">
-                    {report.name || 'KPI Report'}
-                  </div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400">
-                    {formatScheduleDetails(report)}
-                  </div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500">
-                    {report.scheduleRecipients && Array.isArray(report.scheduleRecipients) 
-                      ? `${report.scheduleRecipients.length} recipient(s): ${report.scheduleRecipients.slice(0, 2).join(', ')}${report.scheduleRecipients.length > 2 ? '...' : ''}` 
-                      : 'No recipients'}
-                  </div>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => deleteReportMutation.mutate(report.id)}
-                data-testid={`button-delete-report-${report.id}`}
-              >
-                <Trash2 className="w-4 h-4 text-red-600" />
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+          Scheduled Reports
+        </h3>
+        <Button size="sm" onClick={openCreate}>
+          <Plus className="w-4 h-4 mr-2" />
+          Create Report
+        </Button>
       </div>
 
+      {/* Create/Edit Form */}
+      {showForm && (
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{editingReport ? 'Edit Report' : 'Create Scheduled Report'}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Report Name</Label>
+              <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g., Weekly KPI Summary" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Frequency</Label>
+                <Select value={formFrequency} onValueChange={setFormFrequency}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formFrequency === 'weekly' && (
+                <div>
+                  <Label>Day of Week</Label>
+                  <Select value={formDay} onValueChange={setFormDay}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d, i) => (
+                        <SelectItem key={i} value={String(i)}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {(formFrequency === 'monthly' || formFrequency === 'quarterly') && (
+                <div>
+                  <Label>Day of Month</Label>
+                  <Input type="number" min="1" max="28" value={formDay} onChange={e => setFormDay(e.target.value)} />
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>Send Time</Label>
+              <Input type="time" value={formTime} onChange={e => setFormTime(e.target.value)} />
+            </div>
+            <div>
+              <Label>Recipients (comma-separated emails)</Label>
+              <Input value={formRecipients} onChange={e => setFormRecipients(e.target.value)} placeholder="email@example.com, team@example.com" />
+            </div>
+            <div>
+              <Label className="mb-2 block">Include Sections</Label>
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { id: 'overview', label: 'Overview Metrics' },
+                  { id: 'kpis', label: 'KPIs' },
+                  { id: 'benchmarks', label: 'Benchmarks' },
+                ].map(s => (
+                  <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox checked={formSections.includes(s.id)} onCheckedChange={() => toggleSection(s.id)} />
+                    {s.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button size="sm" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+                {editingReport ? 'Update' : 'Create'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setShowForm(false); resetForm(); }}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Reports List */}
+      {reports.length === 0 && !showForm ? (
+        <Card>
+          <CardContent className="p-12">
+            <div className="text-center">
+              <Calendar className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                No Scheduled Reports
+              </h3>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                Schedule automated reports to have them delivered to your inbox on a regular basis.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {reports.map((report) => (
+            <Card key={report.id}>
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center space-x-4">
+                  <Calendar className="w-5 h-5 text-slate-500" />
+                  <div>
+                    <div className="font-medium text-slate-900 dark:text-white">
+                      {report.name || 'KPI Report'}
+                    </div>
+                    <div className="text-sm text-slate-500 dark:text-slate-400">
+                      {formatScheduleDetails(report)}
+                    </div>
+                    <div className="text-xs text-slate-400 dark:text-slate-500">
+                      {report.scheduleRecipients && Array.isArray(report.scheduleRecipients)
+                        ? `${report.scheduleRecipients.length} recipient(s): ${report.scheduleRecipients.slice(0, 2).join(', ')}${report.scheduleRecipients.length > 2 ? '...' : ''}`
+                        : 'No recipients'}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(report)}>
+                    <Pencil className="w-4 h-4 text-slate-500" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteReportMutation.mutate(report.id)}
+                    data-testid={`button-delete-report-${report.id}`}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -4361,226 +4523,286 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
   );
 }
 
-// Campaign Chat Messages Interface
-interface ChatMessage {
-  id: string;
-  text: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
-}
+// Campaign Insights Component — data-driven, no AI chat
+function CampaignInsights({ campaign }: { campaign: Campaign }) {
+  const { data: outcomeTotals } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/outcome-totals`, "30days"],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/outcome-totals?dateRange=30days`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
 
-// Campaign Insights Chat Component
-function CampaignInsightsChat({ campaign }: { campaign: Campaign }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      text: `Hi! I'm your AI marketing assistant. I can help you analyze your "${campaign.name}" campaign performance, provide insights, and answer questions about your marketing strategy. What would you like to know?`,
-      sender: 'ai',
-      timestamp: new Date()
+  const { data: kpisList = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaign.id}/kpis`],
+    enabled: !!campaign.id,
+  });
+
+  const { data: benchmarksList = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaign.id}/benchmarks`],
+    enabled: !!campaign.id,
+  });
+
+  // Compute real metrics from outcome totals
+  const metrics = useMemo(() => {
+    if (!outcomeTotals) return null;
+    const ga4 = outcomeTotals.ga4 || {};
+    const platforms = outcomeTotals.platforms || {};
+    const totalSpend = Number(outcomeTotals.spend?.unifiedSpend || 0);
+    const totalRevenue = Number(ga4.revenue || 0) +
+      Object.values(platforms).reduce((sum: number, p: any) => sum + Number(p?.attributedRevenue || 0), 0);
+    const totalConversions = Number(ga4.conversions || 0) +
+      Object.values(platforms).reduce((sum: number, p: any) => sum + Number(p?.conversions || 0), 0);
+    const totalClicks = Object.values(platforms).reduce((sum: number, p: any) => sum + Number(p?.clicks || 0), 0);
+    const totalImpressions = Object.values(platforms).reduce((sum: number, p: any) => sum + Number(p?.impressions || 0), 0);
+    const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+    const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
+    const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
+    const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+    return { totalSpend, totalRevenue, totalConversions, totalClicks, totalImpressions, roas, roi, cpa, ctr };
+  }, [outcomeTotals]);
+
+  // Categorize KPIs by health
+  const kpiHealth = useMemo(() => {
+    const onTrack: any[] = [];
+    const needsAttention: any[] = [];
+    const behind: any[] = [];
+    for (const kpi of kpisList) {
+      const current = Number(kpi.currentValue || 0);
+      const target = Number(kpi.targetValue || 0);
+      if (target <= 0) continue;
+      const lowerBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(k => (kpi.metric || kpi.name || '').toLowerCase().includes(k));
+      const ratio = lowerBetter ? (current > 0 ? target / current : 1) : current / target;
+      const pct = ratio * 100;
+      if (pct >= 90) onTrack.push({ ...kpi, pct });
+      else if (pct >= 70) needsAttention.push({ ...kpi, pct });
+      else behind.push({ ...kpi, pct });
     }
-  ]);
-  const [currentMessage, setCurrentMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+    return { onTrack, needsAttention, behind };
+  }, [kpisList]);
 
-  // Sample predefined questions for marketing professionals
-  const sampleQuestions = [
-    "What are the key performance trends for this campaign?",
-    "How does this campaign compare to industry benchmarks?",
-    "What optimization opportunities do you recommend?",
-    "Which platforms are delivering the best ROI?",
-    "What audience segments are performing best?",
-    "How can I improve conversion rates?"
-  ];
-
-  const handleSendMessage = async () => {
-    if (!currentMessage.trim()) return;
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      text: currentMessage,
-      sender: 'user',
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setCurrentMessage('');
-    setIsLoading(true);
-
-    // Simulate AI response with marketing insights
-    setTimeout(() => {
-      const aiResponse: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        text: generateAIResponse(currentMessage, campaign),
-        sender: 'ai',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiResponse]);
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  const generateAIResponse = (question: string, campaign: Campaign): string => {
-    // Simple response generation based on keywords in the question
-    const lowerQuestion = question.toLowerCase();
-    
-    if (lowerQuestion.includes('performance') || lowerQuestion.includes('trend')) {
-      return `Based on your ${campaign.name} campaign data, I can see strong performance with ${campaign.impressions.toLocaleString()} impressions and ${campaign.clicks.toLocaleString()} clicks. Your CTR is performing well, and spend efficiency shows room for optimization. Would you like me to dive deeper into any specific metrics?`;
+  // Categorize Benchmarks by health
+  const benchHealth = useMemo(() => {
+    const onTrack: any[] = [];
+    const needsAttention: any[] = [];
+    const behind: any[] = [];
+    for (const b of benchmarksList) {
+      const current = Number(b.currentValue || 0);
+      const target = Number(b.benchmarkValue || b.targetValue || 0);
+      if (target <= 0) continue;
+      const lowerBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(k => (b.metric || b.name || '').toLowerCase().includes(k));
+      const ratio = lowerBetter ? (current > 0 ? target / current : 1) : current / target;
+      const pct = ratio * 100;
+      if (pct >= 90) onTrack.push({ ...b, pct });
+      else if (pct >= 70) needsAttention.push({ ...b, pct });
+      else behind.push({ ...b, pct });
     }
-    
-    if (lowerQuestion.includes('roi') || lowerQuestion.includes('roas') || lowerQuestion.includes('return')) {
-      return `Your ${campaign.name} campaign shows promising returns. With current spend levels, I recommend focusing on high-performing audience segments to maximize ROI. Consider reallocating budget from underperforming platforms to top performers. Would you like specific budget reallocation recommendations?`;
-    }
-    
-    if (lowerQuestion.includes('platform') || lowerQuestion.includes('channel')) {
-      return `Looking at your multi-platform approach, different channels are showing varied performance. Google Analytics and Google Sheets integrations are providing strong data insights. I recommend analyzing cross-platform attribution to optimize your media mix. What platforms are you most curious about?`;
-    }
-    
-    if (lowerQuestion.includes('audience') || lowerQuestion.includes('target')) {
-      return `Audience performance varies across segments. High-engagement audiences are showing 23% better conversion rates. I suggest creating lookalike audiences based on your top performers and testing refined targeting parameters. Which audience segments are you most interested in analyzing?`;
-    }
-    
-    if (lowerQuestion.includes('optimization') || lowerQuestion.includes('improve')) {
-      return `Several optimization opportunities exist for ${campaign.name}. Key areas include: 1) Bid strategy refinement, 2) Ad creative testing, 3) Landing page optimization, 4) Audience targeting expansion. Which area would you like to focus on first?`;
-    }
-    
-    // Default response
-    return `That's an excellent question about ${campaign.name}! Based on the current campaign data, I can provide detailed insights and recommendations. Could you be more specific about what aspect of the campaign you'd like me to analyze? I can help with performance metrics, optimization strategies, audience analysis, or budget allocation.`;
-  };
+    return { onTrack, needsAttention, behind };
+  }, [benchmarksList]);
 
-  const handleQuestionClick = (question: string) => {
-    setCurrentMessage(question);
-  };
+  // Generate rule-based recommendations from real data
+  const recommendations = useMemo(() => {
+    const recs: { severity: 'high' | 'medium' | 'low'; text: string }[] = [];
+    if (!metrics) return recs;
+    if (metrics.totalSpend === 0) {
+      recs.push({ severity: 'high', text: 'No spend detected. Verify platform connections are active and data is importing.' });
+    }
+    if (metrics.totalSpend > 0 && metrics.totalRevenue === 0) {
+      recs.push({ severity: 'medium', text: 'Revenue tracking not configured or no revenue recorded. Connect a revenue source for ROI visibility.' });
+    }
+    if (metrics.roas > 0 && metrics.roas < 1) {
+      recs.push({ severity: 'high', text: `ROAS is ${metrics.roas.toFixed(2)}x — campaign is spending more than it earns. Review targeting and creative.` });
+    }
+    if (metrics.ctr > 0 && metrics.ctr < 1) {
+      recs.push({ severity: 'medium', text: `CTR is ${metrics.ctr.toFixed(2)}% — below 1%. Test new ad creatives or copy to improve click-through.` });
+    }
+    if (metrics.totalConversions > 0 && metrics.cpa > 0) {
+      const cpaBenchmark = benchmarksList.find((b: any) => (b.metric || '').toLowerCase().includes('cpa'));
+      if (cpaBenchmark) {
+        const benchVal = Number(cpaBenchmark.benchmarkValue || cpaBenchmark.targetValue || 0);
+        if (benchVal > 0 && metrics.cpa > benchVal) {
+          recs.push({ severity: 'medium', text: `CPA ($${metrics.cpa.toFixed(2)}) exceeds benchmark ($${benchVal.toFixed(2)}). Consider audience refinement or bid optimization.` });
+        }
+      }
+    }
+    if (kpiHealth.behind.length > 0) {
+      recs.push({ severity: 'high', text: `${kpiHealth.behind.length} KPI${kpiHealth.behind.length > 1 ? 's are' : ' is'} behind target. Review the KPIs tab for details.` });
+    }
+    if (benchHealth.behind.length > 0) {
+      recs.push({ severity: 'medium', text: `${benchHealth.behind.length} benchmark${benchHealth.behind.length > 1 ? 's are' : ' is'} underperforming. Review the Benchmarks tab for details.` });
+    }
+    if (recs.length === 0 && metrics.totalSpend > 0) {
+      recs.push({ severity: 'low', text: 'Campaign metrics look healthy. Continue monitoring for sustained performance.' });
+    }
+    return recs;
+  }, [metrics, kpiHealth, benchHealth, benchmarksList]);
+
+  const fmt = (n: number, prefix = '') => `${prefix}${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  const fmtCurrency = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <div className="space-y-6">
-      {/* Chat Header */}
+      {/* Performance Summary */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <MessageCircle className="w-5 h-5" />
-            <span>Campaign Intelligence Chat</span>
+            <BarChart3 className="w-5 h-5" />
+            <span>Performance Summary</span>
           </CardTitle>
-          <CardDescription>
-            Ask questions about your campaign performance, get insights, and receive personalized recommendations
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
-      {/* Sample Questions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Quick Start Questions</CardTitle>
+          <CardDescription>Key metrics from all connected platforms (last 30 days)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-2 md:grid-cols-2">
-            {sampleQuestions.map((question, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                size="sm"
-                className="justify-start text-left h-auto p-3 text-xs"
-                onClick={() => handleQuestionClick(question)}
-              >
-                {question}
-              </Button>
-            ))}
-          </div>
+          {metrics ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <p className="text-xs text-slate-500 mb-1">Spend</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{fmtCurrency(metrics.totalSpend)}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <p className="text-xs text-slate-500 mb-1">Revenue</p>
+                <p className="text-lg font-bold text-green-600">{fmtCurrency(metrics.totalRevenue)}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <p className="text-xs text-slate-500 mb-1">ROAS</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{metrics.roas > 0 ? `${metrics.roas.toFixed(2)}x` : '—'}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <p className="text-xs text-slate-500 mb-1">ROI</p>
+                <p className={`text-lg font-bold ${metrics.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>{metrics.roi !== 0 ? `${metrics.roi.toFixed(1)}%` : '—'}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <p className="text-xs text-slate-500 mb-1">Conversions</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{fmt(metrics.totalConversions)}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <p className="text-xs text-slate-500 mb-1">CPA</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{metrics.cpa > 0 ? fmtCurrency(metrics.cpa) : '—'}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">Loading performance data...</p>
+          )}
         </CardContent>
       </Card>
 
-      {/* Chat Interface */}
+      {/* KPI Health */}
+      {kpisList.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Target className="w-5 h-5" />
+              <span>KPI Health</span>
+            </CardTitle>
+            <CardDescription>{kpisList.length} KPI{kpisList.length !== 1 ? 's' : ''} tracked</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
+                <p className="text-2xl font-bold text-green-600">{kpiHealth.onTrack.length}</p>
+                <p className="text-xs text-green-700 dark:text-green-400">On Track</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                <p className="text-2xl font-bold text-amber-600">{kpiHealth.needsAttention.length}</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Needs Attention</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
+                <p className="text-2xl font-bold text-red-600">{kpiHealth.behind.length}</p>
+                <p className="text-xs text-red-700 dark:text-red-400">Behind</p>
+              </div>
+            </div>
+            {(kpiHealth.behind.length > 0 || kpiHealth.needsAttention.length > 0) && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Needs attention:</p>
+                {[...kpiHealth.behind, ...kpiHealth.needsAttention].slice(0, 3).map((kpi: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-slate-800/50 text-sm">
+                    <span className="text-slate-700 dark:text-slate-300">{kpi.name || kpi.metric}</span>
+                    <span className={`font-medium ${kpi.pct < 70 ? 'text-red-600' : 'text-amber-600'}`}>
+                      {kpi.pct.toFixed(0)}% of target
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Benchmark Health */}
+      {benchmarksList.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <GitCompare className="w-5 h-5" />
+              <span>Benchmark Comparison</span>
+            </CardTitle>
+            <CardDescription>{benchmarksList.length} benchmark{benchmarksList.length !== 1 ? 's' : ''} tracked</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
+                <p className="text-2xl font-bold text-green-600">{benchHealth.onTrack.length}</p>
+                <p className="text-xs text-green-700 dark:text-green-400">Meeting</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                <p className="text-2xl font-bold text-amber-600">{benchHealth.needsAttention.length}</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Close</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
+                <p className="text-2xl font-bold text-red-600">{benchHealth.behind.length}</p>
+                <p className="text-xs text-red-700 dark:text-red-400">Below</p>
+              </div>
+            </div>
+            {(benchHealth.behind.length > 0 || benchHealth.needsAttention.length > 0) && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Underperforming:</p>
+                {[...benchHealth.behind, ...benchHealth.needsAttention].slice(0, 3).map((b: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-slate-800/50 text-sm">
+                    <span className="text-slate-700 dark:text-slate-300">{b.name || b.metric}</span>
+                    <span className={`font-medium ${b.pct < 70 ? 'text-red-600' : 'text-amber-600'}`}>
+                      {b.pct.toFixed(0)}% of benchmark
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Actionable Recommendations */}
       <Card>
-        <CardContent className="p-0">
-          {/* Messages */}
-          <ScrollArea className="h-96 p-4">
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`flex items-start space-x-2 max-w-[80%] ${message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                    <div className={`p-2 rounded-full ${message.sender === 'user' ? 'bg-blue-100 dark:bg-blue-900' : 'bg-slate-100 dark:bg-slate-800'}`}>
-                      {message.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                    </div>
-                    <div className={`p-3 rounded-lg ${
-                      message.sender === 'user' 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
-                    }`}>
-                      <p className="text-sm">{message.text}</p>
-                      <p className="text-xs opacity-70 mt-1">
-                        {message.timestamp.toLocaleTimeString()}
-                      </p>
-                    </div>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <AlertCircle className="w-5 h-5" />
+            <span>Recommendations</span>
+          </CardTitle>
+          <CardDescription>Data-driven suggestions based on current campaign metrics</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recommendations.length > 0 ? (
+            <div className="space-y-3">
+              {recommendations.map((rec, i) => (
+                <div key={i} className={`p-3 rounded-lg border-l-4 ${
+                  rec.severity === 'high' ? 'bg-red-50 dark:bg-red-900/20 border-red-500' :
+                  rec.severity === 'medium' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500' :
+                  'bg-green-50 dark:bg-green-900/20 border-green-500'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <Badge variant="outline" className={`text-xs shrink-0 ${
+                      rec.severity === 'high' ? 'text-red-700 border-red-300' :
+                      rec.severity === 'medium' ? 'text-amber-700 border-amber-300' :
+                      'text-green-700 border-green-300'
+                    }`}>{rec.severity}</Badge>
+                    <p className="text-sm text-slate-700 dark:text-slate-300">{rec.text}</p>
                   </div>
                 </div>
               ))}
-              
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="flex items-start space-x-2 max-w-[80%]">
-                    <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
-                      <Bot className="w-4 h-4" />
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
-          </ScrollArea>
-
-          {/* Message Input */}
-          <div className="border-t p-4">
-            <div className="flex space-x-2">
-              <Input
-                placeholder="Ask about your campaign performance, optimization strategies, or any marketing questions..."
-                value={currentMessage}
-                onChange={(e) => setCurrentMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                className="flex-1"
-              />
-              <Button 
-                onClick={handleSendMessage} 
-                disabled={!currentMessage.trim() || isLoading}
-                size="sm"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Marketing Tips */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium flex items-center space-x-2">
-            <Target className="w-4 h-4" />
-            <span>AI Marketing Tips</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 text-sm">
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
-              <p className="font-medium text-blue-800 dark:text-blue-200">Performance Insight</p>
-              <p className="text-blue-700 dark:text-blue-300">Your campaign shows strong engagement patterns. Consider A/B testing your top-performing creatives.</p>
-            </div>
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500">
-              <p className="font-medium text-green-800 dark:text-green-200">Optimization Opportunity</p>
-              <p className="text-green-700 dark:text-green-300">Peak performance hours are 2-4 PM. Consider dayparting strategies to maximize efficiency.</p>
-            </div>
-            <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border-l-4 border-orange-500">
-              <p className="font-medium text-orange-800 dark:text-orange-200">Budget Recommendation</p>
-              <p className="text-orange-700 dark:text-orange-300">High-performing segments have room for 20% budget increase without diminishing returns.</p>
-            </div>
-          </div>
+          ) : (
+            <p className="text-sm text-slate-500">No data available to generate recommendations.</p>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -5245,41 +5467,22 @@ export default function CampaignDetail() {
   // Report generation functions
   const generateReport = async () => {
     try {
-      // Mock benchmark data (would be fetched from API in production)
-      const mockBenchmarks = [
-        {
-          name: 'Industry CTR Benchmark',
-          currentValue: '2.84%',
-          targetValue: '2.35%',
-          status: 'Above Target',
-          category: 'Performance',
-          industry: 'Marketing & Advertising'
-        },
-        {
-          name: 'Conversion Rate Standard',
-          currentValue: '4.68%',
-          targetValue: '3.20%',
-          status: 'Above Target',
-          category: 'Conversion',
-          industry: 'E-commerce'
-        },
-        {
-          name: 'Cost Per Acquisition',
-          currentValue: '$18.50',
-          targetValue: '$25.00',
-          status: 'Above Target',
-          category: 'Cost',
-          industry: 'SaaS'
-        },
-        {
-          name: 'Return on Ad Spend',
-          currentValue: '5.8x',
-          targetValue: '4.0x',
-          status: 'Above Target',
-          category: 'Revenue',
-          industry: 'Multi-platform'
-        }
-      ];
+      // Use real benchmark data from API
+      const realBenchmarks = (benchmarks || []).map((b: any) => ({
+        name: b.name || b.metric || 'Unnamed',
+        currentValue: String(b.currentValue ?? '—'),
+        targetValue: String(b.benchmarkValue ?? b.targetValue ?? '—'),
+        status: (() => {
+          const cur = Number(b.currentValue || 0);
+          const tgt = Number(b.benchmarkValue || b.targetValue || 0);
+          if (tgt <= 0) return 'No Target';
+          const lowerBetter = ['cpc', 'cpm', 'cpa', 'cpl', 'spend'].some(k => (b.metric || b.name || '').toLowerCase().includes(k));
+          const ratio = lowerBetter ? (cur > 0 ? tgt / cur : 1) : cur / tgt;
+          return ratio >= 0.9 ? 'On Track' : ratio >= 0.7 ? 'Needs Attention' : 'Behind';
+        })(),
+        category: b.category || 'General',
+        industry: b.industry || ''
+      }));
 
       const reportData = {
         campaignId: campaign?.id,
@@ -5295,7 +5498,7 @@ export default function CampaignDetail() {
         includeKPIs,
         kpis: includeKPIs ? campaignKPIs : [],
         includeBenchmarks,
-        benchmarks: includeBenchmarks ? mockBenchmarks : [],
+        benchmarks: includeBenchmarks ? realBenchmarks : [],
         enableScheduling,
         schedule: enableScheduling ? {
           frequency: scheduleFrequency,
@@ -6181,12 +6384,11 @@ export default function CampaignDetail() {
 
           {/* Tabs Navigation */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
               <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
               <TabsTrigger value="attribution">Attribution</TabsTrigger>
-              <TabsTrigger value="ab-testing">A/B Tests</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
               <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
@@ -6601,11 +6803,7 @@ export default function CampaignDetail() {
               <CampaignKPIs campaign={campaign} />
             </TabsContent>
 
-            <TabsContent value="ab-testing" className="space-y-6">
-              <ABTestManager campaignId={campaign.id} />
-            </TabsContent>
-
-            <TabsContent value="attribution" className="space-y-6">
+<TabsContent value="attribution" className="space-y-6">
               <AttributionDashboard />
             </TabsContent>
 
@@ -6618,7 +6816,7 @@ export default function CampaignDetail() {
             </TabsContent>
 
             <TabsContent value="insights" className="space-y-6">
-              <CampaignInsightsChat campaign={campaign} />
+              <CampaignInsights campaign={campaign} />
             </TabsContent>
 
             <TabsContent value="webhooks" className="space-y-6">

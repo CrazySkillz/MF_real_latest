@@ -4246,6 +4246,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedData = insertCampaignSchema.parse({ ...sanitizedData, ownerId: actorId });
+      // Ensure ownerId is always set (even if schema strips it for some reason)
+      (validatedData as any).ownerId = actorId;
       console.log('[Campaign Creation] Validated data:', JSON.stringify(validatedData, null, 2));
       const campaign = await storage.createCampaign(validatedData);
       console.log('[Campaign Creation] Campaign created successfully:', campaign.id);
@@ -4826,13 +4828,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // 1) Create campaign with stable ID
-        // Use raw SQL insert to set the specific ID
-        await db.execute(sql`
-          INSERT INTO campaigns (id, owner_id, name, spend, currency, status, industry, platform, ga4_campaign_filter, start_date, created_at)
-          VALUES (${def.id}, ${actorId}, ${def.name}, ${def.spend}, 'USD', 'active', ${def.industry}, 'google_analytics', ${def.utmCampaign}, NOW() - INTERVAL '90 days', NOW())
-          ON CONFLICT (id) DO NOTHING
-        `);
+        // 1) Create campaign — use storage API (works with both DB and MemStorage)
+        if (db) {
+          // When DB is available, use raw SQL for stable IDs
+          await db.execute(sql`
+            INSERT INTO campaigns (id, owner_id, name, spend, currency, status, industry, platform, ga4_campaign_filter, start_date, created_at)
+            VALUES (${def.id}, ${actorId}, ${def.name}, ${def.spend}, 'USD', 'active', ${def.industry}, 'google_analytics', ${def.utmCampaign}, NOW() - INTERVAL '90 days', NOW())
+            ON CONFLICT (id) DO NOTHING
+          `);
+        } else {
+          // MemStorage fallback — create via storage API and store with stable ID
+          const seeded = await storage.createCampaign({
+            name: def.name,
+            ownerId: actorId,
+            spend: def.spend,
+            currency: "USD",
+            status: "active",
+            industry: def.industry,
+            platform: "google_analytics",
+            ga4CampaignFilter: def.utmCampaign,
+            startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+          } as any);
+          // Re-map to stable ID so downstream references work
+          if (seeded && (storage as any).campaigns) {
+            (storage as any).campaigns.delete(seeded.id);
+            (seeded as any).id = def.id;
+            (storage as any).campaigns.set(def.id, seeded);
+          }
+        }
 
         // 2) Create GA4 connection pointing to yesop
         const existingConns = await storage.getGA4Connections(def.id).catch(() => [] as any[]);

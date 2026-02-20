@@ -814,16 +814,25 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const campaign: Campaign = {
       id,
+      ownerId: (insertCampaign as any).ownerId || null,
+      clientId: (insertCampaign as any).clientId || null,
       name: insertCampaign.name,
       clientWebsite: insertCampaign.clientWebsite || null,
       label: insertCampaign.label || null,
       budget: insertCampaign.budget || null,
+      currency: insertCampaign.currency || "USD",
+      conversionValue: insertCampaign.conversionValue || null,
+      ga4CampaignFilter: insertCampaign.ga4CampaignFilter || null,
       type: insertCampaign.type || null,
       platform: insertCampaign.platform || null,
       impressions: insertCampaign.impressions || 0,
       clicks: insertCampaign.clicks || 0,
       spend: insertCampaign.spend || "0",
       status: insertCampaign.status || "active",
+      industry: insertCampaign.industry || null,
+      trendKeywords: insertCampaign.trendKeywords || null,
+      startDate: insertCampaign.startDate || null,
+      endDate: insertCampaign.endDate || null,
       createdAt: new Date()
     };
     this.campaigns.set(id, campaign);

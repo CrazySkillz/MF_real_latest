@@ -19,7 +19,6 @@ export default function CampaignTable() {
       if (!res.ok) throw new Error("Failed to fetch campaigns");
       return res.json();
     },
-    enabled: !!selectedClientId,
   });
 
   const formatCurrency = (value: string) => {

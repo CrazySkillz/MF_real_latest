@@ -949,6 +949,8 @@ export const insertCampaignSchema = createInsertSchema(campaigns)
     currency: z.string().default("USD"),
   })
   .pick({
+    ownerId: true,
+    clientId: true,
     name: true,
     clientWebsite: true,
     label: true,

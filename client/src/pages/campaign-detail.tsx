@@ -1442,19 +1442,43 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
       {/* Empty State */}
       {kpis.length === 0 ? (
-        <Card>
-          <CardContent>
-            <div className="text-center py-12">
-              <p className="text-slate-600 dark:text-slate-400 mb-4">
-                No KPIs have been created yet.
-              </p>
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create KPI
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {[
+              { label: 'Total KPIs', value: '0', icon: <Award className="w-8 h-8 text-blue-500" />, desc: '' },
+              { label: 'On Track', value: '0', icon: <CheckCircle2 className="w-8 h-8 text-green-500" />, desc: 'meeting or exceeding target', color: 'text-green-600' },
+              { label: 'Needs Attention', value: '0', icon: <AlertCircle className="w-8 h-8 text-amber-500" />, desc: 'within 70–90% of target', color: 'text-amber-600' },
+              { label: 'Behind', value: '0', icon: <TrendingDown className="w-8 h-8 text-red-500" />, desc: 'below 70% of target', color: 'text-red-600' },
+              { label: 'Avg. Progress', value: '0.0%', icon: <TrendingUp className="w-8 h-8 text-purple-500" />, desc: 'across all KPIs' },
+            ].map((s, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{s.label}</p>
+                      <p className={`text-2xl font-bold ${s.color || 'text-slate-900 dark:text-white'}`}>{s.value}</p>
+                      {s.desc && <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{s.desc}</p>}
+                    </div>
+                    {s.icon}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <Card>
+            <CardContent>
+              <div className="text-center py-12">
+                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                  No KPIs have been created yet.
+                </p>
+                <Button onClick={() => setShowCreateDialog(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create KPI
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       ) : (
         <>
           {/* KPI Summary Panel */}
@@ -1489,6 +1513,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         return pct >= 90;
                       }).length}
                     </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">meeting or exceeding target</p>
                   </div>
                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                 </div>
@@ -1511,6 +1536,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         return pct >= 70 && pct < 90;
                       }).length}
                     </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">within 70–90% of target</p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-amber-500" />
                 </div>
@@ -1533,6 +1559,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         return pct < 70;
                       }).length}
                     </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">below 70% of target</p>
                   </div>
                   <TrendingDown className="w-8 h-8 text-red-500" />
                 </div>
@@ -1558,6 +1585,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                           ).toFixed(1)
                         : '0.0'}%
                     </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">across all KPIs</p>
                   </div>
                   <TrendingUp className="w-8 h-8 text-purple-500" />
                 </div>
@@ -1600,16 +1628,37 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         <span className="font-medium">Sources selected:</span> {sourcesSelected}
                       </div>
                     )}
-                    {kpi.metric && (
-                      <div className="mt-2">
-                        <Badge 
-                          variant="outline" 
-                          className="text-xs font-normal bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-                          data-testid={`badge-metric-${kpi.id}`}
-                        >
-                          <BarChart3 className="w-3 h-3 mr-1" />
-                          Metric: {kpi.metric}
-                        </Badge>
+                    {(kpi.metric || kpi.alertsEnabled || kpi.priority) && (
+                      <div className="mt-2 flex items-center flex-wrap gap-2">
+                        {kpi.metric && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs font-normal bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                            data-testid={`badge-metric-${kpi.id}`}
+                          >
+                            <BarChart3 className="w-3 h-3 mr-1" />
+                            {kpi.metric.toUpperCase()}
+                          </Badge>
+                        )}
+                        {kpi.priority && (
+                          <Badge variant="outline" className={`text-xs font-normal ${getPriorityColor(kpi.priority)}`}>
+                            {kpi.priority}
+                          </Badge>
+                        )}
+                        {kpi.alertsEnabled && (
+                          <div className="flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                            {(() => {
+                              const threshold = parseNumSafe(kpi.alertThreshold);
+                              const condition = kpi.alertCondition || 'below';
+                              if (threshold > 0) {
+                                const breached = condition === 'below' ? current < threshold : condition === 'above' ? current > threshold : current === threshold;
+                                if (breached) return <span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>;
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1678,17 +1727,24 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <span className="font-medium">{progressPercentLabel}%</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                  <div 
+                  <div
                     className={`h-2 rounded-full transition-all ${
-                      progressPercentRaw >= 100 ? 'bg-green-600' : 
+                      progressPercentRaw >= 100 ? 'bg-green-600' :
                       progressPercentRaw >= 70 ? 'bg-yellow-600' : 'bg-red-600'
                     }`}
                     style={{ width: `${progressPercentRaw}%` }}
                   />
                 </div>
+                {target > 0 && (() => {
+                  const deltaPct = lowerBetter
+                    ? ((target - current) / target) * 100
+                    : ((current - target) / target) * 100;
+                  if (Math.abs(deltaPct) < 1) return <p className="text-xs text-green-600 font-medium">At target</p>;
+                  return deltaPct > 0
+                    ? <p className="text-xs text-green-600 font-medium">{deltaPct.toFixed(1)}% above target</p>
+                    : <p className="text-xs text-red-600 font-medium">{Math.abs(deltaPct).toFixed(1)}% below target</p>;
+                })()}
               </div>
-
-              {/* (Removed timeframe label under progress bar to reduce noise) */}
             </CardContent>
           </Card>
               );
@@ -3617,6 +3673,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     <p className="text-2xl font-bold text-green-600" data-testid="text-above-target">
                       {onTrackCount}
                     </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">meeting or exceeding benchmark</p>
                   </div>
                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                 </div>
@@ -3631,6 +3688,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     <p className="text-2xl font-bold text-yellow-600" data-testid="text-below-target">
                       {needsAttentionCount}
                     </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">within 70–90% of benchmark</p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-yellow-500" />
                 </div>
@@ -3645,6 +3703,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     <p className="text-2xl font-bold text-red-600" data-testid="text-avg-improvement">
                       {behindCount}
                     </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">below 70% of benchmark</p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-red-500" />
                 </div>
@@ -3659,6 +3718,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-avg-improvement-percent">
                       {avgImprovement.toFixed(1)}%
                     </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">across all benchmarks</p>
                   </div>
                   <TrendingUp className="w-8 h-8 text-purple-500" />
                 </div>
@@ -3667,7 +3727,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
           </div>
 
           {/* Benchmarks List */}
-          <div className="space-y-4">
+          <div className="grid gap-6 lg:grid-cols-2">
             {benchmarks.map((benchmark) => (
           <Card key={benchmark.id} data-testid={`benchmark-card-${benchmark.id}`}>
             <CardContent className="p-6">
@@ -3687,15 +3747,19 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       </div>
                     );
                   })()}
-                  {benchmark.metric && (
-                    <div className="mt-2">
-                      <Badge 
-                        variant="outline" 
-                        className="text-xs font-normal bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-                        data-testid={`badge-benchmark-metric-${benchmark.id}`}
-                      >
-                        <BarChart3 className="w-3 h-3 mr-1" />
-                        Metric: {benchmark.metric}
+                  {(benchmark.metric || campaign) && (
+                    <div className="mt-2 flex items-center flex-wrap gap-2">
+                      {benchmark.metric && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                          data-testid={`badge-benchmark-metric-${benchmark.id}`}
+                        >
+                          {benchmark.metric.toUpperCase()}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs font-normal bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800">
+                        Campaign: {campaign.name}
                       </Badge>
                     </div>
                   )}
@@ -3822,48 +3886,30 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                         </span>
                       </div>
                       <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
-                        <div 
+                        <div
                           className={`h-2.5 rounded-full transition-all ${
                             isOnTrack ? 'bg-green-500' : isNeedsAttention ? 'bg-yellow-500' : 'bg-red-500'
                           }`}
                           style={{ width: `${Math.min(progressTowardBenchmark, 100)}%` }}
                         ></div>
                       </div>
-                    </div>
-
-                    {/* Benchmark Status and Comparison */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className={`text-xs px-2 py-1 rounded-md inline-flex items-center gap-1 ${
-                        isOnTrack
-                          ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
-                          : isNeedsAttention
-                          ? 'bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-400'
-                          : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
-                      }`}>
-                        {isOnTrack && <CheckCircle2 className="w-3 h-3" />}
-                        {!isOnTrack && <AlertCircle className="w-3 h-3" />}
-                        <span>
-                          {isOnTrack ? 'On Track' : isNeedsAttention ? 'Needs Attention' : 'Behind'}
-                        </span>
+                      {/* Delta text + inline status */}
+                      <div className="flex items-center justify-between">
+                        <div className={`text-xs px-2 py-0.5 rounded-md inline-flex items-center gap-1 ${
+                          isOnTrack
+                            ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
+                            : isNeedsAttention
+                            ? 'bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-400'
+                            : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
+                        }`}>
+                          {isOnTrack && <CheckCircle2 className="w-3 h-3" />}
+                          {!isOnTrack && <AlertCircle className="w-3 h-3" />}
+                          <span>{isOnTrack ? 'On Track' : isNeedsAttention ? 'Needs Attention' : 'Behind'}</span>
+                        </div>
+                        <p className={`text-xs font-medium ${Math.abs(percentDiff) < 1 ? 'text-green-600' : percentDiff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {Math.abs(percentDiff) < 1 ? 'At benchmark' : percentDiff >= 0 ? `${Math.abs(percentDiff).toFixed(1)}% above benchmark` : `${Math.abs(percentDiff).toFixed(1)}% below benchmark`}
+                        </p>
                       </div>
-                      
-                      <Badge 
-                        variant={isOnTrack ? "default" : "secondary"}
-                        className={isOnTrack ? "bg-green-600 text-white" : isNeedsAttention ? "bg-yellow-600 text-white" : "bg-red-600 text-white"}
-                        data-testid={`badge-status-${benchmark.id}`}
-                      >
-                        {isOnTrack ? (
-                          <>
-                            <TrendingUp className="w-3 h-3 mr-1" />
-                            {Math.abs(percentDiff).toFixed(2)}% Better than benchmark
-                          </>
-                        ) : (
-                          <>
-                            <TrendingDown className="w-3 h-3 mr-1" />
-                            {Math.abs(percentDiff).toFixed(2)}% Worse than benchmark
-                          </>
-                        )}
-                      </Badge>
                     </div>
                   </div>
                 );
@@ -3874,26 +3920,50 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
           </div>
         </>
       ) : (
-        <div className="text-center py-12">
-          <Award className="w-16 h-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-            No Benchmarks Yet
-          </h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-6">
-            Create your first benchmark to start tracking performance against industry standards
-          </p>
-          <Button 
-            onClick={() => {
-              setEditingBenchmark(null);
-              resetBenchmarkForm();
-              setShowCreateDialog(true);
-            }}
-            data-testid="button-create-first-benchmark"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create First Benchmark
-          </Button>
-        </div>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {[
+              { label: 'Total Benchmarks', value: '0', icon: <Award className="w-8 h-8 text-blue-500" />, desc: '' },
+              { label: 'On Track', value: '0', icon: <CheckCircle2 className="w-8 h-8 text-green-500" />, desc: 'meeting or exceeding benchmark', color: 'text-green-600' },
+              { label: 'Needs Attention', value: '0', icon: <AlertCircle className="w-8 h-8 text-yellow-500" />, desc: 'within 70–90% of benchmark', color: 'text-yellow-600' },
+              { label: 'Behind', value: '0', icon: <AlertCircle className="w-8 h-8 text-red-500" />, desc: 'below 70% of benchmark', color: 'text-red-600' },
+              { label: 'Avg. Improvement', value: '0.0%', icon: <TrendingUp className="w-8 h-8 text-purple-500" />, desc: 'across all benchmarks' },
+            ].map((s, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{s.label}</p>
+                      <p className={`text-2xl font-bold ${s.color || 'text-slate-900 dark:text-white'}`}>{s.value}</p>
+                      {s.desc && <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{s.desc}</p>}
+                    </div>
+                    {s.icon}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="text-center py-12">
+            <Award className="w-16 h-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+              No Benchmarks Yet
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
+              Create your first benchmark to start tracking performance against industry standards
+            </p>
+            <Button
+              onClick={() => {
+                setEditingBenchmark(null);
+                resetBenchmarkForm();
+                setShowCreateDialog(true);
+              }}
+              data-testid="button-create-first-benchmark"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create First Benchmark
+            </Button>
+          </div>
+        </>
       )}
 
       {/* Create/Edit Benchmark Dialog (template-first, aligned to Campaign KPI tiles) */}

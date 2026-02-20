@@ -7590,6 +7590,68 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                       );
                     })()}
 
+                    {/* Performance Tracker Panel */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.total}</p>
+                            </div>
+                            <Target className="w-8 h-8 text-purple-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">meeting or exceeding target</p>
+                              <p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p>
+                            </div>
+                            <CheckCircle2 className="w-8 h-8 text-green-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">within 70–90% of target</p>
+                              <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
+                            </div>
+                            <AlertCircle className="w-8 h-8 text-amber-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Behind</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">below 70% of target</p>
+                              <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
+                            </div>
+                            <AlertTriangle className="w-8 h-8 text-red-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.avgPct.toFixed(1)}%</p>
+                            </div>
+                            <TrendingUp className="w-8 h-8 text-violet-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
                     {benchmarksLoading ? (
                       <div className="animate-pulse space-y-4">
                         <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>

@@ -343,6 +343,13 @@ export function generateMetaMockData(adAccountId: string, adAccountName: string)
     };
   });
   
+  const totalSpend = campaignData.reduce((sum, c) => sum + c.totals.spend, 0);
+  const totalImpressions = campaignData.reduce((sum, c) => sum + c.totals.impressions, 0);
+  const totalReach = campaignData.reduce((sum, c) => sum + c.totals.reach, 0);
+  const totalClicks = campaignData.reduce((sum, c) => sum + c.totals.clicks, 0);
+  const totalConversions = campaignData.reduce((sum, c) => sum + c.totals.conversions, 0);
+  const totalVideoViews = campaignData.reduce((sum, c) => sum + c.totals.videoViews, 0);
+
   return {
     adAccountId,
     adAccountName,
@@ -350,10 +357,19 @@ export function generateMetaMockData(adAccountId: string, adAccountName: string)
     summary: {
       totalCampaigns: campaigns.length,
       activeCampaigns: campaigns.filter(c => c.status === 'ACTIVE').length,
-      totalSpend: campaignData.reduce((sum, c) => sum + c.totals.spend, 0),
-      totalImpressions: campaignData.reduce((sum, c) => sum + c.totals.impressions, 0),
-      totalClicks: campaignData.reduce((sum, c) => sum + c.totals.clicks, 0),
-      totalConversions: campaignData.reduce((sum, c) => sum + c.totals.conversions, 0),
+      totalSpend: parseFloat(totalSpend.toFixed(2)),
+      totalImpressions,
+      totalReach,
+      totalClicks,
+      totalConversions,
+      totalVideoViews,
+      avgCTR: parseFloat(((totalClicks / totalImpressions) * 100).toFixed(2)),
+      avgCPC: parseFloat((totalSpend / totalClicks).toFixed(2)),
+      avgCPM: parseFloat((totalSpend / totalImpressions * 1000).toFixed(2)),
+      avgCPP: parseFloat((totalSpend / totalReach * 1000).toFixed(2)),
+      avgFrequency: parseFloat((totalImpressions / totalReach).toFixed(2)),
+      costPerConversion: totalConversions > 0 ? parseFloat((totalSpend / totalConversions).toFixed(2)) : 0,
+      conversionRate: parseFloat(((totalConversions / totalClicks) * 100).toFixed(2)),
     },
   };
 }

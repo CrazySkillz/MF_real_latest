@@ -1306,18 +1306,28 @@ export default function Campaigns() {
 
     // Finalize: update the already-created campaign with the chosen platform list.
     try {
+      console.log('🔧 Finalizing campaign:', draftCampaignId, 'with platforms:', selectedPlatforms);
       const response = await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
         platform: selectedPlatforms.join(", "),
         ga4CampaignFilter: ga4CampaignFilterForNewCampaign || null,
         status: "active",  // promote from draft → active so it appears in Campaign Management
       });
 
+      console.log('🔧 PATCH response status:', response.status, response.ok);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error('🔧 PATCH failed:', errorData);
         throw new Error(errorData.message || 'Failed to finalize campaign');
       }
 
+      const result = await response.json();
+      console.log('✅ Campaign finalized:', result);
+
       setDraftFinalized(true);
+
+      // Wait for query invalidation to complete before navigating
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
 
       toast({
         title: "Campaign created",
@@ -1326,7 +1336,7 @@ export default function Campaigns() {
 
       setIsCreateModalOpen(false);
       resetCreateModalState();
-      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+
       // Take the user back to Campaign Management, with the new campaign visible.
       setLocation(`/campaigns?created=${encodeURIComponent(draftCampaignId)}`);
     } catch (e: any) {

@@ -1058,7 +1058,6 @@ export default function Campaigns() {
       console.log('✅ [Campaigns Query] Received campaigns:', data.length, 'campaigns');
       return data;
     },
-    enabled: !!selectedClientId,
   });
 
   // If we arrive on /campaigns?created=..., highlight the new campaign card.

@@ -34,7 +34,8 @@ import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, MousePointerClick, Dol
 import { SiLinkedin } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
+import { BarChart, Bar, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell as TCell } from "@/components/ui/table";
 import { LinkedInErrorBoundary, LinkedInTabEmptyState, LinkedInTabErrorState } from "@/components/LinkedInUiStates";
 import { LinkedInKpiModal } from "./linkedin-analytics/LinkedInKpiModal";
 import { LinkedInBenchmarkModal } from "./linkedin-analytics/LinkedInBenchmarkModal";
@@ -4827,1177 +4828,423 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                       />
                     ) : sessionData && aggregated ? (
                       <>
-                        {/* Conversion Value Missing Notification - Show when NO conversion values are available */}
+                        {/* ═══ SECTION 1: SUMMARY CARDS (6-column grid matching Meta layout) ═══ */}
                         {(() => {
-                          // SINGLE SOURCE OF TRUTH: Only check the backend's hasRevenueTracking flag
-                          // The backend (routes.ts) sets hasRevenueTracking = 0 when no active Google Sheets with mappings exist
-                          // This prevents race conditions and flickering caused by checking multiple data sources
+                          const d = useDailyTotalsForOverview ? (coverageTotals || {}) : {} as any;
+                          const getVal = (key: string) => {
+                            const k = key.toLowerCase();
+                            if (useDailyTotalsForOverview && coverageTotals && Object.prototype.hasOwnProperty.call(coverageTotals, k)) return Number((coverageTotals as any)[k] || 0);
+                            return Number((aggregated as any)[k] ?? (aggregated as any)[`total${key.charAt(0).toUpperCase()}${key.slice(1)}`] ?? 0);
+                          };
+                          const derivedVals = {
+                            ctr: d.ctr ?? aggregated.ctr, cpc: d.cpc ?? aggregated.cpc,
+                            cpm: d.cpm ?? aggregated.cpm, cvr: d.cvr ?? aggregated.cvr,
+                            cpa: d.cpa ?? aggregated.cpa, cpl: d.cpl ?? aggregated.cpl,
+                            er: d.er ?? aggregated.er,
+                          } as any;
                           const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
-                          const shouldShowWarning = !hasRevenueTracking;
+                          const totalRevenue = Number((aggregated as any)?.totalRevenue ?? (aggregated as any)?.revenue ?? 0) || 0;
+                          const totalSpend = getVal('spend');
+                          const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+                          const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
+                          const profit = totalRevenue - totalSpend;
+                          const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+                          const revenuePerLead = getVal('leads') > 0 ? totalRevenue / getVal('leads') : 0;
+                          const conversionValue = Number((aggregated as any)?.conversionValue || 0);
+                          const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
 
-                          devLog('[LinkedIn Analytics] 🚨 Notification check:', {
-                            hasRevenueTracking,
-                            hasRevenueTrackingValue: aggregated?.hasRevenueTracking,
-                            shouldShowWarning,
-                            conversionValue: aggregated?.conversionValue
-                          });
+                          // Build per-campaign data for charts and table
+                          const campaignMap: Record<string, { urn: string; name: string; status: string; metrics: Record<string, number> }> = {};
+                          if (metrics && metrics.length > 0) {
+                            for (const m of metrics as any[]) {
+                              if (!campaignMap[m.campaignUrn]) {
+                                campaignMap[m.campaignUrn] = { urn: m.campaignUrn, name: m.campaignName, status: m.campaignStatus, metrics: {} };
+                              }
+                              campaignMap[m.campaignUrn].metrics[m.metricKey] = parseFloat(m.metricValue);
+                            }
+                          }
+                          const allCampaigns = Object.values(campaignMap);
 
-                          return shouldShowWarning;
-                        })() && (
-                            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                              <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0">
-                                  <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                                <div className="flex-1">
-                                  <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">
-                                    Revenue metrics are locked
-                                  </h3>
-                                  <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">
-                                    LinkedIn doesn’t include revenue data. Connect a revenue source (Google Sheets, CRM, custom integration) to calculate conversion value and unlock ROI/ROAS, revenue, and profit — or connect general datasets to view.
-                                  </p>
-                                  <button
-                                    onClick={() => openAddRevenueModal('add')}
-                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 rounded-md transition-colors"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    Add revenue/conversion value
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                          // Data quality badge
+                          const dq = (aggregated as any)?.dataQuality;
+                          const dqGrade = dq?.grade || '';
+                          const dqScore = dq?.score != null ? Math.round(dq.score) : null;
 
-                        {/* Core Metrics Section */}
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Eye className="w-5 h-5 text-slate-600" />
-                              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Core Metrics</h3>
-                            </div>
-                            {/* Data Quality Badge */}
-                            {aggregated.dataQuality && (
-                              <Badge
-                                variant={
-                                  aggregated.dataQuality.grade === 'A' ? 'default' :
-                                  aggregated.dataQuality.grade === 'B' ? 'secondary' :
-                                  aggregated.dataQuality.grade === 'C' ? 'outline' : 'destructive'
-                                }
-                                className={
-                                  aggregated.dataQuality.grade === 'A' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                  aggregated.dataQuality.grade === 'B' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                  aggregated.dataQuality.grade === 'C' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                }
-                              >
-                                Data Quality: {aggregated.dataQuality.score.toFixed(1)}% ({aggregated.dataQuality.grade})
-                              </Badge>
-                            )}
-                          </div>
-
-                          {/* LinkedIn Metrics Grid - 3 columns - Core Metrics Only */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {Object.entries(aggregated)
-                              .filter(([key]) => {
-                                // Only show core metrics, exclude derived metrics and revenue tracking flag
-                                const derivedMetrics = ['ctr', 'cpc', 'cpm', 'cvr', 'cpa', 'cpl', 'er', 'roi', 'roas', 'hasrevenuetracking', 'conversionvalue', 'totalrevenue', 'profit', 'profitmargin', 'revenueperlead'];
-                                const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
-
-                                // Filter out derived metrics and revenue metrics
-                                if (derivedMetrics.includes(metricKey)) return false;
-
-                                // Filter based on selected metrics from the session (case-insensitive)
-                                const selectedMetricKeys = session?.selectedMetricKeys || [];
-                                if (selectedMetricKeys.length > 0) {
-                                  const selectedMetricKeysLower = selectedMetricKeys.map((k: string) => k.toLowerCase());
-                                  return selectedMetricKeysLower.includes(metricKey);
-                                }
-
-                                return true;
-                              })
-                              .map(([key, value]: [string, any]) => {
-                                const metricKey = key.replace('total', '').replace('avg', '').toLowerCase();
-                                // For "Spend to date" simulation and production consistency, prefer daily-facts totals when available.
-                                const displayValue = useDailyTotalsForOverview && coverageTotals && Object.prototype.hasOwnProperty.call(coverageTotals, metricKey)
-                                  ? (coverageTotals as any)[metricKey]
-                                  : value;
-                                const { icon: Icon, format, label } = getMetricDisplay(metricKey, value);
-
-                                return (
-                                  <Card key={key} className="hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          {label}
-                                        </h3>
-                                        <Icon className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {format(displayValue)}
-                                      </p>
-                                      {/* Show badge for raw metrics if benchmark exists (global only) */}
-                                      {(() => {
-                                        const benchmark = getBenchmarkForMetric(metricKey);
-                                        if (benchmark && !benchmark.linkedInCampaignName) {
-                                          // Determine if higher or lower is better for this metric
-                                          const higherBetterMetrics = ['impressions', 'clicks', 'conversions', 'leads', 'engagements', 'reach'];
-                                          const metricType = higherBetterMetrics.includes(metricKey) ? 'higher-better' : 'lower-better';
-                                          return renderPerformanceBadge(metricKey, displayValue, metricType);
-                                        }
-                                        return null;
-                                      })()}
-                                    </CardContent>
-                                  </Card>
-                                );
-                              })}
-                          </div>
-                        </div>
-
-                        {/* Derived Metrics with Performance Indicators */}
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <BarChart3 className="w-5 h-5 text-slate-600" />
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Derived Metrics</h3>
-                          </div>
-                          {(() => {
-                            const d = useDailyTotalsForOverview ? (coverageTotals || {}) : {};
-                            const derived = {
-                              ctr: d.ctr ?? aggregated.ctr,
-                              cpc: d.cpc ?? aggregated.cpc,
-                              cpm: d.cpm ?? aggregated.cpm,
-                              cvr: d.cvr ?? aggregated.cvr,
-                              cpa: d.cpa ?? aggregated.cpa,
-                              cpl: d.cpl ?? aggregated.cpl,
-                              er: d.er ?? aggregated.er,
-                            } as any;
-                            return (
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {/* CTR */}
-                                {derived.ctr !== undefined && (
-                                  <Card className="hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          CTR (Click-Through Rate)
-                                        </h3>
-                                        <TrendingUp className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatPercentage(derived.ctr)}
-                                      </p>
-                                      {/* Only show badge if benchmark is for ALL campaigns */}
-                                      {(() => {
-                                        const ctrBenchmark = getBenchmarkForMetric('ctr');
-                                        if (ctrBenchmark && !ctrBenchmark.linkedInCampaignName) {
-                                          return renderPerformanceBadge('ctr', derived.ctr, 'higher-better');
-                                        }
-                                        return null;
-                                      })()}
-                                    </CardContent>
-                                  </Card>
-                                )}
-
-                                {/* CPC */}
-                                {derived.cpc !== undefined && (
-                                  <Card className="hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          CPC (Cost Per Click)
-                                        </h3>
-                                        <DollarSign className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatCurrency(derived.cpc)}
-                                      </p>
-                                      {/* Only show badge if benchmark is for ALL campaigns */}
-                                      {(() => {
-                                        const cpcBenchmark = getBenchmarkForMetric('cpc');
-                                        if (cpcBenchmark && !cpcBenchmark.linkedInCampaignName) {
-                                          return renderPerformanceBadge('cpc', derived.cpc, 'lower-better');
-                                        }
-                                        return null;
-                                      })()}
-                                    </CardContent>
-                                  </Card>
-                                )}
-
-                                {/* CPM */}
-                                {derived.cpm !== undefined && (
-                                  <Card className="hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          CPM (Cost Per Mille)
-                                        </h3>
-                                        <DollarSign className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatCurrency(derived.cpm)}
-                                      </p>
-                                      {/* Only show badge if benchmark is for ALL campaigns */}
-                                      {(() => {
-                                        const cpmBenchmark = getBenchmarkForMetric('cpm');
-                                        if (cpmBenchmark && !cpmBenchmark.linkedInCampaignName) {
-                                          return renderPerformanceBadge('cpm', derived.cpm, 'lower-better');
-                                        }
-                                        return null;
-                                      })()}
-                                    </CardContent>
-                                  </Card>
-                                )}
-
-                                {/* CVR */}
-                                {derived.cvr !== undefined && (
-                                  <Card className="hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          CVR (Conversion Rate)
-                                        </h3>
-                                        <Target className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatPercentage(derived.cvr)}
-                                      </p>
-                                      {/* Only show badge if benchmark is for ALL campaigns */}
-                                      {(() => {
-                                        const cvrBenchmark = getBenchmarkForMetric('cvr');
-                                        if (cvrBenchmark && !cvrBenchmark.linkedInCampaignName) {
-                                          return renderPerformanceBadge('cvr', derived.cvr, 'higher-better');
-                                        }
-                                        return null;
-                                      })()}
-                                    </CardContent>
-                                  </Card>
-                                )}
-
-                                {/* CPA */}
-                                {derived.cpa !== undefined && (
-                                  <Card className="hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          CPA (Cost Per Acquisition)
-                                        </h3>
-                                        <DollarSign className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatCurrency(derived.cpa)}
-                                      </p>
-                                      {/* Only show badge if benchmark is for ALL campaigns, not campaign-specific */}
-                                      {(() => {
-                                        const cpaBenchmark = getBenchmarkForMetric('cpa');
-                                        if (cpaBenchmark && !cpaBenchmark.linkedInCampaignName) {
-                                          return renderPerformanceBadge('cpa', derived.cpa, 'lower-better');
-                                        }
-                                        return null;
-                                      })()}
-                                    </CardContent>
-                                  </Card>
-                                )}
-
-                                {/* CPL */}
-                                {derived.cpl !== undefined && (
-                                  <Card className="hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          CPL (Cost Per Lead)
-                                        </h3>
-                                        <DollarSign className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatCurrency(derived.cpl)}
-                                      </p>
-                                      {renderPerformanceBadge('cpl', derived.cpl, 'lower-better')}
-                                    </CardContent>
-                                  </Card>
-                                )}
-
-                                {/* ER */}
-                                {derived.er !== undefined && (
-                                  <Card className="hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          ER (Engagement Rate)
-                                        </h3>
-                                        <Activity className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatPercentage(derived.er)}
-                                      </p>
-                                      {renderPerformanceBadge('er', derived.er, 'higher-better')}
-                                    </CardContent>
-                                  </Card>
+                          return (
+                            <>
+                              {/* Data Quality + Section Title */}
+                              <div className="flex items-center gap-3 mb-1">
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Overview</h3>
+                                {dqGrade && (
+                                  <Badge variant="outline" className={
+                                    dqGrade === 'A' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    dqGrade === 'B' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    dqGrade === 'C' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }>
+                                    Data Quality: {dqGrade}{dqScore != null ? ` (${dqScore}%)` : ''}
+                                  </Badge>
                                 )}
                               </div>
-                            );
-                          })()}
 
-                          {/* Revenue Metrics - Only shown if conversion value is set - Displayed under Derived Metrics */}
-                          {(() => {
-                            // SINGLE SOURCE OF TRUTH: Only check the backend's hasRevenueTracking flag
-                            // The backend sets hasRevenueTracking = 1 only when conversion values are available
-                            // This prevents race conditions and flickering caused by checking multiple data sources
-                            const hasRevenueTracking = aggregated?.hasRevenueTracking === 1;
+                              {/* Summary Cards */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-1">
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Spend</p>
+                                      <DollarSign className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalSpend)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{allCampaigns.length} campaign{allCampaigns.length !== 1 ? 's' : ''}</p>
+                                    {(() => { const b = getBenchmarkForMetric('spend'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('spend', totalSpend, 'lower-better') : null; })()}
+                                  </CardContent>
+                                </Card>
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-1">
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Impressions</p>
+                                      <Eye className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(getVal('impressions'))}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{formatCurrency(derivedVals.cpm)} CPM</p>
+                                    {(() => { const b = getBenchmarkForMetric('impressions'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('impressions', getVal('impressions'), 'higher-better') : null; })()}
+                                  </CardContent>
+                                </Card>
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-1">
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Clicks</p>
+                                      <MousePointerClick className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(getVal('clicks'))}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{formatPercentage(derivedVals.ctr)} CTR</p>
+                                    {(() => { const b = getBenchmarkForMetric('clicks'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('clicks', getVal('clicks'), 'higher-better') : null; })()}
+                                  </CardContent>
+                                </Card>
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-1">
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Conversions</p>
+                                      <Target className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(getVal('conversions'))}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{formatCurrency(derivedVals.cpa)} cost/conv</p>
+                                    {(() => { const b = getBenchmarkForMetric('conversions'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('conversions', getVal('conversions'), 'higher-better') : null; })()}
+                                  </CardContent>
+                                </Card>
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-1">
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Leads</p>
+                                      <Users className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(getVal('leads'))}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{formatCurrency(derivedVals.cpl)} CPL</p>
+                                    {(() => { const b = getBenchmarkForMetric('leads'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('leads', getVal('leads'), 'higher-better') : null; })()}
+                                  </CardContent>
+                                </Card>
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-1">
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Engagements</p>
+                                      <Activity className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(getVal('engagements'))}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{formatPercentage(derivedVals.er)} ER</p>
+                                    {(() => { const b = getBenchmarkForMetric('engagements'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('engagements', getVal('engagements'), 'higher-better') : null; })()}
+                                  </CardContent>
+                                </Card>
+                              </div>
 
-                            devLog('[LinkedIn Analytics] 💰 Revenue Metrics check:', {
-                              hasRevenueTracking,
-                              hasRevenueTrackingValue: aggregated?.hasRevenueTracking,
-                              shouldShowRevenueMetrics: hasRevenueTracking,
-                              conversionValue: aggregated?.conversionValue
-                            });
-
-                            return hasRevenueTracking;
-                          })() && (
-                              <>
-                                {/* Revenue Metrics Header */}
-                                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <DollarSign className="w-5 h-5 text-green-600" />
-                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue Metrics</h3>
-                                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                      💰 Revenue Tracking Enabled
-                                    </Badge>
-                                  </div>
-                                </div>
-
-                                {/* Revenue Metrics Cards */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                  {/* Total Revenue (Revenue source controls live here) */}
-                                  <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                          <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                            Total Revenue (all mapped deals)
-                                          </h3>
-                                          <UITooltip>
-                                            <TooltipTrigger asChild>
-                                              <button type="button" className="inline-flex items-center">
-                                                <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" />
-                                              </button>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="max-w-sm">
-                                              <div className="space-y-2 text-sm">
-                                                <p className="font-medium">What this means</p>
-                                                <p className="text-xs text-slate-400">
-                                                  Total Revenue is the sum of HubSpot deal Amounts for <span className="font-medium">all deals mapped to this campaign</span> via Crosswalk (not filtered to the Pipeline stage).
-                                                </p>
-                                                <p className="font-medium">Calculation</p>
-                                                {Number(aggregated.conversionValue || 0) > 0 ? (
-                                                  <>
-                                                    <p>Revenue = Conversions × Conversion Value</p>
-                                                    {aggregated.conversions && aggregated.conversionValue && (
-                                                      <p className="text-xs text-slate-400">
-                                                        {aggregated.conversions.toLocaleString()} conversions × {formatCurrency(parseFloat(aggregated.conversionValue))} = {formatCurrency(aggregated.totalRevenue || 0)}
-                                                      </p>
-                                                    )}
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <p>Revenue = imported revenue-to-date</p>
-                                                    <p className="text-xs text-slate-400">
-                                                      {formatCurrency(aggregated.totalRevenue || 0)} from the connected revenue source
-                                                    </p>
-                                                  </>
-                                                )}
-                                                {linkedInRevenueSourceLabel && (
-                                                  <p className="text-xs text-slate-400 mt-2">
-                                                    Source: {linkedInRevenueSourceLabel}
-                                                  </p>
-                                                )}
-                                              </div>
-                                            </TooltipContent>
-                                          </UITooltip>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-slate-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
-                                            onClick={() => openAddRevenueModal('edit')}
-                                            data-testid="button-edit-linkedin-revenue-source"
-                                          >
-                                            <Pencil className="h-4 w-4" />
-                                          </Button>
-                                          <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                              <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                                data-testid="button-delete-linkedin-revenue-source"
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                <AlertDialogTitle>Remove revenue source?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                  This will disable revenue tracking for LinkedIn (Conversion Value, Revenue, ROI, ROAS, Profit, etc.) and immediately recalculate dependent metrics.
-                                                </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                              <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction
-                                                  onClick={() => deleteLinkedInRevenueSourceMutation.mutate()}
-                                                  className="bg-red-600 hover:bg-red-700"
-                                                >
-                                                  Remove
-                                                </AlertDialogAction>
-                                              </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                          </AlertDialog>
-                                          <DollarSign className="w-4 h-4 text-green-600" />
-                                        </div>
+                              {/* ═══ SECTION 2: REVENUE TRACKING ═══ */}
+                              {hasRevenueTracking ? (
+                                <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
+                                  <CardContent className="p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                      <div className="flex items-center gap-2">
+                                        <DollarSign className="w-5 h-5 text-green-600" />
+                                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue Tracking Active</h3>
+                                        <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                          {linkedInRevenueSourceLabel || 'Connected'}
+                                        </Badge>
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                                          {formatCurrency(aggregated.totalRevenue || 0)}
-                                        </p>
-                                        {!!linkedInRevenueSourceLabel && (
-                                          <Badge variant="outline" className="text-xs">
-                                            {linkedInRevenueSourceLabel}
-                                          </Badge>
-                                        )}
+                                        <Button variant="ghost" size="sm" onClick={() => openAddRevenueModal('edit')}>
+                                          <Pencil className="w-4 h-4" />
+                                        </Button>
                                       </div>
-                                      {Number(aggregated.conversionValue || 0) > 0 && aggregated.conversions && aggregated.conversionValue && (
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                          {aggregated.conversions.toLocaleString()} conversions × {formatCurrency(parseFloat(aggregated.conversionValue))}
-                                        </p>
-                                      )}
-                                    </CardContent>
-                                  </Card>
-
-                                  {/* Pipeline (Proxy — stage subset) - only when configured */}
-                                  {pipelineProxyData?.success && pipelineProxyData?.pipelineEnabled === true && (
-                                    <Card className="hover:shadow-md transition-shadow border-amber-200 dark:border-amber-800">
-                                      <CardContent className="p-4">
-                                        <div className="flex items-start justify-between mb-2">
-                                          <div className="flex items-center gap-2">
-                                            <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                              Pipeline (Proxy — stage subset)
-                                            </h3>
-                                            <UITooltip>
-                                              <TooltipTrigger asChild>
-                                                <button type="button" className="inline-flex items-center">
-                                                  <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" />
-                                                </button>
-                                              </TooltipTrigger>
-                                              <TooltipContent className="max-w-sm">
-                                                <div className="space-y-2 text-sm">
-                                                  <p className="font-medium">What this means</p>
-                                                  <p className="text-xs text-slate-400">
-                                                    Stage-only subset of mapped records. It sums {pipelineProxyProviderLabel || 'CRM'} {pipelineProxyEntityNoun} Amounts for records currently in the selected stage.
-                                                  </p>
-                                                  {pipelineProxyData?.warning ? (
-                                                    <p className="text-xs text-amber-700 dark:text-amber-300">
-                                                      Note: {String(pipelineProxyData.warning)}
-                                                    </p>
-                                                  ) : null}
-                                                  {pipelineProxyData?.pipelineStageLabel ? (
-                                                    <p className="text-xs text-slate-400">
-                                                      Stage: {String(getStageOnlyLabel(pipelineProxyData.pipelineStageLabel) || pipelineProxyData.pipelineStageLabel)}
-                                                    </p>
-                                                  ) : null}
-                                                </div>
-                                              </TooltipContent>
-                                            </UITooltip>
-                                          </div>
-                                          <Target className="w-4 h-4 text-amber-600" />
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <p className="text-2xl font-bold text-amber-800 dark:text-amber-300">
-                                            {formatCurrency(Number(pipelineProxyData?.totalToDate || 0))}
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-4">
+                                      <div>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">Total Revenue</p>
+                                        <p className="text-2xl font-bold text-green-700 dark:text-green-400">{formatCurrency(totalRevenue)}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">Conversion Value</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{conversionValue > 0 ? formatCurrency(conversionValue) : '—'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">ROAS</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{roas.toFixed(2)}x</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">ROI</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{roi.toFixed(1)}%</p>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                      <div>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">Profit</p>
+                                        <p className={`text-lg font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(profit)}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">Profit Margin</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{profitMargin.toFixed(1)}%</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">Revenue / Lead</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{revenuePerLead > 0 ? formatCurrency(revenuePerLead) : '—'}</p>
+                                      </div>
+                                      {pipelineProxyData?.success && pipelineProxyData?.pipelineEnabled === true && (
+                                        <div>
+                                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                                            Pipeline{getStageOnlyLabel(pipelineProxyData?.pipelineStageLabel) ? ` (${getStageOnlyLabel(pipelineProxyData.pipelineStageLabel)})` : ''}
                                           </p>
-                                          {!!getStageOnlyLabel(pipelineProxyData?.pipelineStageLabel) && (
-                                            <Badge variant="outline" className="text-xs">
-                                              {String(getStageOnlyLabel(pipelineProxyData.pipelineStageLabel))}
-                                            </Badge>
-                                          )}
-                                          <Badge
-                                            variant="secondary"
-                                            className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
-                                          >
-                                            Early signal
-                                          </Badge>
+                                          <p className="text-lg font-bold text-amber-600">{formatCurrency(Number(pipelineProxyData?.totalToDate || 0))}</p>
+                                          <Badge variant="outline" className="text-xs mt-1">Early signal</Badge>
                                         </div>
-                                      </CardContent>
-                                    </Card>
-                                  )}
-
-                                  {/* Conversion Value (derived from the revenue source mappings) */}
-                                  <Card className="hover:shadow-md transition-shadow border-green-200 dark:border-green-800">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                          <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                            Conversion Value
-                                          </h3>
-                                          <UITooltip>
-                                            <TooltipTrigger asChild>
-                                              <button type="button" className="inline-flex items-center">
-                                                <Info className="w-3 h-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" />
-                                              </button>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="max-w-sm">
-                                              <div className="space-y-2 text-sm">
-                                                <p className="font-medium">Conversion Value</p>
-                                                {Number(aggregated.conversionValue || 0) > 0 ? (
-                                                  <p className="text-xs text-slate-400">
-                                                    {formatCurrency(parseFloat(aggregated.conversionValue || 0))} per conversion
-                                                  </p>
-                                                ) : (
-                                                  <p className="text-xs text-slate-400">
-                                                    Not provided (only shown when explicitly set)
-                                                  </p>
-                                                )}
-                                              </div>
-                                            </TooltipContent>
-                                          </UITooltip>
-                                        </div>
-                                        <Calculator className="w-4 h-4 text-green-600" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                                        {Number(aggregated.conversionValue || 0) > 0 ? formatCurrency(aggregated.conversionValue || 0) : '—'}
-                                      </p>
-                                    </CardContent>
-                                  </Card>
-
-                                  {/* ROAS */}
-                                  <Card className="hover:shadow-md transition-shadow border-blue-200 dark:border-blue-800">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          ROAS
-                                        </h3>
-                                        <TrendingUp className="w-4 h-4 text-blue-600" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-                                        {(aggregated.roas || 0).toFixed(2)}x
-                                      </p>
-                                    </CardContent>
-                                  </Card>
-
-                                  {/* ROI */}
-                                  <Card className="hover:shadow-md transition-shadow border-purple-200 dark:border-purple-800">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          ROI
-                                        </h3>
-                                        <Percent className="w-4 h-4 text-purple-600" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">
-                                        {(aggregated.roi || 0).toFixed(1)}%
-                                      </p>
-                                    </CardContent>
-                                  </Card>
-
-                                  {/* Profit */}
-                                  <Card className={`hover:shadow-md transition-shadow ${(aggregated.profit || 0) >= 0
-                                    ? 'border-green-200 dark:border-green-800'
-                                    : 'border-red-200 dark:border-red-800'
-                                    }`}>
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          Profit
-                                        </h3>
-                                        {(aggregated.profit || 0) >= 0 ? (
-                                          <TrendingUp className="w-4 h-4 text-green-600" />
-                                        ) : (
-                                          <TrendingDown className="w-4 h-4 text-red-600" />
-                                        )}
-                                      </div>
-                                      <p className={`text-2xl font-bold ${(aggregated.profit || 0) >= 0
-                                        ? 'text-green-700 dark:text-green-400'
-                                        : 'text-red-700 dark:text-red-400'
-                                        }`}>
-                                        {formatCurrency(aggregated.profit || 0)}
-                                      </p>
-                                    </CardContent>
-                                  </Card>
-
-                                  {/* Profit Margin */}
-                                  <Card className="hover:shadow-md transition-shadow border-indigo-200 dark:border-indigo-800">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          Profit Margin
-                                        </h3>
-                                        <Percent className="w-4 h-4 text-indigo-600" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">
-                                        {(aggregated.profitMargin || 0).toFixed(1)}%
-                                      </p>
-                                    </CardContent>
-                                  </Card>
-
-                                  {/* Revenue Per Lead */}
-                                  <Card className="hover:shadow-md transition-shadow border-teal-200 dark:border-teal-800">
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                          Revenue Per Lead
-                                        </h3>
-                                        <DollarSign className="w-4 h-4 text-teal-600" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-teal-700 dark:text-teal-400">
-                                        {formatCurrency(aggregated.revenuePerLead || 0)}
-                                      </p>
-                                    </CardContent>
-                                  </Card>
-                                </div>
-                              </>
-                            )}
-                        </div>
-
-                        {/* Campaign Breakdown - only when 2+ campaigns to avoid duplicating metrics */}
-                        {(() => {
-                          const uniqueCampaignCount = metrics
-                            ? Object.keys(metrics.reduce((acc: any, m: any) => ({ ...acc, [m.campaignUrn]: true }), {})).length
-                            : 0;
-                          if (uniqueCampaignCount < 2) return null;
-                          return (
-                            <div className="space-y-4">
-                              <div className="flex items-center gap-2">
-                                <BarChart3 className="w-5 h-5 text-slate-600" />
-                                <div>
-                                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Campaign Breakdown</h3>
-                                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                                    Comprehensive metrics by individual campaigns
-                                  </p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    <span className="font-medium">Note:</span> Overview derived metrics (CPC/CTR/CPA/CVR/CPM/ER) are <span className="font-medium">blended</span> across all imported campaigns
-                                    (weighted by the underlying denominators), so they will not equal the simple average of per-campaign rates.
-                                    {aggregated?.hasRevenueTracking === 1 && (
-                                      <> Revenue per campaign is <span className="font-medium">allocated by conversion share</span> (Total Revenue × this campaign’s conversions ÷ total conversions). Pipeline (Proxy) is campaign-level only and is not split per campaign.
-                                      </>
-                                    )}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Sort and Filter Controls */}
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                  <div className="flex items-center gap-2">
-                                    <ArrowUpDown className="w-4 h-4 text-slate-500" />
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">Sort by:</span>
-                                    <Select value={sortBy} onValueChange={setSortBy}>
-                                      <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="name">Name (A-Z)</SelectItem>
-                                        <SelectItem value="spend">Spend (High to Low)</SelectItem>
-                                        <SelectItem value="conversions">Conversions (High to Low)</SelectItem>
-                                        <SelectItem value="clicks">Clicks (High to Low)</SelectItem>
-                                        <SelectItem value="impressions">Impressions (High to Low)</SelectItem>
-                                        <SelectItem value="ctr">CTR (High to Low)</SelectItem>
-                                        <SelectItem value="cpa">CPA (Low to High)</SelectItem>
-                                        <SelectItem value="cvr">CVR (High to Low)</SelectItem>
-                                        {/* Revenue-based sorting options - only show when per-campaign revenue allocation is possible */}
-                                        {(aggregated?.hasRevenueTracking === 1 && Number(aggregated?.conversionValue || 0) > 0) && (
-                                          <>
-                                            <SelectItem value="revenue">Total Revenue (High to Low)</SelectItem>
-                                            <SelectItem value="roas">ROAS (High to Low)</SelectItem>
-                                            <SelectItem value="roi">ROI (High to Low)</SelectItem>
-                                          </>
-                                        )}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <Filter className="w-4 h-4 text-slate-500" />
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">Filter:</span>
-                                    <Select value={filterBy} onValueChange={setFilterBy}>
-                                      <SelectTrigger className="w-[140px] h-9">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="all">All</SelectItem>
-                                        <SelectItem value="active">Active</SelectItem>
-                                        <SelectItem value="paused">Paused</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                </div>
-
-                                <span className="text-sm text-slate-600 dark:text-slate-400">
-                                  {metrics ? Object.keys(metrics.reduce((acc: any, m: any) => ({ ...acc, [m.campaignUrn]: true }), {})).length : 0} campaigns
-                                </span>
-                              </div>
-
-                              {metrics && metrics.length > 0 ? (
-                                <div className="space-y-4">
-                                  {Object.values(
-                                    metrics.reduce((acc: any, metric: any) => {
-                                      if (!acc[metric.campaignUrn]) {
-                                        acc[metric.campaignUrn] = {
-                                          urn: metric.campaignUrn,
-                                          name: metric.campaignName,
-                                          status: metric.campaignStatus,
-                                          metrics: {}
-                                        };
-                                      }
-                                      acc[metric.campaignUrn].metrics[metric.metricKey] = parseFloat(metric.metricValue);
-                                      return acc;
-                                    }, {})
-                                  )
-                                    .filter((campaign: any) => {
-                                      // Filter by status
-                                      if (filterBy === 'all') return true;
-                                      return campaign.status === filterBy;
-                                    })
-                                    .sort((a: any, b: any) => {
-                                      // Sort campaigns based on selected option
-                                      switch (sortBy) {
-                                        case 'name':
-                                          return a.name.localeCompare(b.name);
-                                        case 'spend':
-                                          return (b.metrics.spend || 0) - (a.metrics.spend || 0);
-                                        case 'conversions':
-                                          return (b.metrics.conversions || 0) - (a.metrics.conversions || 0);
-                                        case 'clicks':
-                                          return (b.metrics.clicks || 0) - (a.metrics.clicks || 0);
-                                        case 'impressions':
-                                          return (b.metrics.impressions || 0) - (a.metrics.impressions || 0);
-                                        case 'ctr':
-                                          const ctrA = (a.metrics.impressions || 0) > 0 ? ((a.metrics.clicks || 0) / (a.metrics.impressions || 0)) * 100 : 0;
-                                          const ctrB = (b.metrics.impressions || 0) > 0 ? ((b.metrics.clicks || 0) / (b.metrics.impressions || 0)) * 100 : 0;
-                                          return ctrB - ctrA;
-                                        case 'cpa':
-                                          const cpaA = (a.metrics.conversions || 0) > 0 ? (a.metrics.spend || 0) / (a.metrics.conversions || 0) : Infinity;
-                                          const cpaB = (b.metrics.conversions || 0) > 0 ? (b.metrics.spend || 0) / (b.metrics.conversions || 0) : Infinity;
-                                          return cpaA - cpaB; // Low to High
-                                        case 'cvr':
-                                          const cvrA = (a.metrics.clicks || 0) > 0 ? ((a.metrics.conversions || 0) / (a.metrics.clicks || 0)) * 100 : 0;
-                                          const cvrB = (b.metrics.clicks || 0) > 0 ? ((b.metrics.conversions || 0) / (b.metrics.clicks || 0)) * 100 : 0;
-                                          return cvrB - cvrA;
-                                        case 'revenue': {
-                                          // Total Revenue (per-campaign estimate) = Conversions × Conversion Value (overall)
-                                          const conversionValue = Number(aggregated?.conversionValue || 0);
-                                          const revenueA = conversionValue > 0 ? (Number(a.metrics.conversions || 0) * conversionValue) : 0;
-                                          const revenueB = conversionValue > 0 ? (Number(b.metrics.conversions || 0) * conversionValue) : 0;
-                                          return revenueB - revenueA;
-                                        }
-                                        case 'roas': {
-                                          // ROAS = Revenue / Spend (per-campaign estimate)
-                                          const cv = Number(aggregated?.conversionValue || 0);
-                                          const roasRevenueA = cv > 0 ? (Number(a.metrics.conversions || 0) * cv) : 0;
-                                          const roasRevenueB = cv > 0 ? (Number(b.metrics.conversions || 0) * cv) : 0;
-                                          const roasA = (Number(a.metrics.spend || 0)) > 0 ? roasRevenueA / Number(a.metrics.spend || 0) : 0;
-                                          const roasB = (Number(b.metrics.spend || 0)) > 0 ? roasRevenueB / Number(b.metrics.spend || 0) : 0;
-                                          return roasB - roasA;
-                                        }
-                                        case 'roi': {
-                                          // ROI = ((Revenue - Spend) / Spend) × 100 (per-campaign estimate)
-                                          const cv = Number(aggregated?.conversionValue || 0);
-                                          const roiRevenueA = cv > 0 ? (Number(a.metrics.conversions || 0) * cv) : 0;
-                                          const roiRevenueB = cv > 0 ? (Number(b.metrics.conversions || 0) * cv) : 0;
-                                          const spendA = Number(a.metrics.spend || 0);
-                                          const spendB = Number(b.metrics.spend || 0);
-                                          const roiProfitA = roiRevenueA - spendA;
-                                          const roiProfitB = roiRevenueB - spendB;
-                                          const roiA = spendA > 0 ? (roiProfitA / spendA) * 100 : 0;
-                                          const roiB = spendB > 0 ? (roiProfitB / spendB) * 100 : 0;
-                                          return roiB - roiA;
-                                        }
-                                        default:
-                                          return 0;
-                                      }
-                                    })
-                                    .map((linkedInCampaign: any, index: number) => {
-                                      // Capture campaign name in a const to avoid scope issues
-                                      const campaignName = linkedInCampaign.name;
-
-                                      // Calculate derived metrics
-                                      const impressions = linkedInCampaign.metrics.impressions || 0;
-                                      const clicks = linkedInCampaign.metrics.clicks || 0;
-                                      const spend = linkedInCampaign.metrics.spend || 0;
-                                      const conversions = linkedInCampaign.metrics.conversions || 0;
-                                      const engagements = linkedInCampaign.metrics.engagements || 0;
-
-                                      const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-                                      const cpc = clicks > 0 ? spend / clicks : 0;
-                                      const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
-                                      const convRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
-                                      const costPerConv = conversions > 0 ? spend / conversions : 0;
-                                      const cpa = costPerConv;
-                                      const engagementRate = impressions > 0 ? (engagements / impressions) * 100 : 0;
-                                      const roas = aggregated?.roas || 0;
-
-                                      return (
-                                        <Card key={index} className="hover:shadow-md transition-shadow">
-                                          <CardContent className="p-6">
-                                            {/* Campaign Header */}
-                                            <div className="flex items-start justify-between mb-4">
-                                              <div className="flex items-start gap-3">
-                                                <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
-                                                <div>
-                                                  <h4 className="text-base font-semibold text-slate-900 dark:text-white">
-                                                    {linkedInCampaign.name}
-                                                  </h4>
-                                                </div>
-                                              </div>
-                                              <Badge
-                                                variant={linkedInCampaign.status === 'active' ? 'default' : 'secondary'}
-                                                className={linkedInCampaign.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
-                                              >
-                                                {linkedInCampaign.status}
-                                              </Badge>
-                                            </div>
-
-                                            {/* Primary Metrics */}
-                                            <div className="grid grid-cols-4 gap-4 mb-4">
-                                              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
-                                                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Impressions</p>
-                                                <p className="text-lg font-bold text-slate-900 dark:text-white">
-                                                  {formatNumber(impressions)}
-                                                </p>
-                                                {/* Badge for campaign-specific impressions benchmark */}
-                                                {Array.isArray(benchmarks) && (() => {
-                                                  const impressionsBenchmark = benchmarks.find((b: any) =>
-                                                    b.metric?.toLowerCase() === 'impressions' &&
-                                                    b.linkedInCampaignName === campaignName
-                                                  );
-                                                  if (impressionsBenchmark) {
-                                                    return renderPerformanceBadge('impressions', impressions, 'higher-better');
-                                                  }
-                                                  return null;
-                                                })()}
-                                              </div>
-                                              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
-                                                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Clicks</p>
-                                                <p className="text-lg font-bold text-slate-900 dark:text-white">
-                                                  {formatNumber(clicks)}
-                                                </p>
-                                                {/* Badge for campaign-specific clicks benchmark */}
-                                                {Array.isArray(benchmarks) && (() => {
-                                                  const clicksBenchmark = benchmarks.find((b: any) =>
-                                                    b.metric?.toLowerCase() === 'clicks' &&
-                                                    b.linkedInCampaignName === campaignName
-                                                  );
-                                                  if (clicksBenchmark) {
-                                                    return renderPerformanceBadge('clicks', clicks, 'higher-better');
-                                                  }
-                                                  return null;
-                                                })()}
-                                              </div>
-                                              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
-                                                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Spend</p>
-                                                <p className="text-lg font-bold text-slate-900 dark:text-white">
-                                                  {formatCurrency(spend)}
-                                                </p>
-                                                {/* Badge for campaign-specific spend benchmark */}
-                                                {Array.isArray(benchmarks) && (() => {
-                                                  const spendBenchmark = benchmarks.find((b: any) =>
-                                                    b.metric?.toLowerCase() === 'spend' &&
-                                                    b.linkedInCampaignName === campaignName
-                                                  );
-                                                  if (spendBenchmark) {
-                                                    return renderPerformanceBadge('spend', spend, 'lower-better');
-                                                  }
-                                                  return null;
-                                                })()}
-                                              </div>
-                                              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
-                                                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Conversions</p>
-                                                <p className="text-lg font-bold text-slate-900 dark:text-white">
-                                                  {formatNumber(conversions)}
-                                                </p>
-                                                {/* Badge for campaign-specific conversions benchmark */}
-                                                {Array.isArray(benchmarks) && (() => {
-                                                  const conversionsBenchmark = benchmarks.find((b: any) =>
-                                                    b.metric?.toLowerCase() === 'conversions' &&
-                                                    b.linkedInCampaignName === campaignName
-                                                  );
-                                                  if (conversionsBenchmark) {
-                                                    return renderPerformanceBadge('conversions', conversions, 'higher-better');
-                                                  }
-                                                  return null;
-                                                })()}
-                                              </div>
-                                            </div>
-
-                                            {/* Secondary Metrics */}
-                                            <div className="grid grid-cols-5 gap-3 mb-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                                              <div>
-                                                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CTR</p>
-                                                <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                  {formatPercentage(ctr)}
-                                                </p>
-                                                {/* Badge for campaign-specific CTR benchmark */}
-                                                {Array.isArray(benchmarks) && (() => {
-                                                  const ctrBenchmark = benchmarks.find((b: any) =>
-                                                    b.metric?.toLowerCase() === 'ctr' &&
-                                                    b.linkedInCampaignName === campaignName
-                                                  );
-                                                  if (ctrBenchmark) {
-                                                    return renderPerformanceBadge('ctr', ctr, 'higher-better');
-                                                  }
-                                                  return null;
-                                                })()}
-                                              </div>
-                                              <div>
-                                                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPC</p>
-                                                <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                  {formatCurrency(cpc)}
-                                                </p>
-                                                {/* Badge for campaign-specific CPC benchmark */}
-                                                {Array.isArray(benchmarks) && (() => {
-                                                  const cpcBenchmark = benchmarks.find((b: any) =>
-                                                    b.metric?.toLowerCase() === 'cpc' &&
-                                                    b.linkedInCampaignName === campaignName
-                                                  );
-                                                  if (cpcBenchmark) {
-                                                    return renderPerformanceBadge('cpc', cpc, 'lower-better');
-                                                  }
-                                                  return null;
-                                                })()}
-                                              </div>
-                                              <div>
-                                                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPM</p>
-                                                <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                  {formatCurrency(cpm)}
-                                                </p>
-                                                {/* Badge for campaign-specific CPM benchmark */}
-                                                {Array.isArray(benchmarks) && (() => {
-                                                  const cpmBenchmark = benchmarks.find((b: any) =>
-                                                    b.metric?.toLowerCase() === 'cpm' &&
-                                                    b.linkedInCampaignName === campaignName
-                                                  );
-                                                  if (cpmBenchmark) {
-                                                    return renderPerformanceBadge('cpm', cpm, 'lower-better');
-                                                  }
-                                                  return null;
-                                                })()}
-                                              </div>
-                                              <div>
-                                                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Conv. Rate (CVR)</p>
-                                                <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                  {formatPercentage(convRate)}
-                                                </p>
-                                                {/* Badge for campaign-specific CVR benchmark */}
-                                                {Array.isArray(benchmarks) && (() => {
-                                                  const cvrBenchmark = benchmarks.find((b: any) =>
-                                                    b.metric?.toLowerCase() === 'cvr' &&
-                                                    b.linkedInCampaignName === campaignName
-                                                  );
-                                                  if (cvrBenchmark) {
-                                                    return renderPerformanceBadge('cvr', convRate, 'higher-better');
-                                                  }
-                                                  return null;
-                                                })()}
-                                              </div>
-                                              <div>
-                                                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Cost/Conv. (CPA)</p>
-                                                <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                  {formatCurrency(costPerConv)}
-                                                </p>
-                                                {/* Render badge for campaign-specific CPA benchmark */}
-                                                {Array.isArray(benchmarks) && (() => {
-                                                  const cpaBenchmark = benchmarks.find((b: any) =>
-                                                    b.metric?.toLowerCase() === 'cpa' &&
-                                                    b.linkedInCampaignName === campaignName
-                                                  );
-                                                  if (cpaBenchmark) {
-                                                    return renderPerformanceBadge('cpa', cpa, 'lower-better');
-                                                  }
-                                                  return null;
-                                                })()}
-                                              </div>
-                                            </div>
-
-                                            {/* Revenue Metrics - Only shown when revenue tracking is enabled */}
-                                            {(aggregated?.hasRevenueTracking === 1) && (() => {
-                                              const campaignRevenue = computeRevenueFromConversions(conversions);
-                                              const campaignProfit = campaignRevenue - spend;
-                                              const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
-                                              const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;
-                                              const campaignProfitMargin = campaignRevenue > 0 ? (campaignProfit / campaignRevenue) * 100 : 0;
-                                              const campaignRevenuePerLead = leads > 0 ? campaignRevenue / leads : 0;
-
-                                              return (
-                                                <div className="pt-4 border-t border-green-200 dark:border-green-800">
-                                                  <div className="flex items-center justify-between mb-3">
-                                                    <div className="flex items-center gap-2">
-                                                      <h5 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase">Revenue Metrics</h5>
-                                                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                        💰
-                                                      </Badge>
-                                                    </div>
-                                                    {/* Webhook Status Indicator */}
-                                                    {aggregated.webhookRevenueUsed ? (
-                                                      <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                        </svg>
-                                                        Actual values ({aggregated.webhookEventCount} events)
-                                                      </div>
-                                                    ) : aggregated.conversionValue > 0 ? (
-                                                      <div className="text-xs text-orange-500 dark:text-orange-400 flex items-center gap-1">
-                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                        </svg>
-                                                        Fixed value (${aggregated.conversionValue})
-                                                      </div>
-                                                    ) : null}
-                                                  </div>
-                                                  <div className="grid grid-cols-3 gap-3">
-                                                    <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-lg">
-                                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Revenue</p>
-                                                      <p className="text-sm font-bold text-green-700 dark:text-green-400">
-                                                        {formatCurrency(campaignRevenue)}
-                                                      </p>
-                                                    </div>
-                                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg">
-                                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROAS</p>
-                                                      <p className="text-sm font-bold text-blue-700 dark:text-blue-400">
-                                                        {campaignROAS.toFixed(2)}×
-                                                      </p>
-                                                    </div>
-                                                    <div className="bg-purple-50 dark:bg-purple-900/10 p-3 rounded-lg">
-                                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROI</p>
-                                                      <p className="text-sm font-bold text-purple-700 dark:text-purple-400">
-                                                        {campaignROI.toFixed(1)}%
-                                                      </p>
-                                                    </div>
-                                                    <div className={`p-3 rounded-lg ${campaignProfit >= 0
-                                                      ? 'bg-green-50 dark:bg-green-900/10'
-                                                      : 'bg-red-50 dark:bg-red-900/10'
-                                                      }`}>
-                                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit</p>
-                                                      <p className={`text-sm font-bold ${campaignProfit >= 0
-                                                        ? 'text-green-700 dark:text-green-400'
-                                                        : 'text-red-700 dark:text-red-400'
-                                                        }`}>
-                                                        {formatCurrency(campaignProfit)}
-                                                      </p>
-                                                    </div>
-                                                    <div className="bg-indigo-50 dark:bg-indigo-900/10 p-3 rounded-lg">
-                                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit Margin</p>
-                                                      <p className={`text-sm font-bold ${campaignProfitMargin >= 0
-                                                        ? 'text-indigo-700 dark:text-indigo-400'
-                                                        : 'text-red-700 dark:text-red-400'
-                                                        }`}>
-                                                        {campaignProfitMargin.toFixed(1)}%
-                                                      </p>
-                                                    </div>
-                                                    <div className="bg-teal-50 dark:bg-teal-900/10 p-3 rounded-lg">
-                                                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Revenue/Lead</p>
-                                                      <p className="text-sm font-bold text-teal-700 dark:text-teal-400">
-                                                        {formatCurrency(campaignRevenuePerLead)}
-                                                      </p>
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                              );
-                                            })()}
-
-                                            {/* Performance Indicators - Only shown when industry is selected */}
-                                            {campaignData?.industry && (
-                                              <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
-                                                <div className="flex items-center gap-3 flex-wrap">
-                                                  {/* Performance Indicators - Using Benchmark System */}
-                                                  {/* ER (Engagement Rate) Badge */}
-                                                  {Array.isArray(benchmarks) && (() => {
-                                                    const erBenchmark = benchmarks.find((b: any) =>
-                                                      b.metric?.toLowerCase() === 'er' &&
-                                                      b.linkedInCampaignName === campaignName
-                                                    );
-                                                    if (erBenchmark) {
-                                                      return renderPerformanceBadge('er', engagementRate, 'higher-better');
-                                                    }
-                                                    return null;
-                                                  })()}
-
-                                                  {/* ROI Badge */}
-                                                  {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
-                                                    const roiBenchmark = benchmarks.find((b: any) =>
-                                                      b.metric?.toLowerCase() === 'roi' &&
-                                                      b.linkedInCampaignName === campaignName
-                                                    );
-                                                    if (roiBenchmark) {
-                                                      const campaignRevenue = conversions * (aggregated.conversionValue || 0);
-                                                      const campaignROI = spend > 0 ? ((campaignRevenue - spend) / spend) * 100 : 0;
-                                                      return renderPerformanceBadge('roi', campaignROI, 'higher-better');
-                                                    }
-                                                    return null;
-                                                  })()}
-
-                                                  {/* ROAS Badge */}
-                                                  {Array.isArray(benchmarks) && aggregated?.hasRevenueTracking === 1 && (() => {
-                                                    const roasBenchmark = benchmarks.find((b: any) =>
-                                                      b.metric?.toLowerCase() === 'roas' &&
-                                                      b.linkedInCampaignName === campaignName
-                                                    );
-                                                    if (roasBenchmark) {
-                                                      const campaignRevenue = conversions * (aggregated.conversionValue || 0);
-                                                      const campaignROAS = spend > 0 ? campaignRevenue / spend : 0;
-                                                      return renderPerformanceBadge('roas', campaignROAS, 'higher-better');
-                                                    }
-                                                    return null;
-                                                  })()}
-                                                </div>
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  className="text-blue-600 hover:text-blue-700"
-                                                  onClick={() => {
-                                                    setSelectedCampaignDetails(linkedInCampaign);
-                                                    setIsCampaignDetailsModalOpen(true);
-                                                  }}
-                                                  data-testid={`button-view-details-${index}`}
-                                                >
-                                                  View Details →
-                                                </Button>
-                                              </div>
-                                            )}
-
-                                            {/* View Details Button - Always visible */}
-                                            {!campaignData?.industry && (
-                                              <div className="flex justify-end pt-3 border-t border-slate-200 dark:border-slate-700">
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  className="text-blue-600 hover:text-blue-700"
-                                                  onClick={() => {
-                                                    setSelectedCampaignDetails(linkedInCampaign);
-                                                    setIsCampaignDetailsModalOpen(true);
-                                                  }}
-                                                  data-testid={`button-view-details-${index}`}
-                                                >
-                                                  View Details →
-                                                </Button>
-                                              </div>
-                                            )}
-                                          </CardContent>
-                                        </Card>
-                                      );
-                                    })}
-                                </div>
+                                      )}
+                                    </div>
+                                  </CardContent>
+                                </Card>
                               ) : (
-                                <Card>
-                                  <CardContent className="p-8 text-center">
-                                    <p className="text-slate-500">No campaign data available</p>
+                                <Card className="border-slate-200 dark:border-slate-700">
+                                  <CardContent className="p-6">
+                                    <div className="flex items-center gap-3 mb-3">
+                                      <AlertCircle className="w-5 h-5 text-amber-500" />
+                                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue Tracking Not Configured</h3>
+                                    </div>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                                      Set up revenue tracking to unlock ROAS, ROI, and revenue-dependent metrics.
+                                    </p>
+                                    <ul className="text-sm text-slate-500 space-y-1 mb-4 list-disc list-inside">
+                                      <li>Manually enter a conversion value or revenue total</li>
+                                      <li>Connect HubSpot, Salesforce, or Shopify</li>
+                                      <li>Upload a CSV or connect Google Sheets</li>
+                                    </ul>
+                                    <Button variant="outline" size="sm" onClick={() => openAddRevenueModal('add')}>
+                                      <Plus className="w-4 h-4 mr-2" />
+                                      Configure Revenue Tracking
+                                    </Button>
                                   </CardContent>
                                 </Card>
                               )}
-                            </div>
+
+                              {/* ═══ SECTION 3: PERFORMANCE METRICS ═══ */}
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-base">Performance Metrics</CardTitle>
+                                  <CardDescription>Key derived metrics across all campaigns</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                                    {[
+                                      { key: 'ctr', label: 'CTR', icon: Activity, value: formatPercentage(derivedVals.ctr), type: 'higher-better' as const },
+                                      { key: 'cpc', label: 'CPC', icon: DollarSign, value: formatCurrency(derivedVals.cpc), type: 'lower-better' as const },
+                                      { key: 'cpm', label: 'CPM', icon: Eye, value: formatCurrency(derivedVals.cpm), type: 'lower-better' as const },
+                                      { key: 'cvr', label: 'Conv Rate', icon: Target, value: formatPercentage(derivedVals.cvr), type: 'higher-better' as const },
+                                      { key: 'cpa', label: 'CPA', icon: DollarSign, value: formatCurrency(derivedVals.cpa), type: 'lower-better' as const },
+                                      { key: 'cpl', label: 'CPL', icon: DollarSign, value: formatCurrency(derivedVals.cpl), type: 'lower-better' as const },
+                                      { key: 'er', label: 'Eng. Rate', icon: Activity, value: formatPercentage(derivedVals.er), type: 'higher-better' as const },
+                                    ].map(({ key, label, icon: Icon, value, type }) => (
+                                      <div key={key} className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                                        <Icon className="w-4 h-4 mx-auto text-slate-400 mb-1" />
+                                        <p className="text-xs text-slate-500 mb-1">{label}</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{value}</p>
+                                        {(() => { const b = getBenchmarkForMetric(key); return b && !b.linkedInCampaignName ? renderPerformanceBadge(key, derivedVals[key], type) : null; })()}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              {/* ═══ SECTION 4: CHARTS ═══ */}
+                              {allCampaigns.length > 0 && (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                  {/* Bar Chart: Campaign Performance */}
+                                  <Card>
+                                    <CardHeader className="pb-2">
+                                      <CardTitle className="text-base">Campaign Performance</CardTitle>
+                                      <CardDescription>Top campaigns by spend</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <ResponsiveContainer width="100%" height={300}>
+                                        <BarChart data={allCampaigns
+                                          .sort((a, b) => (b.metrics.spend || 0) - (a.metrics.spend || 0))
+                                          .slice(0, 5)
+                                          .map(c => ({
+                                            name: c.name.length > 20 ? c.name.slice(0, 20) + '...' : c.name,
+                                            spend: Number((c.metrics.spend || 0).toFixed(2)),
+                                            conversions: c.metrics.conversions || 0,
+                                          }))
+                                        }>
+                                          <CartesianGrid strokeDasharray="3 3" />
+                                          <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 11 }} />
+                                          <YAxis />
+                                          <Tooltip />
+                                          <Legend />
+                                          <Bar dataKey="spend" fill="#3b82f6" name="Spend ($)" />
+                                          <Bar dataKey="conversions" fill="#10b981" name="Conversions" />
+                                        </BarChart>
+                                      </ResponsiveContainer>
+                                    </CardContent>
+                                  </Card>
+
+                                  {/* Pie Chart: Spend by Campaign */}
+                                  <Card>
+                                    <CardHeader className="pb-2">
+                                      <CardTitle className="text-base">Spend by Campaign</CardTitle>
+                                      <CardDescription>Budget allocation across campaigns</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <ResponsiveContainer width="100%" height={300}>
+                                        <PieChart>
+                                          <Pie
+                                            data={allCampaigns
+                                              .filter(c => (c.metrics.spend || 0) > 0)
+                                              .sort((a, b) => (b.metrics.spend || 0) - (a.metrics.spend || 0))
+                                              .map(c => ({
+                                                name: c.name.length > 25 ? c.name.slice(0, 25) + '...' : c.name,
+                                                value: Number((c.metrics.spend || 0).toFixed(2)),
+                                              }))}
+                                            cx="50%"
+                                            cy="50%"
+                                            outerRadius={80}
+                                            labelLine={false}
+                                            label={({ name, value }: any) => `${name}: $${value.toFixed(0)}`}
+                                            dataKey="value"
+                                          >
+                                            {allCampaigns
+                                              .filter(c => (c.metrics.spend || 0) > 0)
+                                              .sort((a, b) => (b.metrics.spend || 0) - (a.metrics.spend || 0))
+                                              .map((_, index) => (
+                                                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                              ))}
+                                          </Pie>
+                                          <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                                        </PieChart>
+                                      </ResponsiveContainer>
+                                    </CardContent>
+                                  </Card>
+                                </div>
+                              )}
+
+                              {/* ═══ SECTION 5: CAMPAIGNS TABLE ═══ */}
+                              {allCampaigns.length > 0 && (
+                                <Card>
+                                  <CardHeader className="pb-2">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <CardTitle className="text-base">All Campaigns</CardTitle>
+                                        <CardDescription>Detailed performance metrics for all campaigns</CardDescription>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Select value={sortBy} onValueChange={setSortBy}>
+                                          <SelectTrigger className="w-[180px] h-8 text-xs">
+                                            <ArrowUpDown className="w-3 h-3 mr-1" />
+                                            <SelectValue placeholder="Sort by..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="name">Name (A-Z)</SelectItem>
+                                            <SelectItem value="spend">Spend (High→Low)</SelectItem>
+                                            <SelectItem value="conversions">Conversions (High→Low)</SelectItem>
+                                            <SelectItem value="clicks">Clicks (High→Low)</SelectItem>
+                                            <SelectItem value="impressions">Impressions (High→Low)</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        <Select value={filterBy} onValueChange={setFilterBy}>
+                                          <SelectTrigger className="w-[120px] h-8 text-xs">
+                                            <Filter className="w-3 h-3 mr-1" />
+                                            <SelectValue placeholder="Filter..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="all">All</SelectItem>
+                                            <SelectItem value="active">Active</SelectItem>
+                                            <SelectItem value="paused">Paused</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </CardHeader>
+                                  <CardContent className="p-0">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow>
+                                          <TableHead>Campaign</TableHead>
+                                          <TableHead>Status</TableHead>
+                                          <TableHead className="text-right">Spend</TableHead>
+                                          <TableHead className="text-right">Impressions</TableHead>
+                                          <TableHead className="text-right">Clicks</TableHead>
+                                          <TableHead className="text-right">CTR</TableHead>
+                                          <TableHead className="text-right">Conversions</TableHead>
+                                          <TableHead className="text-right">CPC</TableHead>
+                                          {hasRevenueTracking && (
+                                            <>
+                                              <TableHead className="text-right">Revenue</TableHead>
+                                              <TableHead className="text-right">ROAS</TableHead>
+                                            </>
+                                          )}
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {allCampaigns
+                                          .filter((c: any) => filterBy === 'all' || c.status === filterBy)
+                                          .sort((a: any, b: any) => {
+                                            switch (sortBy) {
+                                              case 'name': return a.name.localeCompare(b.name);
+                                              case 'spend': return (b.metrics.spend || 0) - (a.metrics.spend || 0);
+                                              case 'conversions': return (b.metrics.conversions || 0) - (a.metrics.conversions || 0);
+                                              case 'clicks': return (b.metrics.clicks || 0) - (a.metrics.clicks || 0);
+                                              case 'impressions': return (b.metrics.impressions || 0) - (a.metrics.impressions || 0);
+                                              default: return 0;
+                                            }
+                                          })
+                                          .map((campaign: any) => {
+                                            const m = campaign.metrics;
+                                            const ctr = (m.impressions || 0) > 0 ? ((m.clicks || 0) / m.impressions * 100) : 0;
+                                            const cpc = (m.clicks || 0) > 0 ? (m.spend || 0) / m.clicks : 0;
+                                            const campRevenue = hasRevenueTracking ? computeRevenueFromConversions(m.conversions || 0) : 0;
+                                            const campRoas = (m.spend || 0) > 0 ? campRevenue / m.spend : 0;
+                                            return (
+                                              <TableRow key={campaign.urn}>
+                                                <TCell className="font-medium max-w-[200px] truncate">{campaign.name}</TCell>
+                                                <TCell>
+                                                  <Badge variant={campaign.status === 'active' || campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
+                                                    {campaign.status}
+                                                  </Badge>
+                                                </TCell>
+                                                <TCell className="text-right">{formatCurrency(m.spend || 0)}</TCell>
+                                                <TCell className="text-right">{formatNumber(m.impressions || 0)}</TCell>
+                                                <TCell className="text-right">{formatNumber(m.clicks || 0)}</TCell>
+                                                <TCell className="text-right">{ctr.toFixed(2)}%</TCell>
+                                                <TCell className="text-right">{formatNumber(m.conversions || 0)}</TCell>
+                                                <TCell className="text-right">{formatCurrency(cpc)}</TCell>
+                                                {hasRevenueTracking && (
+                                                  <>
+                                                    <TCell className="text-right">{formatCurrency(campRevenue)}</TCell>
+                                                    <TCell className="text-right">{campRoas.toFixed(2)}x</TCell>
+                                                  </>
+                                                )}
+                                              </TableRow>
+                                            );
+                                          })}
+                                      </TableBody>
+                                    </Table>
+                                  </CardContent>
+                                </Card>
+                              )}
+                            </>
                           );
                         })()}
                       </>

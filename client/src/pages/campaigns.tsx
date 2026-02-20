@@ -1051,9 +1051,12 @@ export default function Campaigns() {
       const url = selectedClientId
         ? `/api/campaigns?clientId=${encodeURIComponent(selectedClientId)}`
         : "/api/campaigns";
+      console.log('🔍 [Campaigns Query] Fetching campaigns for clientId:', selectedClientId);
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch campaigns");
-      return res.json();
+      const data = await res.json();
+      console.log('✅ [Campaigns Query] Received campaigns:', data.length, 'campaigns');
+      return data;
     },
     enabled: !!selectedClientId,
   });
@@ -1112,6 +1115,7 @@ export default function Campaigns() {
   const createCampaignMutation = useMutation({
     mutationFn: async (data: CampaignFormData & { platform?: string; status?: string; type?: string; impressions?: number; clicks?: number; spend?: string; ga4CampaignFilter?: string }) => {
       console.log('🚀 [Frontend] Creating campaign with data:', data);
+      console.log('🔍 [Frontend] selectedClientId:', selectedClientId);
       const payload = {
         name: data.name,
         clientId: selectedClientId || null,
@@ -1302,27 +1306,38 @@ export default function Campaigns() {
 
     // Finalize: update the already-created campaign with the chosen platform list.
     try {
-      await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
+      const response = await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
         platform: selectedPlatforms.join(", "),
         ga4CampaignFilter: ga4CampaignFilterForNewCampaign || null,
         status: "active",  // promote from draft → active so it appears in Campaign Management
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to finalize campaign');
+      }
+
+      setDraftFinalized(true);
+
+      toast({
+        title: "Campaign created",
+        description: "Your new campaign has been created successfully.",
+      });
+
+      setIsCreateModalOpen(false);
+      resetCreateModalState();
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      // Take the user back to Campaign Management, with the new campaign visible.
+      setLocation(`/campaigns?created=${encodeURIComponent(draftCampaignId)}`);
     } catch (e: any) {
-      console.warn("Failed to finalize campaign platforms:", e?.message || e);
+      console.error("Failed to finalize campaign:", e?.message || e);
+      toast({
+        title: "Error finalizing campaign",
+        description: e?.message || "Failed to activate campaign. Please try again or contact support.",
+        variant: "destructive",
+      });
+      // Don't close the dialog or navigate away - let the user try again
     }
-
-    setDraftFinalized(true);
-
-    toast({
-      title: "Campaign created",
-      description: "Your new campaign has been created successfully.",
-    });
-
-    setIsCreateModalOpen(false);
-    resetCreateModalState();
-    void queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-    // Take the user back to Campaign Management, with the new campaign visible.
-    setLocation(`/campaigns?created=${encodeURIComponent(draftCampaignId)}`);
   };
 
   const handleBackToForm = () => {

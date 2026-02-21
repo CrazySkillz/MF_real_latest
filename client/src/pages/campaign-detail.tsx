@@ -5036,7 +5036,7 @@ export default function CampaignDetail() {
 
   // Fetch LinkedIn metrics for Performance Summary
   const { data: linkedinMetrics } = useQuery<any>({
-    queryKey: [`/api/linkedin/metrics/${campaignId}`],
+    queryKey: ["/api/linkedin/metrics", campaignId],
     enabled: !!campaignId,
   });
 

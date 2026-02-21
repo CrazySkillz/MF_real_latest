@@ -49,13 +49,13 @@ export default function CampaignPerformanceSummary() {
 
   // Fetch LinkedIn metrics
   const { data: linkedinMetrics } = useQuery<any>({
-    queryKey: [`/api/linkedin/metrics/${campaignId}`],
+    queryKey: ["/api/linkedin/metrics", campaignId],
     enabled: !!campaignId,
   });
 
   // Fetch Custom Integration data
   const { data: customIntegration } = useQuery<any>({
-    queryKey: [`/api/custom-integration/${campaignId}`],
+    queryKey: ["/api/custom-integration", campaignId],
     enabled: !!campaignId,
   });
 

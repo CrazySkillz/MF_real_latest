@@ -8101,6 +8101,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = String(req.params.id || "");
       const dateRange = String(req.query.dateRange || "30days");
 
+      // Demo mode: return realistic mock data for testing Attribution tab
+      if (req.query.demo === "1") {
+        return res.json({
+          success: true,
+          campaignId,
+          dateRange,
+          demo: true,
+          ga4: {
+            connected: true,
+            revenue: 11800,
+            conversions: 107,
+            sessions: 3200,
+            users: 2100,
+          },
+          webAnalytics: { connected: true, revenue: 11800, conversions: 107, sessions: 3200, users: 2100 },
+          spend: {
+            persistedSpend: 9150,
+            unifiedSpend: 9150,
+            spendSource: "demo",
+            startDate: null,
+            endDate: null,
+          },
+          platforms: {
+            linkedin: {
+              connected: true,
+              spend: 4250,
+              clicks: 890,
+              impressions: 12500,
+              conversions: 45,
+              leads: 18,
+              attributedRevenue: 8200,
+            },
+            meta: {
+              connected: true,
+              spend: 3100,
+              clicks: 1450,
+              impressions: 28000,
+              conversions: 62,
+            },
+            customIntegration: {
+              connected: true,
+              spend: 1800,
+              clicks: 420,
+              impressions: 8500,
+              conversions: 28,
+              revenue: 4500,
+            },
+          },
+          revenue: {
+            onsiteRevenue: 11800,
+            offsiteRevenue: 9600,
+            totalRevenue: 21400,
+          },
+          revenueSources: [
+            { type: "shopify", connected: true, revenueClassification: "offsite_not_in_ga4", lastTotalRevenue: 6400, offsite: true },
+            { type: "hubspot", connected: true, revenueClassification: "offsite_not_in_ga4", lastTotalRevenue: 3200, offsite: true },
+          ],
+        });
+      }
+
       const parseNum = (v: any): number => {
         if (v === null || typeof v === "undefined" || v === "") return 0;
         const n = typeof v === "string" ? parseFloat(v) : Number(v);

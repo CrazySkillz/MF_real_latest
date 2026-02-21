@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { DollarSign, MousePointer, Target, TrendingUp, Eye, Users, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DollarSign, MousePointer, Target, TrendingUp, Eye, Users, Activity, FlaskConical } from "lucide-react";
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
 
@@ -19,11 +20,14 @@ interface ChannelData {
 }
 
 export function AttributionDashboard({ campaignId }: { campaignId: string }) {
+  const [demoMode, setDemoMode] = useState(false);
+
   const { data: outcomeTotals, isLoading } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "30days"],
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "30days", demoMode ? "demo" : "live"],
     enabled: !!campaignId,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/outcome-totals?dateRange=30days`);
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=30days${demoMode ? "&demo=1" : ""}`;
+      const resp = await fetch(url);
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
@@ -167,12 +171,29 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Channel Attribution</h2>
-        <p className="text-slate-600 dark:text-slate-400">
-          Performance breakdown across connected platforms (last 30 days)
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Channel Attribution</h2>
+          <p className="text-slate-600 dark:text-slate-400">
+            Performance breakdown across connected platforms (last 30 days)
+          </p>
+        </div>
+        <Button
+          variant={demoMode ? "default" : "outline"}
+          size="sm"
+          onClick={() => setDemoMode(!demoMode)}
+          className="shrink-0"
+        >
+          <FlaskConical className="w-4 h-4 mr-1" />
+          {demoMode ? "Demo On" : "Demo Data"}
+        </Button>
       </div>
+
+      {demoMode && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-2 text-sm text-amber-800 dark:text-amber-300">
+          Showing demo data for testing. Toggle off to see real platform data.
+        </div>
+      )}
 
       {/* Section 1: Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

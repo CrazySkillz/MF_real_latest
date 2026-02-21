@@ -57,6 +57,28 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId,
   });
 
+  // Fetch Meta analytics
+  const { data: metaAnalytics } = useQuery<any>({
+    queryKey: ["/api/meta", campaignId, "analytics"],
+    queryFn: async () => {
+      const response = await fetch(`/api/meta/${campaignId}/analytics`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!campaignId,
+  });
+
+  // Fetch GA4 metrics
+  const { data: ga4Metrics } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-metrics`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!campaignId,
+  });
+
   // Fetch real-time metric changes
   const { data: metricChanges } = useQuery<any>({
     queryKey: [`/api/custom-integration/${campaignId}/changes`],
@@ -140,6 +162,12 @@ export default function CampaignPerformanceSummary() {
       reach: 0,
     }
   } : null;
+  const demoMeta = demoMode ? {
+    summary: { totalImpressions: 28000, totalClicks: 1450, totalSpend: 3100, totalConversions: 62 }
+  } : null;
+  const demoGA4 = demoMode ? {
+    metrics: { sessions: 4200, users: 2800, pageviews: 18500, conversions: 95, revenue: 12400 }
+  } : null;
   const demoKpis = demoMode ? [
     { name: 'Monthly Conversions', metric: 'conversions', currentValue: 73, targetValue: 100, unit: '', alertsEnabled: false, priority: 'high' },
     { name: 'Cost Per Acquisition', metric: 'cpa', currentValue: 82.88, targetValue: 60, unit: '$', alertsEnabled: true, priority: 'high' },
@@ -152,6 +180,8 @@ export default function CampaignPerformanceSummary() {
 
   const effectiveLinkedin = demoLinkedin || linkedinMetrics;
   const effectiveCI = demoCI || customIntegration;
+  const effectiveMeta = demoMeta || metaAnalytics;
+  const effectiveGA4 = demoGA4 || ga4Metrics;
   const effectiveKpis = demoKpis || kpis;
   const effectiveBenchmarks = demoBenchmarks || benchmarks;
 
@@ -182,17 +212,31 @@ export default function CampaignPerformanceSummary() {
   const ciPageviews = parseNum(effectiveCI?.metrics?.pageviews);
   const ciSessions = parseNum(effectiveCI?.metrics?.sessions);
 
-  // Aggregate metrics - matching Executive Summary calculation
-  // Total Impressions = Advertising Impressions + Website Pageviews (full funnel view)
-  const advertisingImpressions = linkedinImpressions + ciImpressions;
-  const totalImpressions = advertisingImpressions + ciPageviews;
-  // Total Engagements = LinkedIn Clicks + LinkedIn Engagements + CI Clicks + CI Engagements + Website Sessions
-  const advertisingEngagements = linkedinClicks + linkedinEngagements + ciClicks + ciEngagements;
-  const totalEngagements = advertisingEngagements + ciSessions;
-  const totalClicks = linkedinClicks + ciClicks;
-  const totalConversions = linkedinConversions + ciConversions;
+  // Meta advertising metrics
+  const metaImpressions = parseNum(effectiveMeta?.summary?.totalImpressions);
+  const metaClicks = parseNum(effectiveMeta?.summary?.totalClicks);
+  const metaSpend = parseNum(effectiveMeta?.summary?.totalSpend);
+  const metaConversions = parseNum(effectiveMeta?.summary?.totalConversions);
+
+  // GA4 website analytics
+  const ga4Sessions = parseNum(effectiveGA4?.metrics?.sessions);
+  const ga4Pageviews = parseNum(effectiveGA4?.metrics?.pageviews);
+  const ga4Connected = !!(effectiveGA4?.metrics);
+
+  // Double-counting prevention: GA4 and CI both track website analytics.
+  // When GA4 is connected, prefer GA4 for web metrics; otherwise use CI.
+  const webPageviews = ga4Connected ? ga4Pageviews : ciPageviews;
+  const webSessions = ga4Connected ? ga4Sessions : ciSessions;
+
+  // Advertising metrics: LinkedIn + CI(ads) + Meta — no overlap
+  const advertisingImpressions = linkedinImpressions + ciImpressions + metaImpressions;
+  const totalImpressions = advertisingImpressions + webPageviews;
+  const advertisingEngagements = linkedinClicks + linkedinEngagements + ciClicks + ciEngagements + metaClicks;
+  const totalEngagements = advertisingEngagements + webSessions;
+  const totalClicks = linkedinClicks + ciClicks + metaClicks;
+  const totalConversions = linkedinConversions + ciConversions + metaConversions;
   const totalLeads = linkedinLeads + ciLeads;
-  const totalSpend = linkedinSpend + ciSpend;
+  const totalSpend = linkedinSpend + ciSpend + metaSpend;
 
   // Calculate campaign health score (including both KPIs and Benchmarks)
   const kpisAboveTarget = effectiveKpis.filter((kpi: any) => {

@@ -43,29 +43,70 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
   } catch (err) {
     console.log(`No custom integration metrics found for campaign ${campaignId}`);
   }
-  
-  // Aggregate metrics from all sources
+
+  // Fetch Meta metrics (sum daily metrics across all dates)
+  let metaData = { impressions: 0, clicks: 0, spend: 0, conversions: 0 };
+  try {
+    const metaConnection = await storage.getMetaConnection(campaignId);
+    if (metaConnection) {
+      const dailyMetrics = await storage.getMetaDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
+      metaData = {
+        impressions: dailyMetrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0),
+        clicks: dailyMetrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0),
+        spend: dailyMetrics.reduce((s: number, m: any) => s + parseNum(m.spend), 0),
+        conversions: dailyMetrics.reduce((s: number, m: any) => s + (m.conversions || 0), 0),
+      };
+    }
+  } catch (err) {
+    console.log(`No Meta metrics found for campaign ${campaignId}`);
+  }
+
+  // Fetch GA4 metrics (website analytics)
+  let ga4Data = { sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0 };
+  let ga4Connected = false;
+  try {
+    const ga4Conn = await storage.getPrimaryGA4Connection(campaignId);
+    if (ga4Conn) {
+      ga4Connected = true;
+      const daily = await storage.getGA4DailyMetrics(campaignId, String(ga4Conn.propertyId), '2000-01-01', '2099-12-31');
+      ga4Data = {
+        sessions: daily.reduce((s: number, m: any) => s + (m.sessions || 0), 0),
+        users: daily.reduce((s: number, m: any) => s + (m.users || 0), 0),
+        pageviews: daily.reduce((s: number, m: any) => s + (m.pageviews || 0), 0),
+        conversions: daily.reduce((s: number, m: any) => s + (m.conversions || 0), 0),
+        revenue: daily.reduce((s: number, m: any) => s + parseNum(m.revenue), 0),
+      };
+    }
+  } catch (err) {
+    console.log(`No GA4 metrics found for campaign ${campaignId}`);
+  }
+
+  // Aggregate metrics from ALL connected sources
   // MUST match Performance Summary (campaign-performance.tsx) calculation exactly
   const linkedinClicks = parseNum(linkedinMetrics.clicks);
   const ciClicks = parseNum(customIntegrationData.clicks);
+  const metaClicks = metaData.clicks;
   // LinkedIn stores engagement as singular 'engagement' from the API
   const linkedinEngagement = parseNum(linkedinMetrics.engagement);
   const ciEngagements = parseNum(customIntegrationData.engagements);
   const ciSessions = parseNum(customIntegrationData.sessions);
 
-  // Total Impressions = Advertising Impressions (LinkedIn + CI ads) + Website Pageviews (CI analytics)
-  const advertisingImpressions = parseNum(linkedinMetrics.impressions) + parseNum(customIntegrationData.impressions);
-  const totalImpressions = advertisingImpressions + parseNum(customIntegrationData.pageviews);
-  // Total Engagements = LinkedIn Clicks + LinkedIn Engagement + CI Clicks + CI Engagements + Website Sessions
-  const advertisingEngagements = linkedinClicks + linkedinEngagement + ciClicks + ciEngagements;
-  const totalEngagements = advertisingEngagements + ciSessions;
-  const totalClicks = linkedinClicks + ciClicks;
-  const totalConversions = parseNum(linkedinMetrics.conversions) + parseNum(customIntegrationData.conversions);
+  // Double-counting prevention: GA4 and CI both track website analytics.
+  // When GA4 is connected, prefer GA4 for web metrics; otherwise use CI.
+  const webPageviews = ga4Connected ? ga4Data.pageviews : parseNum(customIntegrationData.pageviews);
+  const webSessions = ga4Connected ? ga4Data.sessions : ciSessions;
+
+  // Advertising metrics: LinkedIn + CI(ads) + Meta — no overlap
+  const advertisingImpressions = parseNum(linkedinMetrics.impressions) + parseNum(customIntegrationData.impressions) + metaData.impressions;
+  const totalImpressions = advertisingImpressions + webPageviews;
+  const advertisingEngagements = linkedinClicks + linkedinEngagement + ciClicks + ciEngagements + metaClicks;
+  const totalEngagements = advertisingEngagements + webSessions;
+  const totalClicks = linkedinClicks + ciClicks + metaClicks;
+  const totalConversions = parseNum(linkedinMetrics.conversions) + parseNum(customIntegrationData.conversions) + metaData.conversions;
   const totalLeads = parseNum(linkedinMetrics.leads) + parseNum(customIntegrationData.leads);
-  const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend);
-  
-  // Store detailed metrics from both sources for historical tracking
-  // Structure matches frontend expectations for per-source trend analysis
+  const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend) + metaData.spend;
+
+  // Store detailed metrics from all sources for historical tracking
   const detailedMetrics = {
     linkedin: {
       impressions: parseNum(linkedinMetrics.impressions),
@@ -76,18 +117,30 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
       costInLocalCurrency: linkedinMetrics.costinlocalcurrency || linkedinMetrics.costInLocalCurrency || '0',
     },
     customIntegration: {
-      // Advertising metrics
       impressions: parseNum(customIntegrationData.impressions),
       clicks: parseNum(customIntegrationData.clicks),
       engagements: parseNum(customIntegrationData.engagements),
       conversions: parseNum(customIntegrationData.conversions),
       leads: parseNum(customIntegrationData.leads),
       spend: customIntegrationData.spend || '0',
-      // Website analytics metrics
       sessions: parseNum(customIntegrationData.sessions),
       users: parseNum(customIntegrationData.users),
       pageviews: parseNum(customIntegrationData.pageviews),
-    }
+    },
+    meta: {
+      impressions: metaData.impressions,
+      clicks: metaData.clicks,
+      spend: metaData.spend,
+      conversions: metaData.conversions,
+    },
+    ga4: {
+      sessions: ga4Data.sessions,
+      users: ga4Data.users,
+      pageviews: ga4Data.pageviews,
+      conversions: ga4Data.conversions,
+      revenue: ga4Data.revenue,
+    },
+    webAnalyticsProvider: ga4Connected ? 'ga4' : 'custom_integration',
   };
   
   return {

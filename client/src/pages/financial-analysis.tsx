@@ -80,6 +80,17 @@ export default function FinancialAnalysis() {
     },
   });
 
+  // Get Meta analytics data
+  const { data: metaData } = useQuery({
+    queryKey: ["/api/meta", campaignId, "analytics"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/meta/${campaignId}/analytics`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+  });
+
   // Demo mode mock data
   const demoLinkedIn = demoMode ? {
     spend: 4250, impressions: 12500, engagements: 1240, clicks: 890,
@@ -95,6 +106,9 @@ export default function FinancialAnalysis() {
       totalClicks: 280, totalConversions: 14 }
   } : null;
   const demoGA4 = demoMode ? { averageOrderValue: 145 } : null;
+  const demoMeta = demoMode ? {
+    summary: { totalImpressions: 28000, totalClicks: 1450, totalSpend: 3100, totalConversions: 62 }
+  } : null;
   const demoSnapshot = demoMode ? {
     totalSpend: 5800, totalConversions: 68,
   } : null;
@@ -103,6 +117,7 @@ export default function FinancialAnalysis() {
   const effectiveCI: any = demoCI || customIntegrationData;
   const effectiveSheets: any = demoSheets || sheetsData;
   const effectiveGA4: any = demoGA4 || ga4Data;
+  const effectiveMeta: any = demoMeta || metaData;
   const effectiveSnapshot: any = demoMode ? demoSnapshot : historicalSnapshot;
 
   const formatNumber = (value: number) => {
@@ -179,15 +194,22 @@ export default function FinancialAnalysis() {
       engagements: effectiveSheets?.summary?.totalEngagements || 0,
       clicks: effectiveSheets?.summary?.totalClicks || 0,
       conversions: effectiveSheets?.summary?.totalConversions || 0,
-    }
+    },
+    meta: {
+      spend: effectiveMeta?.summary?.totalSpend || 0,
+      impressions: effectiveMeta?.summary?.totalImpressions || 0,
+      engagements: 0,
+      clicks: effectiveMeta?.summary?.totalClicks || 0,
+      conversions: effectiveMeta?.summary?.totalConversions || 0,
+    },
   };
 
   // Calculate totals across all platforms
-  const totalSpend = platformMetrics.linkedIn.spend + platformMetrics.customIntegration.spend + platformMetrics.sheets.spend;
-  const totalImpressions = platformMetrics.linkedIn.impressions + platformMetrics.customIntegration.impressions + platformMetrics.sheets.impressions;
-  const totalEngagements = platformMetrics.linkedIn.engagements + platformMetrics.customIntegration.engagements + platformMetrics.sheets.engagements;
-  const totalClicks = platformMetrics.linkedIn.clicks + platformMetrics.customIntegration.clicks + platformMetrics.sheets.clicks;
-  const totalConversions = platformMetrics.linkedIn.conversions + platformMetrics.customIntegration.conversions + platformMetrics.sheets.conversions;
+  const totalSpend = platformMetrics.linkedIn.spend + platformMetrics.customIntegration.spend + platformMetrics.sheets.spend + platformMetrics.meta.spend;
+  const totalImpressions = platformMetrics.linkedIn.impressions + platformMetrics.customIntegration.impressions + platformMetrics.sheets.impressions + platformMetrics.meta.impressions;
+  const totalEngagements = platformMetrics.linkedIn.engagements + platformMetrics.customIntegration.engagements + platformMetrics.sheets.engagements + platformMetrics.meta.engagements;
+  const totalClicks = platformMetrics.linkedIn.clicks + platformMetrics.customIntegration.clicks + platformMetrics.sheets.clicks + platformMetrics.meta.clicks;
+  const totalConversions = platformMetrics.linkedIn.conversions + platformMetrics.customIntegration.conversions + platformMetrics.sheets.conversions + platformMetrics.meta.conversions;
   
   // Get campaign budget and currency
   const campaignBudget = campaign.budget ? parseFloat(campaign.budget) : 0;

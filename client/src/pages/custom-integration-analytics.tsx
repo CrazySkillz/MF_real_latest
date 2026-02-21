@@ -2023,6 +2023,11 @@ export default function CustomIntegrationAnalytics() {
                                 queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=weekly`] });
                                 queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=monthly`] });
                                 queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "snapshots", "historical"] });
+                                // Other data sources used by DeepDive pages
+                                queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId, "analytics"] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-metrics"] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "outcome-totals"] });
                               } catch (error) {
                                 toast({
                                   title: "Error",

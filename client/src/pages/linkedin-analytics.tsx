@@ -1753,6 +1753,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
           queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=monthly`] }),
           // Financial Analysis historical snapshots
           queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "snapshots", "historical"] }),
+          // Other data sources used by DeepDive pages
+          queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId, "analytics"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-metrics"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "outcome-totals"] }),
           // Session-specific queries
           queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] }),
           queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] }),

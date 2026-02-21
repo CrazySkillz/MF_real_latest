@@ -276,14 +276,16 @@ export default function CampaignPerformanceSummary() {
     };
   };
 
-  // Calculate what's changed based on API comparison data
+  // Calculate what's changed: live metrics vs historical snapshot
+  // "Current" = real-time aggregated data from connected sources (updates when LinkedIn/CI data changes)
+  // "Previous" = snapshot from the selected comparison period
   const getChanges = () => {
-    if (!comparisonData?.previous || !comparisonData?.current) {
-      return { changes: [], previousTimestamp: null, currentTimestamp: null };
+    // Use the previous snapshot as baseline; fall back to current snapshot if no older one exists
+    const baseline = comparisonData?.previous || comparisonData?.current;
+    if (!baseline) {
+      return { changes: [], baselineTimestamp: null };
     }
 
-    const prev = comparisonData.previous;
-    const curr = comparisonData.current;
     const changes: { metric: string; current: number; previous: number; change: number; pctChange: number; direction: string; isCurrency?: boolean }[] = [];
 
     const addChange = (metric: string, currVal: number, prevVal: number, isCurrency = false) => {
@@ -302,17 +304,17 @@ export default function CampaignPerformanceSummary() {
       }
     };
 
-    addChange("Impressions", parseNum(curr.totalImpressions), parseNum(prev.totalImpressions));
-    addChange("Clicks", parseNum(curr.totalClicks), parseNum(prev.totalClicks));
-    addChange("Engagements", parseNum(curr.totalEngagements), parseNum(prev.totalEngagements));
-    addChange("Conversions", parseNum(curr.totalConversions), parseNum(prev.totalConversions));
-    addChange("Leads", parseNum(curr.totalLeads), parseNum(prev.totalLeads));
-    addChange("Spend", parseNum(curr.totalSpend), parseNum(prev.totalSpend), true);
+    // Compare live aggregated metrics against the historical snapshot
+    addChange("Impressions", totalImpressions, parseNum(baseline.totalImpressions));
+    addChange("Clicks", totalClicks, parseNum(baseline.totalClicks));
+    addChange("Engagements", totalEngagements, parseNum(baseline.totalEngagements));
+    addChange("Conversions", totalConversions, parseNum(baseline.totalConversions));
+    addChange("Leads", totalLeads, parseNum(baseline.totalLeads));
+    addChange("Spend", totalSpend, parseNum(baseline.totalSpend), true);
 
     return {
       changes,
-      previousTimestamp: prev.recordedAt,
-      currentTimestamp: curr.recordedAt,
+      baselineTimestamp: baseline.recordedAt,
     };
   };
 
@@ -743,7 +745,7 @@ export default function CampaignPerformanceSummary() {
                       <div>
                         <CardTitle>What's Changed</CardTitle>
                         <CardDescription className="mt-1.5">
-                          Metric changes compared to a previous snapshot
+                          Live metrics vs historical baseline
                         </CardDescription>
                       </div>
                     </div>
@@ -763,18 +765,17 @@ export default function CampaignPerformanceSummary() {
                   {changeData.changes.length === 0 ? (
                     <div className="text-center py-8">
                       <Clock className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-                      <p className="text-slate-600 dark:text-slate-400 font-medium">No snapshot data available yet</p>
+                      <p className="text-slate-600 dark:text-slate-400 font-medium">No baseline snapshot available yet</p>
                       <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
-                        Snapshots are captured automatically to track changes over time.
-                        {schedulerStatus?.frequency && ` Frequency: ${schedulerStatus.frequency}.`}
-                        {schedulerStatus?.nextRun && ` Next: ${new Date(schedulerStatus.nextRun).toLocaleString()}`}
+                        A baseline snapshot is created automatically when data is first imported.
+                        Changes will appear here once you have a snapshot to compare against.
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {changeData.previousTimestamp && (
+                      {changeData.baselineTimestamp && (
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Comparing current snapshot ({changeData.currentTimestamp ? new Date(changeData.currentTimestamp).toLocaleDateString() : 'now'}) to {new Date(changeData.previousTimestamp).toLocaleDateString()}
+                          Live metrics (now) vs baseline from {new Date(changeData.baselineTimestamp).toLocaleDateString()}
                         </p>
                       )}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

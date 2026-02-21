@@ -803,35 +803,36 @@ export default function CampaignPerformanceSummary() {
                 </CardContent>
               </Card>
 
-              {/* Trend Charts (when snapshots exist) */}
-              {trendSnapshots.length >= 2 && (
-                <Card>
+              {/* Trend Charts — only show when metrics actually changed between data points */}
+              {(() => {
+                const allPoints = trendSnapshots.map((snapshot: any) => {
+                  const d = new Date(snapshot.recordedAt);
+                  return {
+                    date: d.toLocaleString('en-US', { month: 'short', day: 'numeric', ...(trendPeriod === 'daily' ? { hour: 'numeric', minute: '2-digit' } : {}) }),
+                    totalImpressions: parseNum(snapshot.totalImpressions),
+                    totalClicks: parseNum(snapshot.totalClicks),
+                    totalConversions: parseNum(snapshot.totalConversions),
+                    totalSpend: parseNum(snapshot.totalSpend),
+                  };
+                });
+                const chartData = allPoints.filter((pt, i) => {
+                  if (i === 0) return true;
+                  const prev = allPoints[i - 1];
+                  return pt.totalImpressions !== prev.totalImpressions
+                    || pt.totalClicks !== prev.totalClicks
+                    || pt.totalConversions !== prev.totalConversions
+                    || pt.totalSpend !== prev.totalSpend;
+                });
+                if (chartData.length < 2) return null;
+                const xAxisInterval = chartData.length <= 8 ? 0 : Math.ceil(chartData.length / 8) - 1;
+                return (
+              <Card>
                   <CardHeader>
                     <CardTitle>Metric Trends</CardTitle>
                     <CardDescription className="mt-1.5">How your metrics have changed over time</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {(() => {
-                      const chartData = trendSnapshots.map((snapshot: any) => {
-                        const metrics = snapshot.metrics || {};
-                        const lm = metrics.linkedin || {};
-                        const cm = metrics.customIntegration || {};
-                        const d = new Date(snapshot.recordedAt);
-                        return {
-                          date: d.toLocaleString('en-US', { month: 'short', day: 'numeric', ...(trendPeriod === 'daily' ? { hour: 'numeric', minute: '2-digit' } : {}) }),
-                          linkedinImpressions: lm.impressions || 0,
-                          linkedinClicks: lm.clicks || 0,
-                          linkedinConversions: lm.conversions || 0,
-                          ciConversions: cm.conversions || 0,
-                          websiteSessions: cm.sessions || 0,
-                          totalImpressions: parseNum(snapshot.totalImpressions),
-                          totalClicks: parseNum(snapshot.totalClicks),
-                          totalConversions: parseNum(snapshot.totalConversions),
-                          totalSpend: parseNum(snapshot.totalSpend),
-                        };
-                      });
-                      // Show at most ~8 ticks so labels don't overlap
-                      const xAxisInterval = chartData.length <= 8 ? 0 : Math.ceil(chartData.length / 8) - 1;
 
                       return (
                         <div className="space-y-6">
@@ -892,7 +893,8 @@ export default function CampaignPerformanceSummary() {
                     })()}
                   </CardContent>
                 </Card>
-              )}
+                );
+              })()}
             </TabsContent>
 
             {/* Insights Tab */}

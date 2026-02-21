@@ -816,8 +816,9 @@ export default function CampaignPerformanceSummary() {
                         const metrics = snapshot.metrics || {};
                         const lm = metrics.linkedin || {};
                         const cm = metrics.customIntegration || {};
+                        const d = new Date(snapshot.recordedAt);
                         return {
-                          date: new Date(snapshot.recordedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: trendPeriod === 'daily' ? 'numeric' : undefined }),
+                          date: d.toLocaleString('en-US', { month: 'short', day: 'numeric', ...(trendPeriod === 'daily' ? { hour: 'numeric', minute: '2-digit' } : {}) }),
                           linkedinImpressions: lm.impressions || 0,
                           linkedinClicks: lm.clicks || 0,
                           linkedinConversions: lm.conversions || 0,
@@ -829,6 +830,8 @@ export default function CampaignPerformanceSummary() {
                           totalSpend: parseNum(snapshot.totalSpend),
                         };
                       });
+                      // Show at most ~8 ticks so labels don't overlap
+                      const xAxisInterval = chartData.length <= 8 ? 0 : Math.ceil(chartData.length / 8) - 1;
 
                       return (
                         <div className="space-y-6">
@@ -838,7 +841,7 @@ export default function CampaignPerformanceSummary() {
                               <ResponsiveContainer width="100%" height={220}>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                  <XAxis dataKey="date" className="text-xs" />
+                                  <XAxis dataKey="date" className="text-xs" interval={xAxisInterval} angle={-30} textAnchor="end" height={50} tick={{ fontSize: 11 }} />
                                   <YAxis className="text-xs" tickFormatter={(v) => v.toLocaleString()} />
                                   <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => v.toLocaleString()} />
                                   <Line type="monotone" dataKey="totalImpressions" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
@@ -850,7 +853,7 @@ export default function CampaignPerformanceSummary() {
                               <ResponsiveContainer width="100%" height={220}>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                  <XAxis dataKey="date" className="text-xs" />
+                                  <XAxis dataKey="date" className="text-xs" interval={xAxisInterval} angle={-30} textAnchor="end" height={50} tick={{ fontSize: 11 }} />
                                   <YAxis className="text-xs" />
                                   <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => v.toLocaleString()} />
                                   <Line type="monotone" dataKey="totalClicks" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
@@ -864,7 +867,7 @@ export default function CampaignPerformanceSummary() {
                               <ResponsiveContainer width="100%" height={220}>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                  <XAxis dataKey="date" className="text-xs" />
+                                  <XAxis dataKey="date" className="text-xs" interval={xAxisInterval} angle={-30} textAnchor="end" height={50} tick={{ fontSize: 11 }} />
                                   <YAxis className="text-xs" />
                                   <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => v.toLocaleString()} />
                                   <Line type="monotone" dataKey="totalConversions" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
@@ -876,7 +879,7 @@ export default function CampaignPerformanceSummary() {
                               <ResponsiveContainer width="100%" height={220}>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                  <XAxis dataKey="date" className="text-xs" />
+                                  <XAxis dataKey="date" className="text-xs" interval={xAxisInterval} angle={-30} textAnchor="end" height={50} tick={{ fontSize: 11 }} />
                                   <YAxis className="text-xs" tickFormatter={(v) => `$${v.toLocaleString()}`} />
                                   <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => `$${parseFloat(v).toLocaleString()}`} />
                                   <Line type="monotone" dataKey="totalSpend" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />

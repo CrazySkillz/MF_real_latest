@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SiLinkedin } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Campaign {
   id: string;
@@ -26,7 +26,6 @@ export default function CampaignPerformanceSummary() {
   const campaignId = params?.id;
   const [comparisonType, setComparisonType] = useState<'yesterday' | 'last_week' | 'last_month'>('yesterday');
   const [trendPeriod, setTrendPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
-  const [metricView, setMetricView] = useState<'aggregated' | 'breakdown'>('aggregated');
   const [demoMode, setDemoMode] = useState(false);
   const { toast } = useToast();
 
@@ -70,13 +69,13 @@ export default function CampaignPerformanceSummary() {
     current: any | null;
     previous: any | null;
   }>({
-    queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison`, comparisonType],
+    queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`],
     enabled: !!campaignId,
   });
 
   // Fetch trend snapshots for time-series analysis
-  const { data: trendSnapshots = [], isLoading: snapshotsLoading } = useQuery<any[]>({
-    queryKey: [`/api/campaigns/${campaignId}/snapshots`, trendPeriod],
+  const { data: trendSnapshots = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaignId}/snapshots?period=${trendPeriod}`],
     enabled: !!campaignId,
   });
 
@@ -280,53 +279,44 @@ export default function CampaignPerformanceSummary() {
   // Calculate what's changed based on API comparison data
   const getChanges = () => {
     if (!comparisonData?.previous || !comparisonData?.current) {
-      return { changes: [], timestamp: null };
+      return { changes: [], previousTimestamp: null, currentTimestamp: null };
     }
 
     const prev = comparisonData.previous;
     const curr = comparisonData.current;
-    const changes = [];
+    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number; direction: string; isCurrency?: boolean }[] = [];
 
-    const impChange = parseNum(curr.totalImpressions) - parseNum(prev.totalImpressions);
-    const engChange = parseNum(curr.totalEngagements) - parseNum(prev.totalEngagements);
-    const clickChange = parseNum(curr.totalClicks) - parseNum(prev.totalClicks);
-    const convChange = parseNum(curr.totalConversions) - parseNum(prev.totalConversions);
+    const addChange = (metric: string, currVal: number, prevVal: number, isCurrency = false) => {
+      const change = currVal - prevVal;
+      const pctChange = prevVal > 0 ? ((change / prevVal) * 100) : (currVal > 0 ? 100 : 0);
+      if (Math.abs(change) > 0 || currVal > 0 || prevVal > 0) {
+        changes.push({
+          metric,
+          current: currVal,
+          previous: prevVal,
+          change,
+          pctChange,
+          direction: change > 0 ? "up" : change < 0 ? "down" : "flat",
+          isCurrency,
+        });
+      }
+    };
 
-    if (Math.abs(impChange) > 0) {
-      changes.push({
-        metric: "Total Impressions",
-        change: impChange,
-        direction: impChange > 0 ? "up" : "down"
-      });
-    }
-    if (Math.abs(engChange) > 0) {
-      changes.push({
-        metric: "Total Engagements",
-        change: engChange,
-        direction: engChange > 0 ? "up" : "down"
-      });
-    }
-    if (Math.abs(clickChange) > 0) {
-      changes.push({
-        metric: "Total Clicks",
-        change: clickChange,
-        direction: clickChange > 0 ? "up" : "down"
-      });
-    }
-    if (Math.abs(convChange) > 0) {
-      changes.push({
-        metric: "Total Conversions",
-        change: convChange,
-        direction: convChange > 0 ? "up" : "down"
-      });
-    }
+    addChange("Impressions", parseNum(curr.totalImpressions), parseNum(prev.totalImpressions));
+    addChange("Clicks", parseNum(curr.totalClicks), parseNum(prev.totalClicks));
+    addChange("Engagements", parseNum(curr.totalEngagements), parseNum(prev.totalEngagements));
+    addChange("Conversions", parseNum(curr.totalConversions), parseNum(prev.totalConversions));
+    addChange("Leads", parseNum(curr.totalLeads), parseNum(prev.totalLeads));
+    addChange("Spend", parseNum(curr.totalSpend), parseNum(prev.totalSpend), true);
 
-    return { changes: changes.slice(0, 4), timestamp: prev.recordedAt };
+    return {
+      changes,
+      previousTimestamp: prev.recordedAt,
+      currentTimestamp: curr.recordedAt,
+    };
   };
 
   const changeData = getChanges();
-  const changes = changeData.changes;
-  const snapshotTimestamp = changeData.timestamp;
 
   // Data source status
   const dataSources = [
@@ -567,43 +557,57 @@ export default function CampaignPerformanceSummary() {
                   <CardDescription>Campaign health overview</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="border-l-4 pl-4 py-2" style={{ borderColor: healthScore >= 70 ? '#22c55e' : healthScore >= 50 ? '#eab308' : '#ef4444' }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-3">
-                          <span className="font-semibold text-slate-900 dark:text-white">Overall Health Score</span>
-                          <Badge variant={healthScore >= 70 ? "default" : "destructive"}>
-                            {healthStatus.label}
-                          </Badge>
-                        </div>
-                        <span className="text-2xl font-bold text-slate-900 dark:text-white">{healthScore}%</span>
-                      </div>
+                  {totalMetrics === 0 ? (
+                    <div className="text-center py-6">
+                      <AlertTriangle className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+                      <p className="text-slate-600 dark:text-slate-400 font-medium">No KPIs or Benchmarks configured</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
+                        Set up KPIs and Benchmarks on the campaign page to see health tracking here.
+                      </p>
                     </div>
-                    
-                    <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpisAboveTarget >= effectiveKpis.length / 2 ? '#22c55e' : '#ef4444' }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-3">
-                          <span className="font-semibold text-slate-900 dark:text-white">KPIs Above Target</span>
-                          <Badge variant={kpisAboveTarget >= effectiveKpis.length / 2 ? "default" : "destructive"}>
-                            {kpisAboveTarget >= effectiveKpis.length / 2 ? "Majority On Track" : "Needs Attention"}
-                          </Badge>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="border-l-4 pl-4 py-2" style={{ borderColor: healthScore >= 70 ? '#22c55e' : healthScore >= 50 ? '#eab308' : '#ef4444' }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-3">
+                            <span className="font-semibold text-slate-900 dark:text-white">Overall Health Score</span>
+                            <Badge variant={healthScore >= 70 ? "default" : "destructive"}>
+                              {healthStatus.label}
+                            </Badge>
+                          </div>
+                          <span className="text-2xl font-bold text-slate-900 dark:text-white">{healthScore}%</span>
                         </div>
-                        <span className="text-sm text-slate-500 dark:text-slate-400">{kpisAboveTarget} of {effectiveKpis.length}</span>
                       </div>
-                    </div>
-                    
-                    <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? '#22c55e' : '#ef4444' }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-3">
-                          <span className="font-semibold text-slate-900 dark:text-white">Benchmarks Above Benchmark</span>
-                          <Badge variant={benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? "default" : "destructive"}>
-                            {benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? "Above Industry Average" : "Below Industry Average"}
-                          </Badge>
+
+                      {effectiveKpis.length > 0 && (
+                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpisAboveTarget >= effectiveKpis.length / 2 ? '#22c55e' : '#ef4444' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-3">
+                              <span className="font-semibold text-slate-900 dark:text-white">KPIs Above Target</span>
+                              <Badge variant={kpisAboveTarget >= effectiveKpis.length / 2 ? "default" : "destructive"}>
+                                {kpisAboveTarget >= effectiveKpis.length / 2 ? "Majority On Track" : "Needs Attention"}
+                              </Badge>
+                            </div>
+                            <span className="text-sm text-slate-500 dark:text-slate-400">{kpisAboveTarget} of {effectiveKpis.length}</span>
+                          </div>
                         </div>
-                        <span className="text-sm text-slate-500 dark:text-slate-400">{benchmarksAboveTarget} of {effectiveBenchmarks.length}</span>
-                      </div>
+                      )}
+
+                      {effectiveBenchmarks.length > 0 && (
+                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? '#22c55e' : '#ef4444' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-3">
+                              <span className="font-semibold text-slate-900 dark:text-white">Benchmarks Above Industry Average</span>
+                              <Badge variant={benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? "default" : "destructive"}>
+                                {benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? "Above Average" : "Below Average"}
+                              </Badge>
+                            </div>
+                            <span className="text-sm text-slate-500 dark:text-slate-400">{benchmarksAboveTarget} of {effectiveBenchmarks.length}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -730,6 +734,7 @@ export default function CampaignPerformanceSummary() {
 
             {/* What's Changed Tab */}
             <TabsContent value="changes" className="space-y-6">
+              {/* Delta Cards */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -738,359 +743,187 @@ export default function CampaignPerformanceSummary() {
                       <div>
                         <CardTitle>What's Changed</CardTitle>
                         <CardDescription className="mt-1.5">
-                          {trendSnapshots.length < 2 
-                            ? "Current metrics overview" 
-                            : "Metric trends over time"}
+                          Metric changes compared to a previous snapshot
                         </CardDescription>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      {trendSnapshots.length < 2 && (
-                        <Tabs value={metricView} onValueChange={(value: any) => setMetricView(value)} className="w-auto">
-                          <TabsList data-testid="tabs-metric-view">
-                            <TabsTrigger value="aggregated" data-testid="tab-aggregated">Aggregated</TabsTrigger>
-                            <TabsTrigger value="breakdown" data-testid="tab-breakdown">By Source</TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                      )}
-                      {trendSnapshots.length >= 2 && (
-                        <Select value={trendPeriod} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setTrendPeriod(value)}>
-                          <SelectTrigger className="w-[180px]" data-testid="select-trend-period">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="daily" data-testid="option-trend-daily">Last 24 Hours</SelectItem>
-                            <SelectItem value="weekly" data-testid="option-trend-weekly">Last 7 Days</SelectItem>
-                            <SelectItem value="monthly" data-testid="option-trend-monthly">Last 30 Days</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
+                    <Select value={comparisonType} onValueChange={(value: 'yesterday' | 'last_week' | 'last_month') => setComparisonType(value)}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yesterday">vs Yesterday</SelectItem>
+                        <SelectItem value="last_week">vs Last Week</SelectItem>
+                        <SelectItem value="last_month">vs Last Month</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {snapshotsLoading ? (
-                    <div className="space-y-6">
-                      <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                        <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                      </div>
-                    </div>
-                  ) : trendSnapshots.length < 2 ? (
-                    <div className="space-y-6">
-                      {metricView === 'aggregated' ? (
-                        /* Aggregated View - Show totals */
-                        (() => {
-                          const ciMetrics = effectiveCI?.metrics || {};
-
-                          // Match Overview tab calculation exactly
-                          const linkedinImpressions = effectiveLinkedin?.impressions || 0;
-                          const ciAdImpressions = ciMetrics.impressions || 0;
-                          const ciWebPageviews = ciMetrics.pageviews || 0;
-                          const advertisingImpressions = linkedinImpressions + ciAdImpressions;
-                          const totalImpressions = advertisingImpressions + ciWebPageviews;
-                          
-                          const aggregatedData = [
-                            { 
-                              metric: 'Total Impressions', 
-                              value: totalImpressions,
-                              breakdown: `Ad: ${advertisingImpressions.toLocaleString()} | Web: ${ciWebPageviews.toLocaleString()}`
-                            },
-                            { 
-                              metric: 'Total Clicks', 
-                              value: (effectiveLinkedin?.clicks || 0) + (ciMetrics.adClicks || 0) + (ciMetrics.emailClicks || 0)
-                            },
-                            { 
-                              metric: 'Total Engagements', 
-                              value: (effectiveLinkedin?.totalEngagements || 0) + (ciMetrics.socialEngagements || 0)
-                            },
-                            { 
-                              metric: 'Total Conversions', 
-                              value: (effectiveLinkedin?.conversions || 0) + (ciMetrics.goalCompletions || 0)
-                            },
-                            { 
-                              metric: 'Total Leads', 
-                              value: effectiveLinkedin?.leads || 0
-                            },
-                            { 
-                              metric: 'Total Sessions', 
-                              value: ciMetrics.sessions || 0
-                            },
-                          ];
-
-                          return (
-                            <div className="grid grid-cols-3 gap-4">
-                              {aggregatedData.map((item, index) => (
-                                <div key={index}>
-                                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">{item.metric}</h4>
-                                  <ResponsiveContainer width="100%" height={200}>
-                                    <BarChart data={[item]} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                                      <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                      <XAxis dataKey="metric" className="text-xs" hide />
-                                      <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
-                                      <Tooltip 
-                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                        formatter={(value: any) => value.toLocaleString()}
-                                      />
-                                      <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-                                    </BarChart>
-                                  </ResponsiveContainer>
-                                  {item.breakdown && (
-                                    <p className="text-xs text-muted-foreground text-center mt-2">
-                                      {item.breakdown}
-                                    </p>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })()
-                      ) : (
-                        /* Breakdown View - Show by source */
-                        (() => {
-                          const ciMetrics = effectiveCI?.metrics || {};
-
-                          // LinkedIn Ads metrics
-                          const linkedinData = [
-                            { metric: 'Impressions', value: effectiveLinkedin?.impressions || 0 },
-                            { metric: 'Clicks', value: effectiveLinkedin?.clicks || 0 },
-                            { metric: 'Engagements', value: effectiveLinkedin?.totalEngagements || 0 },
-                            { metric: 'Conversions', value: effectiveLinkedin?.conversions || 0 },
-                            { metric: 'Leads', value: effectiveLinkedin?.leads || 0 },
-                            { metric: 'Ad Spend', value: parseFloat(effectiveLinkedin?.costInLocalCurrency || '0') },
-                          ];
-
-                          // Website Analytics metrics
-                          const websiteData = [
-                            { metric: 'Users', value: ciMetrics.users || 0 },
-                            { metric: 'Sessions', value: ciMetrics.sessions || 0 },
-                            { metric: 'Pageviews', value: ciMetrics.pageviews || 0 },
-                            { metric: 'Bounce Rate', value: parseFloat(ciMetrics.bounceRate || '0') },
-                            { metric: 'Avg Session Duration', value: parseFloat(ciMetrics.avgSessionDuration || '0') },
-                            { metric: 'Goal Completions', value: ciMetrics.goalCompletions || 0 },
-                            { metric: 'Ad Impressions', value: ciMetrics.adImpressions || 0 },
-                            { metric: 'Ad Clicks', value: ciMetrics.adClicks || 0 },
-                            { metric: 'Ad Spend', value: parseFloat(ciMetrics.adSpend || '0') },
-                            { metric: 'Email Opens', value: ciMetrics.emailOpens || 0 },
-                            { metric: 'Email Clicks', value: ciMetrics.emailClicks || 0 },
-                            { metric: 'Email Bounces', value: ciMetrics.emailBounces || 0 },
-                            { metric: 'Social Impressions', value: ciMetrics.socialImpressions || 0 },
-                            { metric: 'Social Engagements', value: ciMetrics.socialEngagements || 0 },
-                            { metric: 'Social Clicks', value: ciMetrics.socialClicks || 0 },
-                          ];
-
-                          return (
-                            <>
-                              {/* LinkedIn Ads Metrics */}
-                              <div className="mb-8">
-                                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
-                                  <SiLinkedin className="w-5 h-5 mr-2 text-blue-600" />
-                                  LinkedIn Ads
-                                </h3>
-                                <div className="grid grid-cols-3 gap-4">
-                                  {linkedinData.map((item, index) => (
-                                    <div key={index}>
-                                      <h4 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">{item.metric}</h4>
-                                      <ResponsiveContainer width="100%" height={150}>
-                                        <BarChart data={[item]} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                                          <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                          <XAxis dataKey="metric" className="text-xs" hide />
-                                          <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
-                                          <Tooltip 
-                                            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                            formatter={(value: any) => [
-                                              item.metric.includes('Spend') ? `$${parseFloat(value).toFixed(2)}` : 
-                                              value.toLocaleString(),
-                                              item.metric
-                                            ]}
-                                          />
-                                          <Bar dataKey="value" fill="#0077B5" radius={[8, 8, 0, 0]} />
-                                        </BarChart>
-                                      </ResponsiveContainer>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Website Analytics Metrics */}
-                              <div>
-                                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                                  Website Analytics (Custom Integration)
-                                </h3>
-                                <div className="grid grid-cols-3 gap-4">
-                                  {websiteData.filter(item => item.value > 0).map((item, index) => (
-                                    <div key={index}>
-                                      <h4 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">{item.metric}</h4>
-                                      <ResponsiveContainer width="100%" height={150}>
-                                        <BarChart data={[item]} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                                          <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                          <XAxis dataKey="metric" className="text-xs" hide />
-                                          <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
-                                          <Tooltip 
-                                            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                            formatter={(value: any) => [
-                                              item.metric.includes('Spend') ? `$${parseFloat(value).toFixed(2)}` : 
-                                              item.metric === 'Bounce Rate' ? `${parseFloat(value).toFixed(2)}%` :
-                                              item.metric === 'Avg Session Duration' ? `${Math.floor(value / 60)}m ${Math.floor(value % 60)}s` :
-                                              value.toLocaleString(),
-                                              item.metric
-                                            ]}
-                                          />
-                                          <Bar dataKey="value" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
-                                        </BarChart>
-                                      </ResponsiveContainer>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </>
-                          );
-                        })()
-                      )}
-
-                      {trendSnapshots.length === 0 && schedulerStatus && (
-                        <div className="text-center py-4 text-xs text-slate-500 dark:text-slate-400">
-                          Trend charts will appear here once multiple snapshots are captured ({schedulerStatus.frequency}).
-                          {schedulerStatus.nextRun && ` Next snapshot: ${new Date(schedulerStatus.nextRun).toLocaleString()}`}
-                        </div>
-                      )}
+                  {changeData.changes.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Clock className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+                      <p className="text-slate-600 dark:text-slate-400 font-medium">No snapshot data available yet</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
+                        Snapshots are captured automatically to track changes over time.
+                        {schedulerStatus?.frequency && ` Frequency: ${schedulerStatus.frequency}.`}
+                        {schedulerStatus?.nextRun && ` Next: ${new Date(schedulerStatus.nextRun).toLocaleString()}`}
+                      </p>
                     </div>
                   ) : (
-                    <div className="space-y-6">
-                      {(() => {
-                        // Transform snapshots into per-source line chart data
-                        const chartData = trendSnapshots.map((snapshot: any) => {
-                          const metrics = snapshot.metrics || {};
-                          const linkedinMetrics = metrics.linkedin || {};
-                          const ciMetrics = metrics.customIntegration || {};
-                          
-                          return {
-                            date: new Date(snapshot.recordedAt).toLocaleString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric', 
-                              hour: trendPeriod === 'daily' ? 'numeric' : undefined 
-                            }),
-                            // LinkedIn metrics
-                            linkedinImpressions: linkedinMetrics.impressions || 0,
-                            linkedinClicks: linkedinMetrics.clicks || 0,
-                            linkedinEngagements: linkedinMetrics.totalEngagements || 0,
-                            linkedinConversions: linkedinMetrics.conversions || 0,
-                            linkedinLeads: linkedinMetrics.leads || 0,
-                            linkedinSpend: parseFloat(linkedinMetrics.costInLocalCurrency || '0'),
-                            // Website Analytics metrics
-                            websiteSessions: ciMetrics.sessions || 0,
-                            websiteUsers: ciMetrics.users || 0,
-                            websitePageviews: ciMetrics.pageviews || 0,
-                            // Custom Integration conversions (mapped from advertising/web analytics)
-                            ciConversions: ciMetrics.conversions || 0,
-                          };
-                        });
+                    <div className="space-y-4">
+                      {changeData.previousTimestamp && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Comparing current snapshot ({changeData.currentTimestamp ? new Date(changeData.currentTimestamp).toLocaleDateString() : 'now'}) to {new Date(changeData.previousTimestamp).toLocaleDateString()}
+                        </p>
+                      )}
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {changeData.changes.map((item, idx) => {
+                          const isUp = item.direction === "up";
+                          const isDown = item.direction === "down";
+                          const isFlat = item.direction === "flat";
+                          // For spend, down is good (green). For everything else, up is good.
+                          const isPositive = item.isCurrency ? isDown : isUp;
+                          const isNegative = item.isCurrency ? isUp : isDown;
 
-                        if (chartData.length === 0) {
-                          return null;
-                        }
-                        
-                        return (
-                          <>
-                            {/* Impressions by Source */}
-                            <div>
-                              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Impressions Over Time (By Source)</h4>
-                              <ResponsiveContainer width="100%" height={250}>
-                                <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                  <XAxis dataKey="date" className="text-xs" />
-                                  <YAxis className="text-xs" tickFormatter={(value) => value.toLocaleString()} />
-                                  <Tooltip 
-                                    contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }}
-                                    formatter={(value: any) => value.toLocaleString()}
-                                  />
-                                  <Legend />
-                                  <Line type="monotone" dataKey="linkedinImpressions" name="LinkedIn Ads" stroke="#0077B5" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </div>
-
-                            {/* Clicks & Conversions */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Clicks Over Time (By Source)</h4>
-                                <ResponsiveContainer width="100%" height={220}>
-                                  <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                    <XAxis dataKey="date" className="text-xs" />
-                                    <YAxis className="text-xs" />
-                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }} />
-                                    <Legend />
-                                    <Line type="monotone" dataKey="linkedinClicks" name="LinkedIn Ads" stroke="#0077B5" strokeWidth={2} dot={{ r: 3 }} />
-                                  </LineChart>
-                                </ResponsiveContainer>
+                          return (
+                            <div key={idx} className={`p-4 rounded-lg border ${
+                              isPositive ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' :
+                              isNegative ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20' :
+                              'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
+                            }`}>
+                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">{item.metric}</div>
+                              <div className="flex items-baseline space-x-2">
+                                <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                                  {item.isCurrency ? `$${item.current.toLocaleString()}` : item.current.toLocaleString()}
+                                </span>
                               </div>
-
-                              <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Conversions Over Time (By Source)</h4>
-                                <ResponsiveContainer width="100%" height={220}>
-                                  <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                    <XAxis dataKey="date" className="text-xs" />
-                                    <YAxis className="text-xs" />
-                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }} />
-                                    <Legend />
-                                    <Line type="monotone" dataKey="linkedinConversions" name="LinkedIn Ads" stroke="#0077B5" strokeWidth={2} dot={{ r: 3 }} />
-                                    <Line type="monotone" dataKey="ciConversions" name="Custom Integration" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} />
-                                  </LineChart>
-                                </ResponsiveContainer>
+                              <div className="flex items-center mt-2 space-x-2">
+                                {isUp && <TrendingUp className={`w-4 h-4 ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />}
+                                {isDown && <TrendingDown className={`w-4 h-4 ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />}
+                                <span className={`text-sm font-semibold ${
+                                  isPositive ? 'text-green-700 dark:text-green-400' :
+                                  isNegative ? 'text-red-700 dark:text-red-400' :
+                                  'text-slate-600 dark:text-slate-400'
+                                }`}>
+                                  {isFlat ? 'No change' :
+                                    `${isUp ? '+' : ''}${item.isCurrency ? '$' + item.change.toLocaleString() : item.change.toLocaleString()} (${isUp ? '+' : ''}${item.pctChange.toFixed(1)}%)`
+                                  }
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                                Previous: {item.isCurrency ? `$${item.previous.toLocaleString()}` : item.previous.toLocaleString()}
                               </div>
                             </div>
-
-                            {/* Engagements, Sessions & Leads */}
-                            <div className="grid grid-cols-3 gap-4">
-                              <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Engagements (LinkedIn)</h4>
-                                <ResponsiveContainer width="100%" height={200}>
-                                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                    <XAxis dataKey="date" className="text-xs" />
-                                    <YAxis className="text-xs" />
-                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }} />
-                                    <Line type="monotone" dataKey="linkedinEngagements" stroke="#0077B5" strokeWidth={2} dot={{ r: 3 }} />
-                                  </LineChart>
-                                </ResponsiveContainer>
-                              </div>
-
-                              <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Sessions (Website)</h4>
-                                <ResponsiveContainer width="100%" height={200}>
-                                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                    <XAxis dataKey="date" className="text-xs" />
-                                    <YAxis className="text-xs" />
-                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }} />
-                                    <Line type="monotone" dataKey="websiteSessions" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} />
-                                  </LineChart>
-                                </ResponsiveContainer>
-                              </div>
-
-                              <div>
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Leads (LinkedIn)</h4>
-                                <ResponsiveContainer width="100%" height={200}>
-                                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                    <XAxis dataKey="date" className="text-xs" />
-                                    <YAxis className="text-xs" />
-                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e2e8f0' }} />
-                                    <Line type="monotone" dataKey="linkedinLeads" stroke="#0077B5" strokeWidth={2} dot={{ r: 3 }} />
-                                  </LineChart>
-                                </ResponsiveContainer>
-                              </div>
-                            </div>
-                          </>
-                        );
-                      })()}
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </CardContent>
               </Card>
+
+              {/* Trend Charts (when snapshots exist) */}
+              {trendSnapshots.length >= 2 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Metric Trends</CardTitle>
+                        <CardDescription className="mt-1.5">Performance over time from {trendSnapshots.length} snapshots</CardDescription>
+                      </div>
+                      <Select value={trendPeriod} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setTrendPeriod(value)}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Last 24 Hours</SelectItem>
+                          <SelectItem value="weekly">Last 7 Days</SelectItem>
+                          <SelectItem value="monthly">Last 30 Days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const chartData = trendSnapshots.map((snapshot: any) => {
+                        const metrics = snapshot.metrics || {};
+                        const lm = metrics.linkedin || {};
+                        const cm = metrics.customIntegration || {};
+                        return {
+                          date: new Date(snapshot.recordedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: trendPeriod === 'daily' ? 'numeric' : undefined }),
+                          linkedinImpressions: lm.impressions || 0,
+                          linkedinClicks: lm.clicks || 0,
+                          linkedinConversions: lm.conversions || 0,
+                          ciConversions: cm.conversions || 0,
+                          websiteSessions: cm.sessions || 0,
+                          totalImpressions: parseNum(snapshot.totalImpressions),
+                          totalClicks: parseNum(snapshot.totalClicks),
+                          totalConversions: parseNum(snapshot.totalConversions),
+                          totalSpend: parseNum(snapshot.totalSpend),
+                        };
+                      });
+
+                      return (
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Impressions</h4>
+                              <ResponsiveContainer width="100%" height={220}>
+                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                  <XAxis dataKey="date" className="text-xs" />
+                                  <YAxis className="text-xs" tickFormatter={(v) => v.toLocaleString()} />
+                                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => v.toLocaleString()} />
+                                  <Line type="monotone" dataKey="totalImpressions" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Clicks</h4>
+                              <ResponsiveContainer width="100%" height={220}>
+                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                  <XAxis dataKey="date" className="text-xs" />
+                                  <YAxis className="text-xs" />
+                                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => v.toLocaleString()} />
+                                  <Line type="monotone" dataKey="totalClicks" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Conversions</h4>
+                              <ResponsiveContainer width="100%" height={220}>
+                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                  <XAxis dataKey="date" className="text-xs" />
+                                  <YAxis className="text-xs" />
+                                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => v.toLocaleString()} />
+                                  <Line type="monotone" dataKey="totalConversions" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Spend</h4>
+                              <ResponsiveContainer width="100%" height={220}>
+                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+                                  <XAxis dataKey="date" className="text-xs" />
+                                  <YAxis className="text-xs" tickFormatter={(v) => `$${v.toLocaleString()}`} />
+                                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => `$${parseFloat(v).toLocaleString()}`} />
+                                  <Line type="monotone" dataKey="totalSpend" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Insights Tab */}

@@ -1,15 +1,16 @@
+import { useState, useMemo } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, TrendingUp, Target, Users, MousePointer, DollarSign, Eye, Clock, AlertCircle, Zap, Brain, GitCompare, Activity, ArrowUp, ArrowDown, Info } from "lucide-react";
+import { ArrowLeft, BarChart3, TrendingUp, Target, Users, MousePointer, DollarSign, Eye, Clock, AlertCircle, Zap, Brain, GitCompare, Activity, ArrowUp, ArrowDown, Info, FlaskConical } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { format } from "date-fns";
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
@@ -17,6 +18,7 @@ const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'
 
 export default function PlatformComparison() {
   const { id: campaignId } = useParams();
+  const [demoMode, setDemoMode] = useState(false);
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
@@ -43,6 +45,18 @@ export default function PlatformComparison() {
   const { data: customIntegrationData } = useQuery({
     queryKey: ["/api/custom-integration", campaignId],
     enabled: !!campaignId,
+  });
+
+  // Unified outcome-totals for Meta, GA4, revenue sources, and real revenue data
+  const { data: outcomeTotals } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "outcome-totals", "30days", demoMode ? "demo" : "live"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=30days${demoMode ? "&demo=1" : ""}`;
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
   });
 
   if (campaignLoading) {
@@ -113,72 +127,135 @@ export default function PlatformComparison() {
 
   // Build platform metrics from real connected data
   const buildPlatformMetrics = () => {
-    const platforms = [];
-    const estimatedAOV = ga4Data?.averageOrderValue || linkedInData?.averageOrderValue || customIntegrationData?.metrics?.averageOrderValue || 50;
+    const platforms: any[] = [];
+    const num = (v: any) => {
+      if (v === null || typeof v === "undefined" || v === "") return 0;
+      const n = typeof v === "string" ? parseFloat(v) : Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
 
-    // LinkedIn Platform
-    if (linkedInData) {
-      const linkedInSpend = linkedInData.spend || 0;
-      const linkedInImpressions = linkedInData.impressions || 0;
-      const linkedInClicks = linkedInData.clicks || 0;
-      const linkedInConversions = linkedInData.conversions || 0;
-      const linkedInCTR = linkedInImpressions > 0 ? (linkedInClicks / linkedInImpressions) * 100 : 0;
-      const linkedInCPC = linkedInClicks > 0 ? linkedInSpend / linkedInClicks : 0;
-      const linkedInConvRate = linkedInClicks > 0 ? (linkedInConversions / linkedInClicks) * 100 : 0;
-      
-      // Use actual revenue from backend (calculated from conversion value) or fallback to estimatedAOV
-      // Use ?? instead of || to preserve legitimate zero values (zero conversions = $0 revenue)
-      const linkedInRevenue = linkedInData.revenue ?? (linkedInConversions * estimatedAOV);
-      const linkedInROAS = linkedInData.roas ?? (linkedInSpend > 0 ? linkedInRevenue / linkedInSpend : 0);
-      const linkedInROI = linkedInData.roi ?? (linkedInSpend > 0 ? ((linkedInRevenue - linkedInSpend) / linkedInSpend) * 100 : 0);
+    const ot = outcomeTotals;
 
-      platforms.push({
-        platform: 'LinkedIn Ads',
-        impressions: linkedInImpressions,
-        clicks: linkedInClicks,
-        conversions: linkedInConversions,
-        spend: linkedInSpend,
-        ctr: linkedInCTR,
-        cpc: linkedInCPC,
-        conversionRate: linkedInConvRate,
-        roas: linkedInROAS,
-        roi: linkedInROI,
-        qualityScore: 0,
-        reach: linkedInData.reach || 0,
-        engagement: linkedInData.engagements || 0,
-        color: '#0077b5'
-      });
+    // Use outcome-totals as primary data source when available
+    if (ot?.platforms) {
+      // LinkedIn Ads
+      const li = ot.platforms?.linkedin;
+      if (li?.connected || num(li?.spend) > 0) {
+        const spend = num(li.spend);
+        const impressions = num(li.impressions);
+        const clicks = num(li.clicks);
+        const conversions = num(li.conversions);
+        const revenue = num(li.attributedRevenue);
+        platforms.push({
+          platform: 'LinkedIn Ads',
+          impressions, clicks, conversions, spend, revenue,
+          ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+          cpc: clicks > 0 ? spend / clicks : 0,
+          conversionRate: clicks > 0 ? (conversions / clicks) * 100 : 0,
+          roas: num(li.roas) || (spend > 0 ? revenue / spend : 0),
+          roi: num(li.roi) || (spend > 0 ? ((revenue - spend) / spend) * 100 : 0),
+          qualityScore: 0, reach: 0, engagement: 0,
+          color: '#0077b5',
+          isAnalyticsOnly: false,
+        });
+      }
+
+      // Meta Ads
+      const meta = ot.platforms?.meta;
+      if (meta?.connected || num(meta?.spend) > 0) {
+        const spend = num(meta.spend);
+        const impressions = num(meta.impressions);
+        const clicks = num(meta.clicks);
+        const conversions = num(meta.conversions);
+        const revenue = num(meta.attributedRevenue);
+        const roas = spend > 0 ? revenue / spend : 0;
+        const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+        platforms.push({
+          platform: 'Meta Ads',
+          impressions, clicks, conversions, spend, revenue,
+          ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+          cpc: clicks > 0 ? spend / clicks : 0,
+          conversionRate: clicks > 0 ? (conversions / clicks) * 100 : 0,
+          roas, roi,
+          qualityScore: 0, reach: 0, engagement: 0,
+          color: '#1877f2',
+          isAnalyticsOnly: false,
+        });
+      }
+
+      // Custom Integration
+      const custom = ot.platforms?.customIntegration;
+      if (custom?.connected || num(custom?.spend) > 0) {
+        const spend = num(custom.spend);
+        const impressions = num(custom.impressions);
+        const clicks = num(custom.clicks);
+        const conversions = num(custom.conversions);
+        const revenue = num(custom.revenue);
+        const roas = spend > 0 ? revenue / spend : 0;
+        const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+        platforms.push({
+          platform: 'Custom Integration',
+          impressions, clicks, conversions, spend, revenue,
+          ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+          cpc: clicks > 0 ? spend / clicks : 0,
+          conversionRate: clicks > 0 ? (conversions / clicks) * 100 : 0,
+          roas, roi,
+          qualityScore: 0, reach: 0, engagement: num(custom.sessions),
+          color: '#8b5cf6',
+          isAnalyticsOnly: false,
+        });
+      }
+    } else {
+      // Fallback: use separate API calls when outcome-totals unavailable
+      const estimatedAOV = (ga4Data as any)?.averageOrderValue || (linkedInData as any)?.averageOrderValue || (customIntegrationData as any)?.metrics?.averageOrderValue || 50;
+
+      if (linkedInData) {
+        const ld = linkedInData as any;
+        const spend = num(ld.spend); const impressions = num(ld.impressions);
+        const clicks = num(ld.clicks); const conversions = num(ld.conversions);
+        const revenue = ld.revenue ?? (conversions * estimatedAOV);
+        const roas = ld.roas ?? (spend > 0 ? revenue / spend : 0);
+        const roi = ld.roi ?? (spend > 0 ? ((revenue - spend) / spend) * 100 : 0);
+        platforms.push({
+          platform: 'LinkedIn Ads', impressions, clicks, conversions, spend, revenue,
+          ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+          cpc: clicks > 0 ? spend / clicks : 0,
+          conversionRate: clicks > 0 ? (conversions / clicks) * 100 : 0,
+          roas, roi, qualityScore: 0, reach: num(ld.reach), engagement: num(ld.engagements),
+          color: '#0077b5', isAnalyticsOnly: false,
+        });
+      }
+
+      if ((customIntegrationData as any)?.metrics) {
+        const m = (customIntegrationData as any).metrics;
+        const spend = parseFloat(m.spend || '0'); const impressions = num(m.pageviews);
+        const clicks = num(m.clicks); const conversions = num(m.conversions);
+        const revenue = conversions * estimatedAOV;
+        const roas = spend > 0 ? revenue / spend : 0;
+        const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+        platforms.push({
+          platform: 'Custom Integration', impressions, clicks, conversions, spend, revenue,
+          ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+          cpc: clicks > 0 ? spend / clicks : 0,
+          conversionRate: clicks > 0 ? (conversions / clicks) * 100 : 0,
+          roas, roi, qualityScore: 0, reach: num(m.reach), engagement: num(m.sessions),
+          color: '#8b5cf6', isAnalyticsOnly: false,
+        });
+      }
     }
 
-    // Custom Integration Platform
-    // Map GA4/Website metrics: pageviews→impressions, sessions→engagements (consistent with Performance Summary)
-    if (customIntegrationData?.metrics) {
-      const customSpend = parseFloat(customIntegrationData.metrics.spend || '0');
-      const customImpressions = customIntegrationData.metrics.pageviews || 0;
-      const customClicks = customIntegrationData.metrics.clicks || 0;
-      const customConversions = customIntegrationData.metrics.conversions || 0;
-      const customCTR = customImpressions > 0 ? (customClicks / customImpressions) * 100 : 0;
-      const customCPC = customClicks > 0 ? customSpend / customClicks : 0;
-      const customConvRate = customClicks > 0 ? (customConversions / customClicks) * 100 : 0;
-      const customRevenue = customConversions * estimatedAOV;
-      const customROAS = customSpend > 0 ? customRevenue / customSpend : 0;
-      const customROI = customSpend > 0 ? ((customRevenue - customSpend) / customSpend) * 100 : 0;
-
+    // GA4 Analytics (analytics-only — revenue + conversions, no spend/clicks)
+    const ga4 = ot?.ga4;
+    if (ga4?.connected || num(ga4?.revenue) > 0 || num(ga4?.conversions) > 0) {
       platforms.push({
-        platform: 'Custom Integration',
-        impressions: customImpressions,
-        clicks: customClicks,
-        conversions: customConversions,
-        spend: customSpend,
-        ctr: customCTR,
-        cpc: customCPC,
-        conversionRate: customConvRate,
-        roas: customROAS,
-        roi: customROI,
-        qualityScore: 0,
-        reach: customIntegrationData.metrics.reach || 0,
-        engagement: customIntegrationData.metrics.sessions || 0,
-        color: '#8b5cf6'
+        platform: 'GA4 Analytics',
+        impressions: 0, clicks: 0,
+        conversions: num(ga4.conversions),
+        spend: 0, revenue: num(ga4.revenue),
+        ctr: 0, cpc: 0, conversionRate: 0, roas: 0, roi: 0,
+        qualityScore: 0, reach: 0, engagement: num(ga4.sessions),
+        color: '#e37400',
+        isAnalyticsOnly: true,
       });
     }
 
@@ -187,22 +264,46 @@ export default function PlatformComparison() {
 
   const realPlatformMetrics = buildPlatformMetrics();
 
-  // Generate cost analysis data
-  const costAnalysisData = realPlatformMetrics.map(platform => ({
-    name: platform.platform,
-    costPerConversion: platform.conversions > 0 ? platform.spend / platform.conversions : 0,
-    totalSpend: platform.spend,
-    conversions: platform.conversions,
-    efficiency: platform.spend > 0 ? ((platform.conversions / platform.spend) * 100).toFixed(2) : '0'
-  }));
+  // Revenue sources from outcome-totals (Shopify, HubSpot, Salesforce)
+  const revenueSourcesData = useMemo(() => {
+    if (!outcomeTotals?.revenueSources) return [];
+    return (outcomeTotals.revenueSources as any[])
+      .filter((s: any) => s.connected && Number(s.lastTotalRevenue || 0) > 0)
+      .map((s: any) => ({
+        name: String(s.type || 'Revenue Source').charAt(0).toUpperCase() + String(s.type || '').slice(1),
+        revenue: Number(s.lastTotalRevenue || 0),
+        type: s.type,
+        offsite: !!s.offsite,
+        color: s.type === 'shopify' ? '#96bf48' : s.type === 'hubspot' ? '#ff7a59' : s.type === 'salesforce' ? '#00a1e0' : '#6366f1',
+      }));
+  }, [outcomeTotals]);
+
+  const totalRevenueSourceRevenue = revenueSourcesData.reduce((sum: number, s: any) => sum + s.revenue, 0);
+
+  // Budget allocation pie chart data (advertising platforms only)
+  const budgetPieData = useMemo(() => {
+    return realPlatformMetrics
+      .filter((p: any) => p.spend > 0 && !p.isAnalyticsOnly)
+      .map((p: any) => ({ name: p.platform, value: p.spend, color: p.color }));
+  }, [realPlatformMetrics]);
+
+  // Generate cost analysis data (exclude analytics-only)
+  const costAnalysisData = realPlatformMetrics
+    .filter((p: any) => !p.isAnalyticsOnly)
+    .map(platform => ({
+      name: platform.platform,
+      costPerConversion: platform.conversions > 0 ? platform.spend / platform.conversions : 0,
+      totalSpend: platform.spend,
+      conversions: platform.conversions,
+      efficiency: platform.spend > 0 ? ((platform.conversions / platform.spend) * 100).toFixed(2) : '0'
+    }));
 
   // Filter cost analysis data for chart display (only platforms with actual financial data)
   const costAnalysisChartData = costAnalysisData.filter(p => p.totalSpend > 0 || p.conversions > 0);
 
-  // Generate performance rankings (only include platforms with actual financial data)
+  // Generate performance rankings (exclude analytics-only platforms)
   const getBestPerformer = (metric: 'roas' | 'roi' | 'conversions' | 'ctr' | 'cpc' | 'conversionRate') => {
-    // Filter out platforms with no financial data
-    const platformsWithData = realPlatformMetrics.filter(p => p.spend > 0 || p.conversions > 0);
+    const platformsWithData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
     if (platformsWithData.length === 0) return null;
     
     return platformsWithData.reduce((best, current) => {
@@ -246,8 +347,23 @@ export default function PlatformComparison() {
                   <p className="text-slate-600 dark:text-slate-400 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
+              <Button
+                variant={demoMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDemoMode(!demoMode)}
+                className="shrink-0"
+              >
+                <FlaskConical className="w-4 h-4 mr-1" />
+                {demoMode ? "Demo On" : "Demo Data"}
+              </Button>
             </div>
           </div>
+
+          {demoMode && (
+            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-2 text-sm text-amber-800 dark:text-amber-300">
+              Showing demo data for testing. Toggle off to see real platform data.
+            </div>
+          )}
 
           {/* Platform Comparison Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
@@ -309,7 +425,7 @@ export default function PlatformComparison() {
               ) : (
                 <Card>
                   <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
-                    <p>No platform data available. Connect LinkedIn or Custom Integration to see platform comparison.</p>
+                    <p>No platform data available. Connect platforms (LinkedIn, Meta) or revenue sources (Shopify, HubSpot, Salesforce) to see comparison data.</p>
                   </CardContent>
                 </Card>
               )}
@@ -398,12 +514,142 @@ export default function PlatformComparison() {
                   )}
                 </div>
               )}
+
+              {/* Channel Metrics Summary Table */}
+              {realPlatformMetrics.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Channel Performance Overview</CardTitle>
+                    <CardDescription>Quick comparison across all connected platforms</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
+                            <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Platform</th>
+                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Spend</th>
+                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Impressions</th>
+                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Clicks</th>
+                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">CTR</th>
+                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Conversions</th>
+                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Revenue</th>
+                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">ROAS</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {realPlatformMetrics.map((platform: any, index: number) => (
+                            <tr key={index} className="border-b hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                              <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
+                                  <span>{platform.platform}</span>
+                                  {platform.isAnalyticsOnly && (
+                                    <Badge variant="outline" className="text-xs ml-1">Analytics</Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="text-right py-3 px-4">{platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</td>
+                              <td className="text-right py-3 px-4">{platform.impressions > 0 ? formatNumber(platform.impressions) : '—'}</td>
+                              <td className="text-right py-3 px-4">{platform.clicks > 0 ? formatNumber(platform.clicks) : '—'}</td>
+                              <td className="text-right py-3 px-4">{platform.ctr > 0 ? `${platform.ctr.toFixed(2)}%` : '—'}</td>
+                              <td className="text-right py-3 px-4">{platform.conversions > 0 ? formatNumber(platform.conversions) : '—'}</td>
+                              <td className="text-right py-3 px-4">
+                                {platform.revenue > 0 ? (
+                                  <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(platform.revenue)}</span>
+                                ) : '—'}
+                              </td>
+                              <td className="text-right py-3 px-4">{platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-slate-50 dark:bg-slate-800/50 font-semibold">
+                            <td className="py-3 px-4 text-slate-900 dark:text-white">Total</td>
+                            <td className="text-right py-3 px-4">{formatCurrency(realPlatformMetrics.reduce((s: number, p: any) => s + p.spend, 0))}</td>
+                            <td className="text-right py-3 px-4">{formatNumber(realPlatformMetrics.reduce((s: number, p: any) => s + p.impressions, 0))}</td>
+                            <td className="text-right py-3 px-4">{formatNumber(realPlatformMetrics.reduce((s: number, p: any) => s + p.clicks, 0))}</td>
+                            <td className="text-right py-3 px-4">—</td>
+                            <td className="text-right py-3 px-4">{formatNumber(realPlatformMetrics.reduce((s: number, p: any) => s + p.conversions, 0))}</td>
+                            <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">{formatCurrency(realPlatformMetrics.reduce((s: number, p: any) => s + p.revenue, 0))}</td>
+                            <td className="text-right py-3 px-4">—</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Revenue Tracking Platforms */}
+              {revenueSourcesData.length > 0 && (
+                <>
+                  <div className="border-t pt-6 mt-2">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Revenue Tracking Platforms</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                      Connected e-commerce and CRM platforms — track revenue only, no advertising spend.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {revenueSourcesData.map((source: any, index: number) => (
+                      <Card key={index} className="border-l-4" style={{ borderLeftColor: source.color }}>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                            {source.name}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500">Total Revenue</span>
+                            <span className="font-semibold text-green-600 dark:text-green-400">
+                              {formatCurrency(source.revenue)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500">Classification</span>
+                            <Badge variant="outline" className="text-xs">
+                              {source.offsite ? 'Offsite' : 'Onsite'}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  <Card className="bg-slate-50 dark:bg-slate-800/50 border-2">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Total Revenue (All Tracking Sources)</p>
+                          <p className="text-xs text-slate-500 mt-1">{revenueSourcesData.length} source{revenueSourcesData.length !== 1 ? 's' : ''} connected</p>
+                        </div>
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          {formatCurrency(totalRevenueSourceRevenue)}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </TabsContent>
 
             {/* Performance Metrics Tab */}
             <TabsContent value="performance" className="space-y-6">
               {realPlatformMetrics.length > 0 ? (
                 <>
+                  {/* Analytics Platform Notice */}
+                  {realPlatformMetrics.some((p: any) => p.isAnalyticsOnly) && (
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <div className="flex items-start space-x-3">
+                        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                        <div className="text-sm text-blue-700 dark:text-blue-300">
+                          <strong>Analytics platforms</strong> (like GA4) track conversions and revenue but don't have advertising spend, so they're excluded from cost efficiency comparisons and budget recommendations.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Key Performance Indicators Grid */}
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Card>
@@ -677,7 +923,7 @@ export default function PlatformComparison() {
               ) : (
                 <Card>
                   <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
-                    <p>No platform data available. Connect LinkedIn or Custom Integration to see performance metrics.</p>
+                    <p>No platform data available. Connect platforms (LinkedIn, Meta) to see performance metrics.</p>
                   </CardContent>
                 </Card>
               )}
@@ -724,43 +970,59 @@ export default function PlatformComparison() {
                       </CardContent>
                     </Card>
 
-                    {/* Budget Allocation */}
+                    {/* Budget Allocation Pie Chart */}
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center space-x-2">
                           <Target className="w-5 h-5" />
-                          <span>Budget Allocation Efficiency</span>
+                          <span>Budget Allocation</span>
                         </CardTitle>
+                        <CardDescription>Spend distribution across advertising platforms</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-4">
-                          {costAnalysisData.map((platform, index) => {
-                            const hasNoData = platform.totalSpend === 0 && platform.conversions === 0;
-                            return (
-                              <div key={index} className="space-y-2" data-testid={`cost-allocation-${index}`}>
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-slate-900 dark:text-white">{platform.name}</span>
-                                  {hasNoData ? (
-                                    <span className="text-sm text-slate-500 dark:text-slate-400">No Data Available</span>
-                                  ) : (
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                                      {platform.efficiency} conversions per $100
-                                    </span>
-                                  )}
-                                </div>
-                                {!hasNoData && (
-                                  <>
-                                    <Progress value={parseFloat(platform.efficiency) * 2} className="h-2" />
-                                    <div className="flex items-center justify-between text-xs text-slate-500">
-                                      <span>Total Spend: {formatCurrency(platform.totalSpend)}</span>
-                                      <span>{formatNumber(platform.conversions)} conversions</span>
+                        {budgetPieData.length > 0 ? (
+                          <>
+                            <div className="h-64">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={budgetPieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={80}
+                                    labelLine={false}
+                                    label={({ name, value }: any) => `${name}: ${formatCurrency(value)}`}
+                                    dataKey="value"
+                                  >
+                                    {budgetPieData.map((entry: any, index: number) => (
+                                      <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div className="mt-4 space-y-2">
+                              {budgetPieData.map((entry: any, index: number) => {
+                                const total = budgetPieData.reduce((s: number, e: any) => s + e.value, 0);
+                                const pct = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0';
+                                return (
+                                  <div key={index} className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center space-x-2">
+                                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                                      <span className="text-slate-700 dark:text-slate-300">{entry.name}</span>
                                     </div>
-                                  </>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
+                                    <span className="text-slate-600 dark:text-slate-400">{pct}%</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="h-64 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                            <p>No budget data available</p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
@@ -837,7 +1099,7 @@ export default function PlatformComparison() {
               ) : (
                 <Card>
                   <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
-                    <p>No platform data available. Connect LinkedIn or Custom Integration to see cost analysis.</p>
+                    <p>No platform data available. Connect platforms (LinkedIn, Meta) to see cost analysis.</p>
                   </CardContent>
                 </Card>
               )}
@@ -859,8 +1121,8 @@ export default function PlatformComparison() {
                       <div className="space-y-4">
                         {/* Data Source Notice */}
                         {(() => {
-                          const platformsWithAdData = realPlatformMetrics.filter(p => p.spend > 0 || p.conversions > 0);
-                          const platformsWithoutAdData = realPlatformMetrics.filter(p => p.spend === 0 && p.conversions === 0);
+                          const platformsWithAdData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
+                          const platformsWithoutAdData = realPlatformMetrics.filter((p: any) => p.isAnalyticsOnly || (p.spend === 0 && p.conversions === 0));
                           
                           if (platformsWithoutAdData.length > 0) {
                             return (
@@ -960,7 +1222,7 @@ export default function PlatformComparison() {
                         {/* Opportunity/Warning Insight */}
                         {realPlatformMetrics.length > 1 && (() => {
                           // Only consider platforms with actual financial data
-                          const platformsWithData = realPlatformMetrics.filter(p => p.spend > 0 || p.conversions > 0);
+                          const platformsWithData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
                           if (platformsWithData.length < 2) return null;
                           
                           const weakest = platformsWithData.reduce((min, p) => p.roas < min.roas ? p : min);
@@ -1007,7 +1269,7 @@ export default function PlatformComparison() {
                         {/* Budget Reallocation */}
                         {(() => {
                           // Only include platforms with actual financial data
-                          const platformsWithData = realPlatformMetrics.filter(p => p.spend > 0 || p.conversions > 0);
+                          const platformsWithData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
                           return platformsWithData.length > 1 && bestROAS ? (
                             <div className="border-l-4 border-green-500 pl-4">
                               <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Budget Reallocation Strategy</h4>
@@ -1044,7 +1306,7 @@ export default function PlatformComparison() {
                         {/* Platform-Specific Optimizations */}
                         {(() => {
                           // Only include platforms with actual financial data
-                          const platformsWithData = realPlatformMetrics.filter(p => p.spend > 0 || p.conversions > 0);
+                          const platformsWithData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
                           return platformsWithData.length > 0 ? (
                             <div className="border-l-4 border-blue-500 pl-4">
                               <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Platform-Specific Optimizations</h4>
@@ -1088,7 +1350,7 @@ export default function PlatformComparison() {
               ) : (
                 <Card>
                   <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
-                    <p>No platform data available. Connect LinkedIn or Custom Integration to see insights and recommendations.</p>
+                    <p>No platform data available. Connect platforms (LinkedIn, Meta) to see insights and recommendations.</p>
                   </CardContent>
                 </Card>
               )}

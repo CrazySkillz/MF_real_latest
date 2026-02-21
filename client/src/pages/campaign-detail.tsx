@@ -31,8 +31,6 @@ import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { WebhookTester } from "@/components/WebhookTester";
-import { AttributionDashboard } from "@/components/AttributionDashboard";
-
 interface Campaign {
   id: string;
   name: string;
@@ -6409,11 +6407,10 @@ export default function CampaignDetail() {
 
           {/* Tabs Navigation */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
               <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
-              <TabsTrigger value="attribution">Attribution</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
               <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
@@ -6826,10 +6823,6 @@ export default function CampaignDetail() {
 
             <TabsContent value="kpis" className="space-y-6">
               <CampaignKPIs campaign={campaign} />
-            </TabsContent>
-
-<TabsContent value="attribution" className="space-y-6">
-              <AttributionDashboard campaignId={campaign.id} />
             </TabsContent>
 
             <TabsContent value="benchmarks" className="space-y-6">

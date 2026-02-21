@@ -1429,10 +1429,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={() => setShowExportDialog(true)} data-testid="button-export-kpis-report">
-            <FileText className="w-4 h-4 mr-2" />
-            Export KPIs Report
-          </Button>
           <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-kpi">
             <Plus className="w-4 h-4 mr-2" />
             Create KPI
@@ -1465,19 +1461,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               </Card>
             ))}
           </div>
-          <Card>
-            <CardContent>
-              <div className="text-center py-12">
-                <p className="text-slate-600 dark:text-slate-400 mb-4">
-                  No KPIs have been created yet.
-                </p>
-                <Button onClick={() => setShowCreateDialog(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create KPI
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </>
       ) : (
         <>
@@ -3624,20 +3607,12 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button 
-            variant="outline" 
-            onClick={() => setShowExportDialog(true)} 
-            data-testid="button-export-benchmarks-report"
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Export Benchmarks Report
-          </Button>
-          <Button 
+          <Button
             onClick={() => {
               setEditingBenchmark(null);
               resetBenchmarkForm();
               setShowCreateDialog(true);
-            }} 
+            }}
             className="flex items-center space-x-2"
             data-testid="button-create-benchmark"
           >
@@ -3942,26 +3917,6 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 </CardContent>
               </Card>
             ))}
-          </div>
-          <div className="text-center py-12">
-            <Award className="w-16 h-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-              No Benchmarks Yet
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">
-              Create your first benchmark to start tracking performance against industry standards
-            </p>
-            <Button
-              onClick={() => {
-                setEditingBenchmark(null);
-                resetBenchmarkForm();
-                setShowCreateDialog(true);
-              }}
-              data-testid="button-create-first-benchmark"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create First Benchmark
-            </Button>
           </div>
         </>
       )}

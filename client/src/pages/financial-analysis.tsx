@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity, Eye, Info } from "lucide-react";
+import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity, Eye, Info, FlaskConical } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ export default function FinancialAnalysis() {
   const [, params] = useRoute("/campaigns/:id/financial-analysis");
   const campaignId = params?.id;
   const [comparisonPeriod, setComparisonPeriod] = useState<string>("7d");
+  const [demoMode, setDemoMode] = useState(false);
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -79,6 +80,31 @@ export default function FinancialAnalysis() {
     },
   });
 
+  // Demo mode mock data
+  const demoLinkedIn = demoMode ? {
+    spend: 4250, impressions: 12500, engagements: 1240, clicks: 890,
+    conversions: 45, leads: 18, conversionValue: 182,
+    revenue: 8190, roas: 1.93, roi: 92.7,
+  } : null;
+  const demoCI = demoMode ? {
+    metrics: { spend: '1800', pageviews: 15200, sessions: 3400, clicks: 420,
+      conversions: 28, leads: 12, impressions: 8500, engagements: 580 }
+  } : null;
+  const demoSheets = demoMode ? {
+    summary: { totalSpend: 950, totalImpressions: 6200, totalEngagements: 310,
+      totalClicks: 280, totalConversions: 14 }
+  } : null;
+  const demoGA4 = demoMode ? { averageOrderValue: 145 } : null;
+  const demoSnapshot = demoMode ? {
+    totalSpend: 5800, totalConversions: 68,
+  } : null;
+
+  const effectiveLinkedIn: any = demoLinkedIn || linkedInData;
+  const effectiveCI: any = demoCI || customIntegrationData;
+  const effectiveSheets: any = demoSheets || sheetsData;
+  const effectiveGA4: any = demoGA4 || ga4Data;
+  const effectiveSnapshot: any = demoMode ? demoSnapshot : historicalSnapshot;
+
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
   };
@@ -134,25 +160,25 @@ export default function FinancialAnalysis() {
   // Custom Integration: Map pageviews→impressions, sessions→engagements (consistent with Performance Summary)
   const platformMetrics = {
     linkedIn: {
-      spend: linkedInData?.spend || 0,
-      impressions: linkedInData?.impressions || 0,
-      engagements: linkedInData?.engagements || 0,
-      clicks: linkedInData?.clicks || 0,
-      conversions: linkedInData?.conversions || 0,
+      spend: effectiveLinkedIn?.spend || 0,
+      impressions: effectiveLinkedIn?.impressions || 0,
+      engagements: effectiveLinkedIn?.engagements || 0,
+      clicks: effectiveLinkedIn?.clicks || 0,
+      conversions: effectiveLinkedIn?.conversions || 0,
     },
     customIntegration: {
-      spend: parseFloat(customIntegrationData?.metrics?.spend || '0'),
-      impressions: customIntegrationData?.metrics?.pageviews || 0,
-      engagements: customIntegrationData?.metrics?.sessions || 0,
-      clicks: customIntegrationData?.metrics?.clicks || 0,
-      conversions: customIntegrationData?.metrics?.conversions || 0,
+      spend: parseFloat(effectiveCI?.metrics?.spend || '0'),
+      impressions: effectiveCI?.metrics?.pageviews || 0,
+      engagements: effectiveCI?.metrics?.sessions || 0,
+      clicks: effectiveCI?.metrics?.clicks || 0,
+      conversions: effectiveCI?.metrics?.conversions || 0,
     },
     sheets: {
-      spend: sheetsData?.summary?.totalSpend || 0,
-      impressions: sheetsData?.summary?.totalImpressions || 0,
-      engagements: sheetsData?.summary?.totalEngagements || 0,
-      clicks: sheetsData?.summary?.totalClicks || 0,
-      conversions: sheetsData?.summary?.totalConversions || 0,
+      spend: effectiveSheets?.summary?.totalSpend || 0,
+      impressions: effectiveSheets?.summary?.totalImpressions || 0,
+      engagements: effectiveSheets?.summary?.totalEngagements || 0,
+      clicks: effectiveSheets?.summary?.totalClicks || 0,
+      conversions: effectiveSheets?.summary?.totalConversions || 0,
     }
   };
 
@@ -178,20 +204,20 @@ export default function FinancialAnalysis() {
   
   // Get conversion value from LinkedIn (configured during connection setup)
   // This is the primary source for revenue calculations per system design
-  const linkedInConversionValue = linkedInData?.conversionValue || 0;
-  const linkedInRevenueFromBackend = Number.isFinite(Number((linkedInData as any)?.revenue))
-    ? Number((linkedInData as any).revenue)
+  const linkedInConversionValue = effectiveLinkedIn?.conversionValue || 0;
+  const linkedInRevenueFromBackend = Number.isFinite(Number((effectiveLinkedIn as any)?.revenue))
+    ? Number((effectiveLinkedIn as any).revenue)
     : null;
-  const linkedInROASFromBackend = Number.isFinite(Number((linkedInData as any)?.roas))
-    ? Number((linkedInData as any).roas)
+  const linkedInROASFromBackend = Number.isFinite(Number((effectiveLinkedIn as any)?.roas))
+    ? Number((effectiveLinkedIn as any).roas)
     : null;
-  const linkedInROIFromBackend = Number.isFinite(Number((linkedInData as any)?.roi))
-    ? Number((linkedInData as any).roi)
+  const linkedInROIFromBackend = Number.isFinite(Number((effectiveLinkedIn as any)?.roi))
+    ? Number((effectiveLinkedIn as any).roi)
     : null;
-  
+
   // Get AOV from GA4 or Custom Integration as fallback
-  const fallbackAOV = ga4Data?.averageOrderValue || 
-                      customIntegrationData?.averageOrderValue || 
+  const fallbackAOV = effectiveGA4?.averageOrderValue ||
+                      effectiveCI?.averageOrderValue ||
                       0;
   
   // Use LinkedIn conversion value if available, otherwise fallback to GA4/Custom Integration AOV
@@ -253,11 +279,11 @@ export default function FinancialAnalysis() {
     );
   };
 
-  const historicalMetrics = historicalSnapshot ? {
-    spend: historicalSnapshot.totalSpend || 0,
-    revenue: (historicalSnapshot.totalConversions || 0) * estimatedAOV,
-    roas: historicalSnapshot.totalSpend > 0 ? ((historicalSnapshot.totalConversions || 0) * estimatedAOV) / historicalSnapshot.totalSpend : 0,
-    roi: historicalSnapshot.totalSpend > 0 ? (((historicalSnapshot.totalConversions || 0) * estimatedAOV - historicalSnapshot.totalSpend) / historicalSnapshot.totalSpend) * 100 : 0,
+  const historicalMetrics = effectiveSnapshot ? {
+    spend: effectiveSnapshot.totalSpend || 0,
+    revenue: (effectiveSnapshot.totalConversions || 0) * estimatedAOV,
+    roas: effectiveSnapshot.totalSpend > 0 ? ((effectiveSnapshot.totalConversions || 0) * estimatedAOV) / effectiveSnapshot.totalSpend : 0,
+    roi: effectiveSnapshot.totalSpend > 0 ? (((effectiveSnapshot.totalConversions || 0) * estimatedAOV - effectiveSnapshot.totalSpend) / effectiveSnapshot.totalSpend) * 100 : 0,
   } : null;
 
   return (
@@ -287,8 +313,25 @@ export default function FinancialAnalysis() {
                   </p>
                 </div>
               </div>
+              <Button
+                variant={demoMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDemoMode(!demoMode)}
+              >
+                <FlaskConical className="w-4 h-4 mr-1" />
+                {demoMode ? "Demo On" : "Demo Data"}
+              </Button>
             </div>
           </div>
+
+          {demoMode && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <FlaskConical className="w-4 h-4 inline mr-1" />
+                Showing demo data for testing. Toggle off to see real campaign data.
+              </p>
+            </div>
+          )}
 
           <Tabs defaultValue="overview" className="space-y-6">
             <TabsList className="grid w-full grid-cols-5">
@@ -508,8 +551,8 @@ export default function FinancialAnalysis() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Estimated Revenue</p>
-                          {connectedPlatformsData?.statuses?.find(p => p.id === 'google-sheets' && p.connected) && (
-                            <Badge variant="outline" className="text-xs">Google Sheets</Badge>
+                          {platformMetrics.sheets.spend > 0 && (
+                            <Badge variant="outline" className="text-xs">Incl. Google Sheets</Badge>
                           )}
                         </div>
                         <div className="flex items-center justify-between">
@@ -561,7 +604,7 @@ export default function FinancialAnalysis() {
                           <p className="text-2xl font-bold text-slate-900 dark:text-white">
                             {formatNumber(totalConversions)}
                           </p>
-                          {historicalMetrics && historicalSnapshot && renderTrendIndicator(calculateChange(totalConversions, historicalSnapshot.totalConversions || 0))}
+                          {historicalMetrics && effectiveSnapshot && renderTrendIndicator(calculateChange(totalConversions, effectiveSnapshot.totalConversions || 0))}
                         </div>
                       </div>
                       <Activity className="w-8 h-8 text-purple-500" />
@@ -1113,7 +1156,7 @@ export default function FinancialAnalysis() {
                         conversions: platformMetrics.customIntegration.conversions,
                         revenue: platformMetrics.customIntegration.conversions * fallbackAOV
                       }
-                    ].filter(p => p.spend > 0 || p.name === 'Custom Integration'); // Always show Custom Integration
+                    ].filter(p => p.spend > 0 || p.conversions > 0);
                     
                     const highPerformance = platforms.filter(p => p.roas >= 3 && p.spend > 0);
                     const mediumPerformance = platforms.filter(p => p.roas >= 1 && p.roas < 3 && p.spend > 0);

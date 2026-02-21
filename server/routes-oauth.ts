@@ -20486,6 +20486,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Campaign not found" });
       }
 
+      // Demo mode: return comprehensive mock executive summary
+      if (req.query.demo === "1") {
+        return res.json({
+          health: { grade: "A", score: 82, trajectory: "accelerating" },
+          ceoSummary: "Campaign is performing strongly with 1.93x ROAS across all platforms. LinkedIn Ads driving highest-quality conversions at $182 average order value. Budget utilization at 72% with 28 days remaining. Recommend increasing LinkedIn budget allocation by 15% to capitalize on strong conversion momentum.",
+          metrics: {
+            totalImpressions: 21000, advertisingImpressions: 12500, websitePageviews: 8500,
+            totalClicks: 1310, advertisingClicks: 890, websiteClicks: 420,
+            totalConversions: 73, totalSpend: 6050, totalRevenue: 11690,
+            roas: 1.93, roi: 93.2, ctr: 6.24, cvr: 5.57,
+            clickThroughCvr: 5.57, totalCvr: 5.57, cpc: 4.62,
+          },
+          platforms: [
+            { name: "LinkedIn Ads", spend: 4250, revenue: 8190, conversions: 45, roas: 1.93, roi: 92.7, spendShare: 70.2, hasData: true,
+              websiteAnalytics: null },
+            { name: "Custom Integration", spend: 1800, revenue: 3500, conversions: 28, roas: 1.94, roi: 94.4, spendShare: 29.8, hasData: true,
+              websiteAnalytics: { pageviews: 15200, sessions: 3400, users: 2100, bounceRate: 42.3, avgSessionDuration: 185 } },
+          ],
+          risk: { level: "low", explanation: "Campaign metrics are healthy across all dimensions.", factors: [] },
+          recommendations: [
+            { action: "Scale LinkedIn Ads budget by 15%", priority: "high", confidence: "high",
+              category: "Budget Optimization", expectedImpact: "Projected +$1,200/month additional revenue based on current 1.93x ROAS",
+              timeline: "Immediate - next 7 days", investmentRequired: "Additional $638/month ad spend",
+              scenarios: { bestCase: "Revenue increases to $14,500/month (+24%)", expected: "Revenue increases to $12,900/month (+10%)", worstCase: "Revenue flat at $11,690/month (ROAS decreases to 1.6x)" },
+              assumptions: ["Current ROAS maintained at scale", "LinkedIn audience not saturated", "Creative performance holds steady"] },
+            { action: "Optimize Custom Integration landing pages", priority: "medium", confidence: "medium",
+              category: "Conversion Rate Optimization", expectedImpact: "Potential +8-12 additional conversions/month",
+              timeline: "2-4 weeks", investmentRequired: "Design and development time (~20 hours)",
+              scenarios: { bestCase: "CVR improves from 6.7% to 10%", expected: "CVR improves to 8.5%", worstCase: "No significant improvement" },
+              assumptions: ["Current traffic volume maintained", "A/B testing methodology applied"] },
+          ],
+          metadata: { disclaimer: "Projections based on current 30-day performance data. Actual results may vary based on market conditions and audience saturation.", dataAccuracy: { platformsExcludedFromRecommendations: [] } },
+          dataFreshness: { warnings: [] },
+        });
+      }
+
       // Helper to parse numbers safely
       const parseNum = (val: any): number => {
         if (val === null || val === undefined || val === '') return 0;

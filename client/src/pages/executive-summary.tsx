@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Calendar, Brain, Activity, Info } from "lucide-react";
+import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Calendar, Brain, Activity, Info, FlaskConical } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -14,6 +15,7 @@ import { format, subDays } from "date-fns";
 
 export default function ExecutiveSummary() {
   const { id: campaignId } = useParams();
+  const [demoMode, setDemoMode] = useState(false);
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
@@ -21,8 +23,14 @@ export default function ExecutiveSummary() {
   });
 
   const { data: executiveSummary, isLoading: summaryLoading, error: summaryError } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "executive-summary"],
+    queryKey: ["/api/campaigns", campaignId, "executive-summary", demoMode ? "demo" : "live"],
     enabled: !!campaignId,
+    queryFn: async () => {
+      const url = `/api/campaigns/${campaignId}/executive-summary${demoMode ? "?demo=1" : ""}`;
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
   });
 
   if (campaignLoading || summaryLoading) {
@@ -143,6 +151,15 @@ export default function ExecutiveSummary() {
                   <p className="text-slate-600 dark:text-slate-400 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant={demoMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDemoMode(!demoMode)}
+                >
+                  <FlaskConical className="w-4 h-4 mr-1" />
+                  {demoMode ? "Demo On" : "Demo Data"}
+                </Button>
               <div className="text-right">
                 <div className="text-sm text-slate-600 dark:text-slate-400">Campaign Period</div>
                 <div className="font-semibold text-slate-900 dark:text-white">
@@ -155,8 +172,18 @@ export default function ExecutiveSummary() {
                   )}
                 </div>
               </div>
+              </div>
             </div>
           </div>
+
+          {demoMode && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <FlaskConical className="w-4 h-4 inline mr-1" />
+                Showing demo data for testing. Toggle off to see real executive summary data.
+              </p>
+            </div>
+          )}
 
           {/* Executive Summary Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">

@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Brain, Calendar, Target, Users, Award, Zap, AlertTriangle, CheckCircle, ArrowUpRight, ArrowDownRight, Eye, MousePointer, DollarSign, Clock, Settings, Plus, X } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Brain, Calendar, Target, Users, Award, Zap, AlertTriangle, CheckCircle, ArrowUpRight, ArrowDownRight, Eye, MousePointer, DollarSign, Clock, Settings, Plus, X, FlaskConical } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -26,6 +26,7 @@ export default function TrendAnalysis() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [demoMode, setDemoMode] = useState(false);
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
@@ -48,6 +49,35 @@ export default function TrendAnalysis() {
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
   });
+
+  // Demo mode: generate realistic Google Trends-style data
+  const demoTrendsData = useMemo(() => {
+    if (!demoMode) return null;
+    const now = Math.floor(Date.now() / 1000);
+    const daySeconds = 86400;
+    const generateTimeSeries = (baseValue: number, volatility: number, trendDirection: number) => {
+      const data: any[] = [];
+      for (let i = 90; i >= 0; i--) {
+        const time = String(now - i * daySeconds);
+        const seasonal = Math.sin((90 - i) / 14 * Math.PI) * 8;
+        const trend = trendDirection * (90 - i) * 0.1;
+        const noise = (Math.random() - 0.5) * volatility;
+        const value = Math.max(5, Math.min(100, Math.round(baseValue + seasonal + trend + noise)));
+        data.push({ time, value: [value] });
+      }
+      return data;
+    };
+    return {
+      industry: 'Digital Marketing',
+      trends: [
+        { keyword: 'digital marketing', success: true, data: generateTimeSeries(62, 12, 0.3) },
+        { keyword: 'social media ads', success: true, data: generateTimeSeries(48, 15, -0.2) },
+        { keyword: 'content strategy', success: true, data: generateTimeSeries(35, 10, 0.5) },
+      ],
+    };
+  }, [demoMode]);
+
+  const effectiveTrendsData = demoTrendsData || trendsData;
 
   const updateKeywordsMutation = useMutation({
     mutationFn: async (data: { industry: string; trendKeywords: string[] }) => {
@@ -149,11 +179,11 @@ export default function TrendAnalysis() {
 
   // Process Google Trends data into chart-ready format
   const processedTrendsData = useMemo(() => {
-    if (!trendsData || !(trendsData as any).trends) {
+    if (!effectiveTrendsData || !(effectiveTrendsData as any).trends) {
       return null;
     }
 
-    const trends = (trendsData as any).trends;
+    const trends = (effectiveTrendsData as any).trends;
     
     // Create time series data combining all keywords
     const timeSeriesData: any[] = [];
@@ -245,7 +275,7 @@ export default function TrendAnalysis() {
       monthlyData,
       keywords: Object.keys(keywordStats)
     };
-  }, [trendsData]);
+  }, [effectiveTrendsData]);
 
   if (campaignLoading) {
     return (
@@ -350,21 +380,40 @@ export default function TrendAnalysis() {
                   <p className="text-slate-600 dark:text-slate-400 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
-              {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && (
-                <Button variant="outline" size="sm" onClick={() => {
-                  setIsConfiguring(true);
-                  setIndustry((campaign as any).industry || "");
-                  setKeywords((campaign as any).trendKeywords || []);
-                }} data-testid="button-configure-trends">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Configure Keywords
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant={demoMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDemoMode(!demoMode)}
+                >
+                  <FlaskConical className="w-4 h-4 mr-1" />
+                  {demoMode ? "Demo On" : "Demo Data"}
                 </Button>
-              )}
+                {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && (
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setIsConfiguring(true);
+                    setIndustry((campaign as any).industry || "");
+                    setKeywords((campaign as any).trendKeywords || []);
+                  }} data-testid="button-configure-trends">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Configure Keywords
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
+          {demoMode && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <FlaskConical className="w-4 h-4 inline mr-1" />
+                Showing demo data for testing. Toggle off to see real trend data.
+              </p>
+            </div>
+          )}
+
           {/* Configuration Card */}
-          {(!(campaign as any)?.trendKeywords?.length || isConfiguring) && (
+          {!demoMode && (!(campaign as any)?.trendKeywords?.length || isConfiguring) && (
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -468,7 +517,7 @@ export default function TrendAnalysis() {
           )}
 
           {/* Trend Analysis Tabs */}
-          {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && (
+          {(demoMode || ((campaign as any)?.trendKeywords?.length > 0 && !isConfiguring)) && (
             <Tabs defaultValue="overview" className="space-y-6">
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -479,7 +528,7 @@ export default function TrendAnalysis() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
-                {trendsFetching ? (
+                {!demoMode && trendsFetching ? (
                   <Card>
                     <CardContent className="p-8 text-center">
                       <div className="flex flex-col items-center space-y-3">
@@ -489,7 +538,7 @@ export default function TrendAnalysis() {
                       </div>
                     </CardContent>
                   </Card>
-                ) : !trendsData ? (
+                ) : !effectiveTrendsData ? (
                   <Card>
                     <CardContent className="p-8 text-center">
                       <div className="flex flex-col items-center space-y-4">
@@ -510,7 +559,7 @@ export default function TrendAnalysis() {
                       </div>
                     </CardContent>
                   </Card>
-                ) : trendsError || !processedTrendsData || !((trendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
+                ) : trendsError || !processedTrendsData || !((effectiveTrendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
                   <Card>
                     <CardContent className="p-8 text-center">
                       <div className="flex flex-col items-center space-y-4">
@@ -712,7 +761,7 @@ export default function TrendAnalysis() {
                               <CardContent>
                                 <div className="text-center">
                                   <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">
-                                    {(trendsData as any)?.industry || 'Market'}
+                                    {(effectiveTrendsData as any)?.industry || 'Market'}
                                   </div>
                                   <div className="text-sm text-slate-600 dark:text-slate-400">
                                     Tracking {processedTrendsData.keywords.length} keyword{processedTrendsData.keywords.length > 1 ? 's' : ''}
@@ -735,13 +784,13 @@ export default function TrendAnalysis() {
 
             {/* Keyword Comparison Tab */}
             <TabsContent value="keyword-comparison" className="space-y-6">
-              {trendsFetching ? (
+              {!demoMode && trendsFetching ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Loading comparison data...
                   </CardContent>
                 </Card>
-              ) : !trendsData ? (
+              ) : !effectiveTrendsData ? (
                 <Card>
                   <CardContent className="p-8 text-center">
                     <div className="flex flex-col items-center space-y-4">
@@ -755,7 +804,7 @@ export default function TrendAnalysis() {
                     </div>
                   </CardContent>
                 </Card>
-              ) : !processedTrendsData || !((trendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
+              ) : !processedTrendsData || !((effectiveTrendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Unable to load comparison data. Please try refreshing from the Overview tab.
@@ -867,13 +916,13 @@ export default function TrendAnalysis() {
 
             {/* Seasonal Trends Tab */}
             <TabsContent value="seasonal-trends" className="space-y-6">
-              {trendsFetching ? (
+              {!demoMode && trendsFetching ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Loading seasonal data...
                   </CardContent>
                 </Card>
-              ) : !trendsData ? (
+              ) : !effectiveTrendsData ? (
                 <Card>
                   <CardContent className="p-8 text-center">
                     <div className="flex flex-col items-center space-y-4">
@@ -887,7 +936,7 @@ export default function TrendAnalysis() {
                     </div>
                   </CardContent>
                 </Card>
-              ) : !processedTrendsData || !((trendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
+              ) : !processedTrendsData || !((effectiveTrendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Unable to load seasonal data. Please try refreshing from the Overview tab.
@@ -1020,13 +1069,13 @@ export default function TrendAnalysis() {
 
             {/* Market Insights Tab */}
             <TabsContent value="insights" className="space-y-6">
-              {trendsFetching ? (
+              {!demoMode && trendsFetching ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Loading market insights...
                   </CardContent>
                 </Card>
-              ) : !trendsData ? (
+              ) : !effectiveTrendsData ? (
                 <Card>
                   <CardContent className="p-8 text-center">
                     <div className="flex flex-col items-center space-y-4">
@@ -1040,7 +1089,7 @@ export default function TrendAnalysis() {
                     </div>
                   </CardContent>
                 </Card>
-              ) : !processedTrendsData || !((trendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
+              ) : !processedTrendsData || !((effectiveTrendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
                 <Card>
                   <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
                     Unable to load market insights. Please try refreshing from the Overview tab.

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Clock } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Clock, FlaskConical } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ export default function CampaignPerformanceSummary() {
   const [comparisonType, setComparisonType] = useState<'yesterday' | 'last_week' | 'last_month'>('yesterday');
   const [trendPeriod, setTrendPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [metricView, setMetricView] = useState<'aggregated' | 'breakdown'>('aggregated');
+  const [demoMode, setDemoMode] = useState(false);
   const { toast } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
@@ -132,6 +133,33 @@ export default function CampaignPerformanceSummary() {
     );
   }
 
+  // Demo mode mock data
+  const demoLinkedin = demoMode ? {
+    impressions: 12500, clicks: 890, engagement: 1240, spend: 4250,
+    conversions: 45, leads: 18, reach: 8200, engagements: 1240,
+  } : null;
+  const demoCI = demoMode ? {
+    metrics: {
+      impressions: 8500, clicks: 420, engagements: 580, spend: '1800',
+      conversions: 28, leads: 12, pageviews: 15200, sessions: 3400,
+      reach: 0,
+    }
+  } : null;
+  const demoKpis = demoMode ? [
+    { name: 'Monthly Conversions', metric: 'conversions', currentValue: 73, targetValue: 100, unit: '', alertsEnabled: false, priority: 'high' },
+    { name: 'Cost Per Acquisition', metric: 'cpa', currentValue: 82.88, targetValue: 60, unit: '$', alertsEnabled: true, priority: 'high' },
+    { name: 'Click-Through Rate', metric: 'ctr', currentValue: 4.2, targetValue: 3.5, unit: '%', alertsEnabled: false, priority: 'medium' },
+  ] : null;
+  const demoBenchmarks = demoMode ? [
+    { metricName: 'CTR', currentValue: 4.2, industryAverage: 2.8, benchmarkValue: 2.8, category: 'Engagement' },
+    { metricName: 'CPC', currentValue: 6.85, industryAverage: 8.50, benchmarkValue: 8.50, category: 'Cost' },
+  ] : null;
+
+  const effectiveLinkedin = demoLinkedin || linkedinMetrics;
+  const effectiveCI = demoCI || customIntegration;
+  const effectiveKpis = demoKpis || kpis;
+  const effectiveBenchmarks = demoBenchmarks || benchmarks;
+
   // Helper function to safely parse numbers
   const parseNum = (val: any): number => {
     if (val === null || val === undefined || val === '') return 0;
@@ -140,24 +168,24 @@ export default function CampaignPerformanceSummary() {
   };
 
   // Calculate aggregated metrics
-  const linkedinImpressions = parseNum(linkedinMetrics?.impressions);
-  const linkedinClicks = parseNum(linkedinMetrics?.clicks);
-  const linkedinEngagements = parseNum(linkedinMetrics?.engagement);
-  const linkedinSpend = parseNum(linkedinMetrics?.spend);
-  const linkedinConversions = parseNum(linkedinMetrics?.conversions);
-  const linkedinLeads = parseNum(linkedinMetrics?.leads);
+  const linkedinImpressions = parseNum(effectiveLinkedin?.impressions);
+  const linkedinClicks = parseNum(effectiveLinkedin?.clicks);
+  const linkedinEngagements = parseNum(effectiveLinkedin?.engagement);
+  const linkedinSpend = parseNum(effectiveLinkedin?.spend);
+  const linkedinConversions = parseNum(effectiveLinkedin?.conversions);
+  const linkedinLeads = parseNum(effectiveLinkedin?.leads);
 
   // Custom Integration advertising metrics
-  const ciImpressions = parseNum(customIntegration?.metrics?.impressions);
-  const ciClicks = parseNum(customIntegration?.metrics?.clicks);
-  const ciEngagements = parseNum(customIntegration?.metrics?.engagements);
-  const ciSpend = parseNum(customIntegration?.metrics?.spend);
-  const ciConversions = parseNum(customIntegration?.metrics?.conversions);
-  const ciLeads = parseNum(customIntegration?.metrics?.leads);
-  
+  const ciImpressions = parseNum(effectiveCI?.metrics?.impressions);
+  const ciClicks = parseNum(effectiveCI?.metrics?.clicks);
+  const ciEngagements = parseNum(effectiveCI?.metrics?.engagements);
+  const ciSpend = parseNum(effectiveCI?.metrics?.spend);
+  const ciConversions = parseNum(effectiveCI?.metrics?.conversions);
+  const ciLeads = parseNum(effectiveCI?.metrics?.leads);
+
   // Custom Integration website analytics (for funnel visualization)
-  const ciPageviews = parseNum(customIntegration?.metrics?.pageviews);
-  const ciSessions = parseNum(customIntegration?.metrics?.sessions);
+  const ciPageviews = parseNum(effectiveCI?.metrics?.pageviews);
+  const ciSessions = parseNum(effectiveCI?.metrics?.sessions);
 
   // Aggregate metrics - matching Executive Summary calculation
   // Total Impressions = Advertising Impressions + Website Pageviews (full funnel view)
@@ -172,19 +200,19 @@ export default function CampaignPerformanceSummary() {
   const totalSpend = linkedinSpend + ciSpend;
 
   // Calculate campaign health score (including both KPIs and Benchmarks)
-  const kpisAboveTarget = kpis.filter(kpi => {
+  const kpisAboveTarget = effectiveKpis.filter((kpi: any) => {
     const current = parseNum(kpi.currentValue);
     const target = parseNum(kpi.targetValue);
     return current >= target;
   }).length;
-  
-  const benchmarksAboveTarget = benchmarks.filter(benchmark => {
+
+  const benchmarksAboveTarget = effectiveBenchmarks.filter((benchmark: any) => {
     const current = parseNum(benchmark.currentValue);
-    const industry = parseNum(benchmark.industryAverage);
+    const industry = parseNum(benchmark.industryAverage || benchmark.benchmarkValue);
     return current >= industry;
   }).length;
-  
-  const totalMetrics = kpis.length + benchmarks.length;
+
+  const totalMetrics = effectiveKpis.length + effectiveBenchmarks.length;
   const totalAboveTarget = kpisAboveTarget + benchmarksAboveTarget;
   const healthScore = totalMetrics > 0 ? Math.round((totalAboveTarget / totalMetrics) * 100) : 0;
 
@@ -200,7 +228,7 @@ export default function CampaignPerformanceSummary() {
 
   // Get top priority action
   const getPriorityAction = () => {
-    const underperformingKPIs = kpis.filter(kpi => {
+    const underperformingKPIs = effectiveKpis.filter((kpi: any) => {
       const current = parseNum(kpi.currentValue);
       const target = parseNum(kpi.targetValue);
       return current < target;
@@ -228,7 +256,7 @@ export default function CampaignPerformanceSummary() {
       };
     }
 
-    const underperformingBenchmarks = benchmarks.filter(b => {
+    const underperformingBenchmarks = effectiveBenchmarks.filter((b: any) => {
       const current = parseNum(b.currentValue);
       const industry = parseNum(b.industryAverage);
       return current < industry;
@@ -302,8 +330,8 @@ export default function CampaignPerformanceSummary() {
 
   // Data source status
   const dataSources = [
-    { name: "LinkedIn Ads", connected: !!linkedinMetrics, icon: SiLinkedin },
-    { name: "Custom Integration", connected: !!customIntegration, icon: Activity },
+    { name: "LinkedIn Ads", connected: !!(effectiveLinkedin), icon: SiLinkedin },
+    { name: "Custom Integration", connected: !!(effectiveCI), icon: Activity },
   ];
 
   return (
@@ -334,6 +362,17 @@ export default function CampaignPerformanceSummary() {
                 </div>
               </div>
               
+              <div className="flex items-center space-x-3">
+                <Button
+                  variant={demoMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDemoMode(!demoMode)}
+                  className="shrink-0"
+                >
+                  <FlaskConical className="w-4 h-4 mr-1" />
+                  {demoMode ? "Demo On" : "Demo Data"}
+                </Button>
+
               {/* Automatic Snapshot Status */}
               {schedulerStatus && (
                 <div className="flex items-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800" data-testid="snapshot-scheduler-status">
@@ -350,8 +389,15 @@ export default function CampaignPerformanceSummary() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </div>
+
+          {demoMode && (
+            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-2 text-sm text-amber-800 dark:text-amber-300">
+              Showing demo data for testing. Toggle off to see real platform data.
+            </div>
+          )}
 
           {/* Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
@@ -373,20 +419,26 @@ export default function CampaignPerformanceSummary() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-16 h-16 rounded-full ${healthStatus.color} flex items-center justify-center text-white text-2xl font-bold`}>
-                      {healthScore}%
+                  {totalMetrics === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-slate-600 dark:text-slate-400">Set up KPIs and Benchmarks to see your campaign health score.</p>
                     </div>
-                    <div>
-                      <div className="text-2xl font-bold text-slate-900 dark:text-white">{healthStatus.label}</div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400">
-                        {totalAboveTarget} of {totalMetrics} metrics above target
+                  ) : (
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-16 h-16 rounded-full ${healthStatus.color} flex items-center justify-center text-white text-2xl font-bold`}>
+                        {healthScore}%
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">
-                        {kpisAboveTarget}/{kpis.length} KPIs • {benchmarksAboveTarget}/{benchmarks.length} Benchmarks
+                      <div>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{healthStatus.label}</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          {totalAboveTarget} of {totalMetrics} metrics above target
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                          {kpisAboveTarget}/{effectiveKpis.length} KPIs • {benchmarksAboveTarget}/{effectiveBenchmarks.length} Benchmarks
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -528,27 +580,27 @@ export default function CampaignPerformanceSummary() {
                       </div>
                     </div>
                     
-                    <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpisAboveTarget >= kpis.length / 2 ? '#22c55e' : '#ef4444' }}>
+                    <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpisAboveTarget >= effectiveKpis.length / 2 ? '#22c55e' : '#ef4444' }}>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-3">
                           <span className="font-semibold text-slate-900 dark:text-white">KPIs Above Target</span>
-                          <Badge variant={kpisAboveTarget >= kpis.length / 2 ? "default" : "destructive"}>
-                            {kpisAboveTarget >= kpis.length / 2 ? "Majority On Track" : "Needs Attention"}
+                          <Badge variant={kpisAboveTarget >= effectiveKpis.length / 2 ? "default" : "destructive"}>
+                            {kpisAboveTarget >= effectiveKpis.length / 2 ? "Majority On Track" : "Needs Attention"}
                           </Badge>
                         </div>
-                        <span className="text-sm text-slate-500 dark:text-slate-400">{kpisAboveTarget} of {kpis.length}</span>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">{kpisAboveTarget} of {effectiveKpis.length}</span>
                       </div>
                     </div>
                     
-                    <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarksAboveTarget >= benchmarks.length / 2 ? '#22c55e' : '#ef4444' }}>
+                    <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? '#22c55e' : '#ef4444' }}>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-3">
-                          <span className="font-semibold text-slate-900 dark:text-white">Benchmarks Above Target</span>
-                          <Badge variant={benchmarksAboveTarget >= benchmarks.length / 2 ? "default" : "destructive"}>
-                            {benchmarksAboveTarget >= benchmarks.length / 2 ? "Above Industry Average" : "Below Industry Average"}
+                          <span className="font-semibold text-slate-900 dark:text-white">Benchmarks Above Benchmark</span>
+                          <Badge variant={benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? "default" : "destructive"}>
+                            {benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? "Above Industry Average" : "Below Industry Average"}
                           </Badge>
                         </div>
-                        <span className="text-sm text-slate-500 dark:text-slate-400">{benchmarksAboveTarget} of {benchmarks.length}</span>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">{benchmarksAboveTarget} of {effectiveBenchmarks.length}</span>
                       </div>
                     </div>
                   </div>
@@ -556,7 +608,7 @@ export default function CampaignPerformanceSummary() {
               </Card>
 
               {/* All KPIs */}
-              {kpis.length > 0 && (
+              {effectiveKpis.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Key Performance Indicators (KPIs)</CardTitle>
@@ -564,7 +616,7 @@ export default function CampaignPerformanceSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {kpis.map((kpi, idx) => {
+                      {effectiveKpis.map((kpi: any, idx: number) => {
                         const current = parseNum(kpi.currentValue);
                         const target = parseNum(kpi.targetValue);
                         const isAboveTarget = current >= target;
@@ -604,7 +656,7 @@ export default function CampaignPerformanceSummary() {
               )}
 
               {/* All Benchmarks */}
-              {benchmarks.length > 0 && (
+              {effectiveBenchmarks.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Industry Benchmarks</CardTitle>
@@ -612,7 +664,7 @@ export default function CampaignPerformanceSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {benchmarks.map((benchmark, idx) => {
+                      {effectiveBenchmarks.map((benchmark: any, idx: number) => {
                         const current = parseNum(benchmark.currentValue);
                         const target = parseNum(benchmark.benchmarkValue);
                         const isAboveTarget = current >= target;
@@ -624,7 +676,7 @@ export default function CampaignPerformanceSummary() {
                               <div className="flex items-center space-x-3">
                                 <span className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</span>
                                 <Badge variant={isAboveTarget ? "default" : "destructive"}>
-                                  {isAboveTarget ? "Above Target" : "Below Target"}
+                                  {isAboveTarget ? "Above Benchmark" : "Below Benchmark"}
                                 </Badge>
                               </div>
                               <span className="text-sm text-slate-500 dark:text-slate-400">{percentage}% of target</span>
@@ -730,10 +782,10 @@ export default function CampaignPerformanceSummary() {
                       {metricView === 'aggregated' ? (
                         /* Aggregated View - Show totals */
                         (() => {
-                          const ciMetrics = customIntegration?.metrics || {};
-                          
+                          const ciMetrics = effectiveCI?.metrics || {};
+
                           // Match Overview tab calculation exactly
-                          const linkedinImpressions = linkedinMetrics?.impressions || 0;
+                          const linkedinImpressions = effectiveLinkedin?.impressions || 0;
                           const ciAdImpressions = ciMetrics.impressions || 0;
                           const ciWebPageviews = ciMetrics.pageviews || 0;
                           const advertisingImpressions = linkedinImpressions + ciAdImpressions;
@@ -747,19 +799,19 @@ export default function CampaignPerformanceSummary() {
                             },
                             { 
                               metric: 'Total Clicks', 
-                              value: (linkedinMetrics?.clicks || 0) + (ciMetrics.adClicks || 0) + (ciMetrics.emailClicks || 0)
+                              value: (effectiveLinkedin?.clicks || 0) + (ciMetrics.adClicks || 0) + (ciMetrics.emailClicks || 0)
                             },
                             { 
                               metric: 'Total Engagements', 
-                              value: (linkedinMetrics?.totalEngagements || 0) + (ciMetrics.socialEngagements || 0)
+                              value: (effectiveLinkedin?.totalEngagements || 0) + (ciMetrics.socialEngagements || 0)
                             },
                             { 
                               metric: 'Total Conversions', 
-                              value: (linkedinMetrics?.conversions || 0) + (ciMetrics.goalCompletions || 0)
+                              value: (effectiveLinkedin?.conversions || 0) + (ciMetrics.goalCompletions || 0)
                             },
                             { 
                               metric: 'Total Leads', 
-                              value: linkedinMetrics?.leads || 0
+                              value: effectiveLinkedin?.leads || 0
                             },
                             { 
                               metric: 'Total Sessions', 
@@ -797,16 +849,16 @@ export default function CampaignPerformanceSummary() {
                       ) : (
                         /* Breakdown View - Show by source */
                         (() => {
-                          const ciMetrics = customIntegration?.metrics || {};
-                          
+                          const ciMetrics = effectiveCI?.metrics || {};
+
                           // LinkedIn Ads metrics
                           const linkedinData = [
-                            { metric: 'Impressions', value: linkedinMetrics?.impressions || 0 },
-                            { metric: 'Clicks', value: linkedinMetrics?.clicks || 0 },
-                            { metric: 'Engagements', value: linkedinMetrics?.totalEngagements || 0 },
-                            { metric: 'Conversions', value: linkedinMetrics?.conversions || 0 },
-                            { metric: 'Leads', value: linkedinMetrics?.leads || 0 },
-                            { metric: 'Ad Spend', value: parseFloat(linkedinMetrics?.costInLocalCurrency || '0') },
+                            { metric: 'Impressions', value: effectiveLinkedin?.impressions || 0 },
+                            { metric: 'Clicks', value: effectiveLinkedin?.clicks || 0 },
+                            { metric: 'Engagements', value: effectiveLinkedin?.totalEngagements || 0 },
+                            { metric: 'Conversions', value: effectiveLinkedin?.conversions || 0 },
+                            { metric: 'Leads', value: effectiveLinkedin?.leads || 0 },
+                            { metric: 'Ad Spend', value: parseFloat(effectiveLinkedin?.costInLocalCurrency || '0') },
                           ];
 
                           // Website Analytics metrics

@@ -5,6 +5,7 @@ interface SnapshotMetrics {
   totalEngagements: number;
   totalClicks: number;
   totalConversions: number;
+  totalLeads: number;
   totalSpend: number;
 }
 
@@ -44,13 +45,23 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
   }
   
   // Aggregate metrics from all sources
+  // MUST match Performance Summary (campaign-performance.tsx) calculation exactly
+  const linkedinClicks = parseNum(linkedinMetrics.clicks);
+  const ciClicks = parseNum(customIntegrationData.clicks);
+  // LinkedIn stores engagement as singular 'engagement' from the API
+  const linkedinEngagement = parseNum(linkedinMetrics.engagement);
+  const ciEngagements = parseNum(customIntegrationData.engagements);
+  const ciSessions = parseNum(customIntegrationData.sessions);
+
   // Total Impressions = Advertising Impressions (LinkedIn + CI ads) + Website Pageviews (CI analytics)
-  // Must match Performance Summary calculation exactly
   const advertisingImpressions = parseNum(linkedinMetrics.impressions) + parseNum(customIntegrationData.impressions);
   const totalImpressions = advertisingImpressions + parseNum(customIntegrationData.pageviews);
-  const totalEngagements = parseNum(linkedinMetrics.engagements) + parseNum(customIntegrationData.sessions);
-  const totalClicks = parseNum(linkedinMetrics.clicks) + parseNum(customIntegrationData.clicks);
+  // Total Engagements = LinkedIn Clicks + LinkedIn Engagement + CI Clicks + CI Engagements + Website Sessions
+  const advertisingEngagements = linkedinClicks + linkedinEngagement + ciClicks + ciEngagements;
+  const totalEngagements = advertisingEngagements + ciSessions;
+  const totalClicks = linkedinClicks + ciClicks;
   const totalConversions = parseNum(linkedinMetrics.conversions) + parseNum(customIntegrationData.conversions);
+  const totalLeads = parseNum(linkedinMetrics.leads) + parseNum(customIntegrationData.leads);
   const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend);
   
   // Store detailed metrics from both sources for historical tracking
@@ -84,6 +95,7 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
     totalEngagements: Math.round(totalEngagements),
     totalClicks: Math.round(totalClicks),
     totalConversions: Math.round(totalConversions),
+    totalLeads: Math.round(totalLeads),
     totalSpend: parseFloat(totalSpend.toFixed(2)),
     detailedMetrics
   };
@@ -102,6 +114,7 @@ export async function recordCampaignMetrics(campaignId: string): Promise<void> {
         totalEngagements: metrics.totalEngagements,
         totalClicks: metrics.totalClicks,
         totalConversions: metrics.totalConversions,
+        totalLeads: metrics.totalLeads,
         totalSpend: metrics.totalSpend.toFixed(2),
         metrics: metrics.detailedMetrics,
         snapshotType: 'platform_sync'
@@ -133,6 +146,7 @@ async function createSnapshotsForAllCampaigns() {
             totalEngagements: metrics.totalEngagements,
             totalClicks: metrics.totalClicks,
             totalConversions: metrics.totalConversions,
+            totalLeads: metrics.totalLeads,
             totalSpend: metrics.totalSpend.toFixed(2),
             metrics: metrics.detailedMetrics,
             snapshotType: 'automatic'

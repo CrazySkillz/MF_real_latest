@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Clock, FlaskConical } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
@@ -64,19 +64,21 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId,
   });
 
-  // Fetch comparison data
+  // Fetch comparison data — keepPreviousData prevents UI flash when switching filters
   const { data: comparisonData } = useQuery<{
     current: any | null;
     previous: any | null;
   }>({
     queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`],
     enabled: !!campaignId,
+    placeholderData: keepPreviousData,
   });
 
   // Fetch trend snapshots for time-series analysis
   const { data: trendSnapshots = [] } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignId}/snapshots?period=${trendPeriod}`],
     enabled: !!campaignId,
+    placeholderData: keepPreviousData,
   });
 
 
@@ -762,7 +764,7 @@ export default function CampaignPerformanceSummary() {
                           const isNegative = item.isCurrency ? isUp : isDown;
 
                           return (
-                            <div key={idx} className={`p-4 rounded-lg border ${
+                            <div key={idx} className={`p-4 rounded-lg border transition-all duration-300 ease-in-out ${
                               isPositive ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' :
                               isNegative ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20' :
                               'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'

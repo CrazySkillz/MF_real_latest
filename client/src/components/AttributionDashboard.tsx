@@ -1,550 +1,435 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, TrendingDown, Users, Target, DollarSign, MousePointer } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { DollarSign, MousePointer, Target, TrendingUp, Eye, Users, Activity } from "lucide-react";
 
-const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe', '#00c49f'];
+const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
 
-interface AttributionModel {
-  id: string;
+interface ChannelData {
   name: string;
-  type: string;
-  description: string | null;
-  isDefault: boolean;
-  isActive: boolean;
+  spend: number;
+  conversions: number;
+  clicks: number;
+  impressions: number;
+  revenue: number;
+  leads: number;
+  connected: boolean;
 }
 
-interface CustomerJourney {
-  id: string;
-  customerId: string;
-  totalTouchpoints: number;
-  conversionValue: string | null;
-  status: string;
-  createdAt: string;
-}
-
-interface ChannelPerformance {
-  channel: string;
-  totalAttributedValue: number;
-  totalTouchpoints: number;
-  averageCredit: number;
-  assistedConversions: number;
-  lastClickConversions: number;
-  firstClickConversions: number;
-}
-
-export function AttributionDashboard() {
-  const [selectedModel, setSelectedModel] = useState<string>("");
-  const [dateRange, setDateRange] = useState({ 
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
+export function AttributionDashboard({ campaignId }: { campaignId: string }) {
+  const { data: outcomeTotals, isLoading } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "30days"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/outcome-totals?dateRange=30days`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
   });
 
-  // Fetch attribution models
-  const { data: models = [] } = useQuery<AttributionModel[]>({
-    queryKey: ['/api/attribution/models'],
-  });
+  const channels = useMemo((): ChannelData[] => {
+    if (!outcomeTotals) return [];
+    const platforms = outcomeTotals.platforms || {};
+    const ga4 = outcomeTotals.ga4 || {};
+    const result: ChannelData[] = [];
 
-  // Fetch customer journeys
-  const { data: journeys = [] } = useQuery<CustomerJourney[]>({
-    queryKey: ['/api/attribution/journeys'],
-  });
+    const num = (v: any) => Number(v || 0);
 
-  // Fetch channel performance data
-  const { data: channelPerformance = [] } = useQuery<ChannelPerformance[]>({
-    queryKey: ['/api/attribution/channel-performance', dateRange.startDate, dateRange.endDate, selectedModel],
-    queryFn: () => 
-      fetch(`/api/attribution/channel-performance?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}${selectedModel ? `&modelId=${selectedModel}` : ''}`)
-        .then(res => res.json()),
-    enabled: !!dateRange.startDate && !!dateRange.endDate
-  });
+    if (platforms.linkedin?.connected || num(platforms.linkedin?.spend) > 0) {
+      const p = platforms.linkedin || {};
+      result.push({
+        name: 'LinkedIn',
+        spend: num(p.spend),
+        conversions: num(p.conversions),
+        clicks: num(p.clicks),
+        impressions: num(p.impressions),
+        revenue: num(p.attributedRevenue),
+        leads: num(p.leads),
+        connected: true,
+      });
+    }
 
-  // Get default model if none selected
-  const defaultModel = models.find(m => m.isDefault);
-  const currentModel = selectedModel ? models.find(m => m.id === selectedModel) : defaultModel;
+    if (platforms.meta?.connected || num(platforms.meta?.spend) > 0) {
+      const p = platforms.meta || {};
+      result.push({
+        name: 'Meta',
+        spend: num(p.spend),
+        conversions: num(p.conversions),
+        clicks: num(p.clicks),
+        impressions: num(p.impressions),
+        revenue: num(p.attributedRevenue),
+        leads: 0,
+        connected: true,
+      });
+    }
 
-  // Calculate summary metrics
-  const totalAttributedValue = channelPerformance.reduce((sum, channel) => sum + channel.totalAttributedValue, 0);
-  const totalTouchpoints = channelPerformance.reduce((sum, channel) => sum + channel.totalTouchpoints, 0);
-  const totalConversions = journeys.filter(j => j.status === 'completed').length;
-  const averageJourneyLength = journeys.length > 0 ? 
-    journeys.reduce((sum, j) => sum + j.totalTouchpoints, 0) / journeys.length : 0;
+    if (ga4.connected || num(ga4.revenue) > 0 || num(ga4.conversions) > 0) {
+      result.push({
+        name: 'GA4',
+        spend: 0,
+        conversions: num(ga4.conversions),
+        clicks: 0,
+        impressions: 0,
+        revenue: num(ga4.revenue),
+        leads: 0,
+        connected: true,
+      });
+    }
 
-  // Prepare chart data
-  const channelChartData = channelPerformance.map(channel => ({
-    name: channel.channel,
-    'Attributed Value': channel.totalAttributedValue,
-    'Touchpoints': channel.totalTouchpoints,
-    'Avg Credit': channel.averageCredit,
+    if (platforms.customIntegration?.connected || num(platforms.customIntegration?.spend) > 0) {
+      const p = platforms.customIntegration || {};
+      result.push({
+        name: 'Custom Integration',
+        spend: num(p.spend),
+        conversions: num(p.conversions),
+        clicks: num(p.clicks),
+        impressions: num(p.impressions),
+        revenue: num(p.revenue),
+        leads: 0,
+        connected: true,
+      });
+    }
+
+    // Revenue sources (Shopify, HubSpot, Salesforce)
+    const revenueSources = outcomeTotals.revenueSources || [];
+    for (const src of revenueSources) {
+      if (src?.connected && num(src?.lastTotalRevenue) > 0) {
+        const label = String(src.type || 'Revenue Source').charAt(0).toUpperCase() + String(src.type || '').slice(1);
+        result.push({
+          name: label,
+          spend: 0,
+          conversions: 0,
+          clicks: 0,
+          impressions: 0,
+          revenue: num(src.lastTotalRevenue),
+          leads: 0,
+          connected: true,
+        });
+      }
+    }
+
+    return result;
+  }, [outcomeTotals]);
+
+  // Totals
+  const totalSpend = channels.reduce((s, c) => s + c.spend, 0);
+  const totalConversions = channels.reduce((s, c) => s + c.conversions, 0);
+  const totalRevenue = channels.reduce((s, c) => s + c.revenue, 0);
+  const totalClicks = channels.reduce((s, c) => s + c.clicks, 0);
+  const totalImpressions = channels.reduce((s, c) => s + c.impressions, 0);
+  const hasRevenue = totalRevenue > 0;
+  const overallRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+  const overallCpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
+
+  const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmtN = (n: number) => n.toLocaleString();
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-center text-slate-500">Loading channel attribution data...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (channels.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-12">
+          <div className="text-center">
+            <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Channel Data Available</h3>
+            <p className="text-slate-600 dark:text-slate-400">
+              Connect platforms (LinkedIn, Meta, GA4) to see channel attribution data.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Chart data
+  const spendChannels = channels.filter(c => c.spend > 0);
+  const barData = channels.filter(c => c.spend > 0 || c.conversions > 0).map(c => ({
+    name: c.name,
+    Spend: Number(c.spend.toFixed(2)),
+    Conversions: c.conversions,
   }));
-
-  const conversionTypeData = channelPerformance.map(channel => ({
-    name: channel.channel,
-    'First Click': channel.firstClickConversions,
-    'Last Click': channel.lastClickConversions,
-    'Assisted': channel.assistedConversions,
+  const pieData = spendChannels.map(c => ({
+    name: c.name,
+    value: Number(c.spend.toFixed(2)),
   }));
 
   return (
-    <div className="space-y-6" data-testid="attribution-dashboard">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="page-title">Attribution Analysis</h1>
-          <p className="text-muted-foreground mt-1">
-            Understand how your marketing channels work together to drive conversions
-          </p>
-        </div>
-        
-        <div className="flex gap-4">
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="w-48" data-testid="model-selector">
-              <SelectValue placeholder="Select Attribution Model" />
-            </SelectTrigger>
-            <SelectContent>
-              {models.map(model => (
-                <SelectItem key={model.id} value={model.id} data-testid={`model-option-${model.type}`}>
-                  {model.name} {model.isDefault && "(Default)"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={dateRange.startDate}
-              onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-              className="px-3 py-2 border rounded-md"
-              data-testid="start-date-input"
-            />
-            <input
-              type="date"
-              value={dateRange.endDate}
-              onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-              className="px-3 py-2 border rounded-md"
-              data-testid="end-date-input"
-            />
-          </div>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Channel Attribution</h2>
+        <p className="text-slate-600 dark:text-slate-400">
+          Performance breakdown across connected platforms (last 30 days)
+        </p>
       </div>
 
-      {/* Current Attribution Model Info */}
-      {currentModel && (
-        <Card data-testid="current-model-info">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
-              Current Attribution Model: {currentModel.name}
-              {currentModel.isDefault && <Badge variant="secondary">Default</Badge>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {currentModel.description}
-            </p>
+      {/* Section 1: Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-sm text-slate-600 dark:text-slate-400">Total Spend</p>
+              <DollarSign className="w-4 h-4 text-slate-400" />
+            </div>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmt(totalSpend)}</p>
+            <p className="text-xs text-slate-500 mt-1">{spendChannels.length} channel{spendChannels.length !== 1 ? 's' : ''}</p>
           </CardContent>
         </Card>
-      )}
-
-      {/* Summary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card data-testid="metric-attributed-value">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Attributed Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${totalAttributedValue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Across all channels
-            </p>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-sm text-slate-600 dark:text-slate-400">Impressions</p>
+              <Eye className="w-4 h-4 text-slate-400" />
+            </div>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtN(totalImpressions)}</p>
           </CardContent>
         </Card>
-
-        <Card data-testid="metric-touchpoints">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Touchpoints</CardTitle>
-            <MousePointer className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalTouchpoints.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Customer interactions
-            </p>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-sm text-slate-600 dark:text-slate-400">Clicks</p>
+              <MousePointer className="w-4 h-4 text-slate-400" />
+            </div>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtN(totalClicks)}</p>
+            <p className="text-xs text-slate-500 mt-1">{totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00'}% CTR</p>
           </CardContent>
         </Card>
-
-        <Card data-testid="metric-conversions">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversions</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalConversions}</div>
-            <p className="text-xs text-muted-foreground">
-              Completed journeys
-            </p>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-sm text-slate-600 dark:text-slate-400">Conversions</p>
+              <Target className="w-4 h-4 text-slate-400" />
+            </div>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtN(totalConversions)}</p>
+            <p className="text-xs text-slate-500 mt-1">{overallCpa > 0 ? fmt(overallCpa) : '—'} CPA</p>
           </CardContent>
         </Card>
-
-        <Card data-testid="metric-journey-length">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Journey Length</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{averageJourneyLength.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">
-              Touchpoints per journey
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Attribution Analysis Tabs */}
-      <Tabs defaultValue="channels" data-testid="attribution-tabs">
-        <TabsList>
-          <TabsTrigger value="channels" data-testid="channels-tab">Channel Performance</TabsTrigger>
-          <TabsTrigger value="conversions" data-testid="conversions-tab">Conversion Types</TabsTrigger>
-          <TabsTrigger value="journeys" data-testid="journeys-tab">Customer Journeys</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="channels" className="space-y-4">
+        {hasRevenue && (
           <Card>
-            <CardHeader>
-              <CardTitle>Channel Attribution Performance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {channelChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={channelChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="Attributed Value" fill="#8884d8" />
-                    <Bar dataKey="Touchpoints" fill="#82ca9d" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-64 text-muted-foreground">
-                  No channel performance data available for the selected period
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Channel Performance Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Detailed Channel Metrics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2">Channel</th>
-                      <th className="text-right py-2">Attributed Value</th>
-                      <th className="text-right py-2">Touchpoints</th>
-                      <th className="text-right py-2">Avg Credit</th>
-                      <th className="text-right py-2">Conversions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {channelPerformance.map((channel, index) => (
-                      <tr key={channel.channel} className="border-b" data-testid={`channel-row-${channel.channel}`}>
-                        <td className="py-2 font-medium">{channel.channel}</td>
-                        <td className="text-right py-2">${channel.totalAttributedValue.toLocaleString()}</td>
-                        <td className="text-right py-2">{channel.totalTouchpoints}</td>
-                        <td className="text-right py-2">{(channel.averageCredit * 100).toFixed(1)}%</td>
-                        <td className="text-right py-2">
-                          {channel.lastClickConversions + channel.firstClickConversions + channel.assistedConversions}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-1">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Revenue</p>
+                <TrendingUp className="w-4 h-4 text-slate-400" />
               </div>
+              <p className="text-2xl font-bold text-green-600">{fmt(totalRevenue)}</p>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="conversions" className="space-y-4">
+        )}
+        {hasRevenue && totalSpend > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle>Conversion Attribution Types</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {conversionTypeData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={conversionTypeData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="First Click" fill="#8884d8" stackId="a" />
-                    <Bar dataKey="Last Click" fill="#82ca9d" stackId="a" />
-                    <Bar dataKey="Assisted" fill="#ffc658" stackId="a" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-64 text-muted-foreground">
-                  No conversion type data available for the selected period
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-1">
+                <p className="text-sm text-slate-600 dark:text-slate-400">ROAS</p>
+                <Activity className="w-4 h-4 text-slate-400" />
+              </div>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{overallRoas.toFixed(2)}x</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Section 2: Channel Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {channels.map((ch, i) => {
+          const cpa = ch.conversions > 0 ? ch.spend / ch.conversions : 0;
+          const roas = ch.spend > 0 && ch.revenue > 0 ? ch.revenue / ch.spend : 0;
+          const ctr = ch.impressions > 0 ? (ch.clicks / ch.impressions) * 100 : 0;
+          const spendShare = totalSpend > 0 ? (ch.spend / totalSpend) * 100 : 0;
+          return (
+            <Card key={ch.name}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">{ch.name}</CardTitle>
+                  {ch.spend > 0 && totalSpend > 0 && (
+                    <Badge variant="outline" className="text-xs">{spendShare.toFixed(0)}% of spend</Badge>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="journeys" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Journeys Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Journey Status Distribution */}
-                <div>
-                  <h4 className="font-medium mb-3">Journey Status</h4>
-                  {journeys.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Active', value: journeys.filter(j => j.status === 'active').length },
-                            { name: 'Completed', value: journeys.filter(j => j.status === 'completed').length },
-                            { name: 'Abandoned', value: journeys.filter(j => j.status === 'abandoned').length },
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {[
-                            { name: 'Active', value: journeys.filter(j => j.status === 'active').length },
-                            { name: 'Completed', value: journeys.filter(j => j.status === 'completed').length },
-                            { name: 'Abandoned', value: journeys.filter(j => j.status === 'abandoned').length },
-                          ].map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-64 text-muted-foreground">
-                      No customer journey data available
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {ch.spend > 0 && (
+                    <div>
+                      <p className="text-slate-500">Spend</p>
+                      <p className="font-semibold">{fmt(ch.spend)}</p>
+                    </div>
+                  )}
+                  {ch.conversions > 0 && (
+                    <div>
+                      <p className="text-slate-500">Conversions</p>
+                      <p className="font-semibold">{fmtN(ch.conversions)}</p>
+                    </div>
+                  )}
+                  {ch.clicks > 0 && (
+                    <div>
+                      <p className="text-slate-500">Clicks</p>
+                      <p className="font-semibold">{fmtN(ch.clicks)}</p>
+                    </div>
+                  )}
+                  {ctr > 0 && (
+                    <div>
+                      <p className="text-slate-500">CTR</p>
+                      <p className="font-semibold">{ctr.toFixed(2)}%</p>
+                    </div>
+                  )}
+                  {cpa > 0 && (
+                    <div>
+                      <p className="text-slate-500">CPA</p>
+                      <p className="font-semibold">{fmt(cpa)}</p>
+                    </div>
+                  )}
+                  {ch.revenue > 0 && (
+                    <div>
+                      <p className="text-slate-500">Revenue</p>
+                      <p className="font-semibold text-green-600">{fmt(ch.revenue)}</p>
+                    </div>
+                  )}
+                  {roas > 0 && (
+                    <div>
+                      <p className="text-slate-500">ROAS</p>
+                      <p className="font-semibold">{roas.toFixed(2)}x</p>
+                    </div>
+                  )}
+                  {ch.leads > 0 && (
+                    <div>
+                      <p className="text-slate-500">Leads</p>
+                      <p className="font-semibold">{fmtN(ch.leads)}</p>
                     </div>
                   )}
                 </div>
-
-                {/* Recent Journeys */}
-                <div>
-                  <h4 className="font-medium mb-3">Recent Journeys</h4>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {journeys.slice(0, 10).map((journey) => (
-                      <div key={journey.id} className="border rounded-lg p-3" data-testid={`journey-${journey.id}`}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-medium text-sm">Customer {journey.customerId}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {journey.totalTouchpoints} touchpoints
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <Badge variant={journey.status === 'completed' ? 'default' : 'secondary'}>
-                              {journey.status}
-                            </Badge>
-                            {journey.conversionValue && (
-                              <p className="text-sm font-medium mt-1">
-                                ${parseFloat(journey.conversionValue).toLocaleString()}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Individual Customer Journeys with Touchpoints */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Individual Customer Journeys & Touchpoints</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {journeys.map((journey) => (
-                  <JourneyDetailCard key={journey.id} journey={journey} />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
-
-// Component to show detailed journey with touchpoints
-interface Touchpoint {
-  id: string;
-  channel: string;
-  touchpointType: string;
-  timestamp: string;
-  utm_source: string;
-  utm_medium: string;
-  utm_campaign: string;
-  attribution_credit: number;
-  sequence: number;
-  device_type: string;
-  referrer: string;
-  page_url: string;
-  conversion_value: string;
-}
-
-function JourneyDetailCard({ journey }: { journey: CustomerJourney }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  
-  const { data: touchpoints = [] } = useQuery<Touchpoint[]>({
-    queryKey: ['/api/attribution/touchpoints', journey.id],
-    queryFn: () => 
-      fetch(`/api/attribution/touchpoints?journeyId=${journey.id}`)
-        .then(res => res.json()),
-    enabled: isExpanded
-  });
-
-  const getChannelColor = (channel: string) => {
-    const colors: Record<string, string> = {
-      'Google Ads': 'bg-blue-100 text-blue-800',
-      'Facebook': 'bg-blue-100 text-blue-800',
-      'LinkedIn Ads': 'bg-blue-100 text-blue-800', 
-      'Instagram': 'bg-pink-100 text-pink-800',
-      'YouTube': 'bg-red-100 text-red-800',
-      'Email': 'bg-green-100 text-green-800',
-      'Direct': 'bg-gray-100 text-gray-800',
-      'Content Marketing': 'bg-purple-100 text-purple-800'
-    };
-    return colors[channel] || 'bg-gray-100 text-gray-800';
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  return (
-    <div className="border rounded-lg" data-testid={`journey-detail-${journey.id}`}>
-      <div 
-        className="p-4 cursor-pointer hover:bg-gray-50"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">Customer {journey.customerId}</span>
-            </div>
-            <Badge variant={journey.status === 'completed' ? 'default' : journey.status === 'active' ? 'secondary' : 'outline'}>
-              {journey.status}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">
-              {journey.totalTouchpoints} touchpoints
-            </div>
-            {journey.conversionValue && (
-              <div className="text-sm font-medium">
-                ${parseFloat(journey.conversionValue).toLocaleString()}
-              </div>
-            )}
-            <Button variant="ghost" size="sm" data-testid={`expand-journey-${journey.id}`}>
-              {isExpanded ? 'Hide Details' : 'Show Touchpoints'}
-            </Button>
-          </div>
-        </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {isExpanded && (
-        <div className="border-t px-4 pb-4">
-          <div className="pt-4">
-            <h4 className="font-medium mb-3">Customer Journey Timeline</h4>
-            {touchpoints.length > 0 ? (
-              <div className="space-y-3">
-                {touchpoints.sort((a, b) => a.sequence - b.sequence).map((touchpoint, index) => (
-                  <div key={touchpoint.id} className="relative flex items-start gap-4 pb-3" data-testid={`touchpoint-${touchpoint.id}`}>
-                    {/* Timeline connector */}
-                    {index < touchpoints.length - 1 && (
-                      <div className="absolute left-5 top-8 h-8 w-0.5 bg-gray-200" />
-                    )}
-                    
-                    {/* Sequence number */}
-                    <div className="flex-shrink-0 w-10 h-10 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-medium">
-                      {touchpoint.sequence}
-                    </div>
+      {/* Section 3: Charts */}
+      {(barData.length > 0 || pieData.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Bar Chart: Spend vs Conversions */}
+          {barData.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Channel Performance</CardTitle>
+                <CardDescription>Spend and conversions by platform</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={barData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="Spend" fill="#3b82f6" name="Spend ($)" />
+                    <Bar dataKey="Conversions" fill="#10b981" name="Conversions" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
 
-                    {/* Touchpoint details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Badge className={getChannelColor(touchpoint.channel)}>
-                            {touchpoint.channel}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {formatDate(touchpoint.timestamp)}
-                          </span>
-                        </div>
-                        <div className="text-sm font-medium">
-                          ${parseFloat(touchpoint.conversion_value).toFixed(2)} credited
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center gap-2">
-                          <MousePointer className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">Campaign:</span>
-                          <span>{touchpoint.utm_campaign}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Target className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">Page:</span>
-                          <span className="truncate">{touchpoint.page_url}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Device:</span>
-                          <span className="capitalize">{touchpoint.device_type}</span>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="text-muted-foreground">Attribution:</span>
-                          <span>{(touchpoint.attribution_credit * 100).toFixed(1)}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading touchpoint details...
-              </div>
-            )}
-          </div>
+          {/* Pie Chart: Budget Allocation */}
+          {pieData.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Budget Allocation</CardTitle>
+                <CardDescription>Spend distribution across platforms</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      labelLine={false}
+                      label={({ name, value }: any) => `${name}: $${value.toFixed(0)}`}
+                      dataKey="value"
+                    >
+                      {pieData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
+
+      {/* Section 4: Channel Metrics Table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Channel Metrics</CardTitle>
+          <CardDescription>Detailed performance comparison across all platforms</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
+                  <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Channel</th>
+                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Spend</th>
+                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Impressions</th>
+                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Clicks</th>
+                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">CTR</th>
+                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Conversions</th>
+                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">CPA</th>
+                  {hasRevenue && <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Revenue</th>}
+                  {hasRevenue && totalSpend > 0 && <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">ROAS</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {channels.map((ch) => {
+                  const cpa = ch.conversions > 0 ? ch.spend / ch.conversions : 0;
+                  const roas = ch.spend > 0 && ch.revenue > 0 ? ch.revenue / ch.spend : 0;
+                  const ctr = ch.impressions > 0 ? (ch.clicks / ch.impressions) * 100 : 0;
+                  return (
+                    <tr key={ch.name} className="border-b hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">{ch.name}</td>
+                      <td className="text-right py-3 px-4">{ch.spend > 0 ? fmt(ch.spend) : '—'}</td>
+                      <td className="text-right py-3 px-4">{ch.impressions > 0 ? fmtN(ch.impressions) : '—'}</td>
+                      <td className="text-right py-3 px-4">{ch.clicks > 0 ? fmtN(ch.clicks) : '—'}</td>
+                      <td className="text-right py-3 px-4">{ctr > 0 ? `${ctr.toFixed(2)}%` : '—'}</td>
+                      <td className="text-right py-3 px-4">{ch.conversions > 0 ? fmtN(ch.conversions) : '—'}</td>
+                      <td className="text-right py-3 px-4">{cpa > 0 ? fmt(cpa) : '—'}</td>
+                      {hasRevenue && <td className="text-right py-3 px-4">{ch.revenue > 0 ? fmt(ch.revenue) : '—'}</td>}
+                      {hasRevenue && totalSpend > 0 && <td className="text-right py-3 px-4">{roas > 0 ? `${roas.toFixed(2)}x` : '—'}</td>}
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 font-semibold">
+                  <td className="py-3 px-4 text-slate-900 dark:text-white">Total</td>
+                  <td className="text-right py-3 px-4">{totalSpend > 0 ? fmt(totalSpend) : '—'}</td>
+                  <td className="text-right py-3 px-4">{totalImpressions > 0 ? fmtN(totalImpressions) : '—'}</td>
+                  <td className="text-right py-3 px-4">{totalClicks > 0 ? fmtN(totalClicks) : '—'}</td>
+                  <td className="text-right py-3 px-4">{totalImpressions > 0 ? `${((totalClicks / totalImpressions) * 100).toFixed(2)}%` : '—'}</td>
+                  <td className="text-right py-3 px-4">{totalConversions > 0 ? fmtN(totalConversions) : '—'}</td>
+                  <td className="text-right py-3 px-4">{overallCpa > 0 ? fmt(overallCpa) : '—'}</td>
+                  {hasRevenue && <td className="text-right py-3 px-4">{totalRevenue > 0 ? fmt(totalRevenue) : '—'}</td>}
+                  {hasRevenue && totalSpend > 0 && <td className="text-right py-3 px-4">{overallRoas > 0 ? `${overallRoas.toFixed(2)}x` : '—'}</td>}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

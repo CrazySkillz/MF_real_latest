@@ -6829,7 +6829,7 @@ export default function CampaignDetail() {
             </TabsContent>
 
 <TabsContent value="attribution" className="space-y-6">
-              <AttributionDashboard />
+              <AttributionDashboard campaignId={campaign.id} />
             </TabsContent>
 
             <TabsContent value="benchmarks" className="space-y-6">

@@ -2010,8 +2010,19 @@ export default function CustomIntegrationAnalytics() {
                                   description: "PDF uploaded and metrics extracted",
                                 });
 
-                                // Refetch metrics
+                                // Refetch local metrics + invalidate shared DeepDive caches
                                 refetchMetrics();
+                                queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=yesterday`] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=last_week`] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=last_month`] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=daily`] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=weekly`] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=monthly`] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "snapshots", "historical"] });
                               } catch (error) {
                                 toast({
                                   title: "Error",

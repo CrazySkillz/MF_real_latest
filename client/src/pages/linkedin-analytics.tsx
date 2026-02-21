@@ -1737,6 +1737,30 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
         // ignore
       }
 
+      // Invalidate shared caches BEFORE navigation so all DeepDive pages pick up the new data
+      try {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] }),
+          queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`] }),
+          queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] }),
+          // Snapshot queries used by Performance Summary (What's Changed + Metric Trends)
+          queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=yesterday`] }),
+          queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=last_week`] }),
+          queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=last_month`] }),
+          queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=daily`] }),
+          queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=weekly`] }),
+          queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=monthly`] }),
+          // Financial Analysis historical snapshots
+          queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "snapshots", "historical"] }),
+          // Session-specific queries
+          queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] }),
+        ]);
+      } catch {
+        // ignore
+      }
+
       // Refresh creates a NEW import session; jump to the latest session so Overview updates immediately.
       try {
         const resp = await fetch(`/api/campaigns/${encodeURIComponent(String(campaignId))}/connected-platforms`, {
@@ -1754,26 +1778,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
         }
       } catch {
         // ignore (fallback below)
-      }
-
-      // Invalidate shared caches so all DeepDive pages pick up the new data
-      try {
-        await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
-        await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`] });
-        await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
-      } catch {
-        // ignore
-      }
-
-      // Fallback: refetch current data (may still be the old session if URL isn't updated).
-      try {
-        await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });
-        await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'] });
-        await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-coverage", LINKEDIN_DAILY_LOOKBACK_DAYS] });
-        await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId], exact: true });
-        await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId, 'ads'], exact: true });
-      } catch {
-        // ignore
       }
     },
     onError: (e: any) => {

@@ -24,8 +24,7 @@ interface Campaign {
 export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
   const campaignId = params?.id;
-  const [comparisonType, setComparisonType] = useState<'yesterday' | 'last_week' | 'last_month'>('yesterday');
-  const [trendPeriod, setTrendPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('7d');
   const [demoMode, setDemoMode] = useState(false);
   const { toast } = useToast();
 
@@ -63,6 +62,10 @@ export default function CampaignPerformanceSummary() {
     queryKey: [`/api/custom-integration/${campaignId}/changes`],
     enabled: !!campaignId,
   });
+
+  // Derive API params from unified time range
+  const comparisonType = timeRange === '24h' ? 'yesterday' : timeRange === '7d' ? 'last_week' : 'last_month';
+  const trendPeriod = timeRange === '24h' ? 'daily' : timeRange === '7d' ? 'weekly' : 'monthly';
 
   // Fetch comparison data — keepPreviousData prevents UI flash when switching filters
   const { data: comparisonData } = useQuery<{
@@ -725,14 +728,14 @@ export default function CampaignPerformanceSummary() {
                         </CardDescription>
                       </div>
                     </div>
-                    <Select value={comparisonType} onValueChange={(value: 'yesterday' | 'last_week' | 'last_month') => setComparisonType(value)}>
+                    <Select value={timeRange} onValueChange={(value: '24h' | '7d' | '30d') => setTimeRange(value)}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="yesterday">vs Yesterday</SelectItem>
-                        <SelectItem value="last_week">vs Last Week</SelectItem>
-                        <SelectItem value="last_month">vs Last Month</SelectItem>
+                        <SelectItem value="24h">Last 24 Hours</SelectItem>
+                        <SelectItem value="7d">Last 7 Days</SelectItem>
+                        <SelectItem value="30d">Last 30 Days</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -804,22 +807,8 @@ export default function CampaignPerformanceSummary() {
               {trendSnapshots.length >= 2 && (
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>Metric Trends</CardTitle>
-                        <CardDescription className="mt-1.5">How your metrics have changed over time</CardDescription>
-                      </div>
-                      <Select value={trendPeriod} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setTrendPeriod(value)}>
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Last 24 Hours</SelectItem>
-                          <SelectItem value="weekly">Last 7 Days</SelectItem>
-                          <SelectItem value="monthly">Last 30 Days</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <CardTitle>Metric Trends</CardTitle>
+                    <CardDescription className="mt-1.5">How your metrics have changed over time</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {(() => {

@@ -4876,13 +4876,8 @@ export default function CampaignDetail() {
 
   // Get campaign KPIs for report inclusion
   const { data: campaignKPIs } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "kpis"],
+    queryKey: [`/api/campaigns/${campaignId}/kpis`],
     enabled: !!campaignId,
-    queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/kpis`);
-      if (!response.ok) return [];
-      return response.json();
-    },
   });
 
   // Check GA4 connection status - force refetch on mount

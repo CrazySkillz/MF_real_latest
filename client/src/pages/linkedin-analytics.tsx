@@ -1756,6 +1756,15 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
         // ignore (fallback below)
       }
 
+      // Invalidate shared caches so all DeepDive pages pick up the new data
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
+        await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`] });
+        await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+      } catch {
+        // ignore
+      }
+
       // Fallback: refetch current data (may still be the old session if URL isn't updated).
       try {
         await queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports', sessionId] });

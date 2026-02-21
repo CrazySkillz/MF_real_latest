@@ -79,15 +79,6 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId,
   });
 
-  // Fetch scheduler status to show automatic snapshot information
-  const { data: schedulerStatus } = useQuery<{
-    running: boolean;
-    frequency: 'hourly' | 'daily' | 'weekly';
-    nextRun: string | null;
-  }>({
-    queryKey: ['/api/snapshots/scheduler'],
-    refetchInterval: 60000, // Refresh every minute
-  });
 
   if (campaignLoading) {
     return (
@@ -276,11 +267,10 @@ export default function CampaignPerformanceSummary() {
     };
   };
 
-  // Calculate what's changed: live metrics vs historical snapshot
+  // Calculate what's changed: current connected-source metrics vs historical data
   // "Current" = real-time aggregated data from connected sources (updates when LinkedIn/CI data changes)
-  // "Previous" = snapshot from the selected comparison period
+  // "Previous" = recorded data from the selected comparison period (yesterday/last week/last month)
   const getChanges = () => {
-    // Use the previous snapshot as baseline; fall back to current snapshot if no older one exists
     const baseline = comparisonData?.previous || comparisonData?.current;
     if (!baseline) {
       return { changes: [], baselineTimestamp: null };
@@ -365,22 +355,6 @@ export default function CampaignPerformanceSummary() {
                   {demoMode ? "Demo On" : "Demo Data"}
                 </Button>
 
-              {/* Automatic Snapshot Status */}
-              {schedulerStatus && (
-                <div className="flex items-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800" data-testid="snapshot-scheduler-status">
-                  <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <div className="text-sm">
-                    <div className="font-medium text-blue-900 dark:text-blue-100">
-                      Automatic Snapshots: {schedulerStatus.frequency.charAt(0).toUpperCase() + schedulerStatus.frequency.slice(1)}
-                    </div>
-                    {schedulerStatus.nextRun && (
-                      <div className="text-xs text-blue-700 dark:text-blue-300">
-                        Next: {new Date(schedulerStatus.nextRun).toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
               </div>
             </div>
           </div>
@@ -745,7 +719,7 @@ export default function CampaignPerformanceSummary() {
                       <div>
                         <CardTitle>What's Changed</CardTitle>
                         <CardDescription className="mt-1.5">
-                          Live metrics vs historical baseline
+                          How your connected platform metrics have changed
                         </CardDescription>
                       </div>
                     </div>
@@ -765,17 +739,17 @@ export default function CampaignPerformanceSummary() {
                   {changeData.changes.length === 0 ? (
                     <div className="text-center py-8">
                       <Clock className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-                      <p className="text-slate-600 dark:text-slate-400 font-medium">No baseline snapshot available yet</p>
+                      <p className="text-slate-600 dark:text-slate-400 font-medium">No historical data available yet</p>
                       <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
-                        A baseline snapshot is created automatically when data is first imported.
-                        Changes will appear here once you have a snapshot to compare against.
+                        Data is recorded automatically as your connected platforms sync.
+                        Changes will appear here once enough data has been collected to compare.
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {changeData.baselineTimestamp && (
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Live metrics (now) vs baseline from {new Date(changeData.baselineTimestamp).toLocaleDateString()}
+                          Current values compared to {new Date(changeData.baselineTimestamp).toLocaleDateString()}
                         </p>
                       )}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -831,7 +805,7 @@ export default function CampaignPerformanceSummary() {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle>Metric Trends</CardTitle>
-                        <CardDescription className="mt-1.5">Performance over time from {trendSnapshots.length} snapshots</CardDescription>
+                        <CardDescription className="mt-1.5">How your metrics have changed over time</CardDescription>
                       </div>
                       <Select value={trendPeriod} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setTrendPeriod(value)}>
                         <SelectTrigger className="w-[180px]">

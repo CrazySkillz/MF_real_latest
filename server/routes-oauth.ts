@@ -3467,6 +3467,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { refreshLinkedInDataForCampaign } = await import("./linkedin-scheduler.js");
       // In test mode, advance the simulated "day" on every manual refresh click.
       await refreshLinkedInDataForCampaign(campaignId, undefined, { advanceTestDay: true });
+      // Record current metrics so What's Changed can track deltas between syncs
+      const { recordCampaignMetrics } = await import("./scheduler.js");
+      await recordCampaignMetrics(campaignId);
       res.json({ success: true, message: "LinkedIn refresh completed" });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to refresh LinkedIn data" });
@@ -16611,6 +16614,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[PDF Upload] Metrics stored successfully:`, metrics.id);
 
+      // Record current metrics so What's Changed can track deltas between syncs
+      const { recordCampaignMetrics } = await import("./scheduler.js");
+      await recordCampaignMetrics(campaignId);
+
       res.json({
         success: true,
         message: "PDF processed successfully",
@@ -16746,6 +16753,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`[Webhook] Metrics stored successfully:`, metrics.id);
+
+      // Record current metrics so What's Changed can track deltas between syncs
+      const { recordCampaignMetrics } = await import("./scheduler.js");
+      await recordCampaignMetrics(integration.campaignId);
 
       // Prepare response with validation metadata
       const response: any = {
@@ -21524,6 +21535,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Custom Integration] PDF parsed and metrics stored for campaign ${campaignId}`);
       console.log(`[Custom Integration] Metrics confidence: ${metrics._confidence}%`);
 
+      // Record current metrics so What's Changed can track deltas between syncs
+      const { recordCampaignMetrics } = await import("./scheduler.js");
+      await recordCampaignMetrics(campaignId);
+
       res.json({
         success: true,
         message: 'PDF uploaded and parsed successfully',
@@ -21644,6 +21659,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[SendGrid] ✅ Metrics stored for campaign ${campaignId}`);
       console.log(`[SendGrid] Confidence: ${metrics._confidence}%`);
+
+      // Record current metrics so What's Changed can track deltas between syncs
+      const { recordCampaignMetrics } = await import("./scheduler.js");
+      await recordCampaignMetrics(campaignId);
 
       if (metrics._requiresReview) {
         console.warn(`[SendGrid] ⚠️  Metrics require manual review (confidence: ${metrics._confidence}%)`);

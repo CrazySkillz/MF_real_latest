@@ -14,7 +14,7 @@ const parseNum = (val: any): number => {
   return isNaN(num) || !isFinite(num) ? 0 : num;
 };
 
-async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMetrics & { detailedMetrics: any }> {
+export async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMetrics & { detailedMetrics: any }> {
   // Fetch LinkedIn metrics
   let linkedinMetrics: any = {};
   try {
@@ -87,6 +87,30 @@ async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMet
     totalSpend: parseFloat(totalSpend.toFixed(2)),
     detailedMetrics
   };
+}
+
+/**
+ * Record current metrics for a single campaign after a platform sync (LinkedIn refresh, CI upload, etc.)
+ */
+export async function recordCampaignMetrics(campaignId: string): Promise<void> {
+  try {
+    const metrics = await aggregateCampaignMetrics(campaignId);
+    if (metrics.totalImpressions > 0 || metrics.totalClicks > 0 || metrics.totalSpend > 0) {
+      await storage.createMetricSnapshot({
+        campaignId,
+        totalImpressions: metrics.totalImpressions,
+        totalEngagements: metrics.totalEngagements,
+        totalClicks: metrics.totalClicks,
+        totalConversions: metrics.totalConversions,
+        totalSpend: metrics.totalSpend.toFixed(2),
+        metrics: metrics.detailedMetrics,
+        snapshotType: 'platform_sync'
+      });
+      console.log(`[Metrics] Recorded data point for campaign ${campaignId} after platform sync`);
+    }
+  } catch (error: any) {
+    console.error(`[Metrics] Failed to record data point for campaign ${campaignId}:`, error?.message || error);
+  }
 }
 
 async function createSnapshotsForAllCampaigns() {

@@ -212,7 +212,7 @@ export default function FinancialAnalysis() {
   const totalConversions = platformMetrics.linkedIn.conversions + platformMetrics.customIntegration.conversions + platformMetrics.sheets.conversions + platformMetrics.meta.conversions;
   
   // Get campaign budget and currency
-  const campaignBudget = campaign.budget ? parseFloat(campaign.budget) : 0;
+  const campaignBudget = campaign.budget ? (parseFloat(campaign.budget) || 0) : 0;
   const campaignCurrency = (campaign as any).currency || 'USD';
   
   // Format currency with campaign's currency
@@ -372,10 +372,16 @@ export default function FinancialAnalysis() {
                     <DollarSign className="w-5 h-5 text-blue-600" />
                     <div>
                       <p className="font-medium text-blue-900 dark:text-blue-200">
-                        Financial Data Source: LinkedIn Ads
+                        Financial Data Sources: {[
+                          platformMetrics.linkedIn.spend > 0 && 'LinkedIn Ads',
+                          platformMetrics.meta.spend > 0 && 'Meta Ads',
+                          platformMetrics.customIntegration.spend > 0 && 'Custom Integration',
+                          platformMetrics.sheets.spend > 0 && 'Google Sheets',
+                          effectiveGA4?.averageOrderValue > 0 && 'GA4 (AOV)',
+                        ].filter(Boolean).join(', ') || 'No platforms connected'}
                       </p>
                       <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        Financial metrics use the backend’s canonical LinkedIn revenue logic: either imported revenue-to-date or conversions × conversion value (when configured). This ensures exec-grade accuracy across all tabs.
+                        Financial metrics aggregate data from all connected platforms. LinkedIn revenue uses the backend's canonical logic (imported revenue-to-date or conversions × conversion value). Other platforms use estimated AOV.
                       </p>
                     </div>
                   </div>
@@ -428,11 +434,11 @@ export default function FinancialAnalysis() {
                       const targetDailySpend = campaignBudget / targetDaysTotal;
                       const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                       const pacingDeviation = Math.abs(pacingPercentage - 100);
-                      const pacingScore = pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 5;
-                      
-                      const roiScore = roi >= 100 ? 25 : roi >= 50 ? 15 : roi >= 0 ? 10 : 5;
-                      
-                      const roasScore = roas >= 3 ? 25 : roas >= 1.5 ? 15 : roas >= 1 ? 10 : 5;
+                      const pacingScore = pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 0;
+
+                      const roiScore = roi >= 100 ? 25 : roi >= 50 ? 15 : roi >= 0 ? 10 : 0;
+
+                      const roasScore = roas >= 3 ? 25 : roas >= 1.5 ? 15 : roas >= 1 ? 10 : 0;
                       
                       score = budgetScore + pacingScore + roiScore + roasScore;
                       
@@ -685,8 +691,9 @@ export default function FinancialAnalysis() {
                         const today = new Date();
                         const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
                         const dailyBurnRate = totalSpend / daysElapsed;
-                        const daysRemaining = dailyBurnRate > 0 ? remainingBudget / dailyBurnRate : Infinity;
-                        const projectedEndDate = dailyBurnRate > 0 ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000) : null;
+                        const isOverBudget = remainingBudget < 0;
+                        const daysRemaining = (!isOverBudget && dailyBurnRate > 0) ? remainingBudget / dailyBurnRate : 0;
+                        const projectedEndDate = (!isOverBudget && dailyBurnRate > 0) ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000) : null;
                         
                         const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
                         const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + daysRemaining;
@@ -717,7 +724,14 @@ export default function FinancialAnalysis() {
                                  'On Track'}
                               </Badge>
                             </div>
-                            {projectedEndDate && daysRemaining > 0 && (
+                            {isOverBudget && (
+                              <div className="pt-3 border-t">
+                                <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+                                  Budget exceeded by {formatCurrency(Math.abs(remainingBudget))}
+                                </p>
+                              </div>
+                            )}
+                            {!isOverBudget && projectedEndDate && daysRemaining > 0 && (
                               <div className="pt-3 border-t">
                                 <p className="text-xs text-muted-foreground">
                                   At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
@@ -1030,7 +1044,7 @@ export default function FinancialAnalysis() {
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
                               className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${Math.min(ctr * 10, 100)}%` }}
+                              style={{ width: `${Math.min(ctr / 15 * 100, 100)}%` }}
                             ></div>
                           </div>
                         </div>
@@ -1051,7 +1065,7 @@ export default function FinancialAnalysis() {
                               <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                                 <div 
                                   className="bg-green-600 h-2 rounded-full" 
-                                  style={{ width: `${Math.min(clickThroughCVR, 100)}%` }}
+                                  style={{ width: `${Math.min(clickThroughCVR / 20 * 100, 100)}%` }}
                                 ></div>
                               </div>
                               {hasViewThroughConversions && (

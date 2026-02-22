@@ -47,7 +47,7 @@ export default function FinancialAnalysis() {
   });
 
   // Get LinkedIn metrics
-  const { data: linkedInData } = useQuery({
+  const { data: linkedInData, isLoading: linkedInLoading } = useQuery({
     queryKey: ["/api/linkedin/metrics", campaignId],
     enabled: !!campaignId,
   });
@@ -70,7 +70,7 @@ export default function FinancialAnalysis() {
   });
 
   // Get GA4 data for additional metrics
-  const { data: ga4Data } = useQuery({
+  const { data: ga4Data, isLoading: ga4Loading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -367,8 +367,8 @@ export default function FinancialAnalysis() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              {/* AOV Warning (only when we have no usable revenue source) */}
-              {estimatedAOV === 0 && !(linkedInRevenueFromBackend !== null && linkedInRevenueFromBackend > 0) && (
+              {/* AOV Warning (only when we have no usable revenue source AND data has loaded) */}
+              {!linkedInLoading && !ga4Loading && !demoMode && estimatedAOV === 0 && !(linkedInRevenueFromBackend !== null && linkedInRevenueFromBackend > 0) && (
                 <Card className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2">
@@ -799,28 +799,20 @@ export default function FinancialAnalysis() {
                         </div>
                       )}
 
-                      {/* Custom Integration (Other Platforms) - Always shown */}
-                      <div className="p-3 border rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium">Custom Integration</span>
-                          {platformMetrics.customIntegration.spend === 0 && platformMetrics.customIntegration.conversions === 0 ? (
-                            <Badge className="bg-slate-100 text-slate-700">
-                              No Data Available
-                            </Badge>
-                          ) : (
+                      {/* Custom Integration */}
+                      {(platformMetrics.customIntegration.spend > 0 || platformMetrics.customIntegration.conversions > 0) && (
+                        <div className="p-3 border rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium">Custom Integration</span>
                             <Badge className={customIntegrationROAS >= 3 ? "bg-green-100 text-green-700" : customIntegrationROAS >= 1.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
                               {customIntegrationROAS.toFixed(2)}x ROAS
                             </Badge>
-                          )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Conversions: {formatNumber(platformMetrics.customIntegration.conversions)} • Revenue: {formatCurrency(platformMetrics.customIntegration.conversions * fallbackAOV)}
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {platformMetrics.customIntegration.spend === 0 && platformMetrics.customIntegration.conversions === 0 ? (
-                            "No financial metrics available"
-                          ) : (
-                            <>Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Conversions: {formatNumber(platformMetrics.customIntegration.conversions)} • Revenue: {formatCurrency(platformMetrics.customIntegration.conversions * fallbackAOV)}</>
-                          )}
-                        </div>
-                      </div>
+                      )}
 
                       {/* Meta Ads */}
                       {platformMetrics.meta.spend > 0 && (
@@ -874,35 +866,24 @@ export default function FinancialAnalysis() {
                         );
                       })()}
 
-                      {/* Custom Integration (Other Platforms) - Always shown */}
-                      {(() => {
+                      {/* Custom Integration */}
+                      {(platformMetrics.customIntegration.spend > 0 || platformMetrics.customIntegration.conversions > 0) && (() => {
                         const customIntegrationRevenue = platformMetrics.customIntegration.conversions * fallbackAOV;
-                        const customIntegrationROI = platformMetrics.customIntegration.spend > 0 
-                          ? ((customIntegrationRevenue - platformMetrics.customIntegration.spend) / platformMetrics.customIntegration.spend) * 100 
+                        const customIntegrationROI = platformMetrics.customIntegration.spend > 0
+                          ? ((customIntegrationRevenue - platformMetrics.customIntegration.spend) / platformMetrics.customIntegration.spend) * 100
                           : 0;
                         const customIntegrationNetProfit = customIntegrationRevenue - platformMetrics.customIntegration.spend;
-                        const hasData = platformMetrics.customIntegration.spend > 0 || platformMetrics.customIntegration.conversions > 0;
-                        
+
                         return (
                           <div className="p-3 border rounded-lg">
                             <div className="flex justify-between items-center mb-2">
                               <span className="font-medium">Custom Integration</span>
-                              {!hasData ? (
-                                <Badge className="bg-slate-100 text-slate-700">
-                                  No Data Available
-                                </Badge>
-                              ) : (
-                                <Badge className={customIntegrationROI >= 100 ? "bg-green-100 text-green-700" : customIntegrationROI >= 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
-                                  {formatPercentage(customIntegrationROI)} ROI
-                                </Badge>
-                              )}
+                              <Badge className={customIntegrationROI >= 100 ? "bg-green-100 text-green-700" : customIntegrationROI >= 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                                {formatPercentage(customIntegrationROI)} ROI
+                              </Badge>
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {!hasData ? (
-                                "No financial metrics available"
-                              ) : (
-                                <>Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Net Profit: <span className={customIntegrationNetProfit >= 0 ? "text-green-600" : "text-red-600"}>{formatCurrency(customIntegrationNetProfit)}</span></>
-                              )}
+                              Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Net Profit: <span className={customIntegrationNetProfit >= 0 ? "text-green-600" : "text-red-600"}>{formatCurrency(customIntegrationNetProfit)}</span>
                             </div>
                           </div>
                         );

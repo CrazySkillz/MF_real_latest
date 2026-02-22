@@ -53,7 +53,7 @@ export default function FinancialAnalysis() {
   });
 
   // Get Custom Integration data
-  const { data: customIntegrationData } = useQuery({
+  const { data: customIntegrationData, isLoading: ciLoading } = useQuery({
     queryKey: ["/api/custom-integration", campaignId],
     enabled: !!campaignId,
   });
@@ -81,7 +81,7 @@ export default function FinancialAnalysis() {
   });
 
   // Get Meta analytics data
-  const { data: metaData } = useQuery({
+  const { data: metaData, isLoading: metaLoading } = useQuery({
     queryKey: ["/api/meta", campaignId, "analytics"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -170,6 +170,9 @@ export default function FinancialAnalysis() {
       </div>
     );
   }
+
+  // Data loading state — prevent flash of stale/zero metrics on refresh
+  const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || ga4Loading);
 
   // Aggregate metrics from all platforms
   // Custom Integration: Map pageviews→impressions, sessions→engagements (consistent with Performance Summary)
@@ -367,8 +370,26 @@ export default function FinancialAnalysis() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
+              {dataLoading ? (
+                <div className="space-y-6">
+                  <div className="h-48 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                    <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  </div>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="h-40 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                    <div className="h-40 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                    <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                    <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  </div>
+                </div>
+              ) : <>
               {/* AOV Warning (only when we have no usable revenue source AND data has loaded) */}
-              {!linkedInLoading && !ga4Loading && !demoMode && estimatedAOV === 0 && !(linkedInRevenueFromBackend !== null && linkedInRevenueFromBackend > 0) && (
+              {estimatedAOV === 0 && !(linkedInRevenueFromBackend !== null && linkedInRevenueFromBackend > 0) && (
                 <Card className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2">
@@ -727,10 +748,16 @@ export default function FinancialAnalysis() {
                   </CardContent>
                 </Card>
               </div>
+              </>}
             </TabsContent>
 
             <TabsContent value="roi-roas" className="space-y-6">
-              <Card>
+              {dataLoading ? (
+                <div className="space-y-6">
+                  <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  <div className="h-48 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                </div>
+              ) : <Card>
                 <CardHeader>
                   <CardTitle>ROI & ROAS Analysis</CardTitle>
                   <CardDescription>
@@ -922,11 +949,15 @@ export default function FinancialAnalysis() {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
+              </Card>}
             </TabsContent>
 
             <TabsContent value="costs" className="space-y-6">
-              <Card>
+              {dataLoading ? (
+                <div className="space-y-6">
+                  <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                </div>
+              ) : <Card>
                 <CardHeader>
                   <CardTitle>Cost Analysis Breakdown</CardTitle>
                   <CardDescription>
@@ -1107,11 +1138,15 @@ export default function FinancialAnalysis() {
                     ) : null;
                   })()}
                 </CardContent>
-              </Card>
+              </Card>}
             </TabsContent>
 
             <TabsContent value="budget" className="space-y-6">
-              <Card>
+              {dataLoading ? (
+                <div className="space-y-6">
+                  <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                </div>
+              ) : <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Zap className="w-5 h-5" />
@@ -1300,11 +1335,15 @@ export default function FinancialAnalysis() {
                     );
                   })()}
                 </CardContent>
-              </Card>
+              </Card>}
             </TabsContent>
 
             <TabsContent value="insights" className="space-y-6">
-              <Card>
+              {dataLoading ? (
+                <div className="space-y-6">
+                  <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                </div>
+              ) : <Card>
                 <CardHeader>
                   <CardTitle>Financial Performance Insights</CardTitle>
                   <CardDescription>
@@ -1505,7 +1544,7 @@ export default function FinancialAnalysis() {
                     );
                   })()}
                 </CardContent>
-              </Card>
+              </Card>}
             </TabsContent>
           </Tabs>
         </main>

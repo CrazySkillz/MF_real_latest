@@ -146,7 +146,7 @@ ROI  = ((totalRevenue - totalSpend) / totalSpend) * 100
 
 ## ROI & ROAS Tab
 
-The dedicated ROI & ROAS tab provides the full return analysis that the Overview tab summarizes. It is split into four sections:
+The dedicated ROI & ROAS tab provides the full return analysis. It is split into three sections:
 
 ### 1. Overall ROAS & ROI (Side-by-Side)
 
@@ -167,9 +167,7 @@ Per-platform ROAS breakdown with color-coded badges:
 | **Meta Ads** | `conversions * estimatedAOV / spend` | Estimated via AOV |
 | **Custom Integration** | `conversions * fallbackAOV / spend` | Estimated via AOV |
 
-Badge colors: Green (>= 3.0x), Yellow (>= 1.5x), Red (< 1.5x). Each row shows spend, conversions, and revenue.
-
-Platforms only appear when they have spend > 0. If no platforms have data, a "No platform data" message is shown.
+Badge colors: Green (>= 3.0x), Yellow (>= 1.5x), Red (< 1.5x). Each row shows spend, conversions, and revenue. Platforms only appear when they have spend > 0 (or conversions > 0 for CI).
 
 ### 3. Platform ROI Performance
 
@@ -183,13 +181,79 @@ Per-platform ROI breakdown:
 
 Badge colors: Green (>= 100%), Yellow (>= 0%), Red (< 0%). Each row shows spend and net profit.
 
-### 4. Business Value
+---
 
-The ROI & ROAS tab answers the key question: **"Is my advertising investment profitable?"**
+## Cost Analysis Tab
 
-- Overall ROAS/ROI gives the campaign-level answer
-- Platform breakdown identifies which platforms are driving returns and which are underperforming
-- This enables data-driven budget reallocation decisions
+The Cost Analysis tab provides cost efficiency metrics (numbers only, no recommendations).
+
+### 1. Cost Metrics
+
+| Metric | Formula | Meaning |
+|---|---|---|
+| **CPC** (Cost Per Click) | `totalSpend / totalClicks` | Cost to acquire one click |
+| **CPA** (Cost Per Acquisition) | `totalSpend / totalConversions` | Cost to acquire one conversion |
+| **CPM** (Cost Per Thousand Impressions) | `(totalSpend / totalImpressions) * 1000` | Cost per 1,000 impressions |
+
+**View-through conversion handling:** When `totalConversions > totalClicks`, CPA shows both a "click-through CPA" (`spend / min(conversions, clicks)`) and a "Total CPA (incl. view-through)" underneath.
+
+### 2. Efficiency Indicators
+
+| Metric | Formula | Visual |
+|---|---|---|
+| **CTR** (Click-through Rate) | `(totalClicks / totalImpressions) * 100` | Progress bar scaled to 15% max |
+| **CVR** (Conversion Rate) | `(totalConversions / totalClicks) * 100` | Progress bar scaled to 20% max |
+
+CVR also has view-through handling — shows click-through CVR as the main number and total CVR below.
+
+---
+
+## Budget Allocation Tab
+
+The Budget Allocation tab provides the per-platform budget analysis and optimization recommendations.
+
+### 1. Performance Tiers
+
+Three cards grouping platforms by ROAS performance:
+
+| Tier | Criteria | Shows |
+|---|---|---|
+| **High Performance** (green) | ROAS >= 3.0x | Total spend in tier, % of total spend |
+| **Medium Performance** (yellow) | ROAS 1.0-3.0x | Total spend in tier, % of total spend |
+| **Low Performance** (red) | ROAS < 1.0x | Total spend in tier, % of total spend |
+
+### 2. Platform Budget Analysis
+
+Per-platform breakdown showing: ROAS badge (color-coded), Spend, Conversions, Revenue, Budget Share % with progress bar. Only platforms with `spend > 0 || conversions > 0` are shown.
+
+### 3. Budget Optimization Recommendations
+
+Only shown when multiple platforms have active spend:
+- Scale high-performing (ROAS >= 3x) platforms
+- Optimize underperforming (ROAS < 1x) platforms
+- Reallocate budget from low to high performers (when both exist)
+
+---
+
+## Insights Tab
+
+The Insights tab is the executive summary — all recommendations in one place.
+
+### 1. Quick Summary Cards
+
+Three color-coded cards summarizing: Performance (ROAS/ROI), Cost Efficiency (CPA assessment), Budget Management (utilization %).
+
+### 2. Platform Performance Insights
+
+Highlights the top performer and bottom performer (by ROAS) with actionable recommendations.
+
+### 3. Key Opportunities
+
+Conditional recommendations based on: high ROAS (scale), low CVR (optimize landing pages), low CTR (improve creative), high budget utilization with positive ROAS (increase budget).
+
+### 4. Cost Optimization Insights
+
+Dynamically generated recommendations based on cost-metric thresholds (CTR, CVR, CPC, CPM, CPA). Moved here from Cost Analysis so the Cost Analysis tab focuses on numbers and the Insights tab consolidates all recommendations.
 
 ---
 

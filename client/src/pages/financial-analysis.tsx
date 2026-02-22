@@ -873,11 +873,11 @@ export default function FinancialAnalysis() {
                     <div className="space-y-3">
                       {/* LinkedIn Ads */}
                       {platformMetrics.linkedIn.spend > 0 && (() => {
-                        const linkedInROI = platformMetrics.linkedIn.spend > 0 
-                          ? ((linkedInRevenue - platformMetrics.linkedIn.spend) / platformMetrics.linkedIn.spend) * 100 
+                        const linkedInROI = platformMetrics.linkedIn.spend > 0
+                          ? ((linkedInRevenue - platformMetrics.linkedIn.spend) / platformMetrics.linkedIn.spend) * 100
                           : 0;
                         const linkedInNetProfit = linkedInRevenue - platformMetrics.linkedIn.spend;
-                        
+
                         return (
                           <div className="p-3 border rounded-lg">
                             <div className="flex justify-between items-center mb-2">
@@ -1065,78 +1065,6 @@ export default function FinancialAnalysis() {
                   </div>
                   
                   
-                  {/* Cost Optimization Opportunities - Dynamic Data-Driven */}
-                  {(() => {
-                    const recommendations: string[] = [];
-                    
-                    // Platform ROAS Performance
-                    if (platformMetrics.linkedIn.spend > 0 && linkedInROAS >= 10) {
-                      recommendations.push(`LinkedIn generating exceptional ${linkedInROAS.toFixed(2)}x ROAS - consider increasing budget allocation`);
-                    } else if (platformMetrics.linkedIn.spend > 0 && linkedInROAS >= 3) {
-                      recommendations.push(`LinkedIn showing strong ${linkedInROAS.toFixed(2)}x ROAS - maintain or scale current strategy`);
-                    } else if (platformMetrics.linkedIn.spend > 0 && linkedInROAS < 1.5) {
-                      recommendations.push(`LinkedIn ROAS below target at ${linkedInROAS.toFixed(2)}x - review targeting and creative performance`);
-                    }
-                    
-                    // Custom Integration Status
-                    if (platformMetrics.customIntegration.spend === 0 && platformMetrics.customIntegration.conversions === 0) {
-                      recommendations.push('Custom Integration has no financial data - upload campaign data to enable cross-platform comparison');
-                    } else if (platformMetrics.customIntegration.spend > 0) {
-                      const customROAS = platformMetrics.customIntegration.spend > 0 
-                        ? (platformMetrics.customIntegration.conversions * fallbackAOV) / platformMetrics.customIntegration.spend 
-                        : 0;
-                      if (customROAS < linkedInROAS && platformMetrics.linkedIn.spend > 0) {
-                        recommendations.push(`LinkedIn outperforming Custom Integration by ${((linkedInROAS - customROAS) / customROAS * 100).toFixed(0)}% - consider reallocating budget`);
-                      }
-                    }
-                    
-                    // CTR Performance
-                    if (ctr < 1) {
-                      recommendations.push(`Click-through rate below 1% - test new ad creative and messaging to improve engagement`);
-                    } else if (ctr >= 3) {
-                      recommendations.push(`Strong click-through rate of ${formatPercentage(ctr)} - ads resonating well with target audience`);
-                    }
-                    
-                    // CVR Performance
-                    if (conversionRate < 2) {
-                      recommendations.push(`Conversion rate below 2% - review landing page experience and offer relevance`);
-                    } else if (conversionRate >= 10) {
-                      recommendations.push(`Excellent conversion rate of ${formatPercentage(conversionRate)} - landing page highly effective`);
-                    }
-                    
-                    // ROI Performance
-                    if (roi > 1000) {
-                      recommendations.push(`Outstanding ROI of ${formatPercentage(roi)} - scale winning campaigns to maximize returns`);
-                    } else if (roi < 0) {
-                      recommendations.push(`Negative ROI - immediate optimization required to achieve profitability`);
-                    }
-                    
-                    // CPC Efficiency
-                    if (cpc > 10) {
-                      recommendations.push(`CPC of ${formatCurrency(cpc)} above average - refine audience targeting to reduce costs`);
-                    } else if (cpc < 2) {
-                      recommendations.push(`Low CPC of ${formatCurrency(cpc)} indicates efficient targeting - maintain current approach`);
-                    }
-                    
-                    // CPA with High ROAS indicates high-value conversions
-                    if (cpa > 50 && roas > 10) {
-                      recommendations.push(`High CPA of ${formatCurrency(cpa)} justified by exceptional ${roas.toFixed(2)}x ROAS - focus on quality over quantity`);
-                    }
-                    
-                    return recommendations.length > 0 ? (
-                      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <h5 className="font-semibold text-blue-900 dark:text-blue-300 mb-3">💡 Data-Driven Insights</h5>
-                        <ul className="space-y-2 text-sm">
-                          {recommendations.map((rec, index) => (
-                            <li key={index} className="flex items-start space-x-2">
-                              <span className="text-blue-600">•</span>
-                              <span>{rec}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null;
-                  })()}
                 </CardContent>
               </Card>}
             </TabsContent>
@@ -1494,7 +1422,7 @@ export default function FinancialAnalysis() {
                                 </div>
                               </div>
                             )}
-                            
+
                             {conversionRate < 5 && totalConversions > 10 && (
                               <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
                                 <Target className="w-5 h-5 text-blue-600 mt-0.5" />
@@ -1506,7 +1434,7 @@ export default function FinancialAnalysis() {
                                 </div>
                               </div>
                             )}
-                            
+
                             {ctr < 2 && totalClicks > 100 && (
                               <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
                                 <Eye className="w-5 h-5 text-yellow-600 mt-0.5" />
@@ -1518,7 +1446,7 @@ export default function FinancialAnalysis() {
                                 </div>
                               </div>
                             )}
-                            
+
                             {budgetUtilization > 85 && roas > 2 && (
                               <div className="flex items-start space-x-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded">
                                 <TrendingUp className="w-5 h-5 text-purple-600 mt-0.5" />
@@ -1530,7 +1458,7 @@ export default function FinancialAnalysis() {
                                 </div>
                               </div>
                             )}
-                            
+
                             {platformsWithSpend.length === 0 && (
                               <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
                                 <p className="text-sm text-muted-foreground">
@@ -1540,6 +1468,57 @@ export default function FinancialAnalysis() {
                             )}
                           </div>
                         </div>
+
+                        {/* Cost Optimization Insights */}
+                        {(() => {
+                          const costInsights: string[] = [];
+
+                          if (ctr < 1 && totalImpressions > 0) {
+                            costInsights.push(`Click-through rate below 1% - test new ad creative and messaging to improve engagement`);
+                          } else if (ctr >= 3) {
+                            costInsights.push(`Strong click-through rate of ${formatPercentage(ctr)} - ads resonating well with target audience`);
+                          }
+
+                          if (conversionRate < 2 && totalClicks > 0) {
+                            costInsights.push(`Conversion rate below 2% - review landing page experience and offer relevance`);
+                          } else if (conversionRate >= 10) {
+                            costInsights.push(`Excellent conversion rate of ${formatPercentage(conversionRate)} - landing page highly effective`);
+                          }
+
+                          if (cpc > 10) {
+                            costInsights.push(`CPC of ${formatCurrency(cpc)} above average - refine audience targeting to reduce costs`);
+                          } else if (cpc > 0 && cpc < 2) {
+                            costInsights.push(`Low CPC of ${formatCurrency(cpc)} indicates efficient targeting - maintain current approach`);
+                          }
+
+                          if (cpm > 0 && cpm < 5) {
+                            costInsights.push(`CPM of ${formatCurrency(cpm)} is cost-efficient - strong reach per dollar spent`);
+                          } else if (cpm > 30) {
+                            costInsights.push(`CPM of ${formatCurrency(cpm)} above average - consider broadening audience to improve reach efficiency`);
+                          }
+
+                          if (cpa > 100 && totalConversions > 0) {
+                            costInsights.push(`CPA of ${formatCurrency(cpa)} is high - review conversion funnel for drop-off points`);
+                          } else if (cpa > 0 && cpa < 15) {
+                            costInsights.push(`CPA of ${formatCurrency(cpa)} is excellent - acquisition costs well-controlled`);
+                          }
+
+                          return costInsights.length > 0 ? (
+                            <div className="mt-6">
+                              <h4 className="font-semibold mb-4">Cost Optimization Insights</h4>
+                              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                <ul className="space-y-2 text-sm">
+                                  {costInsights.map((insight, index) => (
+                                    <li key={index} className="flex items-start space-x-2">
+                                      <Calculator className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                                      <span>{insight}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                     );
                   })()}

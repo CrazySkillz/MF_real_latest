@@ -365,29 +365,6 @@ export default function FinancialAnalysis() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              {/* Data Source Notice */}
-              <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <DollarSign className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="font-medium text-blue-900 dark:text-blue-200">
-                        Financial Data Sources: {[
-                          platformMetrics.linkedIn.spend > 0 && 'LinkedIn Ads',
-                          platformMetrics.meta.spend > 0 && 'Meta Ads',
-                          platformMetrics.customIntegration.spend > 0 && 'Custom Integration',
-                          platformMetrics.sheets.spend > 0 && 'Google Sheets',
-                          effectiveGA4?.averageOrderValue > 0 && 'GA4 (AOV)',
-                        ].filter(Boolean).join(', ') || 'No platforms connected'}
-                      </p>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        Financial metrics aggregate data from all connected platforms. LinkedIn revenue uses the backend's canonical logic (imported revenue-to-date or conversions × conversion value). Other platforms use estimated AOV.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* AOV Warning (only when we have no usable revenue source) */}
               {estimatedAOV === 0 && !(linkedInRevenueFromBackend !== null && linkedInRevenueFromBackend > 0) && (
                 <Card className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
@@ -555,7 +532,7 @@ export default function FinancialAnalysis() {
               </Card>
 
               {/* Key Financial Metrics */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -569,56 +546,6 @@ export default function FinancialAnalysis() {
                         </div>
                       </div>
                       <DollarSign className="w-8 h-8 text-red-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Estimated Revenue</p>
-                          {platformMetrics.sheets.spend > 0 && (
-                            <Badge variant="outline" className="text-xs">Incl. Google Sheets</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {formatCurrency(estimatedRevenue)}
-                          </p>
-                          {historicalMetrics && renderTrendIndicator(calculateChange(estimatedRevenue, historicalMetrics.revenue))}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                          {platformMetrics.linkedIn.conversions > 0 && linkedInConversionValue > 0 && (
-                            <div>LinkedIn: {platformMetrics.linkedIn.conversions.toLocaleString()} × ${linkedInConversionValue.toFixed(2)} = {formatCurrency(linkedInRevenue)}</div>
-                          )}
-                          {(platformMetrics.customIntegration.conversions > 0 || platformMetrics.sheets.conversions > 0) && fallbackAOV > 0 && (
-                            <div>Other: {(platformMetrics.customIntegration.conversions + platformMetrics.sheets.conversions).toLocaleString()} × ${fallbackAOV.toFixed(2)} = {formatCurrency(otherRevenue)}</div>
-                          )}
-                        </div>
-                      </div>
-                      <TrendingUp className="w-8 h-8 text-green-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Net Profit</p>
-                        <div className="flex items-center justify-between">
-                          <p className={`text-2xl font-bold ${estimatedRevenue - totalSpend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatCurrency(estimatedRevenue - totalSpend)}
-                          </p>
-                          {historicalMetrics && renderTrendIndicator(calculateChange(
-                            estimatedRevenue - totalSpend, 
-                            historicalMetrics.revenue - historicalMetrics.spend
-                          ))}
-                        </div>
-                      </div>
-                      <Calculator className="w-8 h-8 text-blue-500" />
                     </div>
                   </CardContent>
                 </Card>

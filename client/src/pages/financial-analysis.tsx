@@ -266,21 +266,23 @@ export default function FinancialAnalysis() {
       ? linkedInROASFromBackend
       : calculatePlatformROAS(platformMetrics.linkedIn.spend, platformMetrics.linkedIn.conversions, linkedInConversionValue);
   const customIntegrationROAS = calculatePlatformROAS(platformMetrics.customIntegration.spend, platformMetrics.customIntegration.conversions);
-  
+  const metaROAS = calculatePlatformROAS(platformMetrics.meta.spend, platformMetrics.meta.conversions);
+
   // Calculate revenue/ROI using LinkedIn conversion value for LinkedIn conversions
-  // and fallback AOV for other platforms
+  // and fallback AOV for other platforms (CI, Sheets, Meta)
   // IMPORTANT: Prefer backend-computed LinkedIn revenue. This remains correct even when revenue-to-date is imported
   // (e.g. conversions=0, conversionValue=0, but revenue still exists).
   const linkedInRevenue =
     linkedInRevenueFromBackend !== null
       ? linkedInRevenueFromBackend
       : (platformMetrics.linkedIn.conversions * linkedInConversionValue);
+  const metaRevenue = platformMetrics.meta.conversions * estimatedAOV;
   const otherRevenue = (platformMetrics.customIntegration.conversions + platformMetrics.sheets.conversions) * fallbackAOV;
-  const estimatedRevenue = linkedInRevenue + otherRevenue;
+  const estimatedRevenue = linkedInRevenue + otherRevenue + metaRevenue;
   const roas = totalSpend > 0 ? estimatedRevenue / totalSpend : 0;
   const roi =
     // If this campaign is effectively LinkedIn-only, prefer backend ROI (it accounts for revenue-to-date vs derived revenue).
-    (linkedInROIFromBackend !== null && otherRevenue === 0 && totalSpend === platformMetrics.linkedIn.spend)
+    (linkedInROIFromBackend !== null && otherRevenue === 0 && metaRevenue === 0 && totalSpend === platformMetrics.linkedIn.spend)
       ? linkedInROIFromBackend
       : (totalSpend > 0 ? ((estimatedRevenue - totalSpend) / totalSpend) * 100 : 0);
 
@@ -820,6 +822,21 @@ export default function FinancialAnalysis() {
                         </div>
                       </div>
 
+                      {/* Meta Ads */}
+                      {platformMetrics.meta.spend > 0 && (
+                        <div className="p-3 border rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium">Meta Ads</span>
+                            <Badge className={metaROAS >= 3 ? "bg-green-100 text-green-700" : metaROAS >= 1.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                              {metaROAS.toFixed(2)}x ROAS
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Spend: {formatCurrency(platformMetrics.meta.spend)} • Conversions: {formatNumber(platformMetrics.meta.conversions)} • Revenue: {formatCurrency(metaRevenue)}
+                          </div>
+                        </div>
+                      )}
+
                       {/* No data message */}
                       {totalSpend === 0 && (
                         <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
@@ -886,6 +903,28 @@ export default function FinancialAnalysis() {
                               ) : (
                                 <>Spend: {formatCurrency(platformMetrics.customIntegration.spend)} • Net Profit: <span className={customIntegrationNetProfit >= 0 ? "text-green-600" : "text-red-600"}>{formatCurrency(customIntegrationNetProfit)}</span></>
                               )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Meta Ads */}
+                      {platformMetrics.meta.spend > 0 && (() => {
+                        const metaROI = platformMetrics.meta.spend > 0
+                          ? ((metaRevenue - platformMetrics.meta.spend) / platformMetrics.meta.spend) * 100
+                          : 0;
+                        const metaNetProfit = metaRevenue - platformMetrics.meta.spend;
+
+                        return (
+                          <div className="p-3 border rounded-lg">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-medium">Meta Ads</span>
+                              <Badge className={metaROI >= 100 ? "bg-green-100 text-green-700" : metaROI >= 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                                {formatPercentage(metaROI)} ROI
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Spend: {formatCurrency(platformMetrics.meta.spend)} • Net Profit: <span className={metaNetProfit >= 0 ? "text-green-600" : "text-red-600"}>{formatCurrency(metaNetProfit)}</span>
                             </div>
                           </div>
                         );
@@ -1105,16 +1144,23 @@ export default function FinancialAnalysis() {
                   {(() => {
                     // Calculate performance tiers based on real ROAS
                     const platforms = [
-                      { 
-                        name: 'LinkedIn Ads', 
-                        spend: platformMetrics.linkedIn.spend, 
+                      {
+                        name: 'LinkedIn Ads',
+                        spend: platformMetrics.linkedIn.spend,
                         roas: linkedInROAS,
                         conversions: platformMetrics.linkedIn.conversions,
                         revenue: linkedInRevenue
                       },
-                      { 
-                        name: 'Custom Integration', 
-                        spend: platformMetrics.customIntegration.spend, 
+                      {
+                        name: 'Meta Ads',
+                        spend: platformMetrics.meta.spend,
+                        roas: metaROAS,
+                        conversions: platformMetrics.meta.conversions,
+                        revenue: metaRevenue
+                      },
+                      {
+                        name: 'Custom Integration',
+                        spend: platformMetrics.customIntegration.spend,
                         roas: customIntegrationROAS,
                         conversions: platformMetrics.customIntegration.conversions,
                         revenue: platformMetrics.customIntegration.conversions * fallbackAOV
@@ -1296,9 +1342,18 @@ export default function FinancialAnalysis() {
                         cpc: platformMetrics.linkedIn.clicks > 0 ? platformMetrics.linkedIn.spend / platformMetrics.linkedIn.clicks : 0,
                         cvr: platformMetrics.linkedIn.clicks > 0 ? (platformMetrics.linkedIn.conversions / platformMetrics.linkedIn.clicks) * 100 : 0
                       },
-                      { 
-                        name: 'Custom Integration', 
-                        spend: platformMetrics.customIntegration.spend, 
+                      {
+                        name: 'Meta Ads',
+                        spend: platformMetrics.meta.spend,
+                        roas: metaROAS,
+                        conversions: platformMetrics.meta.conversions,
+                        revenue: metaRevenue,
+                        cpc: platformMetrics.meta.clicks > 0 ? platformMetrics.meta.spend / platformMetrics.meta.clicks : 0,
+                        cvr: platformMetrics.meta.clicks > 0 ? (platformMetrics.meta.conversions / platformMetrics.meta.clicks) * 100 : 0
+                      },
+                      {
+                        name: 'Custom Integration',
+                        spend: platformMetrics.customIntegration.spend,
                         roas: customIntegrationROAS,
                         conversions: platformMetrics.customIntegration.conversions,
                         revenue: platformMetrics.customIntegration.conversions * fallbackAOV,
@@ -1306,7 +1361,7 @@ export default function FinancialAnalysis() {
                         cvr: platformMetrics.customIntegration.clicks > 0 ? (platformMetrics.customIntegration.conversions / platformMetrics.customIntegration.clicks) * 100 : 0
                       }
                     ];
-                    
+
                     const platformsWithSpend = platforms.filter(p => p.spend > 0);
                     const topPerformer = platformsWithSpend.length > 0 ? platformsWithSpend.reduce((a, b) => a.roas > b.roas ? a : b) : null;
                     const bottomPerformer = platformsWithSpend.length > 1 ? platformsWithSpend.reduce((a, b) => a.roas < b.roas ? a : b) : null;

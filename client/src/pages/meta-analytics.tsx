@@ -312,53 +312,8 @@ export default function MetaAnalytics() {
     enabled: !!campaignId && !!firstMetaCampaignId,
   });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Navigation />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-8">
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-slate-600 dark:text-slate-400">Loading Meta analytics...</p>
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  if (!analyticsData) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Navigation />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-8">
-            <div className="text-center py-12">
-              <p className="text-slate-600 dark:text-slate-400">No Meta analytics data available</p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  const { summary, campaigns } = analyticsData;
-  const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
-
-  // Format date helper
-  const formatShortDate = (yyyyMmDd: string) => {
-    const s = String(yyyyMmDd || '').trim();
-    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return s;
-    return `'${m[1].slice(-2)}-${m[2]}-${m[3]}`;
-  };
-
   // Process daily data into series and rollups for Daily/7d/30d charts
+  // NOTE: These useMemo hooks MUST be before conditional returns to satisfy Rules of Hooks
   const metaDailySeries = useMemo(() => {
     const raw = Array.isArray(metaDailyResp?.dailyInsights) ? metaDailyResp.dailyInsights : [];
     const hasRev = !!revenueSummary?.hasRevenueTracking;
@@ -473,6 +428,52 @@ export default function MetaAnalytics() {
       },
     };
   }, [metaDailySeries]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Navigation />
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1 p-8">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-slate-600 dark:text-slate-400">Loading Meta analytics...</p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!analyticsData) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <Navigation />
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1 p-8">
+            <div className="text-center py-12">
+              <p className="text-slate-600 dark:text-slate-400">No Meta analytics data available</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  const { summary, campaigns } = analyticsData;
+  const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
+
+  // Format date helper
+  const formatShortDate = (yyyyMmDd: string) => {
+    const s = String(yyyyMmDd || '').trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return s;
+    return `'${m[1].slice(-2)}-${m[2]}-${m[3]}`;
+  };
 
   // Helper: get live metric value from Meta summary for KPIs/Benchmarks
   const getLiveMetricValue = (metricKey: string): number => {

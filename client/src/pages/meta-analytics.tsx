@@ -342,101 +342,119 @@ export default function MetaAnalytics() {
             </CardContent>
           </Card>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Campaign Performance</CardTitle>
-                <CardDescription>Top 5 campaigns by spend</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={campaignPerformanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="spend" fill="#3b82f6" name="Spend ($)" />
-                    <Bar dataKey="conversions" fill="#10b981" name="Conversions" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Spend by Objective</CardTitle>
-                <CardDescription>Budget allocation across campaign types</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={objectiveData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={(entry: any) => `${entry.name}: $${entry.value.toFixed(0)}`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {objectiveData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Campaigns Table */}
+          {/* All Campaigns - Card Layout */}
           <Card>
             <CardHeader>
               <CardTitle>All Campaigns</CardTitle>
               <CardDescription>Detailed performance metrics for all campaigns</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Campaign</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Objective</TableHead>
-                    <TableHead className="text-right">Spend</TableHead>
-                    <TableHead className="text-right">Impressions</TableHead>
-                    <TableHead className="text-right">Clicks</TableHead>
-                    <TableHead className="text-right">CTR</TableHead>
-                    <TableHead className="text-right">Conversions</TableHead>
-                    <TableHead className="text-right">CPC</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {campaigns.map((campaignData: any) => {
-                    const { campaign, totals } = campaignData;
-                    return (
-                      <TableRow key={campaign.id}>
-                        <TableCell className="font-medium">{campaign.name}</TableCell>
-                        <TableCell>
-                          <Badge variant={campaign.status === 'ACTIVE' ? 'default' : 'secondary'}>
+              <div className="space-y-4">
+                {campaigns.map((campaignData: any) => {
+                  const { campaign, totals } = campaignData;
+                  const formatCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                  const formatNum = (v: number) => v.toLocaleString();
+                  const formatPct = (v: number) => `${v.toFixed(2)}%`;
+
+                  return (
+                    <div key={campaign.id} className="border rounded-lg p-4 bg-white dark:bg-slate-900">
+                      {/* Campaign header */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-slate-900 dark:text-white">{campaign.name}</h4>
+                          <Badge variant={campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
                             {campaign.status}
                           </Badge>
-                        </TableCell>
-                        <TableCell>{campaign.objective}</TableCell>
-                        <TableCell className="text-right">${totals.spend.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{totals.impressions.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{totals.clicks.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{totals.ctr}%</TableCell>
-                        <TableCell className="text-right">{totals.conversions.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">${totals.cpc.toFixed(2)}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                          <span className="text-xs text-slate-500">{campaign.objective}</span>
+                        </div>
+                        <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totals.spend || 0)}</span>
+                      </div>
+
+                      {/* Core metrics — prominent */}
+                      <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-3">
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium">Impressions</p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.impressions)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium">Reach</p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.reach)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium">Clicks</p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.clicks)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium">CTR</p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatPct(totals.ctr)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium">Conversions</p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.conversions)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium">Video Views</p>
+                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.videoViews)}</p>
+                        </div>
+                      </div>
+
+                      {/* Secondary metrics — smaller */}
+                      <div className="grid grid-cols-4 md:grid-cols-7 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-medium">CPC</p>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.cpc)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-medium">CPM</p>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.cpm)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-medium">CPP</p>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.cpp)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-medium">Frequency</p>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{totals.frequency.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-medium">Cost/Conv</p>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.costPerConversion)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-medium">Conv Rate</p>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatPct(totals.conversionRate)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-medium">Total Spend</p>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.spend)}</p>
+                        </div>
+                      </div>
+
+                      {/* Revenue metrics — only when tracking */}
+                      {revenueSummary?.hasRevenueTracking && (
+                        <div className="grid grid-cols-3 gap-4 pt-3 mt-3 border-t border-green-100 dark:border-green-900/30">
+                          <div>
+                            <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">Revenue</p>
+                            <p className="text-sm font-bold text-green-700 dark:text-green-300">{formatCurrency(revenueSummary.totalRevenue / campaigns.length)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">ROAS</p>
+                            <p className="text-sm font-bold text-green-700 dark:text-green-300">
+                              {totals.spend > 0 ? ((revenueSummary.totalRevenue / campaigns.length) / totals.spend).toFixed(2) + 'x' : 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">ROI</p>
+                            <p className="text-sm font-bold text-green-700 dark:text-green-300">
+                              {totals.spend > 0 ? (((revenueSummary.totalRevenue / campaigns.length) - totals.spend) / totals.spend * 100).toFixed(1) + '%' : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 
@@ -1205,88 +1223,160 @@ export default function MetaAnalytics() {
                 </Card>
               </div>
 
-              {/* Comparison Table */}
+              {/* Campaign Performance & Spend by Objective Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Campaign Performance</CardTitle>
+                    <CardDescription>Top 5 campaigns by spend</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={campaignPerformanceData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="spend" fill="#3b82f6" name="Spend ($)" />
+                        <Bar dataKey="conversions" fill="#10b981" name="Conversions" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Spend by Objective</CardTitle>
+                    <CardDescription>Budget allocation across campaign types</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={objectiveData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={(entry: any) => `${entry.name}: $${entry.value.toFixed(0)}`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {objectiveData.map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Detailed Campaign Comparison - Card Layout */}
               <Card>
                 <CardHeader>
                   <CardTitle>Detailed Campaign Comparison</CardTitle>
                   <CardDescription>Side-by-side metrics for all campaigns</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[250px]">Campaign</TableHead>
-                        <TableHead className="text-right">Spend</TableHead>
-                        <TableHead className="text-right">Impressions</TableHead>
-                        <TableHead className="text-right">Reach</TableHead>
-                        <TableHead className="text-right">Clicks</TableHead>
-                        <TableHead className="text-right">CTR</TableHead>
-                        <TableHead className="text-right">CPC</TableHead>
-                        <TableHead className="text-right">CPM</TableHead>
-                        <TableHead className="text-right">Frequency</TableHead>
-                        <TableHead className="text-right">Conversions</TableHead>
-                        <TableHead className="text-right">Conv Rate</TableHead>
-                        <TableHead className="text-right">Cost/Conv</TableHead>
-                        <TableHead className="text-right">Performance</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {campaigns.map((campaignData: any, index: number) => {
-                        const { campaign, totals } = campaignData;
-                        // Determine performance indicator
-                        const performanceScore = (totals.ctr * 10 + totals.conversionRate * 5) / 2;
-                        const performance = performanceScore > 20 ? 'excellent' : performanceScore > 15 ? 'good' : performanceScore > 10 ? 'average' : 'poor';
+                  <div className="space-y-4">
+                    {campaigns.map((campaignData: any) => {
+                      const { campaign, totals } = campaignData;
+                      const formatCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                      const formatNum = (v: number) => v.toLocaleString();
+                      const formatPct = (v: number) => `${v.toFixed(2)}%`;
+                      const performanceScore = (totals.ctr * 10 + totals.conversionRate * 5) / 2;
+                      const performance = performanceScore > 20 ? 'excellent' : performanceScore > 15 ? 'good' : performanceScore > 10 ? 'average' : 'poor';
 
-                        return (
-                          <TableRow key={campaign.id}>
-                            <TableCell className="font-medium">
-                              <div>
-                                <p className="font-semibold">{campaign.name}</p>
-                                <p className="text-xs text-slate-500">{campaign.objective}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">${totals.spend.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">{totals.impressions.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">{totals.reach.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">{totals.clicks.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">
-                              <span className={totals.ctr > 1.5 ? 'text-green-600 font-semibold' : totals.ctr < 1.0 ? 'text-red-600' : ''}>
-                                {totals.ctr.toFixed(2)}%
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className={totals.cpc < 1.0 ? 'text-green-600 font-semibold' : totals.cpc > 1.5 ? 'text-red-600' : ''}>
-                                ${totals.cpc.toFixed(2)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className={totals.cpm < 12 ? 'text-green-600 font-semibold' : totals.cpm > 18 ? 'text-red-600' : ''}>
-                                ${totals.cpm.toFixed(2)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className={totals.frequency > 3.0 ? 'text-orange-600 font-semibold' : ''}>
+                      return (
+                        <div key={campaign.id} className="border rounded-lg p-4 bg-white dark:bg-slate-900">
+                          {/* Campaign header with performance badge */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold text-slate-900 dark:text-white">{campaign.name}</h4>
+                              <Badge variant={campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
+                                {campaign.status}
+                              </Badge>
+                              {performance === 'excellent' && <Badge variant="default" className="bg-green-500 text-xs">Excellent</Badge>}
+                              {performance === 'good' && <Badge variant="default" className="bg-blue-500 text-xs">Good</Badge>}
+                              {performance === 'average' && <Badge variant="secondary" className="text-xs">Average</Badge>}
+                              {performance === 'poor' && <Badge variant="destructive" className="text-xs">Poor</Badge>}
+                            </div>
+                            <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totals.spend || 0)}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 mb-3">{campaign.objective}</p>
+
+                          {/* Core metrics — prominent */}
+                          <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-3">
+                            <div>
+                              <p className="text-xs text-slate-500 font-medium">Impressions</p>
+                              <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.impressions)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500 font-medium">Reach</p>
+                              <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.reach)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500 font-medium">Clicks</p>
+                              <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.clicks)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500 font-medium">CTR</p>
+                              <p className={`text-base font-bold ${totals.ctr > 1.5 ? 'text-green-600' : totals.ctr < 1.0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}`}>
+                                {formatPct(totals.ctr)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500 font-medium">Conversions</p>
+                              <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.conversions)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500 font-medium">Conv Rate</p>
+                              <p className={`text-base font-bold ${totals.conversionRate > 3.0 ? 'text-green-600' : totals.conversionRate < 2.0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}`}>
+                                {formatPct(totals.conversionRate)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Secondary metrics — smaller */}
+                          <div className="grid grid-cols-3 md:grid-cols-6 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-medium">CPC</p>
+                              <p className={`text-sm font-semibold ${totals.cpc < 1.0 ? 'text-green-600' : totals.cpc > 1.5 ? 'text-red-600' : 'text-slate-700 dark:text-slate-300'}`}>
+                                {formatCurrency(totals.cpc)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-medium">CPM</p>
+                              <p className={`text-sm font-semibold ${totals.cpm < 12 ? 'text-green-600' : totals.cpm > 18 ? 'text-red-600' : 'text-slate-700 dark:text-slate-300'}`}>
+                                {formatCurrency(totals.cpm)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-medium">CPP</p>
+                              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.cpp)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-medium">Frequency</p>
+                              <p className={`text-sm font-semibold ${totals.frequency > 3.0 ? 'text-orange-600' : 'text-slate-700 dark:text-slate-300'}`}>
                                 {totals.frequency.toFixed(2)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">{totals.conversions.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">
-                              <span className={totals.conversionRate > 3.0 ? 'text-green-600 font-semibold' : totals.conversionRate < 2.0 ? 'text-red-600' : ''}>
-                                {totals.conversionRate.toFixed(2)}%
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">${totals.costPerConversion.toFixed(2)}</TableCell>
-                            <TableCell className="text-right">
-                              {performance === 'excellent' && <Badge variant="default" className="bg-green-500">Excellent</Badge>}
-                              {performance === 'good' && <Badge variant="default" className="bg-blue-500">Good</Badge>}
-                              {performance === 'average' && <Badge variant="secondary">Average</Badge>}
-                              {performance === 'poor' && <Badge variant="destructive">Poor</Badge>}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-medium">Cost/Conv</p>
+                              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.costPerConversion)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-medium">Video Views</p>
+                              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatNum(totals.videoViews)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
 

@@ -5096,8 +5096,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   <CardHeader className="pb-2">
                                     <div className="flex items-center justify-between">
                                       <div>
-                                        <CardTitle className="text-base">Campaign Breakdown</CardTitle>
-                                        <CardDescription>Performance metrics breakdown for each campaign</CardDescription>
+                                        <CardTitle className="text-base">All Campaigns</CardTitle>
+                                        <CardDescription>Detailed performance metrics for all campaigns</CardDescription>
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <Select value={sortBy} onValueChange={setSortBy}>

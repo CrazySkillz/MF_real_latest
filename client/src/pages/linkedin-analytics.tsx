@@ -4869,7 +4869,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
                           const revenuePerLead = getVal('leads') > 0 ? totalRevenue / getVal('leads') : 0;
                           const conversionValue = Number((aggregated as any)?.conversionValue || 0);
-                          const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
 
                           // Build per-campaign data for charts and table
                           const campaignMap: Record<string, { urn: string; name: string; status: string; metrics: Record<string, number> }> = {};
@@ -5091,85 +5090,14 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 </CardContent>
                               </Card>
 
-                              {/* ═══ SECTION 4: CHARTS ═══ */}
-                              {allCampaigns.length > 0 && (
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                  {/* Bar Chart: Campaign Performance */}
-                                  <Card>
-                                    <CardHeader className="pb-2">
-                                      <CardTitle className="text-base">Campaign Performance</CardTitle>
-                                      <CardDescription>Top campaigns by spend</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <ResponsiveContainer width="100%" height={300}>
-                                        <BarChart data={allCampaigns
-                                          .sort((a, b) => (b.metrics.spend || 0) - (a.metrics.spend || 0))
-                                          .slice(0, 5)
-                                          .map(c => ({
-                                            name: c.name.length > 20 ? c.name.slice(0, 20) + '...' : c.name,
-                                            spend: Number((c.metrics.spend || 0).toFixed(2)),
-                                            conversions: c.metrics.conversions || 0,
-                                          }))
-                                        }>
-                                          <CartesianGrid strokeDasharray="3 3" />
-                                          <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 11 }} />
-                                          <YAxis />
-                                          <Tooltip />
-                                          <Legend />
-                                          <Bar dataKey="spend" fill="#3b82f6" name="Spend ($)" />
-                                          <Bar dataKey="conversions" fill="#10b981" name="Conversions" />
-                                        </BarChart>
-                                      </ResponsiveContainer>
-                                    </CardContent>
-                                  </Card>
-
-                                  {/* Pie Chart: Spend by Campaign */}
-                                  <Card>
-                                    <CardHeader className="pb-2">
-                                      <CardTitle className="text-base">Spend by Campaign</CardTitle>
-                                      <CardDescription>Budget allocation across campaigns</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <ResponsiveContainer width="100%" height={300}>
-                                        <PieChart>
-                                          <Pie
-                                            data={allCampaigns
-                                              .filter(c => (c.metrics.spend || 0) > 0)
-                                              .sort((a, b) => (b.metrics.spend || 0) - (a.metrics.spend || 0))
-                                              .map(c => ({
-                                                name: c.name.length > 25 ? c.name.slice(0, 25) + '...' : c.name,
-                                                value: Number((c.metrics.spend || 0).toFixed(2)),
-                                              }))}
-                                            cx="50%"
-                                            cy="50%"
-                                            outerRadius={80}
-                                            labelLine={false}
-                                            label={({ name, value }: any) => `${name}: $${value.toFixed(0)}`}
-                                            dataKey="value"
-                                          >
-                                            {allCampaigns
-                                              .filter(c => (c.metrics.spend || 0) > 0)
-                                              .sort((a, b) => (b.metrics.spend || 0) - (a.metrics.spend || 0))
-                                              .map((_, index) => (
-                                                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                                              ))}
-                                          </Pie>
-                                          <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
-                                        </PieChart>
-                                      </ResponsiveContainer>
-                                    </CardContent>
-                                  </Card>
-                                </div>
-                              )}
-
-                              {/* ═══ SECTION 5: CAMPAIGNS TABLE ═══ */}
+                              {/* ═══ SECTION 4: CAMPAIGN BREAKDOWN TABLE ═══ */}
                               {allCampaigns.length > 0 && (
                                 <Card>
                                   <CardHeader className="pb-2">
                                     <div className="flex items-center justify-between">
                                       <div>
-                                        <CardTitle className="text-base">All Campaigns</CardTitle>
-                                        <CardDescription>Detailed performance metrics for all campaigns</CardDescription>
+                                        <CardTitle className="text-base">Campaign Breakdown</CardTitle>
+                                        <CardDescription>Performance metrics breakdown for each campaign</CardDescription>
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <Select value={sortBy} onValueChange={setSortBy}>
@@ -5180,9 +5108,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                           <SelectContent>
                                             <SelectItem value="name">Name (A-Z)</SelectItem>
                                             <SelectItem value="spend">Spend (High→Low)</SelectItem>
-                                            <SelectItem value="conversions">Conversions (High→Low)</SelectItem>
-                                            <SelectItem value="clicks">Clicks (High→Low)</SelectItem>
                                             <SelectItem value="impressions">Impressions (High→Low)</SelectItem>
+                                            <SelectItem value="clicks">Clicks (High→Low)</SelectItem>
+                                            <SelectItem value="conversions">Conversions (High→Low)</SelectItem>
+                                            <SelectItem value="leads">Leads (High→Low)</SelectItem>
+                                            <SelectItem value="engagements">Engagements (High→Low)</SelectItem>
                                           </SelectContent>
                                         </Select>
                                         <Select value={filterBy} onValueChange={setFilterBy}>
@@ -5200,21 +5130,32 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     </div>
                                   </CardHeader>
                                   <CardContent className="p-0">
+                                    <div className="overflow-x-auto">
                                     <Table>
                                       <TableHeader>
                                         <TableRow>
-                                          <TableHead>Campaign</TableHead>
+                                          <TableHead className="sticky left-0 bg-white dark:bg-slate-950 z-10">Campaign</TableHead>
                                           <TableHead>Status</TableHead>
                                           <TableHead className="text-right">Spend</TableHead>
                                           <TableHead className="text-right">Impressions</TableHead>
                                           <TableHead className="text-right">Clicks</TableHead>
                                           <TableHead className="text-right">CTR</TableHead>
-                                          <TableHead className="text-right">Conversions</TableHead>
                                           <TableHead className="text-right">CPC</TableHead>
+                                          <TableHead className="text-right">CPM</TableHead>
+                                          <TableHead className="text-right">Conversions</TableHead>
+                                          <TableHead className="text-right">Leads</TableHead>
+                                          <TableHead className="text-right">Engagements</TableHead>
+                                          <TableHead className="text-right">Eng. Rate</TableHead>
+                                          <TableHead className="text-right">Reach</TableHead>
+                                          <TableHead className="text-right">Video Views</TableHead>
+                                          <TableHead className="text-right">Likes</TableHead>
+                                          <TableHead className="text-right">Comments</TableHead>
+                                          <TableHead className="text-right">Shares</TableHead>
                                           {hasRevenueTracking && (
                                             <>
                                               <TableHead className="text-right">Revenue</TableHead>
                                               <TableHead className="text-right">ROAS</TableHead>
+                                              <TableHead className="text-right">ROI</TableHead>
                                             </>
                                           )}
                                         </TableRow>
@@ -5226,9 +5167,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                             switch (sortBy) {
                                               case 'name': return a.name.localeCompare(b.name);
                                               case 'spend': return (b.metrics.spend || 0) - (a.metrics.spend || 0);
-                                              case 'conversions': return (b.metrics.conversions || 0) - (a.metrics.conversions || 0);
-                                              case 'clicks': return (b.metrics.clicks || 0) - (a.metrics.clicks || 0);
                                               case 'impressions': return (b.metrics.impressions || 0) - (a.metrics.impressions || 0);
+                                              case 'clicks': return (b.metrics.clicks || 0) - (a.metrics.clicks || 0);
+                                              case 'conversions': return (b.metrics.conversions || 0) - (a.metrics.conversions || 0);
+                                              case 'leads': return (b.metrics.leads || 0) - (a.metrics.leads || 0);
+                                              case 'engagements': return (b.metrics.engagements || 0) - (a.metrics.engagements || 0);
                                               default: return 0;
                                             }
                                           })
@@ -5236,11 +5179,14 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                             const m = campaign.metrics;
                                             const ctr = (m.impressions || 0) > 0 ? ((m.clicks || 0) / m.impressions * 100) : 0;
                                             const cpc = (m.clicks || 0) > 0 ? (m.spend || 0) / m.clicks : 0;
+                                            const cpm = (m.impressions || 0) > 0 ? ((m.spend || 0) / m.impressions * 1000) : 0;
+                                            const engRate = (m.impressions || 0) > 0 ? ((m.engagements || 0) / m.impressions * 100) : 0;
                                             const campRevenue = hasRevenueTracking ? computeRevenueFromConversions(m.conversions || 0) : 0;
                                             const campRoas = (m.spend || 0) > 0 ? campRevenue / m.spend : 0;
+                                            const campRoi = (m.spend || 0) > 0 ? ((campRevenue - m.spend) / m.spend * 100) : 0;
                                             return (
                                               <TableRow key={campaign.urn}>
-                                                <TCell className="font-medium max-w-[200px] truncate">{campaign.name}</TCell>
+                                                <TCell className="font-medium max-w-[200px] truncate sticky left-0 bg-white dark:bg-slate-950 z-10">{campaign.name}</TCell>
                                                 <TCell>
                                                   <Badge variant={campaign.status === 'active' || campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
                                                     {campaign.status}
@@ -5250,12 +5196,22 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                 <TCell className="text-right">{formatNumber(m.impressions || 0)}</TCell>
                                                 <TCell className="text-right">{formatNumber(m.clicks || 0)}</TCell>
                                                 <TCell className="text-right">{ctr.toFixed(2)}%</TCell>
-                                                <TCell className="text-right">{formatNumber(m.conversions || 0)}</TCell>
                                                 <TCell className="text-right">{formatCurrency(cpc)}</TCell>
+                                                <TCell className="text-right">{formatCurrency(cpm)}</TCell>
+                                                <TCell className="text-right">{formatNumber(m.conversions || 0)}</TCell>
+                                                <TCell className="text-right">{formatNumber(m.leads || 0)}</TCell>
+                                                <TCell className="text-right">{formatNumber(m.engagements || 0)}</TCell>
+                                                <TCell className="text-right">{engRate.toFixed(2)}%</TCell>
+                                                <TCell className="text-right">{formatNumber(m.reach || 0)}</TCell>
+                                                <TCell className="text-right">{formatNumber(m.videoViews || 0)}</TCell>
+                                                <TCell className="text-right">{formatNumber(m.likes || 0)}</TCell>
+                                                <TCell className="text-right">{formatNumber(m.comments || 0)}</TCell>
+                                                <TCell className="text-right">{formatNumber(m.shares || 0)}</TCell>
                                                 {hasRevenueTracking && (
                                                   <>
                                                     <TCell className="text-right">{formatCurrency(campRevenue)}</TCell>
                                                     <TCell className="text-right">{campRoas.toFixed(2)}x</TCell>
+                                                    <TCell className="text-right">{campRoi.toFixed(1)}%</TCell>
                                                   </>
                                                 )}
                                               </TableRow>
@@ -5263,6 +5219,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                           })}
                                       </TableBody>
                                     </Table>
+                                    </div>
                                   </CardContent>
                                 </Card>
                               )}

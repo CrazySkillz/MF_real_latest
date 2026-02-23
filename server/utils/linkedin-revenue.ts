@@ -116,6 +116,17 @@ export async function resolveLinkedInRevenueContext(opts: {
   try {
     const conn = await storage.getLinkedInConnection(campaignId);
     connCv = parseNum((conn as any)?.conversionValue);
+    // Self-healing: if conversionValue is set but there are no active revenue sources,
+    // it's stale (e.g., source was deleted before cleanup code existed). Clear it.
+    if (connCv > 0) {
+      const activeSourceCount = (Array.isArray(linkedInRevenueSources) ? linkedInRevenueSources : [])
+        .filter((s: any) => s && (s as any).isActive !== false).length;
+      if (activeSourceCount === 0 && importedRevenueToDate <= 0) {
+        // No active sources and no imported revenue — conversionValue is stale
+        try { await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any); } catch { /* ignore */ }
+        connCv = 0;
+      }
+    }
   } catch {
     connCv = 0;
   }

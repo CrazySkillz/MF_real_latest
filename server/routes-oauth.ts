@@ -1296,6 +1296,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Individual revenue source delete
+  app.delete("/api/campaigns/:id/revenue-sources/:sourceId", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const sourceId = req.params.sourceId;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+      // Verify the source belongs to this campaign
+      const source = await storage.getRevenueSource(campaignId, sourceId);
+      if (!source) return res.status(404).json({ success: false, error: "Revenue source not found" });
+      await storage.deleteRevenueSource(sourceId);
+      await storage.deleteRevenueRecordsBySource(sourceId);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to delete revenue source" });
+    }
+  });
+
+  // Individual spend source delete
+  app.delete("/api/campaigns/:id/spend-sources/:sourceId", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const sourceId = req.params.sourceId;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+      await storage.deleteSpendSource(sourceId);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to delete spend source" });
+    }
+  });
+
   app.get("/api/campaigns/:id/revenue-totals", async (req, res) => {
     try {
       const campaignId = req.params.id;

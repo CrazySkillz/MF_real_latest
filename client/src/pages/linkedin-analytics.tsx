@@ -6736,8 +6736,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-500">more than +5% above target</p>
                                   <p className="text-2xl font-bold text-green-600">0</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-500">more than +5% above target</p>
                                 </div>
                                 <TrendingUp className="w-8 h-8 text-green-500" />
                               </div>
@@ -6748,8 +6748,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-500">within ±5% of target</p>
                                   <p className="text-2xl font-bold text-blue-600">0</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-500">within ±5% of target</p>
                                 </div>
                                 <CheckCircle2 className="w-8 h-8 text-blue-500" />
                               </div>
@@ -6760,8 +6760,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-sm text-slate-600 dark:text-slate-400">Below Track</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-500">more than −5% below target</p>
                                   <p className="text-2xl font-bold text-amber-600">0</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-500">more than −5% below target</p>
                                 </div>
                                 <AlertCircle className="w-8 h-8 text-amber-500" />
                               </div>
@@ -6877,8 +6877,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-500">meeting or exceeding target</p>
                               <p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">meeting or exceeding target</p>
                             </div>
                             <CheckCircle2 className="w-8 h-8 text-green-500" />
                           </div>
@@ -6889,8 +6889,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-500">within 70–90% of target</p>
                               <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">within 70–90% of target</p>
                             </div>
                             <AlertCircle className="w-8 h-8 text-amber-500" />
                           </div>
@@ -6901,8 +6901,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm text-slate-600 dark:text-slate-400">Behind</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-500">below 70% of target</p>
                               <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">below 70% of target</p>
                             </div>
                             <AlertTriangle className="w-8 h-8 text-red-500" />
                           </div>

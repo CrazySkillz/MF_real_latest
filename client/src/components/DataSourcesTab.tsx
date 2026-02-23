@@ -157,6 +157,8 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
       toast({ title: "Deleted", description: `${deleteConfirm.name} has been removed.` });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/benchmarks", campaignId], exact: false });
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "Failed to delete source", variant: "destructive" });
     }
@@ -166,6 +168,8 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
   const handleWizardSuccess = () => {
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
+    void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/benchmarks", campaignId], exact: false });
   };
 
   if (isLoading) {

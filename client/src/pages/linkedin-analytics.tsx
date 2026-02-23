@@ -5129,97 +5129,127 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                       </div>
                                     </div>
                                   </CardHeader>
-                                  <CardContent className="p-0">
-                                    <div className="overflow-x-auto">
-                                    <Table>
-                                      <TableHeader>
-                                        <TableRow>
-                                          <TableHead className="sticky left-0 bg-white dark:bg-slate-950 z-10">Campaign</TableHead>
-                                          <TableHead>Status</TableHead>
-                                          <TableHead className="text-right">Spend</TableHead>
-                                          <TableHead className="text-right">Impressions</TableHead>
-                                          <TableHead className="text-right">Clicks</TableHead>
-                                          <TableHead className="text-right">CTR</TableHead>
-                                          <TableHead className="text-right">CPC</TableHead>
-                                          <TableHead className="text-right">CPM</TableHead>
-                                          <TableHead className="text-right">Conversions</TableHead>
-                                          <TableHead className="text-right">Leads</TableHead>
-                                          <TableHead className="text-right">Engagements</TableHead>
-                                          <TableHead className="text-right">Eng. Rate</TableHead>
-                                          <TableHead className="text-right">Reach</TableHead>
-                                          <TableHead className="text-right">Video Views</TableHead>
-                                          <TableHead className="text-right">Likes</TableHead>
-                                          <TableHead className="text-right">Comments</TableHead>
-                                          <TableHead className="text-right">Shares</TableHead>
-                                          {hasRevenueTracking && (
-                                            <>
-                                              <TableHead className="text-right">Revenue</TableHead>
-                                              <TableHead className="text-right">ROAS</TableHead>
-                                              <TableHead className="text-right">ROI</TableHead>
-                                            </>
-                                          )}
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {allCampaigns
-                                          .filter((c: any) => filterBy === 'all' || c.status === filterBy)
-                                          .sort((a: any, b: any) => {
-                                            switch (sortBy) {
-                                              case 'name': return a.name.localeCompare(b.name);
-                                              case 'spend': return (b.metrics.spend || 0) - (a.metrics.spend || 0);
-                                              case 'impressions': return (b.metrics.impressions || 0) - (a.metrics.impressions || 0);
-                                              case 'clicks': return (b.metrics.clicks || 0) - (a.metrics.clicks || 0);
-                                              case 'conversions': return (b.metrics.conversions || 0) - (a.metrics.conversions || 0);
-                                              case 'leads': return (b.metrics.leads || 0) - (a.metrics.leads || 0);
-                                              case 'engagements': return (b.metrics.engagements || 0) - (a.metrics.engagements || 0);
-                                              default: return 0;
-                                            }
-                                          })
-                                          .map((campaign: any) => {
-                                            const m = campaign.metrics;
-                                            const ctr = (m.impressions || 0) > 0 ? ((m.clicks || 0) / m.impressions * 100) : 0;
-                                            const cpc = (m.clicks || 0) > 0 ? (m.spend || 0) / m.clicks : 0;
-                                            const cpm = (m.impressions || 0) > 0 ? ((m.spend || 0) / m.impressions * 1000) : 0;
-                                            const engRate = (m.impressions || 0) > 0 ? ((m.engagements || 0) / m.impressions * 100) : 0;
-                                            const campRevenue = hasRevenueTracking ? computeRevenueFromConversions(m.conversions || 0) : 0;
-                                            const campRoas = (m.spend || 0) > 0 ? campRevenue / m.spend : 0;
-                                            const campRoi = (m.spend || 0) > 0 ? ((campRevenue - m.spend) / m.spend * 100) : 0;
-                                            return (
-                                              <TableRow key={campaign.urn}>
-                                                <TCell className="font-medium max-w-[200px] truncate sticky left-0 bg-white dark:bg-slate-950 z-10">{campaign.name}</TCell>
-                                                <TCell>
-                                                  <Badge variant={campaign.status === 'active' || campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
-                                                    {campaign.status}
-                                                  </Badge>
-                                                </TCell>
-                                                <TCell className="text-right">{formatCurrency(m.spend || 0)}</TCell>
-                                                <TCell className="text-right">{formatNumber(m.impressions || 0)}</TCell>
-                                                <TCell className="text-right">{formatNumber(m.clicks || 0)}</TCell>
-                                                <TCell className="text-right">{ctr.toFixed(2)}%</TCell>
-                                                <TCell className="text-right">{formatCurrency(cpc)}</TCell>
-                                                <TCell className="text-right">{formatCurrency(cpm)}</TCell>
-                                                <TCell className="text-right">{formatNumber(m.conversions || 0)}</TCell>
-                                                <TCell className="text-right">{formatNumber(m.leads || 0)}</TCell>
-                                                <TCell className="text-right">{formatNumber(m.engagements || 0)}</TCell>
-                                                <TCell className="text-right">{engRate.toFixed(2)}%</TCell>
-                                                <TCell className="text-right">{formatNumber(m.reach || 0)}</TCell>
-                                                <TCell className="text-right">{formatNumber(m.videoViews || 0)}</TCell>
-                                                <TCell className="text-right">{formatNumber(m.likes || 0)}</TCell>
-                                                <TCell className="text-right">{formatNumber(m.comments || 0)}</TCell>
-                                                <TCell className="text-right">{formatNumber(m.shares || 0)}</TCell>
-                                                {hasRevenueTracking && (
-                                                  <>
-                                                    <TCell className="text-right">{formatCurrency(campRevenue)}</TCell>
-                                                    <TCell className="text-right">{campRoas.toFixed(2)}x</TCell>
-                                                    <TCell className="text-right">{campRoi.toFixed(1)}%</TCell>
-                                                  </>
-                                                )}
-                                              </TableRow>
-                                            );
-                                          })}
-                                      </TableBody>
-                                    </Table>
-                                    </div>
+                                  <CardContent className="space-y-4 pt-2">
+                                    {allCampaigns
+                                      .filter((c: any) => filterBy === 'all' || c.status === filterBy)
+                                      .sort((a: any, b: any) => {
+                                        switch (sortBy) {
+                                          case 'name': return a.name.localeCompare(b.name);
+                                          case 'spend': return (b.metrics.spend || 0) - (a.metrics.spend || 0);
+                                          case 'impressions': return (b.metrics.impressions || 0) - (a.metrics.impressions || 0);
+                                          case 'clicks': return (b.metrics.clicks || 0) - (a.metrics.clicks || 0);
+                                          case 'conversions': return (b.metrics.conversions || 0) - (a.metrics.conversions || 0);
+                                          case 'leads': return (b.metrics.leads || 0) - (a.metrics.leads || 0);
+                                          case 'engagements': return (b.metrics.engagements || 0) - (a.metrics.engagements || 0);
+                                          default: return 0;
+                                        }
+                                      })
+                                      .map((campaign: any) => {
+                                        const m = campaign.metrics;
+                                        const ctr = (m.impressions || 0) > 0 ? ((m.clicks || 0) / m.impressions * 100) : 0;
+                                        const cpc = (m.clicks || 0) > 0 ? (m.spend || 0) / m.clicks : 0;
+                                        const cpm = (m.impressions || 0) > 0 ? ((m.spend || 0) / m.impressions * 1000) : 0;
+                                        const engRate = (m.impressions || 0) > 0 ? ((m.engagements || 0) / m.impressions * 100) : 0;
+                                        const campRevenue = hasRevenueTracking ? computeRevenueFromConversions(m.conversions || 0) : 0;
+                                        const campRoas = (m.spend || 0) > 0 ? campRevenue / m.spend : 0;
+                                        const campRoi = (m.spend || 0) > 0 ? ((campRevenue - m.spend) / m.spend * 100) : 0;
+                                        return (
+                                          <div key={campaign.urn} className="border rounded-lg p-4 bg-white dark:bg-slate-900">
+                                            {/* Campaign header */}
+                                            <div className="flex items-center justify-between mb-3">
+                                              <div className="flex items-center gap-2">
+                                                <h4 className="font-semibold text-slate-900 dark:text-white">{campaign.name}</h4>
+                                                <Badge variant={campaign.status === 'active' || campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
+                                                  {campaign.status}
+                                                </Badge>
+                                              </div>
+                                              <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(m.spend || 0)}</span>
+                                            </div>
+
+                                            {/* Core metrics — prominent */}
+                                            <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-3">
+                                              <div>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">Impressions</p>
+                                                <p className="text-base font-semibold text-slate-900 dark:text-white">{formatNumber(m.impressions || 0)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">Clicks</p>
+                                                <p className="text-base font-semibold text-slate-900 dark:text-white">{formatNumber(m.clicks || 0)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">CTR</p>
+                                                <p className="text-base font-semibold text-slate-900 dark:text-white">{ctr.toFixed(2)}%</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">CPC</p>
+                                                <p className="text-base font-semibold text-slate-900 dark:text-white">{formatCurrency(cpc)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">Conversions</p>
+                                                <p className="text-base font-semibold text-slate-900 dark:text-white">{formatNumber(m.conversions || 0)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">Leads</p>
+                                                <p className="text-base font-semibold text-slate-900 dark:text-white">{formatNumber(m.leads || 0)}</p>
+                                              </div>
+                                            </div>
+
+                                            {/* Secondary metrics — smaller */}
+                                            <div className="grid grid-cols-4 md:grid-cols-8 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                                              <div>
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">CPM</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatCurrency(cpm)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Engagements</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.engagements || 0)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Eng. Rate</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-300">{engRate.toFixed(2)}%</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Reach</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.reach || 0)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Video Views</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.videoViews || 0)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Likes</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.likes || 0)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Comments</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.comments || 0)}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Shares</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.shares || 0)}</p>
+                                              </div>
+                                            </div>
+
+                                            {/* Revenue metrics — only when tracking */}
+                                            {hasRevenueTracking && (
+                                              <div className="grid grid-cols-3 gap-4 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
+                                                <div>
+                                                  <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">Revenue</p>
+                                                  <p className="text-base font-semibold text-green-700 dark:text-green-300">{formatCurrency(campRevenue)}</p>
+                                                </div>
+                                                <div>
+                                                  <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">ROAS</p>
+                                                  <p className="text-base font-semibold text-green-700 dark:text-green-300">{campRoas.toFixed(2)}x</p>
+                                                </div>
+                                                <div>
+                                                  <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">ROI</p>
+                                                  <p className="text-base font-semibold text-green-700 dark:text-green-300">{campRoi.toFixed(1)}%</p>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
                                   </CardContent>
                                 </Card>
                               )}

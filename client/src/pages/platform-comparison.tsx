@@ -65,6 +65,21 @@ export default function PlatformComparison() {
     },
   });
 
+  // Revenue sources from outcome-totals (Shopify, HubSpot, Salesforce)
+  // Must be before early returns to preserve hooks ordering
+  const revenueSourcesData = useMemo(() => {
+    if (!outcomeTotals?.revenueSources) return [];
+    return (outcomeTotals.revenueSources as any[])
+      .filter((s: any) => s.connected && Number(s.lastTotalRevenue || 0) > 0)
+      .map((s: any) => ({
+        name: String(s.type || 'Revenue Source').charAt(0).toUpperCase() + String(s.type || '').slice(1),
+        revenue: Number(s.lastTotalRevenue || 0),
+        type: s.type,
+        offsite: !!s.offsite,
+        color: s.type === 'shopify' ? '#96bf48' : s.type === 'hubspot' ? '#ff7a59' : s.type === 'salesforce' ? '#00a1e0' : '#6366f1',
+      }));
+  }, [outcomeTotals]);
+
   if (campaignLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -274,28 +289,12 @@ export default function PlatformComparison() {
 
   const realPlatformMetrics = buildPlatformMetrics();
 
-  // Revenue sources from outcome-totals (Shopify, HubSpot, Salesforce)
-  const revenueSourcesData = useMemo(() => {
-    if (!outcomeTotals?.revenueSources) return [];
-    return (outcomeTotals.revenueSources as any[])
-      .filter((s: any) => s.connected && Number(s.lastTotalRevenue || 0) > 0)
-      .map((s: any) => ({
-        name: String(s.type || 'Revenue Source').charAt(0).toUpperCase() + String(s.type || '').slice(1),
-        revenue: Number(s.lastTotalRevenue || 0),
-        type: s.type,
-        offsite: !!s.offsite,
-        color: s.type === 'shopify' ? '#96bf48' : s.type === 'hubspot' ? '#ff7a59' : s.type === 'salesforce' ? '#00a1e0' : '#6366f1',
-      }));
-  }, [outcomeTotals]);
-
   const totalRevenueSourceRevenue = revenueSourcesData.reduce((sum: number, s: any) => sum + s.revenue, 0);
 
   // Budget allocation pie chart data (advertising platforms only)
-  const budgetPieData = useMemo(() => {
-    return realPlatformMetrics
-      .filter((p: any) => p.spend > 0 && !p.isAnalyticsOnly)
-      .map((p: any) => ({ name: p.platform, value: p.spend, color: p.color }));
-  }, [realPlatformMetrics]);
+  const budgetPieData = realPlatformMetrics
+    .filter((p: any) => p.spend > 0 && !p.isAnalyticsOnly)
+    .map((p: any) => ({ name: p.platform, value: p.spend, color: p.color }));
 
   // Generate cost analysis data (exclude analytics-only)
   const costAnalysisData = realPlatformMetrics

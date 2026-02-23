@@ -16522,7 +16522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get Meta daily metrics to calculate total conversions
       let totalConversions = 0;
       try {
-        const dailyMetrics = await storage.getMetaDailyMetrics(parsedId.data);
+        const dailyMetrics = await storage.getMetaDailyMetrics(parsedId.data, '2000-01-01', '2099-12-31');
         totalConversions = dailyMetrics.reduce((sum, metric) => sum + (metric.conversions || 0), 0);
       } catch {
         totalConversions = 0;
@@ -20744,9 +20744,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (latestSession) {
           linkedinLastUpdate = latestSession.importedAt;
           const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
+          // Deduplicate: keep latest value per (campaignUrn, metricKey) to prevent double-counting
+          const deduped = new Map<string, number>();
           metrics.forEach((m: any) => {
-            const value = parseFloat(m.metricValue || '0');
-            const key = m.metricKey.toLowerCase();
+            const dedupKey = `${m.campaignUrn}::${(m.metricKey || '').toLowerCase()}`;
+            deduped.set(dedupKey, parseFloat(m.metricValue || '0'));
+          });
+          deduped.forEach((value, dedupKey) => {
+            const key = dedupKey.split('::')[1];
             linkedinMetrics[key] = (linkedinMetrics[key] || 0) + value;
           });
           const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
@@ -21091,7 +21096,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ceoSummary = `${campaign.name} requires attention with ${roi < 0 ? 'negative' : 'below-target'} ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
       }
       if (topPlatform) {
-        ceoSummary += `${topPlatform.name} delivering ${topPlatform.roas > 2 ? 'exceptional' : 'strong'} results (${topPlatform.roas.toFixed(1)}x ROAS). `;
+        if (topPlatform.roas >= 1.5) {
+          ceoSummary += `${topPlatform.name} delivering ${topPlatform.roas > 2 ? 'exceptional' : 'strong'} results (${topPlatform.roas.toFixed(1)}x ROAS). `;
+        } else if (topPlatform.roas >= 1) {
+          ceoSummary += `${topPlatform.name} showing moderate performance (${topPlatform.roas.toFixed(1)}x ROAS). `;
+        } else if (topPlatform.roas > 0) {
+          ceoSummary += `${topPlatform.name} underperforming at ${topPlatform.roas.toFixed(1)}x ROAS — optimization needed. `;
+        } else {
+          ceoSummary += `${topPlatform.name} showing no measurable return — revenue tracking may need configuration. `;
+        }
       }
       if (bottomPlatform && bottomPlatform.roas < 1.5) {
         ceoSummary += `${bottomPlatform.name} underperforming and requires optimization. `;

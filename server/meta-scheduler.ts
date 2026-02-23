@@ -42,7 +42,7 @@ async function generateMockMetaData(
           .limit(1);
         maxExistingDate = String((rows as any[])?.[0]?.date || "");
       } else {
-        const existingAll = await storage.getMetaDailyMetrics(campaignId);
+        const existingAll = await storage.getMetaDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
         maxExistingDate =
           Array.isArray(existingAll) && existingAll.length > 0
             ? String((existingAll as any[])[(existingAll as any[]).length - 1]?.date || "")
@@ -121,7 +121,7 @@ async function generateMockMetaData(
     // Update campaign cumulative spend from daily metrics
     const baseStartUTC = new Date(endUTC.getTime());
     baseStartUTC.setUTCDate(baseStartUTC.getUTCDate() - 59);
-    const dailyMetrics = await storage.getMetaDailyMetrics(campaignId);
+    const dailyMetrics = await storage.getMetaDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
     const totalSpend = dailyMetrics.reduce((sum, m) => sum + (parseFloat(String(m.spend || 0)) || 0), 0);
     await storage.updateCampaign(campaignId, { spend: totalSpend });
     console.log(`[Meta Scheduler] TEST MODE: Updated campaign ${campaignId} spend: ${totalSpend.toFixed(2)}`);
@@ -244,7 +244,7 @@ async function fetchRealMetaData(
       console.log(`[Meta Scheduler] ✅ Stored ${dailyMetricsToStore.length} daily metric records for campaign ${campaignId}`);
 
       // Update campaign cumulative spend from daily metrics
-      const dailyMetrics = await storage.getMetaDailyMetrics(campaignId);
+      const dailyMetrics = await storage.getMetaDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
       const totalSpend = dailyMetrics.reduce((sum, m) => sum + (parseFloat(String(m.spend || 0)) || 0), 0);
       await storage.updateCampaign(campaignId, { spend: totalSpend });
       console.log(`[Meta Scheduler] Updated campaign ${campaignId} spend: ${totalSpend.toFixed(2)}`);

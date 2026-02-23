@@ -1081,7 +1081,7 @@ export default function FinancialAnalysis() {
                     <span>Performance-Based Budget Allocation</span>
                   </CardTitle>
                   <CardDescription>
-                    Data-driven budget analysis and optimization insights
+                    Platform spend distribution and performance tiers
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1118,9 +1118,6 @@ export default function FinancialAnalysis() {
                     const highSpend = highPerformance.reduce((sum, p) => sum + p.spend, 0);
                     const mediumSpend = mediumPerformance.reduce((sum, p) => sum + p.spend, 0);
                     const lowSpend = lowPerformance.reduce((sum, p) => sum + p.spend, 0);
-                    
-                    const platformsWithSpend = platforms.filter(p => p.spend > 0);
-                    const hasMultiplePlatforms = platformsWithSpend.length > 1;
                     
                     return (
                       <div className="space-y-6">
@@ -1210,55 +1207,6 @@ export default function FinancialAnalysis() {
                           </div>
                         </div>
                         
-                        {/* Recommendations */}
-                        {hasMultiplePlatforms ? (
-                          <div className="border-t pt-4">
-                            <h4 className="font-semibold mb-3">Budget Optimization Recommendations</h4>
-                            <div className="space-y-3">
-                              {highPerformance.length > 0 && (
-                                <div className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded">
-                                  <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />
-                                  <div>
-                                    <p className="font-medium">Scale High-Performing Platforms</p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {highPerformance.map(p => p.name).join(', ')} {highPerformance.length === 1 ? 'is' : 'are'} generating exceptional ROAS ≥ 3.0x - consider increasing budget allocation
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
-                              {lowPerformance.length > 0 && (
-                                <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                                  <div>
-                                    <p className="font-medium">Optimize Underperforming Platforms</p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {lowPerformance.map(p => p.name).join(', ')} showing ROAS below 1.0x - review targeting and creative or pause campaigns
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
-                              {highPerformance.length > 0 && lowPerformance.length > 0 && (
-                                <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
-                                  <Calculator className="w-5 h-5 text-blue-600 mt-0.5" />
-                                  <div>
-                                    <p className="font-medium">Budget Reallocation Opportunity</p>
-                                    <p className="text-sm text-muted-foreground">
-                                      Reallocating budget from low to high-performing platforms could significantly improve overall campaign ROAS
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="border-t pt-4">
-                            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
-                              <p className="text-sm text-muted-foreground">
-                                Budget reallocation recommendations will appear when multiple platforms have active spend
-                              </p>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     );
                   })()}
@@ -1313,6 +1261,9 @@ export default function FinancialAnalysis() {
                     const platformsWithSpend = platforms.filter(p => p.spend > 0);
                     const topPerformer = platformsWithSpend.length > 0 ? platformsWithSpend.reduce((a, b) => a.roas > b.roas ? a : b) : null;
                     const bottomPerformer = platformsWithSpend.length > 1 ? platformsWithSpend.reduce((a, b) => a.roas < b.roas ? a : b) : null;
+                    const highPerformance = platformsWithSpend.filter(p => p.roas >= 3);
+                    const lowPerformance = platformsWithSpend.filter(p => p.roas < 1);
+                    const hasMultiplePlatforms = platformsWithSpend.length > 1;
                     
                     return (
                       <div className="space-y-6">
@@ -1468,6 +1419,48 @@ export default function FinancialAnalysis() {
                             )}
                           </div>
                         </div>
+
+                        {/* Budget Optimization Recommendations */}
+                        {hasMultiplePlatforms && (highPerformance.length > 0 || lowPerformance.length > 0) && (
+                          <div className="mt-6">
+                            <h4 className="font-semibold mb-4">Budget Optimization Recommendations</h4>
+                            <div className="space-y-3">
+                              {highPerformance.length > 0 && (
+                                <div className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                                  <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />
+                                  <div>
+                                    <p className="font-medium">Scale High-Performing Platforms</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {highPerformance.map(p => p.name).join(', ')} {highPerformance.length === 1 ? 'is' : 'are'} generating exceptional ROAS &ge; 3.0x - consider increasing budget allocation
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              {lowPerformance.length > 0 && (
+                                <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                                  <div>
+                                    <p className="font-medium">Optimize Underperforming Platforms</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {lowPerformance.map(p => p.name).join(', ')} showing ROAS below 1.0x - review targeting and creative or pause campaigns
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              {highPerformance.length > 0 && lowPerformance.length > 0 && (
+                                <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                  <Calculator className="w-5 h-5 text-blue-600 mt-0.5" />
+                                  <div>
+                                    <p className="font-medium">Budget Reallocation Opportunity</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      Reallocating budget from low to high-performing platforms could significantly improve overall campaign ROAS
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Cost Optimization Insights */}
                         {(() => {

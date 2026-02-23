@@ -210,7 +210,7 @@ CVR also has view-through handling — shows click-through CVR as the main numbe
 
 ## Budget Allocation Tab
 
-The Budget Allocation tab provides the per-platform budget analysis and optimization recommendations.
+The Budget Allocation tab provides per-platform budget data (numbers only, no recommendations).
 
 ### 1. Performance Tiers
 
@@ -226,18 +226,11 @@ Three cards grouping platforms by ROAS performance:
 
 Per-platform breakdown showing: ROAS badge (color-coded), Spend, Conversions, Revenue, Budget Share % with progress bar. Only platforms with `spend > 0 || conversions > 0` are shown.
 
-### 3. Budget Optimization Recommendations
-
-Only shown when multiple platforms have active spend:
-- Scale high-performing (ROAS >= 3x) platforms
-- Optimize underperforming (ROAS < 1x) platforms
-- Reallocate budget from low to high performers (when both exist)
-
 ---
 
 ## Insights Tab
 
-The Insights tab is the executive summary — all recommendations in one place.
+The Insights tab is the executive summary — all recommendations consolidated in one place.
 
 ### 1. Quick Summary Cards
 
@@ -251,9 +244,16 @@ Highlights the top performer and bottom performer (by ROAS) with actionable reco
 
 Conditional recommendations based on: high ROAS (scale), low CVR (optimize landing pages), low CTR (improve creative), high budget utilization with positive ROAS (increase budget).
 
-### 4. Cost Optimization Insights
+### 4. Budget Optimization Recommendations
 
-Dynamically generated recommendations based on cost-metric thresholds (CTR, CVR, CPC, CPM, CPA). Moved here from Cost Analysis so the Cost Analysis tab focuses on numbers and the Insights tab consolidates all recommendations.
+Only shown when multiple platforms have active spend:
+- Scale high-performing (ROAS >= 3x) platforms
+- Optimize underperforming (ROAS < 1x) platforms
+- Reallocate budget from low to high performers (when both exist)
+
+### 5. Cost Optimization Insights
+
+Dynamically generated recommendations based on cost-metric thresholds (CTR, CVR, CPC, CPM, CPA).
 
 ---
 

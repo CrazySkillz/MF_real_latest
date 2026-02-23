@@ -4988,9 +4988,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         </Badge>
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => openAddRevenueModal('edit')}>
-                                          <Pencil className="w-4 h-4" />
-                                        </Button>
+                                        <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                          <Button variant="ghost" size="sm" title="Manage in Data Sources">
+                                            <Pencil className="w-4 h-4" />
+                                          </Button>
+                                        </Link>
                                       </div>
                                     </div>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-4">

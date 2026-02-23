@@ -2908,26 +2908,16 @@ export default function GA4Metrics() {
                               </div>
                               <div className="flex flex-col items-end gap-2 shrink-0">
                                 {activeRevenueSource ? (
-                                  <div className="flex items-center gap-1">
+                                  <Link href={`/campaigns/${campaignId}#data-sources`}>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      aria-label="Edit revenue source"
-                                      title="Edit revenue source"
-                                      onClick={() => setShowRevenueDialog(true)}
+                                      aria-label="Manage in Data Sources"
+                                      title="Manage in Data Sources"
                                     >
                                       <Edit className="w-4 h-4" />
                                     </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label="Remove revenue source"
-                                      title="Remove revenue source"
-                                      onClick={() => setShowDeleteRevenueDialog(true)}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
+                                  </Link>
                                 ) : null}
                                 <DollarSign className="w-8 h-8 text-green-600" />
                               </div>
@@ -3017,14 +3007,11 @@ export default function GA4Metrics() {
                                     </div>
                                     <div className="flex flex-col items-end gap-2 shrink-0">
                                       {totalSpendForFinancials > 0 && activeSpendSource ? (
-                                        <div className="flex items-center gap-1">
-                                          <Button variant="ghost" size="icon" aria-label="Edit spend" title="Edit spend" onClick={() => setShowSpendDialog(true)}>
+                                        <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                          <Button variant="ghost" size="icon" aria-label="Manage in Data Sources" title="Manage in Data Sources">
                                             <Edit className="w-4 h-4" />
                                           </Button>
-                                          <Button variant="ghost" size="icon" aria-label="Remove spend" title="Remove spend" onClick={() => setShowDeleteSpendDialog(true)}>
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </div>
+                                        </Link>
                                       ) : null}
                                       <DollarSign className="w-8 h-8 text-slate-500" />
                                     </div>
@@ -3888,12 +3875,11 @@ export default function GA4Metrics() {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
-                                      Add Spend
-                                    </Button>
-                                    <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
-                                      Add Revenue
-                                    </Button>
+                                    <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                      <Button type="button" variant="outline" size="sm">
+                                        Manage Data Sources
+                                      </Button>
+                                    </Link>
                                   </div>
                                 </div>
                               </div>
@@ -4031,17 +4017,12 @@ export default function GA4Metrics() {
                                           {isBlocked ? (
                                             <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                                               Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This KPI is paused until inputs are restored.
-                                              <div className="mt-2 flex items-center gap-2">
-                                                {deps.missing.includes("Spend") ? (
-                                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
-                                                    Add Spend
+                                              <div className="mt-2">
+                                                <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                                  <Button type="button" variant="outline" size="sm">
+                                                    Manage Data Sources
                                                   </Button>
-                                                ) : null}
-                                                {deps.missing.includes("Revenue") ? (
-                                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
-                                                    Add Revenue
-                                                  </Button>
-                                                ) : null}
+                                                </Link>
                                               </div>
                                             </div>
                                           ) : null}
@@ -4542,12 +4523,11 @@ export default function GA4Metrics() {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
-                                    Add Spend
-                                  </Button>
-                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
-                                    Add Revenue
-                                  </Button>
+                                  <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                    <Button type="button" variant="outline" size="sm">
+                                      Manage Data Sources
+                                    </Button>
+                                  </Link>
                                 </div>
                               </div>
                             </div>
@@ -4623,17 +4603,12 @@ export default function GA4Metrics() {
                                               <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                                                 Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. Restore inputs to resume accurate tracking.
                                               </div>
-                                              <div className="mt-2 flex items-center gap-2">
-                                                {deps.missing.includes("Spend") ? (
-                                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
-                                                    Add Spend
+                                              <div className="mt-2">
+                                                <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                                  <Button type="button" variant="outline" size="sm">
+                                                    Manage Data Sources
                                                   </Button>
-                                                ) : null}
-                                                {deps.missing.includes("Revenue") ? (
-                                                  <Button type="button" variant="outline" size="sm" onClick={() => setShowRevenueDialog(true)}>
-                                                    Add Revenue
-                                                  </Button>
-                                                ) : null}
+                                                </Link>
                                               </div>
                                             </div>
                                           );

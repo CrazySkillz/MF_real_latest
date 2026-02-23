@@ -1306,9 +1306,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify the source belongs to this campaign
       const source = await storage.getRevenueSource(campaignId, sourceId);
       if (!source) return res.status(404).json({ success: false, error: "Revenue source not found" });
+      const sourcePlatformContext = String((source as any).platformContext || 'ga4').trim();
       await storage.deleteRevenueSource(sourceId);
       await storage.deleteRevenueRecordsBySource(sourceId);
-      res.json({ success: true });
+
+      // Check if this was the last revenue source for the platform context.
+      // If so, perform full cleanup so revenue tracking is properly disabled.
+      const remaining = await storage.getRevenueSources(campaignId, sourcePlatformContext as any).catch(() => [] as any[]);
+      const activeRemaining = (Array.isArray(remaining) ? remaining : []).filter((s: any) => s && (s as any).isActive !== false);
+      if (activeRemaining.length === 0) {
+        // Deactivate Google Sheets connections for this platform
+        try {
+          const conns = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);
+          const purposeKey = sourcePlatformContext === 'linkedin' ? 'linkedin_revenue' : sourcePlatformContext === 'meta' ? 'meta_revenue' : 'revenue';
+          const platformConns = (Array.isArray(conns) ? conns : []).filter((c: any) => {
+            const purpose = String(c?.purpose || '').toLowerCase();
+            return purpose === purposeKey;
+          });
+          for (const c of platformConns) {
+            try {
+              await storage.updateGoogleSheetsConnection(String((c as any).id), { isActive: false as any, columnMappings: null as any } as any);
+            } catch { /* ignore */ }
+          }
+        } catch { /* ignore */ }
+
+        if (sourcePlatformContext === 'linkedin') {
+          // Clear LinkedIn conversion value so hasRevenueTracking becomes false
+          try { await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any); } catch { /* ignore */ }
+          try {
+            const sessions = await storage.getCampaignLinkedInImportSessions(campaignId).catch(() => [] as any[]);
+            for (const sess of (Array.isArray(sessions) ? sessions : []) as any[]) {
+              if (!sess?.id) continue;
+              await storage.updateLinkedInImportSession(String(sess.id), { conversionValue: null } as any);
+            }
+          } catch { /* ignore */ }
+
+          // Clear revenue-dependent KPI values so they don't show stale data
+          try {
+            const allKpis = await storage.getPlatformKPIs('linkedin', campaignId).catch(() => [] as any[]);
+            const revenueDependent = new Set(['roi', 'roas', 'totalrevenue', 'profit', 'profitmargin', 'revenueperlead']);
+            for (const kpi of (Array.isArray(allKpis) ? allKpis : []) as any[]) {
+              const key = String(kpi?.metric || kpi?.metricKey || '').toLowerCase();
+              if (!key || !revenueDependent.has(key)) continue;
+              await storage.updateKPI(String(kpi.id), { currentValue: null as any, lastComputedValue: null as any } as any);
+            }
+          } catch { /* ignore */ }
+
+          // Clear HubSpot pipeline proxy if configured for LinkedIn
+          try {
+            const hubspotConn: any = await storage.getHubspotConnection(campaignId);
+            if (hubspotConn?.id) {
+              let cfg: any = {};
+              try { cfg = hubspotConn?.mappingConfig ? JSON.parse(String(hubspotConn.mappingConfig)) : {}; } catch { cfg = {}; }
+              const nextCfg = { ...cfg, pipelineEnabled: false, pipelineStageId: null, pipelineStageLabel: null, pipelineTotalToDate: 0, pipelineCurrency: null, pipelineLastUpdatedAt: null, pipelineWarning: null };
+              await storage.updateHubspotConnection(String(hubspotConn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
+      res.json({ success: true, revenueTrackingDisabled: activeRemaining.length === 0 });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to delete revenue source" });
     }

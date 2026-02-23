@@ -12,7 +12,7 @@ import { AddSpendWizardModal } from "@/components/AddSpendWizardModal";
 import {
   DollarSign, TrendingUp, Plus, ExternalLink, Trash2,
   CheckCircle2, XCircle, Database, ShoppingCart, BarChart3,
-  FileSpreadsheet, Upload, Pencil
+  FileSpreadsheet, Upload, Pencil, Settings
 } from "lucide-react";
 
 interface ConnectedPlatformStatus {
@@ -29,6 +29,7 @@ interface DataSourcesTabProps {
   campaignId: string;
   campaign: any;
   connectedPlatformStatuses: ConnectedPlatformStatus[];
+  onDisconnectPlatform?: (platformKey: string, platformLabel: string) => void;
 }
 
 type PlatformContextType = 'ga4' | 'linkedin' | 'meta';
@@ -61,7 +62,7 @@ function getPlatformBadgeColor(ctx: string): string {
   return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
 }
 
-export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses }: DataSourcesTabProps) {
+export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses, onDisconnectPlatform }: DataSourcesTabProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const campaignCurrency = (campaign as any)?.currency || 'USD';
@@ -73,6 +74,8 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
   const [spendWizardOpen, setSpendWizardOpen] = useState(false);
   const [platformSelectorOpen, setPlatformSelectorOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'revenue' | 'spend'; id: string; name: string; platformContext?: string } | null>(null);
+  const [disconnectConfirm, setDisconnectConfirm] = useState<{ key: string; label: string } | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   // Fetch all data sources
   const { data: dataSources, isLoading } = useQuery<any>({
@@ -154,11 +157,23 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
       }
       const resp = await fetch(url, { method: 'DELETE' });
       if (!resp.ok) throw new Error('Failed to delete');
-      toast({ title: "Deleted", description: `${deleteConfirm.name} has been removed.` });
+      const result = await resp.json().catch(() => ({}));
+      toast({
+        title: "Deleted",
+        description: result?.revenueTrackingDisabled
+          ? `${deleteConfirm.name} has been removed. Revenue tracking has been disabled.`
+          : `${deleteConfirm.name} has been removed.`,
+      });
+      // Broad invalidation — covers all views that depend on revenue/spend data
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/benchmarks", campaignId], exact: false });
+      // Invalidate LinkedIn imports so "Revenue Tracking Active" card updates
+      void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports'], exact: false });
+      // Invalidate revenue-totals and spend-totals
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "Failed to delete source", variant: "destructive" });
     }
@@ -219,14 +234,26 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
                         </p>
                       </div>
                     </div>
-                    {connected && status?.analyticsPath && (
-                      <Link href={status.analyticsPath}>
-                        <Button variant="ghost" size="sm" className="text-xs">
-                          <ExternalLink className="w-3 h-3 mr-1" />
-                          Analytics
+                    <div className="flex items-center space-x-1">
+                      {connected && status?.analyticsPath && (
+                        <Link href={status.analyticsPath}>
+                          <Button variant="ghost" size="sm" className="text-xs">
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            Analytics
+                          </Button>
+                        </Link>
+                      )}
+                      {connected && onDisconnectPlatform && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title={`Disconnect ${meta.label}`}
+                          onClick={() => onDisconnectPlatform(key, meta.label)}
+                        >
+                          <Settings className="w-3.5 h-3.5 text-slate-400" />
                         </Button>
-                      </Link>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

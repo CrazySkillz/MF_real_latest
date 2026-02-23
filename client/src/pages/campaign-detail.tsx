@@ -5347,6 +5347,8 @@ export default function CampaignDetail() {
 
   // Add state for managing connection dropdowns and report generation
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
+  const [disconnectConfirm, setDisconnectConfirm] = useState<{ platform: string; platformLabel: string } | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [reportType, setReportType] = useState<"standard" | "custom">("standard");
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
@@ -5367,7 +5369,49 @@ export default function CampaignDetail() {
   const [mappingConnectionId, setMappingConnectionId] = useState<string | null>(null);
   const [mappingSpreadsheetId, setMappingSpreadsheetId] = useState<string | null>(null);
 
-
+  // --- Platform disconnect handler ---
+  const handleDisconnectPlatform = async () => {
+    if (!disconnectConfirm || !campaignId) return;
+    setDisconnecting(true);
+    try {
+      let url = '';
+      const p = disconnectConfirm.platform;
+      if (p === 'LinkedIn Ads') {
+        url = `/api/linkedin/disconnect/${campaignId}`;
+      } else if (p === 'Facebook Ads') {
+        url = `/api/campaigns/${campaignId}/meta/connection`;
+      } else if (p === 'Google Analytics') {
+        const connId = (ga4Connection as any)?.connectionId || (ga4Connection as any)?.id;
+        if (connId) {
+          url = `/api/ga4-connections/${connId}`;
+        } else {
+          throw new Error('GA4 connection ID not found');
+        }
+      } else {
+        throw new Error('Disconnect not supported for this platform');
+      }
+      const resp = await fetch(url, { method: 'DELETE' });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err?.error || 'Failed to disconnect');
+      }
+      toastHook({ title: "Disconnected", description: `${disconnectConfirm.platformLabel} has been disconnected from this campaign.` });
+      // Broad cache invalidation so all tabs update
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports'], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/benchmarks", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+    } catch (e: any) {
+      toastHook({ title: "Error", description: e?.message || "Failed to disconnect platform", variant: "destructive" });
+    } finally {
+      setDisconnecting(false);
+      setDisconnectConfirm(null);
+    }
+  };
 
   if (campaignLoading) {
     return (
@@ -6555,8 +6599,16 @@ export default function CampaignDetail() {
                       {(!platform.connected || platform.requiresImport) && (
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />
                       )}
-                      {platform.connected && (
-                        <Button variant="ghost" size="sm">
+                      {platform.connected && !platform.requiresImport && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title={`Disconnect ${platform.platform}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDisconnectConfirm({ platform: platform.platform, platformLabel: platform.platform });
+                          }}
+                        >
                           <Settings className="w-4 h-4" />
                         </Button>
                       )}
@@ -6840,6 +6892,15 @@ export default function CampaignDetail() {
                   campaignId={campaign.id}
                   campaign={campaign}
                   connectedPlatformStatuses={connectedPlatformStatuses}
+                  onDisconnectPlatform={(key, label) => {
+                    // Map DataSourcesTab platform keys to the platform names used by disconnect handler
+                    const platformNameMap: Record<string, string> = {
+                      linkedin: 'LinkedIn Ads',
+                      meta: 'Facebook Ads',
+                      ga4: 'Google Analytics',
+                    };
+                    setDisconnectConfirm({ platform: platformNameMap[key] || key, platformLabel: label });
+                  }}
                 />
               )}
             </TabsContent>
@@ -6915,6 +6976,35 @@ export default function CampaignDetail() {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Platform Disconnect Confirmation */}
+      <AlertDialog open={!!disconnectConfirm} onOpenChange={(open) => !open && setDisconnectConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect {disconnectConfirm?.platformLabel}?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">This will remove the {disconnectConfirm?.platformLabel} connection from this campaign. The following will be affected:</span>
+              <span className="block text-sm">
+                • Platform metrics will no longer be available<br />
+                • Analytics tab for this platform will be inaccessible<br />
+                • Revenue sources linked to this platform will need to be re-assigned<br />
+                • KPIs and Benchmarks using this platform's data may show as blocked
+              </span>
+              <span className="block font-medium text-red-600 dark:text-red-400">This action cannot be easily undone — you will need to re-authenticate to reconnect.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disconnecting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDisconnectPlatform}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={disconnecting}
+            >
+              {disconnecting ? "Disconnecting..." : "Disconnect"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

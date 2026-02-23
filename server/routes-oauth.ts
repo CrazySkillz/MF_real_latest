@@ -8302,10 +8302,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const { generateMetaMockData } = await import("./utils/metaMockData");
             const mockData = generateMetaMockData(metaConn.adAccountId, metaConn.adAccountName || "Meta Ad Account");
             const s = mockData?.summary || {};
-            spend = parseNum(s?.spend);
-            clicks = parseNum(s?.clicks);
-            impressions = parseNum(s?.impressions);
-            conversions = parseNum(s?.conversions);
+            spend = parseNum(s?.totalSpend);
+            clicks = parseNum(s?.totalClicks);
+            impressions = parseNum(s?.totalImpressions);
+            conversions = parseNum(s?.totalConversions);
           } else {
             // Real connection: fetch from Meta Graph API via analytics endpoint data
             try {

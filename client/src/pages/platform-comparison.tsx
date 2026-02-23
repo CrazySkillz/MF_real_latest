@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, TrendingUp, Target, Users, MousePointer, DollarSign, Eye, Clock, AlertCircle, Zap, Brain, GitCompare, Activity, ArrowUp, ArrowDown, Info, FlaskConical } from "lucide-react";
+import { ArrowLeft, BarChart3, TrendingUp, Target, Users, DollarSign, Eye, AlertCircle, Zap, Brain, Activity, Info, FlaskConical } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -9,12 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
-import { format } from "date-fns";
-
-const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
-
+import { ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
 export default function PlatformComparison() {
   const { id: campaignId } = useParams();
@@ -44,6 +39,17 @@ export default function PlatformComparison() {
   // Get Custom Integration data
   const { data: customIntegrationData } = useQuery({
     queryKey: ["/api/custom-integration", campaignId],
+    enabled: !!campaignId,
+  });
+
+  // Get Meta analytics (fallback when outcome-totals unavailable)
+  const { data: metaAnalytics } = useQuery<any>({
+    queryKey: ["/api/meta", campaignId, "analytics"],
+    queryFn: async () => {
+      const resp = await fetch(`/api/meta/${campaignId}/analytics`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
     enabled: !!campaignId,
   });
 
@@ -103,26 +109,12 @@ export default function PlatformComparison() {
     return num.toLocaleString();
   };
 
+  const campaignCurrency = (campaign as any)?.currency || 'USD';
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: campaignCurrency,
     }).format(amount);
-  };
-
-  const getPerformanceBadge = (value: number, metric: string) => {
-    let threshold = 0;
-    if (metric === 'ctr') threshold = 1.5;
-    if (metric === 'roas') threshold = 3.0;
-    if (metric === 'conversionRate') threshold = 3.5;
-    
-    if (value >= threshold) {
-      return <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Excellent</Badge>;
-    } else if (value >= threshold * 0.7) {
-      return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">Good</Badge>;
-    } else {
-      return <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">Needs Improvement</Badge>;
-    }
   };
 
   // Build platform metrics from real connected data
@@ -242,6 +234,24 @@ export default function PlatformComparison() {
           color: '#8b5cf6', isAnalyticsOnly: false,
         });
       }
+
+      // Meta Ads fallback
+      if (metaAnalytics?.summary) {
+        const s = metaAnalytics.summary;
+        const spend = num(s.totalSpend); const impressions = num(s.totalImpressions);
+        const clicks = num(s.totalClicks); const conversions = num(s.totalConversions);
+        const revenue = conversions * estimatedAOV;
+        const roas = spend > 0 ? revenue / spend : 0;
+        const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+        platforms.push({
+          platform: 'Meta Ads', impressions, clicks, conversions, spend, revenue,
+          ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+          cpc: clicks > 0 ? spend / clicks : 0,
+          conversionRate: clicks > 0 ? (conversions / clicks) * 100 : 0,
+          roas, roi, qualityScore: 0, reach: num(s.totalReach), engagement: 0,
+          color: '#1877f2', isAnalyticsOnly: false,
+        });
+      }
     }
 
     // GA4 Analytics (analytics-only — revenue + conversions, no spend/clicks)
@@ -319,10 +329,8 @@ export default function PlatformComparison() {
   };
 
   const bestROAS = getBestPerformer('roas');
-  const bestROI = getBestPerformer('roi');
   const bestConversions = getBestPerformer('conversions');
   const bestCTR = getBestPerformer('ctr');
-  const bestCPC = getBestPerformer('cpc');
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -379,48 +387,40 @@ export default function PlatformComparison() {
               {/* Platform Performance Summary Cards */}
               {realPlatformMetrics.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {realPlatformMetrics.map((platform, index) => {
-                    const hasNoData = platform.spend === 0 && platform.conversions === 0;
-                    return (
-                      <Card key={index} className="border-l-4" style={{ borderLeftColor: platform.color }} data-testid={`platform-card-${index}`}>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                            {platform.platform}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          {hasNoData ? (
-                            <div className="py-4 text-center">
-                              <p className="text-sm text-slate-500 dark:text-slate-400">No Data Available</p>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-slate-500">Conversions</span>
-                                <span className="font-semibold text-slate-900 dark:text-white">{formatNumber(platform.conversions)}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-slate-500">Spend</span>
-                                <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(platform.spend)}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-slate-500">ROAS</span>
-                                <span className="font-semibold text-slate-900 dark:text-white">{platform.roas.toFixed(2)}x</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-slate-500">ROI</span>
-                                <div className="flex items-center space-x-1">
-                                  <span className={`font-semibold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                    {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
-                                  </span>
-                                </div>
-                              </div>
-                            </>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                  {realPlatformMetrics.map((platform, index) => (
+                    <Card key={index} className="border-l-4" style={{ borderLeftColor: platform.color }} data-testid={`platform-card-${index}`}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                          <div className="flex items-center space-x-2">
+                            <span>{platform.platform}</span>
+                            {platform.isAnalyticsOnly && (
+                              <Badge variant="outline" className="text-xs">Analytics</Badge>
+                            )}
+                          </div>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500">Conversions</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">{platform.conversions > 0 ? formatNumber(platform.conversions) : '—'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500">Spend</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">{platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500">ROAS</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">{platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500">ROI</span>
+                          <span className={`font-semibold ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
+                            {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               ) : (
                 <Card>
@@ -428,91 +428,6 @@ export default function PlatformComparison() {
                     <p>No platform data available. Connect platforms (LinkedIn, Meta) or revenue sources (Shopify, HubSpot, Salesforce) to see comparison data.</p>
                   </CardContent>
                 </Card>
-              )}
-
-              {/* Quick Comparison Metrics */}
-              {realPlatformMetrics.length > 0 && (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {bestCTR && (
-                    <Card data-testid="overview-best-ctr">
-                      <CardHeader>
-                        <CardTitle className="text-sm">Best CTR Performance</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bestCTR.platform}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestCTR.ctr.toFixed(2)}% average CTR</p>
-                          </div>
-                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                            <ArrowUp className="w-3 h-3 mr-1" />
-                            Best
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {bestCPC && (
-                    <Card data-testid="overview-lowest-cpc">
-                      <CardHeader>
-                        <CardTitle className="text-sm">Lowest CPC</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bestCPC.platform}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{formatCurrency(bestCPC.cpc)} average CPC</p>
-                          </div>
-                          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                            <ArrowDown className="w-3 h-3 mr-1" />
-                            Efficient
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {bestROAS && (
-                    <Card data-testid="overview-highest-roas">
-                      <CardHeader>
-                        <CardTitle className="text-sm">Highest ROAS</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bestROAS.platform}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestROAS.roas.toFixed(1)}x return on ad spend</p>
-                          </div>
-                          <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
-                            <ArrowUp className="w-3 h-3 mr-1" />
-                            Top ROAS
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {bestROI && (
-                    <Card data-testid="overview-highest-roi">
-                      <CardHeader>
-                        <CardTitle className="text-sm">Highest ROI</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bestROI.platform}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestROI.roi >= 0 ? '+' : ''}{bestROI.roi.toFixed(1)}% profit margin</p>
-                          </div>
-                          <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
-                            <ArrowUp className="w-3 h-3 mr-1" />
-                            Best Profit
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
               )}
 
               {/* Channel Metrics Summary Table */}
@@ -564,16 +479,27 @@ export default function PlatformComparison() {
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr className="bg-slate-50 dark:bg-slate-800/50 font-semibold">
-                            <td className="py-3 px-4 text-slate-900 dark:text-white">Total</td>
-                            <td className="text-right py-3 px-4">{formatCurrency(realPlatformMetrics.reduce((s: number, p: any) => s + p.spend, 0))}</td>
-                            <td className="text-right py-3 px-4">{formatNumber(realPlatformMetrics.reduce((s: number, p: any) => s + p.impressions, 0))}</td>
-                            <td className="text-right py-3 px-4">{formatNumber(realPlatformMetrics.reduce((s: number, p: any) => s + p.clicks, 0))}</td>
-                            <td className="text-right py-3 px-4">—</td>
-                            <td className="text-right py-3 px-4">{formatNumber(realPlatformMetrics.reduce((s: number, p: any) => s + p.conversions, 0))}</td>
-                            <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">{formatCurrency(realPlatformMetrics.reduce((s: number, p: any) => s + p.revenue, 0))}</td>
-                            <td className="text-right py-3 px-4">—</td>
-                          </tr>
+                          {(() => {
+                            const totSpend = realPlatformMetrics.reduce((s: number, p: any) => s + p.spend, 0);
+                            const totImpressions = realPlatformMetrics.reduce((s: number, p: any) => s + p.impressions, 0);
+                            const totClicks = realPlatformMetrics.reduce((s: number, p: any) => s + p.clicks, 0);
+                            const totConversions = realPlatformMetrics.reduce((s: number, p: any) => s + p.conversions, 0);
+                            const totRevenue = realPlatformMetrics.reduce((s: number, p: any) => s + p.revenue, 0);
+                            const weightedCtr = totImpressions > 0 ? (totClicks / totImpressions) * 100 : 0;
+                            const weightedRoas = totSpend > 0 ? totRevenue / totSpend : 0;
+                            return (
+                              <tr className="bg-slate-50 dark:bg-slate-800/50 font-semibold">
+                                <td className="py-3 px-4 text-slate-900 dark:text-white">Total</td>
+                                <td className="text-right py-3 px-4">{formatCurrency(totSpend)}</td>
+                                <td className="text-right py-3 px-4">{formatNumber(totImpressions)}</td>
+                                <td className="text-right py-3 px-4">{formatNumber(totClicks)}</td>
+                                <td className="text-right py-3 px-4">{weightedCtr > 0 ? `${weightedCtr.toFixed(2)}%` : '—'}</td>
+                                <td className="text-right py-3 px-4">{formatNumber(totConversions)}</td>
+                                <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">{formatCurrency(totRevenue)}</td>
+                                <td className="text-right py-3 px-4">{weightedRoas > 0 ? `${weightedRoas.toFixed(2)}x` : '—'}</td>
+                              </tr>
+                            );
+                          })()}
                         </tfoot>
                       </table>
                     </div>
@@ -638,99 +564,6 @@ export default function PlatformComparison() {
             <TabsContent value="performance" className="space-y-6">
               {realPlatformMetrics.length > 0 ? (
                 <>
-                  {/* Analytics Platform Notice */}
-                  {realPlatformMetrics.some((p: any) => p.isAnalyticsOnly) && (
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                      <div className="flex items-start space-x-3">
-                        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                        <div className="text-sm text-blue-700 dark:text-blue-300">
-                          <strong>Analytics platforms</strong> (like GA4) track conversions and revenue but don't have advertising spend, so they're excluded from cost efficiency comparisons and budget recommendations.
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Key Performance Indicators Grid */}
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm text-slate-600 dark:text-slate-400">Best CTR</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{bestCTR?.ctr.toFixed(2)}%</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestCTR?.platform}</p>
-                          </div>
-                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                            <ArrowUp className="w-3 h-3 mr-1" />
-                            Best
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm text-slate-600 dark:text-slate-400">Lowest CPC</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(bestCPC?.cpc || 0)}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestCPC?.platform}</p>
-                          </div>
-                          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                            <DollarSign className="w-3 h-3 mr-1" />
-                            Efficient
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm text-slate-600 dark:text-slate-400">Best Conv. Rate</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {realPlatformMetrics.reduce((best, p) => p.conversionRate > best.conversionRate ? p : best).conversionRate.toFixed(2)}%
-                            </p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
-                              {realPlatformMetrics.reduce((best, p) => p.conversionRate > best.conversionRate ? p : best).platform}
-                            </p>
-                          </div>
-                          <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
-                            <Target className="w-3 h-3 mr-1" />
-                            Top CVR
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm text-slate-600 dark:text-slate-400">Best ROI</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {bestROI?.roi >= 0 ? '+' : ''}{bestROI?.roi.toFixed(1)}%
-                            </p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{bestROI?.platform}</p>
-                          </div>
-                          <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
-                            <TrendingUp className="w-3 h-3 mr-1" />
-                            Best Profit
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
                   <div className="grid gap-6 md:grid-cols-2">
                     {/* Detailed Metrics Table */}
                     <Card>
@@ -742,43 +575,39 @@ export default function PlatformComparison() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {realPlatformMetrics.map((platform, index) => {
-                            const hasNoData = platform.spend === 0 && platform.conversions === 0;
-                            return (
-                              <div key={index} className="p-3 border rounded-lg dark:border-slate-700" data-testid={`metrics-detail-${index}`}>
-                                <div className="flex items-center justify-between mb-2">
+                          {realPlatformMetrics.map((platform, index) => (
+                            <div key={index} className="p-3 border rounded-lg dark:border-slate-700" data-testid={`metrics-detail-${index}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center space-x-2">
                                   <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
-                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
+                                  {platform.isAnalyticsOnly && (
+                                    <Badge variant="outline" className="text-xs">Analytics</Badge>
+                                  )}
                                 </div>
-                                {hasNoData ? (
-                                  <div className="py-2 text-center">
-                                    <span className="text-sm text-slate-500 dark:text-slate-400">No Data Available</span>
-                                  </div>
-                                ) : (
-                                  <div className="grid grid-cols-4 gap-2 text-xs">
-                                    <div>
-                                      <span className="block text-slate-500 font-medium">CTR</span>
-                                      <span className="text-slate-900 dark:text-white font-semibold">{platform.ctr.toFixed(2)}%</span>
-                                    </div>
-                                    <div>
-                                      <span className="block text-slate-500 font-medium">CPC</span>
-                                      <span className="text-slate-900 dark:text-white font-semibold">{formatCurrency(platform.cpc)}</span>
-                                    </div>
-                                    <div>
-                                      <span className="block text-slate-500 font-medium">Conv. Rate</span>
-                                      <span className="text-slate-900 dark:text-white font-semibold">{platform.conversionRate.toFixed(2)}%</span>
-                                    </div>
-                                    <div>
-                                      <span className="block text-slate-500 font-medium">ROI</span>
-                                      <span className={`font-semibold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                        {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
                               </div>
-                            );
-                          })}
+                              <div className="grid grid-cols-4 gap-2 text-xs">
+                                <div>
+                                  <span className="block text-slate-500 font-medium">CTR</span>
+                                  <span className="text-slate-900 dark:text-white font-semibold">{platform.ctr > 0 ? `${platform.ctr.toFixed(2)}%` : '—'}</span>
+                                </div>
+                                <div>
+                                  <span className="block text-slate-500 font-medium">CPC</span>
+                                  <span className="text-slate-900 dark:text-white font-semibold">{platform.cpc > 0 ? formatCurrency(platform.cpc) : '—'}</span>
+                                </div>
+                                <div>
+                                  <span className="block text-slate-500 font-medium">Conv. Rate</span>
+                                  <span className="text-slate-900 dark:text-white font-semibold">{platform.conversionRate > 0 ? `${platform.conversionRate.toFixed(2)}%` : '—'}</span>
+                                </div>
+                                <div>
+                                  <span className="block text-slate-500 font-medium">ROI</span>
+                                  <span className={`font-semibold ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
+                                    {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </CardContent>
                     </Card>
@@ -793,126 +622,100 @@ export default function PlatformComparison() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {realPlatformMetrics.map((platform, index) => {
-                            const hasNoData = platform.spend === 0 && platform.conversions === 0;
-                            return (
-                              <div key={index} className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="font-medium text-slate-900 dark:text-white">{platform.platform}</span>
-                                  {hasNoData ? (
-                                    <span className="text-sm text-slate-500 dark:text-slate-400">No Data Available</span>
-                                  ) : (
-                                    <div className="flex items-center space-x-3">
-                                      <span className="text-slate-600 dark:text-slate-400">{platform.roas.toFixed(2)}x ROAS</span>
-                                      <span className={`font-medium ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                        {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}% ROI
-                                      </span>
-                                    </div>
-                                  )}
+                          {realPlatformMetrics.map((platform, index) => (
+                            <div key={index} className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="font-medium text-slate-900 dark:text-white">{platform.platform}</span>
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-slate-600 dark:text-slate-400">{platform.roas > 0 ? `${platform.roas.toFixed(2)}x ROAS` : '—'}</span>
+                                  <span className={`font-medium ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`}>
+                                    {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}% ROI` : '—'}
+                                  </span>
                                 </div>
-                                {!hasNoData && (
-                                  <>
-                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                      <div 
-                                        className="h-2 rounded-full transition-all" 
-                                        style={{ 
-                                          width: `${Math.min((platform.roas / 5) * 100, 100)}%`,
-                                          backgroundColor: platform.color 
-                                        }}
-                                      />
-                                    </div>
-                                    <div className="flex justify-between text-xs text-slate-500">
-                                      <span>CPA: {formatCurrency(platform.conversions > 0 ? platform.spend / platform.conversions : 0)}</span>
-                                      <span>{formatNumber(platform.conversions)} Conv.</span>
-                                    </div>
-                                  </>
-                                )}
                               </div>
-                            );
-                          })}
+                              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                <div
+                                  className="h-2 rounded-full transition-all"
+                                  style={{
+                                    width: `${Math.min((platform.roas / 5) * 100, 100)}%`,
+                                    backgroundColor: platform.color
+                                  }}
+                                />
+                              </div>
+                              <div className="flex justify-between text-xs text-slate-500">
+                                <span>CPA: {platform.conversions > 0 && platform.spend > 0 ? formatCurrency(platform.spend / platform.conversions) : '—'}</span>
+                                <span>{platform.conversions > 0 ? `${formatNumber(platform.conversions)} Conv.` : '—'}</span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </CardContent>
                     </Card>
                   </div>
 
-                  {/* Platform Volume Comparison - Advertising vs Website Analytics */}
+                  {/* Platform Volume Comparison */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
                         <Users className="w-5 h-5" />
                         <span>Volume & Reach Comparison</span>
                       </CardTitle>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-                        Advertising metrics (impressions/clicks from ad campaigns) vs Website analytics (pageviews/sessions from traffic)
-                      </p>
+                      <CardDescription>Impressions and engagement across all connected platforms</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-6">
                         {realPlatformMetrics.map((platform, index) => {
-                          const isAdvertising = platform.spend > 0 || platform.platform === 'LinkedIn Ads';
-                          const hasWebsiteData = platform.impressions > 0 || platform.engagement > 0;
-                          
+                          const maxImpressions = Math.max(...realPlatformMetrics.map(p => p.impressions), 1);
+                          const engagementValue = platform.clicks > 0 ? platform.clicks : platform.engagement;
+                          const maxEngagement = Math.max(...realPlatformMetrics.map(p => p.clicks > 0 ? p.clicks : p.engagement), 1);
+
                           return (
                             <div key={index} className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
-                                  <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
-                                </div>
-                                <span className="text-xs px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                                  {isAdvertising ? 'Advertising Metrics' : 'Website Analytics'}
-                                </span>
+                              <div className="flex items-center space-x-3">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
+                                <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
+                                {platform.isAnalyticsOnly && (
+                                  <Badge variant="outline" className="text-xs">Analytics</Badge>
+                                )}
                               </div>
-                              
-                              {hasWebsiteData ? (
-                                <div className="grid grid-cols-2 gap-4">
-                                  {/* Volume Metric */}
-                                  <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-sm">
-                                      <span className="text-slate-600 dark:text-slate-400">
-                                        {isAdvertising ? 'Ad Impressions' : 'Pageviews'}
-                                      </span>
-                                      <span className="font-semibold text-slate-900 dark:text-white">
-                                        {formatNumber(platform.impressions)}
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                      <div 
-                                        className="h-2 rounded-full transition-all" 
-                                        style={{ 
-                                          width: `${Math.min((platform.impressions / Math.max(...realPlatformMetrics.map(p => p.impressions))) * 100, 100)}%`,
-                                          backgroundColor: platform.color 
-                                        }}
-                                      />
-                                    </div>
+
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-slate-600 dark:text-slate-400">Impressions</span>
+                                    <span className="font-semibold text-slate-900 dark:text-white">
+                                      {platform.impressions > 0 ? formatNumber(platform.impressions) : '—'}
+                                    </span>
                                   </div>
-                                  
-                                  {/* Engagement Metric */}
-                                  <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-sm">
-                                      <span className="text-slate-600 dark:text-slate-400">
-                                        {isAdvertising ? 'Ad Clicks' : 'Sessions'}
-                                      </span>
-                                      <span className="font-semibold text-slate-900 dark:text-white">
-                                        {formatNumber(isAdvertising ? platform.clicks : platform.engagement)}
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                      <div 
-                                        className="h-2 rounded-full transition-all" 
-                                        style={{ 
-                                          width: `${Math.min(((isAdvertising ? platform.clicks : platform.engagement) / Math.max(...realPlatformMetrics.map(p => isAdvertising ? p.clicks : p.engagement))) * 100, 100)}%`,
-                                          backgroundColor: platform.color 
-                                        }}
-                                      />
-                                    </div>
+                                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                    <div
+                                      className="h-2 rounded-full transition-all"
+                                      style={{
+                                        width: `${platform.impressions > 0 ? Math.min((platform.impressions / maxImpressions) * 100, 100) : 0}%`,
+                                        backgroundColor: platform.color
+                                      }}
+                                    />
                                   </div>
                                 </div>
-                              ) : (
-                                <div className="py-4 text-center">
-                                  <span className="text-sm text-slate-500 dark:text-slate-400">No volume data available</span>
+
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-slate-600 dark:text-slate-400">Clicks / Sessions</span>
+                                    <span className="font-semibold text-slate-900 dark:text-white">
+                                      {engagementValue > 0 ? formatNumber(engagementValue) : '—'}
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                    <div
+                                      className="h-2 rounded-full transition-all"
+                                      style={{
+                                        width: `${engagementValue > 0 ? Math.min((engagementValue / maxEngagement) * 100, 100) : 0}%`,
+                                        backgroundColor: platform.color
+                                      }}
+                                    />
+                                  </div>
                                 </div>
-                              )}
+                              </div>
                             </div>
                           );
                         })}
@@ -1040,58 +843,56 @@ export default function PlatformComparison() {
                     </CardHeader>
                     <CardContent>
                       <div className="grid gap-4 md:grid-cols-2">
-                        {realPlatformMetrics.map((platform, index) => {
-                          const hasNoData = platform.spend === 0 && platform.conversions === 0;
-                          return (
-                            <div key={index} className="p-4 border rounded-lg dark:border-slate-700 space-y-3" data-testid={`roi-card-${index}`}>
-                              <div className="flex items-center justify-between">
+                        {realPlatformMetrics.map((platform, index) => (
+                          <div key={index} className="p-4 border rounded-lg dark:border-slate-700 space-y-3" data-testid={`roi-card-${index}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
                                 <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
+                                {platform.isAnalyticsOnly && (
+                                  <Badge variant="outline" className="text-xs">Analytics</Badge>
+                                )}
                               </div>
-                              
-                              {hasNoData ? (
-                                <div className="py-6 text-center">
-                                  <span className="text-sm text-slate-500 dark:text-slate-400">No Data Available</span>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <div className="text-xs text-slate-500 mb-1">ROI (Profit %)</div>
-                                      <div className={`text-2xl font-bold ${platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                        {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
-                                      </div>
-                                      <div className="text-xs text-slate-500 mt-1">
-                                        {platform.roi >= 100 ? 'Excellent' : platform.roi >= 50 ? 'Good' : platform.roi >= 0 ? 'Break-even+' : 'Loss'}
-                                      </div>
-                                    </div>
-                                    
-                                    <div>
-                                      <div className="text-xs text-slate-500 mb-1">ROAS (Revenue)</div>
-                                      <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {platform.roas.toFixed(2)}x
-                                      </div>
-                                      <div className="text-xs text-slate-500 mt-1">
-                                        {platform.roas >= 4 ? 'Excellent' : platform.roas >= 3 ? 'Good' : platform.roas >= 1 ? 'Fair' : 'Poor'}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="pt-2 border-t dark:border-slate-600 text-xs text-slate-600 dark:text-slate-400">
-                                    <div className="flex justify-between">
-                                      <span>Total Spend:</span>
-                                      <span className="font-medium">{formatCurrency(platform.spend)}</span>
-                                    </div>
-                                    <div className="flex justify-between mt-1">
-                                      <span>Conversions:</span>
-                                      <span className="font-medium">{formatNumber(platform.conversions)}</span>
-                                    </div>
-                                  </div>
-                                </>
-                              )}
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
                             </div>
-                          );
-                        })}
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <div className="text-xs text-slate-500 mb-1">ROI (Profit %)</div>
+                                <div className={`text-2xl font-bold ${platform.spend > 0 ? (platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400') : 'text-slate-400'}`}>
+                                  {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}
+                                </div>
+                                {platform.spend > 0 && (
+                                  <div className="text-xs text-slate-500 mt-1">
+                                    {platform.roi >= 100 ? 'Excellent' : platform.roi >= 50 ? 'Good' : platform.roi >= 0 ? 'Break-even+' : 'Loss'}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div>
+                                <div className="text-xs text-slate-500 mb-1">ROAS (Revenue)</div>
+                                <div className={`text-2xl font-bold ${platform.roas > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+                                  {platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}
+                                </div>
+                                {platform.roas > 0 && (
+                                  <div className="text-xs text-slate-500 mt-1">
+                                    {platform.roas >= 4 ? 'Excellent' : platform.roas >= 3 ? 'Good' : platform.roas >= 1 ? 'Fair' : 'Poor'}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t dark:border-slate-600 text-xs text-slate-600 dark:text-slate-400">
+                              <div className="flex justify-between">
+                                <span>Total Spend:</span>
+                                <span className="font-medium">{platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</span>
+                              </div>
+                              <div className="flex justify-between mt-1">
+                                <span>Conversions:</span>
+                                <span className="font-medium">{platform.conversions > 0 ? formatNumber(platform.conversions) : '—'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
@@ -1333,16 +1134,6 @@ export default function PlatformComparison() {
                           ) : null;
                         })()}
 
-                        {/* Performance Monitoring */}
-                        <div className="border-l-4 border-purple-500 pl-4">
-                          <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Performance Monitoring</h4>
-                          <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                            <li>• Set up automated alerts for ROAS drops below 3.0x</li>
-                            <li>• Monitor CPC trends weekly for early optimization signals</li>
-                            <li>• Track cross-platform attribution for holistic view</li>
-                            <li>• Implement A/B testing schedule for continuous improvement</li>
-                          </ul>
-                        </div>
                       </div>
                     </CardContent>
                   </Card>

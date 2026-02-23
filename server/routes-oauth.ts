@@ -8142,6 +8142,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               clicks: 1450,
               impressions: 28000,
               conversions: 62,
+              attributedRevenue: 7440,
+              roas: 2.4,
+              roi: 139.7,
             },
             customIntegration: {
               connected: true,
@@ -8287,22 +8290,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         linkedIn = { connected: !!(linkedInConn && linkedInConn.adAccountId), error: e?.message || "LinkedIn unavailable" };
       }
 
-      // Meta summary inputs (currently mock-backed)
+      // Meta summary inputs — resolve revenue using canonical meta-revenue utility
       let meta: any = { connected: false };
       let metaSpend = 0;
       try {
         if (metaConn) {
-          const { generateMetaMockData } = await import("./utils/metaMockData");
-          const mockData = generateMetaMockData(metaConn.adAccountId, metaConn.adAccountName || "Meta Ad Account");
-          const s = mockData?.summary || {};
-          metaSpend = parseNum(s?.spend);
+          let spend = 0, clicks = 0, impressions = 0, conversions = 0;
+
+          if ((metaConn as any).method === "test_mode") {
+            // Test mode: use mock data for base metrics
+            const { generateMetaMockData } = await import("./utils/metaMockData");
+            const mockData = generateMetaMockData(metaConn.adAccountId, metaConn.adAccountName || "Meta Ad Account");
+            const s = mockData?.summary || {};
+            spend = parseNum(s?.spend);
+            clicks = parseNum(s?.clicks);
+            impressions = parseNum(s?.impressions);
+            conversions = parseNum(s?.conversions);
+          } else {
+            // Real connection: fetch from Meta Graph API via analytics endpoint data
+            try {
+              const { MetaGraphAPIClient, getLastNDaysRange } = await import("./services/meta-graph-api");
+              const metaClient = new MetaGraphAPIClient((metaConn as any).accessToken);
+              const dateRange = getLastNDaysRange(30);
+              const campaigns = await metaClient.getCampaigns(metaConn.adAccountId, dateRange);
+              for (const c of campaigns) {
+                spend += parseNum((c as any).spend);
+                clicks += parseNum((c as any).clicks);
+                impressions += parseNum((c as any).impressions);
+                conversions += parseNum((c as any).conversions);
+              }
+            } catch (apiErr) {
+              console.log(`Meta Graph API unavailable for campaign ${campaignId}, using stored data`);
+            }
+          }
+
+          metaSpend = spend;
+
+          // Resolve Meta revenue using canonical utility (mirrors LinkedIn pattern)
+          const { resolveMetaRevenueContext } = await import("./utils/meta-revenue");
+          const rev = await resolveMetaRevenueContext({
+            campaignId,
+            conversionsTotal: conversions,
+          });
+
+          const attributedRevenue = parseFloat(Number(rev.totalRevenue || 0).toFixed(2));
+          const roas = metaSpend > 0 ? parseFloat((attributedRevenue / metaSpend).toFixed(2)) : 0;
+          const roi = metaSpend > 0 ? parseFloat((((attributedRevenue - metaSpend) / metaSpend) * 100).toFixed(2)) : 0;
+
           meta = {
             connected: true,
             spend: metaSpend,
-            clicks: parseNum(s?.clicks),
-            impressions: parseNum(s?.impressions),
-            conversions: parseNum(s?.conversions),
-            // leads not reliably available in current meta mock shape
+            clicks: parseNum(clicks),
+            impressions: parseNum(impressions),
+            conversions: parseNum(conversions),
+            hasRevenueTracking: !!rev.hasRevenueTracking,
+            conversionValue: parseFloat(Number(rev.conversionValue || 0).toFixed(2)),
+            attributedRevenue,
+            roas,
+            roi,
           };
         }
       } catch (e: any) {

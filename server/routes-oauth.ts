@@ -8450,12 +8450,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const revenueClassification = String(cfg.revenueClassification || "");
           const lastTotalRevenue = parseNum(cfg.lastTotalRevenue);
           const offsite = revenueClassification === "offsite_not_in_ga4";
+          const platformContext = String(cfg.platformContext || "").trim() || null;
           revenueSources.push({
             type: s.type,
             connected: true,
             revenueClassification: revenueClassification || null,
             lastTotalRevenue: lastTotalRevenue || 0,
             offsite,
+            platformContext,
           });
           if (offsite && lastTotalRevenue > 0) offsiteRevenueTotal += lastTotalRevenue;
         }

@@ -71,13 +71,20 @@ export default function PlatformComparison() {
     if (!outcomeTotals?.revenueSources) return [];
     return (outcomeTotals.revenueSources as any[])
       .filter((s: any) => s.connected && Number(s.lastTotalRevenue || 0) > 0)
-      .map((s: any) => ({
-        name: String(s.type || 'Revenue Source').charAt(0).toUpperCase() + String(s.type || '').slice(1),
-        revenue: Number(s.lastTotalRevenue || 0),
-        type: s.type,
-        offsite: !!s.offsite,
-        color: s.type === 'shopify' ? '#96bf48' : s.type === 'hubspot' ? '#ff7a59' : s.type === 'salesforce' ? '#00a1e0' : '#6366f1',
-      }));
+      .map((s: any) => {
+        const typeName = String(s.type || 'Revenue Source').charAt(0).toUpperCase() + String(s.type || '').slice(1);
+        const ctx = String(s.platformContext || '').trim();
+        const ctxLabel = ctx === 'linkedin' ? 'LinkedIn' : ctx === 'meta' ? 'Meta' : ctx === 'ga4' ? 'GA4' : '';
+        return {
+          name: typeName,
+          revenue: Number(s.lastTotalRevenue || 0),
+          type: s.type,
+          offsite: !!s.offsite,
+          platformContext: ctx,
+          platformLabel: ctxLabel,
+          color: s.type === 'shopify' ? '#96bf48' : s.type === 'hubspot' ? '#ff7a59' : s.type === 'salesforce' ? '#00a1e0' : '#6366f1',
+        };
+      });
   }, [outcomeTotals]);
 
   if (campaignLoading) {
@@ -520,9 +527,16 @@ export default function PlatformComparison() {
                     {revenueSourcesData.map((source: any, index: number) => (
                       <Card key={index} className="border-l-4" style={{ borderLeftColor: source.color }}>
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                            {source.name}
-                          </CardTitle>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                              {source.name}
+                            </CardTitle>
+                            {source.platformLabel && (
+                              <Badge variant="secondary" className="text-xs">
+                                {source.platformLabel} Revenue
+                              </Badge>
+                            )}
+                          </div>
                         </CardHeader>
                         <CardContent className="space-y-2">
                           <div className="flex items-center justify-between">
@@ -537,6 +551,14 @@ export default function PlatformComparison() {
                               {source.offsite ? 'Offsite' : 'Onsite'}
                             </Badge>
                           </div>
+                          {source.platformLabel && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-500">Linked to</span>
+                              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                                {source.platformLabel} Ads
+                              </span>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
@@ -743,6 +765,7 @@ export default function PlatformComparison() {
                           <DollarSign className="w-5 h-5" />
                           <span>Cost per Conversion</span>
                         </CardTitle>
+                        <CardDescription>Total spend ÷ conversions — not to be confused with CPC (spend ÷ clicks)</CardDescription>
                       </CardHeader>
                       <CardContent>
                         {costAnalysisChartData.length > 0 ? (
@@ -792,8 +815,8 @@ export default function PlatformComparison() {
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={80}
-                                    labelLine={false}
-                                    label={({ name, value }: any) => `${name}: ${formatCurrency(value)}`}
+                                    labelLine={true}
+                                    label={({ name, percent }: any) => `${name} (${(percent * 100).toFixed(0)}%)`}
                                     dataKey="value"
                                   >
                                     {budgetPieData.map((entry: any, index: number) => (
@@ -814,7 +837,7 @@ export default function PlatformComparison() {
                                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
                                       <span className="text-slate-700 dark:text-slate-300">{entry.name}</span>
                                     </div>
-                                    <span className="text-slate-600 dark:text-slate-400">{pct}%</span>
+                                    <span className="text-slate-600 dark:text-slate-400">{formatCurrency(entry.value)} ({pct}%)</span>
                                   </div>
                                 );
                               })}

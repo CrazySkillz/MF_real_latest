@@ -2899,9 +2899,11 @@ export default function GA4Metrics() {
                                   </p>
                                 ) : null}
                                 {!ga4HasRevenueMetric && !activeRevenueSource && (
-                                  <Button variant="outline" size="sm" className="mt-3" onClick={() => setShowRevenueDialog(true)}>
-                                    Add revenue source
-                                  </Button>
+                                  <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                    <Button variant="outline" size="sm" className="mt-3">
+                                      Manage in Data Sources
+                                    </Button>
+                                  </Link>
                                 )}
                               </div>
                               <div className="flex flex-col items-end gap-2 shrink-0">
@@ -3127,9 +3129,11 @@ export default function GA4Metrics() {
                               </p>
                             )}
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                              <Button variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
-                                Add spend
-                              </Button>
+                              <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                <Button variant="outline" size="sm">
+                                  Manage in Data Sources
+                                </Button>
+                              </Link>
                             </div>
                             {/* Modal is rendered below so it can be opened from both empty and filled states */}
                           </div>

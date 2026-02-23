@@ -74,7 +74,7 @@ export interface IStorage {
   getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }>;
 
   // Revenue (generic; platform-scoped to avoid GA4/LinkedIn leakage)
-  getRevenueSources(campaignId: string, platformContext?: 'ga4' | 'linkedin'): Promise<RevenueSource[]>;
+  getRevenueSources(campaignId: string, platformContext?: 'ga4' | 'linkedin' | 'meta'): Promise<RevenueSource[]>;
   getRevenueSource(campaignId: string, sourceId: string): Promise<RevenueSource | undefined>;
   createRevenueSource(source: InsertRevenueSource): Promise<RevenueSource>;
   updateRevenueSource(sourceId: string, source: Partial<InsertRevenueSource>): Promise<RevenueSource | undefined>;
@@ -1253,7 +1253,7 @@ export class MemStorage implements IStorage {
   }
 
   // Revenue methods
-  async getRevenueSources(campaignId: string, platformContext: 'ga4' | 'linkedin' = 'ga4'): Promise<RevenueSource[]> {
+  async getRevenueSources(campaignId: string, platformContext: 'ga4' | 'linkedin' | 'meta' = 'ga4'): Promise<RevenueSource[]> {
     return Array.from(this.revenueSources.values())
       .filter((s) => {
         if ((s as any).campaignId !== campaignId) return false;
@@ -3190,7 +3190,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Revenue methods
-  async getRevenueSources(campaignId: string, platformContext: 'ga4' | 'linkedin' = 'ga4'): Promise<RevenueSource[]> {
+  async getRevenueSources(campaignId: string, platformContext: 'ga4' | 'linkedin' | 'meta' = 'ga4'): Promise<RevenueSource[]> {
     const ctx = platformContext;
     return db.select().from(revenueSources)
       .where(and(
@@ -3198,7 +3198,7 @@ export class DatabaseStorage implements IStorage {
         eq(revenueSources.isActive, true),
         ctx === 'ga4'
           ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
-          : eq(revenueSources.platformContext, 'linkedin' as any)
+          : eq(revenueSources.platformContext, ctx as any)
       ))
       .orderBy(desc(revenueSources.connectedAt));
   }

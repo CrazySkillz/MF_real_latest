@@ -31,6 +31,7 @@ import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { WebhookTester } from "@/components/WebhookTester";
+import { DataSourcesTab } from "@/components/DataSourcesTab";
 interface Campaign {
   id: string;
   name: string;
@@ -6401,13 +6402,14 @@ export default function CampaignDetail() {
           </div>
 
           {/* Tabs Navigation */}
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6">
+          <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks','reports','insights','data-sources','webhooks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
               <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
+              <TabsTrigger value="data-sources">Data Sources</TabsTrigger>
               <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
             </TabsList>
 
@@ -6830,6 +6832,16 @@ export default function CampaignDetail() {
 
             <TabsContent value="insights" className="space-y-6">
               <CampaignInsights campaign={campaign} />
+            </TabsContent>
+
+            <TabsContent value="data-sources" className="space-y-6">
+              {campaign && (
+                <DataSourcesTab
+                  campaignId={campaign.id}
+                  campaign={campaign}
+                  connectedPlatformStatuses={connectedPlatformStatuses}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="webhooks" className="space-y-6">

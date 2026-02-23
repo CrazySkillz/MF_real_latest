@@ -2,7 +2,7 @@
 // NOTE: This page is intentionally being split into smaller components to avoid editor OOM.
 // Once the refactor is complete, remove this and restore strict type-checking here.
 import { useState, useEffect, useMemo } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { SalesforceDataViewerModal } from "@/components/SalesforceDataViewerModal";
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
@@ -4266,7 +4266,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
             "Revenue tracking is not connected for this campaign, so revenue-based metrics would be misleading.",
           ],
         },
-        actions: [{ label: "Add revenue", kind: "openRevenueModal" }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
+        actions: [{ label: "Add revenue", kind: "go", href: `/campaigns/${campaignId}#data-sources` }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
       });
     }
 
@@ -4387,7 +4387,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
             "Revenue tracking is not connected, so the KPI cannot be computed reliably.",
           ],
         },
-        actions: [{ label: "Add revenue", kind: "openRevenueModal" }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
+        actions: [{ label: "Add revenue", kind: "go", href: `/campaigns/${campaignId}#data-sources` }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
       });
     }
 
@@ -4412,7 +4412,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
             "Revenue tracking is not connected, so the Benchmark cannot be computed reliably.",
           ],
         },
-        actions: [{ label: "Add revenue", kind: "openRevenueModal" }, { label: "Open Benchmarks", kind: "go", tab: "benchmarks" }],
+        actions: [{ label: "Add revenue", kind: "go", href: `/campaigns/${campaignId}#data-sources` }, { label: "Open Benchmarks", kind: "go", tab: "benchmarks" }],
       });
     }
 
@@ -5051,10 +5051,12 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                       <li>Connect HubSpot, Salesforce, or Shopify</li>
                                       <li>Upload a CSV or connect Google Sheets</li>
                                     </ul>
-                                    <Button variant="outline" size="sm" onClick={() => openAddRevenueModal('add')}>
-                                      <Plus className="w-4 h-4 mr-2" />
-                                      Configure Revenue Tracking
-                                    </Button>
+                                    <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                      <Button variant="outline" size="sm">
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Manage in Data Sources
+                                      </Button>
+                                    </Link>
                                   </CardContent>
                                 </Card>
                               )}

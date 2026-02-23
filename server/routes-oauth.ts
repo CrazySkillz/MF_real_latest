@@ -905,7 +905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Request validation helpers (enterprise-grade consistency)
-  const zPlatformContext = z.enum(["ga4", "linkedin"]);
+  const zPlatformContext = z.enum(["ga4", "linkedin", "meta"]);
   const zValueSource = z.enum(["revenue", "conversion_value"]);
 
   const zNumberLike = z.preprocess((v) => {
@@ -931,9 +931,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const parsePlatformContext = (
     raw: any,
-    fallback: "ga4" | "linkedin",
+    fallback: "ga4" | "linkedin" | "meta",
     res: any
-  ): "ga4" | "linkedin" | null => {
+  ): "ga4" | "linkedin" | "meta" | null => {
     const s = raw === null || typeof raw === "undefined" ? "" : String(raw).trim().toLowerCase();
     if (!s) return fallback;
     const parsed = zPlatformContext.safeParse(s);
@@ -1122,6 +1122,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, sources });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue sources" });
+    }
+  });
+
+  // Unified data-sources endpoint — returns all revenue sources, spend sources, and CRM connections
+  app.get("/api/campaigns/:id/all-data-sources", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
+      // Fetch revenue sources across all platform contexts
+      const [ga4Rev, linkedinRev, metaRev] = await Promise.all([
+        storage.getRevenueSources(campaignId, 'ga4').catch(() => [] as any[]),
+        storage.getRevenueSources(campaignId, 'linkedin').catch(() => [] as any[]),
+        storage.getRevenueSources(campaignId, 'meta').catch(() => [] as any[]),
+      ]);
+      const revenueSources = [
+        ...ga4Rev.map((s: any) => ({ ...s, platformContext: (s as any).platformContext || 'ga4' })),
+        ...linkedinRev.map((s: any) => ({ ...s, platformContext: 'linkedin' })),
+        ...metaRev.map((s: any) => ({ ...s, platformContext: 'meta' })),
+      ];
+
+      // Fetch spend sources
+      const spendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+
+      // Fetch CRM connection statuses
+      const [hubspotConn, sfConn, shopifyConn] = await Promise.all([
+        storage.getHubspotConnection(campaignId).catch(() => null),
+        storage.getSalesforceConnection(campaignId).catch(() => null),
+        storage.getShopifyConnection(campaignId).catch(() => null),
+      ]);
+
+      const parseCfg = (raw: any) => {
+        if (!raw) return null;
+        try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return null; }
+      };
+
+      res.json({
+        success: true,
+        revenueSources,
+        spendSources,
+        crmConnections: {
+          hubspot: hubspotConn ? { connected: true, mappingConfig: parseCfg((hubspotConn as any)?.mappingConfig) } : null,
+          salesforce: sfConn ? { connected: true, mappingConfig: parseCfg((sfConn as any)?.mappingConfig) } : null,
+          shopify: shopifyConn ? { connected: true, mappingConfig: parseCfg((shopifyConn as any)?.mappingConfig) } : null,
+        },
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch data sources" });
     }
   });
 

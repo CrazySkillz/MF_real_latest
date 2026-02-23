@@ -33,7 +33,7 @@ export function AddRevenueWizardModal(props: {
   dateRange: string;
   initialSource?: any;
   onSuccess?: () => void;
-  platformContext?: 'ga4' | 'linkedin';
+  platformContext?: 'ga4' | 'linkedin' | 'meta';
   initialStep?: Step;
 }) {
   const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource, platformContext = 'ga4', initialStep } = props;
@@ -72,6 +72,13 @@ export function AddRevenueWizardModal(props: {
       void queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
     }
 
+    if (platformContext === 'meta') {
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date?platformContext=meta`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/kpis"], exact: false });
+    }
+
     // GA4 KPI tab caches (revenue-to-date affects financial KPIs when GA4 revenue is missing).
     void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/kpis"], exact: false });
     void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/kpis", campaignId], exact: false });
@@ -84,14 +91,19 @@ export function AddRevenueWizardModal(props: {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
+    } else if (platformContext === 'meta') {
+      void queryClient.refetchQueries({ queryKey: ["/api/meta", campaignId], exact: false });
     } else {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_analytics/kpis", campaignId], exact: false });
     }
+
+    // Also refresh unified data-sources tab
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`], exact: false });
   };
 
   const [step, setStep] = useState<Step>("select");
   const isEditing = !!initialSource;
-  const sheetsPurpose = platformContext === 'linkedin' ? 'linkedin_revenue' : 'revenue';
+  const sheetsPurpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : 'revenue';
   const [salesforceInitialMappingConfig, setSalesforceInitialMappingConfig] = useState<null | {
     campaignField?: string;
     selectedValues?: string[];

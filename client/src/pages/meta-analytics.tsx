@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,9 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { MetaKpiModal } from "./meta-analytics/MetaKpiModal";
+import { MetaBenchmarkModal } from "./meta-analytics/MetaBenchmarkModal";
+import { MetaReportModal } from "./meta-analytics/MetaReportModal";
 
 // Meta-specific metric definitions for KPIs and Benchmarks
 const META_METRICS = [
@@ -56,21 +59,45 @@ export default function MetaAnalytics() {
   // KPI state
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [editingKPI, setEditingKPI] = useState<any>(null);
-  const [kpiForm, setKpiForm] = useState({ name: '', metric: '', targetValue: '', description: '' });
+  const [kpiForm, setKpiForm] = useState({
+    name: '', metric: '', targetValue: '', description: '', currentValue: '', unit: '',
+    priority: 'high', status: 'active', category: '', timeframe: 'monthly', trackingPeriod: '30',
+    alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily',
+    alertThreshold: '', alertCondition: 'below', emailRecipients: '',
+    applyTo: 'all', specificCampaignId: '',
+  });
 
   // Benchmark state
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
-  const [benchmarkForm, setBenchmarkForm] = useState({ name: '', metric: '', benchmarkValue: '', description: '', industry: '' });
+  const [benchmarkForm, setBenchmarkForm] = useState({
+    name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', unit: '',
+    benchmarkType: 'industry' as 'industry' | 'custom',
+    applyTo: 'all', specificCampaignId: '',
+    alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily',
+    alertThreshold: '', alertCondition: 'below', emailRecipients: '',
+  });
 
   // Insights state
   const [showDailyFinancialsView, setShowDailyFinancialsView] = useState(false);
   const [insightsTrendMetric, setInsightsTrendMetric] = useState('spend');
+  const [insightsTrendMode, setInsightsTrendMode] = useState<'daily' | '7d' | '30d'>('daily');
+  const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
 
   // Reports state
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [editingReport, setEditingReport] = useState<any>(null);
-  const [reportForm, setReportForm] = useState({ name: '', description: '', reportType: 'performance_summary', scheduleFrequency: 'weekly', scheduleTime: '9:00 AM', emailRecipients: '', scheduleEnabled: false });
+  const [reportModalStep, setReportModalStep] = useState<'standard' | 'custom' | 'type' | 'configuration'>('standard');
+  const [reportFormErrors, setReportFormErrors] = useState<any>({});
+  const [customReportConfig, setCustomReportConfig] = useState<any>({
+    coreMetrics: [], derivedMetrics: [], revenueMetrics: [], campaignBreakdown: [],
+    kpis: [], benchmarks: [], insights: [], demographics: [],
+  });
+  const [reportForm, setReportForm] = useState<any>({
+    name: '', description: '', reportType: 'overview', scheduleFrequency: 'weekly',
+    scheduleTime: '9:00 AM', emailRecipients: '', scheduleEnabled: false,
+    scheduleDayOfWeek: 'monday', scheduleDayOfMonth: 'first', quarterTiming: 'end',
+  });
 
   const { data: analyticsData, isLoading } = useQuery({
     queryKey: ["/api/meta", campaignId, "analytics"],
@@ -97,7 +124,7 @@ export default function MetaAnalytics() {
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
     queryKey: ['/api/platforms/meta/kpis', campaignId],
     queryFn: async () => {
-      const response = await fetch(`/api/platforms/meta/kpis?campaignId=${campaignId}`);
+      const response = await fetch(`/api/platforms/meta/kpis/${campaignId}`);
       if (!response.ok) throw new Error('Failed to fetch Meta KPIs');
       return response.json();
     },
@@ -106,9 +133,9 @@ export default function MetaAnalytics() {
 
   // Fetch Meta Benchmarks
   const { data: benchmarksData, isLoading: benchmarksLoading } = useQuery({
-    queryKey: ['/api/platforms/meta/benchmarks', campaignId],
+    queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'meta'],
     queryFn: async () => {
-      const response = await fetch(`/api/platforms/meta/benchmarks?campaignId=${campaignId}`);
+      const response = await fetch(`/api/campaigns/${campaignId}/benchmarks/evaluated?platform=meta`);
       if (!response.ok) throw new Error('Failed to fetch Meta Benchmarks');
       return response.json();
     },
@@ -130,7 +157,6 @@ export default function MetaAnalytics() {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/kpis'] });
       setIsKPIModalOpen(false);
       setEditingKPI(null);
-      setKpiForm({ name: '', metric: '', targetValue: '', description: '' });
       toast({ title: 'KPI created successfully' });
     },
   });
@@ -149,7 +175,6 @@ export default function MetaAnalytics() {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/kpis'] });
       setIsKPIModalOpen(false);
       setEditingKPI(null);
-      setKpiForm({ name: '', metric: '', targetValue: '', description: '' });
       toast({ title: 'KPI updated successfully' });
     },
   });
@@ -169,27 +194,26 @@ export default function MetaAnalytics() {
   // Benchmark mutations
   const createBenchmarkMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/platforms/meta/benchmarks', {
+      const response = await fetch(`/api/campaigns/${campaignId}/benchmarks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, campaignId }),
+        body: JSON.stringify({ ...data, campaignId, platform: 'meta' }),
       });
       if (!response.ok) throw new Error('Failed to create benchmark');
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks'] });
       setIsBenchmarkModalOpen(false);
       setEditingBenchmark(null);
-      setBenchmarkForm({ name: '', metric: '', benchmarkValue: '', description: '', industry: '' });
       toast({ title: 'Benchmark created successfully' });
     },
   });
 
   const updateBenchmarkMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await fetch(`/api/platforms/meta/benchmarks/${id}`, {
-        method: 'PUT',
+      const response = await fetch(`/api/benchmarks/${id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
@@ -197,31 +221,30 @@ export default function MetaAnalytics() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks'] });
       setIsBenchmarkModalOpen(false);
       setEditingBenchmark(null);
-      setBenchmarkForm({ name: '', metric: '', benchmarkValue: '', description: '', industry: '' });
       toast({ title: 'Benchmark updated successfully' });
     },
   });
 
   const deleteBenchmarkMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/platforms/meta/benchmarks/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/benchmarks/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to delete benchmark');
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks'] });
       toast({ title: 'Benchmark deleted' });
     },
   });
 
   // Fetch Meta Reports
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
-    queryKey: ['/api/platforms/meta/reports', campaignId],
+    queryKey: ['/api/meta/reports', campaignId],
     queryFn: async () => {
-      const response = await fetch(`/api/platforms/meta/reports?campaignId=${campaignId}`);
+      const response = await fetch(`/api/meta/reports?campaignId=${campaignId}`);
       if (!response.ok) throw new Error('Failed to fetch Meta Reports');
       return response.json();
     },
@@ -231,7 +254,7 @@ export default function MetaAnalytics() {
   // Report mutations
   const createReportMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/platforms/meta/reports', {
+      const response = await fetch('/api/meta/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...data, campaignId, platformType: 'meta' }),
@@ -240,17 +263,16 @@ export default function MetaAnalytics() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports'] });
       setIsReportModalOpen(false);
       setEditingReport(null);
-      setReportForm({ name: '', description: '', reportType: 'performance_summary', scheduleFrequency: 'weekly', scheduleTime: '9:00 AM', emailRecipients: '', scheduleEnabled: false });
       toast({ title: 'Report created successfully' });
     },
   });
 
   const updateReportMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await fetch(`/api/platforms/meta/reports/${id}`, {
+      const response = await fetch(`/api/meta/reports/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -259,24 +281,35 @@ export default function MetaAnalytics() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports'] });
       setIsReportModalOpen(false);
       setEditingReport(null);
-      setReportForm({ name: '', description: '', reportType: 'performance_summary', scheduleFrequency: 'weekly', scheduleTime: '9:00 AM', emailRecipients: '', scheduleEnabled: false });
       toast({ title: 'Report updated successfully' });
     },
   });
 
   const deleteReportMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/platforms/meta/reports/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/meta/reports/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to delete report');
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports'] });
       toast({ title: 'Report deleted' });
     },
+  });
+
+  // Fetch Meta daily data for time-series (Daily/7d/30d)
+  const firstMetaCampaignId = analyticsData?.campaigns?.[0]?.campaign?.id;
+  const { data: metaDailyResp, isLoading: metaDailyLoading } = useQuery({
+    queryKey: ['/api/meta', campaignId, 'insights/daily', firstMetaCampaignId],
+    queryFn: async () => {
+      const resp = await fetch(`/api/meta/${campaignId}/insights/daily?metaCampaignId=${firstMetaCampaignId}&days=90`);
+      if (!resp.ok) return { dailyInsights: [] };
+      return resp.json();
+    },
+    enabled: !!campaignId && !!firstMetaCampaignId,
   });
 
   if (isLoading) {
@@ -316,6 +349,130 @@ export default function MetaAnalytics() {
 
   const { summary, campaigns } = analyticsData;
   const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
+
+  // Format date helper
+  const formatShortDate = (yyyyMmDd: string) => {
+    const s = String(yyyyMmDd || '').trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return s;
+    return `'${m[1].slice(-2)}-${m[2]}-${m[3]}`;
+  };
+
+  // Process daily data into series and rollups for Daily/7d/30d charts
+  const metaDailySeries = useMemo(() => {
+    const raw = Array.isArray(metaDailyResp?.dailyInsights) ? metaDailyResp.dailyInsights : [];
+    const hasRev = !!revenueSummary?.hasRevenueTracking;
+    const convValue = revenueSummary?.conversionValue || 0;
+
+    const byDate = raw
+      .map((r: any) => {
+        const date = String(r?.date_start || r?.date || '').trim().slice(0, 10);
+        const impressions = Number(r?.impressions || 0) || 0;
+        const reach = Number(r?.reach || 0) || 0;
+        const clicks = Number(r?.clicks || r?.inline_link_clicks || 0) || 0;
+        const conversions = Number(r?.conversions || r?.actions?.length || 0) || 0;
+        const spend = Number(r?.spend || 0) || 0;
+        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+        const cpc = clicks > 0 ? spend / clicks : 0;
+        const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+        const conversionRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
+        const revenue = hasRev ? conversions * convValue : 0;
+        const roas = spend > 0 ? revenue / spend : 0;
+        return { date, impressions, reach, clicks, conversions, spend, ctr, cpc, cpm, conversionRate, revenue, roas };
+      })
+      .filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(r.date))
+      .sort((a: any, b: any) => a.date.localeCompare(b.date));
+
+    const rolling = (windowDays: number) => {
+      const out: any[] = [];
+      for (let i = 0; i < byDate.length; i++) {
+        const startIdx = Math.max(0, i - windowDays + 1);
+        const slice = byDate.slice(startIdx, i + 1);
+        if (slice.length < windowDays) continue;
+        const sums = slice.reduce(
+          (acc: any, r: any) => {
+            acc.impressions += r.impressions;
+            acc.clicks += r.clicks;
+            acc.conversions += r.conversions;
+            acc.spend += r.spend;
+            acc.revenue += r.revenue;
+            return acc;
+          },
+          { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 }
+        );
+        const ctr = sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : 0;
+        const cpc = sums.clicks > 0 ? sums.spend / sums.clicks : 0;
+        const cpm = sums.impressions > 0 ? (sums.spend / sums.impressions) * 1000 : 0;
+        const conversionRate = sums.clicks > 0 ? (sums.conversions / sums.clicks) * 100 : 0;
+        const roas = sums.spend > 0 ? sums.revenue / sums.spend : 0;
+        out.push({ date: byDate[i].date, ...sums, ctr, cpc, cpm, conversionRate, roas });
+      }
+      return out;
+    };
+
+    return { daily: byDate, rolling7: rolling(7), rolling30: rolling(30), hasRevenueTracking: hasRev };
+  }, [metaDailyResp, revenueSummary]);
+
+  const metaInsightsRollups = useMemo(() => {
+    const byDate = metaDailySeries.daily;
+    const dates = byDate.map((r: any) => r.date);
+
+    const rollup = (n: number, offsetFromEnd: number = 0) => {
+      const endIdx = Math.max(0, dates.length - offsetFromEnd);
+      const startIdx = Math.max(0, endIdx - n);
+      const slice = byDate.slice(startIdx, endIdx);
+      const sums = slice.reduce(
+        (acc: any, r: any) => {
+          acc.impressions += r.impressions;
+          acc.clicks += r.clicks;
+          acc.conversions += r.conversions;
+          acc.spend += r.spend;
+          acc.revenue += r.revenue;
+          return acc;
+        },
+        { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 }
+      );
+      const ctr = sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : 0;
+      const cpc = sums.clicks > 0 ? sums.spend / sums.clicks : 0;
+      const cpm = sums.impressions > 0 ? (sums.spend / sums.impressions) * 1000 : 0;
+      const conversionRate = sums.clicks > 0 ? (sums.conversions / sums.clicks) * 100 : 0;
+      const roas = sums.spend > 0 ? sums.revenue / sums.spend : 0;
+      return { ...sums, ctr, cpc, cpm, conversionRate, roas, startDate: slice[0]?.date || null, endDate: slice[slice.length - 1]?.date || null, days: slice.length };
+    };
+
+    const last7 = rollup(7, 0);
+    const prior7 = rollup(7, 7);
+    const last30 = rollup(30, 0);
+    const prior30 = rollup(30, 30);
+    const deltaPct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
+
+    return {
+      availableDays: dates.length,
+      last7, prior7, last30, prior30,
+      deltas: {
+        impressions7: deltaPct(last7.impressions, prior7.impressions),
+        clicks7: deltaPct(last7.clicks, prior7.clicks),
+        conversions7: deltaPct(last7.conversions, prior7.conversions),
+        spend7: deltaPct(last7.spend, prior7.spend),
+        ctr7: prior7.ctr > 0 ? ((last7.ctr - prior7.ctr) / prior7.ctr) * 100 : 0,
+        cpc7: prior7.cpc > 0 ? ((last7.cpc - prior7.cpc) / prior7.cpc) * 100 : 0,
+        cpm7: prior7.cpm > 0 ? ((last7.cpm - prior7.cpm) / prior7.cpm) * 100 : 0,
+        conversionRate7: prior7.conversionRate > 0 ? ((last7.conversionRate - prior7.conversionRate) / prior7.conversionRate) * 100 : 0,
+        revenue7: deltaPct(last7.revenue, prior7.revenue),
+        roas7: prior7.roas > 0 ? ((last7.roas - prior7.roas) / prior7.roas) * 100 : 0,
+        impressions30: deltaPct(last30.impressions, prior30.impressions),
+        clicks30: deltaPct(last30.clicks, prior30.clicks),
+        conversions30: deltaPct(last30.conversions, prior30.conversions),
+        spend30: deltaPct(last30.spend, prior30.spend),
+        ctr30: prior30.ctr > 0 ? ((last30.ctr - prior30.ctr) / prior30.ctr) * 100 : 0,
+        cpc30: prior30.cpc > 0 ? ((last30.cpc - prior30.cpc) / prior30.cpc) * 100 : 0,
+        cpm30: prior30.cpm > 0 ? ((last30.cpm - prior30.cpm) / prior30.cpm) * 100 : 0,
+        conversionRate30: prior30.conversionRate > 0 ? ((last30.conversionRate - prior30.conversionRate) / prior30.conversionRate) * 100 : 0,
+        revenue30: deltaPct(last30.revenue, prior30.revenue),
+        roas30: prior30.roas > 0 ? ((last30.roas - prior30.roas) / prior30.roas) * 100 : 0,
+      },
+    };
+  }, [metaDailySeries]);
 
   // Helper: get live metric value from Meta summary for KPIs/Benchmarks
   const getLiveMetricValue = (metricKey: string): number => {
@@ -404,6 +561,122 @@ export default function MetaAnalytics() {
   }, {});
 
   const objectiveData = Object.values(objectiveDistribution);
+
+  // Handler: create or update KPI
+  const handleCreateKPI = () => {
+    const payload = {
+      name: kpiForm.name,
+      metric: kpiForm.metric,
+      metricKey: kpiForm.metric,
+      targetValue: kpiForm.targetValue,
+      currentValue: kpiForm.currentValue || String(getLiveMetricValue(kpiForm.metric)),
+      description: kpiForm.description,
+      unit: kpiForm.unit || getMetaMetricDef(kpiForm.metric).unit,
+      priority: kpiForm.priority,
+      status: 'active',
+      category: kpiForm.category,
+      timeframe: kpiForm.timeframe,
+      trackingPeriod: kpiForm.trackingPeriod,
+      alertsEnabled: kpiForm.alertsEnabled,
+      emailNotifications: kpiForm.emailNotifications,
+      alertFrequency: kpiForm.alertFrequency,
+      alertThreshold: kpiForm.alertThreshold,
+      alertCondition: kpiForm.alertCondition,
+      emailRecipients: kpiForm.emailRecipients,
+      applyTo: kpiForm.applyTo,
+      specificCampaignId: kpiForm.specificCampaignId,
+      platformType: 'meta',
+    };
+    if (editingKPI) {
+      updateKpiMutation.mutate({ id: editingKPI.id, data: payload });
+    } else {
+      createKpiMutation.mutate(payload);
+    }
+  };
+
+  // Handler: create or update Benchmark
+  const handleCreateBenchmark = () => {
+    const payload = {
+      name: benchmarkForm.name,
+      metric: benchmarkForm.metric,
+      benchmarkValue: benchmarkForm.benchmarkValue,
+      targetValue: benchmarkForm.benchmarkValue,
+      currentValue: benchmarkForm.currentValue || String(getLiveMetricValue(benchmarkForm.metric)),
+      description: benchmarkForm.description,
+      industry: benchmarkForm.industry,
+      unit: benchmarkForm.unit || getMetaMetricDef(benchmarkForm.metric).unit,
+      benchmarkType: benchmarkForm.benchmarkType,
+      applyTo: benchmarkForm.applyTo,
+      specificCampaignId: benchmarkForm.specificCampaignId,
+      alertsEnabled: benchmarkForm.alertsEnabled,
+      emailNotifications: benchmarkForm.emailNotifications,
+      alertFrequency: benchmarkForm.alertFrequency,
+      alertThreshold: benchmarkForm.alertThreshold,
+      alertCondition: benchmarkForm.alertCondition,
+      emailRecipients: benchmarkForm.emailRecipients,
+      platformType: 'meta',
+      platform: 'meta',
+    };
+    if (editingBenchmark) {
+      updateBenchmarkMutation.mutate({ id: editingBenchmark.id, data: payload });
+    } else {
+      createBenchmarkMutation.mutate(payload);
+    }
+  };
+
+  // Report handlers
+  const handleReportTypeSelect = (type: string) => {
+    const nameMap: Record<string, string> = {
+      overview: 'Meta Overview Report',
+      kpis: 'Meta KPIs Report',
+      benchmarks: 'Meta Benchmarks Report',
+      ads: 'Meta Ad Comparison Report',
+      insights: 'Meta Insights Report',
+      custom: 'Custom Report',
+    };
+    setReportForm((prev: any) => ({
+      ...prev,
+      reportType: type,
+      name: prev.name || nameMap[type] || 'Meta Report',
+    }));
+  };
+
+  const handleCreateReport = () => {
+    if (reportForm.scheduleEnabled && !String(reportForm.emailRecipients || '').trim()) {
+      setReportFormErrors({ emailRecipients: 'Email recipients are required for scheduled reports' });
+      return;
+    }
+    const payload = {
+      ...reportForm,
+      status: 'active',
+      platformType: 'meta',
+    };
+    if (editingReport) {
+      updateReportMutation.mutate({ id: editingReport.id, data: payload });
+    } else {
+      createReportMutation.mutate(payload);
+    }
+  };
+
+  const handleUpdateReport = handleCreateReport;
+
+  const handleCustomReport = () => {
+    const payload = {
+      ...reportForm,
+      reportType: 'custom',
+      customConfig: customReportConfig,
+      status: 'active',
+      platformType: 'meta',
+    };
+    if (editingReport) {
+      updateReportMutation.mutate({ id: editingReport.id, data: payload });
+    } else {
+      createReportMutation.mutate(payload);
+    }
+  };
+
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const getTimeZoneDisplay = () => userTimeZone.replace(/_/g, ' ');
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -879,7 +1152,17 @@ export default function MetaAnalytics() {
                   </p>
                 </div>
                 <Button
-                  onClick={() => { setEditingKPI(null); setKpiForm({ name: '', metric: '', targetValue: '', description: '' }); setIsKPIModalOpen(true); }}
+                  onClick={() => {
+                    setEditingKPI(null);
+                    setKpiForm({
+                      name: '', metric: '', targetValue: '', description: '', currentValue: '', unit: '',
+                      priority: 'high', status: 'active', category: '', timeframe: 'monthly', trackingPeriod: '30',
+                      alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily',
+                      alertThreshold: '', alertCondition: 'below', emailRecipients: '',
+                      applyTo: 'all', specificCampaignId: '',
+                    });
+                    setIsKPIModalOpen(true);
+                  }}
                   variant="outline"
                   size="sm"
                   className="border-slate-300 dark:border-slate-700"
@@ -1103,7 +1386,17 @@ export default function MetaAnalytics() {
                   </p>
                 </div>
                 <Button
-                  onClick={() => { setEditingBenchmark(null); setBenchmarkForm({ name: '', metric: '', benchmarkValue: '', description: '', industry: '' }); setIsBenchmarkModalOpen(true); }}
+                  onClick={() => {
+                    setEditingBenchmark(null);
+                    setBenchmarkForm({
+                      name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', unit: '',
+                      benchmarkType: 'industry' as 'industry' | 'custom',
+                      applyTo: 'all', specificCampaignId: '',
+                      alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily',
+                      alertThreshold: '', alertCondition: 'below', emailRecipients: '',
+                    });
+                    setIsBenchmarkModalOpen(true);
+                  }}
                   variant="outline"
                   size="sm"
                   className="border-slate-300 dark:border-slate-700"
@@ -1663,137 +1956,236 @@ export default function MetaAnalytics() {
                   </CardContent>
                 </Card>
 
-                {/* Trends */}
+                {/* Trends - Daily/7d/30d */}
                 <Card className="border-slate-200 dark:border-slate-700">
                   <CardHeader>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                       <div>
                         <CardTitle>Trends</CardTitle>
                         <CardDescription>
-                          Campaign performance by metric. Select a metric to see per-campaign breakdown.
+                          Daily shows day-by-day values. 7d/30d smooth the chart with rolling windows; the table summarizes the latest window vs the prior window.
                         </CardDescription>
                       </div>
-                      <div className="min-w-[220px]">
-                        <Select value={insightsTrendMetric} onValueChange={(v: any) => setInsightsTrendMetric(v)}>
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Metric" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="spend">Spend</SelectItem>
-                            <SelectItem value="impressions">Impressions</SelectItem>
-                            <SelectItem value="clicks">Clicks</SelectItem>
-                            <SelectItem value="conversions">Conversions</SelectItem>
-                            <SelectItem value="ctr">CTR</SelectItem>
-                            <SelectItem value="cpc">CPC</SelectItem>
-                            <SelectItem value="cpm">CPM</SelectItem>
-                            <SelectItem value="conversionRate">Conversion Rate</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <div className="flex items-center gap-2">
+                          <Button type="button" variant={insightsTrendMode === 'daily' ? 'default' : 'outline'} size="sm"
+                            onClick={() => { setInsightsDailyShowMore(false); setInsightsTrendMode('daily'); }}>Daily</Button>
+                          <Button type="button" variant={insightsTrendMode === '7d' ? 'default' : 'outline'} size="sm"
+                            onClick={() => setInsightsTrendMode('7d')}>7d</Button>
+                          <Button type="button" variant={insightsTrendMode === '30d' ? 'default' : 'outline'} size="sm"
+                            onClick={() => setInsightsTrendMode('30d')}>30d</Button>
+                        </div>
+                        <div className="min-w-[220px]">
+                          <Select value={insightsTrendMetric} onValueChange={(v: any) => setInsightsTrendMetric(v)}>
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Metric" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="spend">Spend</SelectItem>
+                              <SelectItem value="impressions">Impressions</SelectItem>
+                              <SelectItem value="clicks">Clicks</SelectItem>
+                              <SelectItem value="conversions">Conversions</SelectItem>
+                              <SelectItem value="ctr">CTR</SelectItem>
+                              <SelectItem value="cpc">CPC</SelectItem>
+                              <SelectItem value="cpm">CPM</SelectItem>
+                              <SelectItem value="conversionRate">Conversion Rate</SelectItem>
+                              {metaDailySeries.hasRevenueTracking && <SelectItem value="revenue">Revenue</SelectItem>}
+                              {metaDailySeries.hasRevenueTracking && <SelectItem value="roas">ROAS</SelectItem>}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {campaigns.length > 0 ? (
+                    {metaDailyLoading ? (
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Loading daily history...</div>
+                    ) : (
                       <>
-                        <div className="h-[280px] w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={campaigns.slice(0, 8).map((c: any) => ({
-                              name: c.campaign.name.length > 15 ? c.campaign.name.substring(0, 15) + '...' : c.campaign.name,
-                              value: (() => {
-                                const k = insightsTrendMetric;
-                                if (k === 'spend') return c.totals.spend || 0;
-                                if (k === 'impressions') return c.totals.impressions || 0;
-                                if (k === 'clicks') return c.totals.clicks || 0;
-                                if (k === 'conversions') return c.totals.conversions || 0;
-                                if (k === 'ctr') return c.totals.ctr || 0;
-                                if (k === 'cpc') return c.totals.cpc || 0;
-                                if (k === 'cpm') return c.totals.cpm || 0;
-                                if (k === 'conversionRate') return c.totals.conversionRate || 0;
-                                return 0;
-                              })(),
-                            }))}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" height={80} />
-                              <YAxis tick={{ fontSize: 12 }} />
-                              <Tooltip formatter={(value: any) => {
-                                const n = Number(value || 0);
-                                if (insightsTrendMetric === 'spend' || insightsTrendMetric === 'cpc' || insightsTrendMetric === 'cpm') return `$${n.toFixed(2)}`;
-                                if (insightsTrendMetric === 'ctr' || insightsTrendMetric === 'conversionRate') return `${n.toFixed(2)}%`;
-                                return n.toLocaleString();
-                              }} />
-                              <Bar dataKey="value" fill="#7c3aed" radius={[4, 4, 0, 0]} name={(() => {
-                                const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate' };
-                                return labels[insightsTrendMetric] || insightsTrendMetric;
-                              })()} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
+                        {(() => {
+                          const series = insightsTrendMode === 'daily' ? metaDailySeries.daily
+                            : insightsTrendMode === '7d' ? metaDailySeries.rolling7 : metaDailySeries.rolling30;
+                          const minRequired = insightsTrendMode === 'daily' ? 2 : insightsTrendMode === '7d' ? 14 : 60;
+                          const available = metaInsightsRollups.availableDays;
 
+                          if (available <= 0) {
+                            return (
+                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                                No Meta daily history is available yet. Connect your Meta account and wait for daily data to populate.
+                              </div>
+                            );
+                          }
+                          if (available < minRequired) {
+                            return (
+                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                                Need at least {minRequired} days of Meta daily history for this view. Available days: {available}.
+                              </div>
+                            );
+                          }
+
+                          const formatChartValue = (v: any) => {
+                            const n = Number(v || 0) || 0;
+                            if (insightsTrendMetric === 'spend' || insightsTrendMetric === 'revenue') return `$${n.toFixed(2)}`;
+                            if (insightsTrendMetric === 'ctr' || insightsTrendMetric === 'conversionRate') return `${n.toFixed(2)}%`;
+                            if (insightsTrendMetric === 'cpc' || insightsTrendMetric === 'cpm') return `$${n.toFixed(2)}`;
+                            if (insightsTrendMetric === 'roas') return `${n.toFixed(2)}x`;
+                            return n.toLocaleString();
+                          };
+
+                          return (
+                            <div className="h-[280px] w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={series}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={(v: any) => formatShortDate(String(v || ''))} />
+                                  <YAxis tick={{ fontSize: 12 }} />
+                                  <Tooltip formatter={(value: any) => formatChartValue(value)} />
+                                  <Legend />
+                                  <Line type="monotone" dataKey={insightsTrendMetric} stroke="#7c3aed" strokeWidth={2} dot={false}
+                                    name={(() => {
+                                      const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate', revenue: 'Revenue', roas: 'ROAS' };
+                                      return labels[insightsTrendMetric] || insightsTrendMetric;
+                                    })()} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Table view */}
                         <div className="overflow-hidden border rounded-md">
-                          <table className="w-full text-sm table-fixed">
-                            <thead className="bg-slate-50 dark:bg-slate-800 border-b">
-                              <tr>
-                                <th className="text-left p-3 w-[50%]">Campaign</th>
-                                <th className="text-right p-3 w-[25%]">
+                          {insightsTrendMode === 'daily' ? (
+                            <div>
+                              <table className="w-full text-sm table-fixed">
+                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                  <tr>
+                                    <th className="text-left p-3 w-[38%]">Date</th>
+                                    <th className="text-right p-3 w-[31%]">
+                                      {(() => {
+                                        const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate', revenue: 'Revenue', roas: 'ROAS' };
+                                        return labels[insightsTrendMetric] || 'Metric';
+                                      })()}
+                                    </th>
+                                    <th className="text-right p-3 w-[31%]">vs prior</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
                                   {(() => {
-                                    const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate' };
-                                    return labels[insightsTrendMetric] || 'Metric';
-                                  })()}
-                                </th>
-                                <th className="text-right p-3 w-[25%]">vs Average</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {(() => {
-                                const metricKey = insightsTrendMetric;
-                                const getValue = (c: any) => {
-                                  if (metricKey === 'spend') return c.totals.spend || 0;
-                                  if (metricKey === 'impressions') return c.totals.impressions || 0;
-                                  if (metricKey === 'clicks') return c.totals.clicks || 0;
-                                  if (metricKey === 'conversions') return c.totals.conversions || 0;
-                                  if (metricKey === 'ctr') return c.totals.ctr || 0;
-                                  if (metricKey === 'cpc') return c.totals.cpc || 0;
-                                  if (metricKey === 'cpm') return c.totals.cpm || 0;
-                                  if (metricKey === 'conversionRate') return c.totals.conversionRate || 0;
-                                  return 0;
-                                };
-                                const values = campaigns.map((c: any) => getValue(c));
-                                const avg = values.length > 0 ? values.reduce((a: number, b: number) => a + b, 0) / values.length : 0;
-                                const formatVal = (v: number) => {
-                                  if (metricKey === 'spend' || metricKey === 'cpc' || metricKey === 'cpm') return `$${v.toFixed(2)}`;
-                                  if (metricKey === 'ctr' || metricKey === 'conversionRate') return `${v.toFixed(2)}%`;
-                                  return v.toLocaleString();
-                                };
+                                    const daily = metaDailySeries.daily;
+                                    const visibleDays = insightsDailyShowMore ? 14 : 7;
+                                    const rows = daily.slice(-visibleDays);
+                                    if (rows.length === 0) {
+                                      return (
+                                        <tr><td colSpan={3} className="p-4 text-sm text-slate-600 dark:text-slate-400">No daily records available yet.</td></tr>
+                                      );
+                                    }
+                                    return rows.map((r: any, idx: number, arr: any[]) => {
+                                      const prev = idx > 0 ? arr[idx - 1] : null;
+                                      const metricKey = insightsTrendMetric;
+                                      const curVal = Number(r?.[metricKey] ?? 0) || 0;
+                                      const prevVal = Number(prev?.[metricKey] ?? 0) || 0;
+                                      const deltaPct = prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : 0;
+                                      const showDelta = !!prev && prevVal > 0;
 
-                                return campaigns.slice(0, 10).map((c: any) => {
-                                  const val = getValue(c);
-                                  const deltaPct = avg > 0 ? ((val - avg) / avg) * 100 : 0;
-                                  const isLower = LOWER_IS_BETTER_METRICS.includes(metricKey);
-                                  const isGood = isLower ? deltaPct <= 0 : deltaPct >= 0;
+                                      const formatValue = (key: string, v: number) => {
+                                        if (key === 'spend' || key === 'revenue' || key === 'cpc' || key === 'cpm') return `$${v.toFixed(2)}`;
+                                        if (key === 'ctr' || key === 'conversionRate') return `${v.toFixed(2)}%`;
+                                        if (key === 'roas') return `${v.toFixed(2)}x`;
+                                        return v.toLocaleString();
+                                      };
+
+                                      return (
+                                        <tr key={r.date} className="border-b">
+                                          <td className="p-3">
+                                            <div className="font-medium text-slate-900 dark:text-white">{formatShortDate(String(r.date || ''))}</div>
+                                          </td>
+                                          <td className="p-3 text-right">
+                                            <div className="font-medium text-slate-900 dark:text-white">{formatValue(metricKey, curVal)}</div>
+                                          </td>
+                                          <td className="p-3 text-right">
+                                            <div className={`text-xs ${showDelta ? (deltaPct >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300') : 'text-slate-400'}`}>
+                                              {showDelta ? `${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%` : '—'}
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    });
+                                  })()}
+                                </tbody>
+                              </table>
+                              {metaDailySeries.daily.length > 7 && (
+                                <div className="flex justify-end px-3 py-2 bg-white dark:bg-slate-950">
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => setInsightsDailyShowMore((v) => !v)} className="h-8 text-xs">
+                                    {insightsDailyShowMore ? 'View less' : 'View more'}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <table className="w-full text-sm table-fixed">
+                              <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                <tr>
+                                  <th className="text-left p-3 w-[38%]">Period</th>
+                                  <th className="text-right p-3 w-[31%]">
+                                    {(() => {
+                                      const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate', revenue: 'Revenue', roas: 'ROAS' };
+                                      return labels[insightsTrendMetric] || 'Metric';
+                                    })()}
+                                  </th>
+                                  <th className="text-right p-3 w-[31%]">vs prior</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(() => {
+                                  const is7 = insightsTrendMode === '7d';
+                                  const available = metaInsightsRollups.availableDays;
+                                  const minRequired = is7 ? 14 : 60;
+                                  if (available < minRequired) {
+                                    return (
+                                      <tr><td colSpan={3} className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                                        {available <= 0 ? 'No records available yet.' : `Need at least ${minRequired} days for this view. Available: ${available}.`}
+                                      </td></tr>
+                                    );
+                                  }
+                                  const row = is7
+                                    ? { key: '7d', cur: metaInsightsRollups.last7, d: metaInsightsRollups.deltas, label: 'Last 7d vs prior 7d' }
+                                    : { key: '30d', cur: metaInsightsRollups.last30, d: metaInsightsRollups.deltas, label: 'Last 30d vs prior 30d' };
+
+                                  const metricKey = insightsTrendMetric;
+                                  const valueFor = (obj: any) => {
+                                    const v = Number(obj?.[metricKey] ?? 0) || 0;
+                                    if (metricKey === 'spend' || metricKey === 'revenue' || metricKey === 'cpc' || metricKey === 'cpm') return `$${v.toFixed(2)}`;
+                                    if (metricKey === 'ctr' || metricKey === 'conversionRate') return `${v.toFixed(2)}%`;
+                                    if (metricKey === 'roas') return `${v.toFixed(2)}x`;
+                                    return v.toLocaleString();
+                                  };
+                                  const suffix = is7 ? '7' : '30';
+                                  const deltaKey = `${metricKey}${suffix}` as keyof typeof row.d;
+                                  const delta = Number(row.d[deltaKey] ?? 0);
+                                  const deltaColor = delta >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300';
+
                                   return (
-                                    <tr key={c.campaign.id} className="border-b">
+                                    <tr key={row.key} className="border-b">
                                       <td className="p-3">
-                                        <div className="font-medium text-slate-900 dark:text-white truncate">{c.campaign.name}</div>
-                                        <div className="text-xs text-slate-500 mt-0.5">{c.campaign.objective} • {c.campaign.status}</div>
+                                        <div className="font-medium text-slate-900 dark:text-white">{row.cur.endDate}</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                          {row.cur.startDate} → {row.cur.endDate} ({row.label})
+                                        </div>
                                       </td>
-                                      <td className="p-3 text-right font-medium text-slate-900 dark:text-white">{formatVal(val)}</td>
                                       <td className="p-3 text-right">
-                                        <span className={`text-xs ${isGood ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>
-                                          {deltaPct >= 0 ? '+' : ''}{deltaPct.toFixed(1)}%
-                                        </span>
+                                        <div className="font-medium text-slate-900 dark:text-white">{valueFor(row.cur)}</div>
+                                      </td>
+                                      <td className="p-3 text-right">
+                                        <div className={`text-xs ${deltaColor}`}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}%</div>
                                       </td>
                                     </tr>
                                   );
-                                });
-                              })()}
-                            </tbody>
-                          </table>
+                                })()}
+                              </tbody>
+                            </table>
+                          )}
                         </div>
                       </>
-                    ) : (
-                      <div className="text-sm text-slate-600 dark:text-slate-400">
-                        No campaign data available yet.
-                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -2193,14 +2585,16 @@ export default function MetaAnalytics() {
                     className="gap-2"
                     onClick={() => {
                       setEditingReport(null);
+                      setReportModalStep('standard');
+                      setReportFormErrors({});
+                      setCustomReportConfig({
+                        coreMetrics: [], derivedMetrics: [], revenueMetrics: [], campaignBreakdown: [],
+                        kpis: [], benchmarks: [], insights: [], demographics: [],
+                      });
                       setReportForm({
-                        name: '',
-                        description: '',
-                        reportType: 'performance_summary',
-                        scheduleFrequency: 'weekly',
-                        scheduleTime: '9:00 AM',
-                        emailRecipients: '',
-                        scheduleEnabled: false,
+                        name: '', description: '', reportType: 'overview', scheduleFrequency: 'weekly',
+                        scheduleTime: '9:00 AM', emailRecipients: '', scheduleEnabled: false,
+                        scheduleDayOfWeek: 'monday', scheduleDayOfMonth: 'first', quarterTiming: 'end',
                       });
                       setIsReportModalOpen(true);
                     }}
@@ -2319,247 +2713,62 @@ export default function MetaAnalytics() {
             </TabsContent>
           </Tabs>
 
-          {/* KPI Create/Edit Modal */}
-          <Dialog open={isKPIModalOpen} onOpenChange={(open) => { setIsKPIModalOpen(open); if (!open) { setEditingKPI(null); setKpiForm({ name: '', metric: '', targetValue: '', description: '' }); } }}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>{editingKPI ? 'Edit KPI' : 'Create KPI'}</DialogTitle>
-                <DialogDescription>
-                  {editingKPI ? 'Update your KPI target and details' : 'Set a new KPI target for your Meta campaigns'}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>KPI Name</Label>
-                  <Input value={kpiForm.name} onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })} placeholder="e.g., Monthly CTR Target" />
-                </div>
-                <div>
-                  <Label>Metric</Label>
-                  <Select value={kpiForm.metric} onValueChange={(v) => {
-                    const def = getMetaMetricDef(v);
-                    setKpiForm({ ...kpiForm, metric: v, name: kpiForm.name || `${def.label} Target` });
-                  }}>
-                    <SelectTrigger><SelectValue placeholder="Select metric" /></SelectTrigger>
-                    <SelectContent>
-                      {META_METRICS.map(m => (
-                        <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Target Value</Label>
-                  <Input type="number" step="any" value={kpiForm.targetValue} onChange={(e) => setKpiForm({ ...kpiForm, targetValue: e.target.value })} placeholder="e.g., 1.5" />
-                  {kpiForm.metric && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      Current: {formatMetaMetricValue(kpiForm.metric, getLiveMetricValue(kpiForm.metric))}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label>Description (optional)</Label>
-                  <Textarea value={kpiForm.description} onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })} placeholder="Describe this KPI target..." rows={2} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsKPIModalOpen(false)}>Cancel</Button>
-                <Button
-                  disabled={!kpiForm.name || !kpiForm.metric || !kpiForm.targetValue}
-                  onClick={() => {
-                    const payload = {
-                      name: kpiForm.name,
-                      metric: kpiForm.metric,
-                      metricKey: kpiForm.metric,
-                      targetValue: kpiForm.targetValue,
-                      description: kpiForm.description,
-                      currentValue: String(getLiveMetricValue(kpiForm.metric)),
-                      unit: getMetaMetricDef(kpiForm.metric).unit,
-                      status: 'active',
-                      platformType: 'meta',
-                    };
-                    if (editingKPI) {
-                      updateKpiMutation.mutate({ id: editingKPI.id, data: payload });
-                    } else {
-                      createKpiMutation.mutate(payload);
-                    }
-                  }}
-                >
-                  {editingKPI ? 'Update KPI' : 'Create KPI'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          {/* KPI Modal */}
+          <MetaKpiModal
+            isKPIModalOpen={isKPIModalOpen}
+            setIsKPIModalOpen={setIsKPIModalOpen}
+            editingKPI={editingKPI}
+            setEditingKPI={setEditingKPI}
+            kpiForm={kpiForm}
+            setKpiForm={setKpiForm}
+            summary={summary}
+            revenueSummary={revenueSummary}
+            campaigns={campaigns}
+            toast={toast}
+            handleCreateKPI={handleCreateKPI}
+          />
 
-          {/* Benchmark Create/Edit Modal */}
-          <Dialog open={isBenchmarkModalOpen} onOpenChange={(open) => { setIsBenchmarkModalOpen(open); if (!open) { setEditingBenchmark(null); setBenchmarkForm({ name: '', metric: '', benchmarkValue: '', description: '', industry: '' }); } }}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>{editingBenchmark ? 'Edit Benchmark' : 'Create Benchmark'}</DialogTitle>
-                <DialogDescription>
-                  {editingBenchmark ? 'Update your benchmark target' : 'Set a new benchmark for your Meta campaigns'}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Benchmark Name</Label>
-                  <Input value={benchmarkForm.name} onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })} placeholder="e.g., Industry CTR Benchmark" />
-                </div>
-                <div>
-                  <Label>Metric</Label>
-                  <Select value={benchmarkForm.metric} onValueChange={(v) => {
-                    const def = getMetaMetricDef(v);
-                    setBenchmarkForm({ ...benchmarkForm, metric: v, name: benchmarkForm.name || `${def.label} Benchmark` });
-                  }}>
-                    <SelectTrigger><SelectValue placeholder="Select metric" /></SelectTrigger>
-                    <SelectContent>
-                      {META_METRICS.map(m => (
-                        <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Benchmark Value</Label>
-                  <Input type="number" step="any" value={benchmarkForm.benchmarkValue} onChange={(e) => setBenchmarkForm({ ...benchmarkForm, benchmarkValue: e.target.value })} placeholder="e.g., 1.1" />
-                  {benchmarkForm.metric && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      Current: {formatMetaMetricValue(benchmarkForm.metric, getLiveMetricValue(benchmarkForm.metric))}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label>Industry (optional)</Label>
-                  <Input value={benchmarkForm.industry} onChange={(e) => setBenchmarkForm({ ...benchmarkForm, industry: e.target.value })} placeholder="e.g., E-commerce, SaaS" />
-                </div>
-                <div>
-                  <Label>Description (optional)</Label>
-                  <Textarea value={benchmarkForm.description} onChange={(e) => setBenchmarkForm({ ...benchmarkForm, description: e.target.value })} placeholder="Describe this benchmark..." rows={2} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsBenchmarkModalOpen(false)}>Cancel</Button>
-                <Button
-                  disabled={!benchmarkForm.name || !benchmarkForm.metric || !benchmarkForm.benchmarkValue}
-                  onClick={() => {
-                    const payload = {
-                      name: benchmarkForm.name,
-                      metric: benchmarkForm.metric,
-                      benchmarkValue: benchmarkForm.benchmarkValue,
-                      targetValue: benchmarkForm.benchmarkValue,
-                      currentValue: String(getLiveMetricValue(benchmarkForm.metric)),
-                      description: benchmarkForm.description,
-                      industry: benchmarkForm.industry,
-                      unit: getMetaMetricDef(benchmarkForm.metric).unit,
-                      platformType: 'meta',
-                    };
-                    if (editingBenchmark) {
-                      updateBenchmarkMutation.mutate({ id: editingBenchmark.id, data: payload });
-                    } else {
-                      createBenchmarkMutation.mutate(payload);
-                    }
-                  }}
-                >
-                  {editingBenchmark ? 'Update Benchmark' : 'Create Benchmark'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          {/* Benchmark Modal */}
+          <MetaBenchmarkModal
+            isBenchmarkModalOpen={isBenchmarkModalOpen}
+            setIsBenchmarkModalOpen={setIsBenchmarkModalOpen}
+            editingBenchmark={editingBenchmark}
+            setEditingBenchmark={setEditingBenchmark}
+            benchmarkForm={benchmarkForm}
+            setBenchmarkForm={setBenchmarkForm}
+            summary={summary}
+            revenueSummary={revenueSummary}
+            campaigns={campaigns}
+            toast={toast}
+            handleCreateBenchmark={handleCreateBenchmark}
+          />
 
-          {/* Report Create/Edit Modal */}
-          <Dialog open={isReportModalOpen} onOpenChange={(open) => { setIsReportModalOpen(open); if (!open) { setEditingReport(null); setReportForm({ name: '', description: '', reportType: 'performance_summary', scheduleFrequency: 'weekly', scheduleTime: '9:00 AM', emailRecipients: '', scheduleEnabled: false }); } }}>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>{editingReport ? 'Edit Report' : 'Create Report'}</DialogTitle>
-                <DialogDescription>
-                  {editingReport ? 'Update your report configuration' : 'Create a new Meta analytics report'}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Report Name</Label>
-                  <Input value={reportForm.name} onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })} placeholder="e.g., Weekly Performance Summary" />
-                </div>
-                <div>
-                  <Label>Description (optional)</Label>
-                  <Textarea value={reportForm.description} onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })} placeholder="Describe what this report covers..." rows={2} />
-                </div>
-                <div>
-                  <Label>Report Type</Label>
-                  <Select value={reportForm.reportType} onValueChange={(v) => setReportForm({ ...reportForm, reportType: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="performance_summary">Performance Summary</SelectItem>
-                      <SelectItem value="executive_overview">Executive Overview</SelectItem>
-                      <SelectItem value="spend_analysis">Spend Analysis</SelectItem>
-                      <SelectItem value="conversion_report">Conversion Report</SelectItem>
-                      <SelectItem value="audience_insights">Audience Insights</SelectItem>
-                      <SelectItem value="custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="scheduleEnabled"
-                    checked={reportForm.scheduleEnabled}
-                    onChange={(e) => setReportForm({ ...reportForm, scheduleEnabled: e.target.checked })}
-                    className="rounded border-slate-300"
-                  />
-                  <Label htmlFor="scheduleEnabled">Enable scheduled delivery</Label>
-                </div>
-                {reportForm.scheduleEnabled && (
-                  <>
-                    <div>
-                      <Label>Frequency</Label>
-                      <Select value={reportForm.scheduleFrequency} onValueChange={(v) => setReportForm({ ...reportForm, scheduleFrequency: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                          <SelectItem value="quarterly">Quarterly</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Delivery Time</Label>
-                      <Input value={reportForm.scheduleTime} onChange={(e) => setReportForm({ ...reportForm, scheduleTime: e.target.value })} placeholder="9:00 AM" />
-                    </div>
-                    <div>
-                      <Label>Email Recipients</Label>
-                      <Input value={reportForm.emailRecipients} onChange={(e) => setReportForm({ ...reportForm, emailRecipients: e.target.value })} placeholder="email@company.com, another@company.com" />
-                    </div>
-                  </>
-                )}
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsReportModalOpen(false)}>Cancel</Button>
-                <Button
-                  disabled={!reportForm.name}
-                  onClick={() => {
-                    const payload = {
-                      name: reportForm.name,
-                      description: reportForm.description,
-                      reportType: reportForm.reportType,
-                      scheduleFrequency: reportForm.scheduleFrequency,
-                      scheduleTime: reportForm.scheduleTime,
-                      emailRecipients: reportForm.emailRecipients,
-                      scheduleEnabled: reportForm.scheduleEnabled,
-                      status: 'active',
-                      platformType: 'meta',
-                    };
-                    if (editingReport) {
-                      updateReportMutation.mutate({ id: editingReport.id, data: payload });
-                    } else {
-                      createReportMutation.mutate(payload);
-                    }
-                  }}
-                >
-                  {editingReport ? 'Update Report' : 'Create Report'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          {/* Report Modal */}
+          <MetaReportModal
+            isReportModalOpen={isReportModalOpen}
+            setIsReportModalOpen={setIsReportModalOpen}
+            reportModalStep={reportModalStep}
+            setReportModalStep={setReportModalStep}
+            editingReportId={editingReport?.id?.toString() || null}
+            setEditingReportId={(id: string | null) => { if (!id) setEditingReport(null); }}
+            reportForm={reportForm}
+            setReportForm={setReportForm}
+            reportFormErrors={reportFormErrors}
+            setReportFormErrors={setReportFormErrors}
+            customReportConfig={customReportConfig}
+            setCustomReportConfig={setCustomReportConfig}
+            summary={summary}
+            kpisData={kpisData}
+            benchmarksData={benchmarksData}
+            handleReportTypeSelect={handleReportTypeSelect}
+            handleCreateReport={handleCreateReport}
+            handleUpdateReport={handleUpdateReport}
+            handleCustomReport={handleCustomReport}
+            createReportMutation={createReportMutation}
+            updateReportMutation={updateReportMutation}
+            userTimeZone={userTimeZone}
+            getTimeZoneDisplay={getTimeZoneDisplay}
+          />
         </main>
       </div>
     </div>

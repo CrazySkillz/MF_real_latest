@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart } from "recharts";
 import { format, subDays } from "date-fns";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState, useEffect, useMemo } from "react";
@@ -27,6 +28,10 @@ export default function TrendAnalysis() {
   const [newKeyword, setNewKeyword] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [demoMode, setDemoMode] = useState(false);
+  const [perfPeriod, setPerfPeriod] = useState<string>("30d");
+  const [activeTab, setActiveTab] = useState("performance");
+
+  const perfDays = perfPeriod === '7d' ? 7 : perfPeriod === '14d' ? 14 : perfPeriod === '90d' ? 90 : 30;
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
@@ -49,6 +54,175 @@ export default function TrendAnalysis() {
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: !!campaignId,
   });
+
+  // Performance Trends queries (only when performance tab is active)
+  const { data: connectedPlatforms } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "connected-platforms"],
+    enabled: !!campaignId && activeTab === 'performance',
+  });
+
+  const { data: linkedinDaily } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "linkedin-daily", perfDays],
+    enabled: !!campaignId && activeTab === 'performance',
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/linkedin-daily?days=${perfDays * 2}`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+
+  const { data: metaDaily } = useQuery({
+    queryKey: ["/api/meta", campaignId, "insights/daily", perfDays],
+    enabled: !!campaignId && activeTab === 'performance',
+    queryFn: async () => {
+      const resp = await fetch(`/api/meta/${campaignId}/insights/daily?days=${perfDays * 2}`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+
+  const { data: dailyFinancials } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "daily-financials", perfDays],
+    enabled: !!campaignId && activeTab === 'performance',
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/daily-financials?days=${perfDays * 2}`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+
+  // Cross-platform data processing
+  const crossPlatformData = useMemo(() => {
+    if (activeTab !== 'performance') return null;
+
+    const dateMap: Record<string, any> = {};
+    const allDates: string[] = [];
+
+    // Process LinkedIn daily data
+    const liRows = Array.isArray(linkedinDaily) ? linkedinDaily : (linkedinDaily as any)?.dailyMetrics || (linkedinDaily as any)?.data || [];
+    liRows.forEach((row: any) => {
+      const date = row.date || row.day;
+      if (!date) return;
+      const d = date.substring(0, 10);
+      if (!dateMap[d]) { dateMap[d] = { date: d }; allDates.push(d); }
+      dateMap[d].li_impressions = (dateMap[d].li_impressions || 0) + (parseFloat(row.impressions) || 0);
+      dateMap[d].li_clicks = (dateMap[d].li_clicks || 0) + (parseFloat(row.clicks) || 0);
+      dateMap[d].li_spend = (dateMap[d].li_spend || 0) + (parseFloat(row.spend || row.costInLocalCurrency) || 0);
+      dateMap[d].li_conversions = (dateMap[d].li_conversions || 0) + (parseFloat(row.conversions || row.externalWebsiteConversions) || 0);
+    });
+
+    // Process Meta daily data
+    const metaRows = Array.isArray(metaDaily) ? metaDaily : (metaDaily as any)?.data || (metaDaily as any)?.daily || [];
+    metaRows.forEach((row: any) => {
+      const date = row.date || row.date_start;
+      if (!date) return;
+      const d = date.substring(0, 10);
+      if (!dateMap[d]) { dateMap[d] = { date: d }; allDates.push(d); }
+      dateMap[d].meta_impressions = (dateMap[d].meta_impressions || 0) + (parseFloat(row.impressions) || 0);
+      dateMap[d].meta_clicks = (dateMap[d].meta_clicks || 0) + (parseFloat(row.clicks) || 0);
+      dateMap[d].meta_spend = (dateMap[d].meta_spend || 0) + (parseFloat(row.spend) || 0);
+      dateMap[d].meta_conversions = (dateMap[d].meta_conversions || 0) + (parseFloat(row.conversions) || 0);
+      dateMap[d].meta_reach = (dateMap[d].meta_reach || 0) + (parseFloat(row.reach) || 0);
+    });
+
+    // Process daily financials (canonical spend/revenue)
+    const finRows = Array.isArray(dailyFinancials) ? dailyFinancials : (dailyFinancials as any)?.data || [];
+    finRows.forEach((row: any) => {
+      const date = row.date;
+      if (!date) return;
+      const d = date.substring(0, 10);
+      if (!dateMap[d]) { dateMap[d] = { date: d }; allDates.push(d); }
+      dateMap[d].total_spend = (dateMap[d].total_spend || 0) + (parseFloat(row.spend || row.totalSpend) || 0);
+      dateMap[d].total_revenue = (dateMap[d].total_revenue || 0) + (parseFloat(row.revenue || row.totalRevenue) || 0);
+    });
+
+    // Sort dates and compute totals per day
+    const sortedDates = [...new Set(allDates)].sort();
+    const series = sortedDates.map(d => {
+      const pt = dateMap[d];
+      const impressions = (pt.li_impressions || 0) + (pt.meta_impressions || 0);
+      const clicks = (pt.li_clicks || 0) + (pt.meta_clicks || 0);
+      const spend = pt.total_spend || (pt.li_spend || 0) + (pt.meta_spend || 0);
+      const conversions = (pt.li_conversions || 0) + (pt.meta_conversions || 0);
+      const revenue = pt.total_revenue || 0;
+      const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+      return {
+        date: d,
+        label: format(new Date(d + 'T00:00:00'), 'MMM dd'),
+        impressions, clicks, spend, conversions, revenue, ctr,
+        li_impressions: pt.li_impressions || 0,
+        li_clicks: pt.li_clicks || 0,
+        li_spend: pt.li_spend || 0,
+        meta_impressions: pt.meta_impressions || 0,
+        meta_clicks: pt.meta_clicks || 0,
+        meta_spend: pt.meta_spend || 0,
+      };
+    });
+
+    if (series.length === 0) return null;
+
+    // Split into current period and previous period for comparison
+    const currentPeriod = series.slice(-perfDays);
+    const previousPeriod = series.slice(-perfDays * 2, -perfDays);
+
+    const sumMetric = (arr: any[], key: string) => arr.reduce((s, r) => s + (r[key] || 0), 0);
+    const avgMetric = (arr: any[], key: string) => arr.length > 0 ? sumMetric(arr, key) / arr.length : 0;
+
+    const current = {
+      spend: sumMetric(currentPeriod, 'spend'),
+      revenue: sumMetric(currentPeriod, 'revenue'),
+      impressions: sumMetric(currentPeriod, 'impressions'),
+      clicks: sumMetric(currentPeriod, 'clicks'),
+      conversions: sumMetric(currentPeriod, 'conversions'),
+      ctr: avgMetric(currentPeriod, 'ctr'),
+    };
+    const previous = {
+      spend: sumMetric(previousPeriod, 'spend'),
+      revenue: sumMetric(previousPeriod, 'revenue'),
+      impressions: sumMetric(previousPeriod, 'impressions'),
+      clicks: sumMetric(previousPeriod, 'clicks'),
+      conversions: sumMetric(previousPeriod, 'conversions'),
+      ctr: avgMetric(previousPeriod, 'ctr'),
+    };
+
+    const pctChange = (curr: number, prev: number) => prev > 0 ? ((curr - prev) / prev) * 100 : curr > 0 ? 100 : 0;
+
+    const comparison = {
+      spend: pctChange(current.spend, previous.spend),
+      revenue: pctChange(current.revenue, previous.revenue),
+      conversions: pctChange(current.conversions, previous.conversions),
+      ctr: pctChange(current.ctr, previous.ctr),
+    };
+
+    // Anomaly detection: find days where metric deviates >2 stddev from rolling mean
+    const anomalies: Array<{ date: string; metric: string; value: number; expected: number; stddev: number }> = [];
+    const metricsToCheck = ['spend', 'clicks', 'conversions', 'impressions'] as const;
+
+    metricsToCheck.forEach(metric => {
+      const values = currentPeriod.map(r => r[metric] || 0);
+      if (values.length < 7) return;
+
+      // Rolling 7-day mean and stddev
+      for (let i = 7; i < values.length; i++) {
+        const window = values.slice(i - 7, i);
+        const mean = window.reduce((a, b) => a + b, 0) / window.length;
+        const variance = window.reduce((a, b) => a + (b - mean) ** 2, 0) / window.length;
+        const stddev = Math.sqrt(variance);
+        const val = values[i];
+        if (stddev > 0 && Math.abs(val - mean) > 2 * stddev) {
+          anomalies.push({
+            date: currentPeriod[i].date,
+            metric,
+            value: val,
+            expected: mean,
+            stddev,
+          });
+        }
+      }
+    });
+
+    return { series: currentPeriod, current, previous, comparison, anomalies, hasPrevious: previousPeriod.length > 0 };
+  }, [activeTab, linkedinDaily, metaDaily, dailyFinancials, perfDays]);
 
   // Demo mode: generate realistic Google Trends-style data
   const demoTrendsData = useMemo(() => {
@@ -516,15 +690,232 @@ export default function TrendAnalysis() {
             </Card>
           )}
 
-          {/* Trend Analysis Tabs */}
-          {(demoMode || ((campaign as any)?.trendKeywords?.length > 0 && !isConfiguring)) && (
-            <Tabs defaultValue="overview" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="keyword-comparison">Keyword Comparison</TabsTrigger>
-                <TabsTrigger value="seasonal-trends">Seasonal Trends</TabsTrigger>
-                <TabsTrigger value="insights">Market Insights</TabsTrigger>
-              </TabsList>
+          {/* Performance Trends Tab (always visible) */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="performance">Performance Trends</TabsTrigger>
+              <TabsTrigger value="overview">Google Trends</TabsTrigger>
+              <TabsTrigger value="keyword-comparison">Keyword Comparison</TabsTrigger>
+              <TabsTrigger value="seasonal-trends">Seasonal Trends</TabsTrigger>
+              <TabsTrigger value="insights">Market Insights</TabsTrigger>
+            </TabsList>
+
+            {/* Performance Trends Tab */}
+            <TabsContent value="performance" className="space-y-6">
+              {/* Controls */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Select value={perfPeriod} onValueChange={setPerfPeriod}>
+                    <SelectTrigger className="w-[140px] h-8 text-xs">
+                      <Calendar className="w-3 h-3 mr-1" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7d">Last 7 Days</SelectItem>
+                      <SelectItem value="14d">Last 14 Days</SelectItem>
+                      <SelectItem value="30d">Last 30 Days</SelectItem>
+                      <SelectItem value="90d">Last 90 Days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  Cross-platform performance data
+                </div>
+              </div>
+
+              {!crossPlatformData || crossPlatformData.series.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Activity className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Performance Data Available</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Connect LinkedIn Ads or Meta/Facebook to see cross-platform performance trends.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {/* Period Comparison Cards */}
+                  {crossPlatformData.hasPrevious && (
+                    <div className="grid gap-4 md:grid-cols-4">
+                      {[
+                        { label: 'Total Spend', current: crossPlatformData.current.spend, change: crossPlatformData.comparison.spend, fmt: 'currency' },
+                        { label: 'Total Revenue', current: crossPlatformData.current.revenue, change: crossPlatformData.comparison.revenue, fmt: 'currency' },
+                        { label: 'Avg CTR', current: crossPlatformData.current.ctr, change: crossPlatformData.comparison.ctr, fmt: 'pct' },
+                        { label: 'Total Conversions', current: crossPlatformData.current.conversions, change: crossPlatformData.comparison.conversions, fmt: 'number' },
+                      ].map((card, i) => (
+                        <Card key={i}>
+                          <CardContent className="p-4">
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{card.label}</div>
+                            <div className="text-xl font-bold text-slate-900 dark:text-white">
+                              {card.fmt === 'currency' ? formatCurrency(card.current) : card.fmt === 'pct' ? `${card.current.toFixed(2)}%` : formatNumber(card.current)}
+                            </div>
+                            <div className={`flex items-center text-xs mt-1 ${card.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
+                              {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}% vs prev period
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Performance Chart */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Activity className="w-5 h-5" />
+                        <span>Cross-Platform Daily Performance</span>
+                      </CardTitle>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Impressions, clicks, and spend across all connected platforms
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={crossPlatformData.series}>
+                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                            <XAxis dataKey="label" className="text-xs" />
+                            <YAxis yAxisId="left" className="text-xs" />
+                            <YAxis yAxisId="right" orientation="right" className="text-xs" />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: 'var(--background)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '6px',
+                              }}
+                              formatter={(value: any, name: string) => {
+                                if (name.includes('Spend')) return [`$${Number(value).toFixed(2)}`, name];
+                                return [Number(value).toLocaleString(), name];
+                              }}
+                            />
+                            <Area yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.1} stroke="#3b82f6" strokeWidth={2} name="Impressions" />
+                            <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#10b981" strokeWidth={2} dot={false} name="Clicks" />
+                            <Line yAxisId="right" type="monotone" dataKey="spend" stroke="#f59e0b" strokeWidth={2} dot={false} name="Spend ($)" />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Conversions & Revenue Chart */}
+                  {(crossPlatformData.current.conversions > 0 || crossPlatformData.current.revenue > 0) && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <DollarSign className="w-5 h-5" />
+                          <span>Conversions & Revenue</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={crossPlatformData.series}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="label" className="text-xs" />
+                              <YAxis yAxisId="left" className="text-xs" />
+                              <YAxis yAxisId="right" orientation="right" className="text-xs" />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: 'var(--background)',
+                                  border: '1px solid var(--border)',
+                                  borderRadius: '6px',
+                                }}
+                                formatter={(value: any, name: string) => {
+                                  if (name.includes('Revenue')) return [`$${Number(value).toFixed(2)}`, name];
+                                  return [Number(value).toLocaleString(), name];
+                                }}
+                              />
+                              <Bar yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />
+                              <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} name="Revenue ($)" />
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Platform Breakdown */}
+                  {(crossPlatformData.current.spend > 0) && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <BarChart3 className="w-5 h-5" />
+                          <span>Platform Breakdown</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={crossPlatformData.series}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="label" className="text-xs" />
+                              <YAxis className="text-xs" />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: 'var(--background)',
+                                  border: '1px solid var(--border)',
+                                  borderRadius: '6px',
+                                }}
+                                formatter={(value: any, name: string) => [Number(value).toLocaleString(), name]}
+                              />
+                              <Bar dataKey="li_clicks" stackId="clicks" fill="#0077B5" name="LinkedIn Clicks" />
+                              <Bar dataKey="meta_clicks" stackId="clicks" fill="#1877F2" name="Meta Clicks" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Anomaly Alerts */}
+                  {crossPlatformData.anomalies.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <AlertTriangle className="w-5 h-5 text-orange-500" />
+                          <span>Anomaly Detection</span>
+                        </CardTitle>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Data points that deviate more than 2 standard deviations from the 7-day rolling average
+                        </p>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {crossPlatformData.anomalies.slice(0, 10).map((anomaly, idx) => {
+                            const isSpike = anomaly.value > anomaly.expected;
+                            return (
+                              <div key={idx} className={`p-3 rounded-lg border ${isSpike ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/20' : 'border-blue-200 bg-blue-50 dark:bg-blue-900/20'}`}>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    {isSpike ? <TrendingUp className="w-4 h-4 text-orange-600" /> : <TrendingDown className="w-4 h-4 text-blue-600" />}
+                                    <span className="text-sm font-medium text-slate-900 dark:text-white capitalize">
+                                      {anomaly.metric} {isSpike ? 'Spike' : 'Drop'}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {format(new Date(anomaly.date + 'T00:00:00'), 'MMM dd')}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-sm text-slate-600 dark:text-slate-400">
+                                    <span className="font-semibold">{anomaly.value.toLocaleString()}</span>
+                                    <span className="text-xs ml-1">(expected ~{Math.round(anomaly.expected).toLocaleString()})</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
+            </TabsContent>
+
+          {/* Google Trends Tabs */}
+          {(demoMode || ((campaign as any)?.trendKeywords?.length > 0 && !isConfiguring)) ? (
+            <>
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
@@ -1302,8 +1693,31 @@ export default function TrendAnalysis() {
                 </>
               )}
             </TabsContent>
-          </Tabs>
+            </>
+          ) : (
+            <>
+              {/* Empty fragments for Google Trends tabs when no keywords configured */}
+              <TabsContent value="overview">
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <TrendingUp className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Google Trends Not Configured</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Configure industry keywords above to track Google Trends data.</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="keyword-comparison">
+                <Card><CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">Configure keywords to see comparison data.</CardContent></Card>
+              </TabsContent>
+              <TabsContent value="seasonal-trends">
+                <Card><CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">Configure keywords to see seasonal data.</CardContent></Card>
+              </TabsContent>
+              <TabsContent value="insights">
+                <Card><CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">Configure keywords to see market insights.</CardContent></Card>
+              </TabsContent>
+            </>
           )}
+          </Tabs>
         </main>
       </div>
     </div>

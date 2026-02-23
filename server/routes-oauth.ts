@@ -20675,12 +20675,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/executive-summary", async (req, res) => {
     try {
       const { id } = req.params;
+      const { parseNum, parseInterval, calculateHealthScore, generateRiskAssessment, generateRecommendations } = await import("./utils/executive-summary-helpers");
 
       // Get campaign details
       const campaign = await storage.getCampaign(id);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
+
+      // Period support: ?period=7d|30d|90d|all (default: all)
+      const periodParam = (req.query.period as string) || 'all';
+      const now = new Date();
+      let startDate: string | undefined;
+      let endDate: string = now.toISOString().split('T')[0];
+      if (periodParam === '7d') startDate = new Date(now.getTime() - 7 * 86400000).toISOString().split('T')[0];
+      else if (periodParam === '30d') startDate = new Date(now.getTime() - 30 * 86400000).toISOString().split('T')[0];
+      else if (periodParam === '90d') startDate = new Date(now.getTime() - 90 * 86400000).toISOString().split('T')[0];
 
       // Demo mode: return comprehensive mock executive summary
       if (req.query.demo === "1") {
@@ -20695,9 +20705,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             clickThroughCvr: 5.57, totalCvr: 5.57, cpc: 4.62,
           },
           platforms: [
-            { name: "LinkedIn Ads", spend: 4250, revenue: 8190, conversions: 45, roas: 1.93, roi: 92.7, spendShare: 70.2, hasData: true,
-              websiteAnalytics: null },
-            { name: "Custom Integration", spend: 1800, revenue: 3500, conversions: 28, roas: 1.94, roi: 94.4, spendShare: 29.8, hasData: true,
+            { name: "LinkedIn Ads", spend: 4250, revenue: 8190, conversions: 45, roas: 1.93, roi: 92.7, spendShare: 70.2, hasData: true, websiteAnalytics: null },
+            { name: "Meta/Facebook", spend: 1200, revenue: 2400, conversions: 18, roas: 2.0, roi: 100, spendShare: 19.8, hasData: true, websiteAnalytics: null },
+            { name: "Custom Integration", spend: 600, revenue: 1090, conversions: 10, roas: 1.82, roi: 81.7, spendShare: 9.9, hasData: true,
               websiteAnalytics: { pageviews: 15200, sessions: 3400, users: 2100, bounceRate: 42.3, avgSessionDuration: 185 } },
           ],
           risk: { level: "low", explanation: "Campaign metrics are healthy across all dimensions.", factors: [] },
@@ -20707,66 +20717,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
               timeline: "Immediate - next 7 days", investmentRequired: "Additional $638/month ad spend",
               scenarios: { bestCase: "Revenue increases to $14,500/month (+24%)", expected: "Revenue increases to $12,900/month (+10%)", worstCase: "Revenue flat at $11,690/month (ROAS decreases to 1.6x)" },
               assumptions: ["Current ROAS maintained at scale", "LinkedIn audience not saturated", "Creative performance holds steady"] },
-            { action: "Optimize Custom Integration landing pages", priority: "medium", confidence: "medium",
-              category: "Conversion Rate Optimization", expectedImpact: "Potential +8-12 additional conversions/month",
-              timeline: "2-4 weeks", investmentRequired: "Design and development time (~20 hours)",
-              scenarios: { bestCase: "CVR improves from 6.7% to 10%", expected: "CVR improves to 8.5%", worstCase: "No significant improvement" },
-              assumptions: ["Current traffic volume maintained", "A/B testing methodology applied"] },
+          ],
+          kpiProgress: [
+            { kpiId: "demo-1", name: "Monthly Revenue", target: 15000, current: 11690, unit: "$", status: "on_track", priority: "high" },
+            { kpiId: "demo-2", name: "Conversion Rate", target: 8, current: 5.57, unit: "%", status: "at_risk", priority: "medium" },
+            { kpiId: "demo-3", name: "ROAS Target", target: 2.5, current: 1.93, unit: "x", status: "behind", priority: "high" },
+          ],
+          benchmarkComparison: [
+            { metric: "CTR", yours: 6.24, benchmark: 2.5, unit: "%", delta: "+149.6%", status: "above" },
+            { metric: "CVR", yours: 5.57, benchmark: 3.0, unit: "%", delta: "+85.7%", status: "above" },
+            { metric: "CPC", yours: 4.62, benchmark: 5.26, unit: "$", delta: "-12.2%", status: "above" },
+            { metric: "ROAS", yours: 1.93, benchmark: 2.0, unit: "x", delta: "-3.5%", status: "below" },
           ],
           metadata: { disclaimer: "Projections based on current 30-day performance data. Actual results may vary based on market conditions and audience saturation.", dataAccuracy: { platformsExcludedFromRecommendations: [] } },
           dataFreshness: { warnings: [] },
+          period: periodParam,
         });
       }
 
-      // Helper to parse numbers safely
-      const parseNum = (val: any): number => {
-        if (val === null || val === undefined || val === '') return 0;
-        const num = typeof val === 'string' ? parseFloat(val) : Number(val);
-        return isNaN(num) || !isFinite(num) ? 0 : num;
-      };
-
-      // Helper to convert PostgreSQL interval to seconds
-      const parseInterval = (interval: any): number => {
-        if (!interval) return 0;
-        const str = String(interval);
-        // Format: "HH:MM:SS" or "MM:SS" or just seconds
-        const parts = str.split(':');
-        if (parts.length === 3) {
-          // HH:MM:SS
-          return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
-        } else if (parts.length === 2) {
-          // MM:SS
-          return parseInt(parts[0]) * 60 + parseInt(parts[1]);
-        } else {
-          // Just seconds
-          return parseNum(str);
-        }
-      };
-
       // Fetch LinkedIn metrics
-      let linkedinMetrics: any = {
-        impressions: 0,
-        clicks: 0,
-        conversions: 0,
-        spend: 0,
-        revenue: 0
-      };
+      let linkedinMetrics: any = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 };
       let linkedinLastUpdate: string | null = null;
 
       try {
         const latestSession = await storage.getLatestLinkedInImportSession(id);
         if (latestSession) {
           linkedinLastUpdate = latestSession.importedAt;
-
           const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
-
           metrics.forEach((m: any) => {
             const value = parseFloat(m.metricValue || '0');
             const key = m.metricKey.toLowerCase();
             linkedinMetrics[key] = (linkedinMetrics[key] || 0) + value;
           });
-
-          // Canonical LinkedIn revenue rules (single source of truth).
           const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
           const rev = await resolveLinkedInRevenueContext({
             campaignId: id,
@@ -20780,16 +20762,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('No LinkedIn metrics found for campaign', id);
       }
 
+      // Fetch Meta/Facebook metrics
+      let metaMetrics: any = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0, reach: 0 };
+      let metaLastUpdate: string | null = null;
+
+      try {
+        // Use a wide date range or the selected period
+        const metaStart = startDate || '2020-01-01';
+        const metaEnd = endDate;
+        const metaDailyRows = await storage.getMetaDailyMetrics(id, metaStart, metaEnd);
+        if (metaDailyRows && metaDailyRows.length > 0) {
+          metaDailyRows.forEach((row: any) => {
+            metaMetrics.impressions += parseNum(row.impressions);
+            metaMetrics.clicks += parseNum(row.clicks);
+            metaMetrics.conversions += parseNum(row.conversions);
+            metaMetrics.spend += parseNum(row.spend);
+            metaMetrics.reach += parseNum(row.reach);
+          });
+          // Revenue from Meta: use inline conversions value or estimate
+          // Meta tracks conversions but revenue needs to come from revenue sources
+          const metaRevSources = await storage.getRevenueTotalForRange(id, metaStart, metaEnd).catch(() => ({ totalRevenue: 0 }));
+          // Use the last row's date as freshness indicator
+          const lastRow = metaDailyRows[metaDailyRows.length - 1];
+          metaLastUpdate = (lastRow as any)?.date || null;
+        }
+      } catch (err) {
+        console.log('No Meta metrics found for campaign', id);
+      }
+
+      // Fetch GA4 metrics
+      let ga4Metrics: any = { sessions: 0, conversions: 0, bounceRate: 0, pageviews: 0, users: 0 };
+      let ga4LastUpdate: string | null = null;
+
+      try {
+        const ga4Connections = await storage.getGA4Connections(id);
+        if (ga4Connections && ga4Connections.length > 0) {
+          const ga4Start = startDate || '2020-01-01';
+          const ga4End = endDate;
+          const ga4Daily = await storage.getGA4DailyMetrics(id, (ga4Connections[0] as any).propertyId, ga4Start, ga4End);
+          if (ga4Daily && ga4Daily.length > 0) {
+            let bounceRateSum = 0;
+            let bounceRateCount = 0;
+            ga4Daily.forEach((row: any) => {
+              ga4Metrics.sessions += parseNum(row.sessions);
+              ga4Metrics.conversions += parseNum(row.conversions);
+              ga4Metrics.pageviews += parseNum(row.pageviews || row.screenPageViews);
+              ga4Metrics.users += parseNum(row.users || row.totalUsers);
+              const br = parseNum(row.bounceRate);
+              if (br > 0) { bounceRateSum += br; bounceRateCount++; }
+            });
+            ga4Metrics.bounceRate = bounceRateCount > 0 ? bounceRateSum / bounceRateCount : 0;
+            const lastRow = ga4Daily[ga4Daily.length - 1];
+            ga4LastUpdate = (lastRow as any)?.date || null;
+          }
+        }
+      } catch (err) {
+        console.log('No GA4 metrics found for campaign', id);
+      }
+
       // Fetch Custom Integration metrics
-      let customMetrics: any = {
-        impressions: 0,
-        engagements: 0,
-        clicks: 0,
-        conversions: 0,
-        spend: 0,
-        revenue: 0
-      };
-      let customIntegrationRawData: any = null; // Store raw data for website analytics
+      let customMetrics: any = { impressions: 0, engagements: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 };
+      let customIntegrationRawData: any = null;
       let customIntegrationLastUpdate: string | null = null;
       let hasCustomIntegration = false;
 
@@ -20797,20 +20830,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const customIntegration = await storage.getLatestCustomIntegrationMetrics(id);
         if (customIntegration) {
           hasCustomIntegration = true;
-          customIntegrationRawData = customIntegration; // Store original values
-          // Map GA4/Website metrics to campaign metrics
-          // Pageviews = Ad Impressions equivalent (eyeballs on content)
-          // Sessions = Engagement equivalent (meaningful interactions)
+          customIntegrationRawData = customIntegration;
           customMetrics.impressions = parseNum(customIntegration.pageviews);
           customMetrics.engagements = parseNum(customIntegration.sessions);
           customMetrics.clicks = parseNum(customIntegration.clicks);
           customMetrics.conversions = parseNum(customIntegration.conversions);
           customMetrics.spend = parseNum(customIntegration.spend);
-          customMetrics.revenue = 0; // Custom Integration doesn't have revenue field
+          customMetrics.revenue = 0;
           customIntegrationLastUpdate = customIntegration.uploadedAt;
         }
       } catch (err) {
         console.log('No custom integration metrics found for campaign', id);
+      }
+
+      // Fetch canonical spend/revenue sources (ground truth)
+      let canonicalSpend = 0;
+      let canonicalRevenue = 0;
+      try {
+        if (startDate) {
+          const spendResult = await storage.getSpendTotalForRange(id, startDate, endDate);
+          canonicalSpend = spendResult.totalSpend || 0;
+          const revenueResult = await storage.getRevenueTotalForRange(id, startDate, endDate);
+          canonicalRevenue = revenueResult.totalRevenue || 0;
+        }
+      } catch (err) {
+        console.log('No canonical spend/revenue data found');
+      }
+
+      // Fetch KPI progress
+      let kpiProgress: any[] = [];
+      try {
+        const kpis = await storage.getCampaignKPIs(id);
+        for (const kpi of kpis) {
+          const progress = await storage.getKPIProgress(kpi.id);
+          const latestProgress = progress.length > 0 ? progress[progress.length - 1] : null;
+          const currentValue = latestProgress ? parseNum(latestProgress.value) : parseNum(kpi.currentValue);
+          const targetValue = parseNum(kpi.targetValue);
+          const pctComplete = targetValue > 0 ? (currentValue / targetValue) * 100 : 0;
+
+          let kpiStatus = 'on_track';
+          if (pctComplete < 50) kpiStatus = 'behind';
+          else if (pctComplete < 75) kpiStatus = 'at_risk';
+
+          kpiProgress.push({
+            kpiId: kpi.id,
+            name: kpi.name,
+            target: targetValue,
+            current: currentValue,
+            unit: kpi.unit || '',
+            status: kpiStatus,
+            priority: kpi.priority || 'medium',
+            pctComplete: Math.min(pctComplete, 100),
+          });
+        }
+      } catch (err) {
+        console.log('No KPIs found for campaign', id);
+      }
+
+      // Fetch benchmark comparison
+      let benchmarkComparison: any[] = [];
+      try {
+        const benchmarks = await storage.getCampaignBenchmarks(id);
+        for (const bm of benchmarks) {
+          const currentVal = parseNum(bm.currentValue);
+          const targetVal = parseNum(bm.targetValue);
+          const delta = targetVal > 0 ? ((currentVal - targetVal) / targetVal) * 100 : 0;
+
+          benchmarkComparison.push({
+            metric: bm.name,
+            yours: currentVal,
+            benchmark: targetVal,
+            unit: bm.unit || '',
+            delta: `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`,
+            status: currentVal >= targetVal ? 'above' : 'below',
+            category: bm.category || '',
+          });
+        }
+      } catch (err) {
+        console.log('No benchmarks found for campaign', id);
       }
 
       // Fetch comparison data for trend analysis
@@ -20822,107 +20919,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Data freshness validation
-      const now = new Date();
-      const dataFreshnessWarnings = [];
+      const dataFreshnessWarnings: any[] = [];
 
-      if (linkedinLastUpdate) {
-        const linkedinAge = (now.getTime() - new Date(linkedinLastUpdate).getTime()) / (1000 * 60 * 60 * 24); // days
-        if (linkedinAge > 7) {
-          dataFreshnessWarnings.push({
-            source: 'LinkedIn Ads',
-            age: Math.round(linkedinAge),
-            severity: linkedinAge > 14 ? 'high' : 'medium',
-            message: `LinkedIn data is ${Math.round(linkedinAge)} days old - recommendations may be outdated`
-          });
+      const checkFreshness = (lastUpdate: string | null, source: string) => {
+        if (lastUpdate) {
+          const age = (now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 60 * 60 * 24);
+          if (age > 7) {
+            dataFreshnessWarnings.push({
+              source,
+              age: Math.round(age),
+              severity: age > 14 ? 'high' : 'medium',
+              message: `${source} data is ${Math.round(age)} days old - recommendations may be outdated`
+            });
+          }
         }
-      }
+      };
 
-      if (customIntegrationLastUpdate) {
-        const customAge = (now.getTime() - new Date(customIntegrationLastUpdate).getTime()) / (1000 * 60 * 60 * 24); // days
-        if (customAge > 7) {
-          dataFreshnessWarnings.push({
-            source: 'Custom Integration',
-            age: Math.round(customAge),
-            severity: customAge > 14 ? 'high' : 'medium',
-            message: `Custom Integration data is ${Math.round(customAge)} days old - recommendations may be outdated`
-          });
-        }
-      }
+      checkFreshness(linkedinLastUpdate, 'LinkedIn Ads');
+      checkFreshness(metaLastUpdate, 'Meta/Facebook');
+      checkFreshness(ga4LastUpdate, 'Google Analytics');
+      checkFreshness(customIntegrationLastUpdate, 'Custom Integration');
 
-      // Aggregate totals (Custom Integration: pageviews→impressions, sessions→engagements)
-      const totalImpressions = linkedinMetrics.impressions + customMetrics.impressions;
-      const totalEngagements = linkedinMetrics.engagements + customMetrics.engagements;
-      const totalClicks = linkedinMetrics.clicks + customMetrics.clicks;
-      const totalConversions = linkedinMetrics.conversions + customMetrics.conversions;
-      const totalSpend = linkedinMetrics.spend + customMetrics.spend;
-      const totalRevenue = linkedinMetrics.revenue + customMetrics.revenue;
+      // Aggregate totals across all platforms
+      const totalImpressions = linkedinMetrics.impressions + metaMetrics.impressions + customMetrics.impressions;
+      const totalEngagements = (linkedinMetrics.engagements || 0) + customMetrics.engagements;
+      const totalClicks = linkedinMetrics.clicks + metaMetrics.clicks + customMetrics.clicks;
+      const totalConversions = linkedinMetrics.conversions + metaMetrics.conversions + customMetrics.conversions;
 
-      // Calculate breakdown for funnel visualization (separate advertising from website analytics)
-      const advertisingImpressions = linkedinMetrics.impressions; // Only actual ad impressions from LinkedIn
-      const websitePageviews = customIntegrationRawData ? parseNum(customIntegrationRawData.pageviews) : 0; // Website pageviews from Custom Integration
-      const advertisingClicks = linkedinMetrics.clicks; // Only actual ad clicks from LinkedIn
-      const websiteClicks = customIntegrationRawData ? parseNum(customIntegrationRawData.clicks) : 0; // Website clicks from Custom Integration
+      // Prefer canonical spend/revenue when available (from configured sources), else sum platform-reported
+      const platformSpend = linkedinMetrics.spend + metaMetrics.spend + customMetrics.spend;
+      const platformRevenue = linkedinMetrics.revenue + metaMetrics.revenue + customMetrics.revenue;
+      const totalSpend = canonicalSpend > 0 ? canonicalSpend : platformSpend;
+      const totalRevenue = canonicalRevenue > 0 ? canonicalRevenue : platformRevenue;
+
+      // Funnel breakdown
+      const advertisingImpressions = linkedinMetrics.impressions + metaMetrics.impressions;
+      const websitePageviews = (customIntegrationRawData ? parseNum(customIntegrationRawData.pageviews) : 0) + ga4Metrics.pageviews;
+      const advertisingClicks = linkedinMetrics.clicks + metaMetrics.clicks;
+      const websiteClicks = customIntegrationRawData ? parseNum(customIntegrationRawData.clicks) : 0;
 
       // Calculate KPIs
       const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
       const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
       const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
-
-      // CVR Calculation - Full Transparency Approach
-      // Click-Through CVR: Only conversions that can be attributed to direct clicks (capped at 100%)
       const clickThroughConversions = Math.min(totalConversions, totalClicks);
       const clickThroughCvr = totalClicks > 0 ? (clickThroughConversions / totalClicks) * 100 : 0;
-
-      // Total CVR: Includes view-through conversions (can exceed 100%)
       const totalCvr = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
-
-      // Legacy CVR for backward compatibility
       const cvr = totalCvr;
-
       const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
       const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
 
-      // Calculate campaign health score (0-100)
-      let healthScore = 0;
-      let healthFactors = [];
+      // Health score from helper
+      const healthResult = calculateHealthScore({ roi, roas, ctr, cvr });
 
-      // ROI component (0-30 points)
-      if (roi >= 100) { healthScore += 30; healthFactors.push({ factor: 'ROI', score: 30, status: 'excellent' }); }
-      else if (roi >= 50) { healthScore += 22; healthFactors.push({ factor: 'ROI', score: 22, status: 'good' }); }
-      else if (roi >= 0) { healthScore += 15; healthFactors.push({ factor: 'ROI', score: 15, status: 'acceptable' }); }
-      else { healthScore += 5; healthFactors.push({ factor: 'ROI', score: 5, status: 'poor' }); }
-
-      // ROAS component (0-25 points)
-      if (roas >= 3) { healthScore += 25; healthFactors.push({ factor: 'ROAS', score: 25, status: 'excellent' }); }
-      else if (roas >= 1.5) { healthScore += 18; healthFactors.push({ factor: 'ROAS', score: 18, status: 'good' }); }
-      else if (roas >= 1) { healthScore += 10; healthFactors.push({ factor: 'ROAS', score: 10, status: 'acceptable' }); }
-      else { healthScore += 3; healthFactors.push({ factor: 'ROAS', score: 3, status: 'poor' }); }
-
-      // CTR component (0-20 points)
-      if (ctr >= 3) { healthScore += 20; healthFactors.push({ factor: 'CTR', score: 20, status: 'excellent' }); }
-      else if (ctr >= 2) { healthScore += 15; healthFactors.push({ factor: 'CTR', score: 15, status: 'good' }); }
-      else if (ctr >= 1) { healthScore += 10; healthFactors.push({ factor: 'CTR', score: 10, status: 'acceptable' }); }
-      else { healthScore += 3; healthFactors.push({ factor: 'CTR', score: 3, status: 'poor' }); }
-
-      // Conversion Rate component (0-25 points)
-      if (cvr >= 5) { healthScore += 25; healthFactors.push({ factor: 'CVR', score: 25, status: 'excellent' }); }
-      else if (cvr >= 3) { healthScore += 18; healthFactors.push({ factor: 'CVR', score: 18, status: 'good' }); }
-      else if (cvr >= 1) { healthScore += 10; healthFactors.push({ factor: 'CVR', score: 10, status: 'acceptable' }); }
-      else { healthScore += 3; healthFactors.push({ factor: 'CVR', score: 3, status: 'poor' }); }
-
-      // Determine campaign grade
-      let grade = 'F';
-      if (healthScore >= 90) grade = 'A';
-      else if (healthScore >= 80) grade = 'B';
-      else if (healthScore >= 70) grade = 'C';
-      else if (healthScore >= 60) grade = 'D';
-
-      // Platform performance breakdown - only include platforms with actual data
+      // Platform performance breakdown
       const platforms: any[] = [];
-      const platformsForDisplay: any[] = []; // Separate array for UI display (includes platforms with no data)
+      const platformsForDisplay: any[] = [];
 
-      // Check if LinkedIn has any meaningful advertising data
-      // We check spend, conversions, or revenue (not just impressions/clicks which could be organic)
       const hasLinkedInData = linkedinMetrics.spend > 0 || linkedinMetrics.conversions > 0 || linkedinMetrics.revenue > 0;
       if (hasLinkedInData) {
         const linkedInPlatform = {
@@ -20932,16 +20985,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversions: linkedinMetrics.conversions,
           roas: linkedinMetrics.spend > 0 ? linkedinMetrics.revenue / linkedinMetrics.spend : 0,
           roi: linkedinMetrics.spend > 0 ? ((linkedinMetrics.revenue - linkedinMetrics.spend) / linkedinMetrics.spend) * 100 : 0,
-          spendShare: totalSpend > 0 ? (linkedinMetrics.spend / totalSpend) * 100 : 0
+          spendShare: totalSpend > 0 ? (linkedinMetrics.spend / totalSpend) * 100 : 0,
         };
         platforms.push(linkedInPlatform);
         platformsForDisplay.push(linkedInPlatform);
       }
 
-      // Check if Custom Integration has any meaningful advertising data
-      // We check spend, conversions, or revenue (not impressions/engagements which could be website analytics)
-      const hasCustomIntegrationData = customMetrics.spend > 0 || customMetrics.conversions > 0 || customMetrics.revenue > 0;
+      // Meta/Facebook platform
+      const hasMetaData = metaMetrics.spend > 0 || metaMetrics.conversions > 0;
+      if (hasMetaData) {
+        const metaPlatform = {
+          name: 'Meta/Facebook',
+          spend: metaMetrics.spend,
+          revenue: metaMetrics.revenue || 0,
+          conversions: metaMetrics.conversions,
+          impressions: metaMetrics.impressions,
+          reach: metaMetrics.reach,
+          roas: metaMetrics.spend > 0 ? (metaMetrics.revenue || 0) / metaMetrics.spend : 0,
+          roi: metaMetrics.spend > 0 ? (((metaMetrics.revenue || 0) - metaMetrics.spend) / metaMetrics.spend) * 100 : 0,
+          spendShare: totalSpend > 0 ? (metaMetrics.spend / totalSpend) * 100 : 0,
+          hasData: true,
+        };
+        platforms.push(metaPlatform);
+        platformsForDisplay.push(metaPlatform);
+      }
 
+      // GA4 platform (website analytics — no spend/revenue)
+      const hasGA4Data = ga4Metrics.sessions > 0 || ga4Metrics.pageviews > 0;
+      if (hasGA4Data) {
+        const ga4Platform = {
+          name: 'Google Analytics',
+          spend: 0,
+          revenue: 0,
+          conversions: ga4Metrics.conversions,
+          roas: 0,
+          roi: 0,
+          spendShare: 0,
+          hasData: false, // No advertising spend data
+          websiteAnalytics: {
+            pageviews: ga4Metrics.pageviews,
+            sessions: ga4Metrics.sessions,
+            users: ga4Metrics.users,
+            bounceRate: ga4Metrics.bounceRate,
+            avgSessionDuration: 0,
+          },
+        };
+        platformsForDisplay.push(ga4Platform);
+      }
+
+      // Custom Integration
+      const hasCustomIntegrationData = customMetrics.spend > 0 || customMetrics.conversions > 0 || customMetrics.revenue > 0;
       if (hasCustomIntegration && customIntegrationRawData) {
         const customPlatform = {
           name: 'Custom Integration',
@@ -20951,34 +21044,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           roas: customMetrics.spend > 0 ? customMetrics.revenue / customMetrics.spend : 0,
           roi: customMetrics.spend > 0 ? ((customMetrics.revenue - customMetrics.spend) / customMetrics.spend) * 100 : 0,
           spendShare: totalSpend > 0 ? (customMetrics.spend / totalSpend) * 100 : 0,
-          hasData: hasCustomIntegrationData, // Flag to indicate if platform has actual advertising data
-          // Website analytics data (always included for Executive Overview)
-          // Use original database values, not mapped values
+          hasData: hasCustomIntegrationData,
           websiteAnalytics: {
             pageviews: parseNum(customIntegrationRawData.pageviews),
             sessions: parseNum(customIntegrationRawData.sessions),
             clicks: parseNum(customIntegrationRawData.clicks),
-            impressions: parseNum(customIntegrationRawData.impressions), // Actual impressions from database
+            impressions: parseNum(customIntegrationRawData.impressions),
             users: parseNum(customIntegrationRawData.users),
             bounceRate: parseNum(customIntegrationRawData.bounceRate),
-            avgSessionDuration: parseInterval(customIntegrationRawData.avgSessionDuration)
-          }
+            avgSessionDuration: parseInterval(customIntegrationRawData.avgSessionDuration),
+          },
         };
-
-        // Only include in recommendations/insights if it has actual advertising data
-        if (hasCustomIntegrationData) {
-          platforms.push(customPlatform);
-        }
-
-        // Always include in display array (with website analytics for Executive Overview)
+        if (hasCustomIntegrationData) platforms.push(customPlatform);
         platformsForDisplay.push(customPlatform);
       }
 
-      // Identify top and bottom performers (only from platforms with data)
+      // Top / bottom performers
       const topPlatform = platforms.length > 0 ? platforms.reduce((top, p) => p.roas > top.roas ? p : top) : null;
       const bottomPlatform = platforms.length > 1 ? platforms.reduce((bottom, p) => p.roas < bottom.roas ? p : bottom) : null;
 
-      // Calculate growth trajectory based on comparison data (only if historical data exists)
+      // Growth trajectory
       let growthTrajectory: string | null = null;
       let trendPercentage = 0;
       let hasHistoricalData = false;
@@ -20988,83 +21073,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const currentRevenue = parseNum(comparisonData.current.totalConversions) * (totalRevenue / (totalConversions || 1));
         const previousRevenue = parseNum(comparisonData.previous.totalConversions) * (totalRevenue / (totalConversions || 1));
         trendPercentage = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
-
         if (trendPercentage > 10) growthTrajectory = 'accelerating';
         else if (trendPercentage < -10) growthTrajectory = 'declining';
         else growthTrajectory = 'stable';
       }
 
-      // Risk assessment - only based on platforms with actual advertising data
-      let riskLevel = 'low';
-      const riskFactors = [];
+      // Risk assessment from helper
+      const risk = generateRiskAssessment(platforms, platformsForDisplay, { roi, roas }, growthTrajectory, trendPercentage);
 
-      // Platform concentration risk
-      if (platforms.length === 1 && platformsForDisplay.length === 1) {
-        // Only one platform total - true single platform dependency
-        riskFactors.push({ type: 'concentration', message: 'Single advertising platform - diversification recommended' });
-        riskLevel = 'medium';
-      } else if (platforms.length === 1 && platformsForDisplay.length > 1) {
-        // Multiple platforms connected but only one has advertising data
-        const platformsWithoutAdData = platformsForDisplay.filter(p => !platforms.some(pd => pd.name === p.name));
-        riskFactors.push({
-          type: 'concentration',
-          message: `All advertising spend on ${platforms[0].name} - ${platformsWithoutAdData.map(p => p.name).join(', ')} ${platformsWithoutAdData.length === 1 ? 'has' : 'have'} no advertising data`
-        });
-        riskLevel = 'medium';
-      } else if (platforms.length > 1 && platforms[0].spendShare > 70) {
-        // Multiple platforms with advertising data but high concentration
-        riskFactors.push({ type: 'concentration', message: `${platforms[0].spendShare.toFixed(0)}% spend on ${platforms[0].name} - high concentration risk` });
-        riskLevel = 'medium';
-      }
-
-      // Performance risk
-      if (roi < 0) {
-        riskFactors.push({ type: 'performance', message: 'Negative ROI - immediate optimization required' });
-        riskLevel = 'high';
-      } else if (roas < 1) {
-        riskFactors.push({ type: 'performance', message: 'ROAS below breakeven - review campaign strategy' });
-        if (riskLevel === 'low') riskLevel = 'medium';
-      }
-
-      // Declining trend risk
-      if (growthTrajectory === 'declining' && trendPercentage < -15) {
-        riskFactors.push({ type: 'trend', message: `Performance declining ${Math.abs(trendPercentage).toFixed(0)}% - intervention needed` });
-        if (riskLevel === 'low') riskLevel = 'medium';
-      }
-
-      // Generate risk explanation
-      let riskExplanation = '';
-      if (riskLevel === 'low') {
-        riskExplanation = 'Campaign is performing well with minimal risk factors. Continue monitoring performance.';
-      } else if (riskLevel === 'medium') {
-        const reasons = [];
-        if (platforms.length === 1 && platformsForDisplay.length === 1) {
-          reasons.push('single advertising platform');
-        } else if (platforms.length === 1 && platformsForDisplay.length > 1) {
-          reasons.push('advertising spend concentrated on one platform');
-        }
-        if (platforms.length > 1 && platforms[0].spendShare > 70) reasons.push('high platform concentration');
-        if (roas < 1) reasons.push('ROAS below breakeven');
-        if (growthTrajectory === 'declining') reasons.push('declining performance trend');
-        riskExplanation = `Moderate risk due to ${reasons.join(', ')}. Review recommended.`;
-      } else if (riskLevel === 'high') {
-        riskExplanation = 'High risk: Campaign experiencing negative ROI. Immediate action required to prevent further losses.';
-      }
-
-      // Generate CEO summary
+      // CEO summary
       let ceoSummary = '';
-      if (grade === 'A' || grade === 'B') {
-        ceoSummary = `${campaign.name} is performing ${grade === 'A' ? 'exceptionally' : 'well'} with ${roi >= 0 ? 'strong' : 'positive'} ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
-      } else if (grade === 'C') {
+      if (healthResult.grade === 'A' || healthResult.grade === 'B') {
+        ceoSummary = `${campaign.name} is performing ${healthResult.grade === 'A' ? 'exceptionally' : 'well'} with ${roi >= 0 ? 'strong' : 'positive'} ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
+      } else if (healthResult.grade === 'C') {
         ceoSummary = `${campaign.name} is showing acceptable performance with ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
       } else {
         ceoSummary = `${campaign.name} requires attention with ${roi < 0 ? 'negative' : 'below-target'} ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
       }
-
       if (topPlatform) {
         ceoSummary += `${topPlatform.name} delivering ${topPlatform.roas > 2 ? 'exceptional' : 'strong'} results (${topPlatform.roas.toFixed(1)}x ROAS). `;
       }
-
       if (bottomPlatform && bottomPlatform.roas < 1.5) {
         ceoSummary += `${bottomPlatform.name} underperforming and requires optimization. `;
       } else if (growthTrajectory === 'accelerating') {
@@ -21073,219 +21101,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ceoSummary += `Performance trending downward - strategic review recommended. `;
       }
 
-      // Strategic recommendations with enterprise-grade projections
-      const recommendations = [];
-
-      // Helper: Calculate diminishing returns for scaling (industry standard: 15-25% efficiency loss per doubling)
-      const calculateDiminishingReturns = (currentSpend: number, additionalSpend: number, currentRoas: number) => {
-        const spendIncreasePct = (additionalSpend / currentSpend) * 100;
-        let efficiencyLoss = 0;
-
-        // Conservative diminishing returns model based on ad platform data
-        if (spendIncreasePct <= 25) efficiencyLoss = 0.05; // 5% loss for small increases
-        else if (spendIncreasePct <= 50) efficiencyLoss = 0.15; // 15% loss for moderate increases  
-        else if (spendIncreasePct <= 100) efficiencyLoss = 0.25; // 25% loss for doubling
-        else efficiencyLoss = 0.35; // 35% loss for aggressive scaling
-
-        const adjustedRoas = currentRoas * (1 - efficiencyLoss);
-        return {
-          adjustedRoas,
-          efficiencyLoss: efficiencyLoss * 100,
-          bestCase: currentRoas * (1 - efficiencyLoss * 0.5), // 50% less efficiency loss
-          worstCase: currentRoas * (1 - efficiencyLoss * 1.5)  // 50% more efficiency loss
-        };
-      };
-
-      // Budget optimization recommendations
-      if (topPlatform && bottomPlatform && topPlatform.roas > bottomPlatform.roas * 1.5) {
-        // Dynamic reallocation based on performance gap
-        const performanceGap = topPlatform.roas / bottomPlatform.roas;
-        const reallocationPct = performanceGap > 3 ? 0.5 : performanceGap > 2 ? 0.3 : 0.2;
-        const reallocationAmount = bottomPlatform.spend * reallocationPct;
-
-        // Conservative estimate assuming some efficiency loss
-        const conservativeTopRoas = topPlatform.roas * 0.9; // 10% efficiency loss from reallocation
-        const estimatedImpact = reallocationAmount * (conservativeTopRoas - bottomPlatform.roas);
-
-        recommendations.push({
-          priority: 'high',
-          category: 'Budget Reallocation',
-          action: `Shift ${(reallocationPct * 100).toFixed(0)}% ($${reallocationAmount.toFixed(0)}) from ${bottomPlatform.name} to ${topPlatform.name}`,
-          expectedImpact: `+$${estimatedImpact.toFixed(0)} revenue`,
-          investmentRequired: '$0 (reallocation)',
-          timeline: 'Immediate',
-          confidence: 'high',
-          assumptions: [
-            `${topPlatform.name} maintains ${(conservativeTopRoas / topPlatform.roas * 100).toFixed(0)}% of current efficiency`,
-            'Sufficient audience scale available',
-            'No major market changes'
-          ],
-          scenarios: {
-            bestCase: `+$${(estimatedImpact * 1.3).toFixed(0)} revenue`,
-            expected: `+$${estimatedImpact.toFixed(0)} revenue`,
-            worstCase: `+$${(estimatedImpact * 0.7).toFixed(0)} revenue`
-          }
-        });
-      }
-
-      // Scaling recommendations with diminishing returns
-      if (roi > 50 && roas > 2 && growthTrajectory !== 'declining') {
-        const scaleAmount = totalSpend * 0.5;
-        const scalingModel = calculateDiminishingReturns(totalSpend, scaleAmount, roas);
-
-        const expectedRevenue = scaleAmount * scalingModel.adjustedRoas;
-        const expectedProfit = expectedRevenue - scaleAmount;
-
-        const bestCaseRevenue = scaleAmount * scalingModel.bestCase;
-        const bestCaseProfit = bestCaseRevenue - scaleAmount;
-
-        const worstCaseRevenue = scaleAmount * scalingModel.worstCase;
-        const worstCaseProfit = worstCaseRevenue - scaleAmount;
-
-        recommendations.push({
-          priority: 'high',
-          category: 'Scaling Opportunity',
-          action: `Increase campaign budget by 50% to capitalize on strong performance`,
-          expectedImpact: `+$${expectedProfit.toFixed(0)} profit (${scalingModel.adjustedRoas.toFixed(1)}x ROAS)`,
-          investmentRequired: `$${scaleAmount.toFixed(0)}`,
-          timeline: '30 days',
-          confidence: 'medium',
-          assumptions: [
-            `${scalingModel.efficiencyLoss.toFixed(0)}% efficiency loss from diminishing returns`,
-            'Audience targeting remains effective at scale',
-            'Market demand supports increased spend',
-            'Creative performance remains stable'
-          ],
-          scenarios: {
-            bestCase: `+$${bestCaseProfit.toFixed(0)} profit (${scalingModel.bestCase.toFixed(1)}x ROAS)`,
-            expected: `+$${expectedProfit.toFixed(0)} profit (${scalingModel.adjustedRoas.toFixed(1)}x ROAS)`,
-            worstCase: `+$${worstCaseProfit.toFixed(0)} profit (${scalingModel.worstCase.toFixed(1)}x ROAS)`
-          },
-          disclaimer: 'Projections based on industry-standard diminishing returns. Actual results may vary based on audience saturation, competition, and creative fatigue.'
-        });
-      }
-
-      // Optimization recommendations with realistic projections
-      if (bottomPlatform && bottomPlatform.roas < 1.5) {
-        const targetRoas = 1.5;
-        const currentRoasGap = targetRoas - bottomPlatform.roas;
-        const potentialRevenueLift = bottomPlatform.spend * currentRoasGap;
-
-        recommendations.push({
-          priority: 'medium',
-          category: 'Performance Optimization',
-          action: `Optimize ${bottomPlatform.name} targeting and creative (current ROAS: ${bottomPlatform.roas.toFixed(1)}x)`,
-          expectedImpact: `+$${potentialRevenueLift.toFixed(0)} revenue at 1.5x ROAS target`,
-          investmentRequired: 'Creative & targeting resources',
-          timeline: '60 days',
-          confidence: 'medium',
-          assumptions: [
-            'Optimization achieves industry-average 1.5x ROAS',
-            'Testing and iteration improve targeting precision',
-            'Creative refresh reduces ad fatigue'
-          ],
-          scenarios: {
-            bestCase: `+$${(potentialRevenueLift * 1.4).toFixed(0)} revenue (1.7x ROAS)`,
-            expected: `+$${potentialRevenueLift.toFixed(0)} revenue (1.5x ROAS)`,
-            worstCase: `+$${(potentialRevenueLift * 0.6).toFixed(0)} revenue (1.3x ROAS)`
-          },
-          disclaimer: 'Optimization success depends on execution quality and market conditions. Historical improvements vary 20-40%.'
-        });
-      }
-
-      // Diversification recommendations with realistic expectations
-      if (platforms.length === 1) {
-        const testBudget = totalSpend * 0.15; // 15% of current spend for testing
-        const conservativeRoas = roas * 0.7; // Assume 30% lower ROAS on new platform
-        const expectedRevenue = testBudget * conservativeRoas;
-        const expectedProfit = expectedRevenue - testBudget;
-
-        recommendations.push({
-          priority: 'medium',
-          category: 'Risk Mitigation',
-          action: 'Test additional platforms to reduce single-platform dependency',
-          expectedImpact: `${expectedProfit > 0 ? `+$${expectedProfit.toFixed(0)} profit` : 'Reduced platform risk'} from diversification`,
-          investmentRequired: `$${testBudget.toFixed(0)} testing budget`,
-          timeline: '90 days',
-          confidence: 'low',
-          assumptions: [
-            'New platform achieves 70% of current ROAS initially',
-            'Learning curve spans 60-90 days',
-            'Risk reduction outweighs potential lower initial returns'
-          ],
-          scenarios: {
-            bestCase: `+$${(testBudget * roas - testBudget).toFixed(0)} profit (matches current ROAS)`,
-            expected: `+$${expectedProfit.toFixed(0)} profit (70% of current ROAS)`,
-            worstCase: `-$${(testBudget * 0.4).toFixed(0)} loss (testing investment only)`
-          },
-          disclaimer: 'Diversification is primarily a risk mitigation strategy. Initial ROI may be lower during testing phase.'
-        });
-      }
+      // Recommendations from helper
+      const recommendations = generateRecommendations(platforms, totalSpend, roas, roi, growthTrajectory);
 
       res.json({
         campaign: {
           id: campaign.id,
           name: campaign.name,
-          objective: campaign.objective || 'Drive conversions and revenue'
+          objective: campaign.objective || 'Drive conversions and revenue',
         },
         metrics: {
-          totalRevenue,
-          totalSpend,
-          totalConversions,
-          totalClicks,
-          totalImpressions,
-          totalEngagements,
-          roi,
-          roas,
-          ctr,
-          cvr,
-          clickThroughCvr,
-          totalCvr,
-          clickThroughConversions,
-          cpc,
-          cpa,
-          // Funnel breakdown (separate advertising from website analytics)
-          advertisingImpressions,
-          websitePageviews,
-          advertisingClicks,
-          websiteClicks
+          totalRevenue, totalSpend, totalConversions, totalClicks, totalImpressions, totalEngagements,
+          roi, roas, ctr, cvr, clickThroughCvr, totalCvr, clickThroughConversions, cpc, cpa,
+          advertisingImpressions, websitePageviews, advertisingClicks, websiteClicks,
         },
         health: {
-          score: Math.round(healthScore),
-          grade,
-          factors: healthFactors,
-          ...(hasHistoricalData && {
-            trajectory: growthTrajectory,
-            trendPercentage
-          })
+          score: healthResult.score,
+          grade: healthResult.grade,
+          factors: healthResult.factors,
+          ...(hasHistoricalData && { trajectory: growthTrajectory, trendPercentage }),
         },
         risk: {
-          level: riskLevel,
-          explanation: riskExplanation,
-          factors: riskFactors
+          level: risk.riskLevel,
+          explanation: risk.riskExplanation,
+          factors: risk.riskFactors,
         },
-        platforms: platformsForDisplay, // UI display - includes all connected platforms
-        platformsWithData: platforms, // Only platforms with actual data (for internal use)
+        platforms: platformsForDisplay,
+        platformsWithData: platforms,
         topPerformer: topPlatform,
         bottomPerformer: bottomPlatform,
         ceoSummary,
         recommendations,
+        kpiProgress,
+        benchmarkComparison,
         dataFreshness: {
           linkedinLastUpdate,
+          metaLastUpdate,
+          ga4LastUpdate,
           customIntegrationLastUpdate,
           warnings: dataFreshnessWarnings,
           overallStatus: dataFreshnessWarnings.length === 0 ? 'current' :
-            dataFreshnessWarnings.some(w => w.severity === 'high') ? 'stale' : 'aging'
+            dataFreshnessWarnings.some((w: any) => w.severity === 'high') ? 'stale' : 'aging',
         },
         metadata: {
           generatedAt: now.toISOString(),
           disclaimer: 'All projections are estimates based on historical performance and industry benchmarks. Actual results will vary based on market conditions, competition, creative execution, and other factors. Recommendations should be validated through controlled testing before full implementation.',
           dataAccuracy: {
             hasLinkedInData,
+            hasMetaData,
+            hasGA4Data,
             hasCustomIntegrationData,
-            platformsExcludedFromRecommendations: platformsForDisplay.filter(p => !platforms.some(pd => pd.name === p.name)).map(p => p.name)
-          }
-        }
+            platformsExcludedFromRecommendations: platformsForDisplay.filter((p: any) => !platforms.some((pd: any) => pd.name === p.name)).map((p: any) => p.name),
+          },
+        },
+        period: periodParam,
       });
 
     } catch (error) {
@@ -21679,6 +21548,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[Custom Integration] Connection error:', error);
       res.status(500).json({ error: error.message || 'Failed to connect custom integration' });
+    }
+  });
+
+  /**
+   * Disconnect (delete) custom integration for a campaign
+   */
+  app.delete("/api/custom-integration/:campaignId", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      console.log(`[Custom Integration] Deleting integration for campaign ${campaignId}`);
+      const success = await storage.deleteCustomIntegration(campaignId);
+      if (success) {
+        res.json({ success: true, message: 'Custom integration disconnected' });
+      } else {
+        res.status(404).json({ error: 'Custom integration not found' });
+      }
+    } catch (error: any) {
+      console.error('[Custom Integration] Delete error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete custom integration' });
     }
   });
 

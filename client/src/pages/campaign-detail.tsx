@@ -5381,12 +5381,19 @@ export default function CampaignDetail() {
       } else if (p === 'Facebook Ads') {
         url = `/api/campaigns/${campaignId}/meta/connection`;
       } else if (p === 'Google Analytics') {
-        const connId = (ga4Connection as any)?.connectionId || (ga4Connection as any)?.id;
+        // ga4Connection.connections is an array — extract the first connection's ID
+        const connId = (ga4Connection as any)?.connections?.[0]?.id
+          || (ga4Connection as any)?.connectionId
+          || (ga4Connection as any)?.id;
         if (connId) {
           url = `/api/ga4-connections/${connId}`;
         } else {
           throw new Error('GA4 connection ID not found');
         }
+      } else if (p === 'Google Sheets') {
+        url = `/api/google-sheets/${campaignId}/connection`;
+      } else if (p === 'Custom Integration') {
+        url = `/api/custom-integration/${campaignId}`;
       } else {
         throw new Error('Disconnect not supported for this platform');
       }
@@ -5399,6 +5406,7 @@ export default function CampaignDetail() {
       // Broad cache invalidation so all tabs update
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
       void queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
       void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports'], exact: false });
@@ -6794,22 +6802,28 @@ export default function CampaignDetail() {
                                 input.onchange = async (e) => {
                                   const file = (e.target as HTMLInputElement).files?.[0];
                                   if (!file) return;
-                                  
+
                                   try {
                                     const formData = new FormData();
                                     formData.append('pdf', file);
-                                    
+
                                     const response = await fetch(`/api/custom-integration/${campaign.id}/upload-pdf`, {
                                       method: 'POST',
                                       body: formData
                                     });
-                                    
+
                                     if (response.ok) {
+                                      toastHook({ title: "PDF Uploaded", description: "Custom integration connected via PDF upload." });
                                       setExpandedPlatform(null);
+                                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
                                       window.location.reload();
+                                    } else {
+                                      const err = await response.json().catch(() => ({}));
+                                      toastHook({ title: "Upload Failed", description: err?.error || "Failed to upload PDF", variant: "destructive" });
                                     }
-                                  } catch (error) {
+                                  } catch (error: any) {
                                     console.error('PDF upload error:', error);
+                                    toastHook({ title: "Upload Failed", description: error?.message || "Failed to upload PDF", variant: "destructive" });
                                   }
                                 };
                                 input.click();
@@ -6823,22 +6837,28 @@ export default function CampaignDetail() {
                                 Upload a PDF report to extract metrics
                               </div>
                             </button>
-                            
+
                             <button
                               onClick={async () => {
                                 try {
                                   const response = await fetch(`/api/custom-integration/${campaign.id}/connect`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ allowedEmailAddresses: [] })
+                                    body: JSON.stringify({ allowedEmailAddresses: [], campaignName: campaign.name })
                                   });
-                                  
+
                                   if (response.ok) {
+                                    toastHook({ title: "Connected", description: "Custom integration connected via email forwarding." });
                                     setExpandedPlatform(null);
+                                    queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
                                     window.location.reload();
+                                  } else {
+                                    const err = await response.json().catch(() => ({}));
+                                    toastHook({ title: "Connection Failed", description: err?.error || "Failed to set up email forwarding", variant: "destructive" });
                                   }
-                                } catch (error) {
+                                } catch (error: any) {
                                   console.error('Email forwarding setup error:', error);
+                                  toastHook({ title: "Connection Failed", description: error?.message || "Failed to set up email forwarding", variant: "destructive" });
                                 }
                               }}
                               className="w-full bg-white dark:bg-slate-800 rounded-lg p-3 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-colors text-left"

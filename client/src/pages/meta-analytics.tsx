@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Users, Video, Activity, Plus, Pencil, Trash2, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Users, Video, Activity, Plus, Pencil, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Filter } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -77,6 +77,10 @@ export default function MetaAnalytics() {
     alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily',
     alertThreshold: '', alertCondition: 'below', emailRecipients: '',
   });
+
+  // Campaign filter state
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [filterBy, setFilterBy] = useState<string>('all');
 
   // Insights state
   const [showDailyFinancialsView, setShowDailyFinancialsView] = useState(false);
@@ -929,13 +933,57 @@ export default function MetaAnalytics() {
 
           {/* All Campaigns - Card Layout */}
           <Card>
-            <CardHeader>
-              <CardTitle>All Campaigns</CardTitle>
-              <CardDescription>Detailed performance metrics for all campaigns</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div>
+                <CardTitle>All Campaigns</CardTitle>
+                <CardDescription>Detailed performance metrics for all campaigns</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[180px] h-8 text-xs">
+                    <ArrowUpDown className="w-3 h-3 mr-1" />
+                    <SelectValue placeholder="Sort by..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">Name (A-Z)</SelectItem>
+                    <SelectItem value="spend">Spend (High→Low)</SelectItem>
+                    <SelectItem value="impressions">Impressions (High→Low)</SelectItem>
+                    <SelectItem value="clicks">Clicks (High→Low)</SelectItem>
+                    <SelectItem value="conversions">Conversions (High→Low)</SelectItem>
+                    <SelectItem value="reach">Reach (High→Low)</SelectItem>
+                    <SelectItem value="ctr">CTR (High→Low)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterBy} onValueChange={setFilterBy}>
+                  <SelectTrigger className="w-[120px] h-8 text-xs">
+                    <Filter className="w-3 h-3 mr-1" />
+                    <SelectValue placeholder="Filter..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="PAUSED">Paused</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {campaigns.map((campaignData: any) => {
+                {campaigns
+                  .filter((c: any) => filterBy === 'all' || c.campaign.status === filterBy)
+                  .sort((a: any, b: any) => {
+                    switch (sortBy) {
+                      case 'name': return a.campaign.name.localeCompare(b.campaign.name);
+                      case 'spend': return (b.totals.spend || 0) - (a.totals.spend || 0);
+                      case 'impressions': return (b.totals.impressions || 0) - (a.totals.impressions || 0);
+                      case 'clicks': return (b.totals.clicks || 0) - (a.totals.clicks || 0);
+                      case 'conversions': return (b.totals.conversions || 0) - (a.totals.conversions || 0);
+                      case 'reach': return (b.totals.reach || 0) - (a.totals.reach || 0);
+                      case 'ctr': return (b.totals.ctr || 0) - (a.totals.ctr || 0);
+                      default: return 0;
+                    }
+                  })
+                  .map((campaignData: any) => {
                   const { campaign, totals } = campaignData;
                   const formatCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                   const formatNum = (v: number) => v.toLocaleString();
@@ -947,9 +995,6 @@ export default function MetaAnalytics() {
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <h4 className="font-semibold text-slate-900 dark:text-white">{campaign.name}</h4>
-                          <Badge variant={campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
-                            {campaign.status}
-                          </Badge>
                           <span className="text-xs text-slate-500">{campaign.objective}</span>
                         </div>
                         <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totals.spend || 0)}</span>

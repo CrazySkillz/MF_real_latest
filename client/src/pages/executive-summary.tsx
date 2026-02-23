@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Calendar, Brain, Activity, Info, FlaskConical } from "lucide-react";
+import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Calendar, Brain, Activity, Info, FlaskConical, ChevronDown } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -10,12 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar } from "recharts";
 import { format, subDays } from "date-fns";
 
 export default function ExecutiveSummary() {
   const { id: campaignId } = useParams();
   const [demoMode, setDemoMode] = useState(false);
+  const [period, setPeriod] = useState<string>("all");
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
@@ -23,10 +25,13 @@ export default function ExecutiveSummary() {
   });
 
   const { data: executiveSummary, isLoading: summaryLoading, error: summaryError } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "executive-summary", demoMode ? "demo" : "live"],
+    queryKey: ["/api/campaigns", campaignId, "executive-summary", demoMode ? "demo" : "live", period],
     enabled: !!campaignId,
     queryFn: async () => {
-      const url = `/api/campaigns/${campaignId}/executive-summary${demoMode ? "?demo=1" : ""}`;
+      const params = new URLSearchParams();
+      if (demoMode) params.set("demo", "1");
+      if (period !== "all") params.set("period", period);
+      const url = `/api/campaigns/${campaignId}/executive-summary${params.toString() ? "?" + params.toString() : ""}`;
       const resp = await fetch(url);
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
@@ -66,7 +71,7 @@ export default function ExecutiveSummary() {
                 {!campaign ? 'Campaign Not Found' : 'Unable to Load Executive Summary'}
               </h1>
               <p className="text-slate-600 dark:text-slate-400">
-                {!campaign ? 'Unable to load campaign data for executive summary.' : 'Please ensure LinkedIn Ads or Custom Integration is connected to this campaign.'}
+                {!campaign ? 'Unable to load campaign data for executive summary.' : 'Please ensure at least one platform (LinkedIn Ads, Meta/Facebook, Google Analytics, or Custom Integration) is connected to this campaign.'}
               </p>
             </div>
           </main>
@@ -152,6 +157,18 @@ export default function ExecutiveSummary() {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
+                <Select value={period} onValueChange={setPeriod}>
+                  <SelectTrigger className="w-[150px] h-8 text-xs">
+                    <Calendar className="w-3 h-3 mr-1" />
+                    <SelectValue placeholder="Time Period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7d">Last 7 Days</SelectItem>
+                    <SelectItem value="30d">Last 30 Days</SelectItem>
+                    <SelectItem value="90d">Last 90 Days</SelectItem>
+                    <SelectItem value="all">All Time</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button
                   variant={demoMode ? "default" : "outline"}
                   size="sm"
@@ -645,6 +662,100 @@ export default function ExecutiveSummary() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* KPI Progress */}
+              {(executiveSummary as any).kpiProgress && (executiveSummary as any).kpiProgress.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Target className="w-5 h-5" />
+                      <span>KPI Progress</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {(executiveSummary as any).kpiProgress.map((kpi: any, index: number) => {
+                        const pct = kpi.pctComplete || (kpi.target > 0 ? Math.min((kpi.current / kpi.target) * 100, 100) : 0);
+                        const statusColor = kpi.status === 'on_track' ? 'text-green-600 dark:text-green-400' :
+                          kpi.status === 'at_risk' ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400';
+                        const barColor = kpi.status === 'on_track' ? '[&>div]:bg-green-500' :
+                          kpi.status === 'at_risk' ? '[&>div]:bg-yellow-500' : '[&>div]:bg-red-500';
+                        return (
+                          <div key={index} className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm font-medium text-slate-900 dark:text-white">{kpi.name}</span>
+                                <Badge variant="outline" className={`text-xs ${
+                                  kpi.priority === 'high' || kpi.priority === 'critical' ? 'border-red-300 text-red-600' :
+                                  kpi.priority === 'medium' ? 'border-yellow-300 text-yellow-600' :
+                                  'border-slate-300 text-slate-600'
+                                }`}>
+                                  {kpi.priority}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">
+                                  {kpi.unit === '$' ? `$${kpi.current.toLocaleString()}` : kpi.unit === '%' ? `${kpi.current.toFixed(1)}%` : `${kpi.current}${kpi.unit}`}
+                                  {' / '}
+                                  {kpi.unit === '$' ? `$${kpi.target.toLocaleString()}` : kpi.unit === '%' ? `${kpi.target}%` : `${kpi.target}${kpi.unit}`}
+                                </span>
+                                <span className={`text-xs font-medium ${statusColor} capitalize`}>
+                                  {kpi.status.replace('_', ' ')}
+                                </span>
+                              </div>
+                            </div>
+                            <Progress value={pct} className={`h-2 ${barColor}`} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Benchmark Comparison */}
+              {(executiveSummary as any).benchmarkComparison && (executiveSummary as any).benchmarkComparison.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Award className="w-5 h-5" />
+                      <span>Benchmark Comparison</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {(executiveSummary as any).benchmarkComparison.map((bm: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-2 h-8 rounded-full ${bm.status === 'above' ? 'bg-green-500' : 'bg-red-500'}`} />
+                            <div>
+                              <div className="text-sm font-medium text-slate-900 dark:text-white">{bm.metric}</div>
+                              {bm.category && <div className="text-xs text-slate-500">{bm.category}</div>}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-6">
+                            <div className="text-right">
+                              <div className="text-xs text-slate-500">Yours</div>
+                              <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                {bm.unit === '$' ? `$${bm.yours.toFixed(2)}` : bm.unit === '%' ? `${bm.yours.toFixed(2)}%` : `${bm.yours.toFixed(2)}${bm.unit}`}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-slate-500">Benchmark</div>
+                              <div className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+                                {bm.unit === '$' ? `$${bm.benchmark.toFixed(2)}` : bm.unit === '%' ? `${bm.benchmark.toFixed(2)}%` : `${bm.benchmark.toFixed(2)}${bm.unit}`}
+                              </div>
+                            </div>
+                            <Badge className={bm.status === 'above' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'}>
+                              {bm.delta}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Risk Assessment */}
               <Card>

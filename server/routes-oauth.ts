@@ -6372,13 +6372,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let accessToken = connection.accessToken;
 
-      // Check if token needs refresh (if expired or expiring soon)
+      // Check if token needs refresh (if expired or expiring within 10 minutes)
       const shouldRefreshToken = (conn: any) => {
-        if (!conn.expiresAt && !conn.tokenExpiresAt) return false;
-        const expiresAt = conn.expiresAt ? new Date(conn.expiresAt).getTime() : new Date(conn.tokenExpiresAt).getTime();
-        const now = Date.now();
-        const fiveMinutes = 5 * 60 * 1000;
-        return (expiresAt - now) < fiveMinutes;
+        if (!conn.expiresAt) return false;
+        const expiresAt = new Date(conn.expiresAt).getTime();
+        const tenMinutes = 10 * 60 * 1000;
+        return (Date.now() + tenMinutes) >= expiresAt;
       };
 
       // Proactively refresh token if needed
@@ -12360,6 +12359,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error('REFRESH_TOKEN_EXPIRED');
       }
 
+      // Retry once for transient errors (429 rate limited, 503 service unavailable, 500 server error)
+      if ([429, 500, 503].includes(refreshResponse.status)) {
+        const retryDelay = refreshResponse.status === 429 ? 2000 : 1000;
+        devLog(`🔄 Token refresh got ${refreshResponse.status}, retrying after ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+
+        const retryResponse = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: connection.refreshToken,
+            client_id: connection.clientId,
+            client_secret: connection.clientSecret
+          })
+        }, 20000);
+
+        if (retryResponse.ok) {
+          const retryTokens = await retryResponse.json();
+          const expiresAt = new Date(Date.now() + ((retryTokens.expires_in || 3600) * 1000));
+          const updateData: any = { accessToken: retryTokens.access_token, expiresAt };
+          if (retryTokens.refresh_token) updateData.refreshToken = retryTokens.refresh_token;
+          await storage.updateGoogleSheetsConnection(String(connection.id), updateData);
+          devLog('✅ Token refresh succeeded on retry');
+          return retryTokens.access_token;
+        }
+        console.error('Token refresh retry also failed:', retryResponse.status);
+      }
+
       throw new Error(`Token refresh failed: ${errorText}`);
     }
 
@@ -12475,15 +12503,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { accessToken, connectionId: String(conn.id) };
   }
 
-  // Helper function to check if token needs proactive refresh (within 5 minutes of expiry)
+  // Helper function to check if token needs proactive refresh (within 10 minutes of expiry)
   function shouldRefreshToken(connection: any): boolean {
     if (!connection.expiresAt) return false;
 
     const expiresAt = new Date(connection.expiresAt);
     const now = new Date();
-    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+    const tenMinutesFromNow = new Date(now.getTime() + 10 * 60 * 1000);
 
-    return expiresAt <= fiveMinutesFromNow;
+    return expiresAt <= tenMinutesFromNow;
   }
 
   // Helper function to map MetricMind platform values to Google Sheets platform keywords
@@ -12770,7 +12798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Get spreadsheet data for a campaign
-  app.get("/api/campaigns/:id/google-sheets-data", async (req, res) => {
+  app.get("/api/campaigns/:id/google-sheets-data", googleSheetsRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     const campaignId = req.params.id;
     const { spreadsheetId, view } = req.query; // Optional: fetch from specific spreadsheet or combined view
     try {
@@ -12812,6 +12840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           allRows: [],
           allHeaders: new Set<string>(),
           sheetBreakdown: [] as any[],
+          failedSheets: [] as Array<{ spreadsheetId: string; spreadsheetName: string; sheetName: string; reason: string }>,
           totalRows: 0,
           totalFilteredRows: 0
         };
@@ -12831,12 +12860,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 await storage.updateGoogleSheetsConnection(conn.id, { accessToken });
               } catch (refreshError) {
                 console.warn(`[Combined View] Failed to refresh token for ${conn.spreadsheetId}:`, refreshError);
-                continue; // Skip this connection if token refresh fails
+                aggregatedData.failedSheets.push({ spreadsheetId: conn.spreadsheetId, spreadsheetName: conn.spreadsheetName || 'Unknown', sheetName: conn.sheetName || '', reason: 'Token refresh failed' });
+                continue;
               }
             }
 
             if (!accessToken) {
               console.warn(`[Combined View] No access token for ${conn.spreadsheetId}`);
+              aggregatedData.failedSheets.push({ spreadsheetId: conn.spreadsheetId, spreadsheetName: conn.spreadsheetName || 'Unknown', sheetName: conn.sheetName || '', reason: 'No access token' });
               continue;
             }
 
@@ -12863,7 +12894,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             if (!sheetResponse.ok) {
-              console.warn(`[Combined View] Failed to fetch data from ${conn.spreadsheetId}`);
+              console.warn(`[Combined View] Failed to fetch data from ${conn.spreadsheetId} (status: ${sheetResponse.status})`);
+              aggregatedData.failedSheets.push({ spreadsheetId: conn.spreadsheetId, spreadsheetName: conn.spreadsheetName || 'Unknown', sheetName: conn.sheetName || '', reason: `API error ${sheetResponse.status}` });
               continue;
             }
 
@@ -12934,6 +12966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           } catch (error) {
             console.error(`[Combined View] Error processing connection ${conn.id}:`, error);
+            aggregatedData.failedSheets.push({ spreadsheetId: conn.spreadsheetId, spreadsheetName: conn.spreadsheetName || 'Unknown', sheetName: conn.sheetName || '', reason: error instanceof Error ? error.message : 'Unknown error' });
           }
         }
 
@@ -12962,7 +12995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const cleanValue = cellStr.replace(/[$,]/g, '').trim();
             const numValue = parseFloat(cleanValue);
 
-            if (!isNaN(numValue)) {
+            if (!isNaN(numValue) && isFinite(numValue) && Math.abs(numValue) < 1e12) {
               total += numValue;
               count++;
               if (cleanValue.includes('.')) hasDecimals = true;
@@ -13012,6 +13045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           calculatedConversionValues: [], // Would need to recalculate from aggregated data
           sheetBreakdown: aggregatedData.sheetBreakdown,
+          failedSheets: aggregatedData.failedSheets.length > 0 ? aggregatedData.failedSheets : undefined,
           lastUpdated: new Date().toISOString()
         });
       }
@@ -13116,17 +13150,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let accessToken = connection.accessToken;
 
-      // Check if token needs refresh (if expired or expiring soon)
-      const shouldRefreshToken = (conn: any) => {
-        if (!conn.expiresAt && !conn.tokenExpiresAt) return false;
-        const expiresAt = conn.expiresAt ? new Date(conn.expiresAt).getTime() : new Date(conn.tokenExpiresAt).getTime();
-        const now = Date.now();
-        const fiveMinutes = 5 * 60 * 1000;
-        return (expiresAt - now) < fiveMinutes;
+      // Check if token needs refresh (if expired or expiring within 10 minutes)
+      const shouldRefreshTokenLocal = (conn: any) => {
+        if (!conn.expiresAt) return false;
+        const expiresAt = new Date(conn.expiresAt).getTime();
+        const tenMinutes = 10 * 60 * 1000;
+        return (Date.now() + tenMinutes) >= expiresAt;
       };
 
       // Proactively refresh token if it's close to expiring
-      if (shouldRefreshToken(connection) && connection.refreshToken) {
+      if (shouldRefreshTokenLocal(connection) && connection.refreshToken) {
         devLog('🔄 Token expires soon, proactively refreshing...');
         try {
           accessToken = await refreshGoogleSheetsToken(connection);
@@ -13246,7 +13279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           devLog('🔄 Refresh token may have expired, connection needs re-authorization');
 
           // Clear the invalid connection so user can re-authorize
-          await storage.deleteGoogleSheetsConnection(campaignId);
+          await storage.deleteGoogleSheetsConnection(connection.id);
 
           return res.status(401).json({
             error: 'REFRESH_TOKEN_EXPIRED',
@@ -13277,8 +13310,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (sheetResponse.status === 401) {
           devLog('🔄 Token expired without refresh capability, clearing connection');
 
-          // Clear the invalid connection so user can re-authorize  
-          await storage.deleteGoogleSheetsConnection(campaignId);
+          // Clear the invalid connection so user can re-authorize
+          await storage.deleteGoogleSheetsConnection(connection.id);
 
           return res.status(401).json({
             success: false,
@@ -13300,13 +13333,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Handle 404 (Not Found) - spreadsheet might be deleted or ID is wrong
+        // Handle 404 (Not Found) - spreadsheet is deleted or ID is wrong
         if (sheetResponse.status === 404) {
-          console.error('[Google Sheets Data] Spreadsheet not found');
+          console.error('[Google Sheets Data] Spreadsheet not found — cleaning up stale connection');
+          // Delete the stale connection so it doesn't keep failing
+          try {
+            await storage.deleteGoogleSheetsConnection(connection.id);
+            devLog(`[Google Sheets Data] Deleted stale connection ${connection.id} for missing spreadsheet`);
+          } catch (deleteError) {
+            console.error('[Google Sheets Data] Failed to delete stale connection:', deleteError);
+          }
           return res.status(404).json({
             success: false,
             error: 'SPREADSHEET_NOT_FOUND',
-            message: 'Spreadsheet not found. The spreadsheet may have been deleted or the ID is incorrect. Please reconnect and select a valid spreadsheet.',
+            message: 'Spreadsheet not found. The spreadsheet may have been deleted. The connection has been removed — please reconnect with a valid spreadsheet.',
             requiresReauthorization: false,
             missingSpreadsheet: true
           });
@@ -13333,7 +13373,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const rows = sheetData.values || [];
-      devLog(`[Google Sheets Data] Received ${rows.length} rows from Google Sheets`);
+      const rowLimitHit = rows.length >= 1000;
+      devLog(`[Google Sheets Data] Received ${rows.length} rows from Google Sheets${rowLimitHit ? ' (limit reached — sheet may have more data)' : ''}`);
 
       // Get campaign name for filtering summary data
       const campaign = await storage.getCampaign(campaignId);
@@ -13472,7 +13513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const cleanValue = cellStr.replace(/[$,]/g, '').trim();
             const numValue = parseFloat(cleanValue);
 
-            if (!isNaN(numValue)) {
+            if (!isNaN(numValue) && isFinite(numValue) && Math.abs(numValue) < 1e12) {
               samples.push(numValue);
               hasNumericData = true;
               if (cleanValue.includes('.')) hasDecimals = true;
@@ -14153,6 +14194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         insights: insights,
         matchingInfo: matchingInfo, // Add matching information for UX feedback
         calculatedConversionValues: calculatedConversionValues, // Add calculated conversion values per platform
+        rowLimitWarning: rowLimitHit ? 'Sheet contains 1,000+ rows. Only the first 1,000 rows are displayed. Summary metrics may be incomplete.' : undefined,
         lastUpdated: new Date().toISOString()
       });
 

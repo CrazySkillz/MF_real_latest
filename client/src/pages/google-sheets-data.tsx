@@ -33,6 +33,8 @@ interface GoogleSheetsData {
   lastUpdated: string;
   headers: string[];
   data: any[][];
+  rowLimitWarning?: string;
+  failedSheets?: Array<{ spreadsheetId: string; spreadsheetName: string; sheetName: string; reason: string }>;
   summary: {
     metrics?: Record<string, number>;
     detectedColumns?: Array<{
@@ -410,7 +412,10 @@ export default function GoogleSheetsData() {
   // Determine if we're in a loading state (initial load or refetch)
   // Show loading if: actively loading, fetching without data, or query is pending (hasn't started yet)
   // Priority: Always show loading if we don't have data yet and there's no error (prevents "No Data Available" flash)
-  const isDataLoading = sheetsLoading || sheetsFetching || (sheetsStatus === 'pending' && !sheetsError) || (!sheetsData && !sheetsError && !!campaignId && sheetsStatus !== 'error');
+  // Only show full skeleton when there's genuinely no data to display.
+  // When switching sheets, placeholderData keeps previous data visible —
+  // the subtle overlay (sheetsFetching check in JSX) handles the transition.
+  const isDataLoading = !sheetsData && !sheetsError && (sheetsLoading || sheetsFetching || sheetsStatus === 'pending');
 
 
   // Debug data structure
@@ -651,7 +656,7 @@ export default function GoogleSheetsData() {
                     </Badge>
                     {sheetsData.filteredRows !== undefined && sheetsData.totalRows !== undefined && (
                       <span className="text-xs">
-                        â€¢ {sheetsData.filteredRows.toLocaleString()} rows used for summary
+                        • {sheetsData.filteredRows.toLocaleString()} rows used for summary
                         {sheetsData.filteredRows < sheetsData.totalRows && (
                           <span className="text-slate-500"> (filtered from {sheetsData.totalRows.toLocaleString()} total)</span>
                         )}
@@ -742,6 +747,27 @@ export default function GoogleSheetsData() {
               )}
               <div className="transition-opacity duration-300 ease-in-out" style={{ opacity: sheetsFetching ? 0.7 : 1 }}>
                 <Tabs defaultValue="data" className="space-y-6">
+                {/* Warnings */}
+                {sheetsData.rowLimitWarning && (
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-800 dark:text-amber-200">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    {sheetsData.rowLimitWarning}
+                  </div>
+                )}
+                {sheetsData.failedSheets && sheetsData.failedSheets.length > 0 && (
+                  <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-800 dark:text-red-200">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium">{sheetsData.failedSheets.length} sheet(s) failed to load:</span>
+                      <ul className="mt-1 list-disc list-inside">
+                        {sheetsData.failedSheets.map((f, i) => (
+                          <li key={i}>{f.spreadsheetName}{f.sheetName ? ` (${f.sheetName})` : ''} — {f.reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
                 <TabsList>
                   <TabsTrigger value="data">Raw Data</TabsTrigger>
                   <TabsTrigger value="connections">Connection Details</TabsTrigger>
@@ -755,7 +781,7 @@ export default function GoogleSheetsData() {
                         Spreadsheet Data
                       </CardTitle>
                       <CardDescription>
-                        {sheetsData.totalRows} rows â€¢ Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
+                        {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

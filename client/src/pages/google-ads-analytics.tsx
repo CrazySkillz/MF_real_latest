@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { useState, useMemo } from "react";
 import Navigation from "@/components/layout/navigation";
@@ -7,9 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Video, Search } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Video, Search, RefreshCw, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
@@ -53,6 +54,8 @@ export default function GoogleAdsAnalytics() {
   const campaignId = params?.id;
   const [trendMetric, setTrendMetric] = useState("spend");
   const [dateRange, setDateRange] = useState("30");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch connection
   const { data: connection } = useQuery({
@@ -63,6 +66,22 @@ export default function GoogleAdsAnalytics() {
       return res.json();
     },
     enabled: !!campaignId,
+  });
+
+  // Refresh data mutation
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/google-ads/${campaignId}/refresh`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to refresh');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/google-ads", campaignId] });
+      toast({ title: 'Data Refreshed', description: 'Google Ads metrics updated.' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Refresh Failed', description: err.message, variant: 'destructive' });
+    },
   });
 
   // Fetch daily metrics
@@ -152,12 +171,21 @@ export default function GoogleAdsAnalytics() {
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Google Ads Analytics</h1>
             </div>
             {connection?.connected && (
-              <Badge className="bg-green-600 text-white ml-2">
+              <Badge className="bg-blue-600 text-white ml-2">
                 {connection.customerName || connection.customerId}
                 {connection.method === "test_mode" && " (Test)"}
               </Badge>
             )}
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refreshMutation.mutate()}
+                disabled={refreshMutation.isPending}
+              >
+                {refreshMutation.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                Refresh Data
+              </Button>
               <Select value={dateRange} onValueChange={setDateRange}>
                 <SelectTrigger className="w-36">
                   <SelectValue />

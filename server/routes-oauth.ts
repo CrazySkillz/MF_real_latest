@@ -16474,6 +16474,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`[Google Ads] Test connection created for campaign ${campaignId}`);
+
+      // Generate initial mock data so analytics page has data immediately
+      try {
+        const { refreshGoogleAdsForCampaign } = await import('./google-ads-scheduler');
+        // Generate multiple days of data for a realistic initial view
+        for (let i = 0; i < 30; i++) {
+          await refreshGoogleAdsForCampaign(campaignId, { method: 'test_mode' }, { advanceTestDay: true });
+        }
+        console.log(`[Google Ads] Generated initial mock data for campaign ${campaignId}`);
+      } catch (mockErr) {
+        console.warn('[Google Ads] Failed to generate initial mock data:', mockErr);
+      }
+
       res.json({ success: true, message: 'Google Ads connected in test mode' });
     } catch (error: any) {
       console.error('[Google Ads] Test connection error:', error);

@@ -5229,13 +5229,13 @@ export default function CampaignDetail() {
     },
     {
       platform: "Google Ads",
-      connected: connectedPlatformNames.includes("Google Ads"), 
-      impressions: connectedPlatformNames.includes("Google Ads") ? Math.round(campaignImpressions * platformDistribution["Google Ads"].impressions) : 0,
-      clicks: connectedPlatformNames.includes("Google Ads") ? Math.round(campaignClicks * platformDistribution["Google Ads"].clicks) : 0,
-      conversions: connectedPlatformNames.includes("Google Ads") ? Math.round(estimatedConversions * platformDistribution["Google Ads"].conversions) : 0,
-      spend: connectedPlatformNames.includes("Google Ads") ? (campaignSpend * platformDistribution["Google Ads"].spend).toFixed(2) : "0.00",
-      ctr: connectedPlatformNames.includes("Google Ads") ? "3.24%" : "0.00%",
-      cpc: connectedPlatformNames.includes("Google Ads") ? "$0.42" : "$0.00",
+      connected: platformStatusMap.get("google-ads")?.connected === true,
+      impressions: platformStatusMap.get("google-ads")?.connected ? Math.round(campaignImpressions * platformDistribution["Google Ads"].impressions) : 0,
+      clicks: platformStatusMap.get("google-ads")?.connected ? Math.round(campaignClicks * platformDistribution["Google Ads"].clicks) : 0,
+      conversions: platformStatusMap.get("google-ads")?.connected ? Math.round(estimatedConversions * platformDistribution["Google Ads"].conversions) : 0,
+      spend: platformStatusMap.get("google-ads")?.connected ? (campaignSpend * platformDistribution["Google Ads"].spend).toFixed(2) : "0.00",
+      ctr: platformStatusMap.get("google-ads")?.connected ? "3.24%" : "0.00%",
+      cpc: platformStatusMap.get("google-ads")?.connected ? "$0.42" : "$0.00",
       analyticsPath: platformStatusMap.get("google-ads")?.analyticsPath || `/campaigns/${campaign?.id}/google-ads-analytics`
     },
     {
@@ -5392,6 +5392,8 @@ export default function CampaignDetail() {
         } else {
           throw new Error('GA4 connection ID not found');
         }
+      } else if (p === 'Google Ads') {
+        url = `/api/google-ads/${campaignId}/connection`;
       } else if (p === 'Google Sheets') {
         url = `/api/google-sheets/${campaignId}/connection`;
       } else if (p === 'Custom Integration') {
@@ -5409,6 +5411,7 @@ export default function CampaignDetail() {
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
       void queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
       void queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/google-ads', campaignId, 'connection'] });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
       void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports'], exact: false });

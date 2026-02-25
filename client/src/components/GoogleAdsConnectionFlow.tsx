@@ -163,7 +163,10 @@ export function GoogleAdsConnectionFlow({
             customerName: selected.descriptiveName,
           }),
         });
-        if (!res.ok) throw new Error('Failed to connect test account');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to connect test account');
+        }
         return res.json();
       }
 
@@ -179,7 +182,10 @@ export function GoogleAdsConnectionFlow({
           managerAccountId: selected.manager ? selected.id : undefined,
         }),
       });
-      if (!res.ok) throw new Error('Failed to connect account');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to connect account');
+      }
       return res.json();
     },
     onSuccess: () => {

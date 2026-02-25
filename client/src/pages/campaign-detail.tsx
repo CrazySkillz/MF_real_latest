@@ -5235,7 +5235,8 @@ export default function CampaignDetail() {
       conversions: connectedPlatformNames.includes("Google Ads") ? Math.round(estimatedConversions * platformDistribution["Google Ads"].conversions) : 0,
       spend: connectedPlatformNames.includes("Google Ads") ? (campaignSpend * platformDistribution["Google Ads"].spend).toFixed(2) : "0.00",
       ctr: connectedPlatformNames.includes("Google Ads") ? "3.24%" : "0.00%",
-      cpc: connectedPlatformNames.includes("Google Ads") ? "$0.42" : "$0.00"
+      cpc: connectedPlatformNames.includes("Google Ads") ? "$0.42" : "$0.00",
+      analyticsPath: platformStatusMap.get("google-ads")?.analyticsPath || `/campaigns/${campaign?.id}/google-ads-analytics`
     },
     {
       platform: "TikTok Ads",

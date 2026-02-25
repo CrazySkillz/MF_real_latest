@@ -8116,12 +8116,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         linkedInConnection,
         metaConnection,
         customIntegration,
+        googleAdsConnection,
       ] = await Promise.all([
         storage.getGA4Connections(campaignId),
         storage.getGoogleSheetsConnections(campaignId),
         storage.getLinkedInConnection(campaignId),
         storage.getMetaConnection(campaignId),
         storage.getCustomIntegration(campaignId),
+        storage.getGoogleAdsConnection(campaignId).catch(() => undefined),
       ]);
 
       // Get primary Google Sheets connection for backward compatibility
@@ -8202,6 +8204,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : null,
           lastConnectedAt: metaConnection?.connectedAt,
           conversionValue: metaConversionValue,
+        },
+        {
+          id: "google-ads",
+          name: "Google Ads",
+          connected: !!googleAdsConnection,
+          analyticsPath: googleAdsConnection
+            ? `/campaigns/${campaignId}/google-ads-analytics`
+            : null,
+          lastConnectedAt: googleAdsConnection?.connectedAt,
+          method: googleAdsConnection?.method,
         },
         {
           id: "custom-integration",

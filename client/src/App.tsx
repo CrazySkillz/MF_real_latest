@@ -26,6 +26,7 @@ import GA4Metrics from "@/pages/ga4-metrics";
 import GoogleSheetsData from "@/pages/google-sheets-data";
 import LinkedInAnalytics from "@/pages/linkedin-analytics";
 import MetaAnalytics from "@/pages/meta-analytics";
+import GoogleAdsAnalytics from "@/pages/google-ads-analytics";
 import CustomIntegrationAnalytics from "@/pages/custom-integration-analytics";
 import KPIs from "@/pages/kpis";
 import PlatformKPIs from "@/pages/platform-kpis";
@@ -118,6 +119,7 @@ function ProtectedRouter() {
           <Route path="/campaigns/:id/google-sheets-data" component={GoogleSheetsData} />
           <Route path="/campaigns/:id/linkedin-analytics" component={LinkedInAnalytics} />
           <Route path="/campaigns/:id/meta-analytics" component={MetaAnalytics} />
+          <Route path="/campaigns/:id/google-ads-analytics" component={GoogleAdsAnalytics} />
           <Route path="/campaigns/:id/custom-integration-analytics" component={CustomIntegrationAnalytics} />
           <Route path="/integrations/:id/analytics" component={CustomIntegrationAnalytics} />
           <Route path="/campaigns/:id/kpis" component={KPIs} />

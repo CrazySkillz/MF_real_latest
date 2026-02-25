@@ -12543,6 +12543,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return keywords.some(keyword => valueLower.includes(keyword));
   }
 
+  // Helper: extract platform keywords from a Google Sheets connection's explicit platforms field
+  function getConnectionPlatformKeywords(connection: { platforms?: string | null }): string[] {
+    if (!connection.platforms) return [];
+    try {
+      const platforms: string[] = JSON.parse(connection.platforms);
+      if (!Array.isArray(platforms)) return [];
+      const keywords: string[] = [];
+      for (const p of platforms) {
+        keywords.push(...getPlatformKeywords(p));
+      }
+      return keywords;
+    } catch {
+      return [];
+    }
+  }
+
   // Helper function to generate intelligent insights from spreadsheet data
   function generateInsights(
     rows: any[][],
@@ -12849,19 +12865,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const campaignName = campaign?.name || '';
         const campaignPlatform = campaign?.platform || null;
 
-        // Build keywords from ALL connected platforms (not just the primary)
+        // Build keywords from user-selected platforms on connections first, else auto-detect from APIs
         const combinedPlatformKeywords: string[] = [];
-        try {
-          const [linkedInConn, metaConn, ga4Conns] = await Promise.all([
-            storage.getLinkedInConnection(campaignId),
-            storage.getMetaConnection(campaignId),
-            storage.getGA4Connections(campaignId),
-          ]);
-          if (linkedInConn) combinedPlatformKeywords.push(...getPlatformKeywords('linkedin'));
-          if (metaConn) combinedPlatformKeywords.push(...getPlatformKeywords('facebook_ads'));
-          if (ga4Conns.length > 0) combinedPlatformKeywords.push(...getPlatformKeywords('google_ads'));
-        } catch {
-          // Fallback to campaign's primary platform
+        const connectionPlatforms = mappedConnections.flatMap(conn => getConnectionPlatformKeywords(conn as any));
+        if (connectionPlatforms.length > 0) {
+          combinedPlatformKeywords.push(...[...new Set(connectionPlatforms)]);
+        } else {
+          try {
+            const [linkedInConn, metaConn, ga4Conns, googleAdsConn] = await Promise.all([
+              storage.getLinkedInConnection(campaignId),
+              storage.getMetaConnection(campaignId),
+              storage.getGA4Connections(campaignId),
+              storage.getGoogleAdsConnection(campaignId),
+            ]);
+            if (linkedInConn) combinedPlatformKeywords.push(...getPlatformKeywords('linkedin'));
+            if (metaConn) combinedPlatformKeywords.push(...getPlatformKeywords('facebook_ads'));
+            if (ga4Conns.length > 0) combinedPlatformKeywords.push(...getPlatformKeywords('google_ads'));
+            if (googleAdsConn) combinedPlatformKeywords.push(...getPlatformKeywords('google_ads'));
+          } catch {
+            // Fallback to campaign's primary platform
+          }
         }
         if (combinedPlatformKeywords.length === 0 && campaignPlatform) {
           combinedPlatformKeywords.push(...getPlatformKeywords(campaignPlatform));
@@ -13652,7 +13675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get ALL platform connections for this campaign to calculate conversion value for each
           const linkedInConnection = await storage.getLinkedInConnection(campaignId).catch(() => null);
           const metaConnection = await storage.getMetaConnection(campaignId).catch(() => null);
-          // TODO: Add other platform connections when implemented (Google Ads, Twitter, etc.)
+          const googleAdsConnection = await storage.getGoogleAdsConnection(campaignId).catch(() => null);
 
           // Determine which platforms are connected
           const connectedPlatforms: Array<{ platform: string, connection: any, keywords: string[] }> = [];
@@ -13668,6 +13691,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               platform: 'facebook_ads',
               connection: metaConnection,
               keywords: getPlatformKeywords('facebook_ads')
+            });
+          }
+          if (googleAdsConnection) {
+            connectedPlatforms.push({
+              platform: 'google_ads',
+              connection: googleAdsConnection,
+              keywords: getPlatformKeywords('google_ads')
             });
           }
 
@@ -16203,6 +16233,307 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[Meta KPIs] Delete error:', error);
       res.status(500).json({ error: error.message || 'Failed to delete Meta KPI' });
+    }
+  });
+
+  // ====================== GOOGLE ADS INTEGRATION ======================
+
+  const GOOGLE_ADS_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+
+  const signGoogleAdsOAuthState = (campaignId: string): string => {
+    const secret = process.env.GOOGLE_ADS_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || "dev-google-ads-state-secret";
+    const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex") };
+    const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+    const sig = createHmac("sha256", secret).update(payloadB64).digest();
+    return `${payloadB64}.${Buffer.from(sig).toString("base64url")}`;
+  };
+
+  const verifyGoogleAdsOAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
+    const secret = process.env.GOOGLE_ADS_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || "dev-google-ads-state-secret";
+    const state = String(stateRaw || "").trim();
+    const parts = state.split(".");
+    if (parts.length !== 2) return { ok: false, error: "Invalid state" };
+    const [payloadB64, sigB64] = parts;
+    if (!payloadB64 || !sigB64) return { ok: false, error: "Invalid state" };
+    const expectedSig = createHmac("sha256", secret).update(payloadB64).digest();
+    const providedSig = Buffer.from(sigB64, "base64url");
+    if (providedSig.length !== expectedSig.length || !timingSafeEqual(providedSig, expectedSig)) {
+      return { ok: false, error: "Tampered state" };
+    }
+    let payload: any;
+    try { payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")); } catch { return { ok: false, error: "Invalid state" }; }
+    if (!payload.c || !payload.t) return { ok: false, error: "Invalid state" };
+    if (Date.now() - Number(payload.t) > GOOGLE_ADS_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
+    return { ok: true, campaignId: payload.c };
+  };
+
+  /**
+   * Initiate Google Ads OAuth flow
+   */
+  app.post("/api/auth/google-ads/connect", oauthRateLimiter, async (req, res) => {
+    try {
+      const { campaignId } = req.body;
+      if (!campaignId) return res.status(400).json({ success: false, message: "Campaign ID is required" });
+
+      const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
+      const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+
+      if (!clientId || !clientSecret) {
+        return res.status(500).json({
+          message: "Google Ads OAuth not configured. Set GOOGLE_ADS_CLIENT_ID and GOOGLE_ADS_CLIENT_SECRET.",
+          setupRequired: true,
+        });
+      }
+
+      const rawBaseUrl = process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/google-ads/callback`;
+
+      const state = signGoogleAdsOAuthState(String(campaignId));
+
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `response_type=code&` +
+        `scope=${encodeURIComponent('https://www.googleapis.com/auth/adwords')}&` +
+        `access_type=offline&` +
+        `prompt=consent&` +
+        `state=${encodeURIComponent(state)}`;
+
+      console.log(`[Google Ads OAuth] Flow initiated for campaign ${campaignId}`);
+      res.json({ authUrl, message: "Google Ads OAuth flow initiated" });
+    } catch (error: any) {
+      console.error('[Google Ads OAuth] Initiation error:', error);
+      res.status(500).json({ success: false, message: "Failed to initiate authentication" });
+    }
+  });
+
+  /**
+   * Handle Google Ads OAuth callback
+   */
+  app.get("/api/auth/google-ads/callback", oauthRateLimiter, async (req, res) => {
+    try {
+      const { code, state, error: authError } = req.query;
+
+      if (authError) {
+        console.error(`[Google Ads OAuth] Error: ${authError}`);
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+          <h2>Authentication Error</h2><p>${authError}</p>
+          <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'${authError}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+        </body></html>`);
+      }
+
+      if (!code || !state) {
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+          <h2>Authentication Error</h2><p>Missing authorization code or state.</p>
+          <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'Missing parameters'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+        </body></html>`);
+      }
+
+      const verified = verifyGoogleAdsOAuthState(state);
+      if (!verified.ok) {
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+          <h2>Authentication Error</h2><p>${verified.error}</p>
+          <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'${verified.error}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+        </body></html>`);
+      }
+
+      const campaignId = verified.campaignId;
+      const clientId = process.env.GOOGLE_ADS_CLIENT_ID!;
+      const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET!;
+      const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '';
+
+      const rawBaseUrl = process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/google-ads/callback`;
+
+      // Exchange code for tokens
+      const { GoogleAdsClient } = await import('./googleAdsClient');
+      const tokens = await GoogleAdsClient.exchangeCodeForToken(code as string, clientId, clientSecret, redirectUri);
+
+      console.log(`[Google Ads OAuth] Token exchange successful for campaign ${campaignId}`);
+
+      // List accessible customer accounts
+      let customers: any[] = [];
+      try {
+        const tempClient = new GoogleAdsClient({
+          accessToken: tokens.access_token,
+          developerToken,
+          customerId: '0', // placeholder
+        });
+        customers = await tempClient.getAccessibleCustomers();
+      } catch (e: any) {
+        console.warn('[Google Ads OAuth] Could not list customers:', e.message);
+      }
+
+      // Send results back to popup
+      const tokenData = JSON.stringify({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token || '',
+        expiresIn: tokens.expires_in || 3600,
+      });
+      const customersJson = JSON.stringify(customers);
+
+      res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+        <h2>Google Ads Connected!</h2><p>Closing this window...</p>
+        <script>
+          if(window.opener){
+            window.opener.postMessage({
+              type:'google_ads_auth_success',
+              campaignId:'${campaignId}',
+              tokens:${tokenData},
+              customers:${customersJson}
+            },window.location.origin);
+          }
+          setTimeout(()=>window.close(),1500);
+        </script>
+      </body></html>`);
+    } catch (error: any) {
+      console.error('[Google Ads OAuth] Callback error:', error);
+      res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+        <h2>Authentication Failed</h2><p>${error.message || 'Unknown error'}</p>
+        <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'${(error.message || 'Authentication failed').replace(/'/g, "\\'")}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+      </body></html>`);
+    }
+  });
+
+  /**
+   * Select a Google Ads customer account after OAuth
+   */
+  app.post("/api/google-ads/:campaignId/select-customer", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { customerId, customerName, accessToken, refreshToken, expiresIn, managerAccountId } = req.body;
+
+      if (!customerId) return res.status(400).json({ error: "Customer ID is required" });
+
+      const clientId = process.env.GOOGLE_ADS_CLIENT_ID || '';
+      const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET || '';
+      const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '';
+
+      const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : undefined;
+
+      // Delete existing connection if any
+      await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
+
+      await storage.createGoogleAdsConnection({
+        campaignId,
+        customerId,
+        customerName: customerName || null,
+        managerAccountId: managerAccountId || null,
+        accessToken,
+        refreshToken,
+        clientId,
+        clientSecret,
+        developerToken,
+        method: 'oauth',
+        expiresAt,
+      });
+
+      console.log(`[Google Ads] Customer ${customerId} connected to campaign ${campaignId}`);
+      res.json({ success: true, message: 'Google Ads customer connected' });
+    } catch (error: any) {
+      console.error('[Google Ads] Select customer error:', error);
+      res.status(500).json({ error: error.message || 'Failed to connect Google Ads customer' });
+    }
+  });
+
+  /**
+   * Connect Google Ads in test mode (mock data)
+   */
+  app.post("/api/google-ads/:campaignId/connect-test", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { customerId, customerName } = req.body;
+
+      await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
+
+      await storage.createGoogleAdsConnection({
+        campaignId,
+        customerId: customerId || '123-456-7890',
+        customerName: customerName || 'Test Google Ads Account',
+        method: 'test_mode',
+        accessToken: `test_token_${Date.now()}`,
+      });
+
+      console.log(`[Google Ads] Test connection created for campaign ${campaignId}`);
+      res.json({ success: true, message: 'Google Ads connected in test mode' });
+    } catch (error: any) {
+      console.error('[Google Ads] Test connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to connect test account' });
+    }
+  });
+
+  /**
+   * Get Google Ads connection status
+   */
+  app.get("/api/google-ads/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const connection = await storage.getGoogleAdsConnection(campaignId);
+      if (!connection) return res.json({ connected: false });
+      res.json({
+        connected: true,
+        customerId: connection.customerId,
+        customerName: connection.customerName,
+        method: connection.method,
+        lastRefreshAt: connection.lastRefreshAt,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get connection status' });
+    }
+  });
+
+  /**
+   * Delete Google Ads connection
+   */
+  app.delete("/api/google-ads/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      await storage.deleteGoogleAdsConnection(campaignId);
+      res.json({ success: true, message: 'Google Ads connection deleted' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to delete connection' });
+    }
+  });
+
+  /**
+   * Get Google Ads daily metrics
+   */
+  app.get("/api/google-ads/:campaignId/daily-metrics", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { startDate, endDate } = req.query;
+      const end = (endDate as string) || new Date().toISOString().slice(0, 10);
+      const start = (startDate as string) || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const metrics = await storage.getGoogleAdsDailyMetrics(campaignId, start, end);
+      res.json({ success: true, metrics });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get metrics' });
+    }
+  });
+
+  /**
+   * Manually refresh Google Ads data
+   */
+  app.post("/api/google-ads/:campaignId/refresh", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const connection = await storage.getGoogleAdsConnection(campaignId);
+      if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
+
+      const { refreshGoogleAdsForCampaign } = await import('./google-ads-scheduler');
+      await refreshGoogleAdsForCampaign(campaignId, connection, { advanceTestDay: true });
+
+      res.json({ success: true, message: 'Google Ads data refreshed' });
+    } catch (error: any) {
+      console.error('[Google Ads] Refresh error:', error);
+      res.status(500).json({ error: error.message || 'Failed to refresh data' });
     }
   });
 
@@ -23182,6 +23513,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[Save Mappings] Error:', error);
       res.status(500).json({ error: error.message || 'Failed to save mappings' });
+    }
+  });
+
+  // Update platforms for a Google Sheets connection
+  app.patch("/api/google-sheets/:campaignId/connection/:connectionId/platforms", async (req, res) => {
+    try {
+      const { campaignId, connectionId } = req.params;
+      const { platforms } = req.body;
+
+      if (!Array.isArray(platforms)) {
+        return res.status(400).json({ error: 'platforms must be an array of platform IDs' });
+      }
+
+      const updated = await storage.updateGoogleSheetsConnection(connectionId, {
+        platforms: JSON.stringify(platforms),
+      } as any);
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Connection not found' });
+      }
+
+      res.json({ success: true, platforms });
+    } catch (error: any) {
+      console.error('[Update Platforms] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to update platforms' });
     }
   });
 

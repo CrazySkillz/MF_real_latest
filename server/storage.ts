@@ -1,4 +1,4 @@
-import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql } from "drizzle-orm";
@@ -124,6 +124,16 @@ export interface IStorage {
   createMetaConnection(connection: InsertMetaConnection): Promise<MetaConnection>;
   updateMetaConnection(campaignId: string, connection: Partial<InsertMetaConnection>): Promise<MetaConnection | undefined>;
   deleteMetaConnection(campaignId: string): Promise<boolean>;
+
+  // Google Ads Connections
+  getGoogleAdsConnection(campaignId: string): Promise<GoogleAdsConnection | undefined>;
+  createGoogleAdsConnection(connection: InsertGoogleAdsConnection): Promise<GoogleAdsConnection>;
+  updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>): Promise<GoogleAdsConnection | undefined>;
+  deleteGoogleAdsConnection(campaignId: string): Promise<boolean>;
+
+  // Google Ads Daily Metrics
+  getGoogleAdsDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GoogleAdsDailyMetric[]>;
+  upsertGoogleAdsDailyMetrics(metrics: InsertGoogleAdsDailyMetric[]): Promise<{ upserted: number }>;
 
   // Meta KPIs
   getMetaKPIs(campaignId: string): Promise<MetaKpi[]>;
@@ -1775,6 +1785,94 @@ export class MemStorage implements IStorage {
 
   async deleteMetaConnection(campaignId: string): Promise<boolean> {
     return this.metaConnections.delete(campaignId);
+  }
+
+  // Google Ads Connections
+  private googleAdsConnectionsMap: Map<string, GoogleAdsConnection> = new Map();
+  private googleAdsDailyMetricsStore: GoogleAdsDailyMetric[] = [];
+
+  async getGoogleAdsConnection(campaignId: string): Promise<GoogleAdsConnection | undefined> {
+    return this.googleAdsConnectionsMap.get(campaignId);
+  }
+
+  async createGoogleAdsConnection(connection: InsertGoogleAdsConnection): Promise<GoogleAdsConnection> {
+    const id = randomUUID();
+    const gadsConnection: GoogleAdsConnection = {
+      id,
+      campaignId: connection.campaignId,
+      customerId: connection.customerId,
+      customerName: connection.customerName || null,
+      managerAccountId: connection.managerAccountId || null,
+      accessToken: connection.accessToken || null,
+      refreshToken: connection.refreshToken || null,
+      clientId: connection.clientId || null,
+      clientSecret: connection.clientSecret || null,
+      developerToken: connection.developerToken || null,
+      encryptedTokens: null,
+      method: connection.method,
+      conversionValue: null,
+      lastRefreshAt: null,
+      expiresAt: connection.expiresAt || null,
+      connectedAt: new Date(),
+      createdAt: new Date(),
+    };
+    this.googleAdsConnectionsMap.set(connection.campaignId, gadsConnection);
+    return gadsConnection;
+  }
+
+  async updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>): Promise<GoogleAdsConnection | undefined> {
+    const existing = this.googleAdsConnectionsMap.get(campaignId);
+    if (!existing) return undefined;
+    const updated: GoogleAdsConnection = { ...existing, ...connection };
+    this.googleAdsConnectionsMap.set(campaignId, updated);
+    return updated;
+  }
+
+  async deleteGoogleAdsConnection(campaignId: string): Promise<boolean> {
+    return this.googleAdsConnectionsMap.delete(campaignId);
+  }
+
+  async getGoogleAdsDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GoogleAdsDailyMetric[]> {
+    return this.googleAdsDailyMetricsStore.filter(
+      m => m.campaignId === campaignId && m.date >= startDate && m.date <= endDate
+    );
+  }
+
+  async upsertGoogleAdsDailyMetrics(metrics: InsertGoogleAdsDailyMetric[]): Promise<{ upserted: number }> {
+    let upserted = 0;
+    for (const m of metrics) {
+      const idx = this.googleAdsDailyMetricsStore.findIndex(
+        e => e.campaignId === m.campaignId && e.googleCampaignId === m.googleCampaignId && e.date === m.date
+      );
+      const record: GoogleAdsDailyMetric = {
+        id: idx >= 0 ? this.googleAdsDailyMetricsStore[idx].id : randomUUID(),
+        campaignId: m.campaignId,
+        googleCampaignId: m.googleCampaignId,
+        googleCampaignName: m.googleCampaignName ?? null,
+        date: m.date,
+        impressions: m.impressions ?? 0,
+        clicks: m.clicks ?? 0,
+        spend: String(m.spend ?? "0"),
+        conversions: String(m.conversions ?? "0"),
+        conversionValue: String(m.conversionValue ?? "0"),
+        ctr: m.ctr != null ? String(m.ctr) : null,
+        cpc: m.cpc != null ? String(m.cpc) : null,
+        cpm: m.cpm != null ? String(m.cpm) : null,
+        interactionRate: m.interactionRate != null ? String(m.interactionRate) : null,
+        videoViews: m.videoViews ?? 0,
+        searchImpressionShare: m.searchImpressionShare != null ? String(m.searchImpressionShare) : null,
+        costPerConversion: m.costPerConversion != null ? String(m.costPerConversion) : null,
+        conversionRate: m.conversionRate != null ? String(m.conversionRate) : null,
+        importedAt: new Date(),
+      };
+      if (idx >= 0) {
+        this.googleAdsDailyMetricsStore[idx] = record;
+      } else {
+        this.googleAdsDailyMetricsStore.push(record);
+      }
+      upserted++;
+    }
+    return { upserted };
   }
 
   // Meta KPIs
@@ -4359,6 +4457,135 @@ export class DatabaseStorage implements IStorage {
       .delete(metaConnections)
       .where(eq(metaConnections.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
+  }
+
+  // Google Ads Connection methods
+  async getGoogleAdsConnection(campaignId: string): Promise<GoogleAdsConnection | undefined> {
+    const [connection] = await db.select().from(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
+    if (!connection) return undefined;
+    const hydrated = hydrateDecryptedTokens(connection) as any;
+    const hasPlain = Boolean((connection as any).accessToken) || Boolean((connection as any).refreshToken) || Boolean((connection as any).clientSecret);
+    const hasEnc = Boolean((connection as any).encryptedTokens);
+    if (hasPlain && !hasEnc) {
+      try {
+        const nextEnc = buildEncryptedTokens({
+          accessToken: (connection as any).accessToken,
+          refreshToken: (connection as any).refreshToken,
+          clientSecret: (connection as any).clientSecret,
+        });
+        await db
+          .update(googleAdsConnections)
+          .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
+          .where(eq(googleAdsConnections.campaignId, campaignId));
+      } catch {
+        // ignore
+      }
+    }
+    return hydrated;
+  }
+
+  async createGoogleAdsConnection(connection: InsertGoogleAdsConnection): Promise<GoogleAdsConnection> {
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+      clientSecret: (connection as any).clientSecret,
+    });
+    const [gadsConnection] = await db
+      .insert(googleAdsConnections)
+      .values({
+        ...connection,
+        accessToken: null,
+        refreshToken: null,
+        clientSecret: null,
+        encryptedTokens: enc as any,
+      } as any)
+      .returning();
+    return hydrateDecryptedTokens(gadsConnection) as any;
+  }
+
+  async updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>): Promise<GoogleAdsConnection | undefined> {
+    const [existing] = await db.select().from(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
+    if (!existing) return undefined;
+
+    const tokenFieldsProvided =
+      Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "refreshToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "clientSecret");
+
+    const setObj: any = { ...connection };
+    if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+      setObj.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        clientSecret: (connection as any).clientSecret,
+        prev: (existing as any).encryptedTokens,
+      });
+      setObj.accessToken = null;
+      setObj.refreshToken = null;
+      setObj.clientSecret = null;
+    }
+
+    const [updated] = await db
+      .update(googleAdsConnections)
+      .set(setObj)
+      .where(eq(googleAdsConnections.campaignId, campaignId))
+      .returning();
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+  }
+
+  async deleteGoogleAdsConnection(campaignId: string): Promise<boolean> {
+    const result = await db
+      .delete(googleAdsConnections)
+      .where(eq(googleAdsConnections.campaignId, campaignId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getGoogleAdsDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GoogleAdsDailyMetric[]> {
+    return await db.select().from(googleAdsDailyMetrics)
+      .where(and(
+        eq(googleAdsDailyMetrics.campaignId, campaignId),
+        sql`${googleAdsDailyMetrics.date} >= ${startDate}`,
+        sql`${googleAdsDailyMetrics.date} <= ${endDate}`,
+      ))
+      .orderBy(googleAdsDailyMetrics.date);
+  }
+
+  async upsertGoogleAdsDailyMetrics(metrics: InsertGoogleAdsDailyMetric[]): Promise<{ upserted: number }> {
+    if (metrics.length === 0) return { upserted: 0 };
+    let upserted = 0;
+    for (const m of metrics) {
+      await db.execute(sql`
+        INSERT INTO google_ads_daily_metrics (
+          campaign_id, google_campaign_id, google_campaign_name, date,
+          impressions, clicks, spend, conversions, conversion_value,
+          ctr, cpc, cpm, interaction_rate, video_views,
+          search_impression_share, cost_per_conversion, conversion_rate, imported_at
+        ) VALUES (
+          ${m.campaignId}, ${m.googleCampaignId}, ${m.googleCampaignName ?? null}, ${m.date},
+          ${m.impressions ?? 0}, ${m.clicks ?? 0}, ${m.spend ?? 0}, ${m.conversions ?? 0}, ${m.conversionValue ?? 0},
+          ${m.ctr ?? null}, ${m.cpc ?? null}, ${m.cpm ?? null}, ${m.interactionRate ?? null}, ${m.videoViews ?? 0},
+          ${m.searchImpressionShare ?? null}, ${m.costPerConversion ?? null}, ${m.conversionRate ?? null}, CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (campaign_id, google_campaign_id, date) DO UPDATE SET
+          google_campaign_name = EXCLUDED.google_campaign_name,
+          impressions = EXCLUDED.impressions,
+          clicks = EXCLUDED.clicks,
+          spend = EXCLUDED.spend,
+          conversions = EXCLUDED.conversions,
+          conversion_value = EXCLUDED.conversion_value,
+          ctr = EXCLUDED.ctr,
+          cpc = EXCLUDED.cpc,
+          cpm = EXCLUDED.cpm,
+          interaction_rate = EXCLUDED.interaction_rate,
+          video_views = EXCLUDED.video_views,
+          search_impression_share = EXCLUDED.search_impression_share,
+          cost_per_conversion = EXCLUDED.cost_per_conversion,
+          conversion_rate = EXCLUDED.conversion_rate,
+          imported_at = CURRENT_TIMESTAMP
+      `);
+      upserted++;
+    }
+    return { upserted };
   }
 
   // Meta KPIs

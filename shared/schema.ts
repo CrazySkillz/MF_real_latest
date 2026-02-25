@@ -216,9 +216,21 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
   isPrimary: boolean("is_primary").notNull().default(false), // Primary sheet for this campaign
   isActive: boolean("is_active").notNull().default(true), // Whether this connection is active
   columnMappings: text("column_mappings"), // JSON string of FieldMapping[]
+  platforms: text("platforms"), // JSON string array of platform IDs, e.g. '["linkedin","google_ads"]'
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// Canonical platform options for Google Sheets multi-platform selector
+export const GOOGLE_SHEETS_PLATFORM_OPTIONS = [
+  { id: 'linkedin', label: 'LinkedIn' },
+  { id: 'facebook_ads', label: 'Meta / Facebook' },
+  { id: 'google_ads', label: 'Google Ads' },
+  { id: 'ga4', label: 'Google Analytics (GA4)' },
+  { id: 'twitter_ads', label: 'Twitter / X' },
+  { id: 'tiktok_ads', label: 'TikTok' },
+  { id: 'other', label: 'Other' },
+] as const;
 
 export const hubspotConnections = pgTable("hubspot_connections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -320,6 +332,50 @@ export const metaConnections = pgTable("meta_connections", {
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Google Ads connections
+export const googleAdsConnections = pgTable("google_ads_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  customerId: text("customer_id").notNull(), // Google Ads Customer ID (e.g., "123-456-7890")
+  customerName: text("customer_name"),
+  managerAccountId: text("manager_account_id"), // MCC account ID if applicable
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  clientId: text("client_id"),
+  clientSecret: text("client_secret"),
+  developerToken: text("developer_token"),
+  encryptedTokens: jsonb("encrypted_tokens"),
+  method: text("method").notNull(), // 'oauth' or 'test_mode'
+  conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }),
+  lastRefreshAt: timestamp("last_refresh_at"),
+  expiresAt: timestamp("expires_at"),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Google Ads Daily Metrics - Persisted daily facts for performance tracking
+export const googleAdsDailyMetrics = pgTable("google_ads_daily_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(), // MetricMind campaign id
+  googleCampaignId: text("google_campaign_id").notNull(), // Google Ads campaign id
+  googleCampaignName: text("google_campaign_name"),
+  date: text("date").notNull(), // YYYY-MM-DD (UTC)
+  impressions: integer("impressions").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default(sql`0`),
+  conversions: decimal("conversions", { precision: 10, scale: 2 }).notNull().default(sql`0`),
+  conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }).notNull().default(sql`0`),
+  ctr: decimal("ctr", { precision: 8, scale: 4 }),
+  cpc: decimal("cpc", { precision: 10, scale: 2 }),
+  cpm: decimal("cpm", { precision: 10, scale: 2 }),
+  interactionRate: decimal("interaction_rate", { precision: 5, scale: 2 }),
+  videoViews: integer("video_views").notNull().default(0),
+  searchImpressionShare: decimal("search_impression_share", { precision: 5, scale: 2 }),
+  costPerConversion: decimal("cost_per_conversion", { precision: 10, scale: 2 }),
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }),
+  importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Meta KPIs - Track performance targets for Meta/Facebook campaigns
@@ -1100,6 +1156,7 @@ export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheet
   expiresAt: true,
   isPrimary: true,
   isActive: true,
+  platforms: true,
 });
 
 export const insertHubspotConnectionSchema = createInsertSchema(hubspotConnections).pick({
@@ -1228,6 +1285,40 @@ export const insertMetaDailyMetricSchema = createInsertSchema(metaDailyMetrics).
   conversionRate: true,
   revenue: true,
   roas: true,
+});
+
+export const insertGoogleAdsConnectionSchema = createInsertSchema(googleAdsConnections).pick({
+  campaignId: true,
+  customerId: true,
+  customerName: true,
+  managerAccountId: true,
+  accessToken: true,
+  refreshToken: true,
+  clientId: true,
+  clientSecret: true,
+  developerToken: true,
+  method: true,
+  expiresAt: true,
+});
+
+export const insertGoogleAdsDailyMetricSchema = createInsertSchema(googleAdsDailyMetrics).pick({
+  campaignId: true,
+  googleCampaignId: true,
+  googleCampaignName: true,
+  date: true,
+  impressions: true,
+  clicks: true,
+  spend: true,
+  conversions: true,
+  conversionValue: true,
+  ctr: true,
+  cpc: true,
+  cpm: true,
+  interactionRate: true,
+  videoViews: true,
+  searchImpressionShare: true,
+  costPerConversion: true,
+  conversionRate: true,
 });
 
 export const insertKPISchema = createInsertSchema(kpis).pick({
@@ -1637,6 +1728,10 @@ export type LinkedInConnection = typeof linkedinConnections.$inferSelect;
 export type InsertLinkedInConnection = z.infer<typeof insertLinkedInConnectionSchema>;
 export type MetaConnection = typeof metaConnections.$inferSelect;
 export type InsertMetaConnection = z.infer<typeof insertMetaConnectionSchema>;
+export type GoogleAdsConnection = typeof googleAdsConnections.$inferSelect;
+export type InsertGoogleAdsConnection = z.infer<typeof insertGoogleAdsConnectionSchema>;
+export type GoogleAdsDailyMetric = typeof googleAdsDailyMetrics.$inferSelect;
+export type InsertGoogleAdsDailyMetric = z.infer<typeof insertGoogleAdsDailyMetricSchema>;
 export type MetaKpi = typeof metaKpis.$inferSelect;
 export type InsertMetaKpi = z.infer<typeof insertMetaKpiSchema>;
 export type MetaBenchmark = typeof metaBenchmarks.$inferSelect;

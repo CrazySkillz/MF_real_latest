@@ -9,6 +9,7 @@ import { startMetaScheduler } from "./meta-scheduler";
 import { startGoogleSheetsTokenScheduler } from "./google-sheets-token-scheduler";
 import { startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
 import { startGA4DailyScheduler } from "./ga4-daily-scheduler";
+import { startGoogleAdsScheduler } from "./google-ads-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { clerkMiddleware } from "@clerk/express";
@@ -652,6 +653,13 @@ process.on('uncaughtException', (error: Error) => {
           startGA4DailyScheduler();
         } catch (error) {
           console.error('Failed to start GA4 daily scheduler:', error);
+        }
+
+        // Start Google Ads data refresh scheduler
+        try {
+          startGoogleAdsScheduler();
+        } catch (error) {
+          console.error('Failed to start Google Ads scheduler:', error);
         }
       }, 5000); // 5 second delay
     });

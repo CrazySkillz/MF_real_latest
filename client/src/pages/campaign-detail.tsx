@@ -29,6 +29,7 @@ import { exportCampaignKPIsToPDF, exportCampaignBenchmarksToPDF } from "@/lib/pd
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
+import { GoogleAdsConnectionFlow } from "@/components/GoogleAdsConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { WebhookTester } from "@/components/WebhookTester";
 import { DataSourcesTab } from "@/components/DataSourcesTab";
@@ -6786,6 +6787,20 @@ export default function CampaignDetail() {
                           }}
                           onError={(error) => {
                             console.error("Meta connection error:", error);
+                          }}
+                        />
+                      ) : platform.platform === "Google Ads" ? (
+                        <GoogleAdsConnectionFlow
+                          campaignId={campaign.id}
+                          onConnectionSuccess={() => {
+                            setExpandedPlatform(null);
+                            queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            setTimeout(() => {
+                              window.location.reload();
+                            }, 100);
+                          }}
+                          onError={(error) => {
+                            console.error("Google Ads connection error:", error);
                           }}
                         />
                       ) : platform.platform === "Custom Integration" ? (

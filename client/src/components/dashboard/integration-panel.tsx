@@ -38,6 +38,13 @@ export default function IntegrationPanel({ onIntegrationClick }: IntegrationPane
       color: "text-blue-700",
     },
     {
+      id: "google-ads",
+      name: "Google Ads",
+      description: "Search, display, and video advertising",
+      icon: "fab fa-google",
+      color: "text-yellow-600",
+    },
+    {
       id: "twitter",
       name: "X (Twitter) Ads",
       description: "Social media advertising and engagement",

@@ -3,13 +3,24 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, Star, Map, CheckCircle2, AlertCircle, ArrowLeft, Trash2, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FileSpreadsheet, Star, Map, CheckCircle2, AlertCircle, ArrowLeft, Trash2, X, ChevronDown, ChevronUp } from "lucide-react";
 import { ColumnMappingInterface } from "./ColumnMappingInterface";
 import { GuidedColumnMapping } from "./GuidedColumnMapping";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+
+const PLATFORM_OPTIONS = [
+  { id: 'linkedin', label: 'LinkedIn', icon: 'fab fa-linkedin', color: 'text-blue-700' },
+  { id: 'facebook_ads', label: 'Meta / Facebook', icon: 'fab fa-facebook', color: 'text-blue-600' },
+  { id: 'google_ads', label: 'Google Ads', icon: 'fab fa-google', color: 'text-red-500' },
+  { id: 'ga4', label: 'Google Analytics (GA4)', icon: 'fas fa-chart-line', color: 'text-orange-500' },
+  { id: 'twitter_ads', label: 'Twitter / X', icon: 'fab fa-twitter', color: 'text-blue-400' },
+  { id: 'tiktok_ads', label: 'TikTok', icon: 'fab fa-tiktok', color: 'text-slate-800' },
+  { id: 'other', label: 'Other', icon: 'fas fa-globe', color: 'text-slate-500' },
+] as const;
 
 interface GoogleSheetsConnection {
   id: string;
@@ -19,6 +30,7 @@ interface GoogleSheetsConnection {
   isPrimary: boolean;
   isActive: boolean;
   columnMappings?: string | null;
+  platforms?: string | null;
   connectedAt?: string;
 }
 
@@ -183,6 +195,46 @@ export function GoogleSheetsDatasetsView({
     }
   });
 
+  // Platform update mutation
+  const updatePlatformsMutation = useMutation({
+    mutationFn: async ({ connectionId, platforms }: { connectionId: string; platforms: string[] }) => {
+      const response = await fetch(`/api/google-sheets/${campaignId}/connection/${connectionId}/platforms`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platforms }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update platforms');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+    },
+  });
+
+  const [expandedPlatformId, setExpandedPlatformId] = useState<string | null>(null);
+
+  const getConnectionPlatforms = (conn: GoogleSheetsConnection): string[] => {
+    if (!conn.platforms) return [];
+    try {
+      const parsed = JSON.parse(conn.platforms);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const togglePlatform = (conn: GoogleSheetsConnection, platformId: string) => {
+    const current = getConnectionPlatforms(conn);
+    const next = current.includes(platformId)
+      ? current.filter(p => p !== platformId)
+      : [...current, platformId];
+    updatePlatformsMutation.mutate({ connectionId: conn.id, platforms: next });
+  };
+
   const visibleConnections = connections.filter((c) => c?.spreadsheetId && c.spreadsheetId !== 'pending');
 
   if (visibleConnections.length === 0) {
@@ -211,6 +263,8 @@ export function GoogleSheetsDatasetsView({
       <div className="space-y-3">
         {visibleConnections.map((conn) => {
           const mapped = isMapped(conn);
+          const platforms = getConnectionPlatforms(conn);
+          const isPlatformExpanded = expandedPlatformId === conn.id;
           return (
             <Card
               key={conn.id}
@@ -249,9 +303,31 @@ export function GoogleSheetsDatasetsView({
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         {conn.spreadsheetId}
                       </p>
+                      {/* Platform badges */}
+                      {platforms.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {platforms.map(pid => {
+                            const opt = PLATFORM_OPTIONS.find(p => p.id === pid);
+                            return opt ? (
+                              <Badge key={pid} variant="outline" className="text-[10px] px-1.5 py-0">
+                                {opt.label}
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpandedPlatformId(isPlatformExpanded ? null : conn.id)}
+                      title="Select platforms in this sheet"
+                    >
+                      {isPlatformExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      <span className="ml-1 text-xs">Platforms</span>
+                    </Button>
                     <Button
                       variant={mapped ? "outline" : "default"}
                       size="sm"
@@ -297,6 +373,38 @@ export function GoogleSheetsDatasetsView({
                     </AlertDialog>
                   </div>
                 </div>
+
+                {/* Platform selector (expandable) */}
+                {isPlatformExpanded && (
+                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
+                      Which platforms does this sheet contain data for?
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {PLATFORM_OPTIONS.map(opt => {
+                        const checked = platforms.includes(opt.id);
+                        return (
+                          <label
+                            key={opt.id}
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors ${
+                              checked
+                                ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800'
+                                : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
+                            }`}
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={() => togglePlatform(conn, opt.id)}
+                            />
+                            <span className={`text-xs ${checked ? 'font-medium' : ''}`}>
+                              {opt.label}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

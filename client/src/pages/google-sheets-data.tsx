@@ -23,6 +23,7 @@ interface Campaign {
   id: string;
   name: string;
   status: string;
+  platform?: string;
 }
 
 interface GoogleSheetsData {
@@ -978,9 +979,9 @@ export default function GoogleSheetsData() {
                 const spreadsheetId = selectedConnection?.spreadsheetId;
                 const spreadsheetConnections = googleSheetsConnections.filter((c: any) => c.spreadsheetId === spreadsheetId);
                 const sheetNames = spreadsheetConnections.map((c: any) => c.sheetName).filter(Boolean);
-                const platform = "linkedin";
+                const platform = campaign?.platform || "general";
 
-                if (platform === 'linkedin' && spreadsheetId) {
+                if (spreadsheetId) {
                   return (
                     <GuidedColumnMapping
                       campaignId={campaignId!}

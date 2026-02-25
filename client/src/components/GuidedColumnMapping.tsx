@@ -54,6 +54,18 @@ export function GuidedColumnMapping({
 }: GuidedColumnMappingProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Display name for the campaign's platform
+  const platformDisplayName = (() => {
+    const p = (platform || '').toLowerCase();
+    if (p.includes('linkedin')) return 'LinkedIn';
+    if (p.includes('meta') || p.includes('facebook')) return 'Meta/Facebook';
+    if (p.includes('google') && p.includes('ad')) return 'Google Ads';
+    if (p.includes('tiktok')) return 'TikTok';
+    if (p === 'general' || !p) return 'your platform';
+    // Capitalize first letter
+    return platform.charAt(0).toUpperCase() + platform.slice(1);
+  })();
   
   const [currentStep, setCurrentStep] = useState<Step>('detect');
   // Identifier mapping target:
@@ -536,7 +548,7 @@ export function GuidedColumnMapping({
           });
         } else {
           // User selected "Use Conversion Value" but clarified this column is actually revenue.
-          // Treat it as revenue and compute conversion value from Revenue / LinkedIn Conversions.
+          // Treat it as revenue and compute conversion value from Revenue / Platform Conversions.
           mappings.push({
             sourceColumnIndex: column.index,
             sourceColumnName: column.originalName,
@@ -616,7 +628,7 @@ export function GuidedColumnMapping({
     { id: 'campaign-name', label: 'Campaign Identifier', icon: Target },
     { id: 'crosswalk', label: 'Link Campaign', icon: Target },
     { id: 'revenue', label: 'Value Source', icon: DollarSign },
-    { id: 'platform', label: 'LinkedIn Filter', icon: Filter },
+    { id: 'platform', label: 'Platform Filter', icon: Filter },
   ] as Array<{ id: Step; label: string; icon: any }>;
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
@@ -654,9 +666,13 @@ export function GuidedColumnMapping({
                 const platformsResponse = await fetch(`/api/campaigns/${campaignId}/connected-platforms`);
                 if (platformsResponse.ok) {
                   const platforms = await platformsResponse.json();
-                  const linkedInPlatform = platforms.find((p: any) => p.id === 'linkedin');
-                  if (linkedInPlatform?.analyticsPath) {
-                    const url = new URL(linkedInPlatform.analyticsPath, window.location.origin);
+                  // Try to find the platform matching the campaign, fallback to linkedin
+                  const platformId = (platform || '').toLowerCase().includes('meta') ? 'meta'
+                    : (platform || '').toLowerCase().includes('linkedin') ? 'linkedin'
+                    : 'linkedin';
+                  const matchedPlatform = platforms.find((p: any) => p.id === platformId) || platforms.find((p: any) => p.id === 'linkedin');
+                  if (matchedPlatform?.analyticsPath) {
+                    const url = new URL(matchedPlatform.analyticsPath, window.location.origin);
                     sessionId = url.searchParams.get('session');
                     console.log('[Guided Mapping] Found session ID:', sessionId);
                   }
@@ -797,7 +813,7 @@ export function GuidedColumnMapping({
               "Which column contains conversion value (value per conversion)? If conversion value is not available, select the revenue column so we can calculate it."
             )}
             {currentStep === 'platform' && (
-              "Which column identifies the platform (e.g., LinkedIn, Facebook, Google Ads)? This is optional if your entire sheet is for LinkedIn only."
+              `Which column identifies the platform (e.g., LinkedIn, Facebook, Google Ads)? This is optional if your entire sheet is for ${platformDisplayName} only.`
             )}
           </CardDescription>
         </CardHeader>
@@ -1039,7 +1055,7 @@ export function GuidedColumnMapping({
                         <Label htmlFor="meaning-vpc" className="cursor-pointer">
                           <div className="font-medium">Estimated value per conversion</div>
                           <div className="text-xs text-slate-500">
-                            This is not revenue—it's a planning assumption (e.g., “$75 per lead”). We’ll multiply by LinkedIn conversions.
+                            This is not revenue—it's a planning assumption (e.g., "$75 per lead"). We'll multiply by platform conversions.
                           </div>
                         </Label>
                       </div>
@@ -1119,7 +1135,7 @@ export function GuidedColumnMapping({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="skip">
-                      <span className="text-slate-500">— Skip (entire sheet is for LinkedIn) —</span>
+                      <span className="text-slate-500">— Skip (entire sheet is for {platformDisplayName}) —</span>
                     </SelectItem>
                     {detectedColumns.map((column) => (
                       <SelectItem key={column.index} value={column.index.toString()}>
@@ -1144,7 +1160,7 @@ export function GuidedColumnMapping({
               {skipPlatform && (
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                    The entire sheet will be used for LinkedIn data.
+                    The entire sheet will be used for {platformDisplayName} data.
                   </p>
                 </div>
               )}

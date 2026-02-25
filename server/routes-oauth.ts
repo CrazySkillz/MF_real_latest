@@ -12848,7 +12848,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const campaign = await storage.getCampaign(campaignId);
         const campaignName = campaign?.name || '';
         const campaignPlatform = campaign?.platform || null;
-        const platformKeywords = campaignPlatform ? getPlatformKeywords(campaignPlatform) : [];
+
+        // Build keywords from ALL connected platforms (not just the primary)
+        const combinedPlatformKeywords: string[] = [];
+        try {
+          const [linkedInConn, metaConn, ga4Conns] = await Promise.all([
+            storage.getLinkedInConnection(campaignId),
+            storage.getMetaConnection(campaignId),
+            storage.getGA4Connections(campaignId),
+          ]);
+          if (linkedInConn) combinedPlatformKeywords.push(...getPlatformKeywords('linkedin'));
+          if (metaConn) combinedPlatformKeywords.push(...getPlatformKeywords('facebook_ads'));
+          if (ga4Conns.length > 0) combinedPlatformKeywords.push(...getPlatformKeywords('google_ads'));
+        } catch {
+          // Fallback to campaign's primary platform
+        }
+        if (combinedPlatformKeywords.length === 0 && campaignPlatform) {
+          combinedPlatformKeywords.push(...getPlatformKeywords(campaignPlatform));
+        }
 
         for (const conn of mappedConnections) {
           try {
@@ -12925,12 +12942,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let filteredRows: any[] = [];
 
             if (campaignNameColumnIndex >= 0 && campaignName) {
-              if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
+              if (platformColumnIndex >= 0 && combinedPlatformKeywords.length > 0) {
                 filteredRows = allRows.filter((row: any[]) => {
                   if (!Array.isArray(row) || row.length <= Math.max(platformColumnIndex, campaignNameColumnIndex)) return false;
                   const platformValue = String(row[platformColumnIndex] || '');
                   const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
-                  const platformMatches = matchesPlatform(platformValue, platformKeywords);
+                  const platformMatches = matchesPlatform(platformValue, combinedPlatformKeywords);
                   const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
                     campaignName.toLowerCase().includes(campaignNameValue);
                   return platformMatches && matchesCampaign;
@@ -12943,11 +12960,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     campaignName.toLowerCase().includes(campaignNameValue);
                 });
               }
-            } else if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
+            } else if (platformColumnIndex >= 0 && combinedPlatformKeywords.length > 0) {
               filteredRows = allRows.filter((row: any[]) => {
                 if (!Array.isArray(row) || row.length <= platformColumnIndex) return false;
                 const platformValue = String(row[platformColumnIndex] || '');
-                return matchesPlatform(platformValue, platformKeywords);
+                return matchesPlatform(platformValue, combinedPlatformKeywords);
               });
             } else {
               filteredRows = allRows;
@@ -13420,8 +13437,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
-      // Get platform keywords for filtering
-      const platformKeywords = campaignPlatform ? getPlatformKeywords(campaignPlatform) : [];
+      // Build platform keywords from ALL connected platforms (not just the campaign's primary platform).
+      // A campaign can have LinkedIn, Meta, GA4, etc. all connected simultaneously.
+      const allPlatformKeywords: string[] = [];
+      try {
+        const [linkedInConn, metaConn, ga4Conns] = await Promise.all([
+          storage.getLinkedInConnection(campaignId),
+          storage.getMetaConnection(campaignId),
+          storage.getGA4Connections(campaignId),
+        ]);
+        if (linkedInConn) allPlatformKeywords.push(...getPlatformKeywords('linkedin'));
+        if (metaConn) allPlatformKeywords.push(...getPlatformKeywords('facebook_ads'));
+        if (ga4Conns.length > 0) allPlatformKeywords.push(...getPlatformKeywords('google_ads'));
+      } catch (connError) {
+        devLog('[Google Sheets] Could not fetch connected platforms, falling back to campaign.platform');
+      }
+      // Fallback: if no connected platforms found, use the campaign's primary platform
+      if (allPlatformKeywords.length === 0 && campaignPlatform) {
+        allPlatformKeywords.push(...getPlatformKeywords(campaignPlatform));
+      }
 
       // Filter rows by campaign name (and platform if available) for summary
       let filteredRowsForSummary: any[] = [];
@@ -13429,15 +13463,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (campaignNameColumnIndex >= 0 && campaignName) {
         // Filter by campaign name (and platform if available)
-        if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
-          // Strategy 1: Campaign Name + Platform matching
+        if (platformColumnIndex >= 0 && allPlatformKeywords.length > 0) {
+          // Strategy 1: Campaign Name + Platform matching (includes ALL connected platforms)
           filteredRowsForSummary = allRows.filter((row: any[]) => {
             if (!Array.isArray(row) || row.length <= Math.max(platformColumnIndex, campaignNameColumnIndex)) {
               return false;
             }
             const platformValue = String(row[platformColumnIndex] || '');
             const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
-            const platformMatches = matchesPlatform(platformValue, platformKeywords);
+            const platformMatches = matchesPlatform(platformValue, allPlatformKeywords);
             const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
               campaignName.toLowerCase().includes(campaignNameValue);
             return platformMatches && matchesCampaign;
@@ -13453,14 +13487,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               campaignName.toLowerCase().includes(campaignNameValue);
           });
         }
-      } else if (platformColumnIndex >= 0 && platformKeywords.length > 0) {
+      } else if (platformColumnIndex >= 0 && allPlatformKeywords.length > 0) {
         // Strategy 3: Platform only (if no campaign name column or campaign name)
         filteredRowsForSummary = allRows.filter((row: any[]) => {
           if (!Array.isArray(row) || row.length <= platformColumnIndex) {
             return false;
           }
           const platformValue = String(row[platformColumnIndex] || '');
-          return matchesPlatform(platformValue, platformKeywords);
+          return matchesPlatform(platformValue, allPlatformKeywords);
         });
       } else {
         // Strategy 4: Use all rows (no filtering possible)

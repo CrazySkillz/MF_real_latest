@@ -9498,47 +9498,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // First, try to find connection in database (more reliable than global map)
+      // First, try to find a pending connection matching the purpose
       let dbConnection = (await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose))
         .find((c: any) => c && c.spreadsheetId === 'pending') as any;
 
       if (!dbConnection) {
-        // Check if there's any connection for this campaign
+        // Check if there's any connection for this campaign matching purpose
         const existingConnections = await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose);
         if (existingConnections.length > 0) {
-          // Use the first connection
           dbConnection = existingConnections[0];
-        } else {
-          // Try global map as fallback (for in-memory storage or if DB lookup failed)
-          const connections = (global as any).googleSheetsConnections;
-          const key = sheetsPurpose ? `${campaignId}:${sheetsPurpose}` : campaignId;
-          if (connections && connections.has(key)) {
-            const connection = connections.get(key);
-            // Create a new DB connection from global map data
-            if (connection.accessToken) {
-              try {
-                dbConnection = await storage.createGoogleSheetsConnection({
-                  campaignId,
-                  spreadsheetId: 'pending',
-                  purpose: sheetsPurpose || null,
-                  accessToken: connection.accessToken,
-                  refreshToken: connection.refreshToken || null,
-                  clientId: process.env.GOOGLE_CLIENT_ID || '',
-                  clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-                  expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined,
-                });
-                devLog('[Select Multiple Spreadsheets] Created DB connection from global map');
-              } catch (createError: any) {
-                console.error('[Select Multiple Spreadsheets] Failed to create connection from global map:', createError);
-                return res.status(404).json({ error: 'No Google Sheets connection found. Please reconnect Google Sheets.' });
-              }
-            } else {
-              return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
+        }
+      }
+
+      if (!dbConnection) {
+        // Fall back: search ANY connection for this campaign (regardless of purpose).
+        // The fast-path (reusing existing tokens) may skip OAuth, so no 'pending' connection
+        // exists for this purpose. Tokens are shared across purposes — only tab selection differs.
+        const anyConnections = await storage.getGoogleSheetsConnections(campaignId);
+        if (anyConnections.length > 0) {
+          dbConnection = anyConnections.find((c: any) => c.accessToken) || anyConnections[0];
+          devLog('[Select Multiple Spreadsheets] Using connection from different purpose (token reuse)');
+        }
+      }
+
+      if (!dbConnection) {
+        // Try global map as final fallback (for in-memory storage or if DB lookup failed)
+        const connections = (global as any).googleSheetsConnections;
+        const key = sheetsPurpose ? `${campaignId}:${sheetsPurpose}` : campaignId;
+        if (connections && connections.has(key)) {
+          const connection = connections.get(key);
+          if (connection.accessToken) {
+            try {
+              dbConnection = await storage.createGoogleSheetsConnection({
+                campaignId,
+                spreadsheetId: 'pending',
+                purpose: sheetsPurpose || null,
+                accessToken: connection.accessToken,
+                refreshToken: connection.refreshToken || null,
+                clientId: process.env.GOOGLE_CLIENT_ID || '',
+                clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+                expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined,
+              });
+              devLog('[Select Multiple Spreadsheets] Created DB connection from global map');
+            } catch (createError: any) {
+              console.error('[Select Multiple Spreadsheets] Failed to create connection from global map:', createError);
             }
-          } else {
-            return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
           }
         }
+      }
+
+      if (!dbConnection) {
+        return res.status(404).json({ error: 'No Google Sheets connection found. Please connect Google Sheets first.' });
       }
 
       // Get spreadsheet name - try to fetch from Google API if we have access token
@@ -20686,11 +20696,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Period support: ?period=7d|30d|90d|all (default: all)
       const periodParam = (req.query.period as string) || 'all';
       const now = new Date();
-      let startDate: string | undefined;
+      let startDate: string;
       let endDate: string = now.toISOString().split('T')[0];
       if (periodParam === '7d') startDate = new Date(now.getTime() - 7 * 86400000).toISOString().split('T')[0];
       else if (periodParam === '30d') startDate = new Date(now.getTime() - 30 * 86400000).toISOString().split('T')[0];
       else if (periodParam === '90d') startDate = new Date(now.getTime() - 90 * 86400000).toISOString().split('T')[0];
+      else startDate = '2000-01-01'; // "all" — fetch everything
 
       // Demo mode: return comprehensive mock executive summary
       if (req.query.demo === "1") {
@@ -20773,7 +20784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         // Use a wide date range or the selected period
-        const metaStart = startDate || '2020-01-01';
+        const metaStart = startDate;
         const metaEnd = endDate;
         const metaDailyRows = await storage.getMetaDailyMetrics(id, metaStart, metaEnd);
         if (metaDailyRows && metaDailyRows.length > 0) {
@@ -20784,9 +20795,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             metaMetrics.spend += parseNum(row.spend);
             metaMetrics.reach += parseNum(row.reach);
           });
-          // Revenue from Meta: use inline conversions value or estimate
-          // Meta tracks conversions but revenue needs to come from revenue sources
+          // Revenue from Meta: pull from revenue sources for this date range
           const metaRevSources = await storage.getRevenueTotalForRange(id, metaStart, metaEnd).catch(() => ({ totalRevenue: 0 }));
+          metaMetrics.revenue = parseNum((metaRevSources as any)?.totalRevenue);
           // Use the last row's date as freshness indicator
           const lastRow = metaDailyRows[metaDailyRows.length - 1];
           metaLastUpdate = (lastRow as any)?.date || null;
@@ -20802,7 +20813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const ga4Connections = await storage.getGA4Connections(id);
         if (ga4Connections && ga4Connections.length > 0) {
-          const ga4Start = startDate || '2020-01-01';
+          const ga4Start = startDate;
           const ga4End = endDate;
           const ga4Daily = await storage.getGA4DailyMetrics(id, (ga4Connections[0] as any).propertyId, ga4Start, ga4End);
           if (ga4Daily && ga4Daily.length > 0) {
@@ -20852,12 +20863,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let canonicalSpend = 0;
       let canonicalRevenue = 0;
       try {
-        if (startDate) {
-          const spendResult = await storage.getSpendTotalForRange(id, startDate, endDate);
-          canonicalSpend = spendResult.totalSpend || 0;
-          const revenueResult = await storage.getRevenueTotalForRange(id, startDate, endDate);
-          canonicalRevenue = revenueResult.totalRevenue || 0;
-        }
+        const spendResult = await storage.getSpendTotalForRange(id, startDate, endDate);
+        canonicalSpend = spendResult.totalSpend || 0;
+        const revenueResult = await storage.getRevenueTotalForRange(id, startDate, endDate);
+        canonicalRevenue = revenueResult.totalRevenue || 0;
       } catch (err) {
         console.log('No canonical spend/revenue data found');
       }

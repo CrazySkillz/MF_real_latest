@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar } from "recharts";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 
 export default function ExecutiveSummary() {
   const { id: campaignId } = useParams();
@@ -177,18 +177,6 @@ export default function ExecutiveSummary() {
                   <FlaskConical className="w-4 h-4 mr-1" />
                   {demoMode ? "Demo On" : "Demo Data"}
                 </Button>
-              <div className="text-right">
-                <div className="text-sm text-slate-600 dark:text-slate-400">Campaign Period</div>
-                <div className="font-semibold text-slate-900 dark:text-white">
-                  {(campaign as any)?.startDate && (campaign as any)?.endDate ? (
-                    `${format(new Date((campaign as any).startDate), 'MMM dd, yyyy')} - ${format(new Date((campaign as any).endDate), 'MMM dd, yyyy')}`
-                  ) : (campaign as any)?.startDate ? (
-                    `${format(new Date((campaign as any).startDate), 'MMM dd, yyyy')} - Present`
-                  ) : (
-                    `${format(subDays(new Date(), 90), 'MMM dd')} - ${format(new Date(), 'MMM dd, yyyy')}`
-                  )}
-                </div>
-              </div>
               </div>
             </div>
           </div>

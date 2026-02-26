@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Video, Search, Activity, Plus, Pencil, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Filter, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Video, Search, Activity, Plus, Pencil, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Filter, RefreshCw, Loader2, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -111,6 +111,7 @@ export default function GoogleAdsAnalytics() {
   const [insightsTrendMetric, setInsightsTrendMetric] = useState('spend');
   const [insightsTrendMode, setInsightsTrendMode] = useState<'daily' | '7d' | '30d'>('daily');
   const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
+  const [insightsExpanded, setInsightsExpanded] = useState<Record<string, boolean>>({});
 
   // Reports state
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -247,7 +248,7 @@ export default function GoogleAdsAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'google_ads'] });
       setIsBenchmarkModalOpen(false); setEditingBenchmark(null);
       toast({ title: 'Benchmark created successfully' });
     },
@@ -263,7 +264,7 @@ export default function GoogleAdsAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'google_ads'] });
       setIsBenchmarkModalOpen(false); setEditingBenchmark(null);
       toast({ title: 'Benchmark updated successfully' });
     },
@@ -276,14 +277,14 @@ export default function GoogleAdsAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'google_ads'] });
       toast({ title: 'Benchmark deleted' });
     },
   });
 
   // Fetch Reports
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
-    queryKey: ['/api/google-ads/reports', campaignId],
+    queryKey: ['/api/meta/reports', campaignId, 'google_ads'],
     queryFn: async () => {
       const res = await fetch(`/api/meta/reports?campaignId=${campaignId}&platformType=google_ads`);
       if (!res.ok) throw new Error('Failed to fetch Reports');
@@ -303,7 +304,7 @@ export default function GoogleAdsAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/google-ads/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports', campaignId, 'google_ads'] });
       setIsReportModalOpen(false); setEditingReport(null);
       toast({ title: 'Report created successfully' });
     },
@@ -319,7 +320,7 @@ export default function GoogleAdsAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/google-ads/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports', campaignId, 'google_ads'] });
       setIsReportModalOpen(false); setEditingReport(null);
       toast({ title: 'Report updated successfully' });
     },
@@ -332,7 +333,7 @@ export default function GoogleAdsAnalytics() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/google-ads/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports', campaignId, 'google_ads'] });
       toast({ title: 'Report deleted' });
     },
   });
@@ -648,6 +649,60 @@ export default function GoogleAdsAnalytics() {
       totalPct += Math.min(p.pct, 200);
     });
     return { total: items.length, onTrack, needsAttention, behind, avgPct: items.length > 0 ? totalPct / items.length : 0 };
+  })();
+
+  // Google Ads insights — structured like LinkedIn for the "What changed" card
+  const googleAdsInsights = (() => {
+    const all: Array<{ id: string; title: string; description: string; severity: 'high' | 'medium' | 'low'; recommendation: string; group: 'integrity' | 'performance' }> = [];
+
+    // KPI-driven insights
+    const kpis = Array.isArray(kpisData) ? kpisData : [];
+    kpis.forEach((kpi: any) => {
+      const metricKey = kpi.metric || kpi.metricKey || '';
+      const current = getLiveMetricValue(metricKey);
+      const target = parseFloat(kpi.targetValue || '0');
+      const p = computeProgress(current, target, metricKey);
+      const def = getGoogleAdsMetricDef(metricKey);
+      if (p.status === 'behind') {
+        all.push({ id: `kpi-behind-${kpi.id}`, title: `KPI Behind: ${kpi.name}`, description: `${def.label} is at ${def.format(current)} vs target ${def.format(target)} (${Math.min(p.pct, 200).toFixed(0)}% progress).`, severity: 'high', recommendation: `Focus on improving ${def.label} to close the gap.`, group: 'performance' });
+      } else if (p.status === 'needs_attention') {
+        all.push({ id: `kpi-attention-${kpi.id}`, title: `KPI Needs Attention: ${kpi.name}`, description: `${def.label} is at ${def.format(current)} vs target ${def.format(target)} (${Math.min(p.pct, 200).toFixed(0)}% progress).`, severity: 'medium', recommendation: `Monitor ${def.label} closely and consider optimization.`, group: 'performance' });
+      }
+    });
+
+    // Benchmark-driven insights
+    const benchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
+    benchmarks.forEach((b: any) => {
+      const metricKey = b.metric || '';
+      const current = getLiveMetricValue(metricKey);
+      const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
+      const p = computeProgress(current, benchVal, metricKey);
+      const def = getGoogleAdsMetricDef(metricKey);
+      if (p.status === 'behind') {
+        all.push({ id: `bench-behind-${b.id}`, title: `Below Benchmark: ${b.name}`, description: `${def.label} is at ${def.format(current)} vs benchmark ${def.format(benchVal)}.`, severity: 'high', recommendation: `Your ${def.label} is below industry benchmark. Review campaign strategy.`, group: 'performance' });
+      } else if (p.status === 'needs_attention') {
+        all.push({ id: `bench-attention-${b.id}`, title: `Near Benchmark: ${b.name}`, description: `${def.label} is at ${def.format(current)} vs benchmark ${def.format(benchVal)}.`, severity: 'medium', recommendation: `${def.label} is close to benchmark but could use improvement.`, group: 'performance' });
+      }
+    });
+
+    // Threshold-based integrity / performance signals
+    if (summary.ctr < 1.0 && summary.impressions > 0) {
+      all.push({ id: 'ctr-low', title: 'Low CTR Across Campaigns', description: `Average CTR is ${fmtPct(summary.ctr)}, below the typical 1.0% threshold for Google Ads.`, severity: 'medium', recommendation: 'Review ad copy, keywords, and targeting. Consider improving ad relevance and quality score.', group: 'performance' });
+    }
+    if (summary.costPerConv > 50 && summary.conversions > 0) {
+      all.push({ id: 'cost-per-conv-high', title: 'High Cost Per Conversion', description: `Average cost per conversion is ${fmtCurrency(summary.costPerConv)}.`, severity: 'medium', recommendation: 'Consider refining targeting, negative keywords, and bid strategy to reduce costs.', group: 'performance' });
+    }
+    if (summary.spend > 0 && summary.conversions === 0) {
+      all.push({ id: 'no-conversions', title: 'Spend With No Conversions', description: `You have spent ${fmtCurrency(summary.spend)} but recorded 0 conversions.`, severity: 'high', recommendation: 'Verify conversion tracking is set up correctly in your Google Ads account. Check that conversion actions are firing.', group: 'integrity' });
+    }
+    if (summary.impressions > 0 && summary.clicks === 0) {
+      all.push({ id: 'no-clicks', title: 'Impressions With No Clicks', description: `${fmt(summary.impressions)} impressions but 0 clicks.`, severity: 'high', recommendation: 'Your ads may not be compelling enough. Review ad copy, visuals, and targeting.', group: 'integrity' });
+    }
+    if (summary.roas > 0 && summary.roas < 1) {
+      all.push({ id: 'negative-roas', title: 'Negative ROAS', description: `ROAS is ${summary.roas.toFixed(2)}x — you're spending more than you're earning from conversions.`, severity: 'high', recommendation: 'Review your bidding strategy and campaign targeting. Consider pausing underperforming campaigns.', group: 'performance' });
+    }
+
+    return all;
   })();
 
   // Ad comparison chart data — reacts to sortBy
@@ -1230,32 +1285,69 @@ export default function GoogleAdsAnalytics() {
             <TabsContent value="insights" className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Actionable insights from financial metrics plus KPI + Benchmark performance.</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  Actionable insights from financial integrity checks plus KPI + Benchmark performance.
+                </p>
               </div>
 
               {/* Executive Financials */}
-              <Card className="border-slate-200 dark:border-slate-700">
+              <Card>
                 <CardHeader>
                   <CardTitle>Executive financials</CardTitle>
-                  <CardDescription>Key financial metrics from Google Ads imports.</CardDescription>
+                  <CardDescription>
+                    Spend and conversion metrics from Google Ads imports.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-4">
-                    <Card><CardContent className="p-5"><div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</div><div className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.spend)}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Source: Google Ads</div></CardContent></Card>
-                    <Card><CardContent className="p-5"><div className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions</div><div className="text-2xl font-bold text-slate-900 dark:text-white">{fmt(Math.round(summary.conversions))}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-1">All conversion actions</div></CardContent></Card>
-                    <Card><CardContent className="p-5"><div className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Value</div><div className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.conversionValue)}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total value from conversions</div></CardContent></Card>
-                    <Card><CardContent className="p-5"><div className="text-sm font-medium text-slate-600 dark:text-slate-400">Cost/Conversion</div><div className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.costPerConv)}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Spend / Conversions</div></CardContent></Card>
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</div>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.spend)}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Source: Google Ads</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Value</div>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.conversionValue)}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total value from conversions</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</div>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{summary.roas.toFixed(2)}x</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Conv. Value / Spend</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</div>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{fmtPct(summary.roi)}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">((Value - Spend) / Spend)</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <div className="mt-4 pt-3 border-t text-xs text-slate-600 dark:text-slate-400">
+                    <div className="font-medium mb-1">Sources used</div>
+                    <div className="grid gap-1">
+                      <div><span className="font-medium">Spend</span>: Google Ads import session</div>
+                      <div><span className="font-medium">Conversion Value</span>: {summary.conversionValue > 0 ? 'Google Ads conversion tracking' : 'Not available — no conversion value recorded'}</div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Trends - Daily/7d/30d */}
-              <Card className="border-slate-200 dark:border-slate-700">
+              <Card>
                 <CardHeader>
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
                       <CardTitle>Trends</CardTitle>
-                      <CardDescription>Daily shows day-by-day values. 7d/30d smooth the chart with rolling windows.</CardDescription>
+                      <CardDescription>
+                        Daily shows day-by-day values. 7d/30d smooth the chart with rolling windows; the table summarizes the latest window vs the prior window.
+                      </CardDescription>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                       <div className="flex items-center gap-2">
@@ -1402,66 +1494,280 @@ export default function GoogleAdsAnalytics() {
                 </CardContent>
               </Card>
 
-              {/* Insight summary cards */}
-              {(() => {
-                const allInsights: Array<{ id: string; title: string; description: string; severity: string; recommendation: string }> = [];
+              {/* Insights Summary Cards */}
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total insights</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{googleAdsInsights.length}</p>
+                      </div>
+                      <BarChart3 className="w-7 h-7 text-slate-600 dark:text-slate-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">High priority</p>
+                        <p className="text-2xl font-bold text-red-600">{googleAdsInsights.filter(i => i.severity === 'high').length}</p>
+                      </div>
+                      <AlertTriangle className="w-7 h-7 text-red-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs attention</p>
+                        <p className="text-2xl font-bold text-amber-600">{googleAdsInsights.filter(i => i.severity === 'medium').length}</p>
+                      </div>
+                      <TrendingDown className="w-7 h-7 text-amber-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-                const kpis = Array.isArray(kpisData) ? kpisData : [];
-                kpis.forEach((kpi: any) => {
-                  const current = getLiveMetricValue(kpi.metric || kpi.metricKey || '');
-                  const target = parseFloat(kpi.targetValue || '0');
-                  const p = computeProgress(current, target, kpi.metric || kpi.metricKey || '');
-                  const def = getGoogleAdsMetricDef(kpi.metric || kpi.metricKey || '');
-                  if (p.status === 'behind') {
-                    allInsights.push({ id: `kpi-behind-${kpi.id}`, title: `KPI Behind: ${kpi.name}`, description: `${def.label} is at ${def.format(current)} vs target ${def.format(target)} (${Math.min(p.pct, 200).toFixed(0)}% progress).`, severity: 'high', recommendation: `Focus on improving ${def.label} to close the gap.` });
-                  } else if (p.status === 'needs_attention') {
-                    allInsights.push({ id: `kpi-attention-${kpi.id}`, title: `KPI Needs Attention: ${kpi.name}`, description: `${def.label} is at ${def.format(current)} vs target ${def.format(target)} (${Math.min(p.pct, 200).toFixed(0)}% progress).`, severity: 'medium', recommendation: `Monitor ${def.label} closely and consider optimization.` });
-                  }
-                });
-
-                const benchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
-                benchmarks.forEach((b: any) => {
-                  const current = getLiveMetricValue(b.metric || '');
-                  const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
-                  const p = computeProgress(current, benchVal, b.metric || '');
-                  const def = getGoogleAdsMetricDef(b.metric || '');
-                  if (p.status === 'behind') {
-                    allInsights.push({ id: `bench-behind-${b.id}`, title: `Below Benchmark: ${b.name}`, description: `${def.label} is at ${def.format(current)} vs benchmark ${def.format(benchVal)}.`, severity: 'high', recommendation: `Your ${def.label} is below industry benchmark. Review campaign strategy.` });
-                  } else if (p.status === 'needs_attention') {
-                    allInsights.push({ id: `bench-attention-${b.id}`, title: `Near Benchmark: ${b.name}`, description: `${def.label} is at ${def.format(current)} vs benchmark ${def.format(benchVal)}.`, severity: 'medium', recommendation: `${def.label} is close to benchmark but could use improvement.` });
-                  }
-                });
-
-                if (summary.ctr < 1.0) {
-                  allInsights.push({ id: 'ctr-low', title: 'Low CTR Across Campaigns', description: `Average CTR is ${fmtPct(summary.ctr)}, below the typical 1.0% threshold for Google Ads.`, severity: 'medium', recommendation: 'Review ad copy, keywords, and targeting. Consider improving ad relevance and quality score.' });
-                }
-
-                if (summary.costPerConv > 50) {
-                  allInsights.push({ id: 'cost-per-conv-high', title: 'High Cost Per Conversion', description: `Average cost per conversion is ${fmtCurrency(summary.costPerConv)}.`, severity: 'medium', recommendation: 'Consider refining targeting, negative keywords, and bid strategy to reduce costs.' });
-                }
-
-                if (allInsights.length === 0) return null;
-
-                return (
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Performance Insights</h3>
-                    {allInsights.map((insight) => (
-                      <Card key={insight.id} className={insight.severity === 'high' ? 'border-red-200 dark:border-red-800' : 'border-amber-200 dark:border-amber-800'}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            {insight.severity === 'high' ? <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" /> : <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />}
-                            <div>
-                              <h4 className="font-medium text-slate-900 dark:text-white">{insight.title}</h4>
-                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{insight.description}</p>
-                              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 italic">{insight.recommendation}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+              {/* What changed, what to do next */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>What changed, what to do next</CardTitle>
+                  <CardDescription>
+                    Summary of integrity checks, KPI/Benchmark evaluations, and performance signals from Google Ads data.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* Data metadata */}
+                  <div className="rounded-md border p-3 text-xs text-slate-600 dark:text-slate-400">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      <div><span className="font-medium">Data through:</span> {dailySeries.daily.length > 0 ? dailySeries.daily[dailySeries.daily.length - 1].date + ' (UTC)' : '—'}</div>
+                      <div><span className="font-medium">Available days:</span> {insightsRollups.availableDays}</div>
+                      <div><span className="font-medium">WoW window:</span> {insightsRollups.availableDays >= 14 ? `${insightsRollups.last7.startDate} → ${insightsRollups.last7.endDate}` : 'Needs 14+ days'}</div>
+                      <div><span className="font-medium">Conversion tracking:</span> {summary.conversionValue > 0 ? 'Active' : 'No value recorded'}</div>
+                    </div>
                   </div>
-                );
-              })()}
+
+                  {/* Goal Impact: KPI + Benchmark gaps */}
+                  {(kpiTracker.total > 0 || benchmarkTracker.total > 0) && (
+                    <div className="rounded-md border p-3">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Goal impact (KPIs & Benchmarks)</div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {/* Top KPI gaps */}
+                        <div className="rounded-md border p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-white">Top KPI gaps</div>
+                            <Badge variant="secondary">{kpiTracker.behind}</Badge>
+                          </div>
+                          {kpiTracker.total === 0 ? (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">No KPIs configured yet.</p>
+                          ) : kpiTracker.behind === 0 && kpiTracker.needsAttention === 0 ? (
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400">All KPIs on track.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {(Array.isArray(kpisData) ? kpisData : []).slice(0, 5).map((kpi: any) => {
+                                const metricKey = kpi.metric || kpi.metricKey || '';
+                                const current = getLiveMetricValue(metricKey);
+                                const target = parseFloat(kpi.targetValue || '0');
+                                const p = computeProgress(current, target, metricKey);
+                                const def = getGoogleAdsMetricDef(metricKey);
+                                if (p.status === 'on_track') return null;
+                                return (
+                                  <div key={kpi.id} className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-1.5">
+                                      {p.status === 'behind' ? <AlertTriangle className="w-3.5 h-3.5 text-red-500" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
+                                      <span className="font-medium text-slate-900 dark:text-white">{kpi.name}</span>
+                                    </div>
+                                    <span className="text-slate-500 dark:text-slate-400">{def.format(current)} / {def.format(target)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Top Benchmark gaps */}
+                        <div className="rounded-md border p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-white">Top Benchmark gaps</div>
+                            <Badge variant="secondary">{benchmarkTracker.behind}</Badge>
+                          </div>
+                          {benchmarkTracker.total === 0 ? (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">No benchmarks configured yet.</p>
+                          ) : benchmarkTracker.behind === 0 && benchmarkTracker.needsAttention === 0 ? (
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400">All benchmarks on track.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {(Array.isArray(benchmarksData) ? benchmarksData : []).slice(0, 5).map((b: any) => {
+                                const metricKey = b.metric || '';
+                                const current = getLiveMetricValue(metricKey);
+                                const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
+                                const p = computeProgress(current, benchVal, metricKey);
+                                const def = getGoogleAdsMetricDef(metricKey);
+                                if (p.status === 'on_track') return null;
+                                return (
+                                  <div key={b.id} className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-1.5">
+                                      {p.status === 'behind' ? <AlertTriangle className="w-3.5 h-3.5 text-red-500" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
+                                      <span className="font-medium text-slate-900 dark:text-white">{b.name}</span>
+                                    </div>
+                                    <span className="text-slate-500 dark:text-slate-400">{def.format(current)} / {def.format(benchVal)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Success stories */}
+                  {(kpiTracker.onTrack > 0 || benchmarkTracker.onTrack > 0) && (
+                    <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20">
+                      <CardHeader className="pb-2">
+                        <div className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Success stories</div>
+                        <CardDescription className="text-emerald-700 dark:text-emerald-300">
+                          KPIs and Benchmarks currently meeting or exceeding targets.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          {kpiTracker.onTrack > 0 && (
+                            <div className="space-y-1">
+                              <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-1">KPIs on track ({kpiTracker.onTrack})</div>
+                              {(Array.isArray(kpisData) ? kpisData : []).map((kpi: any) => {
+                                const metricKey = kpi.metric || kpi.metricKey || '';
+                                const current = getLiveMetricValue(metricKey);
+                                const target = parseFloat(kpi.targetValue || '0');
+                                const p = computeProgress(current, target, metricKey);
+                                if (p.status !== 'on_track') return null;
+                                return (
+                                  <div key={kpi.id} className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300">
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>{kpi.name}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {benchmarkTracker.onTrack > 0 && (
+                            <div className="space-y-1">
+                              <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-1">Benchmarks on track ({benchmarkTracker.onTrack})</div>
+                              {(Array.isArray(benchmarksData) ? benchmarksData : []).map((b: any) => {
+                                const metricKey = b.metric || '';
+                                const current = getLiveMetricValue(metricKey);
+                                const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');
+                                const p = computeProgress(current, benchVal, metricKey);
+                                if (p.status !== 'on_track') return null;
+                                return (
+                                  <div key={b.id} className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300">
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>{b.name}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Not enough data warning */}
+                  {insightsRollups.availableDays > 0 && insightsRollups.availableDays < 14 && (
+                    <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-700 dark:text-amber-300">
+                      Need at least 14 days of daily history to compute week-over-week anomaly signals. Available days: {insightsRollups.availableDays}.
+                    </div>
+                  )}
+
+                  {/* Insights list */}
+                  {googleAdsInsights.length === 0 ? (
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                      No insights available yet. Import Google Ads data, then create KPIs/Benchmarks to unlock more insights.
+                    </div>
+                  ) : (
+                    <>
+                      {/* Data integrity & configuration */}
+                      {(() => {
+                        const integrity = googleAdsInsights.filter(i => i.group === 'integrity');
+                        if (integrity.length === 0) return null;
+                        return (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-semibold text-slate-900 dark:text-white">Data integrity & configuration</div>
+                              <Badge variant="secondary">{integrity.length}</Badge>
+                            </div>
+                            {integrity.map((insight) => (
+                              <Card key={insight.id} className={insight.severity === 'high' ? 'border-red-200 dark:border-red-800' : 'border-amber-200 dark:border-amber-800'}>
+                                <CardContent className="p-4">
+                                  <div className="flex items-start gap-3">
+                                    {insight.severity === 'high' ? <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" /> : <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />}
+                                    <div className="flex-1">
+                                      <div className="flex items-center justify-between">
+                                        <h4 className="font-medium text-slate-900 dark:text-white">{insight.title}</h4>
+                                        <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setInsightsExpanded(prev => ({ ...prev, [insight.id]: !prev[insight.id] }))}>
+                                          {insightsExpanded[insight.id] ? 'Less' : 'More'}
+                                        </Button>
+                                      </div>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{insight.description}</p>
+                                      {insightsExpanded[insight.id] && (
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 italic">{insight.recommendation}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Performance & anomalies */}
+                      {(() => {
+                        const performance = googleAdsInsights.filter(i => i.group === 'performance');
+                        if (performance.length === 0) return null;
+                        return (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-semibold text-slate-900 dark:text-white">Performance & anomalies</div>
+                              <Badge variant="secondary">{performance.length}</Badge>
+                            </div>
+                            {performance.map((insight) => (
+                              <Card key={insight.id} className={insight.severity === 'high' ? 'border-red-200 dark:border-red-800' : 'border-amber-200 dark:border-amber-800'}>
+                                <CardContent className="p-4">
+                                  <div className="flex items-start gap-3">
+                                    {insight.severity === 'high' ? <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" /> : <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />}
+                                    <div className="flex-1">
+                                      <div className="flex items-center justify-between">
+                                        <h4 className="font-medium text-slate-900 dark:text-white">{insight.title}</h4>
+                                        <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setInsightsExpanded(prev => ({ ...prev, [insight.id]: !prev[insight.id] }))}>
+                                          {insightsExpanded[insight.id] ? 'Less' : 'More'}
+                                        </Button>
+                                      </div>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{insight.description}</p>
+                                      {insightsExpanded[insight.id] && (
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 italic">{insight.recommendation}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      {/* No issues fallback */}
+                      {googleAdsInsights.filter(i => i.group === 'integrity').length === 0 && googleAdsInsights.filter(i => i.group === 'performance').length === 0 && (
+                        <div className="text-sm text-slate-600 dark:text-slate-400">No issues detected. System is operating normally.</div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* ==================== REPORTS TAB ==================== */}

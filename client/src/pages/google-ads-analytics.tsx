@@ -105,7 +105,7 @@ export default function GoogleAdsAnalytics() {
   });
 
   // Ad comparison state
-  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortBy, setSortBy] = useState<string>('spend');
   const [filterBy, setFilterBy] = useState<string>('all');
 
   // Insights state
@@ -652,12 +652,12 @@ export default function GoogleAdsAnalytics() {
   })();
 
   // Ad comparison chart data — reacts to sortBy
-  const campaignPerformanceChartMetric = sortBy === 'name' ? 'spend' : sortBy;
+  const campaignPerformanceChartMetric = sortBy;
   const campaignPerformanceData = [...campaignBreakdown]
     .sort((a: any, b: any) => (b[campaignPerformanceChartMetric] || 0) - (a[campaignPerformanceChartMetric] || 0))
     .slice(0, 5)
     .map(c => ({
-      name: c.name.length > 20 ? c.name.substring(0, 20) + '...' : c.name,
+      name: c.name.length > 35 ? c.name.substring(0, 35) + '...' : c.name,
       value: campaignPerformanceChartMetric === 'spend' ? Math.round(c.spend * 100) / 100
         : campaignPerformanceChartMetric === 'impressions' ? c.impressions
         : campaignPerformanceChartMetric === 'clicks' ? c.clicks
@@ -666,11 +666,16 @@ export default function GoogleAdsAnalytics() {
         : Math.round((c as any)[campaignPerformanceChartMetric] * 100) / 100,
     }));
 
-  const campaignChartLabel = sortBy === 'name' ? 'Spend ($)' : sortBy === 'spend' ? 'Spend ($)' : sortBy === 'impressions' ? 'Impressions' : sortBy === 'clicks' ? 'Clicks' : sortBy === 'conversions' ? 'Conversions' : sortBy === 'ctr' ? 'CTR (%)' : sortBy;
+  const campaignChartLabel = sortBy === 'spend' ? 'Spend ($)' : sortBy === 'impressions' ? 'Impressions' : sortBy === 'clicks' ? 'Clicks' : sortBy === 'conversions' ? 'Conversions' : sortBy === 'ctr' ? 'CTR (%)' : sortBy;
 
-  const spendDistribution = campaignBreakdown.map(c => ({
-    name: c.name.length > 20 ? c.name.substring(0, 20) + '...' : c.name,
-    value: Math.round(c.spend * 100) / 100,
+  const metricDistribution = campaignBreakdown.map(c => ({
+    name: c.name.length > 35 ? c.name.substring(0, 35) + '...' : c.name,
+    value: campaignPerformanceChartMetric === 'spend' ? Math.round(c.spend * 100) / 100
+      : campaignPerformanceChartMetric === 'impressions' ? c.impressions
+      : campaignPerformanceChartMetric === 'clicks' ? c.clicks
+      : campaignPerformanceChartMetric === 'conversions' ? Math.round(c.conversions)
+      : campaignPerformanceChartMetric === 'ctr' ? Math.round(c.ctr * 100) / 100
+      : Math.round((c as any)[campaignPerformanceChartMetric] * 100) / 100,
   }));
 
   // Ad comparison performance rankings
@@ -1122,7 +1127,6 @@ export default function GoogleAdsAnalytics() {
                       <SelectValue placeholder="Sort by..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="name">Name (A-Z)</SelectItem>
                       <SelectItem value="spend">Spend (High→Low)</SelectItem>
                       <SelectItem value="impressions">Impressions (High→Low)</SelectItem>
                       <SelectItem value="clicks">Clicks (High→Low)</SelectItem>
@@ -1196,12 +1200,16 @@ export default function GoogleAdsAnalytics() {
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader><CardTitle>Spend Distribution</CardTitle><CardDescription>Budget allocation across campaigns</CardDescription></CardHeader>
+                  <CardHeader><CardTitle>{campaignChartLabel} Distribution</CardTitle><CardDescription>{campaignChartLabel} allocation across campaigns</CardDescription></CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
-                        <Pie data={spendDistribution} cx="50%" cy="50%" labelLine={false} label={(entry: any) => `${entry.name}: $${entry.value.toFixed(0)}`} outerRadius={80} fill="#8884d8" dataKey="value">
-                          {spendDistribution.map((_: any, index: number) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
+                        <Pie data={metricDistribution} cx="50%" cy="50%" labelLine={false} label={(entry: any) => {
+                          const v = entry.value;
+                          const formatted = ['spend', 'cpc', 'cpm', 'costPerConversion'].includes(sortBy) ? `$${v.toLocaleString()}` : ['ctr', 'conversionRate'].includes(sortBy) ? `${v}%` : v.toLocaleString();
+                          return `${entry.name}: ${formatted}`;
+                        }} outerRadius={80} fill="#8884d8" dataKey="value">
+                          {metricDistribution.map((_: any, index: number) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
                         </Pie>
                         <Tooltip />
                       </PieChart>

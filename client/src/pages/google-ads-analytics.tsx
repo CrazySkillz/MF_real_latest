@@ -84,9 +84,6 @@ export default function GoogleAdsAnalytics() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Overview state
-  const [trendMetric, setTrendMetric] = useState("spend");
-
   // KPI state
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [editingKPI, setEditingKPI] = useState<any>(null);
@@ -525,8 +522,6 @@ export default function GoogleAdsAnalytics() {
     };
   }, [dailySeries]);
 
-  const selectedMetricDef = METRIC_OPTIONS.find((m) => m.key === trendMetric) || METRIC_OPTIONS[0];
-
   // Format date helper
   const formatShortDate = (yyyyMmDd: string) => {
     const s = String(yyyyMmDd || '').trim();
@@ -656,13 +651,22 @@ export default function GoogleAdsAnalytics() {
     return { total: items.length, onTrack, needsAttention, behind, avgPct: items.length > 0 ? totalPct / items.length : 0 };
   })();
 
-  // Ad comparison chart data
-  const campaignPerformanceData = campaignBreakdown.sort((a, b) => b.spend - a.spend).slice(0, 5).map(c => ({
-    name: c.name.length > 20 ? c.name.substring(0, 20) + '...' : c.name,
-    spend: Math.round(c.spend * 100) / 100,
-    conversions: Math.round(c.conversions),
-    clicks: c.clicks,
-  }));
+  // Ad comparison chart data — reacts to sortBy
+  const campaignPerformanceData = useMemo(() => {
+    const metricKey = sortBy === 'name' ? 'spend' : sortBy;
+    const sorted = [...campaignBreakdown].sort((a: any, b: any) => (b[metricKey] || 0) - (a[metricKey] || 0));
+    return sorted.slice(0, 5).map(c => ({
+      name: c.name.length > 20 ? c.name.substring(0, 20) + '...' : c.name,
+      value: metricKey === 'spend' ? Math.round(c.spend * 100) / 100
+        : metricKey === 'impressions' ? c.impressions
+        : metricKey === 'clicks' ? c.clicks
+        : metricKey === 'conversions' ? Math.round(c.conversions)
+        : metricKey === 'ctr' ? Math.round(c.ctr * 100) / 100
+        : Math.round((c as any)[metricKey] * 100) / 100,
+    }));
+  }, [campaignBreakdown, sortBy]);
+
+  const campaignChartLabel = sortBy === 'name' ? 'Spend ($)' : sortBy === 'spend' ? 'Spend ($)' : sortBy === 'impressions' ? 'Impressions' : sortBy === 'clicks' ? 'Clicks' : sortBy === 'conversions' ? 'Conversions' : sortBy === 'ctr' ? 'CTR (%)' : sortBy;
 
   const spendDistribution = campaignBreakdown.map(c => ({
     name: c.name.length > 20 ? c.name.substring(0, 20) + '...' : c.name,
@@ -890,80 +894,6 @@ export default function GoogleAdsAnalytics() {
                       <p className="text-xl font-bold">{fmtCurrency(summary.conversionValue)}</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Trend Chart */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Daily Trend</CardTitle>
-                    <Select value={trendMetric} onValueChange={setTrendMetric}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {METRIC_OPTIONS.map((m) => (
-                          <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={320}>
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="date" tickFormatter={(d) => new Date(d + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })} tick={{ fontSize: 11 }} />
-                        <YAxis tickFormatter={(v) => selectedMetricDef.format(v)} tick={{ fontSize: 11 }} width={80} />
-                        <Tooltip formatter={(v: number) => [selectedMetricDef.format(v), selectedMetricDef.label]} labelFormatter={(d) => new Date(d + "T00:00:00").toLocaleDateString()} />
-                        <Line type="monotone" dataKey={trendMetric} stroke={selectedMetricDef.color} strokeWidth={2} dot={chartData.length <= 31} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="py-12 text-center text-slate-400">No chart data available</div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Daily Metrics Table */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Daily Metrics</CardTitle>
-                  <CardDescription>{chartData.length} days of data</CardDescription>
-                </CardHeader>
-                <CardContent className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Impressions</TableHead>
-                        <TableHead className="text-right">Clicks</TableHead>
-                        <TableHead className="text-right">CTR</TableHead>
-                        <TableHead className="text-right">Spend</TableHead>
-                        <TableHead className="text-right">CPC</TableHead>
-                        <TableHead className="text-right">Conversions</TableHead>
-                        <TableHead className="text-right">Conv. Rate</TableHead>
-                        <TableHead className="text-right">Cost/Conv</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {[...chartData].reverse().map((row) => (
-                        <TableRow key={row.date}>
-                          <TableCell className="font-medium">{new Date(row.date + "T00:00:00").toLocaleDateString()}</TableCell>
-                          <TableCell className="text-right">{fmt(row.impressions)}</TableCell>
-                          <TableCell className="text-right">{fmt(row.clicks)}</TableCell>
-                          <TableCell className="text-right">{fmtPct(row.ctr)}</TableCell>
-                          <TableCell className="text-right">{fmtCurrency(row.spend)}</TableCell>
-                          <TableCell className="text-right">{fmtCurrency(row.cpc)}</TableCell>
-                          <TableCell className="text-right">{fmt(Math.round(row.conversions))}</TableCell>
-                          <TableCell className="text-right">{fmtPct(row.conversionRate)}</TableCell>
-                          <TableCell className="text-right">{row.conversions > 0 ? fmtCurrency(row.spend / row.conversions) : "—"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1203,8 +1133,8 @@ export default function GoogleAdsAnalytics() {
                 </div>
               </div>
 
-              {/* Performance Rankings */}
-              {campaignBreakdown.length > 0 && (
+              {/* Performance Rankings — only meaningful with 2+ campaigns */}
+              {campaignBreakdown.length > 1 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card>
                     <CardHeader className="pb-3">
@@ -1251,7 +1181,7 @@ export default function GoogleAdsAnalytics() {
               {/* Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
-                  <CardHeader><CardTitle>Campaign Performance</CardTitle><CardDescription>Top 5 campaigns by spend</CardDescription></CardHeader>
+                  <CardHeader><CardTitle>Campaign Performance</CardTitle><CardDescription>Top 5 campaigns by {campaignChartLabel.toLowerCase()}</CardDescription></CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={campaignPerformanceData}>
@@ -1260,8 +1190,7 @@ export default function GoogleAdsAnalytics() {
                         <YAxis />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="spend" fill="#3b82f6" name="Spend ($)" />
-                        <Bar dataKey="conversions" fill="#10b981" name="Conversions" />
+                        <Bar dataKey="value" fill="#3b82f6" name={campaignChartLabel} />
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>

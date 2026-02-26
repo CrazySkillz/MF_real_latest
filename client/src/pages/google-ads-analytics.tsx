@@ -1171,15 +1171,15 @@ export default function GoogleAdsAnalytics() {
                 </div>
               )}
 
-              {/* Chart — horizontal bar so labels never clip */}
-              <Card className="max-w-2xl">
+              {/* Campaign Performance Chart */}
+              <Card>
                 <CardHeader><CardTitle>Campaign Performance</CardTitle><CardDescription>Top 5 campaigns by {campaignChartLabel.toLowerCase()}</CardDescription></CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={campaignPerformanceData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                    <BarChart data={campaignPerformanceData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis type="category" dataKey="name" width={200} tick={{ fontSize: 12 }} />
+                      <XAxis dataKey="name" angle={-25} textAnchor="end" interval={0} tick={{ fontSize: 11 }} height={80} />
+                      <YAxis />
                       <Tooltip />
                       <Legend />
                       <Bar dataKey="value" fill="#3b82f6" name={campaignChartLabel} />

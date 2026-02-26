@@ -652,19 +652,19 @@ export default function GoogleAdsAnalytics() {
   })();
 
   // Ad comparison chart data — reacts to sortBy
-  const campaignPerformanceData = useMemo(() => {
-    const metricKey = sortBy === 'name' ? 'spend' : sortBy;
-    const sorted = [...campaignBreakdown].sort((a: any, b: any) => (b[metricKey] || 0) - (a[metricKey] || 0));
-    return sorted.slice(0, 5).map(c => ({
+  const campaignPerformanceChartMetric = sortBy === 'name' ? 'spend' : sortBy;
+  const campaignPerformanceData = [...campaignBreakdown]
+    .sort((a: any, b: any) => (b[campaignPerformanceChartMetric] || 0) - (a[campaignPerformanceChartMetric] || 0))
+    .slice(0, 5)
+    .map(c => ({
       name: c.name.length > 20 ? c.name.substring(0, 20) + '...' : c.name,
-      value: metricKey === 'spend' ? Math.round(c.spend * 100) / 100
-        : metricKey === 'impressions' ? c.impressions
-        : metricKey === 'clicks' ? c.clicks
-        : metricKey === 'conversions' ? Math.round(c.conversions)
-        : metricKey === 'ctr' ? Math.round(c.ctr * 100) / 100
-        : Math.round((c as any)[metricKey] * 100) / 100,
+      value: campaignPerformanceChartMetric === 'spend' ? Math.round(c.spend * 100) / 100
+        : campaignPerformanceChartMetric === 'impressions' ? c.impressions
+        : campaignPerformanceChartMetric === 'clicks' ? c.clicks
+        : campaignPerformanceChartMetric === 'conversions' ? Math.round(c.conversions)
+        : campaignPerformanceChartMetric === 'ctr' ? Math.round(c.ctr * 100) / 100
+        : Math.round((c as any)[campaignPerformanceChartMetric] * 100) / 100,
     }));
-  }, [campaignBreakdown, sortBy]);
 
   const campaignChartLabel = sortBy === 'name' ? 'Spend ($)' : sortBy === 'spend' ? 'Spend ($)' : sortBy === 'impressions' ? 'Impressions' : sortBy === 'clicks' ? 'Clicks' : sortBy === 'conversions' ? 'Conversions' : sortBy === 'ctr' ? 'CTR (%)' : sortBy;
 

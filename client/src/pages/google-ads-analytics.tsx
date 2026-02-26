@@ -14,7 +14,7 @@ import { ArrowLeft, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Eye, Mous
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { GoogleAdsKpiModal } from "./google-ads-analytics/GoogleAdsKpiModal";
 import { GoogleAdsBenchmarkModal } from "./google-ads-analytics/GoogleAdsBenchmarkModal";
 import { GoogleAdsReportModal } from "./google-ads-analytics/GoogleAdsReportModal";
@@ -76,7 +76,6 @@ interface DailyMetric {
   googleCampaignName: string;
 }
 
-const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
 
 export default function GoogleAdsAnalytics() {
   const [, params] = useRoute("/campaigns/:id/google-ads-analytics");
@@ -668,16 +667,6 @@ export default function GoogleAdsAnalytics() {
 
   const campaignChartLabel = sortBy === 'spend' ? 'Spend ($)' : sortBy === 'impressions' ? 'Impressions' : sortBy === 'clicks' ? 'Clicks' : sortBy === 'conversions' ? 'Conversions' : sortBy === 'ctr' ? 'CTR (%)' : sortBy;
 
-  const metricDistribution = campaignBreakdown.map(c => ({
-    name: c.name.length > 35 ? c.name.substring(0, 35) + '...' : c.name,
-    value: campaignPerformanceChartMetric === 'spend' ? Math.round(c.spend * 100) / 100
-      : campaignPerformanceChartMetric === 'impressions' ? c.impressions
-      : campaignPerformanceChartMetric === 'clicks' ? c.clicks
-      : campaignPerformanceChartMetric === 'conversions' ? Math.round(c.conversions)
-      : campaignPerformanceChartMetric === 'ctr' ? Math.round(c.ctr * 100) / 100
-      : Math.round((c as any)[campaignPerformanceChartMetric] * 100) / 100,
-  }));
-
   // Ad comparison performance rankings
   const bestPerforming = [...campaignBreakdown].sort((a, b) => b.conversions - a.conversions)[0];
   const mostEfficient = [...campaignBreakdown].sort((a, b) => (a.cpc || Infinity) - (b.cpc || Infinity))[0];
@@ -1182,41 +1171,22 @@ export default function GoogleAdsAnalytics() {
                 </div>
               )}
 
-              {/* Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader><CardTitle>Campaign Performance</CardTitle><CardDescription>Top 5 campaigns by {campaignChartLabel.toLowerCase()}</CardDescription></CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={campaignPerformanceData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="value" fill="#3b82f6" name={campaignChartLabel} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader><CardTitle>{campaignChartLabel} Distribution</CardTitle><CardDescription>{campaignChartLabel} allocation across campaigns</CardDescription></CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie data={metricDistribution} cx="50%" cy="50%" labelLine={false} label={(entry: any) => {
-                          const v = entry.value;
-                          const formatted = ['spend', 'cpc', 'cpm', 'costPerConversion'].includes(sortBy) ? `$${v.toLocaleString()}` : ['ctr', 'conversionRate'].includes(sortBy) ? `${v}%` : v.toLocaleString();
-                          return `${entry.name}: ${formatted}`;
-                        }} outerRadius={80} fill="#8884d8" dataKey="value">
-                          {metricDistribution.map((_: any, index: number) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
+              {/* Chart */}
+              <Card>
+                <CardHeader><CardTitle>Campaign Performance</CardTitle><CardDescription>Top 5 campaigns by {campaignChartLabel.toLowerCase()}</CardDescription></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={campaignPerformanceData} margin={{ bottom: 80 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" angle={-35} textAnchor="end" interval={0} tick={{ fontSize: 11 }} />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="value" fill="#3b82f6" name={campaignChartLabel} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
 
               {/* Detailed Campaign Cards */}
               <Card>

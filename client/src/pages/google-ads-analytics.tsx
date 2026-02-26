@@ -1171,15 +1171,15 @@ export default function GoogleAdsAnalytics() {
                 </div>
               )}
 
-              {/* Chart */}
+              {/* Chart — horizontal bar so labels never clip */}
               <Card>
                 <CardHeader><CardTitle>Campaign Performance</CardTitle><CardDescription>Top 5 campaigns by {campaignChartLabel.toLowerCase()}</CardDescription></CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={campaignPerformanceData} margin={{ bottom: 80 }}>
+                  <ResponsiveContainer width="100%" height={Math.max(200, campaignPerformanceData.length * 60 + 40)}>
+                    <BarChart data={campaignPerformanceData} layout="vertical" margin={{ left: 10, right: 30 }}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" angle={-35} textAnchor="end" interval={0} tick={{ fontSize: 11 }} />
-                      <YAxis />
+                      <XAxis type="number" />
+                      <YAxis type="category" dataKey="name" width={200} tick={{ fontSize: 12 }} />
                       <Tooltip />
                       <Legend />
                       <Bar dataKey="value" fill="#3b82f6" name={campaignChartLabel} />
@@ -1188,61 +1188,42 @@ export default function GoogleAdsAnalytics() {
                 </CardContent>
               </Card>
 
-              {/* Detailed Campaign Cards */}
-              <Card>
-                <CardHeader><CardTitle>Detailed Campaign Comparison</CardTitle><CardDescription>Side-by-side metrics for all campaigns</CardDescription></CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {campaignBreakdown
-                      .sort((a, b) => {
-                        switch (sortBy) {
-                          case 'spend': return b.spend - a.spend;
-                          case 'impressions': return b.impressions - a.impressions;
-                          case 'clicks': return b.clicks - a.clicks;
-                          case 'conversions': return b.conversions - a.conversions;
-                          case 'ctr': return b.ctr - a.ctr;
-                          default: return a.name.localeCompare(b.name);
-                        }
-                      })
-                      .map((c) => {
-                        const performanceScore = (c.ctr * 10 + c.conversionRate * 5) / 2;
-                        const performance = performanceScore > 20 ? 'excellent' : performanceScore > 15 ? 'good' : performanceScore > 10 ? 'average' : 'poor';
-
-                        return (
-                          <div key={c.name} className="border rounded-lg p-4 bg-white dark:bg-slate-900">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-semibold text-slate-900 dark:text-white">{c.name}</h4>
-                                {performance === 'excellent' && <Badge variant="default" className="bg-green-500 text-xs">Excellent</Badge>}
-                                {performance === 'good' && <Badge variant="default" className="bg-blue-500 text-xs">Good</Badge>}
-                                {performance === 'average' && <Badge variant="secondary" className="text-xs">Average</Badge>}
-                                {performance === 'poor' && <Badge variant="destructive" className="text-xs">Poor</Badge>}
-                              </div>
-                              <span className="text-lg font-bold text-slate-900 dark:text-white">{fmtCurrency(c.spend)}</span>
-                            </div>
-                            <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-3">
-                              <div><p className="text-xs text-slate-500 font-medium">Impressions</p><p className="text-base font-bold text-slate-900 dark:text-white">{fmt(c.impressions)}</p></div>
-                              <div><p className="text-xs text-slate-500 font-medium">Clicks</p><p className="text-base font-bold text-slate-900 dark:text-white">{fmt(c.clicks)}</p></div>
-                              <div><p className="text-xs text-slate-500 font-medium">CTR</p><p className="text-base font-bold text-slate-900 dark:text-white">{fmtPct(c.ctr)}</p></div>
-                              <div><p className="text-xs text-slate-500 font-medium">Conversions</p><p className="text-base font-bold text-slate-900 dark:text-white">{fmt(Math.round(c.conversions))}</p></div>
-                              <div><p className="text-xs text-slate-500 font-medium">Conv Rate</p><p className="text-base font-bold text-slate-900 dark:text-white">{fmtPct(c.conversionRate)}</p></div>
-                              <div><p className="text-xs text-slate-500 font-medium">Video Views</p><p className="text-base font-bold text-slate-900 dark:text-white">{fmt(c.videoViews)}</p></div>
-                            </div>
-                            <div className="grid grid-cols-3 md:grid-cols-7 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                              <div><p className="text-[10px] text-slate-400 font-medium">CPC</p><p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{fmtCurrency(c.cpc)}</p></div>
-                              <div><p className="text-[10px] text-slate-400 font-medium">CPM</p><p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{fmtCurrency(c.cpm)}</p></div>
-                              <div><p className="text-[10px] text-slate-400 font-medium">Cost/Conv</p><p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{fmtCurrency(c.costPerConversion)}</p></div>
-                              <div><p className="text-[10px] text-slate-400 font-medium">Conv. Value</p><p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{fmtCurrency(c.conversionValue)}</p></div>
-                              <div><p className="text-[10px] text-slate-400 font-medium">ROAS</p><p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{c.roas.toFixed(2)}x</p></div>
-                              <div><p className="text-[10px] text-slate-400 font-medium">ROI</p><p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{c.roi.toFixed(1)}%</p></div>
-                              <div><p className="text-[10px] text-slate-400 font-medium">Days</p><p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{c.days}</p></div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Total Spend</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.spend)}</p>
+                      </div>
+                      <DollarSign className="w-8 h-8 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Total Conversions</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmt(Math.round(summary.conversions))}</p>
+                      </div>
+                      <Target className="w-8 h-8 text-green-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Campaigns Compared</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{campaignBreakdown.length}</p>
+                      </div>
+                      <Activity className="w-8 h-8 text-purple-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             {/* ==================== INSIGHTS TAB ==================== */}

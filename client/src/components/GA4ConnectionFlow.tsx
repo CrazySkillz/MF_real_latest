@@ -259,15 +259,20 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
             <BarChart3 className="w-6 h-6 text-blue-600" />
           </div>
-          <CardTitle>Choose GA4 campaigns to track</CardTitle>
+          <CardTitle>Select campaigns to import</CardTitle>
           <CardDescription>
-            GA4 properties include many campaigns. Select one or more GA4 campaigns for MetricMind to track.
+            Select one or more GA4 campaigns to import metrics for. These typically match your utm_campaign values.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="ga4-campaign-filter">GA4 Campaign name(s) (utm_campaign)</Label>
-            {availableCampaigns.length > 0 ? (
+            <Label htmlFor="ga4-campaign-filter">GA4 Campaign name(s)</Label>
+            {isLoadingCampaigns ? (
+              <div className="flex items-center justify-center py-8 border rounded-md">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-600 mr-2" />
+                <span className="text-sm text-slate-500">Loading campaigns from GA4...</span>
+              </div>
+            ) : availableCampaigns.length > 0 ? (
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Button
@@ -314,20 +319,34 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                 </div>
               </div>
             ) : (
-              <Input
-                id="ga4-campaign-filter"
-                value={ga4CampaignFilter[0] || ''}
-                onChange={(e) => setGa4CampaignFilter(e.target.value ? [e.target.value] : [])}
-                placeholder={isLoadingCampaigns ? "Loading campaigns\u2026" : "e.g., brand_awareness"}
-              />
+              <div className="space-y-2">
+                <p className="text-sm text-slate-500">No campaigns found in GA4. Enter your campaign name manually:</p>
+                <Input
+                  id="ga4-campaign-filter"
+                  value={ga4CampaignFilter[0] || ''}
+                  onChange={(e) => setGa4CampaignFilter(e.target.value ? [e.target.value] : [])}
+                  placeholder="e.g., brand_awareness"
+                />
+              </div>
             )}
-            <p className="text-xs text-slate-600 dark:text-slate-400">
-              Tip: This usually matches the UTM campaign used in your links (e.g., <code className="px-1">utm_campaign</code>).
-            </p>
           </div>
-          <Button className="w-full" onClick={saveCampaignFilter} disabled={isSavingFilter || ga4CampaignFilter.length === 0}>
-            {isSavingFilter ? "Saving..." : ga4CampaignFilter.length > 1 ? `Save ${ga4CampaignFilter.length} campaigns` : "Save and finish"}
-          </Button>
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={saveCampaignFilter} disabled={isSavingFilter || isLoadingCampaigns || ga4CampaignFilter.length === 0}>
+              {isSavingFilter ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : ga4CampaignFilter.length > 1 ? (
+                `Import ${ga4CampaignFilter.length} campaigns`
+              ) : (
+                'Import metrics'
+              )}
+            </Button>
+            <Button variant="ghost" onClick={() => setStep('select-property')}>
+              Back
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );

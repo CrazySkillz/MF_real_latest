@@ -115,6 +115,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     try {
       const filterValue = values.length === 1 ? values[0] : JSON.stringify(values);
       await apiRequest("PATCH", `/api/campaigns/${campaignId}`, { ga4CampaignFilter: filterValue });
+      // Invalidate connected-platforms and campaign queries
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
       toast({
         title: "GA4 campaign(s) selected",
         description: values.length === 1
@@ -139,6 +142,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     const { type, properties: propertyList, error } = event.data || {};
 
     if (type === 'ga4_auth_success') {
+      // Invalidate connected-platforms — the GA4 connection was just created server-side
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
       if (propertyList && propertyList.length > 0) {
         setProperties(propertyList);
         if (propertyList.length === 1) {
@@ -237,6 +242,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const data = await response.json();
 
       if (data.success) {
+        // Invalidate connected-platforms so the status updates immediately
+        queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
         toast({ title: 'GA4 Connected!', description: 'Property connected. Now select campaigns to track.' });
         setStep('filter');
       } else {

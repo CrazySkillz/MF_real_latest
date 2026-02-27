@@ -8847,58 +8847,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, propertyId } = req.body;
 
-      console.log('Property selection request:', { campaignId, propertyId });
+      console.log('[GA4 Select Property] Request:', { campaignId, propertyId });
 
       if (!campaignId || !propertyId) {
         return res.status(400).json({ error: 'Campaign ID and Property ID are required' });
       }
 
-      const connections = (global as any).oauthConnections;
-      console.log('Available connections:', {
-        hasGlobalConnections: !!connections,
-        connectionKeys: connections ? Array.from(connections.keys()) : [],
-        hasThisCampaign: connections ? connections.has(campaignId) : false
-      });
+      // Look up the GA4 connection from the database by campaignId
+      const ga4Connections = await storage.getGA4Connections(campaignId);
+      const dbConnection = ga4Connections[0]; // use the first active connection
 
-      if (!connections || !connections.has(campaignId)) {
-        return res.status(404).json({ error: 'No OAuth connection found for this campaign' });
+      // Also check in-memory OAuth data for property name lookup
+      const oauthConnections = (global as any).oauthConnections;
+      const oauthData = oauthConnections?.get(campaignId);
+      const selectedProperty = oauthData?.properties?.find((p: any) => p.id === propertyId);
+      const propertyName = selectedProperty?.name || `Property ${propertyId}`;
+
+      if (dbConnection) {
+        // Update the existing DB connection with the selected property — use connection.id, NOT campaignId
+        await storage.updateGA4Connection(dbConnection.id, {
+          propertyId,
+          propertyName
+        });
+        console.log('[GA4 Select Property] Updated DB connection:', { connectionId: dbConnection.id, propertyId, propertyName });
+      } else {
+        // No existing connection — create one (fallback if OAuth callback didn't persist)
+        const accessToken = oauthData?.accessToken || '';
+        const refreshToken = oauthData?.refreshToken || '';
+        await storage.createGA4Connection({
+          campaignId,
+          propertyId,
+          propertyName,
+          accessToken,
+          refreshToken,
+          method: 'access_token',
+          clientId: process.env.GOOGLE_CLIENT_ID || '',
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+          expiresAt: oauthData?.expiresAt ? new Date(oauthData.expiresAt) : new Date(Date.now() + 3600000),
+        });
+        console.log('[GA4 Select Property] Created new DB connection:', { campaignId, propertyId, propertyName });
       }
 
-      const connection = connections.get(campaignId);
-
-      connection.selectedPropertyId = propertyId;
-      connection.selectedProperty = connection.properties?.find((p: any) => p.id === propertyId);
-
-      // CRITICAL: Update the database connection with the selected property ID
-      const propertyName = connection.selectedProperty?.name || `Property ${propertyId}`;
-      await storage.updateGA4Connection(campaignId, {
-        propertyId,
-        propertyName
-      });
-
-      console.log('Updated database connection with property:', {
-        campaignId,
-        propertyId,
-        propertyName
-      });
+      // Update in-memory OAuth data
+      if (oauthData) {
+        oauthData.selectedPropertyId = propertyId;
+        oauthData.selectedProperty = selectedProperty;
+      }
 
       // Store in real GA4 connections for metrics access
       (global as any).realGA4Connections = (global as any).realGA4Connections || new Map();
       (global as any).realGA4Connections.set(campaignId, {
         propertyId,
-        accessToken: connection.accessToken,
-        refreshToken: connection.refreshToken,
-        connectedAt: connection.connectedAt,
+        accessToken: oauthData?.accessToken || dbConnection?.accessToken || '',
+        refreshToken: oauthData?.refreshToken || dbConnection?.refreshToken || '',
+        connectedAt: oauthData?.connectedAt || dbConnection?.connectedAt || new Date().toISOString(),
         isReal: true,
         propertyName
       });
 
       res.json({
         success: true,
-        selectedProperty: connection.selectedProperty
+        selectedProperty: selectedProperty || { id: propertyId, name: propertyName }
       });
     } catch (error) {
-      console.error('Property selection error:', error);
+      console.error('[GA4 Select Property] Error:', error);
       res.status(500).json({ error: 'Failed to select property' });
     }
   });

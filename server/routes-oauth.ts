@@ -8937,7 +8937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   /**
-   * Initiate GA4 OAuth flow (server-side credentials, like Google Ads)
+   * Initiate GA4 OAuth flow — uses /oauth-callback.html (already registered in Google Cloud Console)
    */
   app.post("/api/auth/ga4/connect", oauthRateLimiter, async (req, res) => {
     try {
@@ -8945,9 +8945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignId) return res.status(400).json({ success: false, message: "Campaign ID is required" });
 
       const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-
-      if (!clientId || !clientSecret) {
+      if (!clientId) {
         return res.status(500).json({
           message: "Google OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
           setupRequired: true,
@@ -8958,7 +8956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
         `${req.protocol}://${req.get('host')}`;
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
-      const redirectUri = `${baseUrl}/api/auth/ga4/callback`;
+      const redirectUri = `${baseUrl}/oauth-callback.html`;
 
       const state = signGA4OAuthState(String(campaignId));
 
@@ -8971,8 +8969,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `prompt=select_account%20consent&` +
         `state=${encodeURIComponent(state)}`;
 
-      console.log(`[GA4 OAuth] Flow initiated for campaign ${campaignId}, redirectUri: ${redirectUri}`);
-      res.json({ authUrl, message: "GA4 OAuth flow initiated" });
+      console.log(`[GA4 OAuth] Flow initiated for campaign ${campaignId}`);
+      res.json({ authUrl, redirectUri, message: "GA4 OAuth flow initiated" });
     } catch (error: any) {
       console.error('[GA4 OAuth] Initiation error:', error);
       res.status(500).json({ success: false, message: "Failed to initiate authentication" });
@@ -8980,51 +8978,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
-   * Handle GA4 OAuth callback (popup postMessage pattern, like Google Ads)
+   * Exchange GA4 auth code for tokens using server-side credentials.
+   * Called by the frontend after oauth-callback.html relays the auth code back.
    */
-  app.get("/api/auth/ga4/callback", oauthRateLimiter, async (req, res) => {
+  app.post("/api/auth/ga4/exchange", oauthRateLimiter, async (req, res) => {
     try {
-      const { code, state, error: authError } = req.query;
+      const { campaignId, code, state } = req.body;
 
-      if (authError) {
-        console.error(`[GA4 OAuth] Error: ${authError}`);
-        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
-          <h2>Authentication Error</h2><p>${authError}</p>
-          <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'${authError}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
-        </body></html>`);
+      if (!campaignId || !code) {
+        return res.status(400).json({ success: false, error: "Missing campaignId or code" });
       }
 
-      if (!code || !state) {
-        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
-          <h2>Authentication Error</h2><p>Missing authorization code or state.</p>
-          <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'Missing parameters'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
-        </body></html>`);
+      // Verify state if provided
+      if (state) {
+        const verified = verifyGA4OAuthState(state);
+        if (!verified.ok) {
+          return res.status(400).json({ success: false, error: verified.error });
+        }
       }
 
-      const verified = verifyGA4OAuthState(state);
-      if (!verified.ok) {
-        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
-          <h2>Authentication Error</h2><p>${verified.error}</p>
-          <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'${verified.error}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
-        </body></html>`);
-      }
-
-      const campaignId = verified.campaignId;
       const clientId = process.env.GOOGLE_CLIENT_ID!;
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+
+      if (!clientId || !clientSecret) {
+        return res.status(500).json({ success: false, error: "Google OAuth not configured on server" });
+      }
 
       const rawBaseUrl = process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL ||
         (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
         `${req.protocol}://${req.get('host')}`;
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
-      const redirectUri = `${baseUrl}/api/auth/ga4/callback`;
+      const redirectUri = `${baseUrl}/oauth-callback.html`;
 
       // Exchange authorization code for tokens
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          code: code as string,
+          code,
           client_id: clientId,
           client_secret: clientSecret,
           redirect_uri: redirectUri,
@@ -9035,20 +9026,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!tokenResponse.ok) {
         const errorData = await tokenResponse.text();
         console.error('[GA4 OAuth] Token exchange failed:', errorData);
-        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
-          <h2>Authentication Failed</h2><p>Failed to exchange authorization code.</p>
-          <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'Token exchange failed'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
-        </body></html>`);
+        return res.status(400).json({ success: false, error: 'Failed to exchange authorization code' });
       }
 
       const tokens = await tokenResponse.json();
       const { access_token, refresh_token } = tokens;
 
       if (!access_token) {
-        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
-          <h2>Authentication Failed</h2><p>No access token received.</p>
-          <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'No access token'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
-        </body></html>`);
+        return res.status(400).json({ success: false, error: 'No access token received from Google' });
       }
 
       // Fetch GA4 accounts and properties
@@ -9116,27 +9101,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[GA4 OAuth] Successfully connected campaign ${campaignId}, found ${properties.length} properties`);
 
-      // Send success back to popup via postMessage
-      const propertiesJson = JSON.stringify(properties);
-      res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
-        <h2>Google Analytics Connected!</h2><p>Closing this window...</p>
-        <script>
-          if(window.opener){
-            window.opener.postMessage({
-              type:'ga4_auth_success',
-              campaignId:'${campaignId}',
-              properties:${propertiesJson}
-            },window.location.origin);
-          }
-          setTimeout(()=>window.close(),1500);
-        </script>
-      </body></html>`);
+      res.json({ success: true, properties, message: 'GA4 OAuth authentication successful' });
     } catch (error: any) {
-      console.error('[GA4 OAuth] Callback error:', error);
-      res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
-        <h2>Authentication Failed</h2><p>${(error.message || 'Unknown error').replace(/</g, '&lt;')}</p>
-        <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'${(error.message || 'Authentication failed').replace(/'/g, "\\'")}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
-      </body></html>`);
+      console.error('[GA4 OAuth] Exchange error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Authentication failed' });
     }
   });
 

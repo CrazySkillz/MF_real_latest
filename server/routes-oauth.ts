@@ -5501,6 +5501,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const rawState = String(state || '');
+
+      // ---- GA4 OAuth flow (reuses this registered callback URI, state prefixed with "ga4:") ----
+      if (rawState.startsWith('ga4:')) {
+        const ga4HmacState = rawState.slice(4);
+        const verified = verifyGA4OAuthState(ga4HmacState);
+        if (!verified.ok) {
+          return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+            <h2>Authentication Error</h2><p>${verified.error}</p>
+            <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:${JSON.stringify(verified.error)}},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+          </body></html>`);
+        }
+
+        const ga4CampaignId = verified.campaignId;
+        const ga4ClientId = process.env.GOOGLE_CLIENT_ID!;
+        const ga4ClientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+
+        const ga4RawBaseUrl = process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL ||
+          (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+          `${req.protocol}://${req.get('host')}`;
+        const ga4BaseUrl = ga4RawBaseUrl.replace(/\/+$/, '');
+        const ga4RedirectUri = `${ga4BaseUrl}/api/auth/google-sheets/callback`;
+
+        const ga4TokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            code: code as string,
+            client_id: ga4ClientId,
+            client_secret: ga4ClientSecret,
+            redirect_uri: ga4RedirectUri,
+            grant_type: 'authorization_code',
+          }).toString(),
+        });
+
+        if (!ga4TokenResponse.ok) {
+          const errorData = await ga4TokenResponse.text();
+          console.error('[GA4 OAuth] Token exchange failed:', errorData);
+          return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+            <h2>Authentication Failed</h2><p>Failed to exchange authorization code.</p>
+            <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'Token exchange failed'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+          </body></html>`);
+        }
+
+        const ga4Tokens = await ga4TokenResponse.json();
+        const ga4AccessToken = ga4Tokens.access_token;
+        const ga4RefreshToken = ga4Tokens.refresh_token;
+
+        if (!ga4AccessToken) {
+          return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+            <h2>Authentication Failed</h2><p>No access token received.</p>
+            <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'No access token'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+          </body></html>`);
+        }
+
+        // Fetch GA4 accounts and properties
+        let ga4Properties: Array<{ id: string; name: string; account?: string }> = [];
+        try {
+          const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
+            headers: { 'Authorization': `Bearer ${ga4AccessToken}` },
+          });
+          if (accountsResponse.ok) {
+            const accountsData = await accountsResponse.json();
+            for (const account of accountsData.accounts || []) {
+              const accountId = account.name.split('/').pop();
+              for (const endpoint of [
+                `https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/${accountId}`,
+                `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${accountId}`,
+              ]) {
+                try {
+                  const propertiesResponse = await fetch(endpoint, {
+                    headers: { 'Authorization': `Bearer ${ga4AccessToken}` },
+                  });
+                  if (propertiesResponse.ok) {
+                    const propertiesData = await propertiesResponse.json();
+                    for (const property of propertiesData.properties || []) {
+                      ga4Properties.push({
+                        id: property.name.split('/').pop(),
+                        name: property.displayName || `Property ${property.name.split('/').pop()}`,
+                        account: account.displayName,
+                      });
+                    }
+                    break;
+                  }
+                } catch { /* try next endpoint */ }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[GA4 OAuth] Failed to fetch properties:', error);
+        }
+
+        // Store GA4 connection
+        const ga4ExpiresAt = new Date(Date.now() + ((ga4Tokens.expires_in || 3600) * 1000));
+        await storage.createGA4Connection({
+          campaignId: ga4CampaignId,
+          accessToken: ga4AccessToken,
+          refreshToken: ga4RefreshToken || null,
+          propertyId: '',
+          method: 'access_token',
+          propertyName: 'OAuth Connection',
+          clientId: ga4ClientId,
+          clientSecret: ga4ClientSecret,
+          expiresAt: ga4ExpiresAt,
+        });
+
+        (global as any).oauthConnections = (global as any).oauthConnections || new Map();
+        (global as any).oauthConnections.set(ga4CampaignId, {
+          accessToken: ga4AccessToken,
+          refreshToken: ga4RefreshToken,
+          expiresAt: Date.now() + ((ga4Tokens.expires_in || 3600) * 1000),
+          properties: ga4Properties,
+          connectedAt: new Date().toISOString(),
+        });
+
+        console.log(`[GA4 OAuth] Successfully connected campaign ${ga4CampaignId}, found ${ga4Properties.length} properties`);
+
+        const ga4PropertiesJson = JSON.stringify(ga4Properties);
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+          <h2>Google Analytics Connected!</h2><p>Closing this window...</p>
+          <script>
+            if(window.opener){
+              window.opener.postMessage({
+                type:'ga4_auth_success',
+                campaignId:${JSON.stringify(ga4CampaignId)},
+                properties:${ga4PropertiesJson}
+              },window.location.origin);
+            }
+            setTimeout(()=>window.close(),1500);
+          </script>
+        </body></html>`);
+      }
+
+      // ---- Google Sheets OAuth flow ----
       const [campaignId, sheetsPurpose] = rawState.includes(':') ? rawState.split(':') : [rawState, undefined];
       const purpose =
         sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue'
@@ -8937,7 +9070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   /**
-   * Initiate GA4 OAuth flow — uses /oauth-callback.html (already registered in Google Cloud Console)
+   * Initiate GA4 OAuth flow — reuses /api/auth/google-sheets/callback (already registered for GOOGLE_CLIENT_ID)
    */
   app.post("/api/auth/ga4/connect", oauthRateLimiter, async (req, res) => {
     try {
@@ -8956,155 +9089,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
         `${req.protocol}://${req.get('host')}`;
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
-      const redirectUri = `${baseUrl}/oauth-callback.html`;
+      const redirectUri = `${baseUrl}/api/auth/google-sheets/callback`;
 
-      const state = signGA4OAuthState(String(campaignId));
+      const state = `ga4:${signGA4OAuthState(String(campaignId))}`;
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(clientId)}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `response_type=code&` +
-        `scope=${encodeURIComponent('https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/analytics.edit')}&` +
+        `scope=${encodeURIComponent('https://www.googleapis.com/auth/analytics.readonly')}&` +
         `access_type=offline&` +
         `prompt=select_account%20consent&` +
         `state=${encodeURIComponent(state)}`;
 
       console.log(`[GA4 OAuth] Flow initiated for campaign ${campaignId}`);
-      res.json({ authUrl, redirectUri, message: "GA4 OAuth flow initiated" });
+      res.json({ authUrl, message: "GA4 OAuth flow initiated" });
     } catch (error: any) {
       console.error('[GA4 OAuth] Initiation error:', error);
       res.status(500).json({ success: false, message: "Failed to initiate authentication" });
-    }
-  });
-
-  /**
-   * Exchange GA4 auth code for tokens using server-side credentials.
-   * Called by the frontend after oauth-callback.html relays the auth code back.
-   */
-  app.post("/api/auth/ga4/exchange", oauthRateLimiter, async (req, res) => {
-    try {
-      const { campaignId, code, state } = req.body;
-
-      if (!campaignId || !code) {
-        return res.status(400).json({ success: false, error: "Missing campaignId or code" });
-      }
-
-      // Verify state if provided
-      if (state) {
-        const verified = verifyGA4OAuthState(state);
-        if (!verified.ok) {
-          return res.status(400).json({ success: false, error: verified.error });
-        }
-      }
-
-      const clientId = process.env.GOOGLE_CLIENT_ID!;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-
-      if (!clientId || !clientSecret) {
-        return res.status(500).json({ success: false, error: "Google OAuth not configured on server" });
-      }
-
-      const rawBaseUrl = process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL ||
-        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
-        `${req.protocol}://${req.get('host')}`;
-      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
-      const redirectUri = `${baseUrl}/oauth-callback.html`;
-
-      // Exchange authorization code for tokens
-      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          code,
-          client_id: clientId,
-          client_secret: clientSecret,
-          redirect_uri: redirectUri,
-          grant_type: 'authorization_code',
-        }).toString(),
-      });
-
-      if (!tokenResponse.ok) {
-        const errorData = await tokenResponse.text();
-        console.error('[GA4 OAuth] Token exchange failed:', errorData);
-        return res.status(400).json({ success: false, error: 'Failed to exchange authorization code' });
-      }
-
-      const tokens = await tokenResponse.json();
-      const { access_token, refresh_token } = tokens;
-
-      if (!access_token) {
-        return res.status(400).json({ success: false, error: 'No access token received from Google' });
-      }
-
-      // Fetch GA4 accounts and properties
-      let properties: Array<{ id: string; name: string; account?: string }> = [];
-      try {
-        const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
-          headers: { 'Authorization': `Bearer ${access_token}` },
-        });
-
-        if (accountsResponse.ok) {
-          const accountsData = await accountsResponse.json();
-          for (const account of accountsData.accounts || []) {
-            const accountId = account.name.split('/').pop();
-            const endpoints = [
-              `https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/${accountId}`,
-              `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${accountId}`,
-            ];
-            for (const endpoint of endpoints) {
-              try {
-                const propertiesResponse = await fetch(endpoint, {
-                  headers: { 'Authorization': `Bearer ${access_token}` },
-                });
-                if (propertiesResponse.ok) {
-                  const propertiesData = await propertiesResponse.json();
-                  for (const property of propertiesData.properties || []) {
-                    properties.push({
-                      id: property.name.split('/').pop(),
-                      name: property.displayName || `Property ${property.name.split('/').pop()}`,
-                      account: account.displayName,
-                    });
-                  }
-                  break;
-                }
-              } catch { /* try next endpoint */ }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('[GA4 OAuth] Failed to fetch properties:', error);
-      }
-
-      // Store GA4 connection in DB
-      const expiresAt = new Date(Date.now() + ((tokens.expires_in || 3600) * 1000));
-      await storage.createGA4Connection({
-        campaignId,
-        accessToken: access_token,
-        refreshToken: refresh_token || null,
-        propertyId: '',
-        method: 'access_token',
-        propertyName: 'OAuth Connection',
-        clientId,
-        clientSecret,
-        expiresAt,
-      });
-
-      // Store in global oauthConnections map for property selection
-      (global as any).oauthConnections = (global as any).oauthConnections || new Map();
-      (global as any).oauthConnections.set(campaignId, {
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        expiresAt: Date.now() + ((tokens.expires_in || 3600) * 1000),
-        properties,
-        connectedAt: new Date().toISOString(),
-      });
-
-      console.log(`[GA4 OAuth] Successfully connected campaign ${campaignId}, found ${properties.length} properties`);
-
-      res.json({ success: true, properties, message: 'GA4 OAuth authentication successful' });
-    } catch (error: any) {
-      console.error('[GA4 OAuth] Exchange error:', error);
-      res.status(500).json({ success: false, error: error.message || 'Authentication failed' });
     }
   });
 

@@ -133,50 +133,24 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     }
   };
 
-  // Ref to store the OAuth state for verification during exchange
-  const pendingOAuthState = useState<string | null>(null);
-
-  // Exchange auth code for tokens via server-side credentials
-  const exchangeCode = async (code: string, state: string | null) => {
-    try {
-      const res = await fetch('/api/auth/ga4/exchange', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaignId, code, state }),
-      });
-
-      const data = await res.json();
-
-      if (data.success && data.properties) {
-        if (data.properties.length > 0) {
-          setProperties(data.properties);
-          if (data.properties.length === 1) {
-            setSelectedProperty(data.properties[0].id);
-          }
-          setStep('select-property');
-        } else {
-          setProperties([]);
-          setStep('select-property');
-        }
-        toast({ title: 'Authenticated!', description: 'Select your GA4 property to continue.' });
-      } else {
-        throw new Error(data.error || 'Failed to exchange authorization code');
-      }
-    } catch (error: any) {
-      setStep('idle');
-      toast({ title: 'Connection Failed', description: error.message || 'Authentication failed', variant: 'destructive' });
-    }
-  };
-
-  // Handle OAuth popup messages from /oauth-callback.html
+  // Handle OAuth popup messages from server callback
   const handleMessage = useCallback((event: MessageEvent) => {
     if (event.origin !== window.location.origin) return;
-    const { type, code, error, state } = event.data || {};
+    const { type, properties: propertyList, error } = event.data || {};
 
-    if (type === 'OAUTH_SUCCESS' && code) {
-      // oauth-callback.html captured the auth code — exchange it server-side
-      exchangeCode(code, state || pendingOAuthState[0]);
-    } else if (type === 'OAUTH_ERROR') {
+    if (type === 'ga4_auth_success') {
+      if (propertyList && propertyList.length > 0) {
+        setProperties(propertyList);
+        if (propertyList.length === 1) {
+          setSelectedProperty(propertyList[0].id);
+        }
+        setStep('select-property');
+      } else {
+        setProperties([]);
+        setStep('select-property');
+      }
+      toast({ title: 'Authenticated!', description: 'Select your GA4 property to continue.' });
+    } else if (type === 'ga4_auth_error') {
       setStep('idle');
       toast({ title: 'Connection Failed', description: error || 'OAuth error', variant: 'destructive' });
     }

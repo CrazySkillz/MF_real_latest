@@ -6609,16 +6609,16 @@ export default function CampaignDetail() {
                       <div>
                         <h3 className="font-semibold text-slate-900 dark:text-white">{platform.platform}</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {platform.needsSetup ? "Authenticated — select property & campaigns" : platform.requiresImport ? "Connected — import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
+                          {platform.needsSetup ? "Not connected" : platform.requiresImport ? "Connected — import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Badge
-                        variant={(platform.connected || platform.needsSetup || platform.requiresImport) ? "default" : "secondary"}
-                        className={platform.needsSetup ? "bg-amber-600 text-white hover:bg-amber-700" : platform.requiresImport ? "bg-amber-600 text-white hover:bg-amber-700" : (platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : "")}
+                        variant={(platform.connected || platform.requiresImport) ? "default" : "secondary"}
+                        className={platform.requiresImport ? "bg-amber-600 text-white hover:bg-amber-700" : (platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : "")}
                       >
-                        {platform.needsSetup ? "Setup Required" : platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
+                        {platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
                       </Badge>
                       {(!platform.connected || platform.needsSetup || platform.requiresImport) && (
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />

@@ -319,70 +319,18 @@ export function GoogleAdsKpiModal(props: any) {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="kpi-priority">Priority</Label>
-              <Select value={kpiForm.priority} onValueChange={(value) => setKpiForm({ ...kpiForm, priority: value })}>
-                <SelectTrigger id="kpi-priority" data-testid="select-kpi-priority">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="kpi-category">Category</Label>
-              <Select value={kpiForm.category || ""} onValueChange={(value) => setKpiForm({ ...kpiForm, category: value })}>
-                <SelectTrigger id="kpi-category" data-testid="select-kpi-category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="awareness">Awareness</SelectItem>
-                  <SelectItem value="engagement">Engagement</SelectItem>
-                  <SelectItem value="conversion">Conversion</SelectItem>
-                  <SelectItem value="efficiency">Efficiency</SelectItem>
-                  <SelectItem value="video">Video</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="kpi-timeframe">Timeframe</Label>
-              <Select
-                value={kpiForm.timeframe || "monthly"}
-                onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
-              >
-                <SelectTrigger id="kpi-timeframe" data-testid="select-kpi-timeframe">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="kpi-tracking-period">Tracking Period (days)</Label>
-              <Input
-                id="kpi-tracking-period"
-                type="text"
-                placeholder="30"
-                inputMode="numeric"
-                value={kpiForm.trackingPeriod || ""}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^0-9]/g, "");
-                  setKpiForm({ ...kpiForm, trackingPeriod: cleaned });
-                }}
-                data-testid="input-kpi-tracking-period"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="kpi-priority">Priority</Label>
+            <Select value={kpiForm.priority} onValueChange={(value) => setKpiForm({ ...kpiForm, priority: value })}>
+              <SelectTrigger id="kpi-priority" data-testid="select-kpi-priority">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Alert Settings Section */}

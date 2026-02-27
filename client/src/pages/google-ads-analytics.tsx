@@ -222,8 +222,9 @@ export default function GoogleAdsAnalytics() {
       if (!res.ok) throw new Error('Failed to create KPI');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_ads/kpis'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       setIsKPIModalOpen(false); setEditingKPI(null);
       toast({ title: 'KPI created successfully' });
     },
@@ -238,8 +239,9 @@ export default function GoogleAdsAnalytics() {
       if (!res.ok) throw new Error('Failed to update KPI');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_ads/kpis'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       setIsKPIModalOpen(false); setEditingKPI(null);
       toast({ title: 'KPI updated successfully' });
     },
@@ -251,8 +253,9 @@ export default function GoogleAdsAnalytics() {
       if (!res.ok) throw new Error('Failed to delete KPI');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_ads/kpis'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       toast({ title: 'KPI deleted' });
     },
   });
@@ -267,8 +270,9 @@ export default function GoogleAdsAnalytics() {
       if (!res.ok) throw new Error('Failed to create benchmark');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'google_ads'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       setIsBenchmarkModalOpen(false); setEditingBenchmark(null);
       toast({ title: 'Benchmark created successfully' });
     },
@@ -283,8 +287,9 @@ export default function GoogleAdsAnalytics() {
       if (!res.ok) throw new Error('Failed to update benchmark');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'google_ads'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       setIsBenchmarkModalOpen(false); setEditingBenchmark(null);
       toast({ title: 'Benchmark updated successfully' });
     },
@@ -296,8 +301,9 @@ export default function GoogleAdsAnalytics() {
       if (!res.ok) throw new Error('Failed to delete benchmark');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'google_ads'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       toast({ title: 'Benchmark deleted' });
     },
   });
@@ -1021,6 +1027,20 @@ export default function GoogleAdsAnalytics() {
 
   // Handlers
   const handleCreateKPI = () => {
+    if (kpiForm.alertsEnabled) {
+      const threshold = String(kpiForm.alertThreshold || '').trim();
+      if (!threshold) {
+        toast({ title: "Alert Threshold required", description: "Enter an alert threshold to enable alerts.", variant: "destructive" });
+        return;
+      }
+      if (kpiForm.emailNotifications) {
+        const recipients = String(kpiForm.emailRecipients || '').trim();
+        if (!recipients) {
+          toast({ title: "Email recipients required", description: "Enter at least one email address to enable email notifications.", variant: "destructive" });
+          return;
+        }
+      }
+    }
     const payload = {
       name: kpiForm.name, metric: kpiForm.metric, metricKey: kpiForm.metric,
       targetValue: kpiForm.targetValue,
@@ -1042,6 +1062,20 @@ export default function GoogleAdsAnalytics() {
   };
 
   const handleCreateBenchmark = () => {
+    if (benchmarkForm.alertsEnabled) {
+      const threshold = String(benchmarkForm.alertThreshold || '').trim();
+      if (!threshold) {
+        toast({ title: "Alert Threshold required", description: "Enter an alert threshold to enable alerts.", variant: "destructive" });
+        return;
+      }
+      if (benchmarkForm.emailNotifications) {
+        const recipients = String(benchmarkForm.emailRecipients || '').trim();
+        if (!recipients) {
+          toast({ title: "Email recipients required", description: "Enter at least one email address to enable email notifications.", variant: "destructive" });
+          return;
+        }
+      }
+    }
     const payload = {
       name: benchmarkForm.name, metric: benchmarkForm.metric,
       benchmarkValue: benchmarkForm.benchmarkValue, targetValue: benchmarkForm.benchmarkValue,
@@ -1140,21 +1174,12 @@ export default function GoogleAdsAnalytics() {
             {/* ==================== OVERVIEW TAB ==================== */}
             <TabsContent value="overview" className="space-y-6">
               {/* Primary Summary Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <SummaryCard icon={<Eye className="w-4 h-4" />} label="Impressions" value={fmt(summary.impressions)} />
                 <SummaryCard icon={<MousePointer className="w-4 h-4" />} label="Clicks" value={fmt(summary.clicks)} />
                 <SummaryCard icon={<DollarSign className="w-4 h-4" />} label="Spend" value={fmtCurrency(summary.spend)} />
                 <SummaryCard icon={<Target className="w-4 h-4" />} label="Conversions" value={fmt(Math.round(summary.conversions))} />
-                <SummaryCard icon={<TrendingUp className="w-4 h-4" />} label="CTR" value={fmtPct(summary.ctr)} />
-                <SummaryCard icon={<DollarSign className="w-4 h-4" />} label="CPC" value={fmtCurrency(summary.cpc)} />
-              </div>
-
-              {/* Secondary Metrics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <SummaryCard icon={<DollarSign className="w-4 h-4" />} label="CPM" value={fmtCurrency(summary.cpm)} />
                 <SummaryCard icon={<Video className="w-4 h-4" />} label="Video Views" value={fmt(summary.videoViews)} />
-                <SummaryCard icon={<Target className="w-4 h-4" />} label="Conv. Rate" value={fmtPct(summary.convRate)} />
-                <SummaryCard icon={<DollarSign className="w-4 h-4" />} label="Cost/Conv" value={fmtCurrency(summary.costPerConv)} />
               </div>
 
               {/* Financial Metrics */}
@@ -1536,26 +1561,22 @@ export default function GoogleAdsAnalytics() {
               </Card>
 
               {/* Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Total Spend</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.spend)}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Total {campaignChartLabel.replace(/ \(.*\)/, '')}</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {(() => {
+                            const total = campaignBreakdown.reduce((sum: number, c: any) => sum + ((c as any)[sortBy] || 0), 0);
+                            if (sortBy === 'spend') return fmtCurrency(total);
+                            if (sortBy === 'ctr') return fmtPct(total / (campaignBreakdown.length || 1));
+                            return fmt(Math.round(total));
+                          })()}
+                        </p>
                       </div>
-                      <DollarSign className="w-8 h-8 text-blue-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Total Conversions</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmt(Math.round(summary.conversions))}</p>
-                      </div>
-                      <Target className="w-8 h-8 text-green-500" />
+                      <BarChart3 className="w-8 h-8 text-blue-500" />
                     </div>
                   </CardContent>
                 </Card>

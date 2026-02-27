@@ -500,18 +500,23 @@ export function GoogleAdsBenchmarkModal(props: any) {
             </div>
           )}
 
-          {/* Email Alerts Section */}
+          {/* Alert Settings Section */}
           <div className="space-y-4 pt-4 border-t">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="benchmark-alerts-enabled"
-                checked={benchmarkForm.alertsEnabled}
-                onCheckedChange={(checked) => setBenchmarkForm({ ...benchmarkForm, alertsEnabled: checked as boolean })}
-                data-testid="checkbox-benchmark-alerts"
-              />
-              <Label htmlFor="benchmark-alerts-enabled" className="text-base cursor-pointer font-semibold">
-                Enable alerts for this Benchmark
-              </Label>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="benchmark-alerts-enabled"
+                  checked={benchmarkForm.alertsEnabled}
+                  onCheckedChange={(checked) => setBenchmarkForm({ ...benchmarkForm, alertsEnabled: checked as boolean })}
+                  data-testid="checkbox-benchmark-alerts"
+                />
+                <Label htmlFor="benchmark-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                  Enable alerts for this Benchmark
+                </Label>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 pl-6">
+                Receive notifications for Benchmark performance alerts on the bell icon &amp; in your Notifications center
+              </p>
             </div>
 
             {benchmarkForm.alertsEnabled && (

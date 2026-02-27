@@ -7472,6 +7472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const result = await ga4Service.getCampaignValues(campaignId, storage, ga4DateRange, propertyId, limit);
+      console.log(`[GA4 Campaign Values] campaignId=${campaignId} propertyId=${propertyId || '(auto)'} returned ${result.campaigns?.length || 0} campaigns`);
       res.json({ success: true, dateRange, ...result });
     } catch (error: any) {
       console.error('[GA4 Campaign Values] Error:', error);

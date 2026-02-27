@@ -1215,14 +1215,26 @@ export class GoogleAnalytics4Service {
     const isMostlyEmpty = (list: Array<{ name: string; users: number }>) =>
       !list?.length || list.every((c) => !c?.name || c.name === '(not set)' || (c.users || 0) <= 0);
 
+    // Helper: catch non-auth errors only; let auth errors propagate for token refresh
+    const catchNonAuth = (err: any) => {
+      const msg = String(err?.message || '').toLowerCase();
+      if (msg.includes('"code": 401') || msg.includes('unauthenticated') ||
+          msg.includes('invalid authentication credentials') ||
+          msg.includes('request had invalid authentication credentials') ||
+          msg.includes('invalid_grant')) {
+        throw err; // let the outer catch handle token refresh
+      }
+      return [] as Array<{ name: string; users: number }>;
+    };
+
     try {
       // Try multiple campaign dimensions and merge:
       // - sessionCampaignName: most common expectation for "campaign" in acquisition reports
       // - campaignName: legacy/general
       // - firstUserCampaignName: sometimes available earlier for new users
-      const a = await run(connection.accessToken, 'sessionCampaignName').catch(() => []);
-      const b = isMostlyEmpty(a) ? await run(connection.accessToken, 'campaignName').catch(() => []) : [];
-      const c = (isMostlyEmpty(a) && isMostlyEmpty(b)) ? await run(connection.accessToken, 'firstUserCampaignName').catch(() => []) : [];
+      const a = await run(connection.accessToken, 'sessionCampaignName').catch(catchNonAuth);
+      const b = isMostlyEmpty(a) ? await run(connection.accessToken, 'campaignName').catch(catchNonAuth) : [];
+      const c = (isMostlyEmpty(a) && isMostlyEmpty(b)) ? await run(connection.accessToken, 'firstUserCampaignName').catch(catchNonAuth) : [];
       const campaigns = merge([a, b, c]);
       return { propertyId: normalizedPropertyId, campaigns };
     } catch (e: any) {

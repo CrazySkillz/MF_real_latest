@@ -44,6 +44,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [availableCampaigns, setAvailableCampaigns] = useState<Array<{ name: string; users: number }>>([]);
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
   const [didLoadCampaigns, setDidLoadCampaigns] = useState(false);
+  const [manualCampaignInput, setManualCampaignInput] = useState('');
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -115,13 +116,18 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const loadGa4CampaignValues = async () => {
     setIsLoadingCampaigns(true);
     try {
-      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-campaign-values?dateRange=30days&limit=50`);
+      const params = new URLSearchParams({ dateRange: '30days', limit: '50' });
+      if (selectedProperty) params.set('propertyId', selectedProperty);
+      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-campaign-values?${params}`);
       const json = await resp.json().catch(() => null);
-      if (!resp.ok || !json?.success) return;
+      if (!resp.ok || !json?.success) {
+        console.warn('[GA4] Campaign values fetch failed:', json?.error || resp.status);
+        return;
+      }
       const rows = Array.isArray(json.campaigns) ? json.campaigns : [];
       setAvailableCampaigns(rows);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn('[GA4] Campaign values fetch error:', err);
     } finally {
       setIsLoadingCampaigns(false);
     }
@@ -360,14 +366,67 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-slate-500">No campaigns found in GA4. Enter your campaign name manually:</p>
-                <Input
-                  id="ga4-campaign-filter"
-                  value={ga4CampaignFilter[0] || ''}
-                  onChange={(e) => setGa4CampaignFilter(e.target.value ? [e.target.value] : [])}
-                  placeholder="e.g., brand_awareness"
-                />
+              <div className="space-y-3">
+                <p className="text-sm text-slate-500">
+                  No UTM campaigns found in this GA4 property for the last 30 days. You can retry or add campaign names manually.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDidLoadCampaigns(false);
+                    setAvailableCampaigns([]);
+                  }}
+                >
+                  Retry
+                </Button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      id="ga4-campaign-filter"
+                      value={manualCampaignInput}
+                      onChange={(e) => setManualCampaignInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && manualCampaignInput.trim()) {
+                          e.preventDefault();
+                          const name = manualCampaignInput.trim();
+                          if (!ga4CampaignFilter.includes(name)) {
+                            setGa4CampaignFilter(prev => [...prev, name]);
+                          }
+                          setManualCampaignInput('');
+                        }
+                      }}
+                      placeholder="e.g., brand_awareness"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const name = manualCampaignInput.trim();
+                        if (name && !ga4CampaignFilter.includes(name)) {
+                          setGa4CampaignFilter(prev => [...prev, name]);
+                        }
+                        setManualCampaignInput('');
+                      }}
+                      disabled={!manualCampaignInput.trim()}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  {ga4CampaignFilter.length > 0 && (
+                    <div className="border rounded-md p-2 space-y-1">
+                      {ga4CampaignFilter.map((name) => (
+                        <div key={name} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800">
+                          <Checkbox
+                            checked={true}
+                            onCheckedChange={() => setGa4CampaignFilter(prev => prev.filter(v => v !== name))}
+                          />
+                          <span className="text-sm flex-1">{name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

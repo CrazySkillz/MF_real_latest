@@ -1645,8 +1645,8 @@ export default function GA4Metrics() {
 
   const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);
   const ga4RevenueFromToDate = Number((ga4ToDateResp as any)?.totals?.revenue || 0);
-  const ga4RevenueMetricName = String((ga4ToDateResp as any)?.totals?.revenueMetric || "").trim();
-  const ga4HasRevenueMetric = !!ga4RevenueMetricName;
+  const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
+  const ga4HasRevenueMetric = !!ga4RevenueMetricName || dailySummedTotals.revenue > 0;
   // Use the higher of (to-date total, summed daily rows) so Total Revenue is never less than Latest Day Revenue.
   const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue);
   // Enterprise policy: prefer GA4 revenue when a GA4 revenue metric is configured (even if it's 0).

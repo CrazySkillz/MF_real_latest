@@ -7172,12 +7172,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 3. Check database
       const dbConnections = await storage.getGA4Connections(campaignId);
       if (dbConnections.length > 0) {
-        const dbConn = dbConnections[0];
-        // Try to get properties from in-memory OAuth data or return empty
+        const dbConn = dbConnections[0] as any;
+        // Try to fetch properties from Google using stored access token
+        let dbProperties: Array<{ id: string; name: string; account?: string }> = [];
+        const token = dbConn.accessToken;
+        if (token) {
+          try {
+            const acctResp = await fetch('https://analyticsadmin.googleapis.com/v1beta/accounts', {
+              headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (acctResp.ok) {
+              const acctData = await acctResp.json();
+              for (const account of acctData.accounts || []) {
+                const acctId = account.name?.split('/').pop();
+                if (!acctId) continue;
+                for (const ep of [
+                  `https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/${acctId}`,
+                  `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${acctId}`,
+                ]) {
+                  try {
+                    const propResp = await fetch(ep, { headers: { 'Authorization': `Bearer ${token}` } });
+                    if (propResp.ok) {
+                      const propData = await propResp.json();
+                      for (const p of propData.properties || []) {
+                        const pid = p.name?.split('/').pop() || '';
+                        if (!pid) continue;
+                        dbProperties.push({ id: pid, name: p.displayName || `Property ${pid}`, account: account.displayName });
+                      }
+                      break;
+                    }
+                  } catch { /* try next endpoint */ }
+                }
+              }
+            }
+          } catch (e) {
+            console.error('[GA4 Status] Failed to fetch properties from Google:', e);
+          }
+          // Cache properties in oauthConnections so subsequent calls are fast
+          if (dbProperties.length > 0) {
+            (global as any).oauthConnections = (global as any).oauthConnections || new Map();
+            const existing = (global as any).oauthConnections.get(campaignId);
+            if (existing) {
+              existing.properties = dbProperties;
+            } else {
+              (global as any).oauthConnections.set(campaignId, {
+                accessToken: token,
+                refreshToken: dbConn.refreshToken,
+                properties: dbProperties,
+                connectedAt: dbConn.connectedAt || new Date().toISOString(),
+              });
+            }
+          }
+        }
         return res.json({
           connected: true,
           propertyId: dbConn.propertyId || '',
-          properties: [],
+          properties: dbProperties,
           isRealOAuth: true,
           dataSource: 'Database Connection'
         });

@@ -8905,7 +8905,242 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // OAuth code exchange endpoint for client-side OAuth
+  // ====================== GA4 SERVER-SIDE OAUTH ======================
+
+  const GA4_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+
+  const signGA4OAuthState = (campaignId: string): string => {
+    const secret = process.env.GA4_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || "dev-ga4-state-secret";
+    const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex") };
+    const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+    const sig = createHmac("sha256", secret).update(payloadB64).digest();
+    return `${payloadB64}.${Buffer.from(sig).toString("base64url")}`;
+  };
+
+  const verifyGA4OAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
+    const secret = process.env.GA4_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || "dev-ga4-state-secret";
+    const state = String(stateRaw || "").trim();
+    const parts = state.split(".");
+    if (parts.length !== 2) return { ok: false, error: "Invalid state" };
+    const [payloadB64, sigB64] = parts;
+    if (!payloadB64 || !sigB64) return { ok: false, error: "Invalid state" };
+    const expectedSig = createHmac("sha256", secret).update(payloadB64).digest();
+    const providedSig = Buffer.from(sigB64, "base64url");
+    if (providedSig.length !== expectedSig.length || !timingSafeEqual(providedSig, expectedSig)) {
+      return { ok: false, error: "Tampered state" };
+    }
+    let payload: any;
+    try { payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")); } catch { return { ok: false, error: "Invalid state" }; }
+    if (!payload.c || !payload.t) return { ok: false, error: "Invalid state" };
+    if (Date.now() - Number(payload.t) > GA4_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
+    return { ok: true, campaignId: payload.c };
+  };
+
+  /**
+   * Initiate GA4 OAuth flow (server-side credentials, like Google Ads)
+   */
+  app.post("/api/auth/ga4/connect", oauthRateLimiter, async (req, res) => {
+    try {
+      const { campaignId } = req.body;
+      if (!campaignId) return res.status(400).json({ success: false, message: "Campaign ID is required" });
+
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+      if (!clientId || !clientSecret) {
+        return res.status(500).json({
+          message: "Google OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+          setupRequired: true,
+        });
+      }
+
+      const rawBaseUrl = process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/ga4/callback`;
+
+      const state = signGA4OAuthState(String(campaignId));
+
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `response_type=code&` +
+        `scope=${encodeURIComponent('https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/analytics.edit')}&` +
+        `access_type=offline&` +
+        `prompt=consent&` +
+        `state=${encodeURIComponent(state)}`;
+
+      console.log(`[GA4 OAuth] Flow initiated for campaign ${campaignId}`);
+      res.json({ authUrl, message: "GA4 OAuth flow initiated" });
+    } catch (error: any) {
+      console.error('[GA4 OAuth] Initiation error:', error);
+      res.status(500).json({ success: false, message: "Failed to initiate authentication" });
+    }
+  });
+
+  /**
+   * Handle GA4 OAuth callback (popup postMessage pattern, like Google Ads)
+   */
+  app.get("/api/auth/ga4/callback", oauthRateLimiter, async (req, res) => {
+    try {
+      const { code, state, error: authError } = req.query;
+
+      if (authError) {
+        console.error(`[GA4 OAuth] Error: ${authError}`);
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+          <h2>Authentication Error</h2><p>${authError}</p>
+          <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'${authError}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+        </body></html>`);
+      }
+
+      if (!code || !state) {
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+          <h2>Authentication Error</h2><p>Missing authorization code or state.</p>
+          <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'Missing parameters'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+        </body></html>`);
+      }
+
+      const verified = verifyGA4OAuthState(state);
+      if (!verified.ok) {
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+          <h2>Authentication Error</h2><p>${verified.error}</p>
+          <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'${verified.error}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+        </body></html>`);
+      }
+
+      const campaignId = verified.campaignId;
+      const clientId = process.env.GOOGLE_CLIENT_ID!;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+
+      const rawBaseUrl = process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/ga4/callback`;
+
+      // Exchange authorization code for tokens
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code: code as string,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }).toString(),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.text();
+        console.error('[GA4 OAuth] Token exchange failed:', errorData);
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+          <h2>Authentication Failed</h2><p>Failed to exchange authorization code.</p>
+          <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'Token exchange failed'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+        </body></html>`);
+      }
+
+      const tokens = await tokenResponse.json();
+      const { access_token, refresh_token } = tokens;
+
+      if (!access_token) {
+        return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+          <h2>Authentication Failed</h2><p>No access token received.</p>
+          <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'No access token'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+        </body></html>`);
+      }
+
+      // Fetch GA4 accounts and properties
+      let properties: Array<{ id: string; name: string; account?: string }> = [];
+      try {
+        const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
+          headers: { 'Authorization': `Bearer ${access_token}` },
+        });
+
+        if (accountsResponse.ok) {
+          const accountsData = await accountsResponse.json();
+          for (const account of accountsData.accounts || []) {
+            const accountId = account.name.split('/').pop();
+            const endpoints = [
+              `https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/${accountId}`,
+              `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${accountId}`,
+            ];
+            for (const endpoint of endpoints) {
+              try {
+                const propertiesResponse = await fetch(endpoint, {
+                  headers: { 'Authorization': `Bearer ${access_token}` },
+                });
+                if (propertiesResponse.ok) {
+                  const propertiesData = await propertiesResponse.json();
+                  for (const property of propertiesData.properties || []) {
+                    properties.push({
+                      id: property.name.split('/').pop(),
+                      name: property.displayName || `Property ${property.name.split('/').pop()}`,
+                      account: account.displayName,
+                    });
+                  }
+                  break;
+                }
+              } catch { /* try next endpoint */ }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[GA4 OAuth] Failed to fetch properties:', error);
+      }
+
+      // Store GA4 connection in DB
+      const expiresAt = new Date(Date.now() + ((tokens.expires_in || 3600) * 1000));
+      await storage.createGA4Connection({
+        campaignId,
+        accessToken: access_token,
+        refreshToken: refresh_token || null,
+        propertyId: '',
+        method: 'access_token',
+        propertyName: 'OAuth Connection',
+        clientId,
+        clientSecret,
+        expiresAt,
+      });
+
+      // Store in global oauthConnections map for property selection
+      (global as any).oauthConnections = (global as any).oauthConnections || new Map();
+      (global as any).oauthConnections.set(campaignId, {
+        accessToken: access_token,
+        refreshToken: refresh_token,
+        expiresAt: Date.now() + ((tokens.expires_in || 3600) * 1000),
+        properties,
+        connectedAt: new Date().toISOString(),
+      });
+
+      console.log(`[GA4 OAuth] Successfully connected campaign ${campaignId}, found ${properties.length} properties`);
+
+      // Send success back to popup via postMessage
+      const propertiesJson = JSON.stringify(properties);
+      res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+        <h2>Google Analytics Connected!</h2><p>Closing this window...</p>
+        <script>
+          if(window.opener){
+            window.opener.postMessage({
+              type:'ga4_auth_success',
+              campaignId:'${campaignId}',
+              properties:${propertiesJson}
+            },window.location.origin);
+          }
+          setTimeout(()=>window.close(),1500);
+        </script>
+      </body></html>`);
+    } catch (error: any) {
+      console.error('[GA4 OAuth] Callback error:', error);
+      res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
+        <h2>Authentication Failed</h2><p>${(error.message || 'Unknown error').replace(/</g, '&lt;')}</p>
+        <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:'${(error.message || 'Authentication failed').replace(/'/g, "\\'")}'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
+      </body></html>`);
+    }
+  });
+
+  // OAuth code exchange endpoint for client-side OAuth (legacy, kept for backward compatibility)
   app.post("/api/ga4/oauth-exchange", async (req, res) => {
     try {
       const { campaignId, authCode, clientId, clientSecret, redirectUri } = req.body;

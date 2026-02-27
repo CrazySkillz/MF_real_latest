@@ -16,6 +16,7 @@ import WorldMapSVG from "@/components/WorldMapSVG";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { AddSpendWizardModal } from "@/components/AddSpendWizardModal";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
+import GA4CampaignComparison from "@/pages/ga4-campaign-comparison";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -139,6 +140,12 @@ export default function GA4Metrics() {
   const [ga4ReportModalStep, setGa4ReportModalStep] = useState<"standard" | "custom">("standard");
   const [editingGA4ReportId, setEditingGA4ReportId] = useState<string | null>(null);
   const [deleteGA4ReportId, setDeleteGA4ReportId] = useState<string | null>(null);
+  // Campaign Comparison tab state
+  const [campaignComparisonMetric, setCampaignComparisonMetric] = useState<string>("sessions");
+  // Insights Trends state
+  const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d">("daily");
+  const [insightsTrendMetric, setInsightsTrendMetric] = useState<string>("sessions");
+  const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
   const [ga4ReportForm, setGa4ReportForm] = useState<{
     name: string;
     description: string;
@@ -2459,6 +2466,28 @@ export default function GA4Metrics() {
     };
   }, [ga4TimeSeries]);
 
+  // Aggregate breakdown rows by campaign name for Campaign Performance & Campaign Comparison
+  const campaignBreakdownAgg = useMemo(() => {
+    const rows = Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
+    const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
+    for (const r of rows) {
+      const name = String((r as any)?.campaign || "(not set)").trim();
+      const existing = byName.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+      existing.sessions += Number((r as any)?.sessions || 0);
+      existing.users += Number((r as any)?.users || 0);
+      existing.conversions += Number((r as any)?.conversions || 0);
+      existing.revenue += Number((r as any)?.revenue || 0);
+      byName.set(name, existing);
+    }
+    return Array.from(byName.values())
+      .map(c => ({
+        ...c,
+        conversionRate: c.sessions > 0 ? (c.conversions / c.sessions) * 100 : 0,
+        revenuePerSession: c.sessions > 0 ? c.revenue / c.sessions : 0,
+      }))
+      .sort((a, b) => b.sessions - a.sessions);
+  }, [ga4Breakdown]);
+
   const selectedPeriodLabel = ga4ReportDate ? `Daily (UTC: ${ga4ReportDate})` : "Daily";
 
   const provenanceLastUpdated =
@@ -2820,12 +2849,13 @@ export default function GA4Metrics() {
             <>
               {/* Charts and Detailed Analytics */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
-                  <TabsTrigger value="reports">Reports</TabsTrigger>
+                  <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
+                  <TabsTrigger value="reports">Reports</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview">
@@ -3126,6 +3156,49 @@ export default function GA4Metrics() {
                           </div>
                         )}
                       </div>
+                    </div>
+
+                    {/* Imported Campaigns */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Imported Campaigns</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">GA4 campaigns tracked for this campaign</p>
+                      </div>
+                      <Card>
+                        <CardContent className="p-6">
+                          {selectedGa4CampaignFilterList.length === 0 ? (
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              All campaigns (no filter applied). Metrics reflect all traffic to the selected GA4 property.
+                            </div>
+                          ) : (
+                            <div className="overflow-hidden border rounded-md">
+                              <table className="w-full text-sm">
+                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                  <tr>
+                                    <th className="text-left font-medium px-3 py-2">Campaign Name</th>
+                                    <th className="text-right font-medium px-3 py-2">Users (30d)</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {selectedGa4CampaignFilterList.map((name: string) => {
+                                    const match = (ga4CampaignValuesResp?.campaigns || []).find(
+                                      (c: any) => String(c?.name || "").trim() === name
+                                    );
+                                    return (
+                                      <tr key={name} className="border-b last:border-b-0">
+                                        <td className="px-3 py-2 text-slate-900 dark:text-white">{name}</td>
+                                        <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                                          {match ? formatNumber(Number(match.users || 0)) : "—"}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
                     </div>
 
                     {/* Landing pages (Phase 1) */}
@@ -3475,6 +3548,52 @@ export default function GA4Metrics() {
                           ) : (
                             <div className="text-sm text-slate-600 dark:text-slate-400">
                               No GA4 breakdown rows returned for this date range. If you expect rows, verify that GA4 has data for the selected period and that revenue/conversions are configured as GA4 metrics.
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Campaign Performance breakdown */}
+                      <Card className="mt-4">
+                        <CardHeader>
+                          <CardTitle>Campaign Performance</CardTitle>
+                          <CardDescription>Metrics aggregated by UTM campaign name</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          {breakdownLoading ? (
+                            <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                          ) : campaignBreakdownAgg.length > 0 ? (
+                            <div className="overflow-hidden border rounded-md">
+                              <div className="max-h-[420px] overflow-y-auto">
+                                <table className="w-full text-sm table-fixed">
+                                  <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
+                                    <tr>
+                                      <th className="text-left font-medium px-2 py-2">Campaign</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[90px]">Sessions</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[80px]">Users</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[100px]">Conv Rate</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[100px]">Revenue</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {campaignBreakdownAgg.map((c, idx) => (
+                                      <tr key={c.name || idx} className="border-b last:border-b-0">
+                                        <td className="px-2 py-2 truncate" title={c.name}>{c.name}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.sessions)}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.users)}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.conversions)}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{c.conversionRate.toFixed(2)}%</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{formatMoney(c.revenue)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              No campaign breakdown data available for this date range.
                             </div>
                           )}
                         </CardContent>
@@ -4818,6 +4937,17 @@ export default function GA4Metrics() {
                   </div>
                 </TabsContent>
 
+                <TabsContent value="campaigns">
+                  <GA4CampaignComparison
+                    campaignBreakdownAgg={campaignBreakdownAgg}
+                    breakdownLoading={breakdownLoading}
+                    selectedMetric={campaignComparisonMetric}
+                    onMetricChange={setCampaignComparisonMetric}
+                    formatNumber={formatNumber}
+                    formatMoney={formatMoney}
+                  />
+                </TabsContent>
+
                 <TabsContent value="insights">
                   <div className="space-y-6">
                     <div>
@@ -4902,83 +5032,221 @@ export default function GA4Metrics() {
                       </CardContent>
                     </Card>
 
+                    {/* Trends card — replaces Performance Rollups with chart + metric selector */}
                     <Card className="border-slate-200 dark:border-slate-700">
                       <CardHeader>
-                        <CardTitle>Performance rollups (derived from daily rows)</CardTitle>
-                        <CardDescription>
-                          7-day and 30-day summaries are computed from stored daily metrics (no separate window tables).
-                        </CardDescription>
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                          <div>
+                            <CardTitle>Trends</CardTitle>
+                            <CardDescription>
+                              Daily shows day-by-day values. 7d/30d show rolling-window summaries vs the prior window.
+                            </CardDescription>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                            <div className="flex items-center gap-1">
+                              {(["daily", "7d", "30d"] as const).map((mode) => (
+                                <Button
+                                  key={mode}
+                                  variant={insightsTrendMode === mode ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => { setInsightsDailyShowMore(false); setInsightsTrendMode(mode); }}
+                                >
+                                  {mode === "daily" ? "Daily" : mode}
+                                </Button>
+                              ))}
+                            </div>
+                            <div className="min-w-[200px]">
+                              <Select value={insightsTrendMetric} onValueChange={setInsightsTrendMetric}>
+                                <SelectTrigger className="h-9"><SelectValue placeholder="Metric" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="sessions">Sessions</SelectItem>
+                                  <SelectItem value="users">Users</SelectItem>
+                                  <SelectItem value="conversions">Conversions</SelectItem>
+                                  <SelectItem value="revenue">Revenue</SelectItem>
+                                  <SelectItem value="pageviews">Page Views</SelectItem>
+                                  <SelectItem value="engagementRate">Engagement Rate</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
                       </CardHeader>
-                      <CardContent className="space-y-3">
-                        {Number(insightsRollups?.availableDays || 0) < 7 ? (
-                          <div className="text-sm text-slate-600 dark:text-slate-400">
-                            Need at least 7 days of GA4 daily history to show rollups. Available days: {Number(insightsRollups?.availableDays || 0)}.
-                          </div>
-                        ) : (
-                          <div className="overflow-hidden border rounded-md">
-                            <table className="w-full text-sm table-fixed">
-                              <thead className="bg-slate-50 dark:bg-slate-800 border-b">
-                                <tr>
-                                  <th className="text-left p-3 w-[22%]">Window</th>
-                                  <th className="text-right p-3">Sessions</th>
-                                  <th className="text-right p-3">Conversions</th>
-                                  <th className="text-right p-3">CR</th>
-                                  <th className="text-right p-3">Revenue</th>
-                                  <th className="text-right p-3">PV/Session</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {[
-                                  { key: "7d", cur: insightsRollups.last7, prev: insightsRollups.prior7, d: insightsRollups.deltas, label: "Last 7d vs prior 7d" },
-                                  { key: "30d", cur: insightsRollups.last30, prev: insightsRollups.prior30, d: insightsRollups.deltas, label: "Last 30d vs prior 30d" },
-                                ].map((row) => {
-                                  const ok = row.key === "7d" ? Number(insightsRollups?.availableDays || 0) >= 14 : Number(insightsRollups?.availableDays || 0) >= 60;
-                                  if (!ok) return null;
-                                  const sessionsDelta = row.key === "7d" ? row.d.sessions7 : row.d.sessions30;
-                                  const convDelta = row.key === "7d" ? row.d.conversions7 : row.d.conversions30;
-                                  const revDelta = row.key === "7d" ? row.d.revenue7 : row.d.revenue30;
-                                  const crDelta = row.key === "7d" ? row.d.cr7 : row.d.cr30;
-                                  const pvpsDelta = row.key === "7d" ? row.d.pvps7 : row.d.pvps30;
-                                  const deltaColor = (n: number) =>
-                                    n >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300";
-                                  const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
-                                  return (
-                                    <tr key={row.key} className="border-b">
-                                      <td className="p-3">
-                                        <div className="font-medium text-slate-900 dark:text-white">{row.label}</div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                          {row.cur.startDate} → {row.cur.endDate}
-                                        </div>
-                                      </td>
-                                      <td className="p-3 text-right">
-                                        <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.sessions || 0)}</div>
-                                        <div className={`text-xs ${deltaColor(sessionsDelta)}`}>{fmtDelta(sessionsDelta)}</div>
-                                      </td>
-                                      <td className="p-3 text-right">
-                                        <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.conversions || 0)}</div>
-                                        <div className={`text-xs ${deltaColor(convDelta)}`}>{fmtDelta(convDelta)}</div>
-                                      </td>
-                                      <td className="p-3 text-right">
-                                        <div className="font-medium text-slate-900 dark:text-white">{row.cur.cr.toFixed(2)}%</div>
-                                        <div className={`text-xs ${deltaColor(crDelta)}`}>{fmtDelta(crDelta)}</div>
-                                      </td>
-                                      <td className="p-3 text-right">
-                                        <div className="font-medium text-slate-900 dark:text-white">
-                                          {formatMoney(Number(row.cur.revenue || 0))}
-                                        </div>
-                                        <div className={`text-xs ${deltaColor(revDelta)}`}>{fmtDelta(revDelta)}</div>
-                                      </td>
-                                      <td className="p-3 text-right">
-                                        <div className="font-medium text-slate-900 dark:text-white">{row.cur.pvps.toFixed(2)}</div>
-                                        <div className={`text-xs ${deltaColor(pvpsDelta)}`}>{fmtDelta(pvpsDelta)}</div>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
+                      <CardContent className="space-y-4">
+                        {/* Trends line chart */}
+                        {(() => {
+                          const dailyRows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];
+                          if (dailyRows.length < 2) {
+                            return (
+                              <div className="text-sm text-slate-600 dark:text-slate-400 py-4">
+                                Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.
+                              </div>
+                            );
+                          }
+
+                          const sorted = [...dailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+                          const metric = insightsTrendMetric;
+                          const isRate = metric === "engagementRate";
+                          const isMoney = metric === "revenue";
+
+                          // Build chart data depending on mode
+                          let chartData: any[] = [];
+                          if (insightsTrendMode === "daily") {
+                            chartData = sorted.map((r: any) => ({
+                              date: String(r.date || "").slice(5), // MM-DD
+                              value: isRate ? Number((Number(r[metric] || 0) * 100).toFixed(2)) : Number(r[metric] || 0),
+                            }));
+                          } else {
+                            const windowDays = insightsTrendMode === "7d" ? 7 : 30;
+                            for (let i = windowDays - 1; i < sorted.length; i++) {
+                              const slice = sorted.slice(i - windowDays + 1, i + 1);
+                              let val = 0;
+                              if (isRate) {
+                                const totalSessions = slice.reduce((s: number, r: any) => s + Number(r.sessions || 0), 0);
+                                const totalEngaged = slice.reduce((s: number, r: any) => s + Number(r.engagedSessions || r.sessions * Number(r.engagementRate || 0) || 0), 0);
+                                val = totalSessions > 0 ? (totalEngaged / totalSessions) * 100 : 0;
+                              } else {
+                                val = slice.reduce((s: number, r: any) => s + Number(r[metric] || 0), 0);
+                              }
+                              chartData.push({ date: String(sorted[i].date || "").slice(5), value: Number(val.toFixed(2)) });
+                            }
+                          }
+
+                          const fmtValue = (v: any) => {
+                            const n = Number(v || 0);
+                            if (isMoney) return formatMoney(n);
+                            if (isRate) return `${n.toFixed(2)}%`;
+                            return formatNumber(n);
+                          };
+
+                          const trendMetricLabels: Record<string, string> = {
+                            sessions: "Sessions", users: "Users", conversions: "Conversions",
+                            revenue: "Revenue", pageviews: "Page Views", engagementRate: "Engagement Rate",
+                          };
+
+                          const deltaColor = (n: number) => n >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300";
+                          const fmtDelta = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+                          const deltaPct = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0;
+
+                          return (
+                            <>
+                              <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={chartData}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickMargin={6} />
+                                    <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} />
+                                    <Tooltip formatter={(value: any) => [fmtValue(value), trendMetricLabels[metric] || metric]} labelFormatter={(l) => `Date: ${l}`} />
+                                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} name={trendMetricLabels[metric] || metric} />
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </div>
+
+                              {/* Comparison table */}
+                              {insightsTrendMode === "daily" ? (
+                                <div className="overflow-hidden border rounded-md">
+                                  <table className="w-full text-sm">
+                                    <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                      <tr>
+                                        <th className="text-left p-3">Date</th>
+                                        <th className="text-right p-3">{trendMetricLabels[metric] || metric}</th>
+                                        <th className="text-right p-3">vs prior day</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {(() => {
+                                        const showCount = insightsDailyShowMore ? 14 : 7;
+                                        const recentRows = sorted.slice(-showCount).reverse();
+                                        return recentRows.map((r: any, idx: number) => {
+                                          const curVal = isRate ? Number(r[metric] || 0) * 100 : Number(r[metric] || 0);
+                                          const prevRow = sorted[sorted.indexOf(r) - 1];
+                                          const prevVal = prevRow ? (isRate ? Number(prevRow[metric] || 0) * 100 : Number(prevRow[metric] || 0)) : 0;
+                                          const delta = prevRow ? deltaPct(curVal, prevVal) : 0;
+                                          return (
+                                            <tr key={r.date || idx} className="border-b last:border-b-0">
+                                              <td className="p-3 text-slate-900 dark:text-white">{r.date}</td>
+                                              <td className="p-3 text-right font-medium tabular-nums text-slate-900 dark:text-white">{fmtValue(curVal)}</td>
+                                              <td className="p-3 text-right">
+                                                {prevRow ? <span className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</span> : <span className="text-xs text-slate-400">—</span>}
+                                              </td>
+                                            </tr>
+                                          );
+                                        });
+                                      })()}
+                                    </tbody>
+                                  </table>
+                                  {sorted.length > 7 && (
+                                    <div className="px-3 py-2 border-t bg-slate-50 dark:bg-slate-800">
+                                      <Button variant="ghost" size="sm" onClick={() => setInsightsDailyShowMore(!insightsDailyShowMore)}>
+                                        {insightsDailyShowMore ? "Show less" : "View more"}
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="overflow-hidden border rounded-md">
+                                  <table className="w-full text-sm table-fixed">
+                                    <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                      <tr>
+                                        <th className="text-left p-3 w-[30%]">Window</th>
+                                        <th className="text-right p-3">Sessions</th>
+                                        <th className="text-right p-3">Conversions</th>
+                                        <th className="text-right p-3">CR</th>
+                                        <th className="text-right p-3">Revenue</th>
+                                        <th className="text-right p-3">PV/Session</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {[
+                                        { key: "7d", cur: insightsRollups.last7, d: insightsRollups.deltas, label: "Last 7d vs prior 7d", minDays: 14 },
+                                        { key: "30d", cur: insightsRollups.last30, d: insightsRollups.deltas, label: "Last 30d vs prior 30d", minDays: 60 },
+                                      ].filter(row => insightsTrendMode === row.key && Number(insightsRollups?.availableDays || 0) >= row.minDays)
+                                       .map((row) => {
+                                        const sd = row.key === "7d" ? row.d.sessions7 : row.d.sessions30;
+                                        const cd = row.key === "7d" ? row.d.conversions7 : row.d.conversions30;
+                                        const rd = row.key === "7d" ? row.d.revenue7 : row.d.revenue30;
+                                        const crd = row.key === "7d" ? row.d.cr7 : row.d.cr30;
+                                        const pvd = row.key === "7d" ? row.d.pvps7 : row.d.pvps30;
+                                        return (
+                                          <tr key={row.key} className="border-b">
+                                            <td className="p-3">
+                                              <div className="font-medium text-slate-900 dark:text-white">{row.label}</div>
+                                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{row.cur.startDate} → {row.cur.endDate}</div>
+                                            </td>
+                                            <td className="p-3 text-right">
+                                              <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.sessions || 0)}</div>
+                                              <div className={`text-xs ${deltaColor(sd)}`}>{fmtDelta(sd)}</div>
+                                            </td>
+                                            <td className="p-3 text-right">
+                                              <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.conversions || 0)}</div>
+                                              <div className={`text-xs ${deltaColor(cd)}`}>{fmtDelta(cd)}</div>
+                                            </td>
+                                            <td className="p-3 text-right">
+                                              <div className="font-medium text-slate-900 dark:text-white">{row.cur.cr.toFixed(2)}%</div>
+                                              <div className={`text-xs ${deltaColor(crd)}`}>{fmtDelta(crd)}</div>
+                                            </td>
+                                            <td className="p-3 text-right">
+                                              <div className="font-medium text-slate-900 dark:text-white">{formatMoney(Number(row.cur.revenue || 0))}</div>
+                                              <div className={`text-xs ${deltaColor(rd)}`}>{fmtDelta(rd)}</div>
+                                            </td>
+                                            <td className="p-3 text-right">
+                                              <div className="font-medium text-slate-900 dark:text-white">{row.cur.pvps.toFixed(2)}</div>
+                                              <div className={`text-xs ${deltaColor(pvd)}`}>{fmtDelta(pvd)}</div>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                  {Number(insightsRollups?.availableDays || 0) < (insightsTrendMode === "7d" ? 14 : 60) && (
+                                    <div className="p-3 text-sm text-slate-600 dark:text-slate-400">
+                                      Need at least {insightsTrendMode === "7d" ? 14 : 60} days of history. Available: {Number(insightsRollups?.availableDays || 0)}.
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </CardContent>
                     </Card>
 

@@ -8968,10 +8968,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `response_type=code&` +
         `scope=${encodeURIComponent('https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/analytics.edit')}&` +
         `access_type=offline&` +
-        `prompt=consent&` +
+        `prompt=select_account%20consent&` +
         `state=${encodeURIComponent(state)}`;
 
-      console.log(`[GA4 OAuth] Flow initiated for campaign ${campaignId}`);
+      console.log(`[GA4 OAuth] Flow initiated for campaign ${campaignId}, redirectUri: ${redirectUri}`);
       res.json({ authUrl, message: "GA4 OAuth flow initiated" });
     } catch (error: any) {
       console.error('[GA4 OAuth] Initiation error:', error);

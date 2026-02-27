@@ -972,11 +972,11 @@ export default function GA4Metrics() {
       return new Intl.NumberFormat(undefined, {
         style: "currency",
         currency: campaignCurrency,
+        currencyDisplay: "narrowSymbol",
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(num);
     } catch {
-      // Fallback: show code + numeric value (never silently wrong symbol).
       return `${campaignCurrency} ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
   };
@@ -2705,9 +2705,6 @@ export default function GA4Metrics() {
                     )}
                   </div>
                 )}
-                <div className="px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900">
-                  Daily
-                </div>
               </div>
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">

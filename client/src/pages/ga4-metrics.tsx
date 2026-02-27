@@ -1511,14 +1511,27 @@ export default function GA4Metrics() {
     },
   });
 
-  // Daily headline totals (cumulative/lifetime values for Overview tab).
-  // Note: These should be cumulative totals, not daily values, to match the Financial section
+  // Sum all daily rows for a ground-truth total (avoids mismatch between ga4-to-date and ga4-daily endpoints).
+  const dailySummedTotals = useMemo(() => {
+    const rows = ga4DailyRows;
+    let sessions = 0, users = 0, conversions = 0, revenue = 0;
+    for (const r of rows) {
+      sessions += r.sessions;
+      users += r.users;
+      conversions += r.conversions;
+      revenue += r.revenue;
+    }
+    return { sessions, users, conversions, revenue: Number(revenue.toFixed(2)) };
+  }, [ga4DailyRows]);
+
+  // Use the higher of (to-date API total, summed daily rows) so cumulative totals
+  // are never less than individual daily values.
   const breakdownTotals = {
     date: ga4ReportDate,
-    sessions: Number((ga4ToDateResp as any)?.totals?.sessions || ga4Metrics?.sessions || 0),
-    conversions: Number((ga4ToDateResp as any)?.totals?.conversions || ga4Metrics?.conversions || 0),
-    revenue: Number((ga4ToDateResp as any)?.totals?.revenue || ga4Metrics?.revenue || 0),
-    users: Number((ga4ToDateResp as any)?.totals?.users || ga4Metrics?.users || 0),
+    sessions: Math.max(Number((ga4ToDateResp as any)?.totals?.sessions || 0), dailySummedTotals.sessions),
+    conversions: Math.max(Number((ga4ToDateResp as any)?.totals?.conversions || 0), dailySummedTotals.conversions),
+    revenue: Math.max(Number((ga4ToDateResp as any)?.totals?.revenue || 0), dailySummedTotals.revenue),
+    users: Math.max(Number((ga4ToDateResp as any)?.totals?.users || 0), dailySummedTotals.users),
   };
 
   const { data: importedRevenueToDateResp } = useQuery<any>({
@@ -1631,13 +1644,15 @@ export default function GA4Metrics() {
   const usingAutoLinkedInSpend = false;
 
   const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);
-  const ga4RevenueForFinancials = Number((ga4ToDateResp as any)?.totals?.revenue || 0);
+  const ga4RevenueFromToDate = Number((ga4ToDateResp as any)?.totals?.revenue || 0);
   const ga4RevenueMetricName = String((ga4ToDateResp as any)?.totals?.revenueMetric || "").trim();
   const ga4HasRevenueMetric = !!ga4RevenueMetricName;
+  // Use the higher of (to-date total, summed daily rows) so Total Revenue is never less than Latest Day Revenue.
+  const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue);
   // Enterprise policy: prefer GA4 revenue when a GA4 revenue metric is configured (even if it's 0).
   // Only fall back to imported revenue when GA4 revenue metric is not configured/available.
   const financialRevenue = ga4HasRevenueMetric ? ga4RevenueForFinancials : importedRevenueForFinancials;
-  const financialConversions = Number((ga4ToDateResp as any)?.totals?.conversions || 0);
+  const financialConversions = Math.max(Number((ga4ToDateResp as any)?.totals?.conversions || 0), dailySummedTotals.conversions);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
@@ -2656,21 +2671,6 @@ export default function GA4Metrics() {
               </div>
 
               <div className="flex items-center space-x-3">
-                {Array.isArray(availableGA4Properties) && availableGA4Properties.length >= 1 ? (
-                  <Select value={selectedGA4PropertyId} onValueChange={setSelectedGA4PropertyId}>
-                    <SelectTrigger className="w-64 relative z-[50]" onPointerDown={(e) => e.stopPropagation()}>
-                      <SelectValue placeholder="Select GA4 property" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-64 z-[10000]" onPointerDown={(e) => e.stopPropagation()}>
-                      {availableGA4Properties.map((p) => (
-                        <SelectItem key={String(p.propertyId)} value={String(p.propertyId)}>
-                          {String(p.displayName || p.propertyName || p.propertyId)}
-                          {p.isPrimary ? " (Primary)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : null}
                 <Button
                   variant="outline"
                   size="sm"
@@ -2682,11 +2682,27 @@ export default function GA4Metrics() {
                   disabled={!selectedGA4PropertyId}
                   title={!selectedGA4PropertyId ? "Select a GA4 property first" : "Select GA4 campaigns to import"}
                 >
-                  Campaigns
+                  Campaigns{selectedGa4CampaignFilterList.length > 0 ? ` (${selectedGa4CampaignFilterList.length})` : ""}
                 </Button>
                 {selectedGa4CampaignFilterList.length > 0 && (
-                  <div className="text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate" title={selectedGa4CampaignFilterList.join(", ")}>
-                    {ga4CampaignFilterLabel}
+                  <div className="flex items-center gap-1.5 flex-wrap max-w-md">
+                    {selectedGa4CampaignFilterList.slice(0, 3).map((name) => (
+                      <span
+                        key={name}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800 max-w-[160px] truncate"
+                        title={name}
+                      >
+                        {name}
+                      </span>
+                    ))}
+                    {selectedGa4CampaignFilterList.length > 3 && (
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                        title={selectedGa4CampaignFilterList.slice(3).join(", ")}
+                      >
+                        +{selectedGa4CampaignFilterList.length - 3} more
+                      </span>
+                    )}
                   </div>
                 )}
                 <div className="px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900">
@@ -2705,7 +2721,8 @@ export default function GA4Metrics() {
               ) ? (
                 <>
                   {" • "}
-                  <span className="font-medium text-slate-600 dark:text-slate-300">Campaign:</span> {ga4CampaignFilterLabel}
+                  <span className="font-medium text-slate-600 dark:text-slate-300">Campaigns:</span>{" "}
+                  {selectedGa4CampaignFilterList.length} selected
                 </>
               ) : null}
               {provenanceLastUpdated ? (

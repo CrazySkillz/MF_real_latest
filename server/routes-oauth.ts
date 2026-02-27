@@ -7140,23 +7140,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-connection-status", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const isConnected = realGA4Client.isConnected(campaignId);
 
-      if (isConnected) {
+      // 1. Check in-memory realGA4Client first
+      const isConnectedInMemory = realGA4Client.isConnected(campaignId);
+      if (isConnectedInMemory) {
         const connection = realGA4Client.getConnection(campaignId);
         const properties = await realGA4Client.getProperties(campaignId);
-
-        res.json({
+        return res.json({
           connected: true,
           email: connection?.email,
           propertyId: connection?.propertyId,
           properties: properties || [],
           isRealOAuth: !!process.env.GOOGLE_CLIENT_ID,
-          dataSource: connection ? 'Real Google Analytics API' : 'Demo Mode'
+          dataSource: 'Real Google Analytics API'
         });
-      } else {
-        res.json({ connected: false });
       }
+
+      // 2. Check global oauthConnections (populated by OAuth callback)
+      const oauthConnections = (global as any).oauthConnections;
+      const oauthData = oauthConnections?.get(campaignId);
+      if (oauthData) {
+        return res.json({
+          connected: true,
+          propertyId: oauthData.selectedPropertyId || '',
+          properties: oauthData.properties || [],
+          isRealOAuth: true,
+          dataSource: 'OAuth Connection'
+        });
+      }
+
+      // 3. Check database
+      const dbConnections = await storage.getGA4Connections(campaignId);
+      if (dbConnections.length > 0) {
+        const dbConn = dbConnections[0];
+        // Try to get properties from in-memory OAuth data or return empty
+        return res.json({
+          connected: true,
+          propertyId: dbConn.propertyId || '',
+          properties: [],
+          isRealOAuth: true,
+          dataSource: 'Database Connection'
+        });
+      }
+
+      res.json({ connected: false });
     } catch (error) {
       console.error('[Integrated OAuth] Connection status error:', error);
       res.status(500).json({ message: "Failed to check connection status" });
@@ -8295,13 +8322,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const linkedInConversionValue = linkedInConnection?.conversionValue || null;
       const metaConversionValue = metaConnection?.conversionValue || null;
 
+      // GA4 is only fully "connected" when a propertyId has been selected
+      const activeGA4 = ga4Connections.find((c: any) => c.propertyId && c.propertyId !== '');
+      const ga4NeedsSetup = ga4Connections.length > 0 && !activeGA4;
+
       const statuses = [
         {
           id: "google-analytics",
           name: "Google Analytics",
-          connected: ga4Connections.length > 0,
+          connected: !!activeGA4,
+          needsSetup: ga4NeedsSetup,
           analyticsPath:
-            ga4Connections.length > 0
+            activeGA4
               ? `/campaigns/${campaignId}/ga4-metrics`
               : null,
           lastConnectedAt: ga4Connections[ga4Connections.length - 1]?.connectedAt,

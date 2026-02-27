@@ -53,6 +53,7 @@ interface ConnectedPlatformStatus {
   id: string;
   name: string;
   connected: boolean;
+  needsSetup?: boolean;
   connectedCampaignLevel?: boolean;
   analyticsPath?: string | null;
   lastConnectedAt?: string | null;
@@ -61,6 +62,7 @@ interface ConnectedPlatformStatus {
 interface PlatformMetrics {
   platform: string;
   connected: boolean;
+  needsSetup?: boolean;
   requiresImport?: boolean;
   impressions: number;
   clicks: number;
@@ -5197,6 +5199,7 @@ export default function CampaignDetail() {
     {
       platform: "Google Analytics",
       connected: isGA4Connected,
+      needsSetup: gaPlatformStatus?.needsSetup === true,
       impressions: ga4Metrics?.impressions || 0,
       clicks: ga4Metrics?.clicks || 0,
       conversions: ga4Metrics?.conversions || 0,
@@ -5349,6 +5352,14 @@ export default function CampaignDetail() {
 
   // Add state for managing connection dropdowns and report generation
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
+
+  // Auto-expand GA4 when it needs setup (authenticated but no property selected)
+  const ga4NeedsSetup = allPlatformMetrics.find(p => p.platform === "Google Analytics")?.needsSetup;
+  useEffect(() => {
+    if (ga4NeedsSetup) {
+      setExpandedPlatform("Google Analytics");
+    }
+  }, [ga4NeedsSetup]);
   const [disconnectConfirm, setDisconnectConfirm] = useState<{ platform: string; platformLabel: string } | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
@@ -6585,10 +6596,10 @@ export default function CampaignDetail() {
                   }`}
                 >
                   {/* Platform Header - Always Visible */}
-                  <div 
-                    className={`flex items-center justify-between p-3 ${(!platform.connected || platform.requiresImport) ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
+                  <div
+                    className={`flex items-center justify-between p-3 ${(!platform.connected || platform.needsSetup || platform.requiresImport) ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
                     onClick={() => {
-                      if (!platform.connected || platform.requiresImport) {
+                      if (!platform.connected || platform.needsSetup || platform.requiresImport) {
                         setExpandedPlatform(expandedPlatform === platform.platform ? null : platform.platform);
                       }
                     }}
@@ -6598,21 +6609,21 @@ export default function CampaignDetail() {
                       <div>
                         <h3 className="font-semibold text-slate-900 dark:text-white">{platform.platform}</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {platform.requiresImport ? "Connected — import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
+                          {platform.needsSetup ? "Authenticated — select property & campaigns" : platform.requiresImport ? "Connected — import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge 
-                        variant={(platform.connected || platform.requiresImport) ? "default" : "secondary"}
-                        className={platform.requiresImport ? "bg-amber-600 text-white hover:bg-amber-700" : (platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : "")}
+                      <Badge
+                        variant={(platform.connected || platform.needsSetup || platform.requiresImport) ? "default" : "secondary"}
+                        className={platform.needsSetup ? "bg-amber-600 text-white hover:bg-amber-700" : platform.requiresImport ? "bg-amber-600 text-white hover:bg-amber-700" : (platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : "")}
                       >
-                        {platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
+                        {platform.needsSetup ? "Setup Required" : platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
                       </Badge>
-                      {(!platform.connected || platform.requiresImport) && (
+                      {(!platform.connected || platform.needsSetup || platform.requiresImport) && (
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />
                       )}
-                      {platform.connected && !platform.requiresImport && (
+                      {platform.connected && !platform.needsSetup && !platform.requiresImport && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -6716,8 +6727,8 @@ export default function CampaignDetail() {
                     </div>
                   )}
 
-                  {/* Connection Setup Dropdown - Show when expanded and (not connected OR adding additional sheet) */}
-                  {expandedPlatform === platform.platform && (!platform.connected || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets)) && (
+                  {/* Connection Setup Dropdown - Show when expanded and (not connected OR needs setup OR adding additional sheet) */}
+                  {expandedPlatform === platform.platform && (!platform.connected || platform.needsSetup || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets)) && (
                     <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-3">
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow 

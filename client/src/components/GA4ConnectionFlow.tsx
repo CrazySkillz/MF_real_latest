@@ -48,6 +48,40 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // On mount, check if GA4 is already authenticated but needs property selection
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const resp = await fetch(`/api/campaigns/${campaignId}/ga4-connection-status`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (!mounted) return;
+        // Only auto-advance if still in idle step (don't conflict with postMessage handler)
+        if (step !== 'idle') return;
+        // Already authenticated but no property selected — jump to property selector
+        if (data.connected && !data.propertyId) {
+          const validProps = (data.properties || []).filter((p: GA4Property) => p.id);
+          if (validProps.length > 0) {
+            setProperties(validProps);
+            if (validProps.length === 1) {
+              setSelectedProperty(validProps[0].id);
+            }
+            setStep('select-property');
+          } else {
+            // Connected but no properties available (e.g., page reload lost in-memory data)
+            // Show property selector with empty state so user knows to reconnect
+            setProperties([]);
+            setStep('select-property');
+          }
+        }
+      } catch {
+        // ignore — user can still connect manually
+      }
+    })();
+    return () => { mounted = false; };
+  }, [campaignId, step]);
+
   // Prefill GA4 campaign filter with the campaign name
   useEffect(() => {
     let mounted = true;
@@ -142,8 +176,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     const { type, properties: propertyList, error } = event.data || {};
 
     if (type === 'ga4_auth_success') {
-      // Invalidate connected-platforms — the GA4 connection was just created server-side
-      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
+      // Don't invalidate connected-platforms yet — wait until user completes
+      // property + campaign selection so this component stays mounted
       const validProperties = (propertyList || []).filter((p: GA4Property) => p.id);
       if (validProperties.length > 0) {
         setProperties(validProperties);
@@ -243,8 +277,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const data = await response.json();
 
       if (data.success) {
-        // Invalidate connected-platforms so the status updates immediately
-        queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
+        // Don't invalidate connected-platforms yet — wait until campaign filter is saved
         toast({ title: 'GA4 Connected!', description: 'Property connected. Now select campaigns to track.' });
         setStep('filter');
       } else {

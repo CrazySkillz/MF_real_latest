@@ -205,8 +205,9 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
       const data = await response.json();
 
       if (data.connected && Array.isArray(data.properties) && data.properties.length > 0) {
-        setGA4Properties(data.properties);
-        setSelectedGA4Property(data.properties[0]?.id || '');
+        const validProperties = data.properties.filter((p: { id: string }) => p.id);
+        setGA4Properties(validProperties);
+        setSelectedGA4Property(validProperties[0]?.id || '');
         setShowPropertySelector(true);
         toast({
           title: "Google Account Connected",
@@ -895,7 +896,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                     <SelectValue placeholder="Select a GA4 property" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ga4Properties.map((property) => (
+                    {ga4Properties.filter(p => p.id).map((property) => (
                       <SelectItem key={property.id} value={property.id}>
                         <div className="flex flex-col text-left">
                           <span className="font-medium">{property.name}</span>

@@ -144,10 +144,11 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     if (type === 'ga4_auth_success') {
       // Invalidate connected-platforms — the GA4 connection was just created server-side
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
-      if (propertyList && propertyList.length > 0) {
-        setProperties(propertyList);
-        if (propertyList.length === 1) {
-          setSelectedProperty(propertyList[0].id);
+      const validProperties = (propertyList || []).filter((p: GA4Property) => p.id);
+      if (validProperties.length > 0) {
+        setProperties(validProperties);
+        if (validProperties.length === 1) {
+          setSelectedProperty(validProperties[0].id);
         }
         setStep('select-property');
       } else {
@@ -378,7 +379,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   <SelectValue placeholder="Select a property..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {properties.map(p => (
+                  {properties.filter(p => p.id).map(p => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name} ({p.id})
                       {p.account && ` — ${p.account}`}

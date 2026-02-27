@@ -5564,7 +5564,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (accountsResponse.ok) {
             const accountsData = await accountsResponse.json();
             for (const account of accountsData.accounts || []) {
-              const accountId = account.name.split('/').pop();
+              const accountId = account.name?.split('/').pop();
+              if (!accountId) continue;
               for (const endpoint of [
                 `https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/${accountId}`,
                 `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${accountId}`,
@@ -5576,9 +5577,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   if (propertiesResponse.ok) {
                     const propertiesData = await propertiesResponse.json();
                     for (const property of propertiesData.properties || []) {
+                      const propId = property.name?.split('/').pop() || '';
+                      if (!propId) continue;
                       ga4Properties.push({
-                        id: property.name.split('/').pop(),
-                        name: property.displayName || `Property ${property.name.split('/').pop()}`,
+                        id: propId,
+                        name: property.displayName || `Property ${propId}`,
                         account: account.displayName,
                       });
                     }

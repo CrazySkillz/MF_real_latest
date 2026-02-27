@@ -126,6 +126,11 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       }
       const rows = Array.isArray(json.campaigns) ? json.campaigns : [];
       setAvailableCampaigns(rows);
+      // Clear any prefilled filter values that don't match actual GA4 campaigns
+      if (rows.length > 0) {
+        const validNames = new Set(rows.map((c: { name: string }) => c.name));
+        setGa4CampaignFilter(prev => prev.filter(name => validNames.has(name)));
+      }
     } catch (err) {
       console.warn('[GA4] Campaign values fetch error:', err);
     } finally {

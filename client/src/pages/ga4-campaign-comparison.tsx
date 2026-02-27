@@ -120,8 +120,8 @@ export default function GA4CampaignComparison({
       {/* Header with metric selector */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Campaign Comparison</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Compare performance across GA4 campaigns</p>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Ad Comparison</h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Compare performance across your GA4 campaigns</p>
         </div>
         <div className="min-w-[220px]">
           <Select value={selectedMetric} onValueChange={onMetricChange}>

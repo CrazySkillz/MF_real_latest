@@ -2684,6 +2684,11 @@ export default function GA4Metrics() {
                 >
                   Campaigns
                 </Button>
+                {selectedGa4CampaignFilterList.length > 0 && (
+                  <div className="text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate" title={selectedGa4CampaignFilterList.join(", ")}>
+                    {ga4CampaignFilterLabel}
+                  </div>
+                )}
                 <div className="px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900">
                   Daily
                 </div>
@@ -2853,712 +2858,192 @@ export default function GA4Metrics() {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
-                  <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+                  <TabsTrigger value="campaigns">Ad Comparison</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview">
-                  {/* Aggregated Multi-Property Campaign Metrics */}
-                  <div className="mb-6">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex-shrink-0">
-                            <Globe className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                              {'GA4 Property Analytics'}
-                            </h3>
-                            <p className="text-sm text-blue-700 dark:text-blue-300">
-                              {`Showing metrics for the selected GA4 property for ${campaign?.name}`}
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => mockRefreshMutation.mutate()}
-                          disabled={mockRefreshMutation.isPending}
-                          className="shrink-0 bg-white dark:bg-slate-800"
-                          title="Simulate a daily data refresh with known values for validation"
-                        >
-                          {mockRefreshMutation.isPending ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                          )}
-                          Run Refresh
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Re-organized metrics: Outcomes / Scale / Acquisition / Engagement / Behavior / Diagnostics */}
                   <div className="space-y-8">
-                    {/* Outcomes */}
+                    {/* Summary Cards */}
                     <div>
                       <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Outcomes</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Did it work / business impact</p>
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Summary</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Key performance metrics for your GA4 property</p>
                       </div>
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                         <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between gap-4">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Sessions</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Users</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatNumber(financialConversions || 0)}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatMoney(Number(financialRevenue || 0))}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatPercentage(rateToPercent(ga4Metrics?.engagementRate || 0))}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Bounce Rate</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatPercentage(rateToPercent(ga4Metrics?.bounceRate || 0))}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+
+                    {/* Revenue & Financial */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Revenue & Financial</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Financial performance and return on investment</p>
+                      </div>
+                      {financialSpend > 0 ? (
+                        <>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
+                            {`Spend source: ${spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} · Revenue range: ${(ga4ToDateResp as any)?.startDate ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}` : "to date"}`}
+                          </p>
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
+                            <Card>
+                              <CardContent className="p-5">
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                                   {formatMoney(Number(financialRevenue || 0))}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  {ga4HasRevenueMetric ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
-                                </p>
-                                {(ga4HasRevenueMetric || activeRevenueSource) && (
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    Source:{" "}
-                                    {ga4HasRevenueMetric
-                                      ? `GA4 (${ga4RevenueMetricName || "revenue"})`
-                                      : String((activeRevenueSource as any)?.displayName || (activeRevenueSource as any)?.sourceType || "Imported revenue")}
-                                  </p>
-                                )}
-                                {ga4HasRevenueMetric && activeRevenueSource ? (
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    Imported revenue source is connected but <span className="font-medium">ignored</span> for platform financials (GA4 revenue metric is active).
-                                  </p>
-                                ) : null}
-                                {!ga4HasRevenueMetric && !activeRevenueSource && (
-                                  <Link href={`/campaigns/${campaignId}#data-sources`}>
-                                    <Button variant="outline" size="sm" className="mt-3">
-                                      Manage in Data Sources
-                                    </Button>
-                                  </Link>
-                                )}
-                              </div>
-                              <div className="flex flex-col items-end gap-2 shrink-0">
-                                {activeRevenueSource ? (
-                                  <Link href={`/campaigns/${campaignId}#data-sources`}>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label="Manage in Data Sources"
-                                      title="Manage in Data Sources"
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
-                                  </Link>
-                                ) : null}
-                                <DollarSign className="w-8 h-8 text-green-600" />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions (to date)</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {formatNumber(financialConversions || 0)}
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cumulative to date</p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-5">
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                  {formatMoney(Number(financialSpend || 0))}
                                 </p>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  From GA4 to-date totals
+                                  {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
                                 </p>
-                              </div>
-                              <Target className="w-8 h-8 text-emerald-500" />
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Rate</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {formatPercentage(
-                                    Number((ga4ToDateResp as any)?.totals?.sessions || 0) > 0
-                                      ? (Number(financialConversions || 0) / Number((ga4ToDateResp as any)?.totals?.sessions || 1)) * 100
-                                      : 0
-                                  )}
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-5">
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Revenue</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                  {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.revenue || 0 : 0))}
                                 </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
-                              </div>
-                              <Target className="w-8 h-8 text-indigo-600" />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                      {/* Financial metrics (only when spend exists) */}
-                      <div className="mt-4">
-                        {financialSpend > 0 ? (
-                          <>
-                            <div className="mb-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1">
-                                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Financial (To date)</h4>
-                                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                                    {`Spend source: ${spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} · Revenue range: ${(ga4ToDateResp as any)?.startDate ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}` : "to date"}`}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                            {/* Cumulative totals + latest day cards */}
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatMoney(Number(financialRevenue || 0))}
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cumulative to date</p>
-                                    </div>
-                                    <DollarSign className="w-8 h-8 text-green-600" />
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatMoney(Number(financialSpend || 0))}
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                        Source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
-                                      </p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-2 shrink-0">
-                                      {totalSpendForFinancials > 0 && activeSpendSource ? (
-                                        <Link href={`/campaigns/${campaignId}#data-sources`}>
-                                          <Button variant="ghost" size="icon" aria-label="Manage in Data Sources" title="Manage in Data Sources">
-                                            <Edit className="w-4 h-4" />
-                                          </Button>
-                                        </Link>
-                                      ) : null}
-                                      <DollarSign className="w-8 h-8 text-slate-500" />
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Revenue</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.revenue || 0 : 0))}
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                        {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
-                                      </p>
-                                    </div>
-                                    <TrendingUp className="w-8 h-8 text-green-500" />
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Spend</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?._raw?.spend || 0 : 0))}
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                        {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
-                                      </p>
-                                    </div>
-                                    <TrendingDown className="w-8 h-8 text-orange-500" />
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </div>
-                            {/* ROAS / ROI / CPA cards */}
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {financialROAS.toFixed(2)}x
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</p>
-                                    </div>
-                                    <TrendingUp className="w-8 h-8 text-green-600" />
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatPercentage(financialROI)}
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</p>
-                                    </div>
-                                    <TrendingUp className="w-8 h-8 text-emerald-600" />
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              <Card>
-                                <CardContent className="p-6">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
-                                      </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                        Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions-to-date > 0)" : ""}
-                                      </p>
-                                    </div>
-                                    <Target className="w-8 h-8 text-blue-600" />
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
-                            <p className="text-sm font-medium text-slate-900 dark:text-white">Add spend to unlock ROAS / ROI / CPA</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                              Revenue and conversions come from GA4. To calculate ROAS/ROI/CPA, add spend from any source (ad platform, spreadsheet, or manual entry).
-                            </p>
-                            {Array.isArray(spendSourcesResp?.sources) && spendSourcesResp.sources.length > 0 && (
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                                Spend sources exist, but <span className="font-medium">Spend to date</span> is{" "}
-                                <span className="font-medium">{formatMoney(Number(spendToDateResp?.spendToDate || 0))}</span>. If this looks wrong, edit the spend source and re-import/update the total.
-                              </p>
-                            )}
-                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                              <Link href={`/campaigns/${campaignId}#data-sources`}>
-                                <Button variant="outline" size="sm">
-                                  Manage in Data Sources
-                                </Button>
-                              </Link>
-                            </div>
-                            {/* Modal is rendered below so it can be opened from both empty and filled states */}
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
+                                </p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-5">
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Spend</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                  {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?._raw?.spend || 0 : 0))}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
+                                </p>
+                              </CardContent>
+                            </Card>
                           </div>
-                        )}
-                      </div>
+                          <div className="grid gap-4 md:grid-cols-3">
+                            <Card>
+                              <CardContent className="p-5">
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                  {financialROAS.toFixed(2)}x
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-5">
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                  {formatPercentage(financialROI)}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-5">
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                  {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions > 0)" : ""}
+                                </p>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">Add spend to unlock ROAS / ROI / CPA</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Revenue and conversions come from GA4. To calculate ROAS/ROI/CPA, add spend from any source (ad platform, spreadsheet, or manual entry).
+                          </p>
+                          {Array.isArray(spendSourcesResp?.sources) && spendSourcesResp.sources.length > 0 && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                              Spend sources exist, but <span className="font-medium">Spend to date</span> is{" "}
+                              <span className="font-medium">{formatMoney(Number(spendToDateResp?.spendToDate || 0))}</span>. If this looks wrong, edit the spend source and re-import/update the total.
+                            </p>
+                          )}
+                          <div className="mt-3">
+                            <Link href={`/campaigns/${campaignId}#data-sources`}>
+                              <Button variant="outline" size="sm">Manage in Data Sources</Button>
+                            </Link>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Imported Campaigns */}
+                    {/* Campaign Breakdown */}
                     <div>
                       <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Imported Campaigns</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">GA4 campaigns tracked for this campaign</p>
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Campaign Breakdown</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Performance metrics aggregated by UTM campaign</p>
                       </div>
                       <Card>
-                        <CardContent className="p-6">
-                          {selectedGa4CampaignFilterList.length === 0 ? (
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
-                              All campaigns (no filter applied). Metrics reflect all traffic to the selected GA4 property.
-                            </div>
-                          ) : (
-                            <div className="overflow-hidden border rounded-md">
-                              <table className="w-full text-sm">
-                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
-                                  <tr>
-                                    <th className="text-left font-medium px-3 py-2">Campaign Name</th>
-                                    <th className="text-right font-medium px-3 py-2">Users (30d)</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {selectedGa4CampaignFilterList.map((name: string) => {
-                                    const match = (ga4CampaignValuesResp?.campaigns || []).find(
-                                      (c: any) => String(c?.name || "").trim() === name
-                                    );
-                                    return (
-                                      <tr key={name} className="border-b last:border-b-0">
-                                        <td className="px-3 py-2 text-slate-900 dark:text-white">{name}</td>
-                                        <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                                          {match ? formatNumber(Number(match.users || 0)) : "—"}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Landing pages (Phase 1) */}
-                    <div>
-                      <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Landing Pages</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Where users start, and which pages drive outcomes</p>
-                      </div>
-                      <Card className="border-slate-200 dark:border-slate-700">
-                        <CardContent className="p-6">
-                          {Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0 ? (
-                            <div className="space-y-2">
-                              <div className="overflow-hidden border rounded-md">
-                                <table className="w-full text-sm table-fixed">
-                                  <thead className="bg-slate-50 dark:bg-slate-800 border-b">
-                                    <tr>
-                                      <th className="text-left p-3 w-[34%]">Landing page</th>
-                                      <th className="text-left p-3 w-[16%]">Source/Medium</th>
-                                      <th className="text-right p-3">Sessions</th>
-                                      <th className="text-right p-3">
-                                        <div className="flex items-center justify-end gap-1">
-                                          Users
-                                          <AlertCircle className="w-3.5 h-3.5 text-slate-400" title="Non-additive: Unique users can appear on multiple landing pages" />
-                                        </div>
-                                      </th>
-                                      <th className="text-right p-3">Conversions</th>
-                                      <th className="text-right p-3">Conv. rate</th>
-                                      <th className="text-right p-3">Revenue</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {ga4LandingPages.rows.slice(0, 20).map((r: any, idx: number) => {
-                                      const sessions = Number(r?.sessions || 0);
-                                      const conversions = Number(r?.conversions || 0);
-                                      const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
-                                      return (
-                                        <tr key={`${r?.landingPage || idx}:${idx}`} className="border-b">
-                                          <td className="p-3">
-                                            <div className="font-medium text-slate-900 dark:text-white truncate" title={String(r?.landingPage || "(not set)")}>
-                                              {String(r?.landingPage || "(not set)")}
-                                            </div>
-                                          </td>
-                                          <td className="p-3 text-slate-600 dark:text-slate-400">
-                                            <span className="truncate" title={`${String(r?.source || "(not set)")}/${String(r?.medium || "(not set)")}`}>
-                                              {String(r?.source || "(not set)")}/{String(r?.medium || "(not set)")}
-                                            </span>
-                                          </td>
-                                          <td className="p-3 text-right">{formatNumber(Number(r?.sessions || 0))}</td>
-                                          <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
-                                          <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
-                                          <td className="p-3 text-right">{formatPercentage(cr)}</td>
-                                          <td className="p-3 text-right">
-                                            {formatMoney(Number(r?.revenue || 0))}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                  <tfoot className="bg-slate-50 dark:bg-slate-800 border-t">
-                                    <tr>
-                                      <td colspan="7" className="p-3 text-xs text-slate-500 dark:text-slate-400">
-                                        Note: <span className="font-medium">Users</span> is non-additive across rows (unique users can appear on multiple landing pages)
-                                      </td>
-                                    </tr>
-                                  </tfoot>
-                                </table>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
-                              No landing page data available yet for this property/campaign selection.
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Conversion events (Phase 1) */}
-                    <div>
-                      <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Conversion Events</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Which conversion events are driving results</p>
-                      </div>
-                      <Card className="border-slate-200 dark:border-slate-700">
-                        <CardContent className="p-6">
-                          {Array.isArray(ga4ConversionEvents?.rows) && ga4ConversionEvents.rows.length > 0 ? (
-                            <div className="overflow-hidden border rounded-md">
-                              <table className="w-full text-sm table-fixed">
-                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
-                                  <tr>
-                                    <th className="text-left p-3 w-[36%]">Event</th>
-                                    <th className="text-right p-3">Conversions</th>
-                                    <th className="text-right p-3">Event count</th>
-                                    <th className="text-right p-3">Users</th>
-                                    <th className="text-right p-3">Revenue</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {ga4ConversionEvents.rows.slice(0, 25).map((r: any, idx: number) => (
-                                    <tr key={`${r?.eventName || idx}:${idx}`} className="border-b">
-                                      <td className="p-3">
-                                        <div className="font-medium text-slate-900 dark:text-white truncate" title={String(r?.eventName || "(not set)")}>
-                                          {String(r?.eventName || "(not set)")}
-                                        </div>
-                                      </td>
-                                      <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
-                                      <td className="p-3 text-right">{formatNumber(Number(r?.eventCount || 0))}</td>
-                                      <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
-                                      <td className="p-3 text-right">
-                                        {formatMoney(Number(r?.revenue || 0))}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
-                              No conversion event breakdown available yet for this property/campaign selection.
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Spend import / edit modal (rendered always so it can be opened even when spend exists) */}
-                    <AddSpendWizardModal
-                      campaignId={campaignId as string}
-                      open={showSpendDialog}
-                      onOpenChange={setShowSpendDialog}
-                      currency={(campaign as any)?.currency || "USD"}
-                      dateRange={dateRange}
-                      initialSource={activeSpendSource || undefined}
-                      onProcessed={() => {
-                        // Refresh spend immediately; invalidate broadly in case dateRange changed.
-                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
-                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
-                        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
-                      }}
-                    />
-
-                    <AddRevenueWizardModal
-                      campaignId={campaignId as string}
-                      open={showRevenueDialog}
-                      onOpenChange={setShowRevenueDialog}
-                      currency={(campaign as any)?.currency || "USD"}
-                      dateRange={dateRange}
-                      initialSource={activeRevenueSource || undefined}
-                      platformContext="ga4"
-                      onSuccess={() => {
-                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
-                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
-                        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
-                        queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
-                      }}
-                    />
-
-                    <AlertDialog open={showDeleteSpendDialog} onOpenChange={setShowDeleteSpendDialog}>
-                      <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="text-slate-900 dark:text-white">Remove spend data?</AlertDialogTitle>
-                          <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
-                            This will remove spend from Financial metrics (ROAS/ROI/CPA) for this campaign until you add spend again.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                            onClick={async () => {
-                              try {
-                                const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources`, { method: "DELETE" });
-                                const json = await resp.json().catch(() => null);
-                                if (!resp.ok || json?.success === false) {
-                                  throw new Error(json?.error || "Failed to remove spend");
-                                }
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
-                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
-                              } catch (e) {
-                                // swallow; the page has other error toasts elsewhere
-                                console.error(e);
-                              } finally {
-                                setShowDeleteSpendDialog(false);
-                              }
-                            }}
-                          >
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-
-                    <AlertDialog open={showDeleteRevenueDialog} onOpenChange={setShowDeleteRevenueDialog}>
-                      <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="text-slate-900 dark:text-white">Remove revenue source?</AlertDialogTitle>
-                          <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
-                            This will remove imported revenue for this campaign until you add a revenue source again.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                            onClick={async () => {
-                              try {
-                                const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources`, { method: "DELETE" });
-                                const json = await resp.json().catch(() => null);
-                                if (!resp.ok || json?.success === false) {
-                                  throw new Error(json?.error || "Failed to remove revenue source");
-                                }
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
-                                queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
-                              } catch (e) {
-                                console.error(e);
-                              } finally {
-                                setShowDeleteRevenueDialog(false);
-                              }
-                            }}
-                          >
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-
-                    {/* Scale */}
-                    <div>
-                      <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Scale</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">How much volume</p>
-                      </div>
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Users</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Unique users (selected property)</p>
-                              </div>
-                              <Users className="w-8 h-8 text-blue-600" />
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Sessions</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
-                              </div>
-                              <Users className="w-8 h-8 text-blue-500" />
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">New Users</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {formatNumber(ga4Metrics?.newUsers || 0)}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
-                              </div>
-                              <Users className="w-8 h-8 text-emerald-600" />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>
-
-                    {/* Acquisition */}
-                    <div>
-                      <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Acquisition</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Where is it coming from (Channel / Source / Medium / Campaign)</p>
-                      </div>
-
-                      {/* Acquisition breakdown table */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>GA4 Acquisition Breakdown</CardTitle>
-                          <CardDescription>
-                            Date / Channel / Source / Medium / Campaign / Device / Country — Sessions / Users / Conversions / Revenue
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-6">
-                          {breakdownLoading ? (
-                            <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                          ) : Array.isArray(ga4Breakdown?.rows) && ga4Breakdown.rows.length > 0 ? (
-                            <div className="overflow-hidden border rounded-md">
-                              <div className="max-h-[420px] overflow-y-auto">
-                                <table className="w-full text-sm table-fixed">
-                                  <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
-                                    <tr>
-                                      <th className="text-left font-medium px-2 py-2 w-[90px]">Date</th>
-                                      <th className="text-left font-medium px-2 py-2 w-[100px]">Channel</th>
-                                      <th className="text-left font-medium px-2 py-2 w-[90px]">Source</th>
-                                      <th className="text-left font-medium px-2 py-2 w-[80px]">Medium</th>
-                                      <th className="text-left font-medium px-2 py-2">Campaign</th>
-                                      <th className="text-left font-medium px-2 py-2 w-[80px]">Device</th>
-                                      <th className="text-left font-medium px-2 py-2 w-[100px]">Country</th>
-                                      <th className="text-right font-medium px-2 py-2 w-[85px]">Sessions</th>
-                                      <th className="text-right font-medium px-2 py-2 w-[70px]">Users</th>
-                                      <th className="text-right font-medium px-2 py-2 w-[90px]">Convs</th>
-                                      <th className="text-right font-medium px-2 py-2 w-[100px]">Revenue</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {ga4Breakdown.rows.slice(0, 200).map((r: any, idx: number) => (
-                                      <tr
-                                        key={`${r.date}-${r.channel}-${r.source}-${r.medium}-${r.campaign}-${r.device}-${r.country}-${idx}`}
-                                        className="border-b last:border-b-0"
-                                      >
-                                        <td className="px-2 py-2 truncate" title={r.date}>{r.date}</td>
-                                        <td className="px-2 py-2 truncate" title={r.channel}>{r.channel}</td>
-                                        <td className="px-2 py-2 truncate" title={r.source}>{r.source}</td>
-                                        <td className="px-2 py-2 truncate" title={r.medium}>{r.medium}</td>
-                                        <td className="px-2 py-2 truncate" title={r.campaign}>{r.campaign}</td>
-                                        <td className="px-2 py-2 truncate" title={r.device}>{r.device}</td>
-                                        <td className="px-2 py-2 truncate" title={r.country}>{r.country}</td>
-                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(Number(r.sessions || 0))}</td>
-                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(Number(r.users || 0))}</td>
-                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(Number(r.conversions || 0))}</td>
-                                        <td className="px-2 py-2 text-right tabular-nums">
-                                          {formatMoney(Number(r.revenue || 0))}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
-                              No GA4 breakdown rows returned for this date range. If you expect rows, verify that GA4 has data for the selected period and that revenue/conversions are configured as GA4 metrics.
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-
-                      {/* Campaign Performance breakdown */}
-                      <Card className="mt-4">
-                        <CardHeader>
-                          <CardTitle>Campaign Performance</CardTitle>
-                          <CardDescription>Metrics aggregated by UTM campaign name</CardDescription>
-                        </CardHeader>
                         <CardContent className="p-6">
                           {breakdownLoading ? (
                             <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
@@ -3600,297 +3085,216 @@ export default function GA4Metrics() {
                       </Card>
                     </div>
 
-                    {/* Engagement */}
+                    {/* Landing Pages */}
                     <div>
                       <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Engagement</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Explains why performance changed (quality)</p>
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Landing Pages</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Where users land and which pages drive outcomes</p>
                       </div>
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {formatPercentage(rateToPercent(ga4Metrics?.engagementRate || 0))}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
-                              </div>
-                              <TrendingUp className="w-8 h-8 text-rose-600" />
+                      <Card>
+                        <CardContent className="p-6">
+                          {Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0 ? (
+                            <div className="overflow-hidden border rounded-md">
+                              <table className="w-full text-sm table-fixed">
+                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                  <tr>
+                                    <th className="text-left p-3 w-[34%]">Landing page</th>
+                                    <th className="text-left p-3 w-[16%]">Source/Medium</th>
+                                    <th className="text-right p-3">Sessions</th>
+                                    <th className="text-right p-3">
+                                      <div className="flex items-center justify-end gap-1">
+                                        Users
+                                        <AlertCircle className="w-3.5 h-3.5 text-slate-400" title="Non-additive: Unique users can appear on multiple landing pages" />
+                                      </div>
+                                    </th>
+                                    <th className="text-right p-3">Conversions</th>
+                                    <th className="text-right p-3">Conv. rate</th>
+                                    <th className="text-right p-3">Revenue</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {ga4LandingPages.rows.slice(0, 20).map((r: any, idx: number) => {
+                                    const sessions = Number(r?.sessions || 0);
+                                    const conversions = Number(r?.conversions || 0);
+                                    const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
+                                    return (
+                                      <tr key={`${r?.landingPage || idx}:${idx}`} className="border-b">
+                                        <td className="p-3">
+                                          <div className="font-medium text-slate-900 dark:text-white truncate" title={String(r?.landingPage || "(not set)")}>
+                                            {String(r?.landingPage || "(not set)")}
+                                          </div>
+                                        </td>
+                                        <td className="p-3 text-slate-600 dark:text-slate-400">
+                                          <span className="truncate" title={`${String(r?.source || "(not set)")}/${String(r?.medium || "(not set)")}`}>
+                                            {String(r?.source || "(not set)")}/{String(r?.medium || "(not set)")}
+                                          </span>
+                                        </td>
+                                        <td className="p-3 text-right">{formatNumber(Number(r?.sessions || 0))}</td>
+                                        <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
+                                        <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
+                                        <td className="p-3 text-right">{formatPercentage(cr)}</td>
+                                        <td className="p-3 text-right">{formatMoney(Number(r?.revenue || 0))}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
                             </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engaged Sessions</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {formatNumber(ga4Metrics?.engagedSessions || 0)}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
-                              </div>
-                              <Target className="w-8 h-8 text-violet-600" />
+                          ) : (
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              No landing page data available yet for this property/campaign selection.
                             </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Events per Session</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {(ga4Metrics?.eventsPerSession || 0).toFixed(2)}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
-                              </div>
-                              <BarChart3 className="w-8 h-8 text-amber-600" />
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Events</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {formatNumber(ga4Metrics?.eventCount || 0)}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
-                              </div>
-                              <MousePointer className="w-8 h-8 text-cyan-600" />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
+                          )}
+                        </CardContent>
+                      </Card>
                     </div>
 
-                    {/* Behavior */}
+                    {/* Conversion Events */}
                     <div>
                       <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Behavior</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">What did people do on-site</p>
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Conversion Events</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Which conversion events are driving results</p>
                       </div>
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <Card>
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Page Views</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {formatNumber(ga4Metrics?.pageviews || 0)}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
-                              </div>
-                              <Globe className="w-8 h-8 text-green-500" />
+                      <Card>
+                        <CardContent className="p-6">
+                          {Array.isArray(ga4ConversionEvents?.rows) && ga4ConversionEvents.rows.length > 0 ? (
+                            <div className="overflow-hidden border rounded-md">
+                              <table className="w-full text-sm table-fixed">
+                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                  <tr>
+                                    <th className="text-left p-3 w-[36%]">Event</th>
+                                    <th className="text-right p-3">Conversions</th>
+                                    <th className="text-right p-3">Event count</th>
+                                    <th className="text-right p-3">Users</th>
+                                    <th className="text-right p-3">Revenue</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {ga4ConversionEvents.rows.slice(0, 25).map((r: any, idx: number) => (
+                                    <tr key={`${r?.eventName || idx}:${idx}`} className="border-b">
+                                      <td className="p-3">
+                                        <div className="font-medium text-slate-900 dark:text-white truncate" title={String(r?.eventName || "(not set)")}>
+                                          {String(r?.eventName || "(not set)")}
+                                        </div>
+                                      </td>
+                                      <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
+                                      <td className="p-3 text-right">{formatNumber(Number(r?.eventCount || 0))}</td>
+                                      <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
+                                      <td className="p-3 text-right">{formatMoney(Number(r?.revenue || 0))}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
-                          </CardContent>
-                        </Card>
-                      </div>
+                          ) : (
+                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                              No conversion event breakdown available yet for this property/campaign selection.
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Sessions Over Time</CardTitle>
-                        <CardDescription>Daily sessions — {selectedPeriodLabel}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="h-80">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={timeSeriesData}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={8} />
-                              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => formatNumber(Number(v) || 0)} />
-                              <Tooltip
-                                formatter={(value: any, name: any) => [formatNumber(Number(value) || 0), String(name || "Sessions")]}
-                                labelFormatter={(label) => `Date: ${label}`}
-                              />
-                              <Line
-                                type="monotone"
-                                dataKey="sessions"
-                                stroke="#3b82f6"
-                                strokeWidth={3}
-                                dot={{ fill: "#3b82f6", strokeWidth: 2, r: 6 }}
-                              />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Page Views vs Sessions</CardTitle>
-                        <CardDescription>Sessions and page views — {selectedPeriodLabel}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="h-80">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={timeSeriesData}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickMargin={8} />
-                              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => formatNumber(Number(v) || 0)} />
-                              <Tooltip
-                                formatter={(value: any, name: any) => [formatNumber(Number(value) || 0), String(name || "")]}
-                                labelFormatter={(label) => `Date: ${label}`}
-                              />
-                              <Legend verticalAlign="top" height={24} />
-                              <Bar name="Sessions" dataKey="sessions" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                              <Bar name="Page Views" dataKey="pageviews" fill="#10b981" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Geographic Data - Only in Overview Tab */}
-                  <Card className="mt-6">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Globe className="w-5 h-5" />
-                        Geographic Breakdown
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {geoLoading ? (
-                        <div className="flex items-center justify-center h-32">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        </div>
-                      ) : geographicData?.success ? (
-                        <div className="space-y-6">
-                          {/* Interactive World Map - GA4 Style */}
-                          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-                            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-                              <div>
-                                <h4 className="font-medium text-slate-900 dark:text-white">Active users by Country</h4>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xs text-slate-500 dark:text-slate-400">
-                                  {geographicData?.topCountries?.length || 20} countries
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
-                              {/* Map Section */}
-                              <div className="lg:col-span-2 p-4">
-                                {geographicData?.topCountries && geographicData.topCountries.length > 0 && geographicData.topCountries.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)') ? (
-                                  <InteractiveWorldMap
-                                    data={geographicData.topCountries}
-                                    metric="users"
-                                  />
-                                ) : (
-                                  <div className="h-64 flex items-center justify-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg">
-                                    <div className="text-center">
-                                      <Globe className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                                      <p className="text-sm">No geographic data available for the selected date range</p>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Data Table Section */}
-                              <div className="border-l border-slate-200 dark:border-slate-700">
-                                <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                                  <div className="grid grid-cols-2 gap-4 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                    <div>COUNTRY</div>
-                                    <div className="text-right">ACTIVE USERS</div>
-                                  </div>
-                                </div>
-                                <div className="max-h-64 overflow-y-auto">
-                                  {geographicData?.topCountries && geographicData.topCountries.length > 0 && geographicData.topCountries.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)') ? (
-                                    geographicData.topCountries.slice(0, 10).map((location: any, index: number) => (
-                                      <div key={index} className="grid grid-cols-2 gap-4 p-3 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 text-sm">
-                                        <div className="font-medium text-slate-900 dark:text-white">
-                                          {location.country}
-                                        </div>
-                                        <div className="text-right font-semibold text-slate-900 dark:text-white">
-                                          {formatNumber(location.users)}
-                                        </div>
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="p-8 text-center text-slate-500 dark:text-slate-400">
-                                      No data available
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Top Countries */}
-                            <div>
-                              <h4 className="font-medium text-slate-900 dark:text-white mb-3">Top Countries</h4>
-                              <div className="space-y-2">
-                                {geographicData?.topCountries && geographicData.topCountries.length > 0 && geographicData.topCountries.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)') ? (
-                                  geographicData.topCountries.slice(0, 5).map((location: any, index: number) => (
-                                    <div key={index} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-800 rounded">
-                                      <span className="font-medium">{location.country}</span>
-                                      <div className="text-right">
-                                        <div className="text-sm font-semibold">{formatNumber(location.users)} users</div>
-                                        <div className="text-xs text-slate-600 dark:text-slate-400">{formatNumber(location.sessions)} sessions</div>
-                                      </div>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
-                                    No country data available
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Location Details */}
-                            <div>
-                              <h4 className="font-medium text-slate-900 dark:text-white mb-3">Location Details</h4>
-                              <div className="max-h-64 overflow-y-auto space-y-1">
-                                {geographicData?.data && geographicData.data.length > 0 && geographicData.data.some((c: any) => c.country && c.country !== 'unknown' && c.country !== '(not set)') ? (
-                                  geographicData.data.slice(0, 10).map((location: any, index: number) => (
-                                    <div key={index} className="text-sm p-2 border-b border-slate-200 dark:border-slate-700">
-                                      <div className="font-medium">{location.city}, {location.region}</div>
-                                      <div className="text-slate-600 dark:text-slate-400">{location.country}</div>
-                                      <div className="flex justify-between mt-1">
-                                        <span className="text-xs">{formatNumber(location.users)} users</span>
-                                        <span className="text-xs">{formatNumber(location.pageviews)} pageviews</span>
-                                      </div>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
-                                    No city-level data available
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              Total locations tracked: {geographicData?.totalLocations || 20}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              Data updated: {geographicData?.lastUpdated ? new Date(geographicData.lastUpdated).toLocaleString() : 'Recently'}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-center py-8">
-                          <div className="text-slate-500 dark:text-slate-400 mb-4">
-                            No geographic data available
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                  {/* Modals (rendered always) */}
+                  <AddSpendWizardModal
+                    campaignId={campaignId as string}
+                    open={showSpendDialog}
+                    onOpenChange={setShowSpendDialog}
+                    currency={(campaign as any)?.currency || "USD"}
+                    dateRange={dateRange}
+                    initialSource={activeSpendSource || undefined}
+                    onProcessed={() => {
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
+                      queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
+                    }}
+                  />
+                  <AddRevenueWizardModal
+                    campaignId={campaignId as string}
+                    open={showRevenueDialog}
+                    onOpenChange={setShowRevenueDialog}
+                    currency={(campaign as any)?.currency || "USD"}
+                    dateRange={dateRange}
+                    initialSource={activeRevenueSource || undefined}
+                    platformContext="ga4"
+                    onSuccess={() => {
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+                      queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
+                    }}
+                  />
+                  <AlertDialog open={showDeleteSpendDialog} onOpenChange={setShowDeleteSpendDialog}>
+                    <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-900 dark:text-white">Remove spend data?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                          This will remove spend from Financial metrics (ROAS/ROI/CPA) for this campaign until you add spend again.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={async () => {
+                            try {
+                              const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources`, { method: "DELETE" });
+                              const json = await resp.json().catch(() => null);
+                              if (!resp.ok || json?.success === false) {
+                                throw new Error(json?.error || "Failed to remove spend");
+                              }
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
+                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
+                            } catch (e) {
+                              console.error(e);
+                            } finally {
+                              setShowDeleteSpendDialog(false);
+                            }
+                          }}
+                        >
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <AlertDialog open={showDeleteRevenueDialog} onOpenChange={setShowDeleteRevenueDialog}>
+                    <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-900 dark:text-white">Remove revenue source?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                          This will remove imported revenue for this campaign until you add a revenue source again.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={async () => {
+                            try {
+                              const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources`, { method: "DELETE" });
+                              const json = await resp.json().catch(() => null);
+                              if (!resp.ok || json?.success === false) {
+                                throw new Error(json?.error || "Failed to remove revenue source");
+                              }
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
+                            } catch (e) {
+                              console.error(e);
+                            } finally {
+                              setShowDeleteRevenueDialog(false);
+                            }
+                          }}
+                        >
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TabsContent>
 
                 <TabsContent value="kpis">

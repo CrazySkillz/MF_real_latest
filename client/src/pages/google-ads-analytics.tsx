@@ -450,6 +450,11 @@ export default function GoogleAdsAnalytics() {
     }));
   }, [metrics]);
 
+  // Sorted breakdown for table display (must be before early returns)
+  const sortedCampaignBreakdown = useMemo(() => {
+    return [...campaignBreakdown].sort((a: any, b: any) => (b[sortBy] || 0) - (a[sortBy] || 0));
+  }, [campaignBreakdown, sortBy]);
+
   // Daily series for Insights tab (Daily/7d/30d)
   const dailySeries = useMemo(() => {
     const byDate = chartData;
@@ -1025,11 +1030,6 @@ export default function GoogleAdsAnalytics() {
   const bestPerforming = [...campaignBreakdown].sort((a, b) => b.conversions - a.conversions)[0];
   const mostEfficient = [...campaignBreakdown].filter(c => c.clicks > 0).sort((a, b) => (a.cpc || Infinity) - (b.cpc || Infinity))[0];
   const needsAttentionCampaign = [...campaignBreakdown].filter(c => c.clicks > 0).sort((a, b) => (a.ctr || 0) - (b.ctr || 0))[0];
-
-  // Sorted breakdown for table display
-  const sortedCampaignBreakdown = useMemo(() => {
-    return [...campaignBreakdown].sort((a: any, b: any) => (b[sortBy] || 0) - (a[sortBy] || 0));
-  }, [campaignBreakdown, sortBy]);
 
   // Handlers
   const handleCreateKPI = () => {

@@ -5759,7 +5759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           refreshToken: tokens.refresh_token,
           clientId: process.env.GOOGLE_CLIENT_ID || '',
           clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-          expiresAt: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : undefined,
+          expiresAt: new Date(Date.now() + ((tokens.expires_in || 3600) * 1000)),
         });
       } catch (error: any) {
         if (error.message && error.message.includes('Maximum limit')) {
@@ -9721,7 +9721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   refreshToken: connection.refreshToken || null,
                   clientId: process.env.GOOGLE_CLIENT_ID || '',
                   clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-                  expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined,
+                  expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : new Date(Date.now() + 3600 * 1000),
                 });
                 devLog('[Select Spreadsheet] Created DB connection from global map');
               } catch (createError: any) {
@@ -9902,7 +9902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 refreshToken: connection.refreshToken || null,
                 clientId: process.env.GOOGLE_CLIENT_ID || '',
                 clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-                expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined,
+                expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : new Date(Date.now() + 3600 * 1000),
               });
               devLog('[Select Multiple Spreadsheets] Created DB connection from global map');
             } catch (createError: any) {
@@ -13712,20 +13712,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
           spreadsheetId: connection.spreadsheetId
         });
 
-        // Handle token expiration - clear invalid connection and require re-authorization
+        // Handle token expiration - try refresh before deleting connection
         if (sheetResponse.status === 401) {
-          devLog('🔄 Token expired without refresh capability, clearing connection');
-
-          // Clear the invalid connection so user can re-authorize
-          await storage.deleteGoogleSheetsConnection(connection.id);
-
-          return res.status(401).json({
-            success: false,
-            error: 'ACCESS_TOKEN_EXPIRED',
-            message: 'Connection expired. Please reconnect your Google Sheets account.',
-            requiresReauthorization: true,
-            campaignId: campaignId
-          });
+          if (connection.refreshToken && connection.clientId && connection.clientSecret) {
+            devLog('🔄 401 from API — attempting token refresh before giving up...');
+            try {
+              const refreshedToken = await refreshGoogleSheetsToken(connection);
+              // Retry the request with the refreshed token
+              const retryRange = connection.sheetName ? `${toA1SheetPrefix(connection.sheetName)}A1:Z1000` : 'A1:Z1000';
+              const retryResponse = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(retryRange)}`,
+                { headers: { 'Authorization': `Bearer ${refreshedToken}` } }
+              );
+              if (retryResponse.ok) {
+                // Refresh worked — use the retry response going forward
+                sheetResponse = retryResponse;
+                devLog('✅ Token refresh + retry succeeded on 401 safety net');
+              } else {
+                // Retry still failed — connection is unrecoverable
+                devLog('❌ Retry after refresh still failed, clearing connection');
+                await storage.deleteGoogleSheetsConnection(connection.id);
+                return res.status(401).json({
+                  success: false,
+                  error: 'ACCESS_TOKEN_EXPIRED',
+                  message: 'Connection expired. Please reconnect your Google Sheets account.',
+                  requiresReauthorization: true,
+                  campaignId: campaignId
+                });
+              }
+            } catch (refreshErr: any) {
+              devLog('❌ Token refresh failed in 401 safety net:', refreshErr.message);
+              if (refreshErr.message === 'REFRESH_TOKEN_EXPIRED') {
+                await storage.deleteGoogleSheetsConnection(connection.id);
+              }
+              return res.status(401).json({
+                success: false,
+                error: refreshErr.message === 'REFRESH_TOKEN_EXPIRED' ? 'REFRESH_TOKEN_EXPIRED' : 'ACCESS_TOKEN_EXPIRED',
+                message: 'Connection expired. Please reconnect your Google Sheets account.',
+                requiresReauthorization: true,
+                campaignId: campaignId
+              });
+            }
+          } else {
+            // No refresh token — connection truly can't be recovered
+            devLog('🔄 Token expired without refresh capability, clearing connection');
+            await storage.deleteGoogleSheetsConnection(connection.id);
+            return res.status(401).json({
+              success: false,
+              error: 'ACCESS_TOKEN_EXPIRED',
+              message: 'Connection expired. Please reconnect your Google Sheets account.',
+              requiresReauthorization: true,
+              campaignId: campaignId
+            });
+          }
         }
 
         // Handle 403 (Forbidden) - might be permissions issue

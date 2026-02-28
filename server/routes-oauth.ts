@@ -366,7 +366,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // A small, stable breakdown table (we rely on totals for the cards; rows are for the table UI)
       const breakdownDate = dates[dates.length - 1] || formatISODateUTC(end);
-      const channels = [
+
+      // When ga4CampaignFilter is set, use filter values as campaign names so the
+      // Ad Comparison tab can match them against imported campaigns.
+      const defaultChannels = [
         { channel: "Organic Search", source: "google", medium: "organic", campaign: "seo", share: 0.22 },
         { channel: "Paid Search", source: "google", medium: "cpc", campaign: "brand_search", share: 0.18 },
         { channel: "Paid Search", source: "google", medium: "cpc", campaign: "nonbrand_search", share: 0.14 },
@@ -375,6 +378,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { channel: "Direct", source: "(direct)", medium: "(none)", campaign: "(direct)", share: 0.12 },
         { channel: "Unassigned", source: "direct", medium: "(none)", campaign: "direct", share: 0.08 },
       ];
+
+      // Build breakdown using filter names when available (simulates GA4 dimension filter)
+      const channelTemplates = [
+        { channel: "Paid Search", source: "google", medium: "cpc" },
+        { channel: "Paid Social", source: "facebook", medium: "paid_social" },
+        { channel: "Email", source: "newsletter", medium: "email" },
+        { channel: "Organic Search", source: "google", medium: "organic" },
+      ];
+      const channels = filterNames.length > 0
+        ? filterNames.map((fn, i) => ({
+            ...channelTemplates[i % channelTemplates.length],
+            campaign: fn,
+            share: 1 / filterNames.length,
+          }))
+        : defaultChannels;
 
       let sRemain = totals.sessions;
       let uRemain = totals.users;

@@ -367,7 +367,7 @@ export default function GA4Metrics() {
             conversions: Number(financialConversions || 0),
             sessions: Number(breakdownTotals.sessions || 0),
             users: Number(breakdownTotals.users || 0),
-            engagementRate: Number((ga4Metrics as any)?.engagementRate || 0),
+            engagementRate: dailySummedTotals.engagementRate || Number((ga4Metrics as any)?.engagementRate || 0),
             spend: Number(financialSpend || 0),
           });
         } catch (error) {
@@ -1285,7 +1285,7 @@ export default function GA4Metrics() {
       Number(breakdownTotals?.users || 0) ||
       Number((ga4Metrics as any)?.users || (ga4Metrics as any)?.totalUsers || (ga4Metrics as any)?.impressions || 0);
     const sessions = Number(breakdownTotals?.sessions || 0) || Number((ga4Metrics as any)?.sessions || 0);
-    const pageviews = Number((ga4Metrics as any)?.pageviews || 0);
+    const pageviews = dailySummedTotals.pageviews || Number((ga4Metrics as any)?.pageviews || 0);
     const conversions = Number(breakdownTotals?.conversions || 0) || Number((ga4Metrics as any)?.conversions || 0);
     // Benchmarks should prefill from the same values shown in the Overview.
     // Revenue is a to-date (lifetime) metric in this GA4 surface.
@@ -1312,7 +1312,7 @@ export default function GA4Metrics() {
       case "conversionRate":
         return sessions > 0 ? (conversions / sessions) * 100 : 0;
       case "engagementRate": {
-        const er = Number((ga4Metrics as any)?.engagementRate || 0);
+        const er = dailySummedTotals.engagementRate || Number((ga4Metrics as any)?.engagementRate || 0);
         return Number.isFinite(er) && er > 0 ? normalizeRateToPercent(er) : 0;
       }
       default:
@@ -1530,14 +1530,21 @@ export default function GA4Metrics() {
   // Sum all daily rows for a ground-truth total (avoids mismatch between ga4-to-date and ga4-daily endpoints).
   const dailySummedTotals = useMemo(() => {
     const rows = ga4DailyRows;
-    let sessions = 0, users = 0, conversions = 0, revenue = 0;
+    let sessions = 0, users = 0, conversions = 0, revenue = 0, engagedSessions = 0, pageviews = 0;
     for (const r of rows) {
       sessions += r.sessions;
       users += r.users;
       conversions += r.conversions;
       revenue += r.revenue;
+      engagedSessions += r.engagedSessions || 0;
+      pageviews += r.pageviews || 0;
     }
-    return { sessions, users, conversions, revenue: Number(revenue.toFixed(2)) };
+    return {
+      sessions, users, conversions, pageviews, engagedSessions,
+      revenue: Number(revenue.toFixed(2)),
+      engagementRate: sessions > 0 ? engagedSessions / sessions : 0,
+      bounceRate: sessions > 0 ? 1 - (engagedSessions / sessions) : 0,
+    };
   }, [ga4DailyRows]);
 
   // Use the higher of (to-date API total, summed daily rows) so cumulative totals
@@ -1697,7 +1704,7 @@ export default function GA4Metrics() {
       return computeConversionRatePercent(c, s).toFixed(2);
     }
     if (name === "Engagement Rate") {
-      const er = Number((ga4Metrics as any)?.engagementRate || 0);
+      const er = dailySummedTotals.engagementRate || Number((ga4Metrics as any)?.engagementRate || 0);
       return normalizeRateToPercent(er).toFixed(2);
     }
     if (name === "Total Users") return String(Math.round(Number(breakdownTotals.users || ga4Metrics?.users || 0)));
@@ -1871,7 +1878,7 @@ export default function GA4Metrics() {
       const conversions = Number(breakdownTotals?.conversions || 0);
       const sessions = Number(breakdownTotals?.sessions || 0);
       const users = Number(breakdownTotals?.users || 0);
-      const engagementRate = normalizeRateToPercent(Number(ga4m?.metrics?.engagementRate ?? 0));
+      const engagementRate = normalizeRateToPercent(dailySummedTotals.engagementRate || Number(ga4m?.metrics?.engagementRate ?? 0));
       const spend = Number(spendToDateResp?.spendToDate || 0);
       const revenueToDate = Number(financialRevenue || 0);
       const conversionsToDate = Number(financialConversions || 0);
@@ -2953,18 +2960,18 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                              {formatPercentage(rateToPercent(ga4Metrics?.engagementRate || 0))}
+                              {formatPercentage(rateToPercent(dailySummedTotals.engagementRate || ga4Metrics?.engagementRate || 0))}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Bounce Rate</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                              {formatPercentage(rateToPercent(ga4Metrics?.bounceRate || 0))}
+                              {formatPercentage(rateToPercent(dailySummedTotals.bounceRate || ga4Metrics?.bounceRate || 0))}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Campaign average</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
                           </CardContent>
                         </Card>
                       </div>
@@ -4944,7 +4951,7 @@ export default function GA4Metrics() {
                               : Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
                             sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
                             users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
-                            engagementRate: Number((ga4Metrics as any)?.engagementRate || 0),
+                            engagementRate: dailySummedTotals.engagementRate || Number((ga4Metrics as any)?.engagementRate || 0),
                             spend: Number(financialSpend || 0),
                           });
                           kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit));

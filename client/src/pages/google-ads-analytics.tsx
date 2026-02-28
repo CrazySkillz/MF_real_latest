@@ -1007,9 +1007,10 @@ export default function GoogleAdsAnalytics() {
   const campaignPerformanceChartMetric = sortBy;
   const campaignPerformanceData = [...campaignBreakdown]
     .sort((a: any, b: any) => (b[campaignPerformanceChartMetric] || 0) - (a[campaignPerformanceChartMetric] || 0))
-    .slice(0, 5)
+    .slice(0, 10)
     .map(c => ({
-      name: c.name.length > 35 ? c.name.substring(0, 35) + '...' : c.name,
+      name: c.name.length > 30 ? c.name.slice(0, 28) + '...' : c.name,
+      fullName: c.name,
       value: campaignPerformanceChartMetric === 'spend' ? Math.round(c.spend * 100) / 100
         : campaignPerformanceChartMetric === 'impressions' ? c.impressions
         : campaignPerformanceChartMetric === 'clicks' ? c.clicks
@@ -1022,8 +1023,13 @@ export default function GoogleAdsAnalytics() {
 
   // Ad comparison performance rankings
   const bestPerforming = [...campaignBreakdown].sort((a, b) => b.conversions - a.conversions)[0];
-  const mostEfficient = [...campaignBreakdown].sort((a, b) => (a.cpc || Infinity) - (b.cpc || Infinity))[0];
-  const needsAttentionCampaign = [...campaignBreakdown].sort((a, b) => (a.ctr || 0) - (b.ctr || 0))[0];
+  const mostEfficient = [...campaignBreakdown].filter(c => c.clicks > 0).sort((a, b) => (a.cpc || Infinity) - (b.cpc || Infinity))[0];
+  const needsAttentionCampaign = [...campaignBreakdown].filter(c => c.clicks > 0).sort((a, b) => (a.ctr || 0) - (b.ctr || 0))[0];
+
+  // Sorted breakdown for table display
+  const sortedCampaignBreakdown = useMemo(() => {
+    return [...campaignBreakdown].sort((a: any, b: any) => (b[sortBy] || 0) - (a[sortBy] || 0));
+  }, [campaignBreakdown, sortBy]);
 
   // Handlers
   const handleCreateKPI = () => {
@@ -1532,7 +1538,7 @@ export default function GoogleAdsAnalytics() {
                       <CardTitle className="text-sm font-medium flex items-center gap-2"><TrendingDown className="w-4 h-4 text-orange-600" /> Needs Attention</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {needsAttentionCampaign && (
+                      {needsAttentionCampaign && needsAttentionCampaign.name !== mostEfficient?.name && (
                         <div>
                           <p className="font-semibold text-orange-600">{needsAttentionCampaign.name}</p>
                           <p className="text-xs text-slate-600 dark:text-slate-400">CTR: {fmtPct(needsAttentionCampaign.ctr)} | Conv Rate: {fmtPct(needsAttentionCampaign.conversionRate)}</p>
@@ -1543,20 +1549,36 @@ export default function GoogleAdsAnalytics() {
                 </div>
               )}
 
-              {/* Campaign Performance Chart */}
+              {/* Campaign Performance Chart — horizontal bars, top 10 */}
               <Card>
-                <CardHeader><CardTitle>Campaign Performance</CardTitle><CardDescription>Top 5 campaigns by {campaignChartLabel.toLowerCase()}</CardDescription></CardHeader>
+                <CardHeader>
+                  <CardTitle>Top Campaigns by {campaignChartLabel.replace(/ \(.*\)/, '')}</CardTitle>
+                  <CardDescription>Up to 10 campaigns sorted by {campaignChartLabel.toLowerCase()}</CardDescription>
+                </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={campaignPerformanceData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" angle={-25} textAnchor="end" interval={0} tick={{ fontSize: 11 }} height={80} />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="value" fill="#3b82f6" name={campaignChartLabel} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={campaignPerformanceData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis type="number" stroke="#64748b" fontSize={11} tickFormatter={(v) => {
+                          if (sortBy === 'spend') return fmtCurrency(v);
+                          if (sortBy === 'ctr') return fmtPct(v);
+                          return fmt(Math.round(v));
+                        }} />
+                        <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={11} width={180} tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          formatter={(value: any) => {
+                            const v = Number(value || 0);
+                            if (sortBy === 'spend') return [fmtCurrency(v), campaignChartLabel];
+                            if (sortBy === 'ctr') return [fmtPct(v), campaignChartLabel];
+                            return [fmt(Math.round(v)), campaignChartLabel];
+                          }}
+                          labelFormatter={(label) => label}
+                        />
+                        <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} name={campaignChartLabel} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1569,9 +1591,13 @@ export default function GoogleAdsAnalytics() {
                         <p className="text-sm text-slate-600 dark:text-slate-400">Total {campaignChartLabel.replace(/ \(.*\)/, '')}</p>
                         <p className="text-2xl font-bold text-slate-900 dark:text-white">
                           {(() => {
+                            if (sortBy === 'ctr') {
+                              const totalImpressions = campaignBreakdown.reduce((s: number, c: any) => s + c.impressions, 0);
+                              const totalClicks = campaignBreakdown.reduce((s: number, c: any) => s + c.clicks, 0);
+                              return fmtPct(totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0);
+                            }
                             const total = campaignBreakdown.reduce((sum: number, c: any) => sum + ((c as any)[sortBy] || 0), 0);
                             if (sortBy === 'spend') return fmtCurrency(total);
-                            if (sortBy === 'ctr') return fmtPct(total / (campaignBreakdown.length || 1));
                             return fmt(Math.round(total));
                           })()}
                         </p>
@@ -1592,6 +1618,57 @@ export default function GoogleAdsAnalytics() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Full comparison table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Campaigns</CardTitle>
+                  <CardDescription>Full comparison sorted by {campaignChartLabel.replace(/ \(.*\)/, '').toLowerCase()}</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="overflow-hidden border rounded-md">
+                    <div className="max-h-[480px] overflow-y-auto">
+                      <table className="w-full text-sm table-fixed">
+                        <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
+                          <tr>
+                            <th className="text-left font-medium px-2 py-2 w-[40px]">#</th>
+                            <th className="text-left font-medium px-2 py-2">Campaign</th>
+                            <th className="text-right font-medium px-2 py-2 w-[100px]">Impressions</th>
+                            <th className="text-right font-medium px-2 py-2 w-[80px]">Clicks</th>
+                            <th className="text-right font-medium px-2 py-2 w-[90px]">Spend</th>
+                            <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
+                            <th className="text-right font-medium px-2 py-2 w-[90px]">Conv Rate</th>
+                            <th className="text-right font-medium px-2 py-2 w-[80px]">CPC</th>
+                            <th className="text-right font-medium px-2 py-2 w-[80px]">ROAS</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedCampaignBreakdown.map((c: any, idx: number) => {
+                            const isTop = idx === 0;
+                            const isBottom = idx === sortedCampaignBreakdown.length - 1 && sortedCampaignBreakdown.length > 1;
+                            return (
+                              <tr
+                                key={c.name || idx}
+                                className={`border-b last:border-b-0 ${isTop ? "bg-emerald-50 dark:bg-emerald-900/10" : isBottom ? "bg-red-50 dark:bg-red-900/10" : ""}`}
+                              >
+                                <td className="px-2 py-2 text-slate-500 tabular-nums">{idx + 1}</td>
+                                <td className="px-2 py-2 truncate font-medium text-slate-900 dark:text-white" title={c.name}>{c.name}</td>
+                                <td className="px-2 py-2 text-right tabular-nums">{fmt(c.impressions)}</td>
+                                <td className="px-2 py-2 text-right tabular-nums">{fmt(c.clicks)}</td>
+                                <td className="px-2 py-2 text-right tabular-nums">{fmtCurrency(c.spend)}</td>
+                                <td className="px-2 py-2 text-right tabular-nums">{fmt(Math.round(c.conversions))}</td>
+                                <td className="px-2 py-2 text-right tabular-nums">{fmtPct(c.conversionRate)}</td>
+                                <td className="px-2 py-2 text-right tabular-nums">{fmtCurrency(c.cpc)}</td>
+                                <td className="px-2 py-2 text-right tabular-nums">{c.roas.toFixed(2)}x</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* ==================== INSIGHTS TAB ==================== */}

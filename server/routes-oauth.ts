@@ -7550,8 +7550,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use campaign startDate for cumulative data (no arbitrary date range limit)
       const startDateParam = req.query.startDate ? String(req.query.startDate) : null;
-      const campaignStartDate = startDateParam || ((campaign as any)?.startDate ? new Date((campaign as any).startDate).toISOString().slice(0, 10) : null);
-      const ga4DateRange = campaignStartDate || '90daysAgo';
+      const campaignStartDate = startDateParam
+        || ((campaign as any)?.startDate ? new Date((campaign as any).startDate).toISOString().slice(0, 10) : null)
+        || ((campaign as any)?.createdAt ? new Date((campaign as any).createdAt).toISOString().slice(0, 10) : null)
+        || '2020-01-01';
+      const ga4DateRange = campaignStartDate;
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
@@ -7660,8 +7663,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use campaign startDate for cumulative data (no arbitrary date range limit)
       const startDateParam = req.query.startDate ? String(req.query.startDate) : null;
-      const campaignStartDate = startDateParam || ((campaign as any)?.startDate ? new Date((campaign as any).startDate).toISOString().slice(0, 10) : null);
-      const ga4DateRange = campaignStartDate || '90daysAgo';
+      const campaignStartDate = startDateParam
+        || ((campaign as any)?.startDate ? new Date((campaign as any).startDate).toISOString().slice(0, 10) : null)
+        || ((campaign as any)?.createdAt ? new Date((campaign as any).createdAt).toISOString().slice(0, 10) : null)
+        || '2020-01-01';
+      const ga4DateRange = campaignStartDate;
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');

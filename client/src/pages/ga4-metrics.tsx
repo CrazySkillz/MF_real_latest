@@ -113,8 +113,9 @@ export default function GA4Metrics() {
   // We keep an internal lookback window for charts/supporting reports, but there is no user-selectable date range.
   // Need at least 60 days to compute "last 30 vs prior 30" and 14 days for WoW anomaly detection.
   // Use 90 to be safe (and to keep mock simulation consistent with existing mock logic).
+  // dateRange MUST match the daily lookback so Summary totals equal the sum of daily rows.
   const GA4_DAILY_LOOKBACK_DAYS = 90;
-  const dateRange = "30days";
+  const dateRange = "90days";
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const [showGa4CampaignPicker, setShowGa4CampaignPicker] = useState(false);

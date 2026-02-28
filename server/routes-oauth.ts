@@ -387,11 +387,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { channel: "Organic Search", source: "google", medium: "organic" },
       ];
       const channels = filterNames.length > 0
-        ? filterNames.map((fn, i) => ({
-            ...channelTemplates[i % channelTemplates.length],
-            campaign: fn,
-            share: 1 / filterNames.length,
-          }))
+        ? (() => {
+            // Use each campaign's profile scale for proportional splitting
+            const items = filterNames.map((fn, i) => {
+              const profileId = utmToProfile[fn];
+              const profile = profileId ? campaignProfiles[profileId] : null;
+              const scale = profile?.scale || 1.0;
+              return { ...channelTemplates[i % channelTemplates.length], campaign: fn, scale };
+            });
+            const scaleSum = items.reduce((s, it) => s + it.scale, 0) || 1;
+            return items.map(({ scale, ...rest }) => ({ ...rest, share: scale / scaleSum }));
+          })()
         : defaultChannels;
 
       let sRemain = totals.sessions;

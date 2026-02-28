@@ -2939,7 +2939,7 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
                           </CardContent>
                         </Card>
                         <Card>
@@ -2948,7 +2948,7 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selected property</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
                           </CardContent>
                         </Card>
                         <Card>
@@ -4335,11 +4335,12 @@ export default function GA4Metrics() {
                                     size="sm"
                                     className="gap-2"
                                     onClick={() => {
-                                      let cfg: any = {};
+                                      let cfg: any = { sections: { overview: true } };
                                       try {
-                                        cfg = r.configuration ? JSON.parse(String(r.configuration)) : {};
+                                        const parsed = r.configuration ? JSON.parse(String(r.configuration)) : {};
+                                        if (parsed?.sections) cfg = parsed;
                                       } catch {
-                                        cfg = {};
+                                        // keep default
                                       }
                                       downloadGA4Report({
                                         reportType: String(r.reportType || "overview"),
@@ -4357,11 +4358,12 @@ export default function GA4Metrics() {
                                     onClick={() => {
                                       setEditingGA4ReportId(String(r.id));
                                       setGa4ReportModalStep(String(r.reportType || "overview") === "custom" ? "custom" : "standard");
-                                      let cfg: any = {};
+                                      let cfg: any = { sections: { overview: true } };
                                       try {
-                                        cfg = r.configuration ? JSON.parse(String(r.configuration)) : {};
+                                        const parsed = r.configuration ? JSON.parse(String(r.configuration)) : {};
+                                        if (parsed?.sections) cfg = parsed;
                                       } catch {
-                                        cfg = {};
+                                        // keep default
                                       }
                                       setGa4ReportForm({
                                         name: String(r.name || ""),

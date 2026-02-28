@@ -90,6 +90,11 @@ export default function GA4CampaignComparison({
   };
 
   const totalMetric = useMemo(() => {
+    if (selectedMetric === "conversionRate") {
+      const totalSessions = sortedByMetric.reduce((s, c) => s + c.sessions, 0);
+      const totalConversions = sortedByMetric.reduce((s, c) => s + c.conversions, 0);
+      return totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
+    }
     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
   }, [sortedByMetric, selectedMetric]);
 

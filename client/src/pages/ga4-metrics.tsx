@@ -964,6 +964,21 @@ export default function GA4Metrics() {
     enabled: !!campaignId,
   });
 
+  // Fetch all campaigns for this client — used to filter Ad Comparison tab to only imported campaigns
+  const { data: allCampaigns } = useQuery<Campaign[]>({
+    queryKey: ["/api/campaigns", { clientId: (campaign as any)?.clientId }],
+    queryFn: async () => {
+      const cid = (campaign as any)?.clientId;
+      const url = cid
+        ? `/api/campaigns?clientId=${encodeURIComponent(cid)}`
+        : "/api/campaigns";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch campaigns");
+      return res.json();
+    },
+    enabled: !!campaign,
+  });
+
   // Helper functions for KPI display
   const campaignCurrency = String((campaign as any)?.currency || "USD");
   const formatMoney = (n: number) => {
@@ -2481,6 +2496,16 @@ export default function GA4Metrics() {
     };
   }, [ga4TimeSeries]);
 
+  // Collect GA4 campaign names from all imported campaigns (for filtering Ad Comparison)
+  const importedGA4CampaignNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const c of (allCampaigns || [])) {
+      const filters = parseStoredGa4CampaignFilter((c as any)?.ga4CampaignFilter);
+      for (const f of filters) names.add(f.trim().toLowerCase());
+    }
+    return names;
+  }, [allCampaigns]);
+
   // Aggregate breakdown rows by campaign name for Campaign Performance & Campaign Comparison
   const campaignBreakdownAgg = useMemo(() => {
     const rows = Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
@@ -2500,8 +2525,9 @@ export default function GA4Metrics() {
         conversionRate: c.sessions > 0 ? (c.conversions / c.sessions) * 100 : 0,
         revenuePerSession: c.sessions > 0 ? c.revenue / c.sessions : 0,
       }))
+      .filter(c => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(c.name.trim().toLowerCase()))
       .sort((a, b) => b.sessions - a.sessions);
-  }, [ga4Breakdown]);
+  }, [ga4Breakdown, importedGA4CampaignNames]);
 
   const selectedPeriodLabel = ga4ReportDate ? `Daily (UTC: ${ga4ReportDate})` : "Daily";
 

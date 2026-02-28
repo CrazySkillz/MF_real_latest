@@ -220,12 +220,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Campaign-specific profiles for seeded Yesop mock campaigns.
       // Each profile scales the base config so every campaign gets distinct, known values.
       // Campaigns not in this table use the default (1x) profile.
-      const campaignProfiles: Record<string, { label: string; scale: number; engagementDelta: number }> = {
-        "yesop-brand": { label: "Brand Search", scale: 1.0, engagementDelta: 0.0 },
-        "yesop-prospecting": { label: "Prospecting", scale: 0.6, engagementDelta: -0.08 },
-        "yesop-retargeting": { label: "Retargeting", scale: 0.35, engagementDelta: 0.12 },
-        "yesop-email": { label: "Email Nurture", scale: 0.25, engagementDelta: 0.05 },
-        "yesop-social": { label: "Paid Social", scale: 0.5, engagementDelta: -0.04 },
+      const campaignProfiles: Record<string, { label: string; scale: number; engagementDelta: number; crMultiplier: number }> = {
+        "yesop-brand": { label: "Brand Search", scale: 1.0, engagementDelta: 0.0, crMultiplier: 1.4 },
+        "yesop-prospecting": { label: "Prospecting", scale: 0.6, engagementDelta: -0.08, crMultiplier: 0.55 },
+        "yesop-retargeting": { label: "Retargeting", scale: 0.35, engagementDelta: 0.12, crMultiplier: 1.8 },
+        "yesop-email": { label: "Email Nurture", scale: 0.25, engagementDelta: 0.05, crMultiplier: 1.6 },
+        "yesop-social": { label: "Paid Social", scale: 0.5, engagementDelta: -0.04, crMultiplier: 0.7 },
       };
       // Also allow lookup by UTM campaign name so user-created campaigns get the right profile
       const utmToProfile: Record<string, string> = {
@@ -389,16 +389,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const channels = filterNames.length > 0
         ? (() => {
             // Use each campaign's profile scale for proportional splitting
+            // crMultiplier adjusts conversions independently so each campaign has a distinct conversion rate
             const items = filterNames.map((fn, i) => {
               const profileId = utmToProfile[fn];
               const profile = profileId ? campaignProfiles[profileId] : null;
               const scale = profile?.scale || 1.0;
-              return { ...channelTemplates[i % channelTemplates.length], campaign: fn, scale };
+              const crMultiplier = profile?.crMultiplier || 1.0;
+              return { ...channelTemplates[i % channelTemplates.length], campaign: fn, scale, crMultiplier };
             });
             const scaleSum = items.reduce((s, it) => s + it.scale, 0) || 1;
-            return items.map(({ scale, ...rest }) => ({ ...rest, share: scale / scaleSum }));
+            // Conversion share = scale * crMultiplier (separate from session share)
+            const crScaleSum = items.reduce((s, it) => s + it.scale * it.crMultiplier, 0) || 1;
+            return items.map(({ scale, crMultiplier, ...rest }) => ({
+              ...rest,
+              share: scale / scaleSum,
+              convShare: (scale * crMultiplier) / crScaleSum,
+            }));
           })()
-        : defaultChannels;
+        : defaultChannels.map(ch => ({ ...ch, convShare: ch.share }));
 
       let sRemain = totals.sessions;
       let uRemain = totals.users;
@@ -409,8 +417,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const isLast = idx === channels.length - 1;
         const s = isLast ? sRemain : Math.max(0, Math.round(totals.sessions * ch.share));
         const u = isLast ? uRemain : Math.max(0, Math.round(totals.users * ch.share));
-        const c = isLast ? cRemain : Math.max(0, Math.round(totals.conversions * ch.share));
-        const r = isLast ? Number(rRemain.toFixed(2)) : Number((totals.revenue * ch.share).toFixed(2));
+        const cs = (ch as any).convShare ?? ch.share;
+        const c = isLast ? cRemain : Math.max(0, Math.round(totals.conversions * cs));
+        const r = isLast ? Number(rRemain.toFixed(2)) : Number((totals.revenue * cs).toFixed(2));
         sRemain -= s; uRemain -= u; cRemain -= c; rRemain -= r;
         return {
           date: breakdownDate,
@@ -7514,29 +7523,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-landing-pages", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const dateRange = String(req.query.dateRange || '30days');
+      const dateRange = String(req.query.dateRange || '90days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
       const campaign = await storage.getCampaign(campaignId);
-      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
-      let ga4DateRange = '30daysAgo';
-      switch (dateRange) {
-        case '7days':
-          ga4DateRange = '7daysAgo';
-          break;
-        case '30days':
-          ga4DateRange = '30daysAgo';
-          break;
-        case '90days':
-          ga4DateRange = '90daysAgo';
-          break;
-        default:
-          ga4DateRange = '30daysAgo';
+      // Aggregate ga4CampaignFilter across ALL campaigns for the same client
+      const clientId = (campaign as any)?.clientId;
+      let combinedFilterNames: string[] = [];
+      if (clientId) {
+        const allCampaigns = await storage.getCampaigns();
+        for (const c of (allCampaigns || [])) {
+          if (String((c as any)?.clientId || '') !== String(clientId)) continue;
+          const f = parseGA4CampaignFilter((c as any)?.ga4CampaignFilter);
+          if (f) combinedFilterNames.push(...(Array.isArray(f) ? f : [f]));
+        }
       }
+      if (combinedFilterNames.length === 0) {
+        const f = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+        if (f) combinedFilterNames = Array.isArray(f) ? f : [f];
+      }
+      const campaignFilter = combinedFilterNames.length > 0 ? combinedFilterNames : parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+
+      // Use campaign startDate for cumulative data (no arbitrary date range limit)
+      const startDateParam = req.query.startDate ? String(req.query.startDate) : null;
+      const campaignStartDate = startDateParam || ((campaign as any)?.startDate ? new Date((campaign as any).startDate).toISOString().slice(0, 10) : null);
+      const ga4DateRange = campaignStartDate || '90daysAgo';
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
@@ -7618,29 +7633,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-conversion-events", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const dateRange = String(req.query.dateRange || '30days');
+      const dateRange = String(req.query.dateRange || '90days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
       const campaign = await storage.getCampaign(campaignId);
-      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
-      let ga4DateRange = '30daysAgo';
-      switch (dateRange) {
-        case '7days':
-          ga4DateRange = '7daysAgo';
-          break;
-        case '30days':
-          ga4DateRange = '30daysAgo';
-          break;
-        case '90days':
-          ga4DateRange = '90daysAgo';
-          break;
-        default:
-          ga4DateRange = '30daysAgo';
+      // Aggregate ga4CampaignFilter across ALL campaigns for the same client
+      const clientId = (campaign as any)?.clientId;
+      let combinedFilterNames: string[] = [];
+      if (clientId) {
+        const allCampaigns = await storage.getCampaigns();
+        for (const c of (allCampaigns || [])) {
+          if (String((c as any)?.clientId || '') !== String(clientId)) continue;
+          const f = parseGA4CampaignFilter((c as any)?.ga4CampaignFilter);
+          if (f) combinedFilterNames.push(...(Array.isArray(f) ? f : [f]));
+        }
       }
+      if (combinedFilterNames.length === 0) {
+        const f = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+        if (f) combinedFilterNames = Array.isArray(f) ? f : [f];
+      }
+      const campaignFilter = combinedFilterNames.length > 0 ? combinedFilterNames : parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+
+      // Use campaign startDate for cumulative data (no arbitrary date range limit)
+      const startDateParam = req.query.startDate ? String(req.query.startDate) : null;
+      const campaignStartDate = startDateParam || ((campaign as any)?.startDate ? new Date((campaign as any).startDate).toISOString().slice(0, 10) : null);
+      const ga4DateRange = campaignStartDate || '90daysAgo';
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');

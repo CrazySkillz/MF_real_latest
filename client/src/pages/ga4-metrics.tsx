@@ -1451,18 +1451,28 @@ export default function GA4Metrics() {
     },
   });
 
+  // Compute campaign start date for cumulative queries (no arbitrary date range limit)
+  const campaignStartDateISO = useMemo(() => {
+    const sd = (campaign as any)?.startDate || (campaign as any)?.createdAt;
+    if (!sd) return undefined;
+    try { return new Date(sd).toISOString().slice(0, 10); } catch { return undefined; }
+  }, [campaign]);
+
   const { data: ga4LandingPages } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", dateRange, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", campaignStartDateISO, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     placeholderData: keepPreviousData,
     queryFn: async () => {
+      const params = new URLSearchParams({
+        propertyId: String(selectedGA4PropertyId),
+        limit: '50',
+      });
+      if (campaignStartDateISO) params.set('startDate', campaignStartDateISO);
       const resp = await fetch(
-        `/api/campaigns/${campaignId}/ga4-landing-pages?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
-          String(selectedGA4PropertyId)
-        )}&limit=50`
+        `/api/campaigns/${campaignId}/ga4-landing-pages?${params.toString()}`
       );
       const json = await resp.json().catch(() => ({} as any));
       if (!resp.ok || json?.success === false) return null;
@@ -1471,17 +1481,20 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ConversionEvents } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", dateRange, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", campaignStartDateISO, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     placeholderData: keepPreviousData,
     queryFn: async () => {
+      const params = new URLSearchParams({
+        propertyId: String(selectedGA4PropertyId),
+        limit: '50',
+      });
+      if (campaignStartDateISO) params.set('startDate', campaignStartDateISO);
       const resp = await fetch(
-        `/api/campaigns/${campaignId}/ga4-conversion-events?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
-          String(selectedGA4PropertyId)
-        )}&limit=50`
+        `/api/campaigns/${campaignId}/ga4-conversion-events?${params.toString()}`
       );
       const json = await resp.json().catch(() => ({} as any));
       if (!resp.ok || json?.success === false) return null;
@@ -3137,7 +3150,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Landing Pages</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Where users land and which pages drive outcomes</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Cumulative across all campaigns — where users land and which pages drive outcomes</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -3201,7 +3214,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Conversion Events</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Which conversion events are driving results</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Cumulative across all campaigns — which conversion events are driving results</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">

@@ -5134,14 +5134,14 @@ export default function CampaignDetail() {
     },
   });
 
-  // Clear stale "Connection Expired" errors when Google Sheets connections change
-  // (e.g., user reconnects via OAuth — cached 401 error must be cleared)
-  const connectionsCount = (googleSheetsConnectionsData as any)?.connections?.length || 0;
+  // Clear stale "Connection Expired" errors when connection is actually valid
+  // The sheets data query caches 401 errors (retry:false). After reconnecting via OAuth
+  // the cached error persists because nothing clears it. Reset when connection is valid.
   useEffect(() => {
-    if (connectionsCount > 0 && sheetsError && (sheetsError as any).requiresReauthorization) {
+    if (sheetsConnection?.connected && sheetsError && (sheetsError as any).requiresReauthorization) {
       queryClient.resetQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
     }
-  }, [connectionsCount, campaignId]);
+  }, [sheetsConnection?.connected, sheetsError, campaignId]);
 
   // Determine connected platforms based on actual connections
   const connectedPlatformIds = campaign?.platform?.split(', ') || [];
@@ -6675,8 +6675,8 @@ export default function CampaignDetail() {
                             </div>
                           </div>
                         )}
-                        {/* Google Sheets Connection Expired Warning */}
-                        {platform.platform === "Google Sheets" && sheetsError && (sheetsError as any).requiresReauthorization && (
+                        {/* Google Sheets Connection Expired Warning — hide when connection is actually valid */}
+                        {platform.platform === "Google Sheets" && sheetsError && (sheetsError as any).requiresReauthorization && !sheetsConnection?.connected && (
                           <div className="pt-2 border-t">
                             <div className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
                               <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />

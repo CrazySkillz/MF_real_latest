@@ -408,41 +408,30 @@ export function GuidedColumnMapping({
       
       return results[0]; // Return first result
     },
-    onSuccess: async (data: any) => {
+    onSuccess: (data: any) => {
       console.log('[Guided Mapping] Save mappings response:', data);
 
-      // Show success screen immediately — before async work that can cause re-renders
-      setCurrentStep('complete');
-
-      // Check if conversion value was calculated
+      // Show toast
       if (data.conversionValue) {
-        console.log('[Guided Mapping] ✅ Conversion value calculated:', data.conversionValue);
         toast({
           title: "Mappings Saved!",
           description: `Conversion value calculated: $${data.conversionValue}`,
         });
       } else {
-        console.warn('[Guided Mapping] ⚠️ No conversion value in response');
         toast({
           title: "Mappings Saved!",
           description: "Conversion value calculation may be in progress...",
         });
       }
 
-      // Invalidate all relevant queries
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] })
-      ]);
-
-      // Wait a bit for backend to fully process
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Refetch the data to ensure it's up to date
-      await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"] });
+      // Close the dialog immediately — the parent's onMappingComplete callback
+      // handles refetching connections and data, so no need to invalidate here.
+      // Invalidating google-sheets-connections while this dialog is open causes
+      // the parent to re-render and remount this component, which resets state
+      // and triggers a detect-columns fetch that fails.
+      if (onMappingComplete) {
+        onMappingComplete();
+      }
     },
     onError: (error: any) => {
       toast({

@@ -40,7 +40,7 @@ interface GuidedColumnMappingProps {
   onCancel?: () => void;
 }
 
-type Step = 'detect' | 'campaign-name' | 'crosswalk' | 'revenue' | 'platform' | 'complete';
+type Step = 'detect' | 'campaign-name' | 'crosswalk' | 'revenue' | 'platform';
 
 export function GuidedColumnMapping({
   campaignId,
@@ -581,102 +581,6 @@ export function GuidedColumnMapping({
 
     saveMappingsMutation.mutate(mappings);
   };
-
-  // Show success screen first — takes priority over column detection errors
-  // (query invalidation after save can cause detect-columns to re-fire and fail)
-  if (currentStep === 'complete') {
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-col items-center justify-center p-8 space-y-4">
-          <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-            <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
-          </div>
-          <div className="text-center space-y-2">
-            <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-              Conversion Values Calculated!
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Revenue metrics are now available in the campaign overview.
-            </p>
-          </div>
-        </div>
-        {onMappingComplete && (
-          <Button
-            onClick={async () => {
-              console.log('[Guided Mapping] 🚀 Back to Campaign Overview button clicked!');
-              
-              // Conversion value is calculated IMMEDIATELY in save-mappings endpoint
-              // Just wait a moment for it to be saved, then verify and navigate
-              
-              // Step 1: Wait for conversion value to be saved to database
-              await new Promise(resolve => setTimeout(resolve, 1500));
-              
-              // Step 2: Get session ID and verify conversion value is available
-              let sessionId: string | null = null;
-              try {
-                const platformsResponse = await fetch(`/api/campaigns/${campaignId}/connected-platforms`);
-                if (platformsResponse.ok) {
-                  const platforms = await platformsResponse.json();
-                  // Try to find the platform matching the campaign, fallback to linkedin
-                  const platformId = (platform || '').toLowerCase().includes('meta') ? 'meta'
-                    : (platform || '').toLowerCase().includes('linkedin') ? 'linkedin'
-                    : 'linkedin';
-                  const matchedPlatform = platforms.find((p: any) => p.id === platformId) || platforms.find((p: any) => p.id === 'linkedin');
-                  if (matchedPlatform?.analyticsPath) {
-                    const url = new URL(matchedPlatform.analyticsPath, window.location.origin);
-                    sessionId = url.searchParams.get('session');
-                    console.log('[Guided Mapping] Found session ID:', sessionId);
-                  }
-                }
-              } catch (error) {
-                console.error('[Guided Mapping] Error getting session ID:', error);
-              }
-              
-              // Step 3: Verify conversion value is available (poll up to 5 seconds)
-              if (sessionId) {
-                console.log('[Guided Mapping] 🔍 Verifying conversion value is available...');
-                let attempts = 0;
-                const maxAttempts = 10; // 10 attempts * 500ms = 5 seconds max
-                
-                while (attempts < maxAttempts) {
-                  try {
-                    const importsResponse = await fetch(`/api/linkedin/imports/${sessionId}?t=${Date.now()}`);
-                    if (importsResponse.ok) {
-                      const importsData = await importsResponse.json();
-                      if (importsData?.aggregated?.hasRevenueTracking === 1) {
-                        console.log('[Guided Mapping] ✅ Conversion value verified! hasRevenueTracking = 1');
-                        break;
-                      }
-                    }
-                  } catch (error) {
-                    console.error('[Guided Mapping] Error verifying conversion value:', error);
-                  }
-                  
-                  attempts++;
-                  if (attempts < maxAttempts) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                  }
-                }
-              }
-              
-              // Step 4: Invalidate queries to ensure fresh data
-              console.log('[Guided Mapping] 📊 Invalidating queries...');
-              await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-              await queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] });
-              await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-              
-              console.log('[Guided Mapping] 🎯 Calling onMappingComplete()');
-              onMappingComplete();
-            }}
-            className="w-full"
-            size="lg"
-          >
-            Back to Campaign Overview
-          </Button>
-        )}
-      </div>
-    );
-  }
 
   if (columnsLoading) {
     return (

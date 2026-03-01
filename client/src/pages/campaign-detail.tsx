@@ -4849,8 +4849,6 @@ export default function CampaignDetail() {
   const { data: connectedPlatformsData, isLoading: connectedPlatformsLoading } = useQuery<{ statuses: ConnectedPlatformStatus[] }>({
     queryKey: ["/api/campaigns", campaignId, "connected-platforms"],
     enabled: !!campaignId,
-    refetchOnMount: "always",
-    staleTime: 0,
     gcTime: 10 * 60 * 1000, // Keep cache for 10 minutes so it survives page navigation
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/connected-platforms`);
@@ -4862,7 +4860,6 @@ export default function CampaignDetail() {
       devLog(`[Campaign Detail] Connected platforms for ${campaignId}:`, data);
       return data;
     },
-    placeholderData: (previousData) => previousData, // Keep previous data visible during refetch
   });
 
   const connectedPlatformStatuses: ConnectedPlatformStatus[] =
@@ -4923,9 +4920,7 @@ export default function CampaignDetail() {
   const { data: sheetsConnection, refetch: refetchSheetsConnection } = useQuery({
     queryKey: ["/api/google-sheets/check-connection", campaignId],
     enabled: !!campaignId,
-    refetchOnMount: "always",
-    staleTime: 0,
-    gcTime: 10 * 60 * 1000, // Keep cache for 10 minutes so it survives page navigation
+    gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       const response = await fetch(`/api/google-sheets/check-connection/${campaignId}`);
       if (!response.ok) {
@@ -4936,16 +4931,13 @@ export default function CampaignDetail() {
       devLog(`[Campaign Detail] Google Sheets connection check for ${campaignId}:`, data);
       return data;
     },
-    placeholderData: (previousData) => previousData, // Keep previous data visible during refetch
   });
 
   // Fetch all Google Sheets connections for this campaign
   const { data: googleSheetsConnectionsData, refetch: refetchGoogleSheetsConnections } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"],
     enabled: !!campaignId,
-    refetchOnMount: "always",
-    staleTime: 0,
-    gcTime: 10 * 60 * 1000, // Keep cache for 10 minutes so it survives page navigation
+    gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
       if (!response.ok) {
@@ -4955,7 +4947,6 @@ export default function CampaignDetail() {
       const data = await response.json();
       return data;
     },
-    placeholderData: (previousData) => previousData, // Keep previous data visible during refetch
   });
 
   const googleSheetsConnections = googleSheetsConnectionsData?.connections || [];

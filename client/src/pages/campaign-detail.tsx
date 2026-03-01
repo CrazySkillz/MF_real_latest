@@ -5134,6 +5134,15 @@ export default function CampaignDetail() {
     },
   });
 
+  // Clear stale "Connection Expired" errors when Google Sheets connections change
+  // (e.g., user reconnects via OAuth — cached 401 error must be cleared)
+  const connectionsCount = (googleSheetsConnectionsData as any)?.connections?.length || 0;
+  useEffect(() => {
+    if (connectionsCount > 0 && sheetsError && (sheetsError as any).requiresReauthorization) {
+      queryClient.resetQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+    }
+  }, [connectionsCount, campaignId]);
+
   // Determine connected platforms based on actual connections
   const connectedPlatformIds = campaign?.platform?.split(', ') || [];
   

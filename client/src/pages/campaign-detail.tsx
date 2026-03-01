@@ -4851,16 +4851,18 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
     refetchOnMount: "always",
     staleTime: 0,
+    gcTime: 10 * 60 * 1000, // Keep cache for 10 minutes so it survives page navigation
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/connected-platforms`);
       if (!response.ok) {
         devError(`[Campaign Detail] Failed to fetch connected platforms for ${campaignId}`);
-        return { statuses: [] };
+        throw new Error(`Failed to fetch connected platforms: ${response.status}`);
       }
       const data = await response.json();
       devLog(`[Campaign Detail] Connected platforms for ${campaignId}:`, data);
       return data;
-    }
+    },
+    placeholderData: (previousData) => previousData, // Keep previous data visible during refetch
   });
 
   const connectedPlatformStatuses: ConnectedPlatformStatus[] =

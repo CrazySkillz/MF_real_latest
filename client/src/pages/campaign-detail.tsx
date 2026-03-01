@@ -5225,7 +5225,7 @@ export default function CampaignDetail() {
     },
     {
       platform: "Google Sheets",
-      connected: googleSheetsConnections.length > 0 || platformStatusMap.get("google-sheets")?.connected === true,
+      connected: platformStatusMap.get("google-sheets")?.connected === true,
       impressions: sheetsData?.summary?.totalImpressions || 0,
       clicks: sheetsData?.summary?.totalClicks || 0,
       conversions: 0, // Conversions not in summary, would need to be calculated separately

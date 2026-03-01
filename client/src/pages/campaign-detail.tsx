@@ -4925,16 +4925,18 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
     refetchOnMount: "always",
     staleTime: 0,
+    gcTime: 10 * 60 * 1000, // Keep cache for 10 minutes so it survives page navigation
     queryFn: async () => {
       const response = await fetch(`/api/google-sheets/check-connection/${campaignId}`);
       if (!response.ok) {
-        console.log(`[Campaign Detail] Google Sheets check-connection failed for ${campaignId}:`, response.status);
-        return { connected: false };
+        devError(`[Campaign Detail] Google Sheets check-connection failed for ${campaignId}: ${response.status}`);
+        throw new Error(`Google Sheets check-connection failed: ${response.status}`);
       }
       const data = await response.json();
-      console.log(`[Campaign Detail] Google Sheets connection check for ${campaignId}:`, data);
+      devLog(`[Campaign Detail] Google Sheets connection check for ${campaignId}:`, data);
       return data;
     },
+    placeholderData: (previousData) => previousData, // Keep previous data visible during refetch
   });
 
   // Fetch all Google Sheets connections for this campaign
@@ -4943,15 +4945,17 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
     refetchOnMount: "always",
     staleTime: 0,
+    gcTime: 10 * 60 * 1000, // Keep cache for 10 minutes so it survives page navigation
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
       if (!response.ok) {
-        console.log(`[Campaign Detail] Failed to fetch Google Sheets connections for ${campaignId}:`, response.status);
-        return { success: false, connections: [] };
+        devError(`[Campaign Detail] Failed to fetch Google Sheets connections for ${campaignId}: ${response.status}`);
+        throw new Error(`Failed to fetch Google Sheets connections: ${response.status}`);
       }
       const data = await response.json();
       return data;
     },
+    placeholderData: (previousData) => previousData, // Keep previous data visible during refetch
   });
 
   const googleSheetsConnections = googleSheetsConnectionsData?.connections || [];

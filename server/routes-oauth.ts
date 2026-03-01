@@ -10768,7 +10768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('[Google Sheets Check] Error checking connection:', error);
-      res.json({ connected: false });
+      res.status(500).json({ error: 'Failed to check Google Sheets connection' });
     }
   });
 

@@ -410,7 +410,10 @@ export function GuidedColumnMapping({
     },
     onSuccess: async (data: any) => {
       console.log('[Guided Mapping] Save mappings response:', data);
-      
+
+      // Show success screen immediately — before async work that can cause re-renders
+      setCurrentStep('complete');
+
       // Check if conversion value was calculated
       if (data.conversionValue) {
         console.log('[Guided Mapping] ✅ Conversion value calculated:', data.conversionValue);
@@ -425,7 +428,7 @@ export function GuidedColumnMapping({
           description: "Conversion value calculation may be in progress...",
         });
       }
-      
+
       // Invalidate all relevant queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"] }),
@@ -433,15 +436,13 @@ export function GuidedColumnMapping({
         queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] })
       ]);
-      
+
       // Wait a bit for backend to fully process
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       // Refetch the data to ensure it's up to date
       await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
       await queryClient.refetchQueries({ queryKey: ["/api/linkedin/imports"] });
-      
-      setCurrentStep('complete');
     },
     onError: (error: any) => {
       toast({
@@ -592,47 +593,8 @@ export function GuidedColumnMapping({
     saveMappingsMutation.mutate(mappings);
   };
 
-  if (columnsLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <p className="text-slate-600 dark:text-slate-400">Detecting columns from your Google Sheet...</p>
-      </div>
-    );
-  }
-
-  if (columnsError) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="w-4 h-4" />
-        <AlertDescription>
-          Failed to detect columns: {columnsError instanceof Error ? columnsError.message : 'Unknown error'}
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (detectedColumns.length === 0) {
-    return (
-      <Alert>
-        <AlertCircle className="w-4 h-4" />
-        <AlertDescription>
-          No columns detected. Please ensure your Google Sheet has a header row and data.
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
-  // Step indicator (no review; Save happens on the last step)
-  const steps = [
-    { id: 'campaign-name', label: 'Campaign Identifier', icon: Target },
-    { id: 'crosswalk', label: 'Link Campaign', icon: Target },
-    { id: 'revenue', label: 'Value Source', icon: DollarSign },
-    { id: 'platform', label: 'Platform Filter', icon: Filter },
-  ] as Array<{ id: Step; label: string; icon: any }>;
-
-  const currentStepIndex = steps.findIndex(s => s.id === currentStep);
-
+  // Show success screen first — takes priority over column detection errors
+  // (query invalidation after save can cause detect-columns to re-fire and fail)
   if (currentStep === 'complete') {
     return (
       <div className="space-y-6">
@@ -726,6 +688,47 @@ export function GuidedColumnMapping({
       </div>
     );
   }
+
+  if (columnsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <p className="text-slate-600 dark:text-slate-400">Detecting columns from your Google Sheet...</p>
+      </div>
+    );
+  }
+
+  if (columnsError) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="w-4 h-4" />
+        <AlertDescription>
+          Failed to detect columns: {columnsError instanceof Error ? columnsError.message : 'Unknown error'}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (detectedColumns.length === 0) {
+    return (
+      <Alert>
+        <AlertCircle className="w-4 h-4" />
+        <AlertDescription>
+          No columns detected. Please ensure your Google Sheet has a header row and data.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  // Step indicator (no review; Save happens on the last step)
+  const steps = [
+    { id: 'campaign-name', label: 'Campaign Identifier', icon: Target },
+    { id: 'crosswalk', label: 'Link Campaign', icon: Target },
+    { id: 'revenue', label: 'Value Source', icon: DollarSign },
+    { id: 'platform', label: 'Platform Filter', icon: Filter },
+  ] as Array<{ id: Step; label: string; icon: any }>;
+
+  const currentStepIndex = steps.findIndex(s => s.id === currentStep);
 
   return (
     <div className="space-y-6">

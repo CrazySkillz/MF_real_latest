@@ -8443,9 +8443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "google-sheets",
           name: "Google Sheets",
-          // Google Sheets is "connected" only when a spreadsheet has actually been selected
-          // (matches GA4 requiring propertyId and LinkedIn requiring adAccountId)
-          connected: googleSheetsConnections.some((c: any) => c?.spreadsheetId && c.spreadsheetId !== 'pending'),
+          connected: googleSheetsConnections.length > 0,
           // Campaign-level Google Sheets card should only appear as "Connected" if the campaign was created/configured
           // with Google Sheets as a connector (Create Campaign flow). Google Sheets used only for LinkedIn revenue mapping
           // should be shown under LinkedIn -> Connected Data Sources, not as a campaign-level connector.

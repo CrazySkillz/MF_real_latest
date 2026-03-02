@@ -10198,23 +10198,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pendingGoogleSheetsConnections = allGoogleSheetsConnections.filter((c: any) => c.spreadsheetId === 'pending');
       const nonPendingConnections = allGoogleSheetsConnections.filter((c: any) => c.spreadsheetId && c.spreadsheetId !== 'pending');
 
-      // Cleanup pending placeholders if they're stale OR if there is at least one real (non-pending) connection.
-      // This avoids breaking an in-progress connection flow (recent pending row), while keeping the system clean.
+      // Cleanup ONLY stale pending placeholders (older than 10 min).
+      // Never delete recent pending connections — they belong to an in-progress OAuth flow.
       const PENDING_TTL_MS = 10 * 60 * 1000; // 10 minutes
       const now = Date.now();
-      const shouldCleanupPending =
-        nonPendingConnections.length > 0 ||
-        pendingGoogleSheetsConnections.some((c: any) => {
-          try {
-            const t = c?.connectedAt ? new Date(c.connectedAt).getTime() : 0;
-            return t > 0 && (now - t) > PENDING_TTL_MS;
-          } catch {
-            return true;
-          }
-        });
-      if (pendingGoogleSheetsConnections.length > 0 && shouldCleanupPending) {
+      const stalePendingConnections = pendingGoogleSheetsConnections.filter((c: any) => {
+        try {
+          const t = c?.connectedAt ? new Date(c.connectedAt).getTime() : 0;
+          return t > 0 && (now - t) > PENDING_TTL_MS;
+        } catch {
+          return true;
+        }
+      });
+      if (stalePendingConnections.length > 0) {
         await Promise.allSettled(
-          pendingGoogleSheetsConnections
+          stalePendingConnections
             .map((c: any) => String(c?.id || ''))
             .filter(Boolean)
             .map((id: string) => storage.deleteGoogleSheetsConnection(id))

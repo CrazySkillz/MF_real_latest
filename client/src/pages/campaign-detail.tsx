@@ -5088,23 +5088,14 @@ export default function CampaignDetail() {
         
         // Handle token expiration gracefully
         if (response.status === 401 && (errorData.error === 'REFRESH_TOKEN_EXPIRED' || errorData.error === 'ACCESS_TOKEN_EXPIRED' || errorData.requiresReauthorization)) {
-          // Invalidate the connection status so UI updates
-          queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
-          
-          // Return a special error that we can handle in the UI
           const error = new Error('TOKEN_EXPIRED') as any;
           error.requiresReauthorization = true;
           error.message = errorData.message || 'Google Sheets connection expired. Please reconnect.';
           throw error;
         }
-        
+
         // Handle missing spreadsheet
         if (response.status === 400 && errorData.missingSpreadsheet) {
-          // Invalidate the connection status so UI updates
-          queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
-          
           const error = new Error('MISSING_SPREADSHEET') as any;
           error.message = errorData.error || 'No spreadsheet selected. Please select a spreadsheet.';
           throw error;

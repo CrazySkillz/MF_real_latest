@@ -142,7 +142,7 @@ export default function GoogleSheetsData() {
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
       if (!response.ok) {
-        return { success: false, connections: [] };
+        throw new Error(`Failed to fetch Google Sheets connections: ${response.status}`);
       }
       return response.json();
     },

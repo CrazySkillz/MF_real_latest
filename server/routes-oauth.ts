@@ -13532,18 +13532,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             devLog(`[Google Sheets Data] ✅ Successfully refreshed access token`);
           } catch (refreshError: any) {
             console.error(`[Google Sheets Data] Token refresh failed:`, refreshError);
-            if (refreshError.message === 'REFRESH_TOKEN_EXPIRED') {
-              await storage.deleteGoogleSheetsConnection(connection.id);
-              return res.status(401).json({
-                success: false,
-                error: 'REFRESH_TOKEN_EXPIRED',
-                message: 'Connection expired. Please reconnect your Google Sheets account.',
-                requiresReauthorization: true
-              });
-            }
+            // Do NOT delete the connection — keep it so user can reauthorize
             return res.status(401).json({
               success: false,
-              error: 'ACCESS_TOKEN_EXPIRED',
+              error: refreshError.message === 'REFRESH_TOKEN_EXPIRED' ? 'REFRESH_TOKEN_EXPIRED' : 'ACCESS_TOKEN_EXPIRED',
               message: 'Connection expired. Please reconnect your Google Sheets account.',
               requiresReauthorization: true
             });
@@ -13551,7 +13543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           // No refresh token available, need to reconnect
           console.error(`[Google Sheets Data] No access token and no refresh token available`);
-          await storage.deleteGoogleSheetsConnection(connection.id);
+          // Do NOT delete the connection — keep it so user can reauthorize
           return res.status(401).json({
             success: false,
             error: 'ACCESS_TOKEN_EXPIRED',
@@ -13691,9 +13683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // by requesting fresh OAuth authorization
           devLog('🔄 Refresh token may have expired, connection needs re-authorization');
 
-          // Clear the invalid connection so user can re-authorize
-          await storage.deleteGoogleSheetsConnection(connection.id);
-
+          // Do NOT delete the connection — keep it so user can reauthorize
           return res.status(401).json({
             error: 'REFRESH_TOKEN_EXPIRED',
             message: 'Connection expired. Please reconnect your Google Sheets account.',
@@ -13736,9 +13726,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 sheetResponse = retryResponse;
                 devLog('✅ Token refresh + retry succeeded on 401 safety net');
               } else {
-                // Retry still failed — connection is unrecoverable
-                devLog('❌ Retry after refresh still failed, clearing connection');
-                await storage.deleteGoogleSheetsConnection(connection.id);
+                // Retry still failed — do NOT delete, let user reauthorize
+                devLog('❌ Retry after refresh still failed');
                 return res.status(401).json({
                   success: false,
                   error: 'ACCESS_TOKEN_EXPIRED',
@@ -13749,9 +13738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             } catch (refreshErr: any) {
               devLog('❌ Token refresh failed in 401 safety net:', refreshErr.message);
-              if (refreshErr.message === 'REFRESH_TOKEN_EXPIRED') {
-                await storage.deleteGoogleSheetsConnection(connection.id);
-              }
+              // Do NOT delete the connection — keep it so user can reauthorize
               return res.status(401).json({
                 success: false,
                 error: refreshErr.message === 'REFRESH_TOKEN_EXPIRED' ? 'REFRESH_TOKEN_EXPIRED' : 'ACCESS_TOKEN_EXPIRED',
@@ -13761,9 +13748,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
           } else {
-            // No refresh token — connection truly can't be recovered
-            devLog('🔄 Token expired without refresh capability, clearing connection');
-            await storage.deleteGoogleSheetsConnection(connection.id);
+            // No refresh token — do NOT delete, let user reauthorize
+            devLog('🔄 Token expired without refresh capability');
             return res.status(401).json({
               success: false,
               error: 'ACCESS_TOKEN_EXPIRED',

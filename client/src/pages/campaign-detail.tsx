@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, TrendingDown, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2, Pencil, Star, X } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, TrendingDown, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2, Pencil, Star, X, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -4849,7 +4849,8 @@ export default function CampaignDetail() {
   const { data: connectedPlatformsData, isLoading: connectedPlatformsLoading } = useQuery<{ statuses: ConnectedPlatformStatus[] }>({
     queryKey: ["/api/campaigns", campaignId, "connected-platforms"],
     enabled: !!campaignId,
-    gcTime: 10 * 60 * 1000, // Keep cache for 10 minutes so it survives page navigation
+    gcTime: Infinity, // Never garbage-collect — connection status must survive long analytics sessions
+    placeholderData: (previousData) => previousData, // Keep previous data visible during refetch so badge never flashes "Not Connected"
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/connected-platforms`);
       if (!response.ok) {
@@ -4864,6 +4865,15 @@ export default function CampaignDetail() {
 
   const connectedPlatformStatuses: ConnectedPlatformStatus[] =
     connectedPlatformsData?.statuses ?? [];
+
+  // DEBUG: trace exactly why the badge renders "Connected" vs "Not Connected"
+  // Remove this block once the Google Sheets disconnect bug is confirmed fixed.
+  console.log(`[GSheets Debug] MOUNT/RENDER campaignId=${campaignId}`, {
+    hasData: !!connectedPlatformsData,
+    isLoading: connectedPlatformsLoading,
+    statusCount: connectedPlatformStatuses.length,
+    googleSheets: connectedPlatformStatuses.find(s => s.id === 'google-sheets'),
+  });
 
   // Avoid UI "flash" while platform statuses are still loading.
   const connectedPlatformsReady = !!campaignId && !connectedPlatformsLoading;
@@ -4920,7 +4930,8 @@ export default function CampaignDetail() {
   const { data: sheetsConnection, refetch: refetchSheetsConnection } = useQuery({
     queryKey: ["/api/google-sheets/check-connection", campaignId],
     enabled: !!campaignId,
-    gcTime: 10 * 60 * 1000,
+    gcTime: Infinity,
+    placeholderData: (previousData: any) => previousData,
     queryFn: async () => {
       const response = await fetch(`/api/google-sheets/check-connection/${campaignId}`);
       if (!response.ok) {
@@ -4937,7 +4948,8 @@ export default function CampaignDetail() {
   const { data: googleSheetsConnectionsData, refetch: refetchGoogleSheetsConnections } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"],
     enabled: !!campaignId,
-    gcTime: 10 * 60 * 1000,
+    gcTime: Infinity,
+    placeholderData: (previousData: any) => previousData,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
       if (!response.ok) {
@@ -6611,12 +6623,19 @@ export default function CampaignDetail() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge
-                        variant={(platform.connected || platform.requiresImport) ? "default" : "secondary"}
-                        className={platform.requiresImport ? "bg-amber-600 text-white hover:bg-amber-700" : (platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : "")}
-                      >
-                        {platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
-                      </Badge>
+                      {connectedPlatformsLoading ? (
+                        <Badge variant="secondary">
+                          <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                          Checking…
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant={(platform.connected || platform.requiresImport) ? "default" : "secondary"}
+                          className={platform.requiresImport ? "bg-amber-600 text-white hover:bg-amber-700" : (platform.connected ? "bg-blue-600 text-white hover:bg-blue-700" : "")}
+                        >
+                          {platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
+                        </Badge>
+                      )}
                       {(!platform.connected || platform.needsSetup || platform.requiresImport) && (
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />
                       )}
@@ -6759,7 +6778,7 @@ export default function CampaignDetail() {
                               setExpandedPlatform(null);
                               refetchGoogleSheetsConnections();
                               queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-
+                              queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
 
                               toastHook({
                                 title: "Google Sheet Connected",

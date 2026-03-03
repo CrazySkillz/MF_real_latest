@@ -13460,13 +13460,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const spreadsheetIdStr = spreadsheetId as string;
         // Check if it's a composite value (spreadsheetId:sheetName or spreadsheetId:connectionId)
         if (spreadsheetIdStr.includes(':')) {
-          const [spreadsheetIdOnly, identifier] = spreadsheetIdStr.split(':');
+          const [spreadsheetIdOnly, ...rest] = spreadsheetIdStr.split(':');
+          const identifier = rest.join(':'); // Rejoin in case sheet name itself contains colons
           // Get all connections for this campaign and find the one matching both spreadsheetId and identifier
           const allConnections = await storage.getGoogleSheetsConnections(campaignId);
           connection = allConnections.find((conn: any) =>
             conn.spreadsheetId === spreadsheetIdOnly &&
             (conn.sheetName === identifier || conn.id === identifier)
           );
+          // Fallback: match by spreadsheetId only if exact composite lookup failed
+          if (!connection) {
+            console.log(`[Google Sheets Data] Composite lookup failed for ${spreadsheetIdStr}, trying spreadsheetId-only fallback`);
+            connection = allConnections.find((conn: any) => conn.spreadsheetId === spreadsheetIdOnly);
+          }
+          // Last resort: use primary or first connection
+          if (!connection && allConnections.length > 0) {
+            console.log(`[Google Sheets Data] spreadsheetId fallback also failed, using primary/first connection`);
+            connection = allConnections.find((conn: any) => conn.isPrimary) || allConnections[0];
+          }
         } else {
           // Legacy format - just spreadsheetId (will get first matching connection)
           connection = await storage.getGoogleSheetsConnection(campaignId, spreadsheetIdStr);

@@ -164,6 +164,7 @@ export const revenueRecords = pgTable("revenue_records", {
   currency: text("currency"),
   externalId: text("external_id"), // e.g., Shopify order ID, HubSpot deal ID
   sourceType: varchar("source_type", { length: 50 }), // 'ga4', 'linkedin', 'hubspot', 'salesforce', 'shopify', 'manual', 'csv', 'google_sheets', 'legacy_cumulative'
+  subCampaignUrn: text("sub_campaign_urn"), // LinkedIn campaign URN for per-sub-campaign revenue attribution
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -1141,6 +1142,7 @@ export const insertRevenueRecordSchema = createInsertSchema(revenueRecords).pick
   revenue: true,
   currency: true,
   externalId: true,
+  subCampaignUrn: true,
 });
 
 export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheetsConnections).pick({

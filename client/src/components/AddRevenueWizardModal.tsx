@@ -35,8 +35,9 @@ export function AddRevenueWizardModal(props: {
   onSuccess?: () => void;
   platformContext?: 'ga4' | 'linkedin' | 'meta';
   initialStep?: Step;
+  hideCrmSources?: boolean;
 }) {
-  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource, platformContext = 'ga4', initialStep } = props;
+  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource, platformContext = 'ga4', initialStep, hideCrmSources = false } = props;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -826,35 +827,41 @@ export function AddRevenueWizardModal(props: {
           >
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("shopify")}>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <ShoppingCart className="w-4 h-4" />
-                      Shopify (Ecommerce)
-                    </CardTitle>
-                    <CardDescription>Attribute order revenue to this campaign.</CardDescription>
-                  </CardHeader>
-                </Card>
+                {!hideCrmSources && (
+                  <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("shopify")}>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <ShoppingCart className="w-4 h-4" />
+                        Shopify (Ecommerce)
+                      </CardTitle>
+                      <CardDescription>Attribute order revenue to this campaign.</CardDescription>
+                    </CardHeader>
+                  </Card>
+                )}
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("hubspot")}>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Building2 className="w-4 h-4" />
-                      HubSpot (CRM)
-                    </CardTitle>
-                    <CardDescription>Attribute deal revenue to this campaign.</CardDescription>
-                  </CardHeader>
-                </Card>
+                {!hideCrmSources && (
+                  <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("hubspot")}>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        HubSpot (CRM)
+                      </CardTitle>
+                      <CardDescription>Attribute deal revenue to this campaign.</CardDescription>
+                    </CardHeader>
+                  </Card>
+                )}
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("salesforce")}>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Building2 className="w-4 h-4" />
-                      Salesforce (CRM)
-                    </CardTitle>
-                    <CardDescription>Attribute opportunity revenue to this campaign.</CardDescription>
-                  </CardHeader>
-                </Card>
+                {!hideCrmSources && (
+                  <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("salesforce")}>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        Salesforce (CRM)
+                      </CardTitle>
+                      <CardDescription>Attribute opportunity revenue to this campaign.</CardDescription>
+                    </CardHeader>
+                  </Card>
+                )}
 
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
                   <CardHeader>

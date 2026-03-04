@@ -57,7 +57,7 @@ function safeJsonParse<T = any>(raw: any): T | null {
 }
 
 async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
-  const body = {
+  const body: AnyRecord = {
     campaignProperty: mappingConfig.campaignProperty,
     selectedValues: mappingConfig.selectedValues,
     revenueProperty: mappingConfig.revenueProperty,
@@ -69,6 +69,9 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord): P
     pipelineStageId: mappingConfig.pipelineStageId,
     pipelineStageLabel: mappingConfig.pipelineStageLabel,
     platformContext: mappingConfig.platformContext,
+    ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
+      ? { campaignMappings: mappingConfig.campaignMappings }
+      : {}),
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body);
   if (!result.ok) {
@@ -79,7 +82,7 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord): P
 }
 
 async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
-  const body = {
+  const body: AnyRecord = {
     campaignField: mappingConfig.campaignField,
     selectedValues: mappingConfig.selectedValues,
     revenueField: mappingConfig.revenueField,
@@ -90,6 +93,9 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord)
     pipelineStageName: mappingConfig.pipelineStageName,
     pipelineStageLabel: mappingConfig.pipelineStageLabel,
     platformContext: mappingConfig.platformContext,
+    ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
+      ? { campaignMappings: mappingConfig.campaignMappings }
+      : {}),
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/salesforce/save-mappings`, body);
   if (!result.ok) {
@@ -100,7 +106,7 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord)
 }
 
 async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
-  const body = {
+  const body: AnyRecord = {
     campaignField: mappingConfig.campaignField,
     selectedValues: mappingConfig.selectedValues,
     revenueMetric: mappingConfig.revenueMetric,
@@ -108,6 +114,9 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord): P
     days: mappingConfig.days,
     platformContext: mappingConfig.platformContext,
     valueSource: mappingConfig.valueSource,
+    ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
+      ? { campaignMappings: mappingConfig.campaignMappings }
+      : {}),
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/shopify/save-mappings`, body);
   if (!result.ok) {

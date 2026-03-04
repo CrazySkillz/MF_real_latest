@@ -3090,8 +3090,8 @@ export default function GA4Metrics() {
                             </p>
                           )}
                           <div className="mt-3">
-                            <Link href={`/campaigns/${campaignId}#data-sources`}>
-                              <Button variant="outline" size="sm">Manage in Data Sources</Button>
+                            <Link href={`/campaigns/${campaignId}#overview`}>
+                              <Button variant="outline" size="sm">Manage in Connected Platforms</Button>
                             </Link>
                           </div>
                         </div>
@@ -3459,9 +3459,9 @@ export default function GA4Metrics() {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                    <Link href={`/campaigns/${campaignId}#overview`}>
                                       <Button type="button" variant="outline" size="sm">
-                                        Manage Data Sources
+                                        Manage Connected Platforms
                                       </Button>
                                     </Link>
                                   </div>
@@ -3602,9 +3602,9 @@ export default function GA4Metrics() {
                                             <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                                               Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This KPI is paused until inputs are restored.
                                               <div className="mt-2">
-                                                <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                                <Link href={`/campaigns/${campaignId}#overview`}>
                                                   <Button type="button" variant="outline" size="sm">
-                                                    Manage Data Sources
+                                                    Manage Connected Platforms
                                                   </Button>
                                                 </Link>
                                               </div>
@@ -4107,9 +4107,9 @@ export default function GA4Metrics() {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                  <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                  <Link href={`/campaigns/${campaignId}#overview`}>
                                     <Button type="button" variant="outline" size="sm">
-                                      Manage Data Sources
+                                      Manage Connected Platforms
                                     </Button>
                                   </Link>
                                 </div>
@@ -4188,9 +4188,9 @@ export default function GA4Metrics() {
                                                 Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. Restore inputs to resume accurate tracking.
                                               </div>
                                               <div className="mt-2">
-                                                <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                                <Link href={`/campaigns/${campaignId}#overview`}>
                                                   <Button type="button" variant="outline" size="sm">
-                                                    Manage Data Sources
+                                                    Manage Connected Platforms
                                                   </Button>
                                                 </Link>
                                               </div>

@@ -7038,6 +7038,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete/reset Shopify connection (CRM revenue source)
+  app.delete("/api/shopify/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { connectionId } = req.query;
+
+      let targetConnId: string | null = connectionId ? String(connectionId) : null;
+      if (!targetConnId) {
+        const latest = await storage.getShopifyConnection(campaignId);
+        targetConnId = latest?.id ? String(latest.id) : null;
+      }
+      if (!targetConnId) {
+        return res.status(404).json({ error: 'No Shopify connection found' });
+      }
+
+      await storage.deleteShopifyConnection(targetConnId);
+
+      // Invalidate connected-platforms cache
+      res.json({
+        success: true,
+        message: 'Shopify connection deleted',
+      });
+    } catch (error: any) {
+      console.error('[Shopify] Delete connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete connection' });
+    }
+  });
+
   // Select spreadsheet for campaign
   app.post("/api/google-sheets/:campaignId/select-spreadsheet", requireCampaignAccessCampaignIdParam, async (req, res) => {
     try {
@@ -8382,6 +8410,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metaConnection,
         customIntegration,
         googleAdsConnection,
+        hubspotConnection,
+        shopifyConnection,
+        salesforceConnection,
       ] = await Promise.all([
         storage.getGA4Connections(campaignId),
         storage.getGoogleSheetsConnections(campaignId),
@@ -8389,6 +8420,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getMetaConnection(campaignId),
         storage.getCustomIntegration(campaignId),
         storage.getGoogleAdsConnection(campaignId).catch(() => undefined),
+        storage.getHubspotConnection(campaignId).catch(() => undefined),
+        storage.getShopifyConnection(campaignId).catch(() => undefined),
+        storage.getSalesforceConnection(campaignId).catch(() => undefined),
       ]);
 
       // Get primary Google Sheets connection for backward compatibility
@@ -8492,6 +8526,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : null,
           lastConnectedAt: customIntegration?.connectedAt,
         },
+        {
+          id: "hubspot",
+          name: "HubSpot",
+          connected: !!(hubspotConnection && (hubspotConnection as any).isActive !== false),
+          lastConnectedAt: (hubspotConnection as any)?.connectedAt,
+        },
+        {
+          id: "shopify",
+          name: "Shopify",
+          connected: !!(shopifyConnection && (shopifyConnection as any).isActive !== false),
+          lastConnectedAt: (shopifyConnection as any)?.connectedAt,
+        },
+        {
+          id: "salesforce",
+          name: "Salesforce",
+          connected: !!(salesforceConnection && (salesforceConnection as any).isActive !== false),
+          lastConnectedAt: (salesforceConnection as any)?.connectedAt,
+        },
       ];
 
       console.log(`[Connected Platforms] Returning statuses:`, JSON.stringify(statuses, null, 2));
@@ -8506,6 +8558,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: error?.message,
           details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
         });
+    }
+  });
+
+  // Get list of LinkedIn campaigns for a MetricMind campaign (for crosswalk mapping UI)
+  app.get("/api/campaigns/:id/linkedin-campaigns", async (req, res) => {
+    try {
+      const campaignId = String(req.params.id);
+      const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+      if (!latestSession) {
+        return res.json({ campaigns: [] });
+      }
+
+      const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
+      // Deduplicate by campaign URN
+      const campaignMap = new Map<string, { urn: string; name: string; status: string }>();
+      for (const m of metrics) {
+        if (!campaignMap.has(m.campaignUrn)) {
+          campaignMap.set(m.campaignUrn, {
+            urn: m.campaignUrn,
+            name: m.campaignName,
+            status: m.campaignStatus || 'active',
+          });
+        }
+      }
+
+      res.json({ campaigns: Array.from(campaignMap.values()) });
+    } catch (error: any) {
+      console.error("[LinkedIn Campaigns] Error:", error);
+      res.status(500).json({ error: error?.message || "Failed to fetch LinkedIn campaigns" });
+    }
+  });
+
+  // Get per-LinkedIn-campaign revenue breakdown from CRM-mapped revenue records
+  app.get("/api/campaigns/:id/linkedin-campaign-revenue", async (req, res) => {
+    try {
+      const campaignId = String(req.params.id);
+
+      // Get total LinkedIn revenue for context
+      const totals = await storage.getRevenueTotalForRange(
+        campaignId, '2000-01-01', '2099-12-31', 'linkedin'
+      );
+
+      // Check CRM connections for campaignMappings (per-LinkedIn-campaign breakdown)
+      const breakdownMap = new Map<string, { campaignUrn: string; revenue: number; recordCount: number }>();
+      let hasSubCampaignData = false;
+
+      const parseCfg = (raw: any) => {
+        if (!raw) return null;
+        try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return null; }
+      };
+
+      const [hubspotConn, shopifyConn, salesforceConn] = await Promise.all([
+        storage.getHubspotConnection(campaignId).catch(() => undefined),
+        storage.getShopifyConnection(campaignId).catch(() => undefined),
+        storage.getSalesforceConnection(campaignId).catch(() => undefined),
+      ]);
+
+      for (const conn of [hubspotConn, shopifyConn, salesforceConn]) {
+        if (!conn) continue;
+        const cfg = parseCfg((conn as any).mappingConfig);
+        if (!cfg?.campaignMappings || !Array.isArray(cfg.campaignMappings)) continue;
+        if (cfg.platformContext !== 'linkedin') continue;
+
+        hasSubCampaignData = true;
+        for (const mapping of cfg.campaignMappings) {
+          const urn = mapping.linkedinCampaignUrn || '__unattributed__';
+          const rev = Number(mapping.revenue || 0);
+          const existing = breakdownMap.get(urn);
+          if (existing) {
+            existing.revenue += rev;
+            existing.recordCount += 1;
+          } else {
+            breakdownMap.set(urn, { campaignUrn: urn, revenue: rev, recordCount: 1 });
+          }
+        }
+      }
+
+      res.json({
+        breakdown: Array.from(breakdownMap.values()),
+        totalRevenue: totals.totalRevenue,
+        hasSubCampaignData,
+      });
+    } catch (error: any) {
+      console.error("[LinkedIn Campaign Revenue] Error:", error);
+      res.status(500).json({ error: error?.message || "Failed to fetch campaign revenue breakdown" });
     }
   });
 
@@ -11253,6 +11390,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineEnabled: z.boolean().optional(),
           pipelineStageName: z.string().trim().optional().nullable(),
           pipelineStageLabel: z.string().trim().optional().nullable(),
+          campaignMappings: z.array(z.object({
+            crmValue: z.string(),
+            linkedinCampaignUrn: z.string(),
+            linkedinCampaignName: z.string(),
+          })).optional(),
         })
         .passthrough()
         .safeParse(req.body || {});
@@ -11270,6 +11412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineEnabled = body.data.pipelineEnabled === true;
       const pipelineStageName = String(body.data.pipelineStageName || "").trim();
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
+      const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
 
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
@@ -11350,6 +11493,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currencies = new Set<string>();
       const revenueByDate = new Map<string, number>();
       const conversionValues: number[] = [];
+      // Per-LinkedIn-campaign revenue tracking: key is "date:urn"
+      const revenueByDateAndCampaign = new Map<string, number>();
 
       // Best-effort: if the org doesn't expose CurrencyIsoCode (no multi-currency), attempt to read org default currency.
       const fetchOrgDefaultCurrency = async (): Promise<string | null> => {
@@ -11432,6 +11577,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const closeDate = rec?.CloseDate ? String(rec.CloseDate).slice(0, 10) : '';
         if (closeDate && Number.isFinite(r)) {
           revenueByDate.set(closeDate, (revenueByDate.get(closeDate) || 0) + r);
+
+          // Track per-LinkedIn-campaign revenue when campaignMappings exist
+          if (campaignMappings.length > 0) {
+            const recCrmValue = String(readField(rec, attribField) || "").trim();
+            const mapping = campaignMappings.find(m => m.crmValue === recCrmValue);
+            if (mapping) {
+              const key = `${closeDate}:${mapping.linkedinCampaignUrn}`;
+              revenueByDateAndCampaign.set(key, (revenueByDateAndCampaign.get(key) || 0) + r);
+            }
+          }
         }
         if (platformCtx === 'linkedin' && effectiveValueSource === 'conversion_value') {
           const cvRaw = readField(rec, convValueField);
@@ -11634,6 +11789,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineLastUpdatedAt: null,
           pipelineProxyMode: null,
           pipelineWarning: null,
+          ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         };
 
         // Best-effort: compute an exec-facing pipeline proxy as the sum of Opportunities CURRENTLY in the selected stage.
@@ -11731,6 +11887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pipelineEnabled: platformCtx === "linkedin" ? pipelineEnabled : false,
             pipelineStageName: platformCtx === "linkedin" && pipelineEnabled && pipelineStageName ? pipelineStageName : null,
             pipelineStageLabel: platformCtx === "linkedin" && pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
+            ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
           }),
           isActive: true,
         } as any);
@@ -11750,6 +11907,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             currency: cur,
             sourceType: 'salesforce',
           })) as any[];
+
+        // Add per-LinkedIn-campaign revenue records when campaignMappings exist
+        if (campaignMappings.length > 0 && revenueByDateAndCampaign.size > 0) {
+          for (const [key, rev] of revenueByDateAndCampaign.entries()) {
+            const [date, urn] = key.split(":");
+            if (date && urn) {
+              records.push({
+                campaignId,
+                revenueSourceId: source.id,
+                date,
+                revenue: Number(rev.toFixed(2)).toFixed(2) as any,
+                currency: cur,
+                sourceType: 'salesforce',
+                subCampaignUrn: urn,
+              } as any);
+            }
+          }
+        }
+
         if (records.length > 0) {
           await storage.createRevenueRecords(records);
         }
@@ -12305,6 +12481,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineStageId: z.string().trim().optional().nullable(),
           pipelineStageLabel: z.string().trim().optional().nullable(),
           platformContext: zPlatformContext.optional(),
+          campaignMappings: z.array(z.object({
+            crmValue: z.string(),
+            linkedinCampaignUrn: z.string(),
+            linkedinCampaignName: z.string(),
+          })).optional(),
         })
         .passthrough()
         .safeParse(req.body || {});
@@ -12322,6 +12503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineEnabled = body.data.pipelineEnabled === true;
       const pipelineStageId = String(body.data.pipelineStageId || "").trim();
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
+      const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
 
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
@@ -12353,6 +12535,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalRevenue = 0;
       const currencies = new Set<string>();
       const conversionValues: number[] = [];
+      // Per-LinkedIn-campaign revenue tracking when campaignMappings are provided
+      const revenueByLinkedinCampaign = new Map<string, number>();
 
       let after: string | undefined;
       let pages = 0;
@@ -12398,6 +12582,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
           if (!Number.isFinite(r)) continue;
           totalRevenue += r;
+
+          // Track per-LinkedIn-campaign revenue when campaignMappings exist
+          if (campaignMappings.length > 0) {
+            const dealCrmValue = String(props[campaignProp] || "").trim();
+            const mapping = campaignMappings.find(m => m.crmValue === dealCrmValue);
+            if (mapping) {
+              const urn = mapping.linkedinCampaignUrn;
+              revenueByLinkedinCampaign.set(urn, (revenueByLinkedinCampaign.get(urn) || 0) + r);
+            }
+          }
 
           const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
           if (c) currencies.add(c);
@@ -12449,6 +12643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineEnabled: pipelineEnabled,
           pipelineStageId: pipelineEnabled && pipelineStageId ? pipelineStageId : null,
           pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
+          ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         };
 
         // Best-effort: compute an exec-facing "pipeline" proxy as the sum of deals CURRENTLY in the selected stage.
@@ -12555,6 +12750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenueClassification,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastSyncedAt: new Date().toISOString(),
+          ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         });
 
         const source =
@@ -12614,16 +12810,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Instead, materialize a single record on the most recent complete UTC day (yesterday), so
         // range queries include the full to-date amount.
         const recordDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        await storage.createRevenueRecords([
-          {
+
+        if (campaignMappings.length > 0 && revenueByLinkedinCampaign.size > 0) {
+          // Create per-LinkedIn-campaign revenue records with subCampaignUrn
+          const records = Array.from(revenueByLinkedinCampaign.entries()).map(([urn, rev]) => ({
+            campaignId,
+            revenueSourceId: String((source as any).id),
+            date: recordDate,
+            revenue: Number(rev.toFixed(2)).toFixed(2) as any,
+            currency: cur,
+            sourceType: 'hubspot',
+            subCampaignUrn: urn,
+          } as any));
+          // Also create an aggregate record without subCampaignUrn for backward compat
+          records.push({
             campaignId,
             revenueSourceId: String((source as any).id),
             date: recordDate,
             revenue: Number(Number(totalRevenue || 0).toFixed(2)).toFixed(2) as any,
             currency: cur,
             sourceType: 'hubspot',
-          } as any,
-        ]);
+          } as any);
+          await storage.createRevenueRecords(records);
+        } else {
+          await storage.createRevenueRecords([
+            {
+              campaignId,
+              revenueSourceId: String((source as any).id),
+              date: recordDate,
+              revenue: Number(Number(totalRevenue || 0).toFixed(2)).toFixed(2) as any,
+              currency: cur,
+              sourceType: 'hubspot',
+            } as any,
+          ]);
+        }
 
         // If HubSpot is being used as a LinkedIn revenue source, revenue is the source of truth.
         // Clear any conversion value so LinkedIn metrics don't incorrectly switch back to derived revenue.
@@ -24557,6 +24777,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           days: zNumberLike.optional(),
           platformContext: zPlatformContext.optional(),
           dryRun: z.boolean().optional(),
+          campaignMappings: z.array(z.object({
+            crmValue: z.string(),
+            linkedinCampaignUrn: z.string(),
+            linkedinCampaignName: z.string(),
+          })).optional(),
         })
         .passthrough()
         .safeParse(req.body || {});
@@ -24572,6 +24797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // because Shopify orders do not contain a native conversion value field.
       const effectiveValueSource: "revenue" = "revenue";
       const isDryRun = Boolean(body.data.dryRun);
+      const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
 
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
@@ -24696,6 +24922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastConversionValue: calculatedConversionValue,
           lastMatchedOrderCount: matchedOrders.length,
+          ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         };
         await storage.updateShopifyConnection(shopifyConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }
@@ -24749,6 +24976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastMatchedOrderCount: matchedOrders.length,
           lastSyncedAt: new Date().toISOString(),
           currency: matchedCurrency,
+          ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         });
 
         const source =
@@ -24782,12 +25010,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Group matched orders by date to create revenue records
         const revenueByDate = new Map<string, number>();
+        // Per-LinkedIn-campaign revenue tracking: key is "date:urn"
+        const revenueByDateAndCampaign = new Map<string, number>();
         for (const o of matchedOrders) {
           const orderDate = String(o?.created_at || "").split("T")[0];
           if (orderDate && /^\d{4}-\d{2}-\d{2}$/.test(orderDate)) {
             const amt = getOrderAmounts(o);
             const current = revenueByDate.get(orderDate) || 0;
             revenueByDate.set(orderDate, current + amt.shopAmount);
+
+            // Track per-campaign revenue when campaignMappings exist
+            if (campaignMappings.length > 0) {
+              const orderCrmValue = getFieldValue(o).trim();
+              const mapping = campaignMappings.find(m => m.crmValue === orderCrmValue);
+              if (mapping) {
+                const key = `${orderDate}:${mapping.linkedinCampaignUrn}`;
+                revenueByDateAndCampaign.set(key, (revenueByDateAndCampaign.get(key) || 0) + amt.shopAmount);
+              }
+            }
           }
         }
 
@@ -24821,6 +25061,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: cur,
           sourceType: 'shopify',
         } as any));
+
+        // Add per-LinkedIn-campaign revenue records when campaignMappings exist
+        if (campaignMappings.length > 0 && revenueByDateAndCampaign.size > 0) {
+          for (const [key, rev] of revenueByDateAndCampaign.entries()) {
+            const [date, urn] = key.split(":");
+            if (date && urn && recordDates.includes(date)) {
+              records.push({
+                campaignId,
+                revenueSourceId: String((source as any).id),
+                date,
+                revenue: Number(rev.toFixed(2)) as any,
+                currency: cur,
+                sourceType: 'shopify',
+                subCampaignUrn: urn,
+              } as any);
+            }
+          }
+        }
+
         await storage.createRevenueRecords(records);
 
         if (platformCtx === "linkedin") {

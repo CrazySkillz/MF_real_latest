@@ -114,6 +114,19 @@ export function SalesforceRevenueWizard(props: {
   const [valuesError, setValuesError] = useState<string | null>(null);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
 
+  // Per-LinkedIn-campaign mapping (crosswalk enhancement)
+  const [linkedinCampaigns, setLinkedinCampaigns] = useState<Array<{ urn: string; name: string; status: string }>>([]);
+  const [campaignMappings, setCampaignMappings] = useState<Array<{ crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string }>>([]);
+
+  // Fetch LinkedIn campaigns when in linkedin context
+  useEffect(() => {
+    if (!isLinkedIn || !campaignId) return;
+    fetch(`/api/campaigns/${campaignId}/linkedin-campaigns`)
+      .then(r => r.ok ? r.json() : { campaigns: [] })
+      .then(data => setLinkedinCampaigns(data.campaigns || []))
+      .catch(() => setLinkedinCampaigns([]));
+  }, [isLinkedIn, campaignId]);
+
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
@@ -608,6 +621,7 @@ export function SalesforceRevenueWizard(props: {
           pipelineStageName: isLinkedIn && pipelineEnabled ? (pipelineStageName || null) : null,
           pipelineStageLabel: isLinkedIn && pipelineEnabled ? (pipelineStageLabel || null) : null,
           platformContext,
+          ...(isLinkedIn && campaignMappings.length > 0 ? { campaignMappings } : {}),
         }),
       });
       const json = await resp.json().catch(() => ({}));
@@ -661,7 +675,10 @@ export function SalesforceRevenueWizard(props: {
       return;
     }
     if (step === "crosswalk") {
-      if (selectedValues.length === 0) {
+      const crosswalkEmpty = isLinkedIn && linkedinCampaigns.length > 0
+        ? campaignMappings.length === 0
+        : selectedValues.length === 0;
+      if (crosswalkEmpty) {
         toast({
           title: "Select at least one value",
           description: "Pick the Salesforce value(s) that should map to this campaign.",
@@ -1025,7 +1042,9 @@ export function SalesforceRevenueWizard(props: {
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm text-slate-600">
-                  Selected: <strong>{selectedValues.length}</strong>
+                  {isLinkedIn && linkedinCampaigns.length > 0
+                    ? <>Mapped: <strong>{campaignMappings.length}</strong> of {uniqueValues.length} values</>
+                    : <>Selected: <strong>{selectedValues.length}</strong></>}
                 </div>
                 <Button variant="outline" size="sm" onClick={() => void fetchUniqueValues(campaignField)} disabled={valuesLoading}>
                   {valuesLoading ? "Refreshing…" : "Refresh values"}
@@ -1043,9 +1062,59 @@ export function SalesforceRevenueWizard(props: {
                   </div>
                 ) : uniqueValues.length === 0 ? (
                   <div className="text-sm text-slate-500">
-                    No values found. Try increasing the lookback window, or confirm you’re connected to the correct Salesforce org/user.
+                    No values found. Try increasing the lookback window, or confirm you're connected to the correct Salesforce org/user.
+                  </div>
+                ) : isLinkedIn && linkedinCampaigns.length > 0 ? (
+                  /* LinkedIn campaign mapping mode */
+                  <div className="space-y-3">
+                    <div className="text-xs text-slate-500 mb-2">
+                      Map each Salesforce value to a LinkedIn campaign. Unmapped values will be skipped.
+                    </div>
+                    {uniqueValues.map((v) => {
+                      const value = String(v.value);
+                      const existing = campaignMappings.find(m => m.crmValue === value);
+                      return (
+                        <div key={value} className="flex items-center gap-3 p-2 rounded border border-slate-100 dark:border-slate-800">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{value}</div>
+                            <div className="text-xs text-slate-500">{v.count} opportunity(ies)</div>
+                          </div>
+                          <Select
+                            value={existing?.linkedinCampaignUrn || "__none__"}
+                            onValueChange={(urn) => {
+                              setCampaignMappings(prev => {
+                                const filtered = prev.filter(m => m.crmValue !== value);
+                                if (urn === "__none__") return filtered;
+                                const campaign = linkedinCampaigns.find(c => c.urn === urn);
+                                return [...filtered, {
+                                  crmValue: value,
+                                  linkedinCampaignUrn: urn,
+                                  linkedinCampaignName: campaign?.name || urn,
+                                }];
+                              });
+                              // Also maintain selectedValues for backward compat
+                              setSelectedValues(prev => {
+                                if (urn === "__none__") return prev.filter(x => x !== value);
+                                return Array.from(new Set([...prev, value]));
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="w-[200px] text-xs">
+                              <SelectValue placeholder="Select campaign…" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10000]">
+                              <SelectItem value="__none__">— Skip —</SelectItem>
+                              {linkedinCampaigns.map(c => (
+                                <SelectItem key={c.urn} value={c.urn}>{c.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
+                  /* Standard checkbox mode */
                   <div className="space-y-2">
                     {uniqueValues.map((v) => {
                       const value = String(v.value);
@@ -1343,7 +1412,7 @@ export function SalesforceRevenueWizard(props: {
                   isSaving ||
                   stagesLoading ||
                   (step === "campaign-field" && (statusLoading || !isConnected || fieldsLoading || fields.length === 0 || !campaignField)) ||
-                  (step === "crosswalk" && selectedValues.length === 0) ||
+                  (step === "crosswalk" && (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0)) ||
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.
                   (step === "review" && effectiveCurrencyMismatch)

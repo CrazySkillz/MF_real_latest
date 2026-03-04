@@ -649,6 +649,24 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     },
   });
 
+  // Per-LinkedIn-campaign revenue breakdown from CRM mappings
+  const { data: linkedinCampaignRevenueData } = useQuery<{
+    hasSubCampaignData: boolean;
+    breakdown: Record<string, number>;
+    totalRevenue: number;
+  }>({
+    queryKey: ["/api/campaigns", campaignId, "linkedin-campaign-revenue"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    retry: false,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/linkedin-campaign-revenue`);
+      if (!resp.ok) return { hasSubCampaignData: false, breakdown: {}, totalRevenue: 0 };
+      return await resp.json().catch(() => ({ hasSubCampaignData: false, breakdown: {}, totalRevenue: 0 }));
+    },
+  });
+
   const getLinkedInRevenueSourceLabel = (src: any): string => {
     if (!src) return '';
     const type = String(src?.sourceType || '').toLowerCase();
@@ -4266,7 +4284,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
             "Revenue tracking is not connected for this campaign, so revenue-based metrics would be misleading.",
           ],
         },
-        actions: [{ label: "Add revenue", kind: "go", href: `/campaigns/${campaignId}#data-sources` }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
+        actions: [{ label: "Add revenue", kind: "go", href: `/campaigns/${campaignId}#overview` }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
       });
     }
 
@@ -4387,7 +4405,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
             "Revenue tracking is not connected, so the KPI cannot be computed reliably.",
           ],
         },
-        actions: [{ label: "Add revenue", kind: "go", href: `/campaigns/${campaignId}#data-sources` }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
+        actions: [{ label: "Add revenue", kind: "go", href: `/campaigns/${campaignId}#overview` }, { label: "Open KPIs", kind: "go", tab: "kpis" }],
       });
     }
 
@@ -4412,7 +4430,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
             "Revenue tracking is not connected, so the Benchmark cannot be computed reliably.",
           ],
         },
-        actions: [{ label: "Add revenue", kind: "go", href: `/campaigns/${campaignId}#data-sources` }, { label: "Open Benchmarks", kind: "go", tab: "benchmarks" }],
+        actions: [{ label: "Add revenue", kind: "go", href: `/campaigns/${campaignId}#overview` }, { label: "Open Benchmarks", kind: "go", tab: "benchmarks" }],
       });
     }
 
@@ -4987,8 +5005,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         </Badge>
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        <Link href={`/campaigns/${campaignId}#data-sources`}>
-                                          <Button variant="ghost" size="sm" title="Manage in Data Sources">
+                                        <Link href={`/campaigns/${campaignId}#overview`}>
+                                          <Button variant="ghost" size="sm" title="Manage in Connected Platforms">
                                             <Pencil className="w-4 h-4" />
                                           </Button>
                                         </Link>
@@ -5049,13 +5067,13 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     </p>
                                     <ul className="text-sm text-slate-500 space-y-1 mb-4 list-disc list-inside">
                                       <li>Manually enter a conversion value or revenue total</li>
-                                      <li>Connect HubSpot, Salesforce, or Shopify</li>
+                                      <li>Connect HubSpot, Salesforce, or Shopify in Connected Platforms</li>
                                       <li>Upload a CSV or connect Google Sheets</li>
                                     </ul>
-                                    <Link href={`/campaigns/${campaignId}#data-sources`}>
+                                    <Link href={`/campaigns/${campaignId}#overview`}>
                                       <Button variant="outline" size="sm">
                                         <Plus className="w-4 h-4 mr-2" />
-                                        Manage in Data Sources
+                                        Manage in Connected Platforms
                                       </Button>
                                     </Link>
                                   </CardContent>
@@ -5150,7 +5168,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         const cpc = (m.clicks || 0) > 0 ? (m.spend || 0) / m.clicks : 0;
                                         const cpm = (m.impressions || 0) > 0 ? ((m.spend || 0) / m.impressions * 1000) : 0;
                                         const engRate = (m.impressions || 0) > 0 ? ((m.engagements || 0) / m.impressions * 100) : 0;
-                                        const campRevenue = hasRevenueTracking ? computeRevenueFromConversions(m.conversions || 0) : 0;
+                                        // Use actual CRM-mapped revenue when available, fall back to proportional estimate
+                                        const hasCrmRevenue = linkedinCampaignRevenueData?.hasSubCampaignData && campaign.urn && (linkedinCampaignRevenueData.breakdown?.[campaign.urn] ?? null) !== null;
+                                        const campRevenue = hasCrmRevenue
+                                          ? (linkedinCampaignRevenueData!.breakdown[campaign.urn] || 0)
+                                          : (hasRevenueTracking ? computeRevenueFromConversions(m.conversions || 0) : 0);
                                         const campRoas = (m.spend || 0) > 0 ? campRevenue / m.spend : 0;
                                         const campRoi = (m.spend || 0) > 0 ? ((campRevenue - m.spend) / m.spend * 100) : 0;
                                         return (
@@ -5231,10 +5253,17 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                             </div>
 
                                             {/* Revenue metrics — only when tracking */}
-                                            {hasRevenueTracking && (
+                                            {(hasRevenueTracking || hasCrmRevenue) && (
                                               <div className="grid grid-cols-3 gap-4 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
                                                 <div>
-                                                  <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">Revenue</p>
+                                                  <p className="text-[10px] text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
+                                                    Revenue
+                                                    {hasCrmRevenue ? (
+                                                      <span className="inline-flex items-center px-1 py-0.5 rounded text-[8px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">CRM</span>
+                                                    ) : (
+                                                      <span className="inline-flex items-center px-1 py-0.5 rounded text-[8px] font-semibold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">Est.</span>
+                                                    )}
+                                                  </p>
                                                   <p className="text-base font-semibold text-green-700 dark:text-green-300">{formatCurrency(campRevenue)}</p>
                                                 </div>
                                                 <div>

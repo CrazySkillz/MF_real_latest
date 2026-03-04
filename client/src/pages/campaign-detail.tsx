@@ -22,7 +22,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { SiGoogle, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
+import { SiGoogle, SiFacebook, SiLinkedin, SiX, SiHubspot, SiSalesforce, SiShopify } from "react-icons/si";
+import { HubSpotRevenueWizard } from "@/components/HubSpotRevenueWizard";
+import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
+import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
+import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { format } from "date-fns";
 import { reportStorage } from "@/lib/reportStorage";
 import { exportCampaignKPIsToPDF, exportCampaignBenchmarksToPDF } from "@/lib/pdfExport";
@@ -32,7 +36,6 @@ import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { GoogleAdsConnectionFlow } from "@/components/GoogleAdsConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { WebhookTester } from "@/components/WebhookTester";
-import { DataSourcesTab } from "@/components/DataSourcesTab";
 interface Campaign {
   id: string;
   name: string;
@@ -5280,12 +5283,32 @@ export default function CampaignDetail() {
               : `/campaigns/${campaign?.id}/linkedin-analytics`)))
     },
     {
+      platform: "HubSpot",
+      connected: platformStatusMap.get("hubspot")?.connected === true,
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      spend: "0.00",
+      ctr: "0.00%",
+      cpc: "$0.00"
+    },
+    {
+      platform: "Salesforce",
+      connected: platformStatusMap.get("salesforce")?.connected === true,
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      spend: "0.00",
+      ctr: "0.00%",
+      cpc: "$0.00"
+    },
+    {
       platform: "Shopify",
-      connected: connectedPlatformNames.includes("Shopify"),
-      impressions: 0, // Shopify doesn't track impressions directly
-      clicks: 0, // Shopify doesn't track ad clicks directly
-      conversions: connectedPlatformNames.includes("Shopify") ? estimatedConversions : 0, // Show total conversions through Shopify
-      spend: "0.00", // Shopify doesn't track ad spend
+      connected: platformStatusMap.get("shopify")?.connected === true,
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      spend: "0.00",
       ctr: "0.00%",
       cpc: "$0.00"
     },
@@ -5323,7 +5346,11 @@ export default function CampaignDetail() {
       case "TikTok Ads":
         return <i className="fab fa-tiktok w-5 h-5 text-black" />;
       case "Shopify":
-        return <i className="fab fa-shopify w-5 h-5 text-green-600" />;
+        return <SiShopify className="w-5 h-5 text-green-600" />;
+      case "HubSpot":
+        return <SiHubspot className="w-5 h-5 text-orange-500" />;
+      case "Salesforce":
+        return <SiSalesforce className="w-5 h-5 text-blue-500" />;
       case "Custom Integration":
         return (
           <div className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
@@ -5361,6 +5388,13 @@ export default function CampaignDetail() {
 
   // Add state for managing connection dropdowns and report generation
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
+  const [addRevenueWizardOpen, setAddRevenueWizardOpen] = useState(false);
+
+  // Fetch data sources (revenue + spend) for the Revenue & Spend Sources section
+  const { data: dataSources } = useQuery<{ revenueSources: any[]; spendSources: any[] }>({
+    queryKey: [`/api/campaigns/${campaignId}/all-data-sources`],
+    enabled: !!campaignId,
+  });
 
   // Auto-expand GA4 when it needs setup (authenticated but no property selected)
   const ga4NeedsSetup = allPlatformMetrics.find(p => p.platform === "Google Analytics")?.needsSetup;
@@ -5418,6 +5452,12 @@ export default function CampaignDetail() {
         url = `/api/google-sheets/${campaignId}/connection`;
       } else if (p === 'Custom Integration') {
         url = `/api/custom-integration/${campaignId}`;
+      } else if (p === 'HubSpot') {
+        url = `/api/hubspot/${campaignId}/connection`;
+      } else if (p === 'Salesforce') {
+        url = `/api/salesforce/${campaignId}/connection`;
+      } else if (p === 'Shopify') {
+        url = `/api/shopify/${campaignId}/connection`;
       } else {
         throw new Error('Disconnect not supported for this platform');
       }
@@ -6479,14 +6519,13 @@ export default function CampaignDetail() {
           </div>
 
           {/* Tabs Navigation */}
-          <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks','reports','insights','data-sources','webhooks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7">
+          <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks','reports','insights','webhooks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
               <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
-              <TabsTrigger value="data-sources">Data Sources</TabsTrigger>
               <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
             </TabsList>
 
@@ -6606,9 +6645,9 @@ export default function CampaignDetail() {
                 >
                   {/* Platform Header - Always Visible */}
                   <div
-                    className={`flex items-center justify-between p-3 ${(!platform.connected || platform.needsSetup || platform.requiresImport) ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
+                    className={`flex items-center justify-between p-3 ${(!platform.connected || platform.needsSetup || platform.requiresImport || ["HubSpot", "Salesforce", "Shopify"].includes(platform.platform)) ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
                     onClick={() => {
-                      if (!platform.connected || platform.needsSetup || platform.requiresImport) {
+                      if (!platform.connected || platform.needsSetup || platform.requiresImport || ["HubSpot", "Salesforce", "Shopify"].includes(platform.platform)) {
                         setExpandedPlatform(expandedPlatform === platform.platform ? null : platform.platform);
                       }
                     }}
@@ -6636,7 +6675,7 @@ export default function CampaignDetail() {
                           {platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
                         </Badge>
                       )}
-                      {(!platform.connected || platform.needsSetup || platform.requiresImport) && (
+                      {(!platform.connected || platform.needsSetup || platform.requiresImport || ["HubSpot", "Salesforce", "Shopify"].includes(platform.platform)) && (
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />
                       )}
                       {platform.connected && !platform.needsSetup && !platform.requiresImport && (
@@ -6743,8 +6782,8 @@ export default function CampaignDetail() {
                     </div>
                   )}
 
-                  {/* Connection Setup Dropdown - Show when expanded and (not connected OR needs setup OR adding additional sheet) */}
-                  {expandedPlatform === platform.platform && (!platform.connected || platform.needsSetup || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets)) && (
+                  {/* Connection Setup Dropdown - Show when expanded and (not connected OR needs setup OR adding additional sheet OR CRM reconfigure) */}
+                  {expandedPlatform === platform.platform && (!platform.connected || platform.needsSetup || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets) || ["HubSpot", "Salesforce", "Shopify"].includes(platform.platform)) && (
                     <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-3">
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow 
@@ -6918,6 +6957,42 @@ export default function CampaignDetail() {
                             </button>
                           </div>
                         </div>
+                      ) : platform.platform === "HubSpot" ? (
+                        <HubSpotRevenueWizard
+                          campaignId={campaign.id}
+                          mode={platform.connected ? "edit" : "connect"}
+                          platformContext="linkedin"
+                          onSuccess={() => {
+                            setExpandedPlatform(null);
+                            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            toastHook({ title: "HubSpot Connected", description: "HubSpot has been connected and revenue mappings saved." });
+                          }}
+                          onClose={() => setExpandedPlatform(null)}
+                        />
+                      ) : platform.platform === "Salesforce" ? (
+                        <SalesforceRevenueWizard
+                          campaignId={campaign.id}
+                          mode={platform.connected ? "edit" : "connect"}
+                          autoStartOAuth={!platform.connected}
+                          platformContext="linkedin"
+                          onSuccess={() => {
+                            setExpandedPlatform(null);
+                            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            toastHook({ title: "Salesforce Connected", description: "Salesforce has been connected and revenue mappings saved." });
+                          }}
+                          onClose={() => setExpandedPlatform(null)}
+                        />
+                      ) : platform.platform === "Shopify" ? (
+                        <ShopifyRevenueWizard
+                          campaignId={campaign.id}
+                          platformContext="linkedin"
+                          onSuccess={() => {
+                            setExpandedPlatform(null);
+                            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            toastHook({ title: "Shopify Connected", description: "Shopify has been connected and revenue mappings saved." });
+                          }}
+                          onClose={() => setExpandedPlatform(null)}
+                        />
                       ) : (
                         <div className="text-center py-6">
                           <div className="text-slate-600 dark:text-slate-400 mb-3">
@@ -6934,6 +7009,93 @@ export default function CampaignDetail() {
                 ))}
                 </div>
               </div>
+
+              {/* Revenue & Spend Sources */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue & Spend Sources</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Manual, CSV, and Google Sheets revenue/spend entries</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setAddRevenueWizardOpen(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Revenue Source
+                  </Button>
+                </div>
+
+                {(dataSources?.revenueSources?.length || 0) + (dataSources?.spendSources?.length || 0) > 0 ? (
+                  <div className="space-y-2">
+                    {(dataSources?.revenueSources || []).filter((s: any) => s?.isActive !== false).map((source: any) => (
+                      <div key={source.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                            {source.sourceType === 'shopify' ? <SiShopify className="w-4 h-4 text-green-600" /> :
+                             source.sourceType === 'hubspot' ? <SiHubspot className="w-4 h-4 text-orange-500" /> :
+                             source.sourceType === 'salesforce' ? <SiSalesforce className="w-4 h-4 text-blue-500" /> :
+                             source.sourceType === 'google_sheets' ? <FileSpreadsheet className="w-4 h-4 text-green-600" /> :
+                             source.sourceType === 'csv' ? <FileText className="w-4 h-4 text-blue-500" /> :
+                             <DollarSign className="w-4 h-4 text-green-600" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">
+                              {source.sourceType === 'manual' ? 'Manual Entry' :
+                               source.sourceType === 'csv' ? 'CSV Upload' :
+                               source.sourceType === 'google_sheets' ? 'Google Sheets' :
+                               source.sourceType?.charAt(0).toUpperCase() + source.sourceType?.slice(1)}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {source.platformContext ? `${source.platformContext.toUpperCase()} context` : 'Revenue source'}
+                              {source.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(source.lastRevenue))}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">Revenue</Badge>
+                      </div>
+                    ))}
+                    {(dataSources?.spendSources || []).filter((s: any) => s?.isActive !== false).map((source: any) => (
+                      <div key={source.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <DollarSign className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">
+                              {source.sourceType === 'manual' ? 'Manual Spend' : source.sourceType?.charAt(0).toUpperCase() + source.sourceType?.slice(1)}
+                            </p>
+                            <p className="text-xs text-slate-500">Spend source</p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">Spend</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="border-dashed">
+                    <CardContent className="py-6 text-center">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        No manual revenue or spend sources configured. CRM revenue sources (HubSpot, Shopify, Salesforce) are managed in Connected Platforms above.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Revenue Wizard Modal */}
+              {campaign && (
+                <AddRevenueWizardModal
+                  open={addRevenueWizardOpen}
+                  onOpenChange={setAddRevenueWizardOpen}
+                  campaignId={campaign.id}
+                  currency="USD"
+                  dateRange="30days"
+                  hideCrmSources={true}
+                  onSuccess={() => {
+                    setAddRevenueWizardOpen(false);
+                    queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                  }}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="kpis" className="space-y-6">
@@ -6952,24 +7114,7 @@ export default function CampaignDetail() {
               <CampaignInsights campaign={campaign} />
             </TabsContent>
 
-            <TabsContent value="data-sources" className="space-y-6">
-              {campaign && (
-                <DataSourcesTab
-                  campaignId={campaign.id}
-                  campaign={campaign}
-                  connectedPlatformStatuses={connectedPlatformStatuses}
-                  onDisconnectPlatform={(key, label) => {
-                    // Map DataSourcesTab platform keys to the platform names used by disconnect handler
-                    const platformNameMap: Record<string, string> = {
-                      linkedin: 'LinkedIn Ads',
-                      meta: 'Facebook Ads',
-                      ga4: 'Google Analytics',
-                    };
-                    setDisconnectConfirm({ platform: platformNameMap[key] || key, platformLabel: label });
-                  }}
-                />
-              )}
-            </TabsContent>
+
 
             <TabsContent value="webhooks" className="space-y-6">
               {campaign && (

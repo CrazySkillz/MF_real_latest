@@ -105,7 +105,9 @@ export function GoogleSheetsBenchmarkModal(props: any) {
                   <SelectValue placeholder="Select metric to benchmark" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  {(detectedColumns || []).map((col: any) => (
+                  {(detectedColumns || [])
+                    .filter((col: any) => !/^(date|week|day|time|timestamp|period|month|year)/i.test(col.name))
+                    .map((col: any) => (
                     <SelectItem key={col.name} value={col.name}>
                       {col.name}
                     </SelectItem>

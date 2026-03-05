@@ -1,6 +1,7 @@
 ﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation, setLocation } from "wouter";
 import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X, DollarSign, Eye, MousePointerClick, BarChart3, Hash } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -471,6 +472,9 @@ export default function GoogleSheetsData() {
   const [customReportConfig, setCustomReportConfig] = useState<any>({
     selectedMetrics: [], kpis: [], benchmarks: [],
   });
+
+  // ═══ Insights State ═══
+  const [gsInsightsTrendMetric, setGsInsightsTrendMetric] = useState<string>('');
 
   // ═══ KPI Queries ═══
   const { data: kpisData, isLoading: kpisLoading, isError: kpisIsError, error: kpisError, refetch: refetchKpis } = useQuery({
@@ -1205,18 +1209,22 @@ export default function GoogleSheetsData() {
                       const sections = isCombinedView && sheetsData?.sheetBreakdown && sheetsData.sheetBreakdown.length > 0
                         ? sheetsData.sheetBreakdown.map((sheet: any) => ({
                             key: `${sheet.spreadsheetId}-${sheet.sheetName}`,
-                            name: sheet.sheetName || sheet.spreadsheetName || 'Unnamed Sheet',
-                            subtitle: sheet.spreadsheetName && sheet.sheetName && sheet.spreadsheetName !== sheet.sheetName ? sheet.spreadsheetName : undefined,
+                            name: sheet.spreadsheetName && sheet.sheetName && sheet.spreadsheetName !== sheet.sheetName
+                              ? `${sheet.spreadsheetName} — ${sheet.sheetName}`
+                              : sheet.sheetName || sheet.spreadsheetName || 'Unnamed Sheet',
                             rowCount: sheet.rowCount,
                             detectedColumns: sheet.detectedColumns || [],
+                            categoricalColumns: sheet.categoricalColumns || [],
                           }))
                         : sheetsData?.summary?.detectedColumns && sheetsData.summary.detectedColumns.length > 0
                           ? [{
                               key: 'single',
-                              name: sheetsData.spreadsheetName || 'Sheet',
-                              subtitle: undefined as string | undefined,
+                              name: (sheetsData as any).sheetName && sheetsData.spreadsheetName && (sheetsData as any).sheetName !== sheetsData.spreadsheetName
+                                ? `${sheetsData.spreadsheetName} — ${(sheetsData as any).sheetName}`
+                                : sheetsData.spreadsheetName || 'Sheet',
                               rowCount: sheetsData.filteredRows || sheetsData.totalRows,
                               detectedColumns: sheetsData.summary.detectedColumns,
+                              categoricalColumns: (sheetsData.summary as any).categoricalColumns || [],
                             }]
                           : [];
 
@@ -1246,9 +1254,6 @@ export default function GoogleSheetsData() {
                                     <FileSpreadsheet className="w-5 h-5 text-green-600" />
                                     {section.name}
                                   </CardTitle>
-                                  {section.subtitle && (
-                                    <CardDescription className="mt-1">{section.subtitle}</CardDescription>
-                                  )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Badge variant="outline" className="text-xs">
@@ -1263,12 +1268,7 @@ export default function GoogleSheetsData() {
                             <CardContent>
                               {/* Hero Metrics */}
                               {hero.length > 0 && (
-                                <div className={`grid gap-4 mb-6 ${
-                                  hero.length === 1 ? 'grid-cols-1 max-w-sm' :
-                                  hero.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
-                                  hero.length === 3 ? 'grid-cols-1 sm:grid-cols-3' :
-                                  'grid-cols-2 lg:grid-cols-4'
-                                }`}>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                                   {hero.map((col) => {
                                     const IconComp = getSummaryIcon(col.name);
                                     return (
@@ -1317,10 +1317,60 @@ export default function GoogleSheetsData() {
                                 </>
                               )}
 
+                              {/* Data Breakdown — categorical columns */}
+                              {section.categoricalColumns && section.categoricalColumns.length > 0 && (
+                                <>
+                                  <div className="border-t border-slate-100 dark:border-slate-800 mt-6 mb-4" />
+                                  <div className="mb-2">
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Data Breakdown</p>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {section.categoricalColumns.map((cat: any) => {
+                                      const maxCount = cat.topValues[0]?.count || 1;
+                                      return (
+                                        <div key={cat.name} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4">
+                                          <div className="flex items-center justify-between mb-3">
+                                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{cat.name}</p>
+                                            <Badge variant="outline" className="text-[10px]">
+                                              {cat.uniqueCount} unique
+                                            </Badge>
+                                          </div>
+                                          <div className="space-y-2">
+                                            {cat.topValues.slice(0, 8).map((v: any) => (
+                                              <div key={v.value}>
+                                                <div className="flex items-center justify-between text-xs mb-0.5">
+                                                  <span className="text-slate-700 dark:text-slate-300 truncate mr-2 max-w-[60%]" title={v.value}>
+                                                    {v.value}
+                                                  </span>
+                                                  <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                    {v.count.toLocaleString()} <span className="text-slate-400 dark:text-slate-500">({v.percentage}%)</span>
+                                                  </span>
+                                                </div>
+                                                <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                                                  <div
+                                                    className="h-full rounded-full bg-blue-500 dark:bg-blue-400"
+                                                    style={{ width: `${Math.round((v.count / maxCount) * 100)}%` }}
+                                                  />
+                                                </div>
+                                              </div>
+                                            ))}
+                                            {cat.topValues.length > 8 && (
+                                              <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+                                                +{cat.topValues.length - 8} more
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </>
+                              )}
+
                               {/* Edge case: no metrics at all */}
-                              {hero.length === 0 && supporting.length === 0 && (
+                              {hero.length === 0 && supporting.length === 0 && (!section.categoricalColumns || section.categoricalColumns.length === 0) && (
                                 <p className="text-sm text-slate-500 text-center py-4">
-                                  No numeric metrics detected in this sheet
+                                  No data detected in this sheet
                                 </p>
                               )}
                             </CardContent>
@@ -1617,247 +1667,531 @@ export default function GoogleSheetsData() {
                 {/* ═══ INSIGHTS TAB ═══ */}
                 <TabsContent value="insights" className="mt-6">
                   {isCombinedView ? (
-                    <Card>
-                      <CardContent className="text-center py-12">
-                        <Lightbulb className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Select an Individual Sheet</h3>
-                        <p className="text-slate-500 dark:text-slate-400">
-                          Insights are generated per-sheet. Use the dropdown above to select a specific sheet.
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ) : sheetsData?.insights ? (
                     <div className="space-y-6">
-                      {/* Data Quality */}
-                      {sheetsData.insights.dataQuality && (
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Overview across all connected sheets. Select an individual sheet for detailed analysis.
+                        </p>
+                      </div>
+
+                      {sheetsData?.sheetBreakdown && sheetsData.sheetBreakdown.length > 0 ? (
                         <Card>
                           <CardHeader className="pb-2">
                             <CardTitle className="text-base flex items-center gap-2">
                               <CheckCircle2 className="w-5 h-5 text-green-600" />
-                              Data Quality
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="grid grid-cols-3 gap-4">
-                              <div>
-                                <p className="text-sm text-slate-500">Completeness</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-green-500 rounded-full"
-                                      style={{ width: `${sheetsData.insights.dataQuality.completeness}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-sm font-medium">{sheetsData.insights.dataQuality.completeness}%</span>
-                                </div>
-                              </div>
-                              <div>
-                                <p className="text-sm text-slate-500">Missing Values</p>
-                                <p className="text-lg font-bold text-slate-900 dark:text-white">{sheetsData.insights.dataQuality.missingValues}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-slate-500">Outliers</p>
-                                <p className="text-lg font-bold text-slate-900 dark:text-white">{sheetsData.insights.dataQuality.outliers?.length || 0}</p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Top Performers */}
-                      {sheetsData.insights.topPerformers?.length > 0 && (
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <TrendingUp className="w-5 h-5 text-green-600" />
-                              Top Performers
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {sheetsData.insights.topPerformers.map((tp, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{tp.metric}</p>
-                                    <p className="text-xs text-slate-500">Row {tp.rowNumber}</p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-sm font-bold text-green-700 dark:text-green-400">{tp.value.toLocaleString()}</p>
-                                    <p className="text-xs text-slate-500">{tp.percentOfTotal.toFixed(1)}% of total</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Bottom Performers */}
-                      {sheetsData.insights.bottomPerformers?.length > 0 && (
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <TrendingDown className="w-5 h-5 text-red-600" />
-                              Bottom Performers
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {sheetsData.insights.bottomPerformers.map((bp, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10">
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{bp.metric}</p>
-                                    <p className="text-xs text-slate-500">Row {bp.rowNumber}</p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-sm font-bold text-red-700 dark:text-red-400">{bp.value.toLocaleString()}</p>
-                                    <p className="text-xs text-slate-500">{bp.percentOfTotal.toFixed(1)}% of total</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Anomalies */}
-                      {sheetsData.insights.anomalies?.length > 0 && (
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <AlertTriangle className="w-5 h-5 text-amber-600" />
-                              Anomalies
+                              Data Quality Across Sheets
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
                             <div className="space-y-3">
-                              {sheetsData.insights.anomalies.map((a, i) => (
-                                <div key={i} className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
-                                  <div className="flex items-start justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-900 dark:text-white">{a.metric}</p>
-                                      <p className="text-xs text-slate-500 mt-1">{a.message}</p>
+                              {sheetsData.sheetBreakdown.map((sheet: any, idx: number) => {
+                                const sheetLabel = sheet.spreadsheetName && sheet.sheetName && sheet.spreadsheetName !== sheet.sheetName
+                                  ? `${sheet.spreadsheetName} — ${sheet.sheetName}`
+                                  : sheet.sheetName || sheet.spreadsheetName || 'Sheet';
+                                const colCount = sheet.detectedColumns?.length || 0;
+                                return (
+                                  <div key={idx} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{sheetLabel}</p>
+                                      <p className="text-xs text-slate-500 mt-0.5">{sheet.rowCount?.toLocaleString() || 0} rows, {colCount} metrics detected</p>
                                     </div>
-                                    <Badge variant="outline" className="text-xs text-amber-700 dark:text-amber-400">
-                                      {a.deviation.toFixed(1)}x {a.direction}
+                                    <Badge variant="outline" className="text-xs shrink-0">
+                                      {sheet.rowCount > 0 ? 'Active' : 'Empty'}
+                                    </Badge>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-4">
+                              Select a specific sheet from the dropdown above to see detailed insights, trend charts, and recommendations.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <Card>
+                          <CardContent className="text-center py-12">
+                            <Lightbulb className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Sheets Connected</h3>
+                            <p className="text-slate-500 dark:text-slate-400">
+                              Connect Google Sheets to generate insights.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  ) : sheetsData?.insights ? (
+                    <div className="space-y-6">
+                      {/* Header */}
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Actionable insights from statistical analysis of your sheet data.
+                        </p>
+                      </div>
+
+                      {/* Summary Cards */}
+                      {sheetsData.insights.summary && (
+                        <div className="grid grid-cols-3 gap-4">
+                          <Card>
+                            <CardContent className="p-5">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total insights</p>
+                                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{sheetsData.insights.summary.total}</p>
+                                </div>
+                                <BarChart3 className="w-7 h-7 text-slate-600" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-5">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">High priority</p>
+                                  <p className="text-2xl font-bold text-red-600">{sheetsData.insights.summary.high}</p>
+                                </div>
+                                <AlertTriangle className="w-7 h-7 text-red-600" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-5">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs attention</p>
+                                  <p className="text-2xl font-bold text-amber-600">{sheetsData.insights.summary.medium}</p>
+                                </div>
+                                <TrendingDown className="w-7 h-7 text-amber-600" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      )}
+
+                      {/* Data Context Metadata + Data Quality */}
+                      <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          <div><span className="font-medium text-slate-700 dark:text-slate-300">Data points:</span> {sheetsData.insights.totalDataPoints?.toLocaleString() || 0}</div>
+                          {sheetsData.insights.dateRange && (
+                            <div><span className="font-medium text-slate-700 dark:text-slate-300">Date range:</span> {sheetsData.insights.dateRange.start} to {sheetsData.insights.dateRange.end}</div>
+                          )}
+                          <div><span className="font-medium text-slate-700 dark:text-slate-300">Metrics analyzed:</span> {sheetsData.insights.trendMetrics?.length || 0}</div>
+                          {sheetsData.insights.labelColumn && (
+                            <div><span className="font-medium text-slate-700 dark:text-slate-300">Grouped by:</span> {sheetsData.insights.labelColumn}</div>
+                          )}
+                          {sheetsData.insights.dataQuality && (
+                            <>
+                              <div>
+                                <span className="font-medium text-slate-700 dark:text-slate-300">Completeness:</span>{' '}
+                                <span className={sheetsData.insights.dataQuality.completeness >= 95 ? 'text-green-600' : sheetsData.insights.dataQuality.completeness >= 80 ? 'text-amber-600' : 'text-red-600'}>
+                                  {sheetsData.insights.dataQuality.completeness}%
+                                </span>
+                              </div>
+                              {sheetsData.insights.dataQuality.outliers?.length > 0 && (
+                                <div><span className="font-medium text-slate-700 dark:text-slate-300">Outliers:</span> {sheetsData.insights.dataQuality.outliers.length}</div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Trend Chart */}
+                      {sheetsData.insights.trendSeries?.length >= 2 && sheetsData.insights.trendMetrics?.length > 0 && (
+                        <Card className="border-slate-200 dark:border-slate-700">
+                          <CardHeader>
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                              <div>
+                                <CardTitle>Trends</CardTitle>
+                                <CardDescription>
+                                  {sheetsData.insights.dateColumn ? `Daily averages by ${sheetsData.insights.dateColumn}` : 'Metric trends over time'}
+                                </CardDescription>
+                              </div>
+                              <div className="min-w-[220px]">
+                                <Select
+                                  value={gsInsightsTrendMetric || sheetsData.insights.trendMetrics[0]}
+                                  onValueChange={(v: string) => setGsInsightsTrendMetric(v)}
+                                >
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue placeholder="Select metric" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {sheetsData.insights.trendMetrics.map((m: string) => (
+                                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="h-[280px] w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={sheetsData.insights.trendSeries}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis
+                                    dataKey="date"
+                                    tick={{ fontSize: 12 }}
+                                    angle={-45}
+                                    textAnchor="end"
+                                    height={80}
+                                  />
+                                  <YAxis tick={{ fontSize: 12 }} />
+                                  <Tooltip />
+                                  <Legend />
+                                  <Line
+                                    type="monotone"
+                                    dataKey={gsInsightsTrendMetric || sheetsData.insights.trendMetrics[0]}
+                                    stroke="#7c3aed"
+                                    strokeWidth={2}
+                                    dot={false}
+                                    name={gsInsightsTrendMetric || sheetsData.insights.trendMetrics[0]}
+                                  />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Performance Insights */}
+                      {(sheetsData.insights.topPerformers?.length > 0 || sheetsData.insights.bottomPerformers?.length > 0) && (
+                        <Card className="border-slate-200 dark:border-slate-700">
+                          <CardHeader>
+                            <CardTitle>Performance</CardTitle>
+                            <CardDescription>Top and bottom performers across your metrics</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {sheetsData.insights.topPerformers?.map((insight: any, i: number) => {
+                              const severityClass = insight.severity === 'high'
+                                ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
+                                : insight.severity === 'medium'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
+                                  : 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900';
+                              return (
+                                <div key={`top-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <TrendingUp className="w-4 h-4 text-green-600 shrink-0" />
+                                        <span className="font-semibold text-slate-900 dark:text-white">{insight.message}</span>
+                                        <Badge className={`text-xs border ${severityClass}`}>
+                                          {insight.severity === 'high' ? 'High' : insight.severity === 'medium' ? 'Medium' : 'Low'}
+                                        </Badge>
+                                        {insight.confidence && (
+                                          <Badge className={`text-xs border ${
+                                            insight.confidence === 'high' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900' :
+                                            'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900'
+                                          }`}>
+                                            Confidence: {insight.confidence.charAt(0).toUpperCase() + insight.confidence.slice(1)}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                                          <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                          {insight.evidence.join(' \u2022 ')}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {sheetsData.insights.bottomPerformers?.map((insight: any, i: number) => {
+                              const severityClass = insight.severity === 'high'
+                                ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
+                                : insight.severity === 'medium'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
+                                  : 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700';
+                              return (
+                                <div key={`bottom-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <TrendingDown className="w-4 h-4 text-red-600 shrink-0" />
+                                        <span className="font-semibold text-slate-900 dark:text-white">{insight.message}</span>
+                                        <Badge className={`text-xs border ${severityClass}`}>
+                                          {insight.severity === 'high' ? 'High' : insight.severity === 'medium' ? 'Medium' : 'Low'}
+                                        </Badge>
+                                      </div>
+                                      {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                                          <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                          {insight.evidence.join(' \u2022 ')}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Anomalies & Trends */}
+                      {(sheetsData.insights.anomalies?.length > 0 || sheetsData.insights.trends?.length > 0) && (
+                        <Card className="border-slate-200 dark:border-slate-700">
+                          <CardHeader>
+                            <CardTitle>Anomalies & Trends</CardTitle>
+                            <CardDescription>Statistical outliers and directional changes in your data</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {sheetsData.insights.trends?.map((insight: any, i: number) => {
+                              const severityClass = insight.severity === 'high'
+                                ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
+                                : insight.severity === 'medium'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
+                                  : 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900';
+                              return (
+                                <div key={`trend-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {insight.direction === 'increasing' ? (
+                                          <TrendingUp className="w-4 h-4 text-green-600 shrink-0" />
+                                        ) : (
+                                          <TrendingDown className="w-4 h-4 text-red-600 shrink-0" />
+                                        )}
+                                        <span className="font-semibold text-slate-900 dark:text-white">{insight.message}</span>
+                                        <Badge className={`text-xs border ${severityClass}`}>
+                                          {insight.severity === 'high' ? 'High' : insight.severity === 'medium' ? 'Medium' : 'Low'}
+                                        </Badge>
+                                        {insight.confidence && (
+                                          <Badge className={`text-xs border ${
+                                            insight.confidence === 'high' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900' :
+                                            'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900'
+                                          }`}>
+                                            Confidence: {insight.confidence.charAt(0).toUpperCase() + insight.confidence.slice(1)}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                                          <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                          {insight.evidence.join(' \u2022 ')}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <Badge variant={insight.direction === 'increasing' ? 'default' : 'destructive'} className="text-xs shrink-0">
+                                      {insight.direction === 'increasing' ? '+' : '-'}{insight.percentChange?.toFixed(1)}%
                                     </Badge>
                                   </div>
                                 </div>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Trends */}
-                      {sheetsData.insights.trends?.length > 0 && (
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <TrendingUp className="w-5 h-5 text-blue-600" />
-                              Trends
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-3">
-                              {sheetsData.insights.trends.map((t, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                                  <div className="flex items-center gap-3">
-                                    {t.direction === 'up' ? (
-                                      <TrendingUp className="w-4 h-4 text-green-600" />
-                                    ) : (
-                                      <TrendingDown className="w-4 h-4 text-red-600" />
-                                    )}
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-900 dark:text-white">{t.metric}</p>
-                                      <p className="text-xs text-slate-500">{t.message}</p>
+                              );
+                            })}
+                            {sheetsData.insights.anomalies?.map((insight: any, i: number) => {
+                              const severityClass = insight.severity === 'high'
+                                ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
+                                : 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900';
+                              return (
+                                <div key={`anomaly-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                        <span className="font-semibold text-slate-900 dark:text-white">{insight.message}</span>
+                                        <Badge className={`text-xs border ${severityClass}`}>
+                                          {insight.severity === 'high' ? 'High' : 'Medium'}
+                                        </Badge>
+                                      </div>
+                                      {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                                          <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                          {insight.evidence.join(' \u2022 ')}
+                                        </div>
+                                      )}
                                     </div>
+                                    <Badge variant="outline" className="text-xs text-amber-700 dark:text-amber-400 shrink-0">
+                                      {insight.deviation?.toFixed(1)}x {insight.direction}
+                                    </Badge>
                                   </div>
-                                  <Badge variant={t.direction === 'up' ? 'default' : 'destructive'} className="text-xs">
-                                    {t.direction === 'up' ? '+' : ''}{t.percentChange.toFixed(1)}%
-                                  </Badge>
                                 </div>
-                              ))}
-                            </div>
+                              );
+                            })}
                           </CardContent>
                         </Card>
                       )}
 
                       {/* Correlations */}
                       {sheetsData.insights.correlations?.length > 0 && (
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <Target className="w-5 h-5 text-purple-600" />
-                              Correlations
-                            </CardTitle>
+                        <Card className="border-slate-200 dark:border-slate-700">
+                          <CardHeader>
+                            <CardTitle>Correlations</CardTitle>
+                            <CardDescription>Statistically significant relationships between metrics</CardDescription>
                           </CardHeader>
-                          <CardContent>
-                            <div className="space-y-3">
-                              {sheetsData.insights.correlations.map((c, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-900 dark:text-white">
-                                      {c.metric1} vs {c.metric2}
-                                    </p>
-                                    <p className="text-xs text-slate-500">{c.message}</p>
+                          <CardContent className="space-y-3">
+                            {sheetsData.insights.correlations.map((insight: any, i: number) => (
+                              <div key={`corr-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <Target className="w-4 h-4 text-purple-600 shrink-0" />
+                                      <span className="font-semibold text-slate-900 dark:text-white">{insight.message}</span>
+                                      {insight.confidence && (
+                                        <Badge className={`text-xs border ${
+                                          insight.confidence === 'high' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900' :
+                                          'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900'
+                                        }`}>
+                                          Confidence: {insight.confidence.charAt(0).toUpperCase() + insight.confidence.slice(1)}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
+                                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                                        <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                        {insight.evidence.join(' \u2022 ')}
+                                      </div>
+                                    )}
                                   </div>
-                                  <Badge variant="outline" className={`text-xs ${
-                                    c.strength === 'strong' ? 'text-green-700 dark:text-green-400' :
-                                    c.strength === 'moderate' ? 'text-blue-700 dark:text-blue-400' :
-                                    'text-slate-500'
+                                  <Badge variant="outline" className={`text-xs shrink-0 ${
+                                    insight.strength === 'strong' ? 'text-green-700 dark:text-green-400' : 'text-blue-700 dark:text-blue-400'
                                   }`}>
-                                    {c.strength} ({c.correlation.toFixed(2)})
+                                    {insight.strength} (r={insight.correlation?.toFixed(2)})
                                   </Badge>
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                            ))}
                           </CardContent>
                         </Card>
                       )}
 
                       {/* Recommendations */}
                       {sheetsData.insights.recommendations?.length > 0 && (
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <Lightbulb className="w-5 h-5 text-amber-500" />
-                              Recommendations
-                            </CardTitle>
+                        <Card className="border-slate-200 dark:border-slate-700">
+                          <CardHeader>
+                            <CardTitle>What to do next</CardTitle>
+                            <CardDescription>Actionable recommendations based on the analysis above</CardDescription>
                           </CardHeader>
-                          <CardContent>
-                            <div className="space-y-3">
-                              {sheetsData.insights.recommendations.map((r, i) => (
-                                <div key={i} className="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <CardContent className="space-y-3">
+                            {sheetsData.insights.recommendations.map((r: any, i: number) => {
+                              const severityClass = r.severity === 'high'
+                                ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
+                                : r.severity === 'medium'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
+                                  : 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700';
+                              return (
+                                <div key={`rec-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
                                   <div className="flex items-start gap-3">
-                                    <Badge variant={r.priority === 'high' ? 'destructive' : r.priority === 'medium' ? 'default' : 'secondary'} className="text-xs shrink-0">
-                                      {r.priority}
+                                    <Badge className={`text-xs border shrink-0 ${severityClass}`}>
+                                      {r.priority === 'high' ? 'High' : r.priority === 'medium' ? 'Medium' : 'Low'}
                                     </Badge>
-                                    <div>
+                                    <div className="min-w-0 flex-1">
                                       <p className="text-sm font-medium text-slate-900 dark:text-white">{r.message}</p>
-                                      <p className="text-xs text-slate-500 mt-1">{r.action}</p>
+                                      <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">
+                                        <span className="font-medium">Next step:</span> {r.action}
+                                      </p>
+                                      {Array.isArray(r.evidence) && r.evidence.length > 0 && (
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                                          <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                          {r.evidence.join(' \u2022 ')}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
-                              ))}
-                            </div>
+                              );
+                            })}
                           </CardContent>
                         </Card>
                       )}
 
+                      {/* KPI & Benchmark Gap Analysis */}
+                      {(() => {
+                        const kpiList = Array.isArray(kpisData) ? kpisData : [];
+                        const bmList = Array.isArray(benchmarksData) ? benchmarksData : [];
+                        const atRiskKpis = kpiList.filter((k: any) => k.status === 'at_risk' || k.status === 'critical');
+                        const missedBenchmarks = bmList.filter((b: any) => {
+                          const current = parseFloat(String(b.currentValue || '0'));
+                          const target = parseFloat(String(b.targetValue || '0'));
+                          return target > 0 && current < target;
+                        });
+
+                        if (atRiskKpis.length === 0 && missedBenchmarks.length === 0) return null;
+
+                        return (
+                          <Card className="border-slate-200 dark:border-slate-700">
+                            <CardHeader>
+                              <CardTitle>Goal Impact</CardTitle>
+                              <CardDescription>KPIs and Benchmarks that need attention</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="grid gap-4 md:grid-cols-2">
+                                {atRiskKpis.length > 0 && (
+                                  <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">KPI Gaps</div>
+                                      <Badge variant="outline" className="text-xs">{atRiskKpis.length}</Badge>
+                                    </div>
+                                    <div className="space-y-2">
+                                      {atRiskKpis.slice(0, 5).map((k: any) => {
+                                        const current = parseFloat(String(k.currentValue || '0'));
+                                        const target = parseFloat(String(k.targetValue || '0'));
+                                        const gapPct = target > 0 ? ((current / target - 1) * 100) : 0;
+                                        return (
+                                          <div key={k.id} className="flex items-center justify-between gap-2">
+                                            <div className="min-w-0">
+                                              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{k.name}</p>
+                                              <p className="text-xs text-slate-500 truncate">
+                                                {k.metric || 'No metric'} {'\u2022'} Gap: {gapPct.toFixed(1)}%
+                                              </p>
+                                            </div>
+                                            <Badge className={`text-xs border shrink-0 ${
+                                              k.status === 'critical'
+                                                ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200'
+                                                : 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200'
+                                            }`}>
+                                              {k.status === 'critical' ? 'Critical' : 'At Risk'}
+                                            </Badge>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                                {missedBenchmarks.length > 0 && (
+                                  <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">Benchmark Gaps</div>
+                                      <Badge variant="outline" className="text-xs">{missedBenchmarks.length}</Badge>
+                                    </div>
+                                    <div className="space-y-2">
+                                      {missedBenchmarks.slice(0, 5).map((b: any) => {
+                                        const current = parseFloat(String(b.currentValue || '0'));
+                                        const target = parseFloat(String(b.targetValue || '0'));
+                                        const gapPct = target > 0 ? ((current / target - 1) * 100) : 0;
+                                        return (
+                                          <div key={b.id} className="flex items-center justify-between gap-2">
+                                            <div className="min-w-0">
+                                              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{b.name}</p>
+                                              <p className="text-xs text-slate-500 truncate">
+                                                {b.metric || 'No metric'} {'\u2022'} Gap: {gapPct.toFixed(1)}%
+                                              </p>
+                                            </div>
+                                            <Badge className="text-xs border bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 shrink-0">
+                                              Below target
+                                            </Badge>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })()}
+
                       {/* Empty state when no insights */}
-                      {!sheetsData.insights.topPerformers?.length &&
-                       !sheetsData.insights.bottomPerformers?.length &&
-                       !sheetsData.insights.anomalies?.length &&
-                       !sheetsData.insights.trends?.length &&
-                       !sheetsData.insights.correlations?.length &&
-                       !sheetsData.insights.recommendations?.length && (
+                      {(!sheetsData.insights.summary || sheetsData.insights.summary.total === 0) && (
                         <Card>
                           <CardContent className="text-center py-12">
                             <Lightbulb className="w-12 h-12 mx-auto text-slate-400 mb-4" />
                             <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Insights Yet</h3>
                             <p className="text-slate-500 dark:text-slate-400">
-                              Add more data to your sheet to generate insights.
+                              Add more data to your sheet to generate insights. At least 10 data points are needed for trend and anomaly detection.
                             </p>
                           </CardContent>
                         </Card>

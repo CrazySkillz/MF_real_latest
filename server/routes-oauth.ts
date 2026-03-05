@@ -13145,7 +13145,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   function generateInsights(
     rows: any[][],
     detectedColumns: Array<{ name: string, index: number, type: string, total: number }>,
-    metrics: Record<string, number>
+    metrics: Record<string, number>,
+    categoricalColumns?: Array<{ name: string, index: number }>,
+    allHeaders?: any[]
   ) {
     const insights: any = {
       topPerformers: [],
@@ -13158,23 +13160,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completeness: 0,
         missingValues: 0,
         outliers: []
-      }
+      },
+      // New fields for professional-grade insights
+      trendSeries: [],
+      trendMetrics: [],
+      dateColumn: null as string | null,
+      labelColumn: null as string | null,
+      totalDataPoints: 0,
+      dateRange: null as { start: string, end: string } | null,
+      summary: { total: 0, high: 0, medium: 0, low: 0 }
     };
 
     if (rows.length <= 1 || detectedColumns.length === 0) {
       return insights;
     }
 
+    const headerRow = rows[0];
     const dataRows = rows.slice(1); // Exclude header
     const totalDataPoints = dataRows.length * detectedColumns.length;
+    insights.totalDataPoints = dataRows.length;
     let missingCount = 0;
 
-    // Analyze each numeric column
+    // --- Detect date column and label column ---
+    const dateColumnPattern = /^(date|week|day|time|timestamp|period|month|year)/i;
+    let dateColIndex = -1;
+    let labelColIndex = -1;
+
+    if (allHeaders || headerRow) {
+      const hdrs = allHeaders || headerRow;
+      hdrs.forEach((h: any, i: number) => {
+        const hStr = String(h || '').trim();
+        if (dateColIndex === -1 && dateColumnPattern.test(hStr)) {
+          dateColIndex = i;
+          insights.dateColumn = hStr;
+        }
+      });
+    }
+
+    // Label column: first categorical column (e.g., Campaign, Channel)
+    if (categoricalColumns && categoricalColumns.length > 0) {
+      labelColIndex = categoricalColumns[0].index;
+      insights.labelColumn = categoricalColumns[0].name;
+    } else if (headerRow) {
+      // Fallback: find first non-numeric, non-date text column
+      const numericIndices = new Set(detectedColumns.map(c => c.index));
+      for (let i = 0; i < headerRow.length; i++) {
+        if (numericIndices.has(i)) continue;
+        if (i === dateColIndex) continue;
+        const hStr = String(headerRow[i] || '').trim();
+        if (hStr) {
+          labelColIndex = i;
+          insights.labelColumn = hStr;
+          break;
+        }
+      }
+    }
+
+    // Helper to get label for a data row
+    const getRowLabel = (row: any[]): string => {
+      if (labelColIndex >= 0 && row[labelColIndex]) return String(row[labelColIndex]).trim();
+      if (dateColIndex >= 0 && row[dateColIndex]) return String(row[dateColIndex]).trim();
+      return '';
+    };
+
+    // Helper to get date value for sorting
+    const getDateValue = (row: any[]): string => {
+      if (dateColIndex >= 0 && row[dateColIndex]) return String(row[dateColIndex]).trim();
+      return '';
+    };
+
+    // Determine if labels repeat (dimension grouping) or are unique
+    const labelCounts = new Map<string, number>();
+    if (labelColIndex >= 0) {
+      dataRows.forEach(row => {
+        const lbl = String(row[labelColIndex] || '').trim();
+        if (lbl) labelCounts.set(lbl, (labelCounts.get(lbl) || 0) + 1);
+      });
+    }
+    const labelsRepeat = Array.from(labelCounts.values()).some(c => c > 1);
+
+    // --- Compute date range ---
+    if (dateColIndex >= 0) {
+      const dates = dataRows.map(r => String(r[dateColIndex] || '').trim()).filter(d => d).sort();
+      if (dates.length > 0) {
+        insights.dateRange = { start: dates[0], end: dates[dates.length - 1] };
+      }
+    }
+
+    // --- Build trend series (aggregate by date across all metrics) ---
+    if (dateColIndex >= 0) {
+      const dateMap = new Map<string, { count: number, sums: Record<string, number> }>();
+      dataRows.forEach(row => {
+        const dateVal = String(row[dateColIndex] || '').trim();
+        if (!dateVal) return;
+        if (!dateMap.has(dateVal)) dateMap.set(dateVal, { count: 0, sums: {} });
+        const entry = dateMap.get(dateVal)!;
+        entry.count++;
+        detectedColumns.forEach(col => {
+          const cellVal = row[col.index];
+          if (cellVal !== undefined && cellVal !== null && cellVal !== '') {
+            const numVal = parseFloat(String(cellVal).replace(/[$,]/g, '').trim());
+            if (!isNaN(numVal)) {
+              entry.sums[col.name] = (entry.sums[col.name] || 0) + numVal;
+            }
+          }
+        });
+      });
+
+      const sortedDates = Array.from(dateMap.keys()).sort();
+      insights.trendSeries = sortedDates.map(date => {
+        const entry = dateMap.get(date)!;
+        const point: any = { date };
+        detectedColumns.forEach(col => {
+          // Average per date (divide sum by count of rows with that date)
+          point[col.name] = entry.sums[col.name] !== undefined
+            ? Math.round((entry.sums[col.name] / entry.count) * 100) / 100
+            : null;
+        });
+        return point;
+      });
+      insights.trendMetrics = detectedColumns.map(col => col.name);
+    }
+
+    // --- Analyze each numeric column ---
     detectedColumns.forEach(col => {
       const values: number[] = [];
-      const rowData: Array<{ rowIndex: number, value: number, rowContent: any[] }> = [];
+      const rowData: Array<{ rowIndex: number, value: number, rowContent: any[], label: string, dateValue: string }> = [];
 
-      // Collect all values for this column
       dataRows.forEach((row, idx) => {
         const cellValue = row[col.index];
         if (!cellValue || cellValue === '') {
@@ -13187,7 +13299,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (!isNaN(numValue)) {
           values.push(numValue);
-          rowData.push({ rowIndex: idx + 2, value: numValue, rowContent: row }); // +2 because row 1 is header
+          rowData.push({
+            rowIndex: idx + 2,
+            value: numValue,
+            rowContent: row,
+            label: getRowLabel(row),
+            dateValue: getDateValue(row)
+          });
         } else {
           missingCount++;
         }
@@ -13199,91 +13317,200 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sum = values.reduce((a, b) => a + b, 0);
       const mean = sum / values.length;
       const sortedValues = [...values].sort((a, b) => a - b);
-      const median = sortedValues[Math.floor(sortedValues.length / 2)];
-      const min = sortedValues[0];
-      const max = sortedValues[sortedValues.length - 1];
 
-      // Calculate standard deviation
       const squareDiffs = values.map(value => Math.pow(value - mean, 2));
       const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / values.length;
       const stdDev = Math.sqrt(avgSquareDiff);
 
-      // Identify top performers (top 3 rows for this metric)
-      const topRows = [...rowData].sort((a, b) => b.value - a.value).slice(0, 3);
-      topRows.forEach(item => {
-        insights.topPerformers.push({
-          metric: col.name,
-          value: item.value,
-          rowNumber: item.rowIndex,
-          type: col.type,
-          percentOfTotal: col.total > 0 ? (item.value / col.total) * 100 : 0
-        });
-      });
+      const fmtVal = (v: number) => {
+        const n = col.name.toLowerCase();
+        if (n.includes('$') || n.includes('spend') || n.includes('revenue') || n.includes('cost') || n.includes('budget'))
+          return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (n.includes('%') || n.includes('rate') || n.includes('ctr') || n.includes('cvr') || n.includes('roas'))
+          return `${v.toFixed(2)}${n.includes('roas') ? 'x' : '%'}`;
+        return v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+      };
 
-      // Identify bottom performers (bottom 3 rows for this metric)
-      const bottomRows = [...rowData].sort((a, b) => a.value - b.value).slice(0, 3);
-      bottomRows.forEach(item => {
-        if (item.value > 0) { // Only include non-zero values
+      // --- Top/Bottom Performers ---
+      if (labelsRepeat && labelColIndex >= 0) {
+        // Group by label, compute averages
+        const groups = new Map<string, { sum: number, count: number }>();
+        rowData.forEach(item => {
+          if (!item.label) return;
+          if (!groups.has(item.label)) groups.set(item.label, { sum: 0, count: 0 });
+          const g = groups.get(item.label)!;
+          g.sum += item.value;
+          g.count++;
+        });
+
+        const groupAvgs = Array.from(groups.entries()).map(([label, g]) => ({
+          label, avg: g.sum / g.count, total: g.sum, count: g.count
+        }));
+
+        // Top 3 groups
+        const topGroups = [...groupAvgs].sort((a, b) => b.avg - a.avg).slice(0, 3);
+        topGroups.forEach(g => {
+          insights.topPerformers.push({
+            metric: col.name,
+            value: g.avg,
+            label: g.label,
+            type: col.type,
+            severity: 'low',
+            confidence: g.count >= 50 ? 'high' : g.count >= 10 ? 'medium' : 'low',
+            percentOfTotal: col.total > 0 ? (g.total / col.total) * 100 : 0,
+            evidence: [
+              `Average: ${fmtVal(g.avg)}`,
+              `${g.count} data points`,
+              col.total > 0 ? `${((g.total / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
+            ].filter(Boolean),
+            message: `${g.label} has the highest average ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
+          });
+        });
+
+        // Bottom 3 groups
+        const bottomGroups = [...groupAvgs].filter(g => g.avg > 0).sort((a, b) => a.avg - b.avg).slice(0, 3);
+        bottomGroups.forEach(g => {
+          insights.bottomPerformers.push({
+            metric: col.name,
+            value: g.avg,
+            label: g.label,
+            type: col.type,
+            severity: 'low',
+            confidence: g.count >= 50 ? 'high' : g.count >= 10 ? 'medium' : 'low',
+            percentOfTotal: col.total > 0 ? (g.total / col.total) * 100 : 0,
+            evidence: [
+              `Average: ${fmtVal(g.avg)}`,
+              `${g.count} data points`,
+              col.total > 0 ? `${((g.total / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
+            ].filter(Boolean),
+            message: `${g.label} has the lowest average ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
+          });
+        });
+      } else {
+        // Unique labels: rank individual rows
+        const topRows = [...rowData].sort((a, b) => b.value - a.value).slice(0, 3);
+        topRows.forEach(item => {
+          const label = item.label || `Row ${item.rowIndex}`;
+          insights.topPerformers.push({
+            metric: col.name,
+            value: item.value,
+            label: label,
+            type: col.type,
+            severity: 'low',
+            confidence: values.length >= 50 ? 'high' : values.length >= 10 ? 'medium' : 'low',
+            percentOfTotal: col.total > 0 ? (item.value / col.total) * 100 : 0,
+            evidence: [
+              `Value: ${fmtVal(item.value)}`,
+              col.total > 0 ? `${((item.value / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
+            ].filter(Boolean),
+            message: `${label} has the highest ${col.name} (${fmtVal(item.value)})`
+          });
+        });
+
+        const bottomRows = [...rowData].filter(r => r.value > 0).sort((a, b) => a.value - b.value).slice(0, 3);
+        bottomRows.forEach(item => {
+          const label = item.label || `Row ${item.rowIndex}`;
           insights.bottomPerformers.push({
             metric: col.name,
             value: item.value,
-            rowNumber: item.rowIndex,
+            label: label,
             type: col.type,
-            percentOfTotal: col.total > 0 ? (item.value / col.total) * 100 : 0
+            severity: 'low',
+            confidence: values.length >= 50 ? 'high' : values.length >= 10 ? 'medium' : 'low',
+            percentOfTotal: col.total > 0 ? (item.value / col.total) * 100 : 0,
+            evidence: [
+              `Value: ${fmtVal(item.value)}`,
+              col.total > 0 ? `${((item.value / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
+            ].filter(Boolean),
+            message: `${label} has the lowest ${col.name} (${fmtVal(item.value)})`
           });
-        }
-      });
+        });
+      }
 
-      // Detect anomalies (values > 2 standard deviations from mean)
-      rowData.forEach(item => {
-        const zScore = Math.abs((item.value - mean) / stdDev);
-        if (zScore > 2 && values.length >= 10) { // Only flag anomalies if we have enough data
-          insights.anomalies.push({
-            metric: col.name,
-            value: item.value,
-            rowNumber: item.rowIndex,
-            type: col.type,
-            deviation: zScore,
-            direction: item.value > mean ? 'above' : 'below',
-            message: `${col.name} is ${zScore.toFixed(1)}x ${item.value > mean ? 'higher' : 'lower'} than average`
-          });
-        }
-      });
+      // --- Anomalies (z-score > 2, labeled) ---
+      if (stdDev > 0) {
+        rowData.forEach(item => {
+          const zScore = Math.abs((item.value - mean) / stdDev);
+          if (zScore > 2 && values.length >= 10) {
+            const label = item.label || `Row ${item.rowIndex}`;
+            const direction = item.value > mean ? 'above' : 'below';
+            insights.anomalies.push({
+              metric: col.name,
+              value: item.value,
+              label: label,
+              type: col.type,
+              severity: zScore > 3 ? 'high' : 'medium',
+              confidence: values.length >= 50 ? 'high' : 'medium',
+              deviation: zScore,
+              direction: direction,
+              evidence: [
+                `Value: ${fmtVal(item.value)}`,
+                `Mean: ${fmtVal(mean)}`,
+                `${zScore.toFixed(1)} standard deviations ${direction} average`
+              ],
+              message: `${label}: ${col.name} is ${zScore.toFixed(1)}x ${direction === 'above' ? 'higher' : 'lower'} than average (${fmtVal(item.value)} vs mean ${fmtVal(mean)})`
+            });
+          }
+        });
+      }
 
-      // Generate trend insights (compare first half vs second half)
+      // --- Trend analysis (chronological when date column exists) ---
       if (values.length >= 10) {
-        const midpoint = Math.floor(values.length / 2);
-        const firstHalf = values.slice(0, midpoint);
-        const secondHalf = values.slice(midpoint);
+        let sortedRowData = rowData;
+        if (dateColIndex >= 0) {
+          // Sort by date for chronological trend analysis
+          sortedRowData = [...rowData].sort((a, b) => a.dateValue.localeCompare(b.dateValue));
+        }
+        const sortedVals = sortedRowData.map(r => r.value);
+        const midpoint = Math.floor(sortedVals.length / 2);
+        const firstHalf = sortedVals.slice(0, midpoint);
+        const secondHalf = sortedVals.slice(midpoint);
         const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
         const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-        const percentChange = ((secondAvg - firstAvg) / firstAvg) * 100;
+        const percentChange = firstAvg > 0 ? ((secondAvg - firstAvg) / firstAvg) * 100 : 0;
 
-        if (Math.abs(percentChange) > 10) { // Only report significant trends
+        if (Math.abs(percentChange) > 10) {
+          const dir = percentChange > 0 ? 'increasing' : 'decreasing';
+          const changePct = Math.abs(percentChange);
           insights.trends.push({
             metric: col.name,
-            direction: percentChange > 0 ? 'increasing' : 'decreasing',
-            percentChange: Math.abs(percentChange),
+            direction: dir,
+            percentChange: changePct,
             type: col.type,
-            message: `${col.name} is ${percentChange > 0 ? 'increasing' : 'decreasing'} by ${Math.abs(percentChange).toFixed(1)}% over time`
+            severity: changePct > 30 ? 'high' : changePct > 20 ? 'medium' : 'low',
+            confidence: values.length >= 50 ? 'high' : values.length >= 10 ? 'medium' : 'low',
+            evidence: [
+              `First half avg: ${fmtVal(firstAvg)}`,
+              `Second half avg: ${fmtVal(secondAvg)}`,
+              `Change: ${percentChange >= 0 ? '+' : ''}${percentChange.toFixed(1)}%`,
+              `Based on ${values.length} data points`
+            ],
+            message: `${col.name} is ${dir} by ${changePct.toFixed(1)}% over the period`
           });
         }
       }
 
       // Detect outliers for data quality
-      rowData.forEach(item => {
-        if (item.value > mean + 3 * stdDev || item.value < mean - 3 * stdDev) {
-          insights.dataQuality.outliers.push({
-            metric: col.name,
-            value: item.value,
-            rowNumber: item.rowIndex,
-            type: col.type
-          });
-        }
-      });
+      if (stdDev > 0) {
+        rowData.forEach(item => {
+          if (item.value > mean + 3 * stdDev || item.value < mean - 3 * stdDev) {
+            insights.dataQuality.outliers.push({
+              metric: col.name,
+              value: item.value,
+              label: item.label || `Row ${item.rowIndex}`,
+              type: col.type
+            });
+          }
+        });
+      }
     });
 
-    // Calculate correlations between metrics (if we have multiple metrics)
+    // Cap performers to avoid overwhelming execs
+    insights.topPerformers = insights.topPerformers.sort((a: any, b: any) => b.value - a.value).slice(0, 6);
+    insights.bottomPerformers = insights.bottomPerformers.sort((a: any, b: any) => a.value - b.value).slice(0, 6);
+    insights.anomalies = insights.anomalies.sort((a: any, b: any) => b.deviation - a.deviation).slice(0, 8);
+
+    // --- Correlations ---
     if (detectedColumns.length >= 2) {
       for (let i = 0; i < detectedColumns.length; i++) {
         for (let j = i + 1; j < detectedColumns.length; j++) {
@@ -13293,7 +13520,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const values1: number[] = [];
           const values2: number[] = [];
 
-          // Collect paired values
           dataRows.forEach(row => {
             const val1 = row[col1.index];
             const val2 = row[col2.index];
@@ -13310,7 +13536,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           if (values1.length >= 5) {
-            // Calculate Pearson correlation coefficient
             const mean1 = values1.reduce((a, b) => a + b, 0) / values1.length;
             const mean2 = values2.reduce((a, b) => a + b, 0) / values2.length;
 
@@ -13326,16 +13551,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
               denom2 += diff2 * diff2;
             }
 
-            const correlation = numerator / Math.sqrt(denom1 * denom2);
+            const denomProduct = Math.sqrt(denom1 * denom2);
+            if (denomProduct === 0) continue;
+            const correlation = numerator / denomProduct;
 
-            if (Math.abs(correlation) > 0.5) { // Only report meaningful correlations
+            if (Math.abs(correlation) > 0.5) {
+              const strength = Math.abs(correlation) > 0.8 ? 'strong' : 'moderate';
+              const dir = correlation > 0 ? 'positive' : 'negative';
               insights.correlations.push({
                 metric1: col1.name,
                 metric2: col2.name,
                 correlation: correlation,
-                strength: Math.abs(correlation) > 0.8 ? 'strong' : 'moderate',
-                direction: correlation > 0 ? 'positive' : 'negative',
-                message: `${col1.name} and ${col2.name} have a ${Math.abs(correlation) > 0.8 ? 'strong' : 'moderate'} ${correlation > 0 ? 'positive' : 'negative'} correlation (${(correlation * 100).toFixed(0)}%)`
+                strength: strength,
+                direction: dir,
+                severity: Math.abs(correlation) > 0.8 ? 'medium' : 'low',
+                confidence: values1.length >= 50 ? 'high' : values1.length >= 10 ? 'medium' : 'low',
+                evidence: [
+                  `Pearson r = ${correlation.toFixed(2)} (${strength} ${dir})`,
+                  `${values1.length} paired observations`
+                ],
+                message: `${col1.name} and ${col2.name} have a ${strength} ${dir} correlation (r=${correlation.toFixed(2)})`
               });
             }
           }
@@ -13343,15 +13578,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
 
-    // Generate actionable recommendations
+    // --- Actionable recommendations (with labels, not row numbers) ---
     insights.topPerformers.slice(0, 5).forEach((perf: any) => {
-      if (perf.percentOfTotal > 20) {
+      if (perf.percentOfTotal > 15) {
         insights.recommendations.push({
           type: 'opportunity',
           priority: 'high',
+          severity: 'medium',
           metric: perf.metric,
-          message: `Row ${perf.rowNumber} accounts for ${perf.percentOfTotal.toFixed(1)}% of total ${perf.metric}. Consider analyzing what makes this row successful.`,
-          action: 'Investigate high performer'
+          evidence: perf.evidence,
+          message: `${perf.label} accounts for ${perf.percentOfTotal.toFixed(1)}% of total ${perf.metric}. Analyze what drives this performance and replicate across other areas.`,
+          action: 'Investigate and replicate high performer'
         });
       }
     });
@@ -13361,16 +13598,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         insights.recommendations.push({
           type: 'alert',
           priority: 'high',
+          severity: 'high',
           metric: trend.metric,
-          message: `${trend.metric} has decreased by ${trend.percentChange.toFixed(1)}% over time. Immediate attention may be required.`,
-          action: 'Review declining metric'
+          evidence: trend.evidence,
+          message: `${trend.metric} has decreased by ${trend.percentChange.toFixed(1)}% over the period. This decline requires immediate attention to prevent further erosion.`,
+          action: 'Investigate root cause and take corrective action'
         });
       } else if (trend.direction === 'increasing' && trend.percentChange > 20) {
         insights.recommendations.push({
           type: 'opportunity',
           priority: 'medium',
+          severity: 'low',
           metric: trend.metric,
-          message: `${trend.metric} is growing by ${trend.percentChange.toFixed(1)}%. Consider scaling this success.`,
+          evidence: trend.evidence,
+          message: `${trend.metric} is growing by ${trend.percentChange.toFixed(1)}%. Consider increasing investment to accelerate this momentum.`,
           action: 'Scale successful strategy'
         });
       }
@@ -13380,17 +13621,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       insights.recommendations.push({
         type: 'warning',
         priority: 'medium',
+        severity: 'medium',
         metric: anomaly.metric,
-        message: `Row ${anomaly.rowNumber} has an unusual ${anomaly.metric} value. Verify data accuracy.`,
-        action: 'Verify data point'
+        evidence: anomaly.evidence,
+        message: `${anomaly.label} has an unusual ${anomaly.metric} value (${anomaly.deviation.toFixed(1)}x from average). Verify data accuracy and investigate the cause.`,
+        action: 'Verify data point and investigate'
       });
     });
 
-    // Data quality metrics
-    insights.dataQuality.completeness = ((totalDataPoints - missingCount) / totalDataPoints) * 100;
+    // --- Data quality ---
+    insights.dataQuality.completeness = totalDataPoints > 0
+      ? Math.round(((totalDataPoints - missingCount) / totalDataPoints) * 1000) / 10
+      : 0;
     insights.dataQuality.missingValues = missingCount;
 
-    console.log(`💡 Generated ${insights.recommendations.length} recommendations, ${insights.anomalies.length} anomalies, ${insights.correlations.length} correlations`);
+    // --- Summary counts ---
+    const allInsightItems = [
+      ...insights.topPerformers, ...insights.bottomPerformers,
+      ...insights.anomalies, ...insights.trends,
+      ...insights.correlations, ...insights.recommendations
+    ];
+    insights.summary = {
+      total: allInsightItems.length,
+      high: allInsightItems.filter((i: any) => i.severity === 'high').length,
+      medium: allInsightItems.filter((i: any) => i.severity === 'medium').length,
+      low: allInsightItems.filter((i: any) => i.severity === 'low').length
+    };
+
+    console.log(`💡 Generated ${insights.summary.total} insights (${insights.summary.high} high, ${insights.summary.medium} medium, ${insights.summary.low} low)`);
 
     return insights;
   }
@@ -13582,9 +13840,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Per-sheet numeric column detection (mirrors aggregated logic below)
             const perSheetMetrics: Record<string, number> = {};
             const perSheetDetectedColumns: Array<{ name: string, index: number, type: string, total: number }> = [];
+            const dateColumnPattern = /^(date|week|day|time|timestamp|period|month|year)/i;
             headers.forEach((header: string, colIndex: number) => {
               const headerStr = String(header || '').trim();
-              if (!headerStr) return;
+              if (!headerStr || dateColumnPattern.test(headerStr)) return;
               let total = 0;
               let count = 0;
               let hasCurrency = false;
@@ -13613,6 +13872,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             });
 
+            // Per-sheet categorical column detection
+            const numericColNames = new Set(perSheetDetectedColumns.map((c: any) => c.name));
+            const datePatterns = /^(date|week|day|time|timestamp|period|month|year)/i;
+            const perSheetCategoricalColumns: Array<{ name: string, index: number, uniqueCount: number, topValues: Array<{ value: string, count: number, percentage: number }> }> = [];
+
+            headers.forEach((header: string, colIndex: number) => {
+              const headerStr = String(header || '').trim();
+              if (!headerStr || numericColNames.has(headerStr) || datePatterns.test(headerStr)) return;
+
+              const freq: Record<string, number> = {};
+              let nonEmpty = 0;
+              for (const row of filteredRows) {
+                const cellValue = row[colIndex];
+                if (!cellValue) continue;
+                const val = String(cellValue).trim();
+                if (!val) continue;
+                freq[val] = (freq[val] || 0) + 1;
+                nonEmpty++;
+              }
+
+              const uniqueCount = Object.keys(freq).length;
+              if (uniqueCount === 0 || uniqueCount > 20 || uniqueCount === filteredRows.length) return;
+
+              const topValues = Object.entries(freq)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10)
+                .map(([value, count]) => ({
+                  value,
+                  count,
+                  percentage: filteredRows.length > 0 ? Math.round((count / filteredRows.length) * 1000) / 10 : 0
+                }));
+
+              perSheetCategoricalColumns.push({ name: headerStr, index: colIndex, uniqueCount, topValues });
+            });
+
             aggregatedData.sheetBreakdown.push({
               spreadsheetId: conn.spreadsheetId,
               spreadsheetName: conn.spreadsheetName,
@@ -13621,7 +13915,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalRows: rows.length,
               headers: headers as string[],
               metrics: perSheetMetrics,
-              detectedColumns: perSheetDetectedColumns
+              detectedColumns: perSheetDetectedColumns,
+              categoricalColumns: perSheetCategoricalColumns
             });
           } catch (error) {
             console.error(`[Combined View] Error processing connection ${conn.id}:`, error);
@@ -13635,9 +13930,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const detectedColumns: Array<{ name: string, index: number, type: string, total: number }> = [];
 
         // Aggregate numeric columns
+        const aggDatePattern = /^(date|week|day|time|timestamp|period|month|year)/i;
         headers.forEach((header: string, index: number) => {
           const headerStr = String(header || '').trim();
-          if (!headerStr) return;
+          if (!headerStr || aggDatePattern.test(headerStr)) return;
 
           let total = 0;
           let count = 0;
@@ -14203,10 +14499,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // First pass: Identify which columns contain numeric data
         const numericColumns: Array<{ name: string, index: number, type: 'currency' | 'integer' | 'decimal', samples: number[] }> = [];
+        const singleSheetDatePattern = /^(date|week|day|time|timestamp|period|month|year)/i;
 
         headers.forEach((header: string, index: number) => {
           const headerStr = String(header || '').trim();
-          if (!headerStr) return; // Skip empty headers
+          if (!headerStr || singleSheetDatePattern.test(headerStr)) return; // Skip empty headers and date columns
 
           // Sample first 5 filtered data rows to determine if column is numeric
           const samples: number[] = [];
@@ -14277,12 +14574,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         devLog(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rowsForSummary.length} filtered rows (campaign: "${campaignName}")`);
       }
 
+      // Categorical column detection for single-sheet view
+      const categoricalColumns: Array<{ name: string, index: number, uniqueCount: number, topValues: Array<{ value: string, count: number, percentage: number }> }> = [];
+      if (rowsForSummary.length > 0 && headers.length > 0) {
+        const numericColNames = new Set(campaignData.detectedColumns.map((c: any) => c.name));
+        const datePatterns = /^(date|week|day|time|timestamp|period|month|year)/i;
+
+        headers.forEach((header: string, colIndex: number) => {
+          const headerStr = String(header || '').trim();
+          if (!headerStr || numericColNames.has(headerStr) || datePatterns.test(headerStr)) return;
+
+          const freq: Record<string, number> = {};
+          for (const row of rowsForSummary) {
+            const cellValue = row[colIndex];
+            if (!cellValue) continue;
+            const val = String(cellValue).trim();
+            if (!val) continue;
+            freq[val] = (freq[val] || 0) + 1;
+          }
+
+          const uniqueCount = Object.keys(freq).length;
+          if (uniqueCount === 0 || uniqueCount > 20 || uniqueCount === rowsForSummary.length) return;
+
+          const topValues = Object.entries(freq)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([value, count]) => ({
+              value,
+              count,
+              percentage: rowsForSummary.length > 0 ? Math.round((count / rowsForSummary.length) * 1000) / 10 : 0
+            }));
+
+          categoricalColumns.push({ name: headerStr, index: colIndex, uniqueCount, topValues });
+        });
+      }
+
       // Generate intelligent insights from the filtered data
       let insights;
       try {
         // Use filtered rows + header for insights generation
         const rowsForInsights = [headers, ...rowsForSummary];
-        insights = generateInsights(rowsForInsights, campaignData.detectedColumns, campaignData.metrics);
+        insights = generateInsights(rowsForInsights, campaignData.detectedColumns, campaignData.metrics, categoricalColumns, headers);
       } catch (insightsError) {
         console.error('[Google Sheets Data] Error generating insights:', insightsError);
         // Don't fail the request if insights generation fails
@@ -14297,7 +14629,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             completeness: 0,
             missingValues: 0,
             outliers: []
-          }
+          },
+          trendSeries: [],
+          trendMetrics: [],
+          dateColumn: null,
+          labelColumn: null,
+          totalDataPoints: 0,
+          dateRange: null,
+          summary: { total: 0, high: 0, medium: 0, low: 0 }
         };
       }
 
@@ -14892,6 +15231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         spreadsheetName: connection.spreadsheetName || connection.spreadsheetId,
+        sheetName: connection.sheetName || null,
         spreadsheetId: connection.spreadsheetId,
         totalRows: campaignData.totalRows,
         filteredRows: campaignData.filteredRows,
@@ -14900,6 +15240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         summary: {
           metrics: campaignData.metrics,
           detectedColumns: campaignData.detectedColumns,
+          categoricalColumns: categoricalColumns,
           // Legacy fields for backward compatibility
           totalImpressions: campaignData.metrics['Impressions'] || campaignData.metrics['impressions'] || 0,
           totalClicks: campaignData.metrics['Clicks'] || campaignData.metrics['clicks'] || 0,

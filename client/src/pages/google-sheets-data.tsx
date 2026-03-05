@@ -18,6 +18,11 @@ import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { GoogleSheetsKpiModal } from "@/pages/google-sheets-analytics/GoogleSheetsKpiModal";
+import { GoogleSheetsBenchmarkModal } from "@/pages/google-sheets-analytics/GoogleSheetsBenchmarkModal";
+import { GoogleSheetsReportModal } from "@/pages/google-sheets-analytics/GoogleSheetsReportModal";
+import { Edit2, BarChart3, Clock, Mail, Download } from "lucide-react";
 
 interface Campaign {
   id: string;
@@ -434,6 +439,298 @@ export default function GoogleSheetsData() {
     }
   }, [sheetsData]);
 
+  // ═══ KPI State ═══
+  const [isKpiModalOpen, setIsKpiModalOpen] = useState(false);
+  const [editingKpi, setEditingKpi] = useState<any>(null);
+  const [kpiForm, setKpiForm] = useState({
+    name: "", unit: "", description: "", metric: "", targetValue: "", currentValue: "",
+    priority: "high", status: "active", timeframe: "monthly",
+    alertsEnabled: false, emailNotifications: false, alertFrequency: "daily",
+    alertThreshold: "", alertCondition: "below", emailRecipients: "",
+  });
+
+  // ═══ Benchmark State ═══
+  const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
+  const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
+  const [benchmarkForm, setBenchmarkForm] = useState({
+    name: "", unit: "", description: "", metric: "", benchmarkValue: "", currentValue: "",
+    alertsEnabled: false, emailNotifications: false, alertFrequency: "daily",
+    alertThreshold: "", alertCondition: "below", emailRecipients: "",
+  });
+
+  // ═══ Report State ═══
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
+  const [reportForm, setReportForm] = useState({
+    name: "", description: "", reportType: "", scheduleEnabled: false,
+    scheduleFrequency: "weekly", scheduleDayOfWeek: "monday", scheduleDayOfMonth: "first",
+    quarterTiming: "end", scheduleTime: "9:00 AM", emailRecipients: "", status: "draft",
+  });
+  const [reportFormErrors, setReportFormErrors] = useState<any>({});
+  const [customReportConfig, setCustomReportConfig] = useState<any>({
+    selectedMetrics: [], kpis: [], benchmarks: [],
+  });
+
+  // ═══ KPI Queries ═══
+  const { data: kpisData, isLoading: kpisLoading, isError: kpisIsError, error: kpisError, refetch: refetchKpis } = useQuery({
+    queryKey: ['/api/platforms/google_sheets/kpis', campaignId],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/google_sheets/kpis?campaignId=${campaignId}`);
+      if (!response.ok) throw new Error('Failed to fetch KPIs');
+      return response.json();
+    },
+    enabled: !!campaignId,
+  });
+
+  // ═══ Benchmark Queries ═══
+  const { data: benchmarksData, isLoading: benchmarksLoading, isError: benchmarksIsError, error: benchmarksError, refetch: refetchBenchmarks } = useQuery({
+    queryKey: ['/api/platforms/google_sheets/benchmarks', campaignId],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/google_sheets/benchmarks?campaignId=${campaignId}`);
+      if (!response.ok) throw new Error('Failed to fetch benchmarks');
+      return response.json();
+    },
+    enabled: !!campaignId,
+  });
+
+  // ═══ Report Queries ═══
+  const { data: reportsData, isLoading: reportsLoading, isError: reportsIsError, error: reportsError, refetch: refetchReports } = useQuery({
+    queryKey: ['/api/platforms/google_sheets/reports', campaignId],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/google_sheets/reports?campaignId=${campaignId}`);
+      if (!response.ok) throw new Error('Failed to fetch reports');
+      return response.json();
+    },
+    enabled: !!campaignId,
+  });
+
+  // ═══ KPI Mutations ═══
+  const createKpiMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest('POST', '/api/platforms/google_sheets/kpis', data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_sheets/kpis', campaignId] });
+      toast({ title: "KPI Created", description: "Your KPI has been created successfully." });
+      setIsKpiModalOpen(false);
+      setEditingKpi(null);
+      setKpiForm({ name: "", unit: "", description: "", metric: "", targetValue: "", currentValue: "", priority: "high", status: "active", timeframe: "monthly", alertsEnabled: false, emailNotifications: false, alertFrequency: "daily", alertThreshold: "", alertCondition: "below", emailRecipients: "" });
+    },
+    onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to create KPI", variant: "destructive" }); },
+  });
+
+  const updateKpiMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest('PATCH', `/api/platforms/google_sheets/kpis/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_sheets/kpis', campaignId] });
+      toast({ title: "KPI Updated", description: "Your KPI has been updated successfully." });
+      setIsKpiModalOpen(false);
+      setEditingKpi(null);
+    },
+    onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to update KPI", variant: "destructive" }); },
+  });
+
+  const deleteKpiMutation = useMutation({
+    mutationFn: async (kpiId: string) => {
+      const res = await apiRequest('DELETE', `/api/platforms/google_sheets/kpis/${kpiId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_sheets/kpis', campaignId] });
+      toast({ title: "KPI Deleted", description: "The KPI has been deleted successfully." });
+    },
+    onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to delete KPI", variant: "destructive" }); },
+  });
+
+  // ═══ Benchmark Mutations ═══
+  const createBenchmarkMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest('POST', '/api/platforms/google_sheets/benchmarks', data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_sheets/benchmarks', campaignId] });
+      toast({ title: "Benchmark Created", description: "Your benchmark has been created successfully." });
+      setIsBenchmarkModalOpen(false);
+      setEditingBenchmark(null);
+      setBenchmarkForm({ name: "", unit: "", description: "", metric: "", benchmarkValue: "", currentValue: "", alertsEnabled: false, emailNotifications: false, alertFrequency: "daily", alertThreshold: "", alertCondition: "below", emailRecipients: "" });
+    },
+    onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to create benchmark", variant: "destructive" }); },
+  });
+
+  const updateBenchmarkMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest('PUT', `/api/platforms/google_sheets/benchmarks/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_sheets/benchmarks', campaignId] });
+      toast({ title: "Benchmark Updated", description: "Your benchmark has been updated successfully." });
+      setIsBenchmarkModalOpen(false);
+      setEditingBenchmark(null);
+    },
+    onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to update benchmark", variant: "destructive" }); },
+  });
+
+  const deleteBenchmarkMutation = useMutation({
+    mutationFn: async (bmId: string) => {
+      const res = await apiRequest('DELETE', `/api/platforms/google_sheets/benchmarks/${bmId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_sheets/benchmarks', campaignId] });
+      toast({ title: "Benchmark Deleted", description: "The benchmark has been deleted successfully." });
+    },
+    onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to delete benchmark", variant: "destructive" }); },
+  });
+
+  // ═══ Report Mutations ═══
+  const createReportMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest('POST', '/api/platforms/google_sheets/reports', data);
+      return { data: await res.json(), reportData: data };
+    },
+    onSuccess: ({ reportData }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_sheets/reports', campaignId] });
+      if (reportData.scheduleEnabled && reportData.scheduleRecipients?.length > 0) {
+        toast({ title: "Report Created & Scheduled", description: `Report scheduled (${reportData.scheduleFrequency}) for ${reportData.scheduleRecipients.length} recipient(s).` });
+      } else {
+        toast({ title: "Report Created", description: "Your report has been created successfully." });
+      }
+      setIsReportModalOpen(false);
+      setEditingReportId(null);
+    },
+    onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to create report", variant: "destructive" }); },
+  });
+
+  const updateReportMutation = useMutation({
+    mutationFn: async ({ reportId, data }: { reportId: string; data: any }) => {
+      const res = await apiRequest('PATCH', `/api/platforms/google_sheets/reports/${reportId}`, data);
+      return { data: await res.json(), reportData: data };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_sheets/reports', campaignId] });
+      toast({ title: "Report Updated", description: "Your report has been updated successfully." });
+      setIsReportModalOpen(false);
+      setEditingReportId(null);
+    },
+    onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to update report", variant: "destructive" }); },
+  });
+
+  const deleteReportMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const res = await apiRequest('DELETE', `/api/platforms/google_sheets/reports/${reportId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_sheets/reports', campaignId] });
+      toast({ title: "Report Deleted", description: "The report has been deleted successfully." });
+    },
+    onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to delete report", variant: "destructive" }); },
+  });
+
+  // ═══ Handler Functions ═══
+  const handleCreateKpi = () => {
+    if (!kpiForm.name || !kpiForm.targetValue) {
+      toast({ title: "Required Fields", description: "Please fill in the KPI name and target value.", variant: "destructive" });
+      return;
+    }
+    if (kpiForm.alertsEnabled && !kpiForm.alertThreshold) {
+      toast({ title: "Alert Threshold Required", description: "Please set an alert threshold value.", variant: "destructive" });
+      return;
+    }
+    const payload: any = {
+      ...kpiForm, campaignId, platformType: "google_sheets",
+      targetValue: parseFloat(String(kpiForm.targetValue).replace(/,/g, '')),
+      currentValue: kpiForm.currentValue ? parseFloat(String(kpiForm.currentValue).replace(/,/g, '')) : 0,
+      alertThreshold: kpiForm.alertThreshold ? parseFloat(String(kpiForm.alertThreshold).replace(/,/g, '')) : null,
+      emailRecipients: kpiForm.emailRecipients ? kpiForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [],
+      metricKey: kpiForm.metric,
+    };
+    if (editingKpi) {
+      updateKpiMutation.mutate({ id: editingKpi.id, data: payload });
+    } else {
+      createKpiMutation.mutate(payload);
+    }
+  };
+
+  const handleCreateBenchmark = () => {
+    if (!benchmarkForm.name || !benchmarkForm.benchmarkValue) {
+      toast({ title: "Required Fields", description: "Please fill in the benchmark name and value.", variant: "destructive" });
+      return;
+    }
+    if (benchmarkForm.alertsEnabled && !benchmarkForm.alertThreshold) {
+      toast({ title: "Alert Threshold Required", description: "Please set an alert threshold value.", variant: "destructive" });
+      return;
+    }
+    const payload: any = {
+      ...benchmarkForm, campaignId, platformType: "google_sheets",
+      benchmarkValue: parseFloat(String(benchmarkForm.benchmarkValue).replace(/,/g, '')),
+      currentValue: benchmarkForm.currentValue ? parseFloat(String(benchmarkForm.currentValue).replace(/,/g, '')) : 0,
+      alertThreshold: benchmarkForm.alertThreshold ? parseFloat(String(benchmarkForm.alertThreshold).replace(/,/g, '')) : null,
+      emailRecipients: benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [],
+      metricKey: benchmarkForm.metric,
+    };
+    if (editingBenchmark) {
+      updateBenchmarkMutation.mutate({ id: editingBenchmark.id, data: payload });
+    } else {
+      createBenchmarkMutation.mutate(payload);
+    }
+  };
+
+  const handleReportTypeSelect = (type: string) => {
+    const names: Record<string, string> = {
+      overview: "Google Sheets Overview Report", kpis: "KPIs Report",
+      benchmarks: "Benchmarks Report", insights: "Insights Report", custom: "Custom Report",
+    };
+    setReportForm({ ...reportForm, reportType: type, name: names[type] || "Report" });
+  };
+
+  const handleCreateReport = () => {
+    if (reportForm.scheduleEnabled && !reportForm.emailRecipients?.trim()) {
+      setReportFormErrors({ emailRecipients: "Email recipients are required for scheduled reports" });
+      return;
+    }
+    const recipients = reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [];
+    createReportMutation.mutate({
+      ...reportForm, campaignId, platformType: "google_sheets",
+      scheduleRecipients: recipients,
+    });
+  };
+
+  const handleUpdateReport = () => {
+    if (!editingReportId) return;
+    const recipients = reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [];
+    updateReportMutation.mutate({
+      reportId: editingReportId,
+      data: { ...reportForm, scheduleRecipients: recipients },
+    });
+  };
+
+  const handleCustomReport = () => {
+    if (reportForm.scheduleEnabled && !reportForm.emailRecipients?.trim()) {
+      setReportFormErrors({ emailRecipients: "Email recipients are required for scheduled reports" });
+      return;
+    }
+    const recipients = reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [];
+    createReportMutation.mutate({
+      ...reportForm, campaignId, platformType: "google_sheets",
+      reportType: "custom", configuration: customReportConfig,
+      scheduleRecipients: recipients,
+    });
+  };
+
+  const formatMetricValue = (value: number, type?: string): string => {
+    if (type === 'currency') return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (type === 'decimal') return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return value.toLocaleString();
+  };
+
   if (campaignLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -715,7 +1012,12 @@ export default function GoogleSheetsData() {
               </div>
               <Tabs defaultValue="data" className="space-y-6">
                 <TabsList>
-                  <TabsTrigger value="data">Raw Data</TabsTrigger>
+                  <TabsTrigger value="data">Overview</TabsTrigger>
+                  <TabsTrigger value="summary">Summary</TabsTrigger>
+                  <TabsTrigger value="kpis">KPIs</TabsTrigger>
+                  <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
+                  <TabsTrigger value="insights">Insights</TabsTrigger>
+                  <TabsTrigger value="reports">Reports</TabsTrigger>
                   <TabsTrigger value="connections">Connection Details</TabsTrigger>
                 </TabsList>
 
@@ -770,7 +1072,12 @@ export default function GoogleSheetsData() {
                 )}
 
                 <TabsList>
-                  <TabsTrigger value="data">Raw Data</TabsTrigger>
+                  <TabsTrigger value="data">Overview</TabsTrigger>
+                  <TabsTrigger value="summary">Summary</TabsTrigger>
+                  <TabsTrigger value="kpis">KPIs</TabsTrigger>
+                  <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
+                  <TabsTrigger value="insights">Insights</TabsTrigger>
+                  <TabsTrigger value="reports">Reports</TabsTrigger>
                   <TabsTrigger value="connections">Connection Details</TabsTrigger>
                 </TabsList>
 
@@ -827,6 +1134,764 @@ export default function GoogleSheetsData() {
                       )}
                     </CardContent>
                   </Card>
+                </TabsContent>
+
+                {/* ═══ SUMMARY TAB ═══ */}
+                <TabsContent value="summary" className="mt-6">
+                  <div className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Metric Summary</CardTitle>
+                        <CardDescription>
+                          {isCombinedView ? 'Aggregated metrics across all connected sheets' : 'Key metrics detected in this sheet'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {sheetsData?.summary?.detectedColumns && sheetsData.summary.detectedColumns.length > 0 ? (
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            {sheetsData.summary.detectedColumns.map((col) => (
+                              <div key={col.name} className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 truncate" title={col.name}>{col.name}</p>
+                                <p className="text-xl font-bold text-slate-900 dark:text-white">
+                                  {col.type === 'currency'
+                                    ? `$${col.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                    : col.type === 'decimal'
+                                    ? col.total.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                    : col.total.toLocaleString()}
+                                </p>
+                                <Badge variant="outline" className="text-[10px] mt-1">
+                                  {col.type}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                            <p className="text-slate-600 dark:text-slate-400">No numeric columns detected</p>
+                            <p className="text-sm text-slate-500 mt-1">Map columns in Connection Details to see metrics here</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Per-tab breakdown — only in combined view */}
+                    {isCombinedView && sheetsData?.sheetBreakdown && sheetsData.sheetBreakdown.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Per-Sheet Breakdown</CardTitle>
+                          <CardDescription>Contribution from each connected sheet</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b">
+                                  <th className="text-left p-3 font-medium text-slate-600 dark:text-slate-400">Sheet</th>
+                                  <th className="text-right p-3 font-medium text-slate-600 dark:text-slate-400">Rows</th>
+                                  {sheetsData.summary?.detectedColumns?.map((col) => (
+                                    <th key={col.name} className="text-right p-3 font-medium text-slate-600 dark:text-slate-400">{col.name}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sheetsData.sheetBreakdown.map((sheet: any, idx: number) => (
+                                  <tr key={idx} className="border-b last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                    <td className="p-3 font-medium text-slate-900 dark:text-white">
+                                      {sheet.sheetName || sheet.spreadsheetName || `Sheet ${idx + 1}`}
+                                    </td>
+                                    <td className="p-3 text-right text-slate-600 dark:text-slate-400">{(sheet.rowCount || 0).toLocaleString()}</td>
+                                    {sheetsData.summary?.detectedColumns?.map((col) => (
+                                      <td key={col.name} className="p-3 text-right text-slate-600 dark:text-slate-400">
+                                        {col.type === 'currency'
+                                          ? `$${(sheet.metrics?.[col.name] || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                          : (sheet.metrics?.[col.name] || 0).toLocaleString()}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* ═══ KPIs TAB ═══ */}
+                <TabsContent value="kpis" className="mt-6 space-y-6">
+                  {kpisLoading ? (
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    </div>
+                  ) : kpisIsError ? (
+                    <Card>
+                      <CardContent className="text-center py-12">
+                        <AlertCircle className="w-12 h-12 mx-auto text-red-400 mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load KPIs</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mb-4">{(kpisError as any)?.message || "An error occurred."}</p>
+                        <Button variant="outline" onClick={() => void refetchKpis()}>Retry</Button>
+                      </CardContent>
+                    </Card>
+                  ) : kpisData && (kpisData as any[]).length > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Track your KPI targets against your Google Sheets data
+                          </p>
+                        </div>
+                        <Button onClick={() => setIsKpiModalOpen(true)} variant="outline" size="sm">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add KPI
+                        </Button>
+                      </div>
+
+                      <div className="grid gap-6 lg:grid-cols-2">
+                        {(kpisData as any[]).map((kpi: any) => {
+                          const currentVal = sheetsData?.summary?.metrics?.[kpi.metric || kpi.metricKey] ?? parseFloat(kpi.currentValue || '0');
+                          const targetVal = parseFloat(kpi.targetValue || '0');
+                          const pct = targetVal > 0 ? Math.min((currentVal / targetVal) * 100, 100) : 0;
+                          const col = sheetsData?.summary?.detectedColumns?.find((c: any) => c.name === (kpi.metric || kpi.metricKey));
+                          return (
+                            <Card key={kpi.id}>
+                              <CardHeader className="pb-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <CardTitle className="text-lg">{kpi.name}</CardTitle>
+                                      {kpi.metric && (
+                                        <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono text-xs">
+                                          {kpi.metric}
+                                        </Badge>
+                                      )}
+                                      {kpi.alertsEnabled && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
+                                    </div>
+                                    {kpi.description && (
+                                      <CardDescription className="text-sm">{kpi.description}</CardDescription>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingKpi(kpi);
+                                        setKpiForm({
+                                          name: kpi.name || "", unit: kpi.unit || "", description: kpi.description || "",
+                                          metric: kpi.metric || kpi.metricKey || "", targetValue: String(kpi.targetValue || ""),
+                                          currentValue: String(currentVal), priority: kpi.priority || "high",
+                                          status: kpi.status || "active", timeframe: kpi.timeframe || "monthly",
+                                          alertsEnabled: !!kpi.alertsEnabled, emailNotifications: !!kpi.emailNotifications,
+                                          alertFrequency: kpi.alertFrequency || "daily",
+                                          alertThreshold: kpi.alertThreshold ? String(kpi.alertThreshold) : "",
+                                          alertCondition: kpi.alertCondition || "below",
+                                          emailRecipients: Array.isArray(kpi.emailRecipients) ? kpi.emailRecipients.join(', ') : (kpi.emailRecipients || ""),
+                                        });
+                                        setIsKpiModalOpen(true);
+                                      }}
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700">
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Delete KPI</AlertDialogTitle>
+                                          <AlertDialogDescription>Are you sure you want to delete "{kpi.name}"? This action cannot be undone.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteKpiMutation.mutate(kpi.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-slate-600 dark:text-slate-400">Current: <span className="font-semibold text-slate-900 dark:text-white">{formatMetricValue(currentVal, col?.type)}</span></span>
+                                    <span className="text-slate-600 dark:text-slate-400">Target: <span className="font-semibold text-slate-900 dark:text-white">{formatMetricValue(targetVal, col?.type)}{kpi.unit ? ` ${kpi.unit}` : ''}</span></span>
+                                  </div>
+                                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
+                                    <div
+                                      className={`h-3 rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : pct >= 75 ? 'bg-blue-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-xs text-slate-500">{pct.toFixed(1)}% of target</span>
+                                    <Badge variant="outline" className={pct >= 100 ? 'bg-green-50 text-green-700 border-green-200' : pct >= 75 ? 'bg-blue-50 text-blue-700 border-blue-200' : pct >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-700 border-red-200'}>
+                                      {pct >= 100 ? 'On Target' : pct >= 75 ? 'Near Target' : pct >= 50 ? 'Below Target' : 'At Risk'}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <Card>
+                      <CardContent className="text-center py-12">
+                        <Target className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No KPIs Yet</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mb-4">
+                          Set targets and track KPIs based on your Google Sheets metrics.
+                        </p>
+                        <Button onClick={() => setIsKpiModalOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Your First KPI
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                {/* ═══ BENCHMARKS TAB ═══ */}
+                <TabsContent value="benchmarks" className="mt-6 space-y-6">
+                  {benchmarksLoading ? (
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    </div>
+                  ) : benchmarksIsError ? (
+                    <Card>
+                      <CardContent className="text-center py-12">
+                        <AlertCircle className="w-12 h-12 mx-auto text-red-400 mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load Benchmarks</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mb-4">{(benchmarksError as any)?.message || "An error occurred."}</p>
+                        <Button variant="outline" onClick={() => void refetchBenchmarks()}>Retry</Button>
+                      </CardContent>
+                    </Card>
+                  ) : benchmarksData && (benchmarksData as any[]).length > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Benchmarks</h2>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Compare your actual metrics against custom benchmark values
+                          </p>
+                        </div>
+                        <Button onClick={() => setIsBenchmarkModalOpen(true)} variant="outline" size="sm">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Benchmark
+                        </Button>
+                      </div>
+
+                      <div className="grid gap-6 lg:grid-cols-2">
+                        {(benchmarksData as any[]).map((bm: any) => {
+                          const currentVal = sheetsData?.summary?.metrics?.[bm.metric || bm.metricKey] ?? parseFloat(bm.currentValue || '0');
+                          const benchmarkVal = parseFloat(bm.benchmarkValue || '0');
+                          const variance = benchmarkVal > 0 ? ((currentVal - benchmarkVal) / benchmarkVal) * 100 : 0;
+                          const isAbove = currentVal >= benchmarkVal;
+                          const col = sheetsData?.summary?.detectedColumns?.find((c: any) => c.name === (bm.metric || bm.metricKey));
+                          return (
+                            <Card key={bm.id}>
+                              <CardHeader className="pb-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <CardTitle className="text-lg">{bm.name}</CardTitle>
+                                      {bm.metric && (
+                                        <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono text-xs">
+                                          {bm.metric}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {bm.description && (
+                                      <CardDescription className="text-sm">{bm.description}</CardDescription>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingBenchmark(bm);
+                                        setBenchmarkForm({
+                                          name: bm.name || "", unit: bm.unit || "", description: bm.description || "",
+                                          metric: bm.metric || bm.metricKey || "",
+                                          benchmarkValue: String(bm.benchmarkValue || ""),
+                                          currentValue: String(currentVal),
+                                          alertsEnabled: !!bm.alertsEnabled, emailNotifications: !!bm.emailNotifications,
+                                          alertFrequency: bm.alertFrequency || "daily",
+                                          alertThreshold: bm.alertThreshold ? String(bm.alertThreshold) : "",
+                                          alertCondition: bm.alertCondition || "below",
+                                          emailRecipients: Array.isArray(bm.emailRecipients) ? bm.emailRecipients.join(', ') : (bm.emailRecipients || ""),
+                                        });
+                                        setIsBenchmarkModalOpen(true);
+                                      }}
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700">
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Delete Benchmark</AlertDialogTitle>
+                                          <AlertDialogDescription>Are you sure you want to delete "{bm.name}"? This action cannot be undone.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteBenchmarkMutation.mutate(bm.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  <div className="grid grid-cols-3 gap-4 text-center">
+                                    <div>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Actual</p>
+                                      <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatMetricValue(currentVal, col?.type)}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Benchmark</p>
+                                      <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatMetricValue(benchmarkVal, col?.type)}{bm.unit ? ` ${bm.unit}` : ''}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Variance</p>
+                                      <p className={`text-lg font-semibold ${isAbove ? 'text-green-600' : 'text-red-600'}`}>
+                                        {isAbove ? '+' : ''}{variance.toFixed(1)}%
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-center">
+                                    <Badge variant="outline" className={isAbove ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}>
+                                      {isAbove ? 'Above Benchmark' : 'Below Benchmark'}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <Card>
+                      <CardContent className="text-center py-12">
+                        <BarChart3 className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Benchmarks Yet</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mb-4">
+                          Compare your Google Sheets metrics against custom benchmark values.
+                        </p>
+                        <Button onClick={() => setIsBenchmarkModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Your First Benchmark
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                {/* ═══ INSIGHTS TAB ═══ */}
+                <TabsContent value="insights" className="mt-6">
+                  {isCombinedView ? (
+                    <Card>
+                      <CardContent className="text-center py-12">
+                        <Lightbulb className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Select an Individual Sheet</h3>
+                        <p className="text-slate-500 dark:text-slate-400">
+                          Insights are generated per-sheet. Use the dropdown above to select a specific sheet.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : sheetsData?.insights ? (
+                    <div className="space-y-6">
+                      {/* Data Quality */}
+                      {sheetsData.insights.dataQuality && (
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <CheckCircle2 className="w-5 h-5 text-green-600" />
+                              Data Quality
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-3 gap-4">
+                              <div>
+                                <p className="text-sm text-slate-500">Completeness</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-green-500 rounded-full"
+                                      style={{ width: `${sheetsData.insights.dataQuality.completeness}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium">{sheetsData.insights.dataQuality.completeness}%</span>
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-sm text-slate-500">Missing Values</p>
+                                <p className="text-lg font-bold text-slate-900 dark:text-white">{sheetsData.insights.dataQuality.missingValues}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-slate-500">Outliers</p>
+                                <p className="text-lg font-bold text-slate-900 dark:text-white">{sheetsData.insights.dataQuality.outliers?.length || 0}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Top Performers */}
+                      {sheetsData.insights.topPerformers?.length > 0 && (
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <TrendingUp className="w-5 h-5 text-green-600" />
+                              Top Performers
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {sheetsData.insights.topPerformers.map((tp, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{tp.metric}</p>
+                                    <p className="text-xs text-slate-500">Row {tp.rowNumber}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-green-700 dark:text-green-400">{tp.value.toLocaleString()}</p>
+                                    <p className="text-xs text-slate-500">{tp.percentOfTotal.toFixed(1)}% of total</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Bottom Performers */}
+                      {sheetsData.insights.bottomPerformers?.length > 0 && (
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <TrendingDown className="w-5 h-5 text-red-600" />
+                              Bottom Performers
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {sheetsData.insights.bottomPerformers.map((bp, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{bp.metric}</p>
+                                    <p className="text-xs text-slate-500">Row {bp.rowNumber}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-red-700 dark:text-red-400">{bp.value.toLocaleString()}</p>
+                                    <p className="text-xs text-slate-500">{bp.percentOfTotal.toFixed(1)}% of total</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Anomalies */}
+                      {sheetsData.insights.anomalies?.length > 0 && (
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <AlertTriangle className="w-5 h-5 text-amber-600" />
+                              Anomalies
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              {sheetsData.insights.anomalies.map((a, i) => (
+                                <div key={i} className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
+                                  <div className="flex items-start justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-900 dark:text-white">{a.metric}</p>
+                                      <p className="text-xs text-slate-500 mt-1">{a.message}</p>
+                                    </div>
+                                    <Badge variant="outline" className="text-xs text-amber-700 dark:text-amber-400">
+                                      {a.deviation.toFixed(1)}x {a.direction}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Trends */}
+                      {sheetsData.insights.trends?.length > 0 && (
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <TrendingUp className="w-5 h-5 text-blue-600" />
+                              Trends
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              {sheetsData.insights.trends.map((t, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                                  <div className="flex items-center gap-3">
+                                    {t.direction === 'up' ? (
+                                      <TrendingUp className="w-4 h-4 text-green-600" />
+                                    ) : (
+                                      <TrendingDown className="w-4 h-4 text-red-600" />
+                                    )}
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-900 dark:text-white">{t.metric}</p>
+                                      <p className="text-xs text-slate-500">{t.message}</p>
+                                    </div>
+                                  </div>
+                                  <Badge variant={t.direction === 'up' ? 'default' : 'destructive'} className="text-xs">
+                                    {t.direction === 'up' ? '+' : ''}{t.percentChange.toFixed(1)}%
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Correlations */}
+                      {sheetsData.insights.correlations?.length > 0 && (
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <Target className="w-5 h-5 text-purple-600" />
+                              Correlations
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              {sheetsData.insights.correlations.map((c, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                      {c.metric1} vs {c.metric2}
+                                    </p>
+                                    <p className="text-xs text-slate-500">{c.message}</p>
+                                  </div>
+                                  <Badge variant="outline" className={`text-xs ${
+                                    c.strength === 'strong' ? 'text-green-700 dark:text-green-400' :
+                                    c.strength === 'moderate' ? 'text-blue-700 dark:text-blue-400' :
+                                    'text-slate-500'
+                                  }`}>
+                                    {c.strength} ({c.correlation.toFixed(2)})
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Recommendations */}
+                      {sheetsData.insights.recommendations?.length > 0 && (
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <Lightbulb className="w-5 h-5 text-amber-500" />
+                              Recommendations
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              {sheetsData.insights.recommendations.map((r, i) => (
+                                <div key={i} className="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                                  <div className="flex items-start gap-3">
+                                    <Badge variant={r.priority === 'high' ? 'destructive' : r.priority === 'medium' ? 'default' : 'secondary'} className="text-xs shrink-0">
+                                      {r.priority}
+                                    </Badge>
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-900 dark:text-white">{r.message}</p>
+                                      <p className="text-xs text-slate-500 mt-1">{r.action}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Empty state when no insights */}
+                      {!sheetsData.insights.topPerformers?.length &&
+                       !sheetsData.insights.bottomPerformers?.length &&
+                       !sheetsData.insights.anomalies?.length &&
+                       !sheetsData.insights.trends?.length &&
+                       !sheetsData.insights.correlations?.length &&
+                       !sheetsData.insights.recommendations?.length && (
+                        <Card>
+                          <CardContent className="text-center py-12">
+                            <Lightbulb className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Insights Yet</h3>
+                            <p className="text-slate-500 dark:text-slate-400">
+                              Add more data to your sheet to generate insights.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  ) : (
+                    <Card>
+                      <CardContent className="text-center py-12">
+                        <Lightbulb className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Insights Available</h3>
+                        <p className="text-slate-500 dark:text-slate-400">
+                          Insights will appear here once your sheet data is analyzed.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                {/* ═══ REPORTS TAB ═══ */}
+                <TabsContent value="reports" className="mt-6 space-y-6">
+                  {reportsLoading ? (
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    </div>
+                  ) : reportsIsError ? (
+                    <Card>
+                      <CardContent className="text-center py-12">
+                        <AlertCircle className="w-12 h-12 mx-auto text-red-400 mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load Reports</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mb-4">{(reportsError as any)?.message || "An error occurred."}</p>
+                        <Button variant="outline" onClick={() => void refetchReports()}>Retry</Button>
+                      </CardContent>
+                    </Card>
+                  ) : reportsData && (reportsData as any[]).length > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Reports</h2>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Schedule and generate reports from your Google Sheets data
+                          </p>
+                        </div>
+                        <Button onClick={() => { setReportModalStep("standard"); setIsReportModalOpen(true); }} variant="outline" size="sm">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Report
+                        </Button>
+                      </div>
+
+                      <div className="grid gap-4">
+                        {(reportsData as any[]).map((report: any) => (
+                          <Card key={report.id}>
+                            <CardContent className="py-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-1">
+                                    <h3 className="font-semibold text-slate-900 dark:text-white">{report.name}</h3>
+                                    <Badge variant="outline" className="capitalize">{report.reportType || 'overview'}</Badge>
+                                    {report.scheduleEnabled && (
+                                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300">
+                                        <Clock className="w-3 h-3 mr-1" />
+                                        {report.scheduleFrequency}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {report.description && (
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">{report.description}</p>
+                                  )}
+                                  <div className="flex gap-4 mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                    {report.scheduleEnabled && report.scheduleRecipients && (
+                                      <span className="flex items-center gap-1">
+                                        <Mail className="w-3 h-3" />
+                                        {Array.isArray(report.scheduleRecipients) ? report.scheduleRecipients.length : 0} recipient(s)
+                                      </span>
+                                    )}
+                                    {report.createdAt && (
+                                      <span>Created {new Date(report.createdAt).toLocaleDateString()}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingReportId(report.id);
+                                      setReportForm({
+                                        name: report.name || "", description: report.description || "",
+                                        reportType: report.reportType || "overview",
+                                        scheduleEnabled: !!report.scheduleEnabled,
+                                        scheduleFrequency: report.scheduleFrequency || "weekly",
+                                        scheduleDayOfWeek: report.scheduleDayOfWeek || "monday",
+                                        scheduleDayOfMonth: report.scheduleDayOfMonth || "first",
+                                        quarterTiming: report.quarterTiming || "end",
+                                        scheduleTime: report.scheduleTime || "9:00 AM",
+                                        emailRecipients: Array.isArray(report.scheduleRecipients) ? report.scheduleRecipients.join(', ') : "",
+                                        status: report.status || "draft",
+                                      });
+                                      setReportModalStep(report.reportType === "custom" ? "custom" : "standard");
+                                      if (report.configuration) {
+                                        setCustomReportConfig(report.configuration);
+                                      }
+                                      setIsReportModalOpen(true);
+                                    }}
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700">
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Report</AlertDialogTitle>
+                                        <AlertDialogDescription>Are you sure you want to delete "{report.name}"? This action cannot be undone.</AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => deleteReportMutation.mutate(report.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <Card>
+                      <CardContent className="text-center py-12">
+                        <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Reports Yet</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mb-4">
+                          Schedule and generate reports from your Google Sheets data.
+                        </p>
+                        <Button onClick={() => { setReportModalStep("standard"); setIsReportModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Your First Report
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="connections" className="mt-6">
@@ -1039,6 +2104,59 @@ export default function GoogleSheetsData() {
               googleSheetsOnly={true}
             />
           )}
+
+          {/* ═══ KPI Modal ═══ */}
+          <GoogleSheetsKpiModal
+            isOpen={isKpiModalOpen}
+            setIsOpen={setIsKpiModalOpen}
+            editing={editingKpi}
+            setEditing={setEditingKpi}
+            form={kpiForm}
+            setForm={setKpiForm}
+            detectedColumns={sheetsData?.summary?.detectedColumns || []}
+            metrics={sheetsData?.summary?.metrics || {}}
+            toast={toast}
+            handleCreate={handleCreateKpi}
+          />
+
+          {/* ═══ Benchmark Modal ═══ */}
+          <GoogleSheetsBenchmarkModal
+            isOpen={isBenchmarkModalOpen}
+            setIsOpen={setIsBenchmarkModalOpen}
+            editing={editingBenchmark}
+            setEditing={setEditingBenchmark}
+            form={benchmarkForm}
+            setForm={setBenchmarkForm}
+            detectedColumns={sheetsData?.summary?.detectedColumns || []}
+            metrics={sheetsData?.summary?.metrics || {}}
+            toast={toast}
+            handleCreate={handleCreateBenchmark}
+          />
+
+          {/* ═══ Report Modal ═══ */}
+          <GoogleSheetsReportModal
+            isOpen={isReportModalOpen}
+            setIsOpen={setIsReportModalOpen}
+            modalStep={reportModalStep}
+            setModalStep={setReportModalStep}
+            editingId={editingReportId}
+            setEditingId={setEditingReportId}
+            form={reportForm}
+            setForm={setReportForm}
+            formErrors={reportFormErrors}
+            setFormErrors={setReportFormErrors}
+            customConfig={customReportConfig}
+            setCustomConfig={setCustomReportConfig}
+            detectedColumns={sheetsData?.summary?.detectedColumns || []}
+            kpisData={kpisData}
+            benchmarksData={benchmarksData}
+            handleTypeSelect={handleReportTypeSelect}
+            handleCreate={handleCreateReport}
+            handleUpdate={handleUpdateReport}
+            handleCustom={handleCustomReport}
+            createMutation={createReportMutation}
+            updateMutation={updateReportMutation}
+          />
         </main>
       </div>
     </div>

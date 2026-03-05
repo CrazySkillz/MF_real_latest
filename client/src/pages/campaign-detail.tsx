@@ -7015,69 +7015,218 @@ export default function CampaignDetail() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue & Spend Sources</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Manual, CSV, and Google Sheets revenue/spend entries</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Import revenue and spend data from CRMs, e-commerce, spreadsheets, and custom sources</p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setAddRevenueWizardOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Revenue Source
+                    Add Source
                   </Button>
                 </div>
 
-                {(dataSources?.revenueSources?.length || 0) + (dataSources?.spendSources?.length || 0) > 0 ? (
-                  <div className="space-y-2">
-                    {(dataSources?.revenueSources || []).filter((s: any) => s?.isActive !== false).map((source: any) => (
-                      <div key={source.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                            {source.sourceType === 'shopify' ? <SiShopify className="w-4 h-4 text-green-600" /> :
-                             source.sourceType === 'hubspot' ? <SiHubspot className="w-4 h-4 text-orange-500" /> :
-                             source.sourceType === 'salesforce' ? <SiSalesforce className="w-4 h-4 text-blue-500" /> :
-                             source.sourceType === 'google_sheets' ? <FileSpreadsheet className="w-4 h-4 text-green-600" /> :
-                             source.sourceType === 'csv' ? <FileText className="w-4 h-4 text-blue-500" /> :
-                             <DollarSign className="w-4 h-4 text-green-600" />}
+                {/* Revenue & Spend Platform Cards */}
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {/* HubSpot */}
+                  {(() => {
+                    const isConnected = dataSources?.crmConnections?.hubspot?.connected ||
+                      (dataSources?.revenueSources || []).some((s: any) => s?.sourceType === 'hubspot' && s?.isActive !== false);
+                    const revenueEntry = (dataSources?.revenueSources || []).find((s: any) => s?.sourceType === 'hubspot' && s?.isActive !== false);
+                    return (
+                      <Card className={`${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                              <SiHubspot className={`w-5 h-5 ${isConnected ? 'text-orange-500' : 'text-slate-400'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">HubSpot</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {isConnected ? 'Connected' : 'CRM revenue data'}
+                                {revenueEntry?.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(revenueEntry.lastRevenue))}` : ''}
+                              </p>
+                            </div>
+                            {isConnected ? (
+                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                            )}
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-900 dark:text-white">
-                              {source.sourceType === 'manual' ? 'Manual Entry' :
-                               source.sourceType === 'csv' ? 'CSV Upload' :
-                               source.sourceType === 'google_sheets' ? 'Google Sheets' :
-                               source.sourceType?.charAt(0).toUpperCase() + source.sourceType?.slice(1)}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {source.platformContext ? `${source.platformContext.toUpperCase()} context` : 'Revenue source'}
-                              {source.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(source.lastRevenue))}` : ''}
-                            </p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Salesforce */}
+                  {(() => {
+                    const isConnected = dataSources?.crmConnections?.salesforce?.connected ||
+                      (dataSources?.revenueSources || []).some((s: any) => s?.sourceType === 'salesforce' && s?.isActive !== false);
+                    const revenueEntry = (dataSources?.revenueSources || []).find((s: any) => s?.sourceType === 'salesforce' && s?.isActive !== false);
+                    return (
+                      <Card className={`${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                              <SiSalesforce className={`w-5 h-5 ${isConnected ? 'text-blue-500' : 'text-slate-400'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">Salesforce</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {isConnected ? 'Connected' : 'CRM revenue data'}
+                                {revenueEntry?.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(revenueEntry.lastRevenue))}` : ''}
+                              </p>
+                            </div>
+                            {isConnected ? (
+                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                            )}
                           </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Shopify */}
+                  {(() => {
+                    const isConnected = dataSources?.crmConnections?.shopify?.connected ||
+                      (dataSources?.revenueSources || []).some((s: any) => s?.sourceType === 'shopify' && s?.isActive !== false);
+                    const revenueEntry = (dataSources?.revenueSources || []).find((s: any) => s?.sourceType === 'shopify' && s?.isActive !== false);
+                    return (
+                      <Card className={`${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                              <SiShopify className={`w-5 h-5 ${isConnected ? 'text-green-600' : 'text-slate-400'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">Shopify</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {isConnected ? 'Connected' : 'E-commerce revenue data'}
+                                {revenueEntry?.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(revenueEntry.lastRevenue))}` : ''}
+                              </p>
+                            </div>
+                            {isConnected ? (
+                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Google Sheets (Revenue & Spend) */}
+                  {(() => {
+                    const gsRevenue = (dataSources?.revenueSources || []).filter((s: any) => s?.sourceType === 'google_sheets' && s?.isActive !== false);
+                    const gsSpend = (dataSources?.spendSources || []).filter((s: any) => s?.sourceType === 'google_sheets' && s?.isActive !== false);
+                    const isConnected = gsRevenue.length > 0 || gsSpend.length > 0;
+                    const totalRevenue = gsRevenue.reduce((sum: number, s: any) => sum + (Number(s.lastRevenue) || 0), 0);
+                    return (
+                      <Card className={`${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                              <FileSpreadsheet className={`w-5 h-5 ${isConnected ? 'text-green-600' : 'text-slate-400'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">Google Sheets</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {isConnected
+                                  ? `${gsRevenue.length > 0 ? 'Revenue' : ''}${gsRevenue.length > 0 && gsSpend.length > 0 ? ' & ' : ''}${gsSpend.length > 0 ? 'Spend' : ''} connected`
+                                  : 'Import revenue & spend data'}
+                                {totalRevenue > 0 ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalRevenue)}` : ''}
+                              </p>
+                            </div>
+                            {isConnected ? (
+                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Custom Integration (Revenue & Spend) */}
+                  {(() => {
+                    const isConnected = platformStatusMap.get("custom-integration")?.connected === true;
+                    return (
+                      <Card className={`${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                              <div className={`w-5 h-5 rounded bg-gradient-to-br ${isConnected ? 'from-purple-500 to-blue-500' : 'from-slate-400 to-slate-500'} flex items-center justify-center`}>
+                                <Plus className="w-3 h-3 text-white" />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">Custom Integration</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {isConnected ? 'Connected' : 'API-based revenue & spend data'}
+                              </p>
+                            </div>
+                            {isConnected ? (
+                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+                </div>
+
+                {/* Manual & CSV entries */}
+                {(() => {
+                  const manualCsvRevenue = (dataSources?.revenueSources || []).filter((s: any) =>
+                    s?.isActive !== false && (s?.sourceType === 'manual' || s?.sourceType === 'csv')
+                  );
+                  const manualCsvSpend = (dataSources?.spendSources || []).filter((s: any) =>
+                    s?.isActive !== false && (s?.sourceType === 'manual' || s?.sourceType === 'csv')
+                  );
+                  if (manualCsvRevenue.length === 0 && manualCsvSpend.length === 0) return null;
+                  return (
+                    <div className="space-y-2">
+                      {manualCsvRevenue.map((source: any) => (
+                        <div key={source.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                              {source.sourceType === 'csv' ? <FileText className="w-4 h-4 text-blue-500" /> : <DollarSign className="w-4 h-4 text-green-600" />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                {source.sourceType === 'manual' ? 'Manual Entry' : 'CSV Upload'}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                Revenue source
+                                {source.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(source.lastRevenue))}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="secondary" className="text-xs">Revenue</Badge>
                         </div>
-                        <Badge variant="secondary" className="text-xs">Revenue</Badge>
-                      </div>
-                    ))}
-                    {(dataSources?.spendSources || []).filter((s: any) => s?.isActive !== false).map((source: any) => (
-                      <div key={source.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                            <DollarSign className="w-4 h-4 text-blue-600" />
+                      ))}
+                      {manualCsvSpend.map((source: any) => (
+                        <div key={source.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                              {source.sourceType === 'csv' ? <FileText className="w-4 h-4 text-blue-500" /> : <DollarSign className="w-4 h-4 text-blue-600" />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                {source.sourceType === 'manual' ? 'Manual Spend' : 'CSV Spend Upload'}
+                              </p>
+                              <p className="text-xs text-slate-500">Spend source</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-900 dark:text-white">
-                              {source.sourceType === 'manual' ? 'Manual Spend' : source.sourceType?.charAt(0).toUpperCase() + source.sourceType?.slice(1)}
-                            </p>
-                            <p className="text-xs text-slate-500">Spend source</p>
-                          </div>
+                          <Badge variant="secondary" className="text-xs">Spend</Badge>
                         </div>
-                        <Badge variant="secondary" className="text-xs">Spend</Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <Card className="border-dashed">
-                    <CardContent className="py-6 text-center">
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        No manual revenue or spend sources configured. CRM revenue sources (HubSpot, Shopify, Salesforce) are managed in Connected Platforms above.
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Revenue Wizard Modal */}

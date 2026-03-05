@@ -1,6 +1,6 @@
 ﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation, setLocation } from "wouter";
-import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X, DollarSign, Eye, MousePointerClick, BarChart3, Hash } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -774,6 +774,67 @@ export default function GoogleSheetsData() {
     );
   }
 
+  // ═══ Summary Tab Helpers ═══
+  function formatSummaryValue(value: number, colType: string, colName: string): string {
+    const n = colName.toLowerCase();
+    if (n.includes('%') || n.includes('rate') || n.includes('ctr') || n.includes('cvr')) {
+      return value.toFixed(2) + '%';
+    }
+    if (n.includes('roas') || n.includes('return on')) {
+      return value.toFixed(2) + 'x';
+    }
+    const isCurrency = colType === 'currency' || n.includes('$') || n.includes('revenue')
+      || n.includes('spend') || n.includes('cost') || n.includes('budget')
+      || n.includes('cpc') || n.includes('cpm') || n.includes('cpa');
+    if (isCurrency) {
+      if (Math.abs(value) >= 1_000_000) return '$' + (value / 1_000_000).toFixed(1) + 'M';
+      if (Math.abs(value) >= 10_000) return '$' + (value / 1_000).toFixed(1) + 'K';
+      return '$' + value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    if (colType === 'integer') {
+      if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
+      if (value >= 10_000) return (value / 1_000).toFixed(1) + 'K';
+      return value.toLocaleString();
+    }
+    return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  function classifyColumns(cols: Array<{ name: string; index: number; type: string; total: number }>) {
+    const hero: typeof cols = [];
+    const supporting: typeof cols = [];
+    for (const col of cols) {
+      const n = col.name.toLowerCase();
+      const isPct = n.includes('%') || n.includes('rate') || n.includes('ctr') || n.includes('cvr');
+      const isRoas = n.includes('roas') || n.includes('return on');
+      const isCurrency = col.type === 'currency' || n.includes('$') || n.includes('revenue')
+        || n.includes('spend') || n.includes('cost') || n.includes('budget');
+      const isUtility = n.includes('days') || n.includes('month');
+      const isSmallCount = col.type === 'integer' && col.total < 100;
+      if (isPct || isRoas || isSmallCount || isUtility) {
+        supporting.push(col);
+      } else if (isCurrency || (col.type === 'integer' && col.total >= 100)) {
+        hero.push(col);
+      } else {
+        supporting.push(col);
+      }
+    }
+    if (hero.length > 4) {
+      hero.sort((a, b) => b.total - a.total);
+      supporting.unshift(...hero.splice(4));
+    }
+    return { hero, supporting };
+  }
+
+  function getSummaryIcon(colName: string) {
+    const n = colName.toLowerCase();
+    if (n.includes('revenue') || n.includes('spend') || n.includes('cost') || n.includes('budget') || n.includes('$')) return DollarSign;
+    if (n.includes('impression') || n.includes('reach') || n.includes('view')) return Eye;
+    if (n.includes('click')) return MousePointerClick;
+    if (n.includes('conversion') || n.includes('lead') || n.includes('mql') || n.includes('sql') || n.includes('opportunit')) return Target;
+    if (n.includes('rate') || n.includes('%') || n.includes('ctr') || n.includes('roas')) return TrendingUp;
+    return BarChart3;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <Navigation />
@@ -1139,83 +1200,134 @@ export default function GoogleSheetsData() {
                 {/* ═══ SUMMARY TAB ═══ */}
                 <TabsContent value="summary" className="mt-6">
                   <div className="space-y-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">Metric Summary</CardTitle>
-                        <CardDescription>
-                          {isCombinedView ? 'Aggregated metrics across all connected sheets' : 'Key metrics detected in this sheet'}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {sheetsData?.summary?.detectedColumns && sheetsData.summary.detectedColumns.length > 0 ? (
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                            {sheetsData.summary.detectedColumns.map((col) => (
-                              <div key={col.name} className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 truncate" title={col.name}>{col.name}</p>
-                                <p className="text-xl font-bold text-slate-900 dark:text-white">
-                                  {col.type === 'currency'
-                                    ? `$${col.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                    : col.type === 'decimal'
-                                    ? col.total.toLocaleString(undefined, { maximumFractionDigits: 2 })
-                                    : col.total.toLocaleString()}
-                                </p>
-                                <Badge variant="outline" className="text-[10px] mt-1">
-                                  {col.type}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8">
-                            <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                            <p className="text-slate-600 dark:text-slate-400">No numeric columns detected</p>
-                            <p className="text-sm text-slate-500 mt-1">Map columns in Connection Details to see metrics here</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                    {(() => {
+                      // Build sections: one per sheet (combined) or one for the single sheet
+                      const sections = isCombinedView && sheetsData?.sheetBreakdown && sheetsData.sheetBreakdown.length > 0
+                        ? sheetsData.sheetBreakdown.map((sheet: any) => ({
+                            key: `${sheet.spreadsheetId}-${sheet.sheetName}`,
+                            name: sheet.sheetName || sheet.spreadsheetName || 'Unnamed Sheet',
+                            subtitle: sheet.spreadsheetName && sheet.sheetName && sheet.spreadsheetName !== sheet.sheetName ? sheet.spreadsheetName : undefined,
+                            rowCount: sheet.rowCount,
+                            detectedColumns: sheet.detectedColumns || [],
+                          }))
+                        : sheetsData?.summary?.detectedColumns && sheetsData.summary.detectedColumns.length > 0
+                          ? [{
+                              key: 'single',
+                              name: sheetsData.spreadsheetName || 'Sheet',
+                              subtitle: undefined as string | undefined,
+                              rowCount: sheetsData.filteredRows || sheetsData.totalRows,
+                              detectedColumns: sheetsData.summary.detectedColumns,
+                            }]
+                          : [];
 
-                    {/* Per-tab breakdown — only in combined view */}
-                    {isCombinedView && sheetsData?.sheetBreakdown && sheetsData.sheetBreakdown.length > 0 && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-base">Per-Sheet Breakdown</CardTitle>
-                          <CardDescription>Contribution from each connected sheet</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b">
-                                  <th className="text-left p-3 font-medium text-slate-600 dark:text-slate-400">Sheet</th>
-                                  <th className="text-right p-3 font-medium text-slate-600 dark:text-slate-400">Rows</th>
-                                  {sheetsData.summary?.detectedColumns?.map((col) => (
-                                    <th key={col.name} className="text-right p-3 font-medium text-slate-600 dark:text-slate-400">{col.name}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {sheetsData.sheetBreakdown.map((sheet: any, idx: number) => (
-                                  <tr key={idx} className="border-b last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                    <td className="p-3 font-medium text-slate-900 dark:text-white">
-                                      {sheet.sheetName || sheet.spreadsheetName || `Sheet ${idx + 1}`}
-                                    </td>
-                                    <td className="p-3 text-right text-slate-600 dark:text-slate-400">{(sheet.rowCount || 0).toLocaleString()}</td>
-                                    {sheetsData.summary?.detectedColumns?.map((col) => (
-                                      <td key={col.name} className="p-3 text-right text-slate-600 dark:text-slate-400">
-                                        {col.type === 'currency'
-                                          ? `$${(sheet.metrics?.[col.name] || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                          : (sheet.metrics?.[col.name] || 0).toLocaleString()}
-                                      </td>
+                      if (sections.length === 0) {
+                        return (
+                          <Card>
+                            <CardContent className="py-12">
+                              <div className="text-center">
+                                <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                                <p className="text-slate-600 dark:text-slate-400">No numeric columns detected</p>
+                                <p className="text-sm text-slate-500 mt-1">Map columns in Connection Details to see metrics here</p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      }
+
+                      return sections.map((section) => {
+                        const { hero, supporting } = classifyColumns(section.detectedColumns);
+
+                        return (
+                          <Card key={section.key}>
+                            <CardHeader className="pb-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <CardTitle className="text-lg flex items-center gap-2">
+                                    <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                                    {section.name}
+                                  </CardTitle>
+                                  {section.subtitle && (
+                                    <CardDescription className="mt-1">{section.subtitle}</CardDescription>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {(section.rowCount || 0).toLocaleString()} rows
+                                  </Badge>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {section.detectedColumns.length} metrics
+                                  </Badge>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              {/* Hero Metrics */}
+                              {hero.length > 0 && (
+                                <div className={`grid gap-4 mb-6 ${
+                                  hero.length === 1 ? 'grid-cols-1 max-w-sm' :
+                                  hero.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
+                                  hero.length === 3 ? 'grid-cols-1 sm:grid-cols-3' :
+                                  'grid-cols-2 lg:grid-cols-4'
+                                }`}>
+                                  {hero.map((col) => {
+                                    const IconComp = getSummaryIcon(col.name);
+                                    return (
+                                      <div
+                                        key={col.name}
+                                        className="relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 p-5"
+                                      >
+                                        <div className="flex items-center justify-between mb-3">
+                                          <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                                            <IconComp className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                                          </div>
+                                        </div>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                                          {formatSummaryValue(col.total, col.type, col.name)}
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate" title={col.name}>
+                                          {col.name}
+                                        </p>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Supporting Metrics */}
+                              {supporting.length > 0 && (
+                                <>
+                                  {hero.length > 0 && (
+                                    <div className="border-t border-slate-100 dark:border-slate-800 mb-4" />
+                                  )}
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                                    {supporting.map((col) => (
+                                      <div
+                                        key={col.name}
+                                        className="rounded-lg bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5 border border-slate-100 dark:border-slate-700/50"
+                                      >
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mb-0.5" title={col.name}>
+                                          {col.name}
+                                        </p>
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                          {formatSummaryValue(col.total, col.type, col.name)}
+                                        </p>
+                                      </div>
                                     ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
+                                  </div>
+                                </>
+                              )}
+
+                              {/* Edge case: no metrics at all */}
+                              {hero.length === 0 && supporting.length === 0 && (
+                                <p className="text-sm text-slate-500 text-center py-4">
+                                  No numeric metrics detected in this sheet
+                                </p>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      });
+                    })()}
                   </div>
                 </TabsContent>
 

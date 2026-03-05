@@ -1,0 +1,13 @@
+Week,Campaign,Channel,Leads,MQLs,SQLs,Opportunities,Closed Won,Pipeline Value ($),Closed Revenue ($),Lead→MQL (%),MQL→SQL (%),SQL→Close (%)
+"2026-02-01 – 2026-02-07","B2B Lead Gen – Sponsored Content",LinkedIn,80,34,13,7,2,50893.63,14541.04,43.1,38.2,32.3
+"2026-02-01 – 2026-02-07","Brand Awareness – Feed Ads",Meta (Facebook),48,21,6,3,1,10995.54,3665.18,44.2,29.2,22.8
+"2026-02-01 – 2026-02-07","Email Nurture – Weekly Newsletter",Email,59,24,9,3,1,17786.92,5928.97,41.4,39.4,34.9
+"2026-02-08 – 2026-02-14","B2B Lead Gen – Sponsored Content",LinkedIn,69,32,13,6,1,34890.55,5815.09,46.6,41.5,21.0
+"2026-02-08 – 2026-02-14","Brand Awareness – Feed Ads",Meta (Facebook),59,27,10,5,2,26574.41,10629.76,45.2,36.6,32.9
+"2026-02-08 – 2026-02-14","Email Nurture – Weekly Newsletter",Email,56,21,8,4,1,23972.25,5993.06,37.2,38.9,35.0
+"2026-02-15 – 2026-02-21","B2B Lead Gen – Sponsored Content",LinkedIn,54,23,10,4,1,43117.16,10779.29,43.1,44.6,24.1
+"2026-02-15 – 2026-02-21","Brand Awareness – Feed Ads",Meta (Facebook),41,20,7,4,1,15612.27,3903.07,48.1,33.3,23.2
+"2026-02-15 – 2026-02-21","Email Nurture – Weekly Newsletter",Email,80,37,16,7,2,79807.17,22802.05,46.4,43.2,32.0
+"2026-02-22 – 2026-02-28","B2B Lead Gen – Sponsored Content",LinkedIn,61,27,11,4,1,22721.87,5680.47,43.9,40.3,25.4
+"2026-02-22 – 2026-02-28","Brand Awareness – Feed Ads",Meta (Facebook),48,16,5,2,1,22769.45,11384.72,32.9,32.4,25.8
+"2026-02-22 – 2026-02-28","Email Nurture – Weekly Newsletter",Email,48,17,4,1,0,10025.76,0.00,34.6,25.9,17.2

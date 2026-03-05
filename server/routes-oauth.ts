@@ -13579,12 +13579,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
             aggregatedData.totalRows += rows.length;
             aggregatedData.totalFilteredRows += filteredRows.length;
 
+            // Per-sheet numeric column detection (mirrors aggregated logic below)
+            const perSheetMetrics: Record<string, number> = {};
+            const perSheetDetectedColumns: Array<{ name: string, index: number, type: string, total: number }> = [];
+            headers.forEach((header: string, colIndex: number) => {
+              const headerStr = String(header || '').trim();
+              if (!headerStr) return;
+              let total = 0;
+              let count = 0;
+              let hasCurrency = false;
+              let hasDecimals = false;
+              for (const row of filteredRows) {
+                const cellValue = row[colIndex];
+                if (!cellValue) continue;
+                const cellStr = String(cellValue).trim();
+                if (cellStr.includes('$') || cellStr.includes('USD')) hasCurrency = true;
+                const cleanValue = cellStr.replace(/[$,]/g, '').trim();
+                const numValue = parseFloat(cleanValue);
+                if (!isNaN(numValue) && isFinite(numValue) && Math.abs(numValue) < 1e12) {
+                  total += numValue;
+                  count++;
+                  if (cleanValue.includes('.')) hasDecimals = true;
+                }
+              }
+              if (count > 0) {
+                perSheetMetrics[headerStr] = total;
+                perSheetDetectedColumns.push({
+                  name: headerStr,
+                  index: colIndex,
+                  type: hasCurrency ? 'currency' : (hasDecimals ? 'decimal' : 'integer'),
+                  total
+                });
+              }
+            });
+
             aggregatedData.sheetBreakdown.push({
               spreadsheetId: conn.spreadsheetId,
               spreadsheetName: conn.spreadsheetName,
               sheetName: conn.sheetName,
               rowCount: filteredRows.length,
-              totalRows: rows.length
+              totalRows: rows.length,
+              headers: headers as string[],
+              metrics: perSheetMetrics,
+              detectedColumns: perSheetDetectedColumns
             });
           } catch (error) {
             console.error(`[Combined View] Error processing connection ${conn.id}:`, error);

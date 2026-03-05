@@ -4923,7 +4923,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               </div>
 
                               {/* Summary Cards */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                                 <Card>
                                   <CardContent className="p-4">
                                     <div className="flex items-start justify-between mb-1">
@@ -4979,17 +4979,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     {(() => { const b = getBenchmarkForMetric('leads'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('leads', getVal('leads'), 'higher-better') : null; })()}
                                   </CardContent>
                                 </Card>
-                                <Card>
-                                  <CardContent className="p-4">
-                                    <div className="flex items-start justify-between mb-1">
-                                      <p className="text-sm text-slate-600 dark:text-slate-400">Engagements</p>
-                                      <Activity className="w-4 h-4 text-slate-400" />
-                                    </div>
-                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(getVal('engagements'))}</p>
-                                    <p className="text-xs text-slate-500 mt-1">{formatPercentage(derivedVals.er)} ER</p>
-                                    {(() => { const b = getBenchmarkForMetric('engagements'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('engagements', getVal('engagements'), 'higher-better') : null; })()}
-                                  </CardContent>
-                                </Card>
                               </div>
 
                               {/* ═══ SECTION 2: REVENUE TRACKING ═══ */}
@@ -5012,14 +5001,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         </Link>
                                       </div>
                                     </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                       <div>
                                         <p className="text-sm text-slate-600 dark:text-slate-400">Total Revenue</p>
                                         <p className="text-2xl font-bold text-green-700 dark:text-green-400">{formatCurrency(totalRevenue)}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Conversion Value</p>
-                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{conversionValue > 0 ? formatCurrency(conversionValue) : '—'}</p>
                                       </div>
                                       <div>
                                         <p className="text-sm text-slate-600 dark:text-slate-400">ROAS</p>
@@ -5029,29 +5014,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         <p className="text-sm text-slate-600 dark:text-slate-400">ROI</p>
                                         <p className="text-2xl font-bold text-slate-900 dark:text-white">{roi.toFixed(1)}%</p>
                                       </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                       <div>
                                         <p className="text-sm text-slate-600 dark:text-slate-400">Profit</p>
-                                        <p className={`text-lg font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(profit)}</p>
+                                        <p className={`text-2xl font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(profit)}</p>
                                       </div>
-                                      <div>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Profit Margin</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{profitMargin.toFixed(1)}%</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Revenue / Lead</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{revenuePerLead > 0 ? formatCurrency(revenuePerLead) : '—'}</p>
-                                      </div>
-                                      {pipelineProxyData?.success && pipelineProxyData?.pipelineEnabled === true && (
-                                        <div>
-                                          <p className="text-sm text-slate-600 dark:text-slate-400">
-                                            Pipeline{getStageOnlyLabel(pipelineProxyData?.pipelineStageLabel) ? ` (${getStageOnlyLabel(pipelineProxyData.pipelineStageLabel)})` : ''}
-                                          </p>
-                                          <p className="text-lg font-bold text-amber-600">{formatCurrency(Number(pipelineProxyData?.totalToDate || 0))}</p>
-                                          <Badge variant="outline" className="text-xs mt-1">Early signal</Badge>
-                                        </div>
-                                      )}
                                     </div>
                                   </CardContent>
                                 </Card>
@@ -5087,15 +5053,12 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   <CardDescription>Key derived metrics across all campaigns</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {[
                                       { key: 'ctr', label: 'CTR', icon: Activity, value: formatPercentage(derivedVals.ctr), type: 'higher-better' as const },
                                       { key: 'cpc', label: 'CPC', icon: DollarSign, value: formatCurrency(derivedVals.cpc), type: 'lower-better' as const },
-                                      { key: 'cpm', label: 'CPM', icon: Eye, value: formatCurrency(derivedVals.cpm), type: 'lower-better' as const },
-                                      { key: 'cvr', label: 'Conv Rate', icon: Target, value: formatPercentage(derivedVals.cvr), type: 'higher-better' as const },
                                       { key: 'cpa', label: 'CPA', icon: DollarSign, value: formatCurrency(derivedVals.cpa), type: 'lower-better' as const },
                                       { key: 'cpl', label: 'CPL', icon: DollarSign, value: formatCurrency(derivedVals.cpl), type: 'lower-better' as const },
-                                      { key: 'er', label: 'Eng. Rate', icon: Activity, value: formatPercentage(derivedVals.er), type: 'higher-better' as const },
                                     ].map(({ key, label, icon: Icon, value, type }) => (
                                       <div key={key} className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                                         <Icon className="w-4 h-4 mx-auto text-slate-400 mb-1" />
@@ -5166,8 +5129,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         const m = campaign.metrics;
                                         const ctr = (m.impressions || 0) > 0 ? ((m.clicks || 0) / m.impressions * 100) : 0;
                                         const cpc = (m.clicks || 0) > 0 ? (m.spend || 0) / m.clicks : 0;
-                                        const cpm = (m.impressions || 0) > 0 ? ((m.spend || 0) / m.impressions * 1000) : 0;
-                                        const engRate = (m.impressions || 0) > 0 ? ((m.engagements || 0) / m.impressions * 100) : 0;
+                                        const campCpa = (m.conversions || 0) > 0 ? (m.spend || 0) / m.conversions : 0;
+                                        const campCpl = (m.leads || 0) > 0 ? (m.spend || 0) / m.leads : 0;
                                         // Use actual CRM-mapped revenue when available, fall back to proportional estimate
                                         const hasCrmRevenue = linkedinCampaignRevenueData?.hasSubCampaignData && campaign.urn && (linkedinCampaignRevenueData.breakdown?.[campaign.urn] ?? null) !== null;
                                         const campRevenue = hasCrmRevenue
@@ -5189,7 +5152,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                             </div>
 
                                             {/* Core metrics — prominent */}
-                                            <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-3">
+                                            <div className="grid grid-cols-4 md:grid-cols-8 gap-4 mb-3">
                                               <div>
                                                 <p className="text-xs text-slate-500 dark:text-slate-400">Impressions</p>
                                                 <p className="text-base font-semibold text-slate-900 dark:text-white">{formatNumber(m.impressions || 0)}</p>
@@ -5211,50 +5174,22 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                 <p className="text-base font-semibold text-slate-900 dark:text-white">{formatNumber(m.conversions || 0)}</p>
                                               </div>
                                               <div>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">CPA</p>
+                                                <p className="text-base font-semibold text-slate-900 dark:text-white">{formatCurrency(campCpa)}</p>
+                                              </div>
+                                              <div>
                                                 <p className="text-xs text-slate-500 dark:text-slate-400">Leads</p>
                                                 <p className="text-base font-semibold text-slate-900 dark:text-white">{formatNumber(m.leads || 0)}</p>
                                               </div>
-                                            </div>
-
-                                            {/* Secondary metrics — smaller */}
-                                            <div className="grid grid-cols-4 md:grid-cols-8 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                                               <div>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">CPM</p>
-                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatCurrency(cpm)}</p>
-                                              </div>
-                                              <div>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Engagements</p>
-                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.engagements || 0)}</p>
-                                              </div>
-                                              <div>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Eng. Rate</p>
-                                                <p className="text-sm text-slate-700 dark:text-slate-300">{engRate.toFixed(2)}%</p>
-                                              </div>
-                                              <div>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Reach</p>
-                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.reach || 0)}</p>
-                                              </div>
-                                              <div>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Video Views</p>
-                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.videoViews || 0)}</p>
-                                              </div>
-                                              <div>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Likes</p>
-                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.likes || 0)}</p>
-                                              </div>
-                                              <div>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Comments</p>
-                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.comments || 0)}</p>
-                                              </div>
-                                              <div>
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">Shares</p>
-                                                <p className="text-sm text-slate-700 dark:text-slate-300">{formatNumber(m.shares || 0)}</p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">CPL</p>
+                                                <p className="text-base font-semibold text-slate-900 dark:text-white">{formatCurrency(campCpl)}</p>
                                               </div>
                                             </div>
 
                                             {/* Revenue metrics — only when tracking */}
                                             {(hasRevenueTracking || hasCrmRevenue) && (
-                                              <div className="grid grid-cols-3 gap-4 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
+                                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
                                                 <div>
                                                   <p className="text-[10px] text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
                                                     Revenue
@@ -5273,6 +5208,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                 <div>
                                                   <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">ROI</p>
                                                   <p className="text-base font-semibold text-green-700 dark:text-green-300">{campRoi.toFixed(1)}%</p>
+                                                </div>
+                                                <div>
+                                                  <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">Profit</p>
+                                                  <p className={`text-base font-semibold ${(campRevenue - (m.spend || 0)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(campRevenue - (m.spend || 0))}</p>
                                                 </div>
                                               </div>
                                             )}

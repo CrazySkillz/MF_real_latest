@@ -17616,6 +17616,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * List all Google Ads campaigns in the connected customer account
+   */
+  app.get("/api/google-ads/:campaignId/campaigns", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const connection: any = await storage.getGoogleAdsConnection(campaignId);
+      if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
+
+      // For test mode, return mock campaigns
+      if (connection.method === 'test_mode') {
+        return res.json({
+          success: true,
+          campaigns: [
+            { id: 'test_campaign_1', name: 'Brand Awareness Campaign', status: 'ENABLED' },
+            { id: 'test_campaign_2', name: 'Performance Max Campaign', status: 'ENABLED' },
+            { id: 'test_campaign_3', name: 'Search Campaign - High Intent', status: 'ENABLED' },
+          ],
+        });
+      }
+
+      // For real connections, get campaigns from stored daily metrics (avoids extra API call)
+      const metrics = await storage.getGoogleAdsDailyMetrics(campaignId, new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10), new Date().toISOString().slice(0, 10));
+      const campaignMap = new Map<string, { id: string; name: string; spend: number }>();
+      for (const m of (metrics || [])) {
+        const id = (m as any).googleCampaignId;
+        const name = (m as any).googleCampaignName || id;
+        const existing = campaignMap.get(id) || { id, name, spend: 0 };
+        existing.spend += parseFloat((m as any).spend || '0');
+        campaignMap.set(id, existing);
+      }
+
+      const selectedIds: string[] = connection.selectedCampaignIds ? JSON.parse(connection.selectedCampaignIds) : [];
+      res.json({
+        success: true,
+        campaigns: Array.from(campaignMap.values()).map(c => ({ ...c, selected: selectedIds.length === 0 || selectedIds.includes(c.id) })),
+        selectedCampaignIds: selectedIds,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to list campaigns' });
+    }
+  });
+
+  /**
+   * Save selected Google Ads campaigns
+   */
+  app.patch("/api/google-ads/:campaignId/selected-campaigns", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { selectedCampaignIds } = req.body as { selectedCampaignIds: string[] };
+      if (!Array.isArray(selectedCampaignIds)) return res.status(400).json({ error: 'selectedCampaignIds must be an array' });
+
+      const connection: any = await storage.getGoogleAdsConnection(campaignId);
+      if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
+
+      await storage.updateGoogleAdsConnection(campaignId, {
+        selectedCampaignIds: JSON.stringify(selectedCampaignIds),
+      } as any);
+
+      res.json({ success: true, selectedCampaignIds });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to save selection' });
+    }
+  });
+
+  /**
+   * Save selected Meta campaigns
+   */
+  app.patch("/api/meta/:campaignId/selected-campaigns", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { selectedCampaignIds } = req.body as { selectedCampaignIds: string[] };
+      if (!Array.isArray(selectedCampaignIds)) return res.status(400).json({ error: 'selectedCampaignIds must be an array' });
+
+      const connection: any = await storage.getMetaConnection(campaignId);
+      if (!connection) return res.status(404).json({ error: 'No Meta connection found' });
+
+      await storage.updateMetaConnection(campaignId, {
+        selectedCampaignIds: JSON.stringify(selectedCampaignIds),
+      } as any);
+
+      res.json({ success: true, selectedCampaignIds });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to save selection' });
+    }
+  });
+
+  /**
    * Get Meta benchmarks for a campaign
    */
   app.get("/api/campaigns/:id/benchmarks/evaluated", async (req, res) => {

@@ -188,15 +188,23 @@ async function fetchRealMetaData(
       return;
     }
 
+    // Filter by selected campaigns if configured
+    const selectedIds: string[] | undefined = connection.selectedCampaignIds
+      ? JSON.parse(connection.selectedCampaignIds)
+      : undefined;
+    const filteredCampaigns = selectedIds && selectedIds.length > 0
+      ? campaigns.filter((c: any) => selectedIds.includes(c.id))
+      : campaigns;
+
     // Fetch insights for each campaign
-    const campaignIds = campaigns.map((c: any) => c.id);
+    const campaignIds = filteredCampaigns.map((c: any) => c.id);
     const campaignInsights = await metaClient.getBatchCampaignInsights(campaignIds, dateRange);
 
     // Fetch daily metrics for last 90 days (for Insights tab)
     const dailyDateRange = getLastNDaysRange(90);
     const dailyMetricsToStore: any[] = [];
 
-    for (const campaign of campaigns) {
+    for (const campaign of filteredCampaigns) {
       try {
         const dailyInsights = await metaClient.getCampaignInsights(campaign.id, dailyDateRange);
 

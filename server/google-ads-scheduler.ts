@@ -157,7 +157,11 @@ async function fetchRealGoogleAdsData(
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - 60);
 
-  const insights = await client.getDailyMetrics(iso(startDate), iso(endDate));
+  // Filter by selected campaigns if configured
+  const selectedIds: string[] | undefined = connection.selectedCampaignIds
+    ? JSON.parse(connection.selectedCampaignIds)
+    : undefined;
+  const insights = await client.getDailyMetrics(iso(startDate), iso(endDate), selectedIds && selectedIds.length > 0 ? selectedIds : undefined);
 
   if (insights.length === 0) {
     console.log(`[Google Ads] No data returned for campaign ${campaignId}`);

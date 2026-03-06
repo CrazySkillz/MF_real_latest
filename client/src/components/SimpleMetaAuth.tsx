@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { SiFacebook } from "react-icons/si";
-import { AlertCircle, RefreshCw, Briefcase } from "lucide-react";
+import { AlertCircle, RefreshCw, Briefcase, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,6 +34,10 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
   const [useTestMode, setUseTestMode] = useState(true); // Default to test mode
   const [adAccounts, setAdAccounts] = useState<AdAccount[]>([]);
   const [selectedAdAccount, setSelectedAdAccount] = useState<string>('');
+  const [showCampaignSelection, setShowCampaignSelection] = useState(false);
+  const [metaCampaigns, setMetaCampaigns] = useState<Array<{ id: string; name: string; status?: string; selected: boolean }>>([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [savingSelection, setSavingSelection] = useState(false);
   const { toast } = useToast();
 
   const handleTestModeConnection = useCallback(async () => {
@@ -70,13 +75,24 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
         adAccountId: selectedAdAccount,
         adAccountName: selectedAccount?.name || "Test Ad Account",
       });
-      
-      toast({
-        title: "Meta Ad Account Connected!",
-        description: `Connected to ${selectedAccount?.name || "test account"} with realistic demo metrics.`
-      });
-      
-      onSuccess();
+
+      // Move to campaign selection
+      setShowCampaignSelection(true);
+      setLoadingCampaigns(true);
+      try {
+        const res = await fetch(`/api/meta/${campaignId}/campaigns`);
+        const json = await res.json().catch(() => ({}));
+        if (Array.isArray(json?.campaigns)) {
+          setMetaCampaigns(json.campaigns.map((c: any) => ({ id: c.id, name: c.name, status: c.status, selected: true })));
+        }
+      } catch {
+        // If can't load campaigns, still complete
+        toast({ title: "Meta Connected!", description: "Campaign selection available later." });
+        onSuccess();
+        return;
+      } finally {
+        setLoadingCampaigns(false);
+      }
     } catch (error: any) {
       console.error("Failed to connect ad account:", error);
       onError(error.message || "Failed to connect selected ad account");
@@ -84,6 +100,92 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
       setIsConnecting(false);
     }
   }, [campaignId, selectedAdAccount, adAccounts, onSuccess, onError, toast]);
+
+  // Campaign selection step
+  if (showCampaignSelection) {
+    const selectedCount = metaCampaigns.filter(c => c.selected).length;
+    const handleSaveSelection = async () => {
+      setSavingSelection(true);
+      try {
+        const selectedIds = metaCampaigns.filter(c => c.selected).map(c => c.id);
+        const res = await fetch(`/api/meta/${campaignId}/selected-campaigns`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ selectedCampaignIds: selectedIds }),
+        });
+        if (!res.ok) throw new Error('Failed to save selection');
+        toast({ title: 'Meta Connected!', description: `${selectedCount} campaign${selectedCount !== 1 ? 's' : ''} selected.` });
+        onSuccess();
+      } catch (err: any) {
+        toast({ title: 'Failed to save', description: err.message, variant: 'destructive' as const });
+      } finally {
+        setSavingSelection(false);
+      }
+    };
+
+    return (
+      <Card className="w-full border border-slate-200">
+        <CardHeader className="text-center">
+          <CardTitle className="flex items-center gap-2 justify-center">
+            <SiFacebook className="w-5 h-5 text-blue-600" />
+            Select Meta Campaigns
+          </CardTitle>
+          <CardDescription>
+            Choose which campaigns to include in this MetricMind campaign. Only selected campaigns' metrics will be imported.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingCampaigns ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading campaigns...
+            </div>
+          ) : metaCampaigns.length === 0 ? (
+            <div className="text-sm text-slate-500 py-4">
+              <p>No campaigns found yet. Data will be available after the first import.</p>
+              <Button className="mt-3" onClick={() => { toast({ title: 'Meta Connected!' }); onSuccess(); }}>
+                Continue
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Checkbox
+                  checked={metaCampaigns.every(c => c.selected)}
+                  onCheckedChange={(checked) => setMetaCampaigns(metaCampaigns.map(c => ({ ...c, selected: !!checked })))}
+                />
+                <Label className="text-sm font-medium">Select all ({metaCampaigns.length})</Label>
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-1 border rounded-md p-2">
+                {metaCampaigns.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-slate-50 dark:hover:bg-slate-800 rounded">
+                    <Checkbox
+                      checked={c.selected}
+                      onCheckedChange={(checked) => setMetaCampaigns(metaCampaigns.map(x => x.id === c.id ? { ...x, selected: !!checked } : x))}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate">{c.name}</p>
+                    </div>
+                    {c.status && (
+                      <span className="text-xs text-slate-500 shrink-0">{c.status}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveSelection} disabled={selectedCount === 0 || savingSelection}>
+                  {savingSelection && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                  Connect {selectedCount} Campaign{selectedCount !== 1 ? 's' : ''}
+                </Button>
+                <Button variant="ghost" onClick={() => { toast({ title: 'Meta Connected!' }); onSuccess(); }}>
+                  Skip (import all)
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Show ad account selection if we have accounts
   if (adAccounts.length > 0) {

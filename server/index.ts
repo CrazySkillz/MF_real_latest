@@ -611,6 +611,16 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS sub_campaign_urn TEXT;
           `);
 
+          // Migration 12: Campaign selection for Google Ads and Meta
+          await db.execute(sql`
+            ALTER TABLE google_ads_connections
+            ADD COLUMN IF NOT EXISTS selected_campaign_ids TEXT;
+          `);
+          await db.execute(sql`
+            ALTER TABLE meta_connections
+            ADD COLUMN IF NOT EXISTS selected_campaign_ids TEXT;
+          `);
+
           log('✅ Database migrations completed successfully');
         } catch (error) {
           console.error('⚠️  Migration warning (may already exist):', error.message);

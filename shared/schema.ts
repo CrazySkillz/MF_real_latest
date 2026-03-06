@@ -334,6 +334,7 @@ export const metaConnections = pgTable("meta_connections", {
   encryptedTokens: jsonb("encrypted_tokens"),
   method: text("method").notNull(), // 'oauth' or 'test_mode'
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Platform-specific conversion value from Google Sheets/webhook
+  selectedCampaignIds: text("selected_campaign_ids"), // JSON array of Meta campaign IDs to import
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -354,6 +355,7 @@ export const googleAdsConnections = pgTable("google_ads_connections", {
   encryptedTokens: jsonb("encrypted_tokens"),
   method: text("method").notNull(), // 'oauth' or 'test_mode'
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }),
+  selectedCampaignIds: text("selected_campaign_ids"), // JSON array of Google Ads campaign IDs to import
   lastRefreshAt: timestamp("last_refresh_at"),
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),

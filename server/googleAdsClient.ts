@@ -196,7 +196,10 @@ export class GoogleAdsClient {
    * Fetch daily metrics for all campaigns in a date range
    * Returns data with cost_micros (divide by 1,000,000 for actual currency amount)
    */
-  async getDailyMetrics(startDate: string, endDate: string): Promise<GoogleAdsDailyInsight[]> {
+  async getDailyMetrics(startDate: string, endDate: string, campaignIds?: string[]): Promise<GoogleAdsDailyInsight[]> {
+    const campaignFilter = campaignIds && campaignIds.length > 0
+      ? `AND campaign.id IN (${campaignIds.map(id => `${id}`).join(', ')})`
+      : '';
     const response = await this.api.post('/googleAds:searchStream', {
       query: `
         SELECT
@@ -217,6 +220,7 @@ export class GoogleAdsClient {
         FROM campaign
         WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
           AND campaign.status != 'REMOVED'
+          ${campaignFilter}
         ORDER BY segments.date
       `,
     });

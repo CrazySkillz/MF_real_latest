@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -36,11 +37,14 @@ export function GoogleAdsConnectionFlow({
   onConnectionSuccess,
   onError,
 }: GoogleAdsConnectionFlowProps) {
-  const [step, setStep] = useState<'idle' | 'connecting' | 'select-customer'>('idle');
+  const [step, setStep] = useState<'idle' | 'connecting' | 'select-customer' | 'select-campaigns'>('idle');
   const [isTestMode, setIsTestMode] = useState(false);
   const [customers, setCustomers] = useState<CustomerAccount[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [pendingTokens, setPendingTokens] = useState<any>(null);
+  const [adsCampaigns, setAdsCampaigns] = useState<Array<{ id: string; name: string; spend: number; selected: boolean }>>([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [savingSelection, setSavingSelection] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -167,10 +171,25 @@ export function GoogleAdsConnectionFlow({
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['/api/google-ads', campaignId, 'connection'] });
-      toast({ title: 'Google Ads Connected!', description: `Account connected successfully.` });
-      onConnectionSuccess?.();
+      // Move to campaign selection step
+      setLoadingCampaigns(true);
+      setStep('select-campaigns');
+      try {
+        const res = await fetch(`/api/google-ads/${campaignId}/campaigns`);
+        const json = await res.json().catch(() => ({}));
+        if (json?.success && Array.isArray(json.campaigns)) {
+          setAdsCampaigns(json.campaigns.map((c: any) => ({ ...c, selected: c.selected !== false })));
+        }
+      } catch {
+        // If campaigns can't be loaded, still complete successfully
+        toast({ title: 'Google Ads Connected!', description: 'Account connected. Campaign selection available later.' });
+        onConnectionSuccess?.();
+        return;
+      } finally {
+        setLoadingCampaigns(false);
+      }
     },
     onError: (err: any) => {
       toast({ title: 'Connection Failed', description: err.message, variant: 'destructive' });
@@ -221,6 +240,88 @@ export function GoogleAdsConnectionFlow({
             <div className="text-sm text-slate-500">
               <p>No accessible customer accounts found. Make sure your Google account has access to a Google Ads account.</p>
               <Button variant="ghost" className="mt-2" onClick={() => setStep('idle')}>Back</Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Campaign selection step
+  if (step === 'select-campaigns') {
+    const selectedCount = adsCampaigns.filter(c => c.selected).length;
+    const handleSaveSelection = async () => {
+      setSavingSelection(true);
+      try {
+        const selectedIds = adsCampaigns.filter(c => c.selected).map(c => c.id);
+        const res = await fetch(`/api/google-ads/${campaignId}/selected-campaigns`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ selectedCampaignIds: selectedIds }),
+        });
+        if (!res.ok) throw new Error('Failed to save selection');
+        queryClient.invalidateQueries({ queryKey: ['/api/google-ads', campaignId] });
+        toast({ title: 'Google Ads Connected!', description: `${selectedCount} campaign${selectedCount !== 1 ? 's' : ''} selected.` });
+        onConnectionSuccess?.();
+      } catch (err: any) {
+        toast({ title: 'Failed to save', description: err.message, variant: 'destructive' });
+      } finally {
+        setSavingSelection(false);
+      }
+    };
+
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Select Google Ads Campaigns</CardTitle>
+          <CardDescription>Choose which campaigns to include in this MetricMind campaign. Only selected campaigns' metrics will be imported.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingCampaigns ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading campaigns...
+            </div>
+          ) : adsCampaigns.length === 0 ? (
+            <div className="text-sm text-slate-500 py-4">
+              <p>No campaigns found yet. Data will be available after the first import.</p>
+              <Button className="mt-3" onClick={() => { toast({ title: 'Google Ads Connected!' }); onConnectionSuccess?.(); }}>
+                Continue
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Checkbox
+                  checked={adsCampaigns.every(c => c.selected)}
+                  onCheckedChange={(checked) => setAdsCampaigns(adsCampaigns.map(c => ({ ...c, selected: !!checked })))}
+                />
+                <Label className="text-sm font-medium">Select all ({adsCampaigns.length})</Label>
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-1 border rounded-md p-2">
+                {adsCampaigns.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-slate-50 dark:hover:bg-slate-800 rounded">
+                    <Checkbox
+                      checked={c.selected}
+                      onCheckedChange={(checked) => setAdsCampaigns(adsCampaigns.map(x => x.id === c.id ? { ...x, selected: !!checked } : x))}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate">{c.name}</p>
+                    </div>
+                    {c.spend > 0 && (
+                      <span className="text-xs text-slate-500 shrink-0">${c.spend.toFixed(0)} spent</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveSelection} disabled={selectedCount === 0 || savingSelection}>
+                  {savingSelection && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                  Connect {selectedCount} Campaign{selectedCount !== 1 ? 's' : ''}
+                </Button>
+                <Button variant="ghost" onClick={() => { toast({ title: 'Google Ads Connected!' }); onConnectionSuccess?.(); }}>
+                  Skip (import all)
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

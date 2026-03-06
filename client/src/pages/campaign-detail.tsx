@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { SiGoogle, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
+import { SiGoogle, SiFacebook, SiLinkedin, SiX, SiHubspot, SiSalesforce, SiShopify } from "react-icons/si";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { format } from "date-fns";
 import { reportStorage } from "@/lib/reportStorage";
@@ -6931,6 +6931,96 @@ export default function CampaignDetail() {
 
                 {/* Revenue & Spend Platform Cards */}
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {/* HubSpot */}
+                  {(() => {
+                    const isConnected = dataSources?.crmConnections?.hubspot?.connected ||
+                      (dataSources?.revenueSources || []).some((s: any) => s?.sourceType === 'hubspot' && s?.isActive !== false);
+                    const revenueEntry = (dataSources?.revenueSources || []).find((s: any) => s?.sourceType === 'hubspot' && s?.isActive !== false);
+                    return (
+                      <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`} onClick={() => setAddRevenueWizardOpen(true)}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                              <SiHubspot className={`w-5 h-5 ${isConnected ? 'text-orange-500' : 'text-slate-400'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">HubSpot</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {isConnected ? 'Connected' : 'CRM revenue data'}
+                                {revenueEntry?.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(revenueEntry.lastRevenue))}` : ''}
+                              </p>
+                            </div>
+                            {isConnected ? (
+                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Salesforce */}
+                  {(() => {
+                    const isConnected = dataSources?.crmConnections?.salesforce?.connected ||
+                      (dataSources?.revenueSources || []).some((s: any) => s?.sourceType === 'salesforce' && s?.isActive !== false);
+                    const revenueEntry = (dataSources?.revenueSources || []).find((s: any) => s?.sourceType === 'salesforce' && s?.isActive !== false);
+                    return (
+                      <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`} onClick={() => setAddRevenueWizardOpen(true)}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                              <SiSalesforce className={`w-5 h-5 ${isConnected ? 'text-blue-500' : 'text-slate-400'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">Salesforce</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {isConnected ? 'Connected' : 'CRM revenue data'}
+                                {revenueEntry?.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(revenueEntry.lastRevenue))}` : ''}
+                              </p>
+                            </div>
+                            {isConnected ? (
+                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Shopify */}
+                  {(() => {
+                    const isConnected = dataSources?.crmConnections?.shopify?.connected ||
+                      (dataSources?.revenueSources || []).some((s: any) => s?.sourceType === 'shopify' && s?.isActive !== false);
+                    const revenueEntry = (dataSources?.revenueSources || []).find((s: any) => s?.sourceType === 'shopify' && s?.isActive !== false);
+                    return (
+                      <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`} onClick={() => setAddRevenueWizardOpen(true)}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                              <SiShopify className={`w-5 h-5 ${isConnected ? 'text-green-600' : 'text-slate-400'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">Shopify</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {isConnected ? 'Connected' : 'E-commerce revenue data'}
+                                {revenueEntry?.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(revenueEntry.lastRevenue))}` : ''}
+                              </p>
+                            </div>
+                            {isConnected ? (
+                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
                   {/* Google Sheets (Revenue & Spend) */}
                   {(() => {
                     const gsRevenue = (dataSources?.revenueSources || []).filter((s: any) => s?.sourceType === 'google_sheets' && s?.isActive !== false);

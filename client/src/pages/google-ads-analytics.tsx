@@ -94,6 +94,8 @@ interface DailyMetric {
   costPerConversion: string | null;
   conversionRate: string | null;
   googleCampaignName: string;
+  ga4Revenue: string | null;
+  ga4UtmName: string | null;
 }
 
 
@@ -172,6 +174,21 @@ export default function GoogleAdsAnalytics() {
     },
     onError: (err: any) => {
       toast({ title: 'Refresh Failed', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const enrichGa4Mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/google-ads/${campaignId}/enrich-ga4-revenue`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to match GA4 revenue');
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/google-ads", campaignId, "daily-metrics"] });
+      toast({ title: 'GA4 Revenue Matched', description: `${data.matched} of ${data.matched + (data.unmatched?.length || 0)} campaigns matched.` });
+    },
+    onError: (err: any) => {
+      toast({ title: 'GA4 Match Failed', description: err.message, variant: 'destructive' });
     },
   });
 
@@ -428,13 +445,17 @@ export default function GoogleAdsAnalytics() {
     const byName = new Map<string, any>();
     for (const m of metrics) {
       const name = m.googleCampaignName || 'Unknown Campaign';
-      const existing = byName.get(name) || { name, impressions: 0, clicks: 0, spend: 0, conversions: 0, conversionValue: 0, videoViews: 0, days: 0 };
+      const existing = byName.get(name) || { name, impressions: 0, clicks: 0, spend: 0, conversions: 0, conversionValue: 0, videoViews: 0, ga4Revenue: 0, hasGa4Revenue: false, days: 0 };
       existing.impressions += m.impressions || 0;
       existing.clicks += m.clicks || 0;
       existing.spend += parseFloat(m.spend || "0");
       existing.conversions += parseFloat(m.conversions || "0");
       existing.conversionValue += parseFloat(m.conversionValue || "0");
       existing.videoViews += m.videoViews || 0;
+      if (m.ga4Revenue) {
+        existing.ga4Revenue += parseFloat(m.ga4Revenue || "0");
+        existing.hasGa4Revenue = true;
+      }
       existing.days += 1;
       byName.set(name, existing);
     }
@@ -447,6 +468,7 @@ export default function GoogleAdsAnalytics() {
       costPerConversion: c.conversions > 0 ? c.spend / c.conversions : 0,
       roas: c.spend > 0 ? c.conversionValue / c.spend : 0,
       roi: c.spend > 0 ? ((c.conversionValue - c.spend) / c.spend) * 100 : 0,
+      ga4Roas: c.hasGa4Revenue && c.spend > 0 ? c.ga4Revenue / c.spend : null,
     }));
   }, [metrics]);
 
@@ -1158,7 +1180,11 @@ export default function GoogleAdsAnalytics() {
                 {connection.method === "test_mode" && " (Test)"}
               </Badge>
             )}
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => enrichGa4Mutation.mutate()} disabled={enrichGa4Mutation.isPending}>
+                {enrichGa4Mutation.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <BarChart3 className="w-3 h-3 mr-1" />}
+                Match GA4 Revenue
+              </Button>
               <Button variant="outline" size="sm" onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
                 {refreshMutation.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
                 Refresh Data
@@ -1640,6 +1666,8 @@ export default function GoogleAdsAnalytics() {
                             <th className="text-right font-medium px-2 py-2 w-[90px]">Conv Rate</th>
                             <th className="text-right font-medium px-2 py-2 w-[80px]">CPC</th>
                             <th className="text-right font-medium px-2 py-2 w-[80px]">ROAS</th>
+                            <th className="text-right font-medium px-2 py-2 w-[100px]">GA4 Revenue</th>
+                            <th className="text-right font-medium px-2 py-2 w-[90px]">GA4 ROAS</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1660,6 +1688,10 @@ export default function GoogleAdsAnalytics() {
                                 <td className="px-2 py-2 text-right tabular-nums">{fmtPct(c.conversionRate)}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{fmtCurrency(c.cpc)}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{c.roas.toFixed(2)}x</td>
+                                <td className="px-2 py-2 text-right tabular-nums">{c.ga4Roas !== null ? fmtCurrency(c.ga4Revenue) : <span className="text-slate-400">—</span>}</td>
+                                <td className={`px-2 py-2 text-right tabular-nums font-medium ${c.ga4Roas === null ? "text-slate-400" : c.ga4Roas >= 1 ? "text-emerald-600" : "text-red-600"}`}>
+                                  {c.ga4Roas !== null ? `${c.ga4Roas.toFixed(2)}x` : "—"}
+                                </td>
                               </tr>
                             );
                           })}

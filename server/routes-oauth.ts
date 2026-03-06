@@ -17669,6 +17669,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Enrich Google Ads metrics with GA4-attributed revenue
+   */
+  app.post("/api/google-ads/:campaignId/enrich-ga4-revenue", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const connection: any = await storage.getGoogleAdsConnection(campaignId);
+      if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
+
+      const { enrichGoogleAdsWithGA4Revenue } = await import('./google-ads-scheduler');
+      const result = await enrichGoogleAdsWithGA4Revenue(campaignId, connection);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to enrich GA4 revenue' });
+    }
+  });
+
+  /**
    * Save selected Meta campaigns
    */
   app.patch("/api/meta/:campaignId/selected-campaigns", async (req, res) => {

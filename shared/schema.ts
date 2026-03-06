@@ -356,6 +356,7 @@ export const googleAdsConnections = pgTable("google_ads_connections", {
   method: text("method").notNull(), // 'oauth' or 'test_mode'
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }),
   selectedCampaignIds: text("selected_campaign_ids"), // JSON array of Google Ads campaign IDs to import
+  campaignUtmMap: text("campaign_utm_map"), // JSON: { googleCampaignId: utmCampaignName } for GA4 matching
   lastRefreshAt: timestamp("last_refresh_at"),
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -382,6 +383,8 @@ export const googleAdsDailyMetrics = pgTable("google_ads_daily_metrics", {
   searchImpressionShare: decimal("search_impression_share", { precision: 5, scale: 2 }),
   costPerConversion: decimal("cost_per_conversion", { precision: 10, scale: 2 }),
   conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }),
+  ga4Revenue: decimal("ga4_revenue", { precision: 15, scale: 2 }), // GA4-attributed revenue for this Google Ads campaign
+  ga4UtmName: text("ga4_utm_name"), // matched GA4 UTM campaign name (for transparency)
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

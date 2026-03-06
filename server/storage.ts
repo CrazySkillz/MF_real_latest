@@ -134,6 +134,7 @@ export interface IStorage {
   // Google Ads Daily Metrics
   getGoogleAdsDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GoogleAdsDailyMetric[]>;
   upsertGoogleAdsDailyMetrics(metrics: InsertGoogleAdsDailyMetric[]): Promise<{ upserted: number }>;
+  updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
 
   // Meta KPIs
   getMetaKPIs(campaignId: string): Promise<MetaKpi[]>;
@@ -1873,6 +1874,21 @@ export class MemStorage implements IStorage {
       upserted++;
     }
     return { upserted };
+  }
+
+  async updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }> {
+    let updated = 0;
+    for (const u of updates) {
+      const row = this.googleAdsDailyMetricsStore.find(
+        r => r.campaignId === campaignId && r.googleCampaignId === u.googleCampaignId && r.date === u.date
+      );
+      if (row) {
+        (row as any).ga4Revenue = u.ga4Revenue;
+        (row as any).ga4UtmName = u.ga4UtmName;
+        updated++;
+      }
+    }
+    return { updated };
   }
 
   // Meta KPIs
@@ -4586,6 +4602,19 @@ export class DatabaseStorage implements IStorage {
       upserted++;
     }
     return { upserted };
+  }
+
+  async updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }> {
+    let updated = 0;
+    for (const u of updates) {
+      const result = await db.execute(sql`
+        UPDATE google_ads_daily_metrics
+        SET ga4_revenue = ${u.ga4Revenue}, ga4_utm_name = ${u.ga4UtmName}
+        WHERE campaign_id = ${campaignId} AND google_campaign_id = ${u.googleCampaignId} AND date = ${u.date}
+      `);
+      updated += result.rowCount || 0;
+    }
+    return { updated };
   }
 
   // Meta KPIs

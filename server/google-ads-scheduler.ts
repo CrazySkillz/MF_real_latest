@@ -7,6 +7,8 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { googleAdsConnections, googleAdsDailyMetrics } from "../shared/schema";
 import { eq, desc } from "drizzle-orm";
+import { matchUtmCampaignName } from "./utils/campaignNameMatch";
+import { ga4Service } from "./analytics";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -134,6 +136,22 @@ async function generateMockGoogleAdsData(
     // ignore duplicate spend records
   }
 
+  // Write campaignUtmMap for GA4 matching (only on first run)
+  if (existingDates.length === 0) {
+    try {
+      const utmMap: Record<string, string> = {
+        'gads_brand_search': 'yesop_brand_search',
+        'gads_performance_max': 'yesop_prospecting',
+        'gads_display_retarget': 'yesop_retargeting',
+      };
+      await storage.updateGoogleAdsConnection(campaignId, {
+        campaignUtmMap: JSON.stringify(utmMap),
+      } as any);
+    } catch {
+      // ignore — connection may not support this field yet
+    }
+  }
+
   console.log(`[Google Ads Mock] Generated data for ${dateStr} — ${campaignsToGenerate.length} campaigns, total spend=$${totalSpend.toFixed(2)}`);
 }
 
@@ -256,6 +274,139 @@ async function fetchRealGoogleAdsData(
   await storage.updateGoogleAdsConnection(campaignId, {
     lastRefreshAt: new Date(),
   } as any);
+}
+
+/**
+ * Enrich Google Ads daily metrics with GA4-attributed revenue.
+ * Calls GA4 acquisition breakdown to get per-UTM-campaign revenue,
+ * matches to Google Ads campaigns, and distributes revenue by spend weight.
+ */
+export async function enrichGoogleAdsWithGA4Revenue(
+  campaignId: string,
+  connection?: any,
+): Promise<{ enriched: number; matched: number; unmatched: string[] }> {
+  if (!connection) {
+    connection = await storage.getGoogleAdsConnection(campaignId);
+  }
+  if (!connection) return { enriched: 0, matched: 0, unmatched: [] };
+
+  // Get campaign record for GA4 filter
+  const campaign = await storage.getCampaign(campaignId);
+  if (!campaign) return { enriched: 0, matched: 0, unmatched: [] };
+
+  // Check if there's a GA4 connection
+  const ga4Connections = await storage.getGA4Connections(campaignId);
+  if (!ga4Connections || ga4Connections.length === 0) {
+    return { enriched: 0, matched: 0, unmatched: [] };
+  }
+  const ga4Connection = (ga4Connections as any[]).find((c: any) => c?.isPrimary) || ga4Connections[0];
+
+  // Parse campaign filter
+  const rawFilter = (campaign as any).ga4CampaignFilter;
+  let campaignFilter: string | string[] | undefined;
+  if (rawFilter) {
+    const s = String(rawFilter).trim();
+    if (s.startsWith('[')) {
+      try { campaignFilter = JSON.parse(s); } catch { campaignFilter = s; }
+    } else {
+      campaignFilter = s;
+    }
+  }
+
+  // Get GA4 breakdown (per-UTM-campaign revenue)
+  let breakdownRows: Array<{ campaign: string; revenue: number }>;
+  try {
+    const breakdown = await ga4Service.getAcquisitionBreakdown(
+      campaignId,
+      storage,
+      '90daysAgo',
+      ga4Connection.propertyId,
+      2000,
+      campaignFilter
+    );
+    breakdownRows = (breakdown?.rows || []).map((r: any) => ({
+      campaign: String(r.campaign || '(not set)'),
+      revenue: Number(r.revenue || 0),
+    }));
+  } catch (e: any) {
+    console.warn(`[Google Ads GA4 Enrichment] Failed to get GA4 breakdown for campaign ${campaignId}:`, e.message);
+    return { enriched: 0, matched: 0, unmatched: [] };
+  }
+
+  // Build map of UTM campaign name → total revenue
+  const utmRevenueMap = new Map<string, number>();
+  for (const row of breakdownRows) {
+    if (row.campaign === '(not set)') continue;
+    const existing = utmRevenueMap.get(row.campaign) || 0;
+    utmRevenueMap.set(row.campaign, existing + row.revenue);
+  }
+
+  if (utmRevenueMap.size === 0) {
+    return { enriched: 0, matched: 0, unmatched: [] };
+  }
+
+  // Get Google Ads daily metrics
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setDate(startDate.getDate() - 90);
+  const metrics = await storage.getGoogleAdsDailyMetrics(campaignId, iso(startDate), iso(now));
+  if (!metrics || metrics.length === 0) {
+    return { enriched: 0, matched: 0, unmatched: [] };
+  }
+
+  // Parse manual mapping
+  const manualMap: Record<string, string> = connection.campaignUtmMap
+    ? JSON.parse(connection.campaignUtmMap)
+    : {};
+
+  // Group metrics by Google Ads campaign
+  const utmNames = Array.from(utmRevenueMap.keys());
+  const campaignGroups = new Map<string, { googleCampaignName: string; totalSpend: number; rows: typeof metrics }>();
+  for (const m of metrics) {
+    const gcId = (m as any).googleCampaignId;
+    const group = campaignGroups.get(gcId) || { googleCampaignName: (m as any).googleCampaignName || gcId, totalSpend: 0, rows: [] };
+    group.totalSpend += parseFloat(String((m as any).spend || '0'));
+    group.rows.push(m);
+    campaignGroups.set(gcId, group);
+  }
+
+  // Match and distribute revenue
+  const updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }> = [];
+  const matched: string[] = [];
+  const unmatched: string[] = [];
+
+  for (const [gcId, group] of campaignGroups) {
+    const utmMatch = matchUtmCampaignName(group.googleCampaignName, utmNames, manualMap, gcId);
+    if (!utmMatch) {
+      unmatched.push(group.googleCampaignName);
+      continue;
+    }
+
+    matched.push(group.googleCampaignName);
+    const totalGA4Revenue = utmRevenueMap.get(utmMatch) || 0;
+
+    // Distribute revenue across dates by spend weight
+    for (const row of group.rows) {
+      const daySpend = parseFloat(String((row as any).spend || '0'));
+      const revenueShare = group.totalSpend > 0 ? (daySpend / group.totalSpend) * totalGA4Revenue : 0;
+      updates.push({
+        googleCampaignId: gcId,
+        date: row.date,
+        ga4Revenue: revenueShare.toFixed(2),
+        ga4UtmName: utmMatch,
+      });
+    }
+  }
+
+  // Write updates
+  let enriched = 0;
+  if (updates.length > 0) {
+    const result = await storage.updateGoogleAdsDailyMetricsGA4Revenue(campaignId, updates);
+    enriched = result.updated;
+  }
+
+  console.log(`[Google Ads GA4 Enrichment] Campaign ${campaignId}: ${matched.length} matched, ${unmatched.length} unmatched, ${enriched} rows enriched`);
+  return { enriched, matched: matched.length, unmatched };
 }
 
 /**

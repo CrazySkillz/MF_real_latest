@@ -621,6 +621,20 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS selected_campaign_ids TEXT;
           `);
 
+          // Migration 13: Google Ads ↔ GA4 revenue attribution
+          await db.execute(sql`
+            ALTER TABLE google_ads_daily_metrics
+            ADD COLUMN IF NOT EXISTS ga4_revenue NUMERIC(15,2);
+          `);
+          await db.execute(sql`
+            ALTER TABLE google_ads_daily_metrics
+            ADD COLUMN IF NOT EXISTS ga4_utm_name TEXT;
+          `);
+          await db.execute(sql`
+            ALTER TABLE google_ads_connections
+            ADD COLUMN IF NOT EXISTS campaign_utm_map TEXT;
+          `);
+
           log('✅ Database migrations completed successfully');
         } catch (error) {
           console.error('⚠️  Migration warning (may already exist):', error.message);

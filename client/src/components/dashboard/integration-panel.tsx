@@ -51,13 +51,6 @@ export default function IntegrationPanel({ onIntegrationClick }: IntegrationPane
       icon: "fab fa-twitter",
       color: "text-blue-400",
     },
-    {
-      id: "tiktok",
-      name: "TikTok Ads",
-      description: "Short-form video advertising and engagement",
-      icon: "fab fa-tiktok",
-      color: "text-black",
-    },
   ];
 
   const connectedPlatformIds = connectedIntegrations.map(integration => integration.platform);

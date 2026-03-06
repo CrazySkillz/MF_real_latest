@@ -22,10 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { SiGoogle, SiFacebook, SiLinkedin, SiX, SiHubspot, SiSalesforce, SiShopify } from "react-icons/si";
-import { HubSpotRevenueWizard } from "@/components/HubSpotRevenueWizard";
-import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
-import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
+import { SiGoogle, SiFacebook, SiLinkedin, SiX } from "react-icons/si";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { format } from "date-fns";
 import { reportStorage } from "@/lib/reportStorage";
@@ -5176,7 +5173,6 @@ export default function CampaignDetail() {
   const platformDistribution = {
     "Facebook Ads": { impressions: 0.35, clicks: 0.32, spend: 0.38, conversions: 0.28 },
     "Google Ads": { impressions: 0.28, clicks: 0.35, spend: 0.32, conversions: 0.42 },
-    "TikTok Ads": { impressions: 0.22, clicks: 0.18, spend: 0.18, conversions: 0.15 },
     "LinkedIn Ads": { impressions: 0.15, clicks: 0.15, spend: 0.12, conversions: 0.15 }
   };
   
@@ -5254,16 +5250,6 @@ export default function CampaignDetail() {
       analyticsPath: platformStatusMap.get("google-ads")?.analyticsPath || `/campaigns/${campaign?.id}/google-ads-analytics`
     },
     {
-      platform: "TikTok Ads",
-      connected: connectedPlatformNames.includes("TikTok Ads"),
-      impressions: connectedPlatformNames.includes("TikTok Ads") ? Math.round(campaignImpressions * platformDistribution["TikTok Ads"].impressions) : 0,
-      clicks: connectedPlatformNames.includes("TikTok Ads") ? Math.round(campaignClicks * platformDistribution["TikTok Ads"].clicks) : 0,
-      conversions: connectedPlatformNames.includes("TikTok Ads") ? Math.round(estimatedConversions * platformDistribution["TikTok Ads"].conversions) : 0,
-      spend: connectedPlatformNames.includes("TikTok Ads") ? (campaignSpend * platformDistribution["TikTok Ads"].spend).toFixed(2) : "0.00",
-      ctr: connectedPlatformNames.includes("TikTok Ads") ? "2.15%" : "0.00%",
-      cpc: connectedPlatformNames.includes("TikTok Ads") ? "$0.59" : "$0.00"
-    },
-    {
       platform: "LinkedIn Ads",
       connected: isLinkedInConnected,
       requiresImport: linkedInRequiresImport,
@@ -5281,36 +5267,6 @@ export default function CampaignDetail() {
             (linkedInSession?.id
               ? `/campaigns/${campaign?.id}/linkedin-analytics?session=${encodeURIComponent(linkedInSession.id)}`
               : `/campaigns/${campaign?.id}/linkedin-analytics`)))
-    },
-    {
-      platform: "HubSpot",
-      connected: platformStatusMap.get("hubspot")?.connected === true,
-      impressions: 0,
-      clicks: 0,
-      conversions: 0,
-      spend: "0.00",
-      ctr: "0.00%",
-      cpc: "$0.00"
-    },
-    {
-      platform: "Salesforce",
-      connected: platformStatusMap.get("salesforce")?.connected === true,
-      impressions: 0,
-      clicks: 0,
-      conversions: 0,
-      spend: "0.00",
-      ctr: "0.00%",
-      cpc: "$0.00"
-    },
-    {
-      platform: "Shopify",
-      connected: platformStatusMap.get("shopify")?.connected === true,
-      impressions: 0,
-      clicks: 0,
-      conversions: 0,
-      spend: "0.00",
-      ctr: "0.00%",
-      cpc: "$0.00"
     },
     {
       platform: "Custom Integration",
@@ -5343,14 +5299,6 @@ export default function CampaignDetail() {
         return <SiFacebook className="w-5 h-5 text-blue-600" />;
       case "LinkedIn Ads":
         return <SiLinkedin className="w-5 h-5 text-blue-700" />;
-      case "TikTok Ads":
-        return <i className="fab fa-tiktok w-5 h-5 text-black" />;
-      case "Shopify":
-        return <SiShopify className="w-5 h-5 text-green-600" />;
-      case "HubSpot":
-        return <SiHubspot className="w-5 h-5 text-orange-500" />;
-      case "Salesforce":
-        return <SiSalesforce className="w-5 h-5 text-blue-500" />;
       case "Custom Integration":
         return (
           <div className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
@@ -5452,12 +5400,6 @@ export default function CampaignDetail() {
         url = `/api/google-sheets/${campaignId}/connection`;
       } else if (p === 'Custom Integration') {
         url = `/api/custom-integration/${campaignId}`;
-      } else if (p === 'HubSpot') {
-        url = `/api/hubspot/${campaignId}/connection`;
-      } else if (p === 'Salesforce') {
-        url = `/api/salesforce/${campaignId}/connection`;
-      } else if (p === 'Shopify') {
-        url = `/api/shopify/${campaignId}/connection`;
       } else {
         throw new Error('Disconnect not supported for this platform');
       }
@@ -6645,9 +6587,9 @@ export default function CampaignDetail() {
                 >
                   {/* Platform Header - Always Visible */}
                   <div
-                    className={`flex items-center justify-between p-3 ${(!platform.connected || platform.needsSetup || platform.requiresImport || ["HubSpot", "Salesforce", "Shopify"].includes(platform.platform)) ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
+                    className={`flex items-center justify-between p-3 ${(!platform.connected || platform.needsSetup || platform.requiresImport) ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
                     onClick={() => {
-                      if (!platform.connected || platform.needsSetup || platform.requiresImport || ["HubSpot", "Salesforce", "Shopify"].includes(platform.platform)) {
+                      if (!platform.connected || platform.needsSetup || platform.requiresImport) {
                         setExpandedPlatform(expandedPlatform === platform.platform ? null : platform.platform);
                       }
                     }}
@@ -6675,7 +6617,7 @@ export default function CampaignDetail() {
                           {platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
                         </Badge>
                       )}
-                      {(!platform.connected || platform.needsSetup || platform.requiresImport || ["HubSpot", "Salesforce", "Shopify"].includes(platform.platform)) && (
+                      {(!platform.connected || platform.needsSetup || platform.requiresImport) && (
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />
                       )}
                       {platform.connected && !platform.needsSetup && !platform.requiresImport && (
@@ -6783,7 +6725,7 @@ export default function CampaignDetail() {
                   )}
 
                   {/* Connection Setup Dropdown - Show when expanded and (not connected OR needs setup OR adding additional sheet OR CRM reconfigure) */}
-                  {expandedPlatform === platform.platform && (!platform.connected || platform.needsSetup || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets) || ["HubSpot", "Salesforce", "Shopify"].includes(platform.platform)) && (
+                  {expandedPlatform === platform.platform && (!platform.connected || platform.needsSetup || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets)) && (
                     <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-3">
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow 
@@ -6957,42 +6899,6 @@ export default function CampaignDetail() {
                             </button>
                           </div>
                         </div>
-                      ) : platform.platform === "HubSpot" ? (
-                        <HubSpotRevenueWizard
-                          campaignId={campaign.id}
-                          mode={platform.connected ? "edit" : "connect"}
-                          platformContext="linkedin"
-                          onSuccess={() => {
-                            setExpandedPlatform(null);
-                            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                            toastHook({ title: "HubSpot Connected", description: "HubSpot has been connected and revenue mappings saved." });
-                          }}
-                          onClose={() => setExpandedPlatform(null)}
-                        />
-                      ) : platform.platform === "Salesforce" ? (
-                        <SalesforceRevenueWizard
-                          campaignId={campaign.id}
-                          mode={platform.connected ? "edit" : "connect"}
-                          autoStartOAuth={!platform.connected}
-                          platformContext="linkedin"
-                          onSuccess={() => {
-                            setExpandedPlatform(null);
-                            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                            toastHook({ title: "Salesforce Connected", description: "Salesforce has been connected and revenue mappings saved." });
-                          }}
-                          onClose={() => setExpandedPlatform(null)}
-                        />
-                      ) : platform.platform === "Shopify" ? (
-                        <ShopifyRevenueWizard
-                          campaignId={campaign.id}
-                          platformContext="linkedin"
-                          onSuccess={() => {
-                            setExpandedPlatform(null);
-                            queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                            toastHook({ title: "Shopify Connected", description: "Shopify has been connected and revenue mappings saved." });
-                          }}
-                          onClose={() => setExpandedPlatform(null)}
-                        />
                       ) : (
                         <div className="text-center py-6">
                           <div className="text-slate-600 dark:text-slate-400 mb-3">
@@ -7025,96 +6931,6 @@ export default function CampaignDetail() {
 
                 {/* Revenue & Spend Platform Cards */}
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {/* HubSpot */}
-                  {(() => {
-                    const isConnected = dataSources?.crmConnections?.hubspot?.connected ||
-                      (dataSources?.revenueSources || []).some((s: any) => s?.sourceType === 'hubspot' && s?.isActive !== false);
-                    const revenueEntry = (dataSources?.revenueSources || []).find((s: any) => s?.sourceType === 'hubspot' && s?.isActive !== false);
-                    return (
-                      <Card className={`${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
-                              <SiHubspot className={`w-5 h-5 ${isConnected ? 'text-orange-500' : 'text-slate-400'}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">HubSpot</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
-                                {isConnected ? 'Connected' : 'CRM revenue data'}
-                                {revenueEntry?.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(revenueEntry.lastRevenue))}` : ''}
-                              </p>
-                            </div>
-                            {isConnected ? (
-                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })()}
-
-                  {/* Salesforce */}
-                  {(() => {
-                    const isConnected = dataSources?.crmConnections?.salesforce?.connected ||
-                      (dataSources?.revenueSources || []).some((s: any) => s?.sourceType === 'salesforce' && s?.isActive !== false);
-                    const revenueEntry = (dataSources?.revenueSources || []).find((s: any) => s?.sourceType === 'salesforce' && s?.isActive !== false);
-                    return (
-                      <Card className={`${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
-                              <SiSalesforce className={`w-5 h-5 ${isConnected ? 'text-blue-500' : 'text-slate-400'}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">Salesforce</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
-                                {isConnected ? 'Connected' : 'CRM revenue data'}
-                                {revenueEntry?.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(revenueEntry.lastRevenue))}` : ''}
-                              </p>
-                            </div>
-                            {isConnected ? (
-                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })()}
-
-                  {/* Shopify */}
-                  {(() => {
-                    const isConnected = dataSources?.crmConnections?.shopify?.connected ||
-                      (dataSources?.revenueSources || []).some((s: any) => s?.sourceType === 'shopify' && s?.isActive !== false);
-                    const revenueEntry = (dataSources?.revenueSources || []).find((s: any) => s?.sourceType === 'shopify' && s?.isActive !== false);
-                    return (
-                      <Card className={`${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
-                              <SiShopify className={`w-5 h-5 ${isConnected ? 'text-green-600' : 'text-slate-400'}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">Shopify</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
-                                {isConnected ? 'Connected' : 'E-commerce revenue data'}
-                                {revenueEntry?.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(revenueEntry.lastRevenue))}` : ''}
-                              </p>
-                            </div>
-                            {isConnected ? (
-                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })()}
-
                   {/* Google Sheets (Revenue & Spend) */}
                   {(() => {
                     const gsRevenue = (dataSources?.revenueSources || []).filter((s: any) => s?.sourceType === 'google_sheets' && s?.isActive !== false);
@@ -7122,7 +6938,8 @@ export default function CampaignDetail() {
                     const isConnected = gsRevenue.length > 0 || gsSpend.length > 0;
                     const totalRevenue = gsRevenue.reduce((sum: number, s: any) => sum + (Number(s.lastRevenue) || 0), 0);
                     return (
-                      <Card className={`${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                      <Link href={`/campaigns/${campaign?.id}/google-sheets-data`} className="block">
+                      <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
@@ -7145,6 +6962,7 @@ export default function CampaignDetail() {
                           </div>
                         </CardContent>
                       </Card>
+                      </Link>
                     );
                   })()}
 
@@ -7152,7 +6970,8 @@ export default function CampaignDetail() {
                   {(() => {
                     const isConnected = platformStatusMap.get("custom-integration")?.connected === true;
                     return (
-                      <Card className={`${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                      <Link href={`/campaigns/${campaign?.id}/custom-integration-analytics`} className="block">
+                      <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
@@ -7174,6 +6993,7 @@ export default function CampaignDetail() {
                           </div>
                         </CardContent>
                       </Card>
+                      </Link>
                     );
                   })()}
                 </div>

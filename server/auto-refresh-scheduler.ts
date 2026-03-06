@@ -174,6 +174,104 @@ async function reprocessLinkedInSpend(campaignId: string, mappingConfig: AnyReco
   return true;
 }
 
+/**
+ * Refresh Google Sheets raw data for all active connections in a campaign.
+ * Fetches latest data from Google Sheets API and caches it in the database
+ * so page loads can serve cached data instead of making live API calls.
+ */
+export async function refreshGoogleSheetsDataForCampaign(campaignId: string): Promise<boolean> {
+  const connections = await storage.getGoogleSheetsConnections(campaignId);
+  const activeConnections = (Array.isArray(connections) ? connections : []).filter(
+    (c: any) => c.isActive !== false && c.accessToken && c.spreadsheetId && c.spreadsheetId !== 'pending'
+  );
+
+  if (activeConnections.length === 0) return false;
+
+  let anyUpdated = false;
+
+  for (const conn of activeConnections) {
+    try {
+      // Build range: sheet-specific or default
+      const sheetName = conn.sheetName ? String(conn.sheetName).trim() : '';
+      const range = sheetName
+        ? `'${sheetName.replace(/'/g, "''")}'!A1:Z1000`
+        : 'A1:Z1000';
+
+      let accessToken = conn.accessToken;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`;
+
+      let response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(30000),
+      });
+
+      // Retry with refreshed token on 401
+      if (response.status === 401 && conn.refreshToken && conn.clientId && conn.clientSecret) {
+        console.log(`[Auto Refresh] 🔄 Refreshing token for Google Sheets connection ${conn.id}`);
+        try {
+          const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              grant_type: 'refresh_token',
+              refresh_token: conn.refreshToken,
+              client_id: conn.clientId,
+              client_secret: conn.clientSecret,
+            }),
+            signal: AbortSignal.timeout(15000),
+          });
+
+          if (refreshResponse.ok) {
+            const tokens = await refreshResponse.json();
+            accessToken = tokens.access_token;
+            const expiresAt = new Date(Date.now() + ((tokens.expires_in || 3600) * 1000));
+            const tokenUpdate: any = { accessToken: tokens.access_token, expiresAt };
+            if (tokens.refresh_token) tokenUpdate.refreshToken = tokens.refresh_token;
+            await storage.updateGoogleSheetsConnection(conn.id, tokenUpdate);
+
+            // Retry with new token
+            response = await fetch(url, {
+              headers: { 'Authorization': `Bearer ${accessToken}` },
+              signal: AbortSignal.timeout(30000),
+            });
+          }
+        } catch (refreshErr: any) {
+          console.error(`[Auto Refresh] Token refresh failed for connection ${conn.id}:`, refreshErr?.message || refreshErr);
+        }
+      }
+
+      if (!response.ok) {
+        console.warn(`[Auto Refresh] ⚠️ Google Sheets fetch failed for connection ${conn.id} (${conn.spreadsheetName || conn.spreadsheetId}): ${response.status}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const rows = data.values || [];
+
+      if (rows.length === 0) {
+        console.log(`[Auto Refresh] ⏭️ Empty sheet for connection ${conn.id} (${conn.spreadsheetName || conn.spreadsheetId})`);
+        continue;
+      }
+
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+      const now = new Date();
+
+      await storage.updateGoogleSheetsConnection(conn.id, {
+        cachedData: { headers, rows: dataRows, fetchedAt: now.toISOString(), totalRows: dataRows.length },
+        lastDataRefreshAt: now,
+      } as any);
+
+      console.log(`[Auto Refresh] ✅ Cached ${dataRows.length} rows for "${conn.spreadsheetName || conn.spreadsheetId}" / "${conn.sheetName || 'default'}"`);
+      anyUpdated = true;
+    } catch (err: any) {
+      console.error(`[Auto Refresh] ❌ Google Sheets data refresh failed for connection ${conn.id}:`, err?.message || err);
+    }
+  }
+
+  return anyUpdated;
+}
+
 export async function runDailyAutoRefreshOnce(): Promise<void> {
   // Prevent overlapping runs (e.g. slow API + interval overlap).
   if ((global as any).__autoRefreshInProgress) {
@@ -286,6 +384,13 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
           } else {
             skipped++;
           }
+        } catch {
+          // ignore
+        }
+
+        // Google Sheets (Raw Data Cache — for Overview/Summary/Insights tabs)
+        try {
+          if (await refreshGoogleSheetsDataForCampaign(campaignId)) { anyUpdated = true; }
         } catch {
           // ignore
         }

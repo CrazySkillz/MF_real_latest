@@ -218,6 +218,8 @@ export const googleSheetsConnections = pgTable("google_sheets_connections", {
   isActive: boolean("is_active").notNull().default(true), // Whether this connection is active
   columnMappings: text("column_mappings"), // JSON string of FieldMapping[]
   platforms: text("platforms"), // JSON string array of platform IDs, e.g. '["linkedin","google_ads"]'
+  cachedData: jsonb("cached_data"), // Cached sheet data: { headers, rows, fetchedAt }
+  lastDataRefreshAt: timestamp("last_data_refresh_at"), // When sheet data was last successfully fetched
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

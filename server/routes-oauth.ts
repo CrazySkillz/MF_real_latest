@@ -25,6 +25,7 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
+import { refreshGoogleSheetsDataForCampaign } from "./auto-refresh-scheduler";
 
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
@@ -13656,7 +13657,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get spreadsheet data for a campaign
   app.get("/api/campaigns/:id/google-sheets-data", googleSheetsRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     const campaignId = req.params.id;
-    const { spreadsheetId, view } = req.query; // Optional: fetch from specific spreadsheet or combined view
+    const { spreadsheetId, view, forceRefresh } = req.query; // Optional: fetch from specific spreadsheet or combined view
+    const skipCache = forceRefresh === 'true';
+    const CACHE_MAX_AGE_MS = 25 * 60 * 60 * 1000; // 25 hours
     try {
       // Handle combined view - aggregate data from all mapped connections
       if (view === 'combined') {
@@ -13751,36 +13754,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
               continue;
             }
 
-            // Process each connection (similar to single connection logic)
-            const range = conn.sheetName ? `${toA1SheetPrefix(conn.sheetName)}A1:Z1000` : 'A1:Z1000';
-            let sheetResponse = await fetch(
-              `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheetId}/values/${encodeURIComponent(range)}`,
-              { headers: { 'Authorization': `Bearer ${accessToken}` } }
-            );
+            // Check for fresh cached data before making API call
+            let rows: any[] = [];
+            const connCachedData = (conn as any).cachedData;
+            const connLastRefresh = (conn as any).lastDataRefreshAt;
+            const hasFreshCache = !skipCache && connCachedData && connLastRefresh &&
+              (Date.now() - new Date(connLastRefresh).getTime()) < CACHE_MAX_AGE_MS;
 
-            // Retry with refreshed token if 401
-            if (sheetResponse.status === 401 && conn.refreshToken) {
-              try {
-                accessToken = await refreshGoogleSheetsToken(conn);
-                await storage.updateGoogleSheetsConnection(conn.id, { accessToken });
-                sheetResponse = await fetch(
-                  `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheetId}/values/${encodeURIComponent(range)}`,
-                  { headers: { 'Authorization': `Bearer ${accessToken}` } }
-                );
-              } catch (retryError) {
-                console.warn(`[Combined View] Retry failed for ${conn.spreadsheetId}:`, retryError);
+            if (hasFreshCache && connCachedData.headers && connCachedData.rows) {
+              // Serve from cache
+              rows = [connCachedData.headers, ...connCachedData.rows];
+              devLog(`[Combined View] Using cached data for ${conn.spreadsheetName || conn.spreadsheetId} (cached ${Math.round((Date.now() - new Date(connLastRefresh).getTime()) / 3600000)}h ago)`);
+            } else {
+              // Live API fetch
+              const range = conn.sheetName ? `${toA1SheetPrefix(conn.sheetName)}A1:Z1000` : 'A1:Z1000';
+              let sheetResponse = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheetId}/values/${encodeURIComponent(range)}`,
+                { headers: { 'Authorization': `Bearer ${accessToken}` } }
+              );
+
+              // Retry with refreshed token if 401
+              if (sheetResponse.status === 401 && conn.refreshToken) {
+                try {
+                  accessToken = await refreshGoogleSheetsToken(conn);
+                  await storage.updateGoogleSheetsConnection(conn.id, { accessToken });
+                  sheetResponse = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${conn.spreadsheetId}/values/${encodeURIComponent(range)}`,
+                    { headers: { 'Authorization': `Bearer ${accessToken}` } }
+                  );
+                } catch (retryError) {
+                  console.warn(`[Combined View] Retry failed for ${conn.spreadsheetId}:`, retryError);
+                  continue;
+                }
+              }
+
+              if (!sheetResponse.ok) {
+                console.warn(`[Combined View] Failed to fetch data from ${conn.spreadsheetId} (status: ${sheetResponse.status})`);
+                aggregatedData.failedSheets.push({ spreadsheetId: conn.spreadsheetId, spreadsheetName: conn.spreadsheetName || 'Unknown', sheetName: conn.sheetName || '', reason: `API error ${sheetResponse.status}` });
                 continue;
               }
-            }
 
-            if (!sheetResponse.ok) {
-              console.warn(`[Combined View] Failed to fetch data from ${conn.spreadsheetId} (status: ${sheetResponse.status})`);
-              aggregatedData.failedSheets.push({ spreadsheetId: conn.spreadsheetId, spreadsheetName: conn.spreadsheetName || 'Unknown', sheetName: conn.sheetName || '', reason: `API error ${sheetResponse.status}` });
-              continue;
+              const sheetData = await sheetResponse.json();
+              rows = sheetData.values || [];
             }
-
-            const sheetData = await sheetResponse.json();
-            const rows = sheetData.values || [];
             if (rows.length === 0) continue;
 
             const headers = rows[0] || [];
@@ -14001,7 +14017,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           calculatedConversionValues: [], // Would need to recalculate from aggregated data
           sheetBreakdown: aggregatedData.sheetBreakdown,
           failedSheets: aggregatedData.failedSheets.length > 0 ? aggregatedData.failedSheets : undefined,
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
+          lastDataRefreshAt: mappedConnections.reduce((latest: string | null, conn: any) => {
+            if (!conn.lastDataRefreshAt) return latest;
+            const dt = new Date(conn.lastDataRefreshAt).toISOString();
+            return !latest || dt > latest ? dt : latest;
+          }, null as string | null)
         });
       }
 
@@ -14167,6 +14188,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      // Check for fresh cached data before making API call
+      const singleCachedData = (connection as any).cachedData;
+      const singleLastRefresh = (connection as any).lastDataRefreshAt;
+      const singleHasFreshCache = !skipCache && singleCachedData && singleLastRefresh &&
+        (Date.now() - new Date(singleLastRefresh).getTime()) < CACHE_MAX_AGE_MS;
+
+      let rows: any[];
+      let rowLimitHit = false;
+
+      if (singleHasFreshCache && singleCachedData.headers && singleCachedData.rows) {
+        // Serve from cache
+        rows = [singleCachedData.headers, ...singleCachedData.rows];
+        rowLimitHit = rows.length >= 1000;
+        devLog(`[Google Sheets Data] Using cached data for ${connection.spreadsheetName || connection.spreadsheetId} (cached ${Math.round((Date.now() - new Date(singleLastRefresh).getTime()) / 3600000)}h ago, ${rows.length} rows)`);
+      } else {
       // Build range with sheet name if specified
       const range = connection.sheetName ? `${toA1SheetPrefix(connection.sheetName)}A1:Z1000` : 'A1:Z1000';
 
@@ -14363,9 +14399,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error('Invalid data structure received from Google Sheets API');
       }
 
-      const rows = sheetData.values || [];
-      const rowLimitHit = rows.length >= 1000;
+      rows = sheetData.values || [];
+      rowLimitHit = rows.length >= 1000;
       devLog(`[Google Sheets Data] Received ${rows.length} rows from Google Sheets${rowLimitHit ? ' (limit reached — sheet may have more data)' : ''}`);
+      } // end of live API fetch (else branch of cache check)
 
       // Get campaign name for filtering summary data
       const campaign = await storage.getCampaign(campaignId);
@@ -15255,7 +15292,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         matchingInfo: matchingInfo, // Add matching information for UX feedback
         calculatedConversionValues: calculatedConversionValues, // Add calculated conversion values per platform
         rowLimitWarning: rowLimitHit ? 'Sheet contains 1,000+ rows. Only the first 1,000 rows are displayed. Summary metrics may be incomplete.' : undefined,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        lastDataRefreshAt: (connection as any).lastDataRefreshAt ? new Date((connection as any).lastDataRefreshAt).toISOString() : null
       });
 
     } catch (error) {
@@ -15282,6 +15320,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If headers were already sent, log the error but can't send response
         console.error('[Google Sheets Data] ⚠️ Response already sent, cannot send error response');
       }
+    }
+  });
+
+  // Manual refresh of Google Sheets data cache
+  app.post("/api/campaigns/:id/google-sheets-refresh", googleSheetsRateLimiter, requireCampaignAccessParamId, async (req, res) => {
+    const campaignId = req.params.id;
+    try {
+      await refreshGoogleSheetsDataForCampaign(campaignId);
+      res.json({ success: true, refreshedAt: new Date().toISOString() });
+    } catch (error) {
+      console.error('[Google Sheets Refresh] Error:', error);
+      res.status(500).json({ success: false, error: 'Failed to refresh Google Sheets data' });
     }
   });
 

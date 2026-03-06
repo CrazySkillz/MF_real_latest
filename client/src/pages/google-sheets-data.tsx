@@ -38,6 +38,7 @@ interface GoogleSheetsData {
   totalRows: number;
   filteredRows?: number;
   lastUpdated: string;
+  lastDataRefreshAt?: string | null;
   headers: string[];
   data: any[][];
   rowLimitWarning?: string;
@@ -233,6 +234,21 @@ export default function GoogleSheetsData() {
         description: "Google Sheets connection has been removed successfully.",
       });
     }
+  });
+
+  // Manual data refresh mutation
+  const refreshDataMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', `/api/campaigns/${campaignId}/google-sheets-refresh`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+      toast({ title: "Data refreshed", description: "Google Sheets data has been updated." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Refresh failed", description: error.message, variant: "destructive" });
+    },
   });
 
   const isMapped = (connection: any): boolean => {
@@ -1153,8 +1169,24 @@ export default function GoogleSheetsData() {
                         <FileSpreadsheet className="w-5 h-5 text-green-600" />
                         Spreadsheet Data
                       </CardTitle>
-                      <CardDescription>
-                        {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
+                      <CardDescription className="flex items-center justify-between">
+                        <span>
+                          {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
+                          {sheetsData.lastDataRefreshAt && (
+                            <span className="ml-2 text-xs text-slate-400">
+                              (cached {new Date(sheetsData.lastDataRefreshAt).toLocaleString()})
+                            </span>
+                          )}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => refreshDataMutation.mutate()}
+                          disabled={refreshDataMutation.isPending}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-1 ${refreshDataMutation.isPending ? 'animate-spin' : ''}`} />
+                          {refreshDataMutation.isPending ? 'Refreshing...' : 'Refresh Now'}
+                        </Button>
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

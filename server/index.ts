@@ -493,9 +493,16 @@ process.on('uncaughtException', (error: Error) => {
 
           // Set existing connections as primary and active (backward compatibility)
           await db.execute(sql`
-            UPDATE google_sheets_connections 
-            SET is_primary = true, is_active = true 
+            UPDATE google_sheets_connections
+            SET is_primary = true, is_active = true
             WHERE is_primary IS NULL OR is_active IS NULL;
+          `);
+
+          // Migration 6d: Add cached data columns for daily refresh
+          await db.execute(sql`
+            ALTER TABLE google_sheets_connections
+            ADD COLUMN IF NOT EXISTS cached_data JSONB,
+            ADD COLUMN IF NOT EXISTS last_data_refresh_at TIMESTAMP;
           `);
 
           // Migration 7: Create mapping_templates table

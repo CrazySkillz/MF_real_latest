@@ -10,6 +10,13 @@ import { eq, desc } from "drizzle-orm";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
+// Mock campaign profiles with distinct metric characteristics
+const MOCK_CAMPAIGNS = [
+  { id: 'gads_brand_search',     name: 'Brand Search Campaign',         impressionBase: 18000, ctrBase: 0.06, spendBase: 350, convRateBase: 0.06 },
+  { id: 'gads_performance_max',  name: 'Performance Max Campaign',      impressionBase: 12000, ctrBase: 0.03, spendBase: 250, convRateBase: 0.04 },
+  { id: 'gads_display_retarget', name: 'Display Retargeting Campaign',  impressionBase: 8000,  ctrBase: 0.01, spendBase: 120, convRateBase: 0.08 },
+];
+
 /**
  * Generate mock Google Ads data for test mode connections
  */
@@ -22,7 +29,7 @@ async function generateMockGoogleAdsData(
   let existingDates: string[] = [];
   try {
     const existing = await storage.getGoogleAdsDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
-    existingDates = existing.map((m) => m.date);
+    existingDates = [...new Set(existing.map((m) => m.date))];
   } catch {
     // ignore
   }
@@ -50,44 +57,60 @@ async function generateMockGoogleAdsData(
   }
 
   const dateStr = iso(nextDate);
-  const mockCampaignId = `gads_campaign_${campaignId.slice(0, 8)}`;
 
-  // Generate realistic metrics with variance
-  const impressions = Math.max(3000, 20000 + Math.floor(Math.random() * 15000));
-  const clicks = Math.max(40, Math.floor(impressions * (0.02 + Math.random() * 0.04)));
-  const spend = Math.max(30, 300 + Math.random() * 500);
-  const conversions = Math.max(0, Math.floor(clicks * (0.03 + Math.random() * 0.05)));
-  const conversionValue = conversions * (20 + Math.random() * 80);
-  const videoViews = Math.floor(impressions * (0.02 + Math.random() * 0.03));
+  // Filter by selected campaigns if configured
+  const selectedIds: string[] | undefined = connection.selectedCampaignIds
+    ? JSON.parse(connection.selectedCampaignIds)
+    : undefined;
+  const campaignsToGenerate = selectedIds && selectedIds.length > 0
+    ? MOCK_CAMPAIGNS.filter(c => selectedIds.includes(c.id))
+    : MOCK_CAMPAIGNS;
 
-  const ctr = impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(4)) : 0;
-  const cpc = clicks > 0 ? Number((spend / clicks).toFixed(2)) : 0;
-  const cpm = impressions > 0 ? Number(((spend / impressions) * 1000).toFixed(2)) : 0;
-  const costPerConversion = conversions > 0 ? Number((spend / conversions).toFixed(2)) : 0;
-  const conversionRate = clicks > 0 ? Number(((conversions / clicks) * 100).toFixed(2)) : 0;
-  const searchImpressionShare = Number((40 + Math.random() * 50).toFixed(2));
+  // Generate metrics for each mock campaign
+  const metricsToUpsert: any[] = [];
+  let totalSpend = 0;
 
-  await storage.upsertGoogleAdsDailyMetrics([{
-    campaignId,
-    googleCampaignId: mockCampaignId,
-    googleCampaignName: 'Mock Google Ads Campaign',
-    date: dateStr,
-    impressions,
-    clicks,
-    spend: String(spend.toFixed(2)),
-    conversions: String(conversions),
-    conversionValue: String(conversionValue.toFixed(2)),
-    ctr: String(ctr),
-    cpc: String(cpc),
-    cpm: String(cpm),
-    interactionRate: String(ctr),
-    videoViews,
-    searchImpressionShare: String(searchImpressionShare),
-    costPerConversion: String(costPerConversion),
-    conversionRate: String(conversionRate),
-  }]);
+  for (const mc of campaignsToGenerate) {
+    const impressions = Math.max(2000, mc.impressionBase + Math.floor(Math.random() * mc.impressionBase * 0.5));
+    const clicks = Math.max(10, Math.floor(impressions * (mc.ctrBase + Math.random() * mc.ctrBase * 0.5)));
+    const spend = Math.max(20, mc.spendBase + Math.random() * mc.spendBase * 0.6);
+    const conversions = Math.max(0, Math.floor(clicks * (mc.convRateBase + Math.random() * mc.convRateBase * 0.5)));
+    const conversionValue = conversions * (20 + Math.random() * 80);
+    const videoViews = Math.floor(impressions * (0.02 + Math.random() * 0.03));
 
-  // Also populate spend records
+    const ctr = impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(4)) : 0;
+    const cpc = clicks > 0 ? Number((spend / clicks).toFixed(2)) : 0;
+    const cpm = impressions > 0 ? Number(((spend / impressions) * 1000).toFixed(2)) : 0;
+    const costPerConversion = conversions > 0 ? Number((spend / conversions).toFixed(2)) : 0;
+    const conversionRate = clicks > 0 ? Number(((conversions / clicks) * 100).toFixed(2)) : 0;
+    const searchImpressionShare = Number((40 + Math.random() * 50).toFixed(2));
+
+    totalSpend += spend;
+
+    metricsToUpsert.push({
+      campaignId,
+      googleCampaignId: mc.id,
+      googleCampaignName: mc.name,
+      date: dateStr,
+      impressions,
+      clicks,
+      spend: String(spend.toFixed(2)),
+      conversions: String(conversions),
+      conversionValue: String(conversionValue.toFixed(2)),
+      ctr: String(ctr),
+      cpc: String(cpc),
+      cpm: String(cpm),
+      interactionRate: String(ctr),
+      videoViews,
+      searchImpressionShare: String(searchImpressionShare),
+      costPerConversion: String(costPerConversion),
+      conversionRate: String(conversionRate),
+    });
+  }
+
+  await storage.upsertGoogleAdsDailyMetrics(metricsToUpsert);
+
+  // Also populate spend records (aggregate across all campaigns)
   try {
     let spendSources = await storage.getSpendSources(campaignId);
     let gadsSource = spendSources.find((s) => s.sourceType === 'ad_platforms' && s.displayName?.includes('Google Ads'));
@@ -104,14 +127,14 @@ async function generateMockGoogleAdsData(
       campaignId,
       spendSourceId: gadsSource.id,
       date: dateStr,
-      spend: String(spend.toFixed(2)),
+      spend: String(totalSpend.toFixed(2)),
       currency: 'USD',
     }]);
   } catch {
     // ignore duplicate spend records
   }
 
-  console.log(`[Google Ads Mock] Generated data for ${dateStr} — impressions=${impressions}, clicks=${clicks}, spend=$${spend.toFixed(2)}`);
+  console.log(`[Google Ads Mock] Generated data for ${dateStr} — ${campaignsToGenerate.length} campaigns, total spend=$${totalSpend.toFixed(2)}`);
 }
 
 /**

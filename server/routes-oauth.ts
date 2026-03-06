@@ -17624,19 +17624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection: any = await storage.getGoogleAdsConnection(campaignId);
       if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
 
-      // For test mode, return mock campaigns
-      if (connection.method === 'test_mode') {
-        return res.json({
-          success: true,
-          campaigns: [
-            { id: 'test_campaign_1', name: 'Brand Awareness Campaign', status: 'ENABLED' },
-            { id: 'test_campaign_2', name: 'Performance Max Campaign', status: 'ENABLED' },
-            { id: 'test_campaign_3', name: 'Search Campaign - High Intent', status: 'ENABLED' },
-          ],
-        });
-      }
-
-      // For real connections, get campaigns from stored daily metrics (avoids extra API call)
+      // Get campaigns from stored daily metrics (works for both test and real modes)
       const metrics = await storage.getGoogleAdsDailyMetrics(campaignId, new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10), new Date().toISOString().slice(0, 10));
       const campaignMap = new Map<string, { id: string; name: string; spend: number }>();
       for (const m of (metrics || [])) {

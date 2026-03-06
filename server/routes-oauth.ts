@@ -1007,6 +1007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       currency: z.string().trim().min(1).optional(),
       dateRange: z.string().trim().optional(),
       platformContext: zPlatformContext.optional(),
+      subCampaignUrn: z.string().trim().optional().nullable(),
     })
     .passthrough();
 
@@ -1533,6 +1534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const amount = parseNum(parsedBody.data.amount);
       const conversionValueRaw = parseNum(parsedBody.data.conversionValue);
       const currency = parsedBody.data.currency ? String(parsedBody.data.currency) : undefined;
+      const subCampaignUrn = parsedBody.data.subCampaignUrn || undefined;
 
       const amountIsValid = amount > 0;
       const cvIsValid = conversionValueRaw > 0;
@@ -1606,12 +1608,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 date: endDate,
                 revenue: Number(amount.toFixed(2)).toFixed(2) as any,
                 currency: cur,
+                subCampaignUrn: subCampaignUrn || null,
               } as any,
             ]);
           }
         }
       } else {
-        // GA4 path: always revenue_to_date.
+        // GA4/Meta/Google Ads path: always revenue_to_date.
         await storage.createRevenueRecords([
           {
             campaignId,
@@ -1619,6 +1622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             date: endDate,
             revenue: Number(amount.toFixed(2)).toFixed(2) as any,
             currency: cur,
+            subCampaignUrn: subCampaignUrn || null,
           } as any,
         ]);
       }
@@ -2206,12 +2210,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Keep spend totals predictable: whenever a user "processes spend" for a campaign,
   // we deactivate prior spend sources so totals don't silently double-count across imports.
-  const deactivateSpendSourcesForCampaign = async (campaignId: string, opts?: { keepSourceId?: string }) => {
+  const deactivateSpendSourcesForCampaign = async (campaignId: string, opts?: { keepSourceId?: string; platformContext?: string }) => {
     try {
       const keep = opts?.keepSourceId ? String(opts.keepSourceId) : "";
       const existing = await storage.getSpendSources(campaignId);
       for (const s of existing || []) {
         if (!s) continue;
+        // If platformContext scoping requested, only deactivate sources matching that platform
+        if (opts?.platformContext && (s as any).platformContext !== opts.platformContext) continue;
         const sid = String((s as any).id);
         if (keep && sid === keep) continue;
         await storage.deleteSpendSource(sid);
@@ -2226,13 +2232,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const amount = parseNum((req.body as any)?.amount);
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
+      const platformContext = (req.body as any)?.platformContext ? String((req.body as any).platformContext) : undefined;
+      const subCampaignUrn = (req.body as any)?.subCampaignUrn ? String((req.body as any).subCampaignUrn) : undefined;
       if (!(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
 
-      await deactivateSpendSourcesForCampaign(campaignId);
+      // Scope deactivation by platformContext so platform-specific manual spend sources can coexist
+      await deactivateSpendSourcesForCampaign(campaignId, platformContext ? { platformContext } : undefined);
 
       // Store as campaign spend-to-date (lifetime).
       await storage.updateCampaign(campaignId, { spend: Number(amount.toFixed(2)).toFixed(2) as any, currency: cur } as any);
@@ -2240,14 +2249,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const source = await storage.createSpendSource({
         campaignId,
         sourceType: "manual",
-        displayName: "Manual spend (to date)",
+        platformContext: platformContext || null,
+        displayName: platformContext ? `Manual spend – ${platformContext} (to date)` : "Manual spend (to date)",
         currency: cur,
         // Persist the last manual amount so the edit modal (pencil) can prefill the input.
-        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "spend_to_date" }),
+        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "spend_to_date", subCampaignUrn: subCampaignUrn || null }),
         isActive: true,
       } as any);
 
-      res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur });
+      res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur, platformContext: platformContext || null });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to process manual spend" });
     }
@@ -11014,6 +11024,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conn: any = await storage.getSalesforceConnection(campaignId);
       if (!conn || !conn.isActive || !conn.accessToken || !conn.instanceUrl) {
         return res.json({ connected: false });
+      }
+      // Refresh token if expired or expiring within 5 minutes
+      if (conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000) && conn.refreshToken) {
+        try {
+          await refreshSalesforceToken(conn);
+        } catch (err) {
+          console.error('[Salesforce Status] Token refresh failed:', err);
+          return res.json({ connected: false });
+        }
       }
       res.json({
         connected: true,

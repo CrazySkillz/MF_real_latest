@@ -36,8 +36,9 @@ export function AddRevenueWizardModal(props: {
   platformContext?: 'ga4' | 'linkedin' | 'meta';
   initialStep?: Step;
   hideCrmSources?: boolean;
+  connectedPlatforms?: Array<{ label: string; value: string }>;
 }) {
-  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource, platformContext = 'ga4', initialStep, hideCrmSources = false } = props;
+  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource, platformContext = 'ga4', initialStep, hideCrmSources = false, connectedPlatforms = [] } = props;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -133,6 +134,11 @@ export function AddRevenueWizardModal(props: {
   const [manualAmount, setManualAmount] = useState<string>("");
   const [manualConversionValue, setManualConversionValue] = useState<string>("");
   const [manualValueSource, setManualValueSource] = useState<'revenue' | 'conversion_value'>('revenue');
+  const [manualSpendAmount, setManualSpendAmount] = useState<string>("");
+  const [manualPlatform, setManualPlatform] = useState<string>(platformContext || 'ga4');
+  const [manualSubCampaign, setManualSubCampaign] = useState<string>("");
+  const [platformCampaigns, setPlatformCampaigns] = useState<Array<{ id: string; name: string }>>([]);
+  const [platformCampaignsLoading, setPlatformCampaignsLoading] = useState(false);
   const [savingManual, setSavingManual] = useState(false);
   const formatCurrencyWhileTyping = (raw: string) => {
     const s = String(raw ?? "");
@@ -195,6 +201,10 @@ export function AddRevenueWizardModal(props: {
     setManualAmount("");
     setManualConversionValue("");
     setManualValueSource('revenue');
+    setManualSpendAmount("");
+    setManualPlatform(platformContext || 'ga4');
+    setManualSubCampaign("");
+    setPlatformCampaigns([]);
     setSavingManual(false);
     setCsvFile(null);
     setCsvPreview(null);
@@ -240,6 +250,54 @@ export function AddRevenueWizardModal(props: {
     setStep(initialStep);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Fetch platform campaigns when manual platform selection changes
+  useEffect(() => {
+    if (!open || step !== 'manual') return;
+    if (manualPlatform === 'ga4') {
+      setPlatformCampaigns([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setPlatformCampaignsLoading(true);
+      setPlatformCampaigns([]);
+      setManualSubCampaign("");
+      try {
+        if (manualPlatform === 'linkedin') {
+          const resp = await fetch(`/api/campaigns/${campaignId}/linkedin-campaigns`);
+          const json = await resp.json().catch(() => ({}));
+          if (!cancelled && Array.isArray(json?.campaigns)) {
+            setPlatformCampaigns(json.campaigns.map((c: any) => ({ id: c.campaignUrn || c.id || c.name, name: c.name || c.campaignUrn || 'Unknown' })));
+          }
+        } else if (manualPlatform === 'meta') {
+          const resp = await fetch(`/api/meta/${campaignId}/campaigns`);
+          const json = await resp.json().catch(() => ({}));
+          if (!cancelled && Array.isArray(json?.campaigns)) {
+            setPlatformCampaigns(json.campaigns.map((c: any) => ({ id: c.id || c.name, name: c.name || c.id || 'Unknown' })));
+          }
+        } else if (manualPlatform === 'google-ads') {
+          const resp = await fetch(`/api/google-ads/${campaignId}/daily-metrics`);
+          const json = await resp.json().catch(() => ({}));
+          if (!cancelled && Array.isArray(json?.metrics)) {
+            const seen = new Map<string, string>();
+            for (const m of json.metrics) {
+              if (m.googleCampaignId && !seen.has(m.googleCampaignId)) {
+                seen.set(m.googleCampaignId, m.googleCampaignName || m.googleCampaignId);
+              }
+            }
+            setPlatformCampaigns(Array.from(seen, ([id, name]) => ({ id, name })));
+          }
+        }
+      } catch {
+        // ignore fetch errors
+      } finally {
+        if (!cancelled) setPlatformCampaignsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, step, manualPlatform, campaignId]);
 
   // Prefill edit mode from an existing revenue source (manual + sheets supported; CSV requires re-upload).
   useEffect(() => {
@@ -469,54 +527,77 @@ export function AddRevenueWizardModal(props: {
     const amt = Number(clean);
     const cvClean = String(manualConversionValue || "").replace(/,/g, "").trim();
     const cv = Number(cvClean);
+    const spendClean = String(manualSpendAmount || "").replace(/,/g, "").trim();
+    const spendAmt = Number(spendClean);
 
-    if (platformContext !== 'linkedin') {
-      if (!Number.isFinite(amt) || !(amt > 0)) {
-        toast({ title: "Enter a valid amount", description: "Revenue must be > 0.", variant: "destructive" });
+    const hasRevenue = Number.isFinite(amt) && amt > 0;
+    const hasSpend = Number.isFinite(spendAmt) && spendAmt > 0;
+    const hasCv = Number.isFinite(cv) && cv > 0;
+    const effectivePlatform = manualPlatform || platformContext || 'ga4';
+    const subCampaignUrn = manualSubCampaign || undefined;
+
+    if (effectivePlatform === 'linkedin') {
+      if (manualValueSource === 'revenue' && !hasRevenue && !hasSpend) {
+        toast({ title: "Enter a value", description: "Enter at least a revenue or spend amount.", variant: "destructive" });
         return;
       }
-    } else {
-      // Enterprise-grade correctness: manual LinkedIn entry must be unambiguous.
-      // Users must provide EITHER revenue-to-date OR conversion value, never both.
-      const hasAmt = Number.isFinite(amt) && amt > 0;
-      const hasCv = Number.isFinite(cv) && cv > 0;
-      if (manualValueSource === 'revenue' && !hasAmt) {
-        toast({ title: "Enter revenue", description: "Revenue must be > 0.", variant: "destructive" });
+      if (manualValueSource === 'conversion_value' && !hasCv && !hasSpend) {
+        toast({ title: "Enter a value", description: "Enter at least a conversion value or spend amount.", variant: "destructive" });
         return;
       }
-      if (manualValueSource === 'conversion_value' && !hasCv) {
-        toast({ title: "Enter conversion value", description: "Conversion value must be > 0.", variant: "destructive" });
-        return;
-      }
-      if (hasAmt && hasCv) {
+      if (hasRevenue && hasCv) {
         toast({ title: "Enter only one value", description: "Choose Revenue or Conversion Value (not both).", variant: "destructive" });
         return;
       }
+    } else {
+      if (!hasRevenue && !hasSpend) {
+        toast({ title: "Enter a value", description: "Enter at least a revenue or spend amount.", variant: "destructive" });
+        return;
+      }
     }
+
     setSavingManual(true);
     try {
-      const hasAmt = Number.isFinite(amt) && amt > 0;
-      const hasCv = Number.isFinite(cv) && cv > 0;
-      const valueSource: 'revenue' | 'conversion_value' = platformContext === 'linkedin' ? manualValueSource : 'revenue';
-      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/process/manual`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: platformContext === 'linkedin' ? (valueSource === 'revenue' && hasAmt ? amt : null) : (Number.isFinite(amt) ? amt : null),
-          conversionValue: platformContext === 'linkedin' ? (valueSource === 'conversion_value' && hasCv ? cv : null) : null,
-          valueSource,
-          currency,
-          dateRange,
-          platformContext
-        }),
-      });
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save revenue");
-      if (platformContext === 'linkedin' && json?.mode === 'conversion_value') {
-        toast({ title: isEditing ? "Conversion value updated" : "Conversion value saved", description: "Conversion value will be used to calculate revenue metrics for LinkedIn." });
-      } else {
-        toast({ title: isEditing ? "Revenue updated" : "Revenue saved", description: platformContext === 'linkedin' ? "Revenue will be used to calculate LinkedIn financial metrics." : "Revenue will now be used when GA4 revenue is missing." });
+      // Save revenue if provided
+      if (hasRevenue || hasCv) {
+        const valueSource: 'revenue' | 'conversion_value' = effectivePlatform === 'linkedin' ? manualValueSource : 'revenue';
+        const resp = await fetch(`/api/campaigns/${campaignId}/revenue/process/manual`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: effectivePlatform === 'linkedin' ? (valueSource === 'revenue' && hasRevenue ? amt : null) : (hasRevenue ? amt : null),
+            conversionValue: effectivePlatform === 'linkedin' ? (valueSource === 'conversion_value' && hasCv ? cv : null) : null,
+            valueSource,
+            currency,
+            dateRange,
+            platformContext: effectivePlatform,
+            subCampaignUrn,
+          }),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save revenue");
       }
+
+      // Save spend if provided
+      if (hasSpend) {
+        const resp = await fetch(`/api/campaigns/${campaignId}/spend/process/manual`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: spendAmt,
+            currency,
+            platformContext: effectivePlatform,
+            subCampaignUrn,
+          }),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save spend");
+      }
+
+      const saved = [];
+      if (hasRevenue || hasCv) saved.push("revenue");
+      if (hasSpend) saved.push("spend");
+      toast({ title: `${saved.join(" & ")} saved`, description: `Manual ${saved.join(" & ")} assigned to ${effectivePlatform.toUpperCase()}.` });
       invalidateAfterRevenueChange();
       onSuccess?.();
       onOpenChange(false);
@@ -809,7 +890,7 @@ export function AddRevenueWizardModal(props: {
                 <DialogTitle className="truncate">{title}</DialogTitle>
                 <DialogDescription className="mt-1">{description}</DialogDescription>
               </div>
-              {step !== "select" && (
+              {step !== "select" && !initialStep && (
                 <Button variant="ghost" onClick={handleBack}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back
@@ -904,14 +985,54 @@ export function AddRevenueWizardModal(props: {
 
             {step === "manual" && (
               <div className="space-y-4">
+                {/* Platform & Campaign Assignment */}
+                {connectedPlatforms.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Assign to platform</CardTitle>
+                      <CardDescription>Choose which platform and campaign to attribute this revenue/spend to.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label>Platform</Label>
+                          <Select value={manualPlatform} onValueChange={(v) => { setManualPlatform(v); setManualSubCampaign(""); }}>
+                            <SelectTrigger><SelectValue placeholder="Select platform" /></SelectTrigger>
+                            <SelectContent>
+                              {connectedPlatforms.map((p) => (
+                                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {manualPlatform !== 'ga4' && (
+                          <div className="space-y-1">
+                            <Label>Campaign {platformCampaignsLoading ? '(loading...)' : '(optional)'}</Label>
+                            <Select value={manualSubCampaign || "__all__"} onValueChange={(v) => setManualSubCampaign(v === "__all__" ? "" : v)} disabled={platformCampaignsLoading || platformCampaigns.length === 0}>
+                              <SelectTrigger><SelectValue placeholder={platformCampaigns.length === 0 && !platformCampaignsLoading ? "No campaigns found" : "All campaigns"} /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__all__">All campaigns</SelectItem>
+                                {platformCampaigns.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Revenue Section */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Enter revenue</CardTitle>
-                    <CardDescription>Revenue to date for this campaign (lifetime). You can update it any time.</CardDescription>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Revenue</CardTitle>
+                    <CardDescription>Revenue to date (lifetime). Leave blank if you only want to enter spend.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {platformContext === 'linkedin' ? (
+                      {manualPlatform === 'linkedin' ? (
                         <>
                           <div className="space-y-2 md:col-span-2">
                             <div className="text-sm font-medium">What do you have?</div>
@@ -920,7 +1041,6 @@ export function AddRevenueWizardModal(props: {
                               onValueChange={(v) => {
                                 const next = v as 'revenue' | 'conversion_value';
                                 setManualValueSource(next);
-                                // Enforce mutual exclusivity for enterprise-grade correctness.
                                 if (next === 'revenue') setManualConversionValue("");
                                 if (next === 'conversion_value') setManualAmount("");
                               }}
@@ -939,7 +1059,6 @@ export function AddRevenueWizardModal(props: {
                               Enter <strong>one</strong> value only. This prevents ambiguous financial reporting.
                             </p>
                           </div>
-
                           {manualValueSource === 'revenue' ? (
                             <div className="space-y-1 md:col-span-2">
                               <Label>Revenue to date ({currency})</Label>
@@ -962,7 +1081,7 @@ export function AddRevenueWizardModal(props: {
                                 inputMode="decimal"
                               />
                               <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                                Revenue metrics will be calculated as Conversions × Conversion Value.
+                                Revenue metrics will be calculated as Conversions x Conversion Value.
                               </p>
                             </div>
                           )}
@@ -980,16 +1099,42 @@ export function AddRevenueWizardModal(props: {
                         </div>
                       )}
                     </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setStep("select")}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleManualSave} disabled={savingManual}>
-                        {savingManual ? "Saving…" : isEditing ? "Update revenue" : "Save revenue"}
-                      </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Spend Section */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Spend</CardTitle>
+                    <CardDescription>Spend to date (lifetime). Leave blank if you only want to enter revenue.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-1">
+                      <Label>Spend to date ({currency})</Label>
+                      <Input
+                        value={manualSpendAmount}
+                        onChange={(e) => setManualSpendAmount(formatCurrencyWhileTyping(e.target.value))}
+                        onBlur={(e) => setManualSpendAmount(formatCurrencyOnBlur(e.target.value))}
+                        placeholder="0.00"
+                        inputMode="decimal"
+                      />
                     </div>
                   </CardContent>
                 </Card>
+
+                <div className="flex justify-end gap-2">
+                  {!initialStep && (
+                    <Button variant="outline" onClick={() => setStep("select")}>
+                      Cancel
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    Close
+                  </Button>
+                  <Button onClick={handleManualSave} disabled={savingManual}>
+                    {savingManual ? "Saving..." : isEditing ? "Update" : "Save"}
+                  </Button>
+                </div>
               </div>
             )}
 

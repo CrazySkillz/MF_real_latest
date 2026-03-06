@@ -118,6 +118,7 @@ export const spendSources = pgTable("spend_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
   sourceType: text("source_type").notNull(), // 'manual' | 'csv' | 'google_sheets' | 'ad_platforms' | 'custom'
+  platformContext: text("platform_context"), // 'ga4' | 'linkedin' | 'meta' | 'google-ads'
   displayName: text("display_name"),
   currency: text("currency"),
   mappingConfig: text("mapping_config"), // JSON string (mappings + filters)
@@ -135,6 +136,7 @@ export const spendRecords = pgTable("spend_records", {
   spend: decimal("spend", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency"),
   sourceType: varchar("source_type", { length: 50 }), // 'google_sheets', 'csv', 'paste', 'google_ads_api', 'meta_api', 'linkedin_api', 'legacy_cumulative'
+  subCampaignUrn: text("sub_campaign_urn"), // Platform campaign ID/URN for per-campaign spend attribution
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

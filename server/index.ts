@@ -601,6 +601,16 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
           `);
 
+          // Migration 11: Add platformContext to spend_sources, subCampaignUrn to spend_records
+          await db.execute(sql`
+            ALTER TABLE spend_sources
+            ADD COLUMN IF NOT EXISTS platform_context TEXT;
+          `);
+          await db.execute(sql`
+            ALTER TABLE spend_records
+            ADD COLUMN IF NOT EXISTS sub_campaign_urn TEXT;
+          `);
+
           log('✅ Database migrations completed successfully');
         } catch (error) {
           console.error('⚠️  Migration warning (may already exist):', error.message);

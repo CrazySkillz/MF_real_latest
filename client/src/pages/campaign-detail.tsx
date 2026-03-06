@@ -6940,8 +6940,15 @@ export default function CampaignDetail() {
                     { key: 'salesforce', label: 'Salesforce', sourceType: 'salesforce', wizardStep: 'salesforce', desc: 'CRM revenue data', Icon: SiSalesforce, connColor: 'bg-blue-100 dark:bg-blue-900/30', iconColor: 'text-blue-500' },
                     { key: 'shopify', label: 'Shopify', sourceType: 'shopify', wizardStep: 'shopify', desc: 'E-commerce revenue data', Icon: SiShopify, connColor: 'bg-green-100 dark:bg-green-900/30', iconColor: 'text-green-600' },
                   ].map((crm) => {
-                    const isConnected = (dataSources as any)?.crmConnections?.[crm.key]?.connected ||
-                      (dataSources?.revenueSources || []).some((s: any) => s?.sourceType === crm.sourceType && s?.isActive !== false);
+                    const isConnected = (() => {
+                      const conn = (dataSources as any)?.crmConnections?.[crm.key];
+                      const cfg = conn?.mappingConfig;
+                      const hasValidMapping = cfg?.campaignField && cfg?.revenueField;
+                      const hasRevenueSource = (dataSources?.revenueSources || []).some(
+                        (s: any) => s?.sourceType === crm.sourceType && s?.isActive !== false
+                      );
+                      return (conn?.connected && hasValidMapping) || hasRevenueSource;
+                    })();
                     const revenueEntry = (dataSources?.revenueSources || []).find((s: any) => s?.sourceType === crm.sourceType && s?.isActive !== false);
                     const connectedPlatforms = [
                       platformStatusMap.get("google-analytics")?.connected && { label: "Google Analytics (GA4)", value: "ga4" as const },
@@ -6970,7 +6977,7 @@ export default function CampaignDetail() {
                                 ) : (
                                   <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
                                 )}
-                                {isConnected && revenueEntry && (
+                                {isConnected && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -6978,8 +6985,11 @@ export default function CampaignDetail() {
                                     onClick={async (e) => {
                                       e.stopPropagation();
                                       e.preventDefault();
-                                      if (!confirm(`Disconnect ${crm.label} revenue source?`)) return;
-                                      await apiRequest('DELETE', `/api/campaigns/${campaignId}/revenue-sources/${revenueEntry.id}`);
+                                      if (!confirm(`Disconnect ${crm.label}? This will remove the revenue source and OAuth connection.`)) return;
+                                      if (revenueEntry) {
+                                        await apiRequest('DELETE', `/api/campaigns/${campaignId}/revenue-sources/${revenueEntry.id}`);
+                                      }
+                                      await apiRequest('DELETE', `/api/${crm.key}/${campaignId}/connection`);
                                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
                                       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
                                     }}
@@ -7216,6 +7226,12 @@ export default function CampaignDetail() {
                   hideCrmSources={!revenueWizardInitialStep || !['hubspot', 'salesforce', 'shopify'].includes(revenueWizardInitialStep)}
                   initialStep={revenueWizardInitialStep as any}
                   platformContext={revenueWizardPlatformContext}
+                  connectedPlatforms={[
+                    platformStatusMap.get("google-analytics")?.connected && { label: "Google Analytics (GA4)", value: "ga4" },
+                    platformStatusMap.get("linkedin")?.connected && { label: "LinkedIn", value: "linkedin" },
+                    platformStatusMap.get("facebook")?.connected && { label: "Meta (Facebook)", value: "meta" },
+                    platformStatusMap.get("google-ads")?.connected && { label: "Google Ads", value: "google-ads" },
+                  ].filter(Boolean) as Array<{ label: string; value: string }>}
                   onSuccess={() => {
                     setAddRevenueWizardOpen(false);
                     setRevenueWizardInitialStep(undefined);

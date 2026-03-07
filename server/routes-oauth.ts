@@ -8506,9 +8506,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ] = await Promise.all([
         storage.getGA4Connections(campaignId),
         storage.getGoogleSheetsConnections(campaignId),
-        storage.getLinkedInConnection(campaignId),
-        storage.getMetaConnection(campaignId),
-        storage.getCustomIntegration(campaignId),
+        storage.getLinkedInConnection(campaignId).catch(() => undefined),
+        storage.getMetaConnection(campaignId).catch(() => undefined),
+        storage.getCustomIntegration(campaignId).catch(() => undefined),
         storage.getGoogleAdsConnection(campaignId).catch(() => undefined),
         storage.getHubspotConnection(campaignId).catch(() => undefined),
         storage.getShopifyConnection(campaignId).catch(() => undefined),

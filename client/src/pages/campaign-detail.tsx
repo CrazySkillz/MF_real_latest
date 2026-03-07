@@ -6728,11 +6728,17 @@ export default function CampaignDetail() {
                   )}
 
                   {/* Connection Setup Dropdown - Show when expanded and (not connected OR needs setup OR adding additional sheet OR CRM reconfigure) */}
-                  {expandedPlatform === platform.platform && (!platform.connected || platform.needsSetup || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets)) && (
+                  {/* GA4: keep mounted while expanded even after connected-platforms refetch shows connected,
+                      so the user can finish the property + campaign filter steps without the component being unmounted */}
+                  {expandedPlatform === platform.platform && (
+                    platform.platform === "Google Analytics"
+                      ? true
+                      : (!platform.connected || platform.needsSetup || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets))
+                  ) && (
                     <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-3">
                       {platform.platform === "Google Analytics" ? (
-                        <GA4ConnectionFlow 
-                          campaignId={campaign.id} 
+                        <GA4ConnectionFlow
+                          campaignId={campaign.id}
                           onConnectionSuccess={() => {
                             setExpandedPlatform(null);
                             window.location.reload();

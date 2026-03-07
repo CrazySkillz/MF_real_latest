@@ -289,7 +289,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const data = await response.json();
 
       if (data.success) {
-        // Invalidate connected-platforms immediately so badge updates even if user doesn't finish filter step
+        // Invalidate so badge updates to "Connected" immediately
         queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
         queryClient.invalidateQueries({ queryKey: ['/api/ga4/check-connection', campaignId] });
         toast({ title: 'GA4 Connected!', description: 'Property connected. Now select campaigns to track.' });

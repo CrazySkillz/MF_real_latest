@@ -1812,7 +1812,61 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     },
   });
 
-  // Update Report mutation
+  // Fetch LinkedIn daily metrics for campaign breakdown (GA4 revenue attribution)
+  const { data: linkedinDailyMetricsResp } = useQuery({
+    queryKey: ['/api/linkedin', campaignId, 'daily-metrics'],
+    queryFn: async () => {
+      const end = new Date().toISOString().slice(0, 10);
+      const start = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+      const resp = await fetch(`/api/linkedin/${campaignId}/daily-metrics?startDate=${start}&endDate=${end}`);
+      if (!resp.ok) return { metrics: [] };
+      return resp.json();
+    },
+    enabled: !!campaignId,
+  });
+
+  // Campaign breakdown from daily metrics (for GA4 ROAS table)
+  const linkedinCampaignBreakdown = useMemo(() => {
+    const metrics = linkedinDailyMetricsResp?.metrics || [];
+    const byName = new Map<string, any>();
+    for (const m of metrics) {
+      const name = (m as any).linkedinCampaignName || (m as any).linkedinCampaignId || 'Unknown Campaign';
+      const existing = byName.get(name) || { name, impressions: 0, clicks: 0, spend: 0, conversions: 0, ga4Revenue: 0, hasGa4Revenue: false, days: 0 };
+      existing.impressions += Number(m.impressions || 0);
+      existing.clicks += Number(m.clicks || 0);
+      existing.spend += parseFloat(String(m.spend || '0'));
+      existing.conversions += Number(m.conversions || 0);
+      if ((m as any).ga4Revenue) {
+        existing.ga4Revenue += parseFloat((m as any).ga4Revenue || '0');
+        existing.hasGa4Revenue = true;
+      }
+      existing.days++;
+      byName.set(name, existing);
+    }
+    return Array.from(byName.values()).map(c => ({
+      ...c,
+      ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
+      cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
+      conversionRate: c.clicks > 0 ? (c.conversions / c.clicks) * 100 : 0,
+      ga4Roas: c.hasGa4Revenue && c.spend > 0 ? c.ga4Revenue / c.spend : null,
+    })).sort((a, b) => b.spend - a.spend);
+  }, [linkedinDailyMetricsResp]);
+
+  const enrichLinkedInGA4Mutation = useMutation({
+    mutationFn: async () => {
+      const resp = await fetch(`/api/linkedin/${campaignId}/enrich-ga4-revenue`, { method: 'POST' });
+      if (!resp.ok) throw new Error('Failed to match GA4 revenue');
+      return resp.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/linkedin', campaignId, 'daily-metrics'] });
+      toast({ title: 'GA4 Revenue Matched', description: `${data.matched} of ${data.matched + (data.unmatched?.length || 0)} campaigns matched.` });
+    },
+    onError: (err: any) => {
+      toast({ title: 'GA4 Match Failed', description: err.message, variant: 'destructive' });
+    },
+  });
+
   // Update Report mutation
   const updateReportMutation = useMutation({
     mutationFn: async ({ reportId, reportData }: { reportId: string, reportData: any }) => {
@@ -4758,6 +4812,21 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                       type="button"
                       variant="outline"
                       size="sm"
+                      disabled={!campaignId || enrichLinkedInGA4Mutation.isPending}
+                      onClick={() => enrichLinkedInGA4Mutation.mutate()}
+                      className="border-slate-300 dark:border-slate-700"
+                    >
+                      {enrichLinkedInGA4Mutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <BarChart3 className="w-4 h-4 mr-2" />
+                      )}
+                      Match GA4 Revenue
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
                       disabled={!campaignId || runLinkedInRefreshMutation.isPending}
                       onClick={() => runLinkedInRefreshMutation.mutate()}
                       className="border-slate-300 dark:border-slate-700"
@@ -5245,6 +5314,56 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               <Plus className="w-4 h-4 mr-2" />
                               Go to Campaign to Import LinkedIn Data
                             </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* GA4 Revenue Attribution Breakdown */}
+                    {linkedinCampaignBreakdown.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>GA4 Revenue Attribution</CardTitle>
+                          <CardDescription>Campaign spend vs GA4-verified revenue. Click "Match GA4 Revenue" to populate.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <div className="overflow-hidden border rounded-md">
+                            <div className="max-h-[480px] overflow-y-auto">
+                              <table className="w-full text-sm table-fixed">
+                                <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
+                                  <tr>
+                                    <th className="text-left font-medium px-2 py-2 w-[40px]">#</th>
+                                    <th className="text-left font-medium px-2 py-2">Campaign</th>
+                                    <th className="text-right font-medium px-2 py-2 w-[100px]">Impressions</th>
+                                    <th className="text-right font-medium px-2 py-2 w-[80px]">Clicks</th>
+                                    <th className="text-right font-medium px-2 py-2 w-[90px]">Spend</th>
+                                    <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
+                                    <th className="text-right font-medium px-2 py-2 w-[100px]">GA4 Revenue</th>
+                                    <th className="text-right font-medium px-2 py-2 w-[90px]">GA4 ROAS</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {linkedinCampaignBreakdown.map((c: any, idx: number) => {
+                                    const fmtC = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                    const fmtN = (v: number) => v.toLocaleString();
+                                    return (
+                                      <tr key={c.name || idx} className="border-b last:border-b-0">
+                                        <td className="px-2 py-2 text-slate-500 tabular-nums">{idx + 1}</td>
+                                        <td className="px-2 py-2 truncate font-medium text-slate-900 dark:text-white" title={c.name}>{c.name}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{fmtN(c.impressions)}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{fmtN(c.clicks)}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{fmtC(c.spend)}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{fmtN(Math.round(c.conversions))}</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{c.ga4Roas !== null ? fmtC(c.ga4Revenue) : <span className="text-slate-400">—</span>}</td>
+                                        <td className={`px-2 py-2 text-right tabular-nums font-medium ${c.ga4Roas === null ? "text-slate-400" : c.ga4Roas >= 1 ? "text-emerald-600" : "text-red-600"}`}>
+                                          {c.ga4Roas !== null ? `${c.ga4Roas.toFixed(2)}x` : "—"}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>

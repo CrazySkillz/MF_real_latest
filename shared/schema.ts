@@ -317,6 +317,7 @@ export const linkedinConnections = pgTable("linkedin_connections", {
   encryptedTokens: jsonb("encrypted_tokens"),
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Platform-specific conversion value from Google Sheets/webhook
   // Canonical "last successful data refresh" timestamp (used for exec-safe coverage across tabs).
+  campaignUtmMap: text("campaign_utm_map"), // JSON: { linkedinCampaignId: utmCampaignName } for GA4 matching
   lastRefreshAt: timestamp("last_refresh_at"),
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -335,6 +336,7 @@ export const metaConnections = pgTable("meta_connections", {
   method: text("method").notNull(), // 'oauth' or 'test_mode'
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Platform-specific conversion value from Google Sheets/webhook
   selectedCampaignIds: text("selected_campaign_ids"), // JSON array of Meta campaign IDs to import
+  campaignUtmMap: text("campaign_utm_map"), // JSON: { metaCampaignId: utmCampaignName } for GA4 matching
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -471,6 +473,9 @@ export const metaDailyMetrics = pgTable("meta_daily_metrics", {
   conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }), // Conversions / Clicks * 100
   revenue: decimal("revenue", { precision: 10, scale: 2 }), // Revenue from conversions (if tracked)
   roas: decimal("roas", { precision: 5, scale: 2 }), // Return on ad spend
+  metaCampaignName: text("meta_campaign_name"), // Meta campaign name for GA4 matching
+  ga4Revenue: decimal("ga4_revenue", { precision: 15, scale: 2 }), // GA4-attributed revenue
+  ga4UtmName: text("ga4_utm_name"), // matched GA4 UTM campaign name
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -511,6 +516,10 @@ export const linkedinDailyMetrics = pgTable("linkedin_daily_metrics", {
   spend: decimal("spend", { precision: 15, scale: 2 }).notNull().default("0"),
   videoViews: integer("video_views").notNull().default(0),
   viralImpressions: integer("viral_impressions").notNull().default(0),
+  linkedinCampaignId: text("linkedin_campaign_id"), // LinkedIn campaign URN for GA4 matching
+  linkedinCampaignName: text("linkedin_campaign_name"), // LinkedIn campaign name for GA4 matching
+  ga4Revenue: decimal("ga4_revenue", { precision: 15, scale: 2 }), // GA4-attributed revenue
+  ga4UtmName: text("ga4_utm_name"), // matched GA4 UTM campaign name
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

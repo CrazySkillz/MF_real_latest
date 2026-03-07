@@ -11,6 +11,14 @@ import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { db } from "./db";
 import { metaConnections, metaDailyMetrics } from "../shared/schema";
 import { desc, eq } from "drizzle-orm";
+import { enrichPlatformWithGA4Revenue } from "./utils/ga4RevenueEnrichment";
+
+// Mock campaign profiles with distinct metric characteristics
+const META_MOCK_CAMPAIGNS = [
+  { id: 'meta_brand_awareness',  name: 'Brand Awareness Campaign',  impressionBase: 15000, ctrBase: 0.015, spendBase: 300, convRateBase: 0.03 },
+  { id: 'meta_lead_gen',         name: 'Lead Generation Campaign',  impressionBase: 10000, ctrBase: 0.025, spendBase: 450, convRateBase: 0.05 },
+  { id: 'meta_retargeting',      name: 'Retargeting Campaign',      impressionBase: 6000,  ctrBase: 0.035, spendBase: 150, convRateBase: 0.08 },
+];
 
 /**
  * Generate mock Meta data for test mode
@@ -79,44 +87,68 @@ async function generateMockMetaData(
 
     const date = iso(nextUTC);
 
-    // Generate a single day's totals (lightweight; avoids big arrays/large writes).
-    const impressions = Math.max(5000, 30000 + Math.floor(Math.random() * 10000));
-    const reach = Math.max(3000, Math.floor(impressions * (0.7 + Math.random() * 0.15)));
-    const clicks = Math.max(50, Math.floor(impressions * (0.012 + Math.random() * 0.015)));
-    const spend = Math.max(50, 400 + Math.random() * 600);
-    const conversions = Math.max(0, Math.floor(clicks * (0.02 + Math.random() * 0.04)));
-    const videoViews = Math.max(0, Math.floor(impressions * (0.03 + Math.random() * 0.05)));
+    // Filter by selected campaign IDs if configured
+    const selectedIds: string[] | undefined = connection.selectedCampaignIds
+      ? JSON.parse(connection.selectedCampaignIds)
+      : undefined;
+    const campaignsToGenerate = selectedIds && selectedIds.length > 0
+      ? META_MOCK_CAMPAIGNS.filter(mc => selectedIds.includes(mc.id))
+      : META_MOCK_CAMPAIGNS;
 
-    // Calculate derived metrics
-    const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : "0.00";
-    const cpc = clicks > 0 ? (spend / clicks).toFixed(2) : "0.00";
-    const cpm = impressions > 0 ? ((spend / impressions) * 1000).toFixed(2) : "0.00";
-    const cpp = reach > 0 ? ((spend / reach) * 1000).toFixed(2) : "0.00";
-    const frequency = reach > 0 ? (impressions / reach).toFixed(2) : "0.00";
-    const costPerConversion = conversions > 0 ? (spend / conversions).toFixed(2) : "0.00";
-    const conversionRate = clicks > 0 ? ((conversions / clicks) * 100).toFixed(2) : "0.00";
+    // Generate metrics for each mock campaign
+    const rows: any[] = [];
+    for (const mc of campaignsToGenerate) {
+      const impressions = Math.max(1000, mc.impressionBase + Math.floor(Math.random() * mc.impressionBase * 0.3));
+      const reach = Math.max(500, Math.floor(impressions * (0.7 + Math.random() * 0.15)));
+      const clicks = Math.max(10, Math.floor(impressions * (mc.ctrBase + Math.random() * mc.ctrBase * 0.5)));
+      const spend = Math.max(20, mc.spendBase + Math.random() * mc.spendBase * 0.4);
+      const conversions = Math.max(0, Math.floor(clicks * (mc.convRateBase + Math.random() * mc.convRateBase * 0.5)));
+      const videoViews = Math.max(0, Math.floor(impressions * (0.03 + Math.random() * 0.05)));
 
-    const row = {
-      campaignId,
-      metaCampaignId: connection.adAccountId || 'test-campaign',
-      date,
-      impressions,
-      reach,
-      clicks,
-      spend: spend.toFixed(2),
-      conversions,
-      videoViews,
-      ctr,
-      cpc,
-      cpm,
-      cpp,
-      frequency,
-      costPerConversion,
-      conversionRate,
-    };
+      const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : "0.00";
+      const cpc = clicks > 0 ? (spend / clicks).toFixed(2) : "0.00";
+      const cpm = impressions > 0 ? ((spend / impressions) * 1000).toFixed(2) : "0.00";
+      const cpp = reach > 0 ? ((spend / reach) * 1000).toFixed(2) : "0.00";
+      const frequency = reach > 0 ? (impressions / reach).toFixed(2) : "0.00";
+      const costPerConversion = conversions > 0 ? (spend / conversions).toFixed(2) : "0.00";
+      const conversionRate = clicks > 0 ? ((conversions / clicks) * 100).toFixed(2) : "0.00";
 
-    await storage.upsertMetaDailyMetrics([row] as any);
-    console.log(`[Meta Scheduler] ✅ Mock daily metrics upserted: 1 day (${date}) for campaign ${campaignId}`);
+      rows.push({
+        campaignId,
+        metaCampaignId: mc.id,
+        metaCampaignName: mc.name,
+        date,
+        impressions,
+        reach,
+        clicks,
+        spend: spend.toFixed(2),
+        conversions,
+        videoViews,
+        ctr,
+        cpc,
+        cpm,
+        cpp,
+        frequency,
+        costPerConversion,
+        conversionRate,
+      });
+    }
+
+    await storage.upsertMetaDailyMetrics(rows as any);
+    console.log(`[Meta Scheduler] ✅ Mock daily metrics upserted: ${rows.length} campaigns × 1 day (${date}) for campaign ${campaignId}`);
+
+    // Write campaignUtmMap on first run for GA4 matching
+    if (!connection.campaignUtmMap) {
+      const utmMap: Record<string, string> = {
+        'meta_brand_awareness': 'yesop_brand_search',
+        'meta_lead_gen': 'yesop_prospecting',
+        'meta_retargeting': 'yesop_retargeting',
+      };
+      try {
+        await storage.updateMetaConnection(campaignId, { campaignUtmMap: JSON.stringify(utmMap) } as any);
+        console.log(`[Meta Scheduler] TEST MODE: Written campaignUtmMap for campaign ${campaignId}`);
+      } catch { /* ignore */ }
+    }
 
     // Update campaign cumulative spend from daily metrics
     const baseStartUTC = new Date(endUTC.getTime());
@@ -408,4 +440,37 @@ export function startMetaScheduler(): void {
   }, refreshIntervalMs);
 
   console.log('[Meta Scheduler] ✅ Meta scheduler started successfully');
+}
+
+/**
+ * Enrich Meta daily metrics with GA4-attributed revenue
+ */
+export async function enrichMetaWithGA4Revenue(
+  campaignId: string,
+  connection?: any,
+): Promise<{ enriched: number; matched: number; unmatched: string[] }> {
+  if (!connection) {
+    connection = await storage.getMetaConnection(campaignId);
+  }
+  if (!connection) return { enriched: 0, matched: 0, unmatched: [] };
+
+  return enrichPlatformWithGA4Revenue({
+    campaignId,
+    campaignUtmMap: connection.campaignUtmMap,
+    platformLabel: 'Meta',
+    getMetrics: async () => {
+      const metrics = await storage.getMetaDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
+      return metrics.map((m: any) => ({
+        platformCampaignId: m.metaCampaignId,
+        platformCampaignName: m.metaCampaignName || m.metaCampaignId,
+        date: m.date,
+        spend: parseFloat(String(m.spend || '0')),
+      }));
+    },
+    writeUpdates: async (updates) => {
+      return storage.updateMetaDailyMetricsGA4Revenue(campaignId,
+        updates.map(u => ({ metaCampaignId: u.platformCampaignId, date: u.date, ga4Revenue: u.ga4Revenue, ga4UtmName: u.ga4UtmName }))
+      );
+    },
+  });
 }

@@ -17686,6 +17686,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Get Meta daily metrics for campaign breakdown
+   */
+  app.get("/api/meta/:campaignId/daily-metrics", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { startDate, endDate } = req.query;
+      const end = (endDate as string) || new Date().toISOString().slice(0, 10);
+      const start = (startDate as string) || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+      const metrics = await storage.getMetaDailyMetrics(campaignId, start, end);
+      res.json({ success: true, metrics });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get metrics' });
+    }
+  });
+
+  /**
+   * Get LinkedIn daily metrics for campaign breakdown
+   */
+  app.get("/api/linkedin/:campaignId/daily-metrics", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const { startDate, endDate } = req.query;
+      const end = (endDate as string) || new Date().toISOString().slice(0, 10);
+      const start = (startDate as string) || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+      const metrics = await storage.getLinkedInDailyMetrics(campaignId, start, end);
+      res.json({ success: true, metrics });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get metrics' });
+    }
+  });
+
+  /**
+   * Enrich Meta metrics with GA4-attributed revenue
+   */
+  app.post("/api/meta/:campaignId/enrich-ga4-revenue", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const connection: any = await storage.getMetaConnection(campaignId);
+      if (!connection) return res.status(404).json({ error: 'No Meta connection found' });
+
+      const { enrichMetaWithGA4Revenue } = await import('./meta-scheduler');
+      const result = await enrichMetaWithGA4Revenue(campaignId, connection);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to enrich GA4 revenue' });
+    }
+  });
+
+  /**
+   * Enrich LinkedIn metrics with GA4-attributed revenue
+   */
+  app.post("/api/linkedin/:campaignId/enrich-ga4-revenue", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const connection: any = await storage.getLinkedInConnection(campaignId);
+      if (!connection) return res.status(404).json({ error: 'No LinkedIn connection found' });
+
+      const { enrichLinkedInWithGA4Revenue } = await import('./linkedin-scheduler');
+      const result = await enrichLinkedInWithGA4Revenue(campaignId, connection);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to enrich GA4 revenue' });
+    }
+  });
+
+  /**
    * Save selected Meta campaigns
    */
   app.patch("/api/meta/:campaignId/selected-campaigns", async (req, res) => {

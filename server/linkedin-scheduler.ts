@@ -11,6 +11,14 @@ import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { db } from "./db";
 import { linkedinConnections, linkedinDailyMetrics } from "../shared/schema";
 import { desc, eq } from "drizzle-orm";
+import { enrichPlatformWithGA4Revenue } from "./utils/ga4RevenueEnrichment";
+
+// Mock campaign profiles with distinct metric characteristics
+const LINKEDIN_MOCK_CAMPAIGNS = [
+  { id: 'li_sponsored_content', name: 'Sponsored Content Campaign',  impressionBase: 12000, ctrBase: 0.01, spendBase: 250, convRateBase: 0.02 },
+  { id: 'li_lead_gen_forms',    name: 'Lead Gen Forms Campaign',     impressionBase: 6000,  ctrBase: 0.015, spendBase: 400, convRateBase: 0.04 },
+  { id: 'li_text_ads',          name: 'Text Ads Campaign',           impressionBase: 8000,  ctrBase: 0.005, spendBase: 100, convRateBase: 0.01 },
+];
 
 const isLinkedInCountMetric = (metricKey: string): boolean => {
   const k = String(metricKey || "").toLowerCase();
@@ -141,28 +149,46 @@ async function generateMockLinkedInData(
 
     const date = iso(nextUTC);
 
-    // Generate a single day's totals (lightweight; avoids big arrays/large writes).
-    const impressions = Math.max(1000, 20000 + Math.floor(Math.random() * 8000));
-    const clicks = Math.max(1, Math.floor(impressions * (0.008 + Math.random() * 0.01)));
-    const conversions = Math.max(0, Math.floor(clicks * (0.01 + Math.random() * 0.03)));
-    const spend = Math.max(10, 300 + Math.random() * 700);
+    // Generate metrics for each mock LinkedIn campaign
+    const rows: any[] = [];
+    for (const mc of LINKEDIN_MOCK_CAMPAIGNS) {
+      const impressions = Math.max(500, mc.impressionBase + Math.floor(Math.random() * mc.impressionBase * 0.3));
+      const clicks = Math.max(1, Math.floor(impressions * (mc.ctrBase + Math.random() * mc.ctrBase * 0.5)));
+      const conversions = Math.max(0, Math.floor(clicks * (mc.convRateBase + Math.random() * mc.convRateBase * 0.5)));
+      const spend = Math.max(10, mc.spendBase + Math.random() * mc.spendBase * 0.4);
 
-    const row = {
-      campaignId,
-      date,
-      impressions,
-      clicks,
-      reach: Math.max(0, Math.floor(impressions * (0.6 + Math.random() * 0.2))),
-      engagements: Math.max(0, Math.floor(clicks + impressions * (0.002 + Math.random() * 0.004))),
-      conversions,
-      leads: Math.max(0, Math.floor(conversions * (0.4 + Math.random() * 0.4))),
-      spend: spend.toFixed(2),
-      videoViews: Math.max(0, Math.floor(impressions * (0.01 + Math.random() * 0.02))),
-      viralImpressions: Math.max(0, Math.floor(impressions * (0.05 + Math.random() * 0.1))),
-    };
+      rows.push({
+        campaignId,
+        date,
+        linkedinCampaignId: mc.id,
+        linkedinCampaignName: mc.name,
+        impressions,
+        clicks,
+        reach: Math.max(0, Math.floor(impressions * (0.6 + Math.random() * 0.2))),
+        engagements: Math.max(0, Math.floor(clicks + impressions * (0.002 + Math.random() * 0.004))),
+        conversions,
+        leads: Math.max(0, Math.floor(conversions * (0.4 + Math.random() * 0.4))),
+        spend: spend.toFixed(2),
+        videoViews: Math.max(0, Math.floor(impressions * (0.01 + Math.random() * 0.02))),
+        viralImpressions: Math.max(0, Math.floor(impressions * (0.05 + Math.random() * 0.1))),
+      });
+    }
 
-    await storage.upsertLinkedInDailyMetrics([row] as any);
-    console.log(`[LinkedIn Scheduler] ✅ Mock daily metrics upserted: 1 day (${date}) for campaign ${campaignId}`);
+    await storage.upsertLinkedInDailyMetrics(rows as any);
+    console.log(`[LinkedIn Scheduler] ✅ Mock daily metrics upserted: ${rows.length} campaigns × 1 day (${date}) for campaign ${campaignId}`);
+
+    // Write campaignUtmMap on first run for GA4 matching
+    if (!connection.campaignUtmMap) {
+      const utmMap: Record<string, string> = {
+        'li_sponsored_content': 'yesop_brand_search',
+        'li_lead_gen_forms': 'yesop_prospecting',
+        'li_text_ads': 'yesop_retargeting',
+      };
+      try {
+        await storage.updateLinkedInConnection(campaignId, { campaignUtmMap: JSON.stringify(utmMap) } as any);
+        console.log(`[LinkedIn Scheduler] TEST MODE: Written campaignUtmMap for campaign ${campaignId}`);
+      } catch { /* ignore */ }
+    }
 
     // Persist canonical last refresh timestamp for coverage UI.
     try {
@@ -796,5 +822,38 @@ export function startLinkedInScheduler(): void {
   }, refreshIntervalMs);
 
   console.log('[LinkedIn Scheduler] ✅ LinkedIn scheduler started successfully');
+}
+
+/**
+ * Enrich LinkedIn daily metrics with GA4-attributed revenue
+ */
+export async function enrichLinkedInWithGA4Revenue(
+  campaignId: string,
+  connection?: any,
+): Promise<{ enriched: number; matched: number; unmatched: string[] }> {
+  if (!connection) {
+    connection = await storage.getLinkedInConnection(campaignId);
+  }
+  if (!connection) return { enriched: 0, matched: 0, unmatched: [] };
+
+  return enrichPlatformWithGA4Revenue({
+    campaignId,
+    campaignUtmMap: connection.campaignUtmMap,
+    platformLabel: 'LinkedIn',
+    getMetrics: async () => {
+      const metrics = await storage.getLinkedInDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
+      return metrics.map((m: any) => ({
+        platformCampaignId: m.linkedinCampaignId || 'unknown',
+        platformCampaignName: m.linkedinCampaignName || m.linkedinCampaignId || 'Unknown',
+        date: m.date,
+        spend: parseFloat(String(m.spend || '0')),
+      }));
+    },
+    writeUpdates: async (updates) => {
+      return storage.updateLinkedInDailyMetricsGA4Revenue(campaignId,
+        updates.map(u => ({ linkedinCampaignId: u.platformCampaignId, date: u.date, ga4Revenue: u.ga4Revenue, ga4UtmName: u.ga4UtmName }))
+      );
+    },
+  });
 }
 

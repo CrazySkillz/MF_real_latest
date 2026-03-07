@@ -135,6 +135,8 @@ export interface IStorage {
   getGoogleAdsDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GoogleAdsDailyMetric[]>;
   upsertGoogleAdsDailyMetrics(metrics: InsertGoogleAdsDailyMetric[]): Promise<{ upserted: number }>;
   updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
+  updateMetaDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ metaCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
+  updateLinkedInDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ linkedinCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
 
   // Meta KPIs
   getMetaKPIs(campaignId: string): Promise<MetaKpi[]>;
@@ -1881,6 +1883,36 @@ export class MemStorage implements IStorage {
     for (const u of updates) {
       const row = this.googleAdsDailyMetricsStore.find(
         r => r.campaignId === campaignId && r.googleCampaignId === u.googleCampaignId && r.date === u.date
+      );
+      if (row) {
+        (row as any).ga4Revenue = u.ga4Revenue;
+        (row as any).ga4UtmName = u.ga4UtmName;
+        updated++;
+      }
+    }
+    return { updated };
+  }
+
+  async updateMetaDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ metaCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }> {
+    let updated = 0;
+    for (const u of updates) {
+      const row = Array.from(this.metaDailyMetrics.values()).find(
+        r => r.campaignId === campaignId && r.metaCampaignId === u.metaCampaignId && r.date === u.date
+      );
+      if (row) {
+        (row as any).ga4Revenue = u.ga4Revenue;
+        (row as any).ga4UtmName = u.ga4UtmName;
+        updated++;
+      }
+    }
+    return { updated };
+  }
+
+  async updateLinkedInDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ linkedinCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }> {
+    let updated = 0;
+    for (const u of updates) {
+      const row = Array.from(this.linkedinDailyMetrics.values()).find(
+        r => r.campaignId === campaignId && (r as any).linkedinCampaignId === u.linkedinCampaignId && r.date === u.date
       );
       if (row) {
         (row as any).ga4Revenue = u.ga4Revenue;
@@ -4611,6 +4643,32 @@ export class DatabaseStorage implements IStorage {
         UPDATE google_ads_daily_metrics
         SET ga4_revenue = ${u.ga4Revenue}, ga4_utm_name = ${u.ga4UtmName}
         WHERE campaign_id = ${campaignId} AND google_campaign_id = ${u.googleCampaignId} AND date = ${u.date}
+      `);
+      updated += result.rowCount || 0;
+    }
+    return { updated };
+  }
+
+  async updateMetaDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ metaCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }> {
+    let updated = 0;
+    for (const u of updates) {
+      const result = await db.execute(sql`
+        UPDATE meta_daily_metrics
+        SET ga4_revenue = ${u.ga4Revenue}, ga4_utm_name = ${u.ga4UtmName}
+        WHERE campaign_id = ${campaignId} AND meta_campaign_id = ${u.metaCampaignId} AND date = ${u.date}
+      `);
+      updated += result.rowCount || 0;
+    }
+    return { updated };
+  }
+
+  async updateLinkedInDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ linkedinCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }> {
+    let updated = 0;
+    for (const u of updates) {
+      const result = await db.execute(sql`
+        UPDATE linkedin_daily_metrics
+        SET ga4_revenue = ${u.ga4Revenue}, ga4_utm_name = ${u.ga4UtmName}
+        WHERE campaign_id = ${campaignId} AND linkedin_campaign_id = ${u.linkedinCampaignId} AND date = ${u.date}
       `);
       updated += result.rowCount || 0;
     }

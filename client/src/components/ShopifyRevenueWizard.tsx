@@ -261,7 +261,7 @@ export function ShopifyRevenueWizard(props: {
     }
   };
 
-  // Load connection status once on mount.
+  // Load connection status once on mount (prevents visible flashing on step transitions).
   useEffect(() => {
     let mounted = true;
     void (async () => {
@@ -310,6 +310,10 @@ export function ShopifyRevenueWizard(props: {
 
   const handleNext = async () => {
     if (step === "campaign-field") {
+      if (!connected) {
+        toast({ title: "Connect Shopify", description: "Connect your Shopify store before continuing.", variant: "destructive" });
+        return;
+      }
       setUniqueValues([]);
       setSelectedValues([]);
       setStep("crosswalk");

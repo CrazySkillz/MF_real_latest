@@ -237,7 +237,7 @@ export function SalesforceRevenueWizard(props: {
         setStatusLoading(true);
         await fetchStatus();
       } catch {
-        // ignore
+        // ignore (wizard can still load fields if backend allows; otherwise user can connect)
       } finally {
         setStatusLoading(false);
       }
@@ -450,10 +450,26 @@ export function SalesforceRevenueWizard(props: {
     }
   };
 
+  // Optional: auto-prompt OAuth when opened from "Add revenue source" so the flow matches HubSpot UX expectations.
+  const [autoStartAttempted, setAutoStartAttempted] = useState(false);
+  useEffect(() => {
+    if (!autoStartOAuth) return;
+    if (autoStartAttempted) return;
+    if (mode !== "connect") return;
+    if (connectOnly) return;
+    if (statusLoading) return;
+    if (isConnected) return;
+    // Mark attempted first to avoid loops if the popup is blocked and state doesn't change.
+    setAutoStartAttempted(true);
+    void openOAuthWindow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartOAuth, autoStartAttempted, mode, connectOnly, statusLoading, isConnected, campaignId]);
+
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
     if (fields.length > 0) return;
-    if (statusLoading) return;
+    // Match HubSpot UX: don't fetch fields until connected.
+    if (statusLoading || !isConnected) return;
     (async () => {
       try {
         await fetchFields();
@@ -466,11 +482,11 @@ export function SalesforceRevenueWizard(props: {
         });
       }
     })();
-  }, [step, fields.length, toast, statusLoading, campaignId]);
+  }, [step, fields.length, toast, statusLoading, isConnected, campaignId]);
 
   useEffect(() => {
     if (step !== "pipeline") return;
-    if (statusLoading) return;
+    if (!isConnected) return;
     if (stages.length > 0) return;
     void (async () => {
       setStagesLoading(true);
@@ -642,6 +658,10 @@ export function SalesforceRevenueWizard(props: {
       return;
     }
     if (step === "campaign-field") {
+      if (!isConnected) {
+        toast({ title: "Connect Salesforce", description: "Connect Salesforce before continuing.", variant: "destructive" });
+        return;
+      }
       if (!campaignField) {
         toast({
           title: "Select a field",
@@ -947,20 +967,28 @@ export function SalesforceRevenueWizard(props: {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <Label>Salesforce Opportunity field used to attribute deals to this campaign</Label>
-                  <div className="w-4 h-4">{/* reserved space (matches HubSpot layout) */}</div>
+                  {!statusLoading && !isConnected ? (
+                    <Button type="button" variant="outline" size="sm" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
+                      {isConnecting ? "Connecting…" : "Connect Salesforce"}
+                    </Button>
+                  ) : (
+                    <div className="w-4 h-4">{/* reserved space (matches HubSpot layout) */}</div>
+                  )}
                 </div>
 
                 <Select
                   value={campaignField}
                   onValueChange={(v) => setCampaignField(v)}
-                  disabled={statusLoading || fieldsLoading}
+                  disabled={!isConnected || statusLoading || fieldsLoading}
                 >
                   <SelectTrigger>
                     <SelectValue
                       placeholder={
                         statusLoading
-                          ? "Loading fields…"
-                          : "Select a Salesforce Opportunity field…"
+                          ? "Checking connection…"
+                          : !isConnected
+                            ? "Connect Salesforce to load fields…"
+                            : "Select a Salesforce Opportunity field…"
                       }
                     />
                   </SelectTrigger>
@@ -1383,7 +1411,7 @@ export function SalesforceRevenueWizard(props: {
                   valuesLoading ||
                   isSaving ||
                   stagesLoading ||
-                  (step === "campaign-field" && (statusLoading || fieldsLoading || fields.length === 0 || !campaignField)) ||
+                  (step === "campaign-field" && (statusLoading || !isConnected || fieldsLoading || fields.length === 0 || !campaignField)) ||
                   (step === "crosswalk" && (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0)) ||
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.

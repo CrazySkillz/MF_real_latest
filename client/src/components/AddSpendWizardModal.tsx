@@ -99,6 +99,17 @@ export function AddSpendWizardModal(props: {
   const [linkedInConnectionStatus, setLinkedInConnectionStatus] = useState<{ connected: boolean; adAccountName?: string } | null>(null);
   const [metaStatus, setMetaStatus] = useState<{ connected: boolean; testMode?: boolean; message?: string } | null>(null);
 
+  // Ad platform spend preview (Meta / Google Ads)
+  const [adPlatformPreview, setAdPlatformPreview] = useState<{
+    platform: string;
+    totalSpend: number;
+    daysWithData: number;
+    dateRange: string;
+  } | null>(null);
+  const [adPlatformStartDate, setAdPlatformStartDate] = useState<string>(() => new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10));
+  const [adPlatformEndDate, setAdPlatformEndDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [isAdPlatformLoading, setIsAdPlatformLoading] = useState(false);
+
   // LinkedIn OAuth in-modal flow
   const [linkedInAuthStep, setLinkedInAuthStep] = useState<"idle" | "connecting" | "select_account">("idle");
   const [linkedInAdAccounts, setLinkedInAdAccounts] = useState<Array<{ id: string; name: string }>>([]);
@@ -146,6 +157,10 @@ export function AddSpendWizardModal(props: {
       setIsLinkedInLoading(false);
       setLinkedInConnectionStatus(null);
       setMetaStatus(null);
+      setAdPlatformPreview(null);
+      setAdPlatformStartDate(new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10));
+      setAdPlatformEndDate(new Date().toISOString().slice(0, 10));
+      setIsAdPlatformLoading(false);
       setLinkedInAuthStep("idle");
       setLinkedInAdAccounts([]);
       setSelectedLinkedInAdAccount("");
@@ -712,6 +727,76 @@ export function AddSpendWizardModal(props: {
     } catch { /* ignore */ }
   };
 
+  // Fetch ad platform spend preview (Meta / Google Ads)
+  const fetchAdPlatformPreview = async (platform: string) => {
+    setIsAdPlatformLoading(true);
+    setAdPlatformPreview(null);
+    try {
+      const apiPath = platform === "google_ads" ? "google-ads" : platform;
+      const resp = await fetch(
+        `/api/${apiPath}/${props.campaignId}/daily-metrics?startDate=${adPlatformStartDate}&endDate=${adPlatformEndDate}`
+      );
+      const json = await resp.json().catch(() => ({ metrics: [] }));
+      const metrics = json?.metrics || [];
+
+      if (!metrics.length) {
+        toast({ title: "No data found", description: `No ${platform === "google_ads" ? "Google Ads" : platform === "meta" ? "Meta" : "LinkedIn"} spend data for this date range.`, variant: "destructive" });
+        setIsAdPlatformLoading(false);
+        return;
+      }
+
+      const spendByDate = new Map<string, number>();
+      for (const m of metrics) {
+        const date = String(m.date || "").trim();
+        const spend = parseFloat(String(m.spend || "0"));
+        if (date && !Number.isNaN(spend)) {
+          spendByDate.set(date, (spendByDate.get(date) || 0) + spend);
+        }
+      }
+
+      const totalSpend = Array.from(spendByDate.values()).reduce((a, b) => a + b, 0);
+      setAdPlatformPreview({
+        platform,
+        totalSpend: Number(totalSpend.toFixed(2)),
+        daysWithData: spendByDate.size,
+        dateRange: `${adPlatformStartDate} → ${adPlatformEndDate}`,
+      });
+    } catch (e: any) {
+      toast({ title: "Preview failed", description: e?.message || "Could not fetch spend data.", variant: "destructive" });
+    } finally {
+      setIsAdPlatformLoading(false);
+    }
+  };
+
+  // Import ad platform spend
+  const importAdPlatformSpend = async () => {
+    if (!adPlatformPreview) return;
+    setIsProcessing(true);
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/ad-platform/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: adPlatformPreview.platform,
+          startDate: adPlatformStartDate,
+          endDate: adPlatformEndDate,
+        }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to import spend");
+      toast({
+        title: "Spend imported",
+        description: `Imported $${json.totalSpend.toLocaleString()} from ${json.daysImported} days of ${json.displayName} data.`,
+      });
+      props.onProcessed?.();
+      props.onOpenChange(false);
+    } catch (e: any) {
+      toast({ title: "Import failed", description: e?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Load platform connection statuses when ad_platform step is entered
   useEffect(() => {
     if (!props.open || step !== "ad_platform") return;
@@ -1192,42 +1277,67 @@ export function AddSpendWizardModal(props: {
                       </div>
                     )}
 
-                    {/* ── Meta panel ── */}
-                    {selectedPlatform === "meta" && (
-                      <div className="rounded-lg border p-4 space-y-3">
-                        <div className="text-sm font-medium">Meta / Facebook Ads</div>
-                        <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
-                          <div className="flex items-start gap-2">
-                            <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                            <div className="text-xs text-amber-800 dark:text-amber-300">
-                              <strong>Coming soon.</strong> Direct Meta Marketing API integration for spend import is under development.
-                              {metaStatus?.connected && metaStatus.testMode && (
-                                <span className="block mt-1">Your Meta account is connected in test mode.</span>
-                              )}
-                            </div>
-                          </div>
+                    {/* ── Meta / Google Ads panel ── */}
+                    {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && (
+                      <div className="rounded-lg border p-4 space-y-4">
+                        <div className="text-sm font-medium">
+                          {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Import spend
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          In the meantime, you can export your Meta Ads spend as a CSV and import it using the <strong>Upload file</strong> or <strong>Paste table</strong> options above.
+                          Import spend data from your connected {selectedPlatform === "meta" ? "Meta" : "Google Ads"} account. Select a date range and preview before importing.
                         </p>
-                      </div>
-                    )}
 
-                    {/* ── Google Ads panel ── */}
-                    {selectedPlatform === "google_ads" && (
-                      <div className="rounded-lg border p-4 space-y-3">
-                        <div className="text-sm font-medium">Google Ads</div>
-                        <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
-                          <div className="flex items-start gap-2">
-                            <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                            <div className="text-xs text-amber-800 dark:text-amber-300">
-                              <strong>Coming soon.</strong> Direct Google Ads API integration for spend import is under development.
-                            </div>
+                        {/* Date range selector */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Start date</Label>
+                            <Input
+                              type="date"
+                              value={adPlatformStartDate}
+                              onChange={(e) => { setAdPlatformStartDate(e.target.value); setAdPlatformPreview(null); }}
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">End date</Label>
+                            <Input
+                              type="date"
+                              value={adPlatformEndDate}
+                              onChange={(e) => { setAdPlatformEndDate(e.target.value); setAdPlatformPreview(null); }}
+                              className="text-sm"
+                            />
                           </div>
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          In the meantime, you can export your Google Ads spend as a CSV and import it using the <strong>Upload file</strong> or <strong>Paste table</strong> options above.
-                        </p>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isAdPlatformLoading}
+                          onClick={() => fetchAdPlatformPreview(selectedPlatform!)}
+                        >
+                          {isAdPlatformLoading ? (
+                            <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Loading...</>
+                          ) : "Preview spend"}
+                        </Button>
+
+                        {/* Preview results */}
+                        {adPlatformPreview && (
+                          <div className="rounded-md bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-3 space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-600 dark:text-slate-400">Total Spend</span>
+                              <span className="font-bold text-slate-900 dark:text-white">${adPlatformPreview.totalSpend.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-slate-500 dark:text-slate-400">Days with data</span>
+                              <span className="text-slate-700 dark:text-slate-300">{adPlatformPreview.daysWithData}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-slate-500 dark:text-slate-400">Date range</span>
+                              <span className="text-slate-700 dark:text-slate-300">{adPlatformPreview.dateRange}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1240,6 +1350,14 @@ export function AddSpendWizardModal(props: {
                           disabled={isProcessing || selectedLinkedInCampaignIds.length === 0}
                         >
                           {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
+                        </Button>
+                      )}
+                      {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && adPlatformPreview && (
+                        <Button
+                          onClick={importAdPlatformSpend}
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? "Importing..." : `Import $${adPlatformPreview.totalSpend.toLocaleString()}`}
                         </Button>
                       )}
                     </div>

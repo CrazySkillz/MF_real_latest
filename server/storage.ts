@@ -72,6 +72,7 @@ export interface IStorage {
   deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
   createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]>;
   getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }>;
+  getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>>;
 
   // Revenue (generic; platform-scoped to avoid GA4/LinkedIn leakage)
   getRevenueSources(campaignId: string, platformContext?: 'ga4' | 'linkedin' | 'meta'): Promise<RevenueSource[]>;
@@ -82,6 +83,7 @@ export interface IStorage {
   deleteRevenueRecordsBySource(sourceId: string): Promise<boolean>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
   getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: 'ga4' | 'linkedin'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
+  getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: 'ga4' | 'linkedin' | 'meta'): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>>;
 
   // Google Sheets Connections
   getGoogleSheetsConnections(campaignId: string, purpose?: string): Promise<GoogleSheetsConnection[]>;
@@ -1265,6 +1267,31 @@ export class MemStorage implements IStorage {
     return { totalSpend: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
+  async getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>> {
+    const start = new Date(startDate + "T00:00:00Z").getTime();
+    const end = new Date(endDate + "T23:59:59Z").getTime();
+    const totals = new Map<string, { displayName: string; sourceType: string; spend: number; currency?: string }>();
+
+    for (const rec of this.spendRecords.values()) {
+      if (rec.campaignId !== campaignId) continue;
+      const srcId = String((rec as any).spendSourceId);
+      const src = this.spendSources.get(srcId);
+      if (!src || (src as any).isActive === false) continue;
+      const t = new Date(String((rec as any).date) + "T00:00:00Z").getTime();
+      if (Number.isNaN(t) || t < start || t > end) continue;
+      const v = parseFloat(String((rec as any).spend ?? "0"));
+      if (Number.isNaN(v)) continue;
+      const existing = totals.get(srcId) || { displayName: (src as any).displayName || (src as any).sourceType || 'Unknown', sourceType: (src as any).sourceType || 'unknown', spend: 0, currency: (rec as any).currency };
+      existing.spend += v;
+      totals.set(srcId, existing);
+    }
+
+    return Array.from(totals.entries()).map(([sourceId, data]) => ({
+      sourceId, displayName: data.displayName, sourceType: data.sourceType,
+      spend: Number(data.spend.toFixed(2)), currency: data.currency,
+    }));
+  }
+
   // Revenue methods
   async getRevenueSources(campaignId: string, platformContext: 'ga4' | 'linkedin' | 'meta' = 'ga4'): Promise<RevenueSource[]> {
     return Array.from(this.revenueSources.values())
@@ -1374,6 +1401,37 @@ export class MemStorage implements IStorage {
     }
 
     return { totalRevenue: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
+  }
+
+  async getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext: 'ga4' | 'linkedin' | 'meta' = 'ga4'): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>> {
+    const start = new Date(startDate + "T00:00:00Z").getTime();
+    const end = new Date(endDate + "T23:59:59Z").getTime();
+    const totals = new Map<string, { displayName: string; sourceType: string; revenue: number; currency?: string }>();
+
+    for (const rec of this.revenueRecords.values()) {
+      if (String((rec as any).campaignId) !== campaignId) continue;
+      const srcId = String((rec as any).revenueSourceId);
+      const src = this.revenueSources.get(srcId);
+      if (!src || (src as any).isActive === false) continue;
+      const ctx = String((src as any).platformContext || '').trim().toLowerCase();
+      if (!ctx) {
+        if (platformContext !== 'ga4') continue;
+      } else if (ctx !== platformContext) {
+        continue;
+      }
+      const t = new Date(String((rec as any).date) + "T00:00:00Z").getTime();
+      if (Number.isNaN(t) || t < start || t > end) continue;
+      const v = parseFloat(String((rec as any).revenue ?? "0"));
+      if (Number.isNaN(v)) continue;
+      const existing = totals.get(srcId) || { displayName: (src as any).displayName || (src as any).sourceType || 'Unknown', sourceType: (src as any).sourceType || 'unknown', revenue: 0, currency: (rec as any).currency };
+      existing.revenue += v;
+      totals.set(srcId, existing);
+    }
+
+    return Array.from(totals.entries()).map(([sourceId, data]) => ({
+      sourceId, displayName: data.displayName, sourceType: data.sourceType,
+      revenue: Number(data.revenue.toFixed(2)), currency: data.currency,
+    }));
   }
 
   // Google Sheets Connection methods
@@ -3335,6 +3393,45 @@ export class DatabaseStorage implements IStorage {
     return { totalSpend: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
+  async getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>> {
+    const rows = await db
+      .select({
+        spendSourceId: spendRecords.spendSourceId,
+        displayName: spendSources.displayName,
+        sourceType: spendSources.sourceType,
+        spend: spendRecords.spend,
+        currency: spendRecords.currency,
+      })
+      .from(spendRecords)
+      .innerJoin(spendSources, sql`${spendSources.id}::text = ${spendRecords.spendSourceId}`)
+      .where(and(
+        eq(spendRecords.campaignId, campaignId),
+        eq(spendSources.isActive, true),
+        sql`${spendRecords.date} >= ${startDate}`,
+        sql`${spendRecords.date} <= ${endDate}`
+      ));
+
+    const totals = new Map<string, { displayName: string; sourceType: string; spend: number; currency?: string }>();
+    for (const r of rows as any[]) {
+      const sid = String(r.spendSourceId ?? r.spendRecords?.spendSourceId);
+      const v = parseFloat(String(r.spend ?? r.spendRecords?.spend ?? "0"));
+      if (Number.isNaN(v)) continue;
+      const existing = totals.get(sid) || {
+        displayName: String(r.displayName ?? r.spendSources?.displayName ?? 'Unknown'),
+        sourceType: String(r.sourceType ?? r.spendSources?.sourceType ?? 'unknown'),
+        spend: 0,
+        currency: r.currency ?? r.spendRecords?.currency,
+      };
+      existing.spend += v;
+      totals.set(sid, existing);
+    }
+
+    return Array.from(totals.entries()).map(([sourceId, data]) => ({
+      sourceId, displayName: data.displayName, sourceType: data.sourceType,
+      spend: Number(data.spend.toFixed(2)), currency: data.currency,
+    }));
+  }
+
   // Revenue methods
   async getRevenueSources(campaignId: string, platformContext: 'ga4' | 'linkedin' | 'meta' = 'ga4'): Promise<RevenueSource[]> {
     const ctx = platformContext;
@@ -3434,6 +3531,48 @@ export class DatabaseStorage implements IStorage {
       if (!currency && cur) currency = String(cur);
     }
     return { totalRevenue: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
+  }
+
+  async getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext: 'ga4' | 'linkedin' | 'meta' = 'ga4'): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>> {
+    const rows = await db
+      .select({
+        revenueSourceId: revenueRecords.revenueSourceId,
+        displayName: revenueSources.displayName,
+        sourceType: revenueSources.sourceType,
+        revenue: revenueRecords.revenue,
+        currency: revenueRecords.currency,
+      })
+      .from(revenueRecords)
+      .innerJoin(revenueSources, sql`${revenueSources.id}::text = ${revenueRecords.revenueSourceId}`)
+      .where(and(
+        eq(revenueRecords.campaignId, campaignId),
+        eq(revenueSources.isActive, true),
+        platformContext === 'ga4'
+          ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
+          : eq(revenueSources.platformContext, platformContext as any),
+        sql`${revenueRecords.date} >= ${startDate}`,
+        sql`${revenueRecords.date} <= ${endDate}`
+      ));
+
+    const totals = new Map<string, { displayName: string; sourceType: string; revenue: number; currency?: string }>();
+    for (const r of rows as any[]) {
+      const sid = String(r.revenueSourceId ?? r.revenueRecords?.revenueSourceId);
+      const v = parseFloat(String(r.revenue ?? r.revenueRecords?.revenue ?? "0"));
+      if (Number.isNaN(v)) continue;
+      const existing = totals.get(sid) || {
+        displayName: String(r.displayName ?? r.revenueSources?.displayName ?? 'Unknown'),
+        sourceType: String(r.sourceType ?? r.revenueSources?.sourceType ?? 'unknown'),
+        revenue: 0,
+        currency: r.currency ?? r.revenueRecords?.currency,
+      };
+      existing.revenue += v;
+      totals.set(sid, existing);
+    }
+
+    return Array.from(totals.entries()).map(([sourceId, data]) => ({
+      sourceId, displayName: data.displayName, sourceType: data.sourceType,
+      revenue: Number(data.revenue.toFixed(2)), currency: data.currency,
+    }));
   }
 
   // Google Sheets Connection methods

@@ -371,6 +371,60 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
           // ignore
         }
 
+        // Ad Platform Spend (Google Ads / Meta) — pull from daily metrics tables
+        try {
+          const spendSrcs = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+          for (const src of (Array.isArray(spendSrcs) ? spendSrcs : [])) {
+            if ((src as any).isActive === false) continue;
+            if (String((src as any).sourceType || "") !== "ad_platforms") continue;
+            const displayName = String((src as any).displayName || "");
+            const startDate = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+            const endDate = new Date().toISOString().slice(0, 10);
+
+            let rows: any[] = [];
+            if (displayName.includes("Google Ads")) {
+              rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)) || [];
+            } else if (displayName.includes("Meta")) {
+              rows = (await storage.getMetaDailyMetrics(campaignId, startDate, endDate)) || [];
+            } else {
+              continue;
+            }
+
+            if (rows.length === 0) continue;
+
+            const spendByDate = new Map<string, number>();
+            for (const r of rows) {
+              const date = String((r as any).date || "").trim();
+              const spend = parseFloat(String((r as any).spend || "0"));
+              if (date && !Number.isNaN(spend)) spendByDate.set(date, (spendByDate.get(date) || 0) + spend);
+            }
+
+            const records = Array.from(spendByDate.entries()).map(([date, spend]) => ({
+              campaignId,
+              spendSourceId: String((src as any).id),
+              date,
+              spend: String(spend.toFixed(2)),
+              currency: "USD",
+            }));
+
+            if (records.length > 0) {
+              attempted++;
+              try {
+                await storage.createSpendRecords(records);
+                const allSpend = await storage.getSpendTotalForRange(campaignId, "2020-01-01", endDate);
+                await storage.updateCampaign(campaignId, { spend: String(allSpend.totalSpend.toFixed(2)) } as any);
+                succeeded++;
+                anyUpdated = true;
+                console.log(`[Auto Refresh] ✅ ${displayName} spend refreshed for campaign ${campaignId}: ${records.length} days`);
+              } catch {
+                // ignore duplicate records
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+
         // Google Sheets (Revenue)
         try {
           const revenueSources = await storage.getRevenueSources(campaignId).catch(() => [] as any[]);

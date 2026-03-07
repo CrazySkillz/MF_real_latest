@@ -1619,6 +1619,37 @@ export default function GA4Metrics() {
     },
   });
 
+  // Breakdown queries for inline source-level display
+  const { data: revenueBreakdownResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000,
+    refetchIntervalInBackground: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-breakdown`);
+      if (!resp.ok) return { success: false, totalRevenue: 0, sources: [] };
+      return resp.json().catch(() => ({ success: false, totalRevenue: 0, sources: [] }));
+    },
+  });
+
+  const { data: spendBreakdownResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000,
+    refetchIntervalInBackground: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-breakdown`);
+      if (!resp.ok) return { success: false, totalSpend: 0, sources: [] };
+      return resp.json().catch(() => ({ success: false, totalSpend: 0, sources: [] }));
+    },
+  });
+
   const spendSourceLabels = useMemo(() => {
     const persistedSpend = Number(spendToDateResp?.spendToDate || 0);
     const ids = Array.isArray(spendToDateResp?.sourceIds) ? spendToDateResp.sourceIds.map(String) : [];
@@ -2996,106 +3027,123 @@ export default function GA4Metrics() {
                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Revenue & Financial</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400">Financial performance and return on investment</p>
                       </div>
-                      {financialSpend > 0 ? (
-                        <>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
-                            {`Spend source: ${spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Imported spend"} · Revenue range: ${(ga4ToDateResp as any)?.startDate ? `${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}` : "to date"}`}
-                          </p>
-                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
-                            <Card>
-                              <CardContent className="p-5">
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                                  {formatMoney(Number(financialRevenue || 0))}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cumulative to date</p>
-                              </CardContent>
-                            </Card>
-                            <Card>
-                              <CardContent className="p-5">
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                                  {formatMoney(Number(financialSpend || 0))}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
-                                </p>
-                              </CardContent>
-                            </Card>
-                            <Card>
-                              <CardContent className="p-5">
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Revenue</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                                  {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.revenue || 0 : 0))}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
-                                </p>
-                              </CardContent>
-                            </Card>
-                            <Card>
-                              <CardContent className="p-5">
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Spend</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                                  {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?._raw?.spend || 0 : 0))}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
-                                </p>
-                              </CardContent>
-                            </Card>
-                          </div>
-                          <div className="grid gap-4 md:grid-cols-3">
-                            <Card>
-                              <CardContent className="p-5">
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                                  {financialROAS.toFixed(2)}x
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</p>
-                              </CardContent>
-                            </Card>
-                            <Card>
-                              <CardContent className="p-5">
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                                  {formatPercentage(financialROI)}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</p>
-                              </CardContent>
-                            </Card>
-                            <Card>
-                              <CardContent className="p-5">
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                                  {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions > 0)" : ""}
-                                </p>
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </>
-                      ) : (
+                      {/* Revenue & Spend cards — always show when any financial data exists */}
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatMoney(Number(financialRevenue || 0))}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cumulative to date</p>
+                            {(ga4HasRevenueMetric || (Array.isArray(revenueBreakdownResp?.sources) && revenueBreakdownResp.sources.length > 0)) && (
+                              <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                                {ga4HasRevenueMetric && (
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-slate-500 dark:text-slate-400">GA4 (native)</span>
+                                    <span className="text-slate-700 dark:text-slate-300 font-medium">{formatMoney(ga4RevenueForFinancials)}</span>
+                                  </div>
+                                )}
+                                {Array.isArray(revenueBreakdownResp?.sources) && revenueBreakdownResp.sources.map((s: any) => (
+                                  <div key={s.sourceId} className="flex justify-between text-xs">
+                                    <span className="text-slate-500 dark:text-slate-400">{s.displayName}</span>
+                                    <span className="text-slate-700 dark:text-slate-300 font-medium">{formatMoney(s.revenue)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatMoney(Number(financialSpend || 0))}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "No spend sources"}
+                            </p>
+                            {Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                                {spendBreakdownResp.sources.map((s: any) => (
+                                  <div key={s.sourceId} className="flex justify-between text-xs">
+                                    <span className="text-slate-500 dark:text-slate-400">{s.displayName}</span>
+                                    <span className="text-slate-700 dark:text-slate-300 font-medium">{formatMoney(s.spend)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Revenue</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.revenue || 0 : 0))}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
+                            </p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Spend</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?._raw?.spend || 0 : 0))}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                      {/* ROAS/ROI/CPA — only when both revenue and spend exist */}
+                      {financialSpend > 0 && financialRevenue > 0 ? (
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <Card>
+                            <CardContent className="p-5">
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                {financialROAS.toFixed(2)}x
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-5">
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                {formatPercentage(financialROI)}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-5">
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
+                              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions > 0)" : ""}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      ) : financialSpend <= 0 ? (
                         <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
                           <p className="text-sm font-medium text-slate-900 dark:text-white">Add spend to unlock ROAS / ROI / CPA</p>
                           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            Revenue and conversions come from GA4. To calculate ROAS/ROI/CPA, add spend from any source (ad platform, spreadsheet, or manual entry).
+                            To calculate ROAS/ROI/CPA, add spend from any source (ad platform, spreadsheet, or manual entry).
                           </p>
-                          {Array.isArray(spendSourcesResp?.sources) && spendSourcesResp.sources.length > 0 && (
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                              Spend sources exist, but <span className="font-medium">Spend to date</span> is{" "}
-                              <span className="font-medium">{formatMoney(Number(spendToDateResp?.spendToDate || 0))}</span>. If this looks wrong, edit the spend source and re-import/update the total.
-                            </p>
-                          )}
                           <div className="mt-3">
                             <Link href={`/campaigns/${campaignId}#overview`}>
                               <Button variant="outline" size="sm">Manage in Connected Platforms</Button>
                             </Link>
                           </div>
                         </div>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* Campaign Breakdown */}

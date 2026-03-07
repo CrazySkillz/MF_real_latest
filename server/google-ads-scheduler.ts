@@ -111,30 +111,6 @@ async function generateMockGoogleAdsData(
 
   await storage.upsertGoogleAdsDailyMetrics(metricsToUpsert);
 
-  // Also populate spend records (aggregate across all campaigns)
-  try {
-    let spendSources = await storage.getSpendSources(campaignId);
-    let gadsSource = spendSources.find((s) => s.sourceType === 'ad_platforms' && s.displayName?.includes('Google Ads'));
-    if (!gadsSource) {
-      gadsSource = await storage.createSpendSource({
-        campaignId,
-        sourceType: 'ad_platforms',
-        displayName: 'Google Ads',
-        currency: 'USD',
-        isActive: true,
-      });
-    }
-    await storage.createSpendRecords([{
-      campaignId,
-      spendSourceId: gadsSource.id,
-      date: dateStr,
-      spend: String(totalSpend.toFixed(2)),
-      currency: 'USD',
-    }]);
-  } catch {
-    // ignore duplicate spend records
-  }
-
   // Write campaignUtmMap for GA4 matching (only on first run)
   if (existingDates.length === 0) {
     try {
@@ -234,40 +210,6 @@ async function fetchRealGoogleAdsData(
 
   const { upserted } = await storage.upsertGoogleAdsDailyMetrics(metricsToUpsert);
   console.log(`[Google Ads] Upserted ${upserted} daily metrics for campaign ${campaignId}`);
-
-  // Populate spend records
-  try {
-    let spendSources = await storage.getSpendSources(campaignId);
-    let gadsSource = spendSources.find((s) => s.sourceType === 'ad_platforms' && s.displayName?.includes('Google Ads'));
-    if (!gadsSource) {
-      gadsSource = await storage.createSpendSource({
-        campaignId,
-        sourceType: 'ad_platforms',
-        displayName: 'Google Ads',
-        currency: 'USD',
-        isActive: true,
-      });
-    }
-
-    // Aggregate spend by date
-    const spendByDate = new Map<string, number>();
-    for (const m of metricsToUpsert) {
-      const existing = spendByDate.get(m.date) || 0;
-      spendByDate.set(m.date, existing + parseFloat(m.spend));
-    }
-
-    const spendRecords = Array.from(spendByDate.entries()).map(([date, spend]) => ({
-      campaignId,
-      spendSourceId: gadsSource!.id,
-      date,
-      spend: String(spend.toFixed(2)),
-      currency: 'USD',
-    }));
-
-    await storage.createSpendRecords(spendRecords);
-  } catch {
-    // ignore duplicate spend records
-  }
 
   // Update lastRefreshAt
   await storage.updateGoogleAdsConnection(campaignId, {

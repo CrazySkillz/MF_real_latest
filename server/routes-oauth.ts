@@ -1129,6 +1129,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Revenue breakdown by source
+  app.get("/api/campaigns/:id/revenue-breakdown", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      if (!platformContext) return;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+
+      const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
+      const endDate = yesterdayUTC();
+
+      const sources = await storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any);
+      const totalRevenue = sources.reduce((sum: number, s: any) => sum + s.revenue, 0);
+
+      res.json({ success: true, totalRevenue: Number(totalRevenue.toFixed(2)), sources, startDate, endDate });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue breakdown" });
+    }
+  });
+
+  // Spend breakdown by source
+  app.get("/api/campaigns/:id/spend-breakdown", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+
+      const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
+      const endDate = yesterdayUTC();
+
+      const sources = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate);
+      const totalSpend = sources.reduce((sum: number, s: any) => sum + s.spend, 0);
+
+      res.json({ success: true, totalSpend: Number(totalSpend.toFixed(2)), sources, startDate, endDate });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch spend breakdown" });
+    }
+  });
+
   // Daily spend total (strict daily values; avoids UI windowing)
   app.get("/api/campaigns/:id/spend-daily", requireCampaignAccessParamId, async (req, res) => {
     try {
@@ -17698,6 +17740,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, metrics });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get metrics' });
+    }
+  });
+
+  // Import spend from an ad platform's daily metrics into spend_records
+  app.post("/api/campaigns/:id/spend/ad-platform/import", async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+
+      const { platform, startDate, endDate } = req.body;
+      if (!platform || !startDate || !endDate) {
+        return res.status(400).json({ success: false, error: "Missing platform, startDate, or endDate" });
+      }
+
+      // Fetch daily metrics from the platform's table
+      let rows: any[] = [];
+      let platformLabel = "";
+      if (platform === "google_ads") {
+        platformLabel = "Google Ads";
+        rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)) || [];
+      } else if (platform === "meta") {
+        platformLabel = "Meta Ads";
+        rows = (await storage.getMetaDailyMetrics(campaignId, startDate, endDate)) || [];
+      } else if (platform === "linkedin") {
+        platformLabel = "LinkedIn Ads";
+        rows = (await storage.getLinkedInDailyMetrics(campaignId, startDate, endDate)) || [];
+      } else {
+        return res.status(400).json({ success: false, error: "Unknown platform: " + platform });
+      }
+
+      if (!rows.length) {
+        return res.json({ success: false, error: `No ${platformLabel} data found for the selected date range. Make sure the platform is connected and has data.` });
+      }
+
+      // Aggregate spend by date
+      const spendByDate = new Map<string, number>();
+      for (const r of rows) {
+        const date = String((r as any).date || "").trim();
+        const spend = parseFloat(String((r as any).spend || "0"));
+        if (!date || Number.isNaN(spend)) continue;
+        spendByDate.set(date, (spendByDate.get(date) || 0) + spend);
+      }
+
+      const totalSpend = Array.from(spendByDate.values()).reduce((a, b) => a + b, 0);
+
+      // Create or find existing spend source for this platform
+      const existingSources = await storage.getSpendSources(campaignId);
+      let source = existingSources.find((s: any) => s.sourceType === 'ad_platforms' && (s.displayName || '').includes(platformLabel));
+      if (!source) {
+        source = await storage.createSpendSource({
+          campaignId,
+          sourceType: 'ad_platforms',
+          displayName: platformLabel,
+          currency: 'USD',
+          isActive: true,
+        });
+      }
+
+      // Insert spend records
+      const records = Array.from(spendByDate.entries()).map(([date, spend]) => ({
+        campaignId,
+        spendSourceId: String((source as any).id),
+        date,
+        spend: String(spend.toFixed(2)),
+        currency: 'USD',
+      }));
+
+      await storage.createSpendRecords(records);
+
+      // Update campaign spend total
+      const allSpend = await storage.getSpendTotalForRange(campaignId, "2020-01-01", new Date().toISOString().slice(0, 10));
+      await storage.updateCampaign(campaignId, { spend: String(allSpend.totalSpend.toFixed(2)) } as any);
+
+      res.json({
+        success: true,
+        totalSpend: Number(totalSpend.toFixed(2)),
+        daysImported: spendByDate.size,
+        sourceId: String((source as any).id),
+        displayName: platformLabel,
+      });
+    } catch (e: any) {
+      console.error('[Ad Platform Spend Import] Error:', e);
+      res.status(500).json({ success: false, error: e?.message || "Failed to import ad platform spend" });
     }
   });
 

@@ -7364,26 +7364,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Property ID is required" });
       }
 
-      // Update in-memory connection
-      const success = realGA4Client.setPropertyId(campaignId, propertyId);
-      if (!success) {
-        return res.status(400).json({ message: "Campaign not connected" });
-      }
+      // Try to update in-memory realGA4Client (may not have it if OAuth went through ga4:connect flow)
+      realGA4Client.setPropertyId(campaignId, propertyId);
 
-      // Get the connection from realGA4Client
-      const connection = realGA4Client.getConnection(campaignId);
-      if (!connection) {
-        return res.status(400).json({ message: "Connection not found" });
+      // Resolve property name from any available source
+      let propertyName = `Property ${propertyId}`;
+      const realConn = realGA4Client.getConnection(campaignId);
+      const oauthData = (global as any).oauthConnections?.get(campaignId);
+      if (realConn) {
+        const properties = await realGA4Client.getProperties(campaignId);
+        const found = properties?.find((p: any) => p.id === propertyId);
+        if (found?.name) propertyName = found.name;
+      } else if (oauthData?.properties) {
+        const found = oauthData.properties.find((p: any) => p.id === propertyId);
+        if (found?.name) propertyName = found.name;
       }
-
-      // Find the property name from available properties
-      const properties = await realGA4Client.getProperties(campaignId);
-      const selectedProperty = properties?.find(p => p.id === propertyId);
-      const propertyName = selectedProperty?.name || `Property ${propertyId}`;
 
       // Check if connection already exists in database
       const existingConnections = await storage.getGA4Connections(campaignId);
-
       console.log(`[Set Property] Found ${existingConnections.length} existing connections for ${campaignId}`);
 
       if (existingConnections.length > 0) {
@@ -7396,29 +7394,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isPrimary: true,
           isActive: true
         });
-        // Set as primary
         await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
         console.log(`[Set Property] Connection updated and set as primary`);
       } else {
-        // Create new connection in database
+        // Create new connection in database using tokens from any available source
+        const accessToken = realConn?.accessToken || oauthData?.accessToken || '';
+        const refreshToken = realConn?.refreshToken || oauthData?.refreshToken || '';
+        const expiresAt = realConn?.expiresAt
+          ? new Date(realConn.expiresAt)
+          : oauthData?.expiresAt
+            ? new Date(oauthData.expiresAt)
+            : new Date(Date.now() + 3600000);
+
         console.log(`[Set Property] Creating new connection for ${campaignId} with property ${propertyId}`);
         const newConnection = await storage.createGA4Connection({
           campaignId,
           propertyId,
-          accessToken: connection.accessToken || '',
-          refreshToken: connection.refreshToken || '',
+          accessToken,
+          refreshToken,
           method: 'access_token',
           propertyName,
           isPrimary: true,
           isActive: true,
           clientId: process.env.GOOGLE_CLIENT_ID || undefined,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET || undefined,
-          expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined
+          expiresAt,
         });
-        // Ensure it's set as primary
         await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
-        console.log(`[Set Property] New connection created: ${newConnection.id}, isPrimary: ${newConnection.isPrimary}, isActive: ${newConnection.isActive}`);
+        console.log(`[Set Property] New connection created: ${newConnection.id}`);
       }
+
+      // Also store in realGA4Connections for metrics access
+      (global as any).realGA4Connections = (global as any).realGA4Connections || new Map();
+      (global as any).realGA4Connections.set(campaignId, {
+        propertyId,
+        accessToken: realConn?.accessToken || oauthData?.accessToken || existingConnections[0]?.accessToken || '',
+        refreshToken: realConn?.refreshToken || oauthData?.refreshToken || existingConnections[0]?.refreshToken || '',
+        connectedAt: new Date().toISOString(),
+        isReal: true,
+        propertyName
+      });
 
       res.json({ success: true, message: "Property set successfully" });
     } catch (error) {

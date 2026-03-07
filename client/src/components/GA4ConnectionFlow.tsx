@@ -49,7 +49,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // On mount, check if GA4 is already authenticated but needs property selection
+  // On mount, check if GA4 is already authenticated but needs property selection.
+  // Only runs once on mount — do NOT add `step` to deps or it creates an infinite loop
+  // when the user clicks "Back" from an empty property selector.
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -58,8 +60,6 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         if (!resp.ok) return;
         const data = await resp.json();
         if (!mounted) return;
-        // Only auto-advance if still in idle step (don't conflict with postMessage handler)
-        if (step !== 'idle') return;
         // Already authenticated but no property selected — jump to property selector
         if (data.connected && !data.propertyId) {
           const validProps = (data.properties || []).filter((p: GA4Property) => p.id);
@@ -69,19 +69,15 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               setSelectedProperty(validProps[0].id);
             }
             setStep('select-property');
-          } else {
-            // Connected but no properties available (e.g., page reload lost in-memory data)
-            // Show property selector with empty state so user knows to reconnect
-            setProperties([]);
-            setStep('select-property');
           }
+          // If no valid properties, stay in 'idle' so user can click "Connect" for a fresh OAuth flow
         }
       } catch {
         // ignore — user can still connect manually
       }
     })();
     return () => { mounted = false; };
-  }, [campaignId, step]);
+  }, [campaignId]);
 
   // Prefill GA4 campaign filter with the campaign name
   useEffect(() => {

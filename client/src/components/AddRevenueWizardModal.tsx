@@ -52,6 +52,8 @@ export function AddRevenueWizardModal(props: {
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
 
     if (platformContext === 'linkedin') {
       // LinkedIn revenue totals must always be scoped (never fall back to GA4 totals).
@@ -195,6 +197,22 @@ export function AddRevenueWizardModal(props: {
   const [shopifyExternalNonce, setShopifyExternalNonce] = useState(0);
   const [hubspotBackNonce, setHubspotBackNonce] = useState(0);
   const [salesforceBackNonce, setSalesforceBackNonce] = useState(0);
+
+  // Connection status for CRM/ecommerce sources (used for badges in source picker)
+  const [crmStatus, setCrmStatus] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
+  useEffect(() => {
+    if (!open || hideCrmSources) return;
+    let cancelled = false;
+    (async () => {
+      const checks = await Promise.all([
+        fetch(`/api/hubspot/${campaignId}/status`).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
+        fetch(`/api/salesforce/${campaignId}/status`).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
+        fetch(`/api/shopify/${campaignId}/status`).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
+      ]);
+      if (!cancelled) setCrmStatus({ hubspot: checks[0], salesforce: checks[1], shopify: checks[2] });
+    })();
+    return () => { cancelled = true; };
+  }, [open, campaignId, hideCrmSources]);
 
   const resetAll = () => {
     setStep(initialStep || "select");
@@ -914,8 +932,13 @@ export function AddRevenueWizardModal(props: {
                       <CardTitle className="text-lg flex items-center gap-2">
                         <ShoppingCart className="w-4 h-4" />
                         Shopify (Ecommerce)
+                        {crmStatus.shopify ? (
+                          <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                        ) : (
+                          <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
+                        )}
                       </CardTitle>
-                      <CardDescription>Attribute order revenue to this campaign.</CardDescription>
+                      <CardDescription>{crmStatus.shopify ? "Attribute order revenue to this campaign." : "Connect Shopify, then attribute order revenue."}</CardDescription>
                     </CardHeader>
                   </Card>
                 )}
@@ -926,8 +949,13 @@ export function AddRevenueWizardModal(props: {
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
                         HubSpot (CRM)
+                        {crmStatus.hubspot ? (
+                          <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                        ) : (
+                          <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
+                        )}
                       </CardTitle>
-                      <CardDescription>Attribute deal revenue to this campaign.</CardDescription>
+                      <CardDescription>{crmStatus.hubspot ? "Attribute deal revenue to this campaign." : "Connect HubSpot, then attribute deal revenue."}</CardDescription>
                     </CardHeader>
                   </Card>
                 )}
@@ -938,8 +966,13 @@ export function AddRevenueWizardModal(props: {
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
                         Salesforce (CRM)
+                        {crmStatus.salesforce ? (
+                          <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                        ) : (
+                          <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
+                        )}
                       </CardTitle>
-                      <CardDescription>Attribute opportunity revenue to this campaign.</CardDescription>
+                      <CardDescription>{crmStatus.salesforce ? "Attribute opportunity revenue to this campaign." : "Connect Salesforce, then attribute opportunity revenue."}</CardDescription>
                     </CardHeader>
                   </Card>
                 )}

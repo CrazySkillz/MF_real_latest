@@ -54,15 +54,21 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   // when the user clicks "Back" from an empty property selector.
   useEffect(() => {
     let mounted = true;
+    console.log('[GA4Flow] Mount effect running, campaignId:', campaignId);
     (async () => {
       try {
         const resp = await fetch(`/api/campaigns/${campaignId}/ga4-connection-status`);
-        if (!resp.ok) return;
+        if (!resp.ok) {
+          console.log('[GA4Flow] Mount: ga4-connection-status returned', resp.status);
+          return;
+        }
         const data = await resp.json();
+        console.log('[GA4Flow] Mount: ga4-connection-status =', JSON.stringify({ connected: data.connected, propertyId: data.propertyId, propertiesCount: (data.properties || []).length }));
         if (!mounted) return;
         // Already authenticated but no property selected — jump to property selector
         if (data.connected && !data.propertyId) {
           const validProps = (data.properties || []).filter((p: GA4Property) => p.id);
+          console.log('[GA4Flow] Mount: connected but no propertyId, validProps:', validProps.length);
           if (validProps.length > 0) {
             setProperties(validProps);
             if (validProps.length === 1) {
@@ -72,8 +78,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           }
           // If no valid properties, stay in 'idle' so user can click "Connect" for a fresh OAuth flow
         }
-      } catch {
-        // ignore — user can still connect manually
+      } catch (err) {
+        console.error('[GA4Flow] Mount: error checking status:', err);
       }
     })();
     return () => { mounted = false; };
@@ -155,7 +161,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     setIsSavingFilter(true);
     try {
       const filterValue = values.length === 1 ? values[0] : JSON.stringify(values);
+      console.log('[GA4Flow] Saving campaign filter:', filterValue);
       await apiRequest("PATCH", `/api/campaigns/${campaignId}`, { ga4CampaignFilter: filterValue });
+      console.log('[GA4Flow] Filter saved! Invalidating queries and calling onConnectionSuccess');
       // Invalidate all GA4-related queries so badge and analytics update
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
       queryClient.invalidateQueries({ queryKey: ['/api/ga4/check-connection', campaignId] });
@@ -180,13 +188,16 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
 
   // Handle OAuth popup messages from server callback
   const handleMessage = useCallback((event: MessageEvent) => {
-    if (event.origin !== window.location.origin) return;
+    if (event.origin !== window.location.origin) {
+      console.log('[GA4Flow] postMessage IGNORED: origin mismatch', event.origin, '!==', window.location.origin);
+      return;
+    }
     const { type, properties: propertyList, error } = event.data || {};
+    console.log('[GA4Flow] postMessage received:', { type, propertiesCount: (propertyList || []).length, error });
 
     if (type === 'ga4_auth_success') {
-      // Don't invalidate connected-platforms yet — wait until user completes
-      // property + campaign selection so this component stays mounted
       const validProperties = (propertyList || []).filter((p: GA4Property) => p.id);
+      console.log('[GA4Flow] Auth success! validProperties:', validProperties.length, validProperties.map((p: GA4Property) => p.id));
       if (validProperties.length > 0) {
         setProperties(validProperties);
         if (validProperties.length === 1) {
@@ -194,11 +205,13 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         }
         setStep('select-property');
       } else {
+        console.log('[GA4Flow] Auth success but NO valid properties — showing empty property selector');
         setProperties([]);
         setStep('select-property');
       }
       toast({ title: 'Authenticated!', description: 'Select your GA4 property to continue.' });
     } else if (type === 'ga4_auth_error') {
+      console.log('[GA4Flow] Auth error:', error);
       setStep('idle');
       toast({ title: 'Connection Failed', description: error || 'OAuth error', variant: 'destructive' });
     }
@@ -211,6 +224,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
 
   // Start OAuth flow
   const startOAuth = async () => {
+    console.log('[GA4Flow] startOAuth called, campaignId:', campaignId, 'isTestMode:', isTestMode);
     setStep('connecting');
 
     if (isTestMode) {
@@ -227,25 +241,34 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         body: JSON.stringify({ campaignId }),
       });
 
+      console.log('[GA4Flow] /api/auth/ga4/connect response:', res.status);
+
       if (!res.ok) {
         const data = await res.json();
+        console.error('[GA4Flow] Connect endpoint failed:', data);
         throw new Error(data.message || 'Failed to start OAuth');
       }
 
       const { authUrl } = await res.json();
+      console.log('[GA4Flow] Got authUrl, opening popup...');
 
       const popup = window.open(authUrl, 'ga4_oauth', 'width=500,height=600,scrollbars=yes');
       if (!popup) {
+        console.error('[GA4Flow] Popup was BLOCKED');
         toast({ title: 'Popup Blocked', description: 'Please allow popups for this site.', variant: 'destructive' });
         setStep('idle');
         return;
       }
+      console.log('[GA4Flow] Popup opened successfully, waiting for postMessage...');
 
       const interval = setInterval(() => {
         if (popup.closed) {
           clearInterval(interval);
           // Use functional update to read CURRENT state — the closure captures a stale value
-          setStep(current => current === 'connecting' ? 'idle' : current);
+          setStep(current => {
+            console.log('[GA4Flow] Popup closed, current step:', current, current === 'connecting' ? '→ resetting to idle' : '→ keeping current step');
+            return current === 'connecting' ? 'idle' : current;
+          });
         }
       }, 1000);
 
@@ -254,6 +277,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         if (!popup.closed) popup.close();
         setStep(current => {
           if (current === 'connecting') {
+            console.log('[GA4Flow] 5min timeout hit, resetting to idle');
             toast({ title: 'Connection Timeout', description: 'OAuth flow timed out.', variant: 'destructive' });
             return 'idle';
           }
@@ -261,6 +285,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         });
       }, 300000);
     } catch (err: any) {
+      console.error('[GA4Flow] startOAuth error:', err);
       setStep('idle');
       toast({ title: 'Connection Error', description: err.message, variant: 'destructive' });
     }
@@ -281,23 +306,28 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     }
 
     try {
+      console.log('[GA4Flow] Selecting property:', selectedProperty, 'for campaign:', campaignId);
       const response = await fetch('/api/ga4/select-property', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ campaignId, propertyId: selectedProperty }),
       });
       const data = await response.json();
+      console.log('[GA4Flow] select-property response:', JSON.stringify(data));
 
       if (data.success) {
+        console.log('[GA4Flow] Property selected! Invalidating queries and advancing to filter step');
         // Invalidate so badge updates to "Connected" immediately
         queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
         queryClient.invalidateQueries({ queryKey: ['/api/ga4/check-connection', campaignId] });
         toast({ title: 'GA4 Connected!', description: 'Property connected. Now select campaigns to track.' });
         setStep('filter');
       } else {
+        console.error('[GA4Flow] select-property FAILED:', data);
         throw new Error(data.error || 'Failed to connect property');
       }
     } catch (error: any) {
+      console.error('[GA4Flow] handlePropertySelection error:', error);
       toast({
         title: 'Connection Failed',
         description: error.message || 'Failed to connect property. Please try again.',

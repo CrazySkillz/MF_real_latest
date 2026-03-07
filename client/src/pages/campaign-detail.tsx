@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -5137,10 +5137,16 @@ export default function CampaignDetail() {
 
   // Clear stale "Connection Expired" errors when connection is actually valid
   // The sheets data query caches 401 errors (retry:false). After reconnecting via OAuth
-  // the cached error persists because nothing clears it. Reset when connection is valid.
+  // the cached error persists because nothing clears it. Reset once when connection flips to valid.
+  const sheetsResetDoneRef = useRef(false);
   useEffect(() => {
-    if (sheetsConnection?.connected && sheetsError && (sheetsError as any).requiresReauthorization) {
+    if (sheetsConnection?.connected && sheetsError && (sheetsError as any).requiresReauthorization && !sheetsResetDoneRef.current) {
+      sheetsResetDoneRef.current = true;
       queryClient.resetQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+    }
+    // Reset the guard when connection drops so a future reconnect can clear errors again
+    if (!sheetsConnection?.connected) {
+      sheetsResetDoneRef.current = false;
     }
   }, [sheetsConnection?.connected, sheetsError, campaignId]);
 

@@ -5590,9 +5590,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // ---- GA4 OAuth flow (reuses this registered callback URI, state prefixed with "ga4:") ----
       if (rawState.startsWith('ga4:')) {
+        console.log('[GA4 OAuth Callback] GA4 flow detected, verifying state...');
         const ga4HmacState = rawState.slice(4);
         const verified = verifyGA4OAuthState(ga4HmacState);
         if (!verified.ok) {
+          console.error('[GA4 OAuth Callback] State verification FAILED:', verified.error);
           return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
             <h2>Authentication Error</h2><p>${verified.error}</p>
             <script>if(window.opener){window.opener.postMessage({type:'ga4_auth_error',error:${JSON.stringify(verified.error)}},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
@@ -5600,6 +5602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const ga4CampaignId = verified.campaignId;
+        console.log('[GA4 OAuth Callback] State verified, campaignId:', ga4CampaignId);
         const ga4ClientId = process.env.GOOGLE_CLIENT_ID!;
         const ga4ClientSecret = process.env.GOOGLE_CLIENT_SECRET!;
 
@@ -5633,6 +5636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const ga4Tokens = await ga4TokenResponse.json();
         const ga4AccessToken = ga4Tokens.access_token;
         const ga4RefreshToken = ga4Tokens.refresh_token;
+        console.log('[GA4 OAuth Callback] Token exchange OK, hasAccessToken:', !!ga4AccessToken, 'hasRefreshToken:', !!ga4RefreshToken);
 
         if (!ga4AccessToken) {
           return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
@@ -5679,6 +5683,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } catch (error) {
           console.error('[GA4 OAuth] Failed to fetch properties:', error);
+        }
+
+        // Deactivate any stale GA4 connections for this campaign before creating the new one
+        const existingGA4Conns = await storage.getGA4Connections(ga4CampaignId);
+        for (const old of existingGA4Conns) {
+          await storage.deleteGA4Connection(old.id);
+          console.log(`[GA4 OAuth] Deactivated stale connection ${old.id} for campaign ${ga4CampaignId}`);
         }
 
         // Store GA4 connection
@@ -8540,6 +8551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // GA4 is only fully "connected" when a propertyId has been selected
       const activeGA4 = ga4Connections.find((c: any) => c.propertyId && c.propertyId !== '');
       const ga4NeedsSetup = ga4Connections.length > 0 && !activeGA4;
+      console.log(`[Connected Platforms] GA4: ${ga4Connections.length} connections, activeGA4=${!!activeGA4}, needsSetup=${ga4NeedsSetup}, propertyIds=[${ga4Connections.map((c: any) => JSON.stringify(c.propertyId)).join(',')}]`);
 
       const statuses = [
         {
@@ -9204,9 +9216,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Campaign ID and Property ID are required' });
       }
 
-      // Look up the GA4 connection from the database by campaignId
+      // Look up the GA4 connection from the database by campaignId — use the LATEST connection
       const ga4Connections = await storage.getGA4Connections(campaignId);
-      const dbConnection = ga4Connections[0]; // use the first active connection
+      const dbConnection = ga4Connections[ga4Connections.length - 1];
 
       // Also check in-memory OAuth data for property name lookup
       const oauthConnections = (global as any).oauthConnections;

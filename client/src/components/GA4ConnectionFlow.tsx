@@ -85,7 +85,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     return () => { mounted = false; };
   }, [campaignId]);
 
-  // Prefill GA4 campaign filter with the campaign name
+  // Load existing GA4 campaign filter (only if previously saved — do NOT prefill with campaign name)
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -95,18 +95,17 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         const c = await resp.json().catch(() => null);
         if (!mounted || !c) return;
         const existing = String(c.ga4CampaignFilter || '').trim();
-        const fallback = String(c.name || '').trim();
-        const raw = existing || fallback;
-        if (raw.startsWith('[') && raw.endsWith(']')) {
+        if (!existing) return; // No saved filter — leave empty so user picks from GA4 data
+        if (existing.startsWith('[') && existing.endsWith(']')) {
           try {
-            const parsed = JSON.parse(raw);
+            const parsed = JSON.parse(existing);
             if (Array.isArray(parsed)) {
               setGa4CampaignFilter(parsed.map((v: any) => String(v || '').trim()).filter(Boolean));
               return;
             }
           } catch { /* fall through */ }
         }
-        setGa4CampaignFilter(raw ? [raw] : []);
+        setGa4CampaignFilter([existing]);
       } catch {
         // ignore
       }

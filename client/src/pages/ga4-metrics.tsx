@@ -1707,7 +1707,8 @@ export default function GA4Metrics() {
     if (requiresRevenue && !revenueMetricAvailable) missing.push("Revenue");
     return { requiresSpend, requiresRevenue, missing };
   };
-  const totalSpendForFinancials = Number(spendToDateResp?.spendToDate || 0);
+  // Prefer spend-breakdown total (sums actual spend_records) over spend-to-date (reads campaign.spend column which may be stale/zero)
+  const totalSpendForFinancials = Number(spendBreakdownResp?.totalSpend || spendToDateResp?.spendToDate || 0);
   const usingAutoLinkedInSpend = false;
 
   const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);
@@ -3031,7 +3032,16 @@ export default function GA4Metrics() {
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
+                              <button
+                                onClick={() => setShowRevenueDialog(true)}
+                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                title="Add revenue source"
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatMoney(Number(financialRevenue || 0))}
                             </p>
@@ -3056,12 +3066,18 @@ export default function GA4Metrics() {
                         </Card>
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                              <button
+                                onClick={() => setShowSpendDialog(true)}
+                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                title="Add spend source"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatMoney(Number(financialSpend || 0))}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                              {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "No spend sources"}
                             </p>
                             {Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0 && (
                               <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
@@ -3138,9 +3154,10 @@ export default function GA4Metrics() {
                             To calculate ROAS/ROI/CPA, add spend from any source (ad platform, spreadsheet, or manual entry).
                           </p>
                           <div className="mt-3">
-                            <Link href={`/campaigns/${campaignId}#overview`}>
-                              <Button variant="outline" size="sm">Manage in Connected Platforms</Button>
-                            </Link>
+                            <Button variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add Spend
+                            </Button>
                           </div>
                         </div>
                       ) : null}
@@ -3317,7 +3334,9 @@ export default function GA4Metrics() {
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
+                      queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
                     }}
                   />
                   <AddRevenueWizardModal
@@ -3332,7 +3351,9 @@ export default function GA4Metrics() {
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
+                      queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
                     }}
                   />
                   <AlertDialog open={showDeleteSpendDialog} onOpenChange={setShowDeleteSpendDialog}>

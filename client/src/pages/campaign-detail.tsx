@@ -4578,9 +4578,13 @@ function CampaignInsights({ campaign }: { campaign: Campaign }) {
     if (!outcomeTotals) return null;
     const ga4 = outcomeTotals.ga4 || {};
     const platforms = outcomeTotals.platforms || {};
+    const rev = (outcomeTotals as any)?.revenue || {};
     const totalSpend = Number(outcomeTotals.spend?.unifiedSpend || 0);
-    const totalRevenue = Number(ga4.revenue || 0) +
-      Object.values(platforms).reduce((sum: number, p: any) => sum + Number(p?.attributedRevenue || 0), 0);
+    // Use unified totalRevenue from the server (includes GA4 + CRM offsite sources)
+    const totalRevenue = parseNumSafe(rev?.totalRevenue) || (
+      Number(ga4.revenue || 0) +
+      Object.values(platforms).reduce((sum: number, p: any) => sum + Number(p?.attributedRevenue || 0), 0)
+    );
     const totalConversions = Number(ga4.conversions || 0) +
       Object.values(platforms).reduce((sum: number, p: any) => sum + Number(p?.conversions || 0), 0);
     const totalClicks = Object.values(platforms).reduce((sum: number, p: any) => sum + Number(p?.clicks || 0), 0);
@@ -4589,7 +4593,21 @@ function CampaignInsights({ campaign }: { campaign: Campaign }) {
     const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
     const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
     const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
-    return { totalSpend, totalRevenue, totalConversions, totalClicks, totalImpressions, roas, roi, cpa, ctr };
+
+    // Build revenue source breakdown for micro copy
+    const revenueSources: Array<{ label: string; amount: number }> = [];
+    const onsiteRevenue = parseNumSafe(rev?.onsiteRevenue ?? ga4?.revenue);
+    if (onsiteRevenue > 0) revenueSources.push({ label: 'GA4', amount: onsiteRevenue });
+    const offsiteList = ((outcomeTotals as any)?.revenueSources || []) as any[];
+    for (const src of offsiteList) {
+      const amt = parseNumSafe(src?.lastTotalRevenue);
+      if (amt > 0 && src?.connected) {
+        const typeLabel = String(src?.type || '').charAt(0).toUpperCase() + String(src?.type || '').slice(1);
+        revenueSources.push({ label: typeLabel, amount: amt });
+      }
+    }
+
+    return { totalSpend, totalRevenue, totalConversions, totalClicks, totalImpressions, roas, roi, cpa, ctr, revenueSources };
   }, [outcomeTotals]);
 
   // Categorize KPIs by health
@@ -4691,6 +4709,15 @@ function CampaignInsights({ campaign }: { campaign: Campaign }) {
               <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                 <p className="text-xs text-slate-500 mb-1">Revenue</p>
                 <p className="text-lg font-bold text-green-600">{fmtCurrency(metrics.totalRevenue)}</p>
+                {metrics.revenueSources.length > 0 && (
+                  <div className="mt-1 space-y-0.5">
+                    {metrics.revenueSources.map((src) => (
+                      <p key={src.label} className="text-[10px] text-slate-400 leading-tight">
+                        {src.label}: {fmtCurrency(src.amount)}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                 <p className="text-xs text-slate-500 mb-1">ROAS</p>

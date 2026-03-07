@@ -200,7 +200,6 @@ export function AddRevenueWizardModal(props: {
 
   // Connection status for CRM/ecommerce sources (used for badges in source picker)
   const [crmStatus, setCrmStatus] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
-  const [crmConnecting, setCrmConnecting] = useState<string | null>(null);
   useEffect(() => {
     if (!open || hideCrmSources) return;
     let cancelled = false;
@@ -215,96 +214,9 @@ export function AddRevenueWizardModal(props: {
     return () => { cancelled = true; };
   }, [open, campaignId, hideCrmSources]);
 
-  // OAuth gate: connect platform first, then proceed to wizard
-  const handleCrmSourceClick = async (platform: "hubspot" | "salesforce" | "shopify") => {
-    // Already connected — go straight to wizard
-    if (crmStatus[platform]) {
-      setStep(platform);
-      return;
-    }
-    // Not connected — trigger OAuth popup
-    setCrmConnecting(platform);
-    try {
-      const endpoint = platform === "hubspot" ? "/api/auth/hubspot/connect"
-        : platform === "salesforce" ? "/api/auth/salesforce/connect"
-        : "/api/auth/shopify/connect";
-      const resp = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId }),
-      });
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok || !json?.authUrl) {
-        toast({ title: `Failed to start ${platform} connection`, description: json?.message || "Please try again.", variant: "destructive" });
-        setCrmConnecting(null);
-        return;
-      }
-      const windowName = `${platform}_oauth`;
-      const popup = window.open(json.authUrl, windowName, "width=520,height=680");
-
-      // Listen for OAuth completion via postMessage
-      const onMessage = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
-        const data = event.data;
-        if (!data || typeof data !== "object") return;
-        if (data.type === `${platform}_auth_success`) {
-          window.removeEventListener("message", onMessage);
-          setCrmStatus(prev => ({ ...prev, [platform]: true }));
-          setCrmConnecting(null);
-          toast({ title: `${platform.charAt(0).toUpperCase() + platform.slice(1)} connected`, description: "Now configure revenue attribution." });
-          setStep(platform);
-        } else if (data.type === `${platform}_auth_error`) {
-          window.removeEventListener("message", onMessage);
-          setCrmConnecting(null);
-          toast({ title: "Connection failed", description: data.error || "OAuth was cancelled or failed.", variant: "destructive" });
-        }
-      };
-      window.addEventListener("message", onMessage);
-
-      // Salesforce also uses BroadcastChannel as fallback
-      let bc: BroadcastChannel | null = null;
-      if (platform === "salesforce" && typeof BroadcastChannel !== "undefined") {
-        bc = new BroadcastChannel("metricmind_oauth");
-        bc.addEventListener("message", ((event: MessageEvent) => {
-          const data = event.data;
-          if (!data || typeof data !== "object") return;
-          if (data.type === "salesforce_auth_success") {
-            window.removeEventListener("message", onMessage);
-            bc?.close();
-            setCrmStatus(prev => ({ ...prev, salesforce: true }));
-            setCrmConnecting(null);
-            toast({ title: "Salesforce connected", description: "Now configure revenue attribution." });
-            setStep("salesforce");
-          } else if (data.type === "salesforce_auth_error") {
-            window.removeEventListener("message", onMessage);
-            bc?.close();
-            setCrmConnecting(null);
-            toast({ title: "Connection failed", description: data.error || "OAuth was cancelled or failed.", variant: "destructive" });
-          }
-        }) as EventListener);
-      }
-
-      // Fallback: poll popup closed
-      const interval = setInterval(() => {
-        if (popup && popup.closed) {
-          clearInterval(interval);
-          // Give postMessage a moment to arrive
-          setTimeout(() => {
-            setCrmConnecting(prev => {
-              if (prev === platform) {
-                window.removeEventListener("message", onMessage);
-                bc?.close();
-                return null;
-              }
-              return prev;
-            });
-          }, 1500);
-        }
-      }, 1000);
-    } catch (err: any) {
-      setCrmConnecting(null);
-      toast({ title: "Connection error", description: err?.message || "Failed to open OAuth.", variant: "destructive" });
-    }
+  // Go directly to the CRM wizard — OAuth connection is handled inside each wizard component.
+  const handleCrmSourceClick = (platform: "hubspot" | "salesforce" | "shopify") => {
+    setStep(platform);
   };
 
   const resetAll = () => {
@@ -347,7 +259,6 @@ export function AddRevenueWizardModal(props: {
     setSalesforceBackNonce(0);
     setHubspotInitialMappingConfig(null);
     setSalesforceInitialMappingConfig(null);
-    setCrmConnecting(null);
   };
 
   useEffect(() => {
@@ -1021,14 +932,12 @@ export function AddRevenueWizardModal(props: {
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {!hideCrmSources && (
-                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "shopify" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("shopify")}>
+                  <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => handleCrmSourceClick("shopify")}>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <ShoppingCart className="w-4 h-4" />
                         Shopify (Ecommerce)
-                        {crmConnecting === "shopify" ? (
-                          <span className="ml-auto text-xs font-normal text-blue-600 dark:text-blue-400">Connecting…</span>
-                        ) : crmStatus.shopify ? (
+                        {crmStatus.shopify ? (
                           <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
@@ -1040,14 +949,12 @@ export function AddRevenueWizardModal(props: {
                 )}
 
                 {!hideCrmSources && (
-                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "hubspot" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("hubspot")}>
+                  <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => handleCrmSourceClick("hubspot")}>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
                         HubSpot (CRM)
-                        {crmConnecting === "hubspot" ? (
-                          <span className="ml-auto text-xs font-normal text-blue-600 dark:text-blue-400">Connecting…</span>
-                        ) : crmStatus.hubspot ? (
+                        {crmStatus.hubspot ? (
                           <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
@@ -1059,14 +966,12 @@ export function AddRevenueWizardModal(props: {
                 )}
 
                 {!hideCrmSources && (
-                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "salesforce" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("salesforce")}>
+                  <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => handleCrmSourceClick("salesforce")}>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
                         Salesforce (CRM)
-                        {crmConnecting === "salesforce" ? (
-                          <span className="ml-auto text-xs font-normal text-blue-600 dark:text-blue-400">Connecting…</span>
-                        ) : crmStatus.salesforce ? (
+                        {crmStatus.salesforce ? (
                           <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>

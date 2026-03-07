@@ -47,11 +47,11 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
     const handlePopupMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
 
-      if (event.data?.type === "auth_success") {
+      if (event.data?.type === "ga4_auth_success" || event.data?.type === "auth_success") {
         setAuthCompleted(true);
         cleanupPopup();
         onSuccess();
-      } else if (event.data?.type === "auth_error") {
+      } else if (event.data?.type === "ga4_auth_error" || event.data?.type === "auth_error") {
         cleanupPopup();
         onError(event.data.error || "Authentication failed");
       }
@@ -86,7 +86,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
     setAuthCompleted(false);
 
     try {
-      const response = await apiRequest("POST", "/api/auth/google/integrated-connect", {
+      const response = await apiRequest("POST", "/api/auth/ga4/connect", {
         campaignId,
       });
 

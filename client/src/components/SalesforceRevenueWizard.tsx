@@ -235,7 +235,13 @@ export function SalesforceRevenueWizard(props: {
     void (async () => {
       try {
         setStatusLoading(true);
-        await fetchStatus();
+        const connected = await fetchStatus();
+        if (!connected) {
+          // Auto-trigger OAuth when not connected — no intermediate "Connect" screen.
+          setStatusLoading(false);
+          void openOAuthWindow();
+          return;
+        }
       } catch {
         // ignore (wizard can still load fields if backend allows; otherwise user can connect)
       } finally {

@@ -261,12 +261,19 @@ export function ShopifyRevenueWizard(props: {
     }
   };
 
-  // Load connection status once on mount (prevents visible flashing on step transitions).
+  // Load connection status once on mount; auto-trigger OAuth if not connected and domain is known.
   useEffect(() => {
     let mounted = true;
     void (async () => {
       try {
-        await fetchStatus();
+        const isConn = await fetchStatus();
+        if (!mounted) return;
+        if (!isConn && shopDomain) {
+          // Auto-trigger OAuth when not connected but domain is available.
+          setStatusLoading(false);
+          void openOAuthWindow();
+          return;
+        }
       } catch {
         // ignore
       } finally {

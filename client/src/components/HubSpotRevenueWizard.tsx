@@ -276,7 +276,7 @@ export function HubSpotRevenueWizard(props: {
     }
   };
 
-  // On mount: if already connected, jump to configure
+  // On mount: if already connected, jump to configure; if not, auto-trigger OAuth
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -284,8 +284,15 @@ export function HubSpotRevenueWizard(props: {
         setStatusLoading(true);
         const connected = await fetchStatus();
         if (!mounted) return;
-        // Mode-first UX: keep the user on the source-of-truth step for LinkedIn, even if already connected.
-        if (connected && !isLinkedIn) setStep("campaign-field");
+        if (connected) {
+          // Mode-first UX: keep the user on the source-of-truth step for LinkedIn, even if already connected.
+          if (!isLinkedIn) setStep("campaign-field");
+        } else {
+          // Auto-trigger OAuth when not connected — no intermediate "Connect" screen.
+          setStatusLoading(false);
+          void openOAuthWindow();
+          return;
+        }
       } catch {
         // ignore
       } finally {

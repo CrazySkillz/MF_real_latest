@@ -244,17 +244,21 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const interval = setInterval(() => {
         if (popup.closed) {
           clearInterval(interval);
-          if (step === 'connecting') setStep('idle');
+          // Use functional update to read CURRENT state — the closure captures a stale value
+          setStep(current => current === 'connecting' ? 'idle' : current);
         }
       }, 1000);
 
       setTimeout(() => {
         clearInterval(interval);
         if (!popup.closed) popup.close();
-        if (step === 'connecting') {
-          setStep('idle');
-          toast({ title: 'Connection Timeout', description: 'OAuth flow timed out.', variant: 'destructive' });
-        }
+        setStep(current => {
+          if (current === 'connecting') {
+            toast({ title: 'Connection Timeout', description: 'OAuth flow timed out.', variant: 'destructive' });
+            return 'idle';
+          }
+          return current;
+        });
       }, 300000);
     } catch (err: any) {
       setStep('idle');

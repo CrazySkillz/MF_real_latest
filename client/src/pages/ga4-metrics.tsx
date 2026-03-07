@@ -2994,15 +2994,6 @@ export default function GA4Metrics() {
                         </Card>
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                              {formatMoney(Number(financialRevenue || 0))}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="p-5">
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatPercentage(rateToPercent(dailySummedTotals.engagementRate || ga4Metrics?.engagementRate || 0))}
@@ -3030,6 +3021,7 @@ export default function GA4Metrics() {
                       </div>
                       {/* Revenue & Spend cards — always show when any financial data exists */}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
+                        {/* Total Revenue */}
                         <Card>
                           <CardContent className="p-5">
                             <div className="flex items-center justify-between">
@@ -3037,7 +3029,7 @@ export default function GA4Metrics() {
                               <button
                                 onClick={() => setShowRevenueDialog(true)}
                                 className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                                title="Add revenue source"
+                                title="Add or edit revenue source"
                               >
                                 <Edit className="h-3.5 w-3.5" />
                               </button>
@@ -3045,52 +3037,25 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatMoney(Number(financialRevenue || 0))}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cumulative to date</p>
                             {(ga4HasRevenueMetric || (Array.isArray(revenueBreakdownResp?.sources) && revenueBreakdownResp.sources.length > 0)) && (
                               <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
                                 {ga4HasRevenueMetric && (
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-slate-500 dark:text-slate-400">GA4 (native)</span>
-                                    <span className="text-slate-700 dark:text-slate-300 font-medium">{formatMoney(ga4RevenueForFinancials)}</span>
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-slate-500 dark:text-slate-400 min-w-[80px]">GA4 (native)</span>
+                                    <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">{formatMoney(ga4RevenueForFinancials)}</span>
                                   </div>
                                 )}
                                 {Array.isArray(revenueBreakdownResp?.sources) && revenueBreakdownResp.sources.map((s: any) => (
-                                  <div key={s.sourceId} className="flex justify-between text-xs">
-                                    <span className="text-slate-500 dark:text-slate-400">{s.displayName}</span>
-                                    <span className="text-slate-700 dark:text-slate-300 font-medium">{formatMoney(s.revenue)}</span>
+                                  <div key={s.sourceId} className="flex items-center justify-between text-xs">
+                                    <span className="text-slate-500 dark:text-slate-400 min-w-[80px]">{s.displayName}</span>
+                                    <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">{formatMoney(s.revenue)}</span>
                                   </div>
                                 ))}
                               </div>
                             )}
                           </CardContent>
                         </Card>
-                        <Card>
-                          <CardContent className="p-5">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
-                              <button
-                                onClick={() => setShowSpendDialog(true)}
-                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                                title="Add spend source"
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                              {formatMoney(Number(financialSpend || 0))}
-                            </p>
-                            {Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0 && (
-                              <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                                {spendBreakdownResp.sources.map((s: any) => (
-                                  <div key={s.sourceId} className="flex justify-between text-xs">
-                                    <span className="text-slate-500 dark:text-slate-400">{s.displayName}</span>
-                                    <span className="text-slate-700 dark:text-slate-300 font-medium">{formatMoney(s.spend)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
+                        {/* Latest Day Revenue */}
                         <Card>
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Revenue</p>
@@ -3102,6 +3067,35 @@ export default function GA4Metrics() {
                             </p>
                           </CardContent>
                         </Card>
+                        {/* Total Spend */}
+                        <Card>
+                          <CardContent className="p-5">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                              <button
+                                onClick={() => setShowSpendDialog(true)}
+                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                title="Add or edit spend source"
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              {formatMoney(Number(financialSpend || 0))}
+                            </p>
+                            {Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                                {spendBreakdownResp.sources.map((s: any) => (
+                                  <div key={s.sourceId} className="flex items-center justify-between text-xs">
+                                    <span className="text-slate-500 dark:text-slate-400 min-w-[80px]">{s.displayName}</span>
+                                    <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">{formatMoney(s.spend)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                        {/* Latest Day Spend */}
                         <Card>
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Spend</p>

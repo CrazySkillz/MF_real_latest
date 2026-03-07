@@ -6598,6 +6598,7 @@ export default function CampaignDetail() {
                   <div
                     className={`flex items-center justify-between p-3 ${(!platform.connected || platform.needsSetup || platform.requiresImport) ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
                     onClick={() => {
+                      console.log(`[Platform Click] ${platform.platform}: connected=${platform.connected}, needsSetup=${platform.needsSetup}, requiresImport=${platform.requiresImport}, expandedPlatform=${expandedPlatform}`);
                       if (!platform.connected || platform.needsSetup || platform.requiresImport) {
                         setExpandedPlatform(expandedPlatform === platform.platform ? null : platform.platform);
                       }

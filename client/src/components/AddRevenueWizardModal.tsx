@@ -8,7 +8,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, FileSpreadsheet, ShoppingCart, Upload, ArrowLeft } from "lucide-react";
+import { Building2, FileSpreadsheet, ShoppingCart, Upload, ArrowLeft, X } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 import { HubSpotRevenueWizard } from "@/components/HubSpotRevenueWizard";
 import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
 import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
@@ -304,6 +305,32 @@ export function AddRevenueWizardModal(props: {
     } catch (err: any) {
       setCrmConnecting(null);
       toast({ title: "Connection error", description: err?.message || "Failed to open OAuth.", variant: "destructive" });
+    }
+  };
+
+  const [crmDisconnecting, setCrmDisconnecting] = useState<string | null>(null);
+  const handleCrmDisconnect = async (platform: "hubspot" | "salesforce" | "shopify") => {
+    const label = platform.charAt(0).toUpperCase() + platform.slice(1);
+    if (!confirm(`Disconnect ${label}? This will remove the revenue source and OAuth connection.`)) return;
+    setCrmDisconnecting(platform);
+    try {
+      // Delete any active revenue source for this platform
+      const dsResp = await fetch(`/api/campaigns/${campaignId}/all-data-sources`);
+      const dsJson = await dsResp.json().catch(() => ({}));
+      const revSources = Array.isArray(dsJson?.revenueSources) ? dsJson.revenueSources : [];
+      const entry = revSources.find((s: any) => s?.sourceType === platform && s?.isActive !== false);
+      if (entry?.id) {
+        await apiRequest('DELETE', `/api/campaigns/${campaignId}/revenue-sources/${entry.id}`);
+      }
+      // Delete the OAuth connection
+      await apiRequest('DELETE', `/api/${platform}/${campaignId}/connection`);
+      setCrmStatus(prev => ({ ...prev, [platform]: false }));
+      invalidateAfterRevenueChange();
+      toast({ title: `${label} disconnected`, description: "Revenue source and connection removed." });
+    } catch (err: any) {
+      toast({ title: "Disconnect failed", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setCrmDisconnecting(null);
     }
   };
 
@@ -1021,7 +1048,7 @@ export function AddRevenueWizardModal(props: {
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {!hideCrmSources && (
-                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "shopify" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("shopify")}>
+                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "shopify" || crmDisconnecting === "shopify" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("shopify")}>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <ShoppingCart className="w-4 h-4" />
@@ -1029,7 +1056,12 @@ export function AddRevenueWizardModal(props: {
                         {crmConnecting === "shopify" ? (
                           <span className="ml-auto text-xs font-normal text-blue-600 dark:text-blue-400">Connecting…</span>
                         ) : crmStatus.shopify ? (
-                          <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                          <span className="ml-auto flex items-center gap-1">
+                            <span className="text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                            <button className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect Shopify" onClick={(e) => { e.stopPropagation(); void handleCrmDisconnect("shopify"); }}>
+                              <X className="w-3.5 h-3.5 text-red-500" />
+                            </button>
+                          </span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
                         )}
@@ -1040,7 +1072,7 @@ export function AddRevenueWizardModal(props: {
                 )}
 
                 {!hideCrmSources && (
-                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "hubspot" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("hubspot")}>
+                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "hubspot" || crmDisconnecting === "hubspot" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("hubspot")}>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
@@ -1048,7 +1080,12 @@ export function AddRevenueWizardModal(props: {
                         {crmConnecting === "hubspot" ? (
                           <span className="ml-auto text-xs font-normal text-blue-600 dark:text-blue-400">Connecting…</span>
                         ) : crmStatus.hubspot ? (
-                          <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                          <span className="ml-auto flex items-center gap-1">
+                            <span className="text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                            <button className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect HubSpot" onClick={(e) => { e.stopPropagation(); void handleCrmDisconnect("hubspot"); }}>
+                              <X className="w-3.5 h-3.5 text-red-500" />
+                            </button>
+                          </span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
                         )}
@@ -1059,7 +1096,7 @@ export function AddRevenueWizardModal(props: {
                 )}
 
                 {!hideCrmSources && (
-                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "salesforce" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("salesforce")}>
+                  <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${crmConnecting === "salesforce" || crmDisconnecting === "salesforce" ? "opacity-60 pointer-events-none" : ""}`} onClick={() => handleCrmSourceClick("salesforce")}>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
@@ -1067,7 +1104,12 @@ export function AddRevenueWizardModal(props: {
                         {crmConnecting === "salesforce" ? (
                           <span className="ml-auto text-xs font-normal text-blue-600 dark:text-blue-400">Connecting…</span>
                         ) : crmStatus.salesforce ? (
-                          <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                          <span className="ml-auto flex items-center gap-1">
+                            <span className="text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                            <button className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect Salesforce" onClick={(e) => { e.stopPropagation(); void handleCrmDisconnect("salesforce"); }}>
+                              <X className="w-3.5 h-3.5 text-red-500" />
+                            </button>
+                          </span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
                         )}

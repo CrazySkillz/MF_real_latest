@@ -160,8 +160,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     try {
       const filterValue = values.length === 1 ? values[0] : JSON.stringify(values);
       await apiRequest("PATCH", `/api/campaigns/${campaignId}`, { ga4CampaignFilter: filterValue });
-      // Invalidate connected-platforms and campaign queries
+      // Invalidate all GA4-related queries so badge and analytics update
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ga4/check-connection', campaignId] });
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
       toast({
         title: "GA4 campaign(s) selected",
@@ -288,7 +289,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const data = await response.json();
 
       if (data.success) {
-        // Don't invalidate connected-platforms yet — wait until campaign filter is saved
+        // Invalidate connected-platforms immediately so badge updates even if user doesn't finish filter step
+        queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/ga4/check-connection', campaignId] });
         toast({ title: 'GA4 Connected!', description: 'Property connected. Now select campaigns to track.' });
         setStep('filter');
       } else {

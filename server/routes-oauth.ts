@@ -5704,6 +5704,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connectedAt: new Date().toISOString(),
         });
 
+        // Also store in realGA4Client so both campaign-creation and Connected Platforms flows work
+        realGA4Client.storeManualConnection(ga4CampaignId, {
+          propertyId: '',
+          accessToken: ga4AccessToken,
+          refreshToken: ga4RefreshToken,
+          expiresAt: Date.now() + ((ga4Tokens.expires_in || 3600) * 1000),
+          email: 'oauth-user@google.com',
+          scope: ['https://www.googleapis.com/auth/analytics.readonly'],
+          availableProperties: ga4Properties.map((p: any) => ({ id: p.id, name: p.name, account: p.account })),
+        });
+
         console.log(`[GA4 OAuth] Successfully connected campaign ${ga4CampaignId}, found ${ga4Properties.length} properties`);
 
         const ga4PropertiesJson = JSON.stringify(ga4Properties);

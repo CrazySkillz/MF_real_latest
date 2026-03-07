@@ -261,19 +261,12 @@ export function ShopifyRevenueWizard(props: {
     }
   };
 
-  // Load connection status once on mount; auto-trigger OAuth if not connected and domain is known.
+  // Load connection status once on mount.
   useEffect(() => {
     let mounted = true;
     void (async () => {
       try {
-        const isConn = await fetchStatus();
-        if (!mounted) return;
-        if (!isConn && shopDomain) {
-          // Auto-trigger OAuth when not connected but domain is available.
-          setStatusLoading(false);
-          void openOAuthWindow();
-          return;
-        }
+        await fetchStatus();
       } catch {
         // ignore
       } finally {
@@ -317,10 +310,6 @@ export function ShopifyRevenueWizard(props: {
 
   const handleNext = async () => {
     if (step === "campaign-field") {
-      if (!connected) {
-        toast({ title: "Connect Shopify", description: "Connect your Shopify store before continuing.", variant: "destructive" });
-        return;
-      }
       setUniqueValues([]);
       setSelectedValues([]);
       setStep("crosswalk");

@@ -276,25 +276,18 @@ export function HubSpotRevenueWizard(props: {
     }
   };
 
-  // On mount: if already connected, jump to configure; if not, auto-trigger OAuth
+  // On mount: fetch status and always proceed to configure step (no OAuth gate).
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         setStatusLoading(true);
-        const connected = await fetchStatus();
+        await fetchStatus();
         if (!mounted) return;
-        if (connected) {
-          // Mode-first UX: keep the user on the source-of-truth step for LinkedIn, even if already connected.
-          if (!isLinkedIn) setStep("campaign-field");
-        } else {
-          // Auto-trigger OAuth when not connected — no intermediate "Connect" screen.
-          setStatusLoading(false);
-          void openOAuthWindow();
-          return;
-        }
+        if (!isLinkedIn) setStep("campaign-field");
       } catch {
-        // ignore
+        // ignore — proceed to campaign-field even on error
+        if (mounted && !isLinkedIn) setStep("campaign-field");
       } finally {
         if (!mounted) return;
         setStatusLoading(false);
@@ -308,7 +301,7 @@ export function HubSpotRevenueWizard(props: {
   // When entering configure step, load properties once
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
-    if (!isConnected) return; // don't fetch fields until connected
+    if (statusLoading) return;
     if (properties.length > 0) return;
     (async () => {
       try {
@@ -326,7 +319,7 @@ export function HubSpotRevenueWizard(props: {
   // When entering pipeline step, load pipelines once (LinkedIn-only).
   useEffect(() => {
     if (step !== "pipeline") return;
-    if (!isConnected) return;
+    if (statusLoading) return;
     if (pipelines.length > 0) return;
     void (async () => {
       try {
@@ -407,14 +400,6 @@ export function HubSpotRevenueWizard(props: {
       return;
     }
     if (step === "campaign-field") {
-      if (!isConnected) {
-        toast({
-          title: "Connect HubSpot",
-          description: "Please connect HubSpot before selecting deal fields.",
-          variant: "destructive",
-        });
-        return;
-      }
       if (!campaignProperty) {
         toast({
           title: "Select a field",
@@ -601,10 +586,8 @@ export function HubSpotRevenueWizard(props: {
                 : "")}
             {step === "campaign-field" &&
               (statusLoading
-                ? "Checking HubSpot connection…"
-                : isConnected
-                  ? `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : ""}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`
-                  : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
+                ? "Loading HubSpot deal fields…"
+                : `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : ""}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`)}
             {step === "crosswalk" &&
               `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
             {step === "pipeline" &&
@@ -690,27 +673,6 @@ export function HubSpotRevenueWizard(props: {
             )}
             {step === "campaign-field" && (
               <div className="space-y-3">
-                {!statusLoading && !isConnected ? (
-                  <div className="rounded-lg border bg-white dark:bg-slate-950 p-4">
-                    <div className="text-sm font-medium flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-blue-600" />
-                      Connect HubSpot to continue
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      HubSpot must be connected before we can load Deal properties.
-                    </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <Button onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                        {isConnecting ? "Connecting…" : "Connect HubSpot"}
-                      </Button>
-                      {onBack && (
-                        <Button variant="outline" onClick={onBack} disabled={isConnecting}>
-                          Back
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ) : (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <Label>HubSpot deal field used to attribute deals to this campaign</Label>
@@ -719,7 +681,7 @@ export function HubSpotRevenueWizard(props: {
                     <Select
                       value={campaignProperty}
                       onValueChange={(v) => setCampaignProperty(v)}
-                      disabled={!isConnected || statusLoading}
+                      disabled={statusLoading}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={statusLoading ? "Loading…" : "Select a HubSpot deal field…"} />
@@ -738,11 +700,8 @@ export function HubSpotRevenueWizard(props: {
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="text-xs text-slate-500">
-                      Tip: pick the HubSpot property your team uses for “LinkedIn campaign” or “UTM campaign”.
-                    </div>
+                    <div className="text-xs text-slate-500">{"Tip: pick the HubSpot property your team uses for \u201cLinkedIn campaign\u201d or \u201cUTM campaign\u201d."}</div>
                   </div>
-                )}
               </div>
             )}
 
@@ -1072,7 +1031,7 @@ export function HubSpotRevenueWizard(props: {
                   valuesLoading ||
                   isSaving ||
                   statusLoading ||
-                  (step === "campaign-field" ? (!isConnected || !campaignProperty) :
+                  (step === "campaign-field" ? (!campaignProperty) :
                     step === "crosswalk" ? (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0) :
                       step === "pipeline" ? (!pipelineStageId) :
                         step === "revenue" ? (!revenueProperty) :

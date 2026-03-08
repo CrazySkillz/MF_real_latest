@@ -134,15 +134,20 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - Platform-specific pages (GA4, LinkedIn, Meta) show only their own platform's revenue
 
 ### Financial Aggregation Endpoints
-- `GET /api/campaigns/:id/spend-totals` / `spend-breakdown` / `spend-to-date`
+- `GET /api/campaigns/:id/spend-totals` / `spend-breakdown` / `spend-to-date` / `spend-daily?date=YYYY-MM-DD`
 - `GET /api/campaigns/:id/revenue-totals` / `revenue-breakdown` / `revenue-to-date`
 - `GET /api/campaigns/:id/outcome-totals` — unified metrics (GA4 + platforms + revenue + spend)
+- `DELETE /api/campaigns/:id/spend-sources/:sourceId` — remove a spend source + its records
 
 ### Revenue Cards
-- **GA4 page** (`ga4-metrics.tsx`): `financialRevenue` = GA4 native revenue only (falls back to imported if no GA4 revenue metric). This is platform-specific — do NOT add CRM revenue here.
-- **Campaign Overview** (`campaign-detail.tsx`): Uses `outcome-totals` endpoint which returns unified cross-platform revenue (GA4 + CRM offsite sources). This is the right place for combined totals.
-- Both show micro copy breakdown of per-source amounts
-- "+" icon opens Add Revenue modal; edit icon opens existing source
+- **GA4 page** (`ga4-metrics.tsx`): `financialRevenue` = GA4 native revenue only (falls back to imported if no GA4 revenue metric). This is platform-specific — do NOT add CRM revenue here. No add/edit icons on the GA4 Total Revenue card.
+- **Campaign Overview** (`campaign-detail.tsx`): Uses `outcome-totals` endpoint which returns unified cross-platform revenue (GA4 + CRM offsite sources). This is the right place for combined totals. Shows micro copy breakdown, "+" icon opens Add Revenue modal, edit icon opens existing source.
+
+### Spend Cards (GA4 Overview)
+- **Total Spend**: Uses `financialSpend` (prefers `spend-breakdown` total, falls back to `spend-to-date`). Shows "+" icon to add sources and per-source breakdown with edit/trash icons when sources exist. Shows "Add Spend" prompt when no spend exists.
+- **Latest Day Spend**: Queries `/spend-daily?date=yesterday` for imported spend, falls back to GA4 daily row data.
+- **Empty state gate**: Card shows populated view when `spendBreakdownResp.sources.length > 0 OR financialSpend > 0` (prevents showing $0 when breakdown hasn't loaded but spend exists).
+- Per-source trash uses AlertDialog confirmation → `DELETE /api/campaigns/:id/spend-sources/:sourceId`.
 
 ---
 
@@ -162,8 +167,12 @@ Include filter params (e.g., `dateRange`, `platformContext`, `clientId`) for cor
 
 ### Cache Invalidation After Revenue/Spend Changes
 ```typescript
-invalidateAfterRevenueChange() // in AddRevenueWizardModal
+// Revenue mutations (AddRevenueWizardModal):
 // Invalidates: outcome-totals, revenue-sources, revenue-to-date, revenue-totals, revenue-breakdown
+
+// Spend mutations (add/edit/delete in ga4-metrics.tsx):
+// Invalidates: spend-totals, spend-to-date, spend-sources, spend-breakdown, spend-daily
+// Refetches: spend-to-date, spend-breakdown
 ```
 
 ### OAuth Flow (CRM Sources)

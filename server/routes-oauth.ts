@@ -16613,13 +16613,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/meta/:campaignId/connect-test", async (req, res) => {
     try {
       const { campaignId } = req.params;
-      const { adAccountId, adAccountName } = req.body;
-
-      if (!adAccountId || !adAccountName) {
-        return res.status(400).json({ error: "Ad account ID and name are required" });
-      }
+      const adAccountId = (req.body as any)?.adAccountId || 'act_test_123456';
+      const adAccountName = (req.body as any)?.adAccountName || 'Test Meta Ad Account';
 
       console.log(`[Meta] Connecting test ad account ${adAccountId} to campaign ${campaignId}`);
+
+      await storage.deleteMetaConnection(campaignId).catch(() => {});
 
       // Create Meta connection in test mode
       await storage.createMetaConnection({
@@ -16629,6 +16628,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessToken: `test_token_${Date.now()}`, // Test mode token
         method: 'test_mode',
       });
+
+      // Generate initial mock data so spend preview has data immediately
+      try {
+        const { refreshMetaDataForCampaign } = await import('./meta-scheduler');
+        for (let i = 0; i < 30; i++) {
+          await refreshMetaDataForCampaign(campaignId, { method: 'test_mode' }, { advanceTestDay: true });
+        }
+        console.log(`[Meta] Generated initial mock data for campaign ${campaignId}`);
+      } catch (mockErr) {
+        console.warn('[Meta] Failed to generate initial mock data:', mockErr);
+      }
 
       console.log(`[Meta] Test connection created successfully`);
       res.json({ success: true, message: 'Meta ad account connected in test mode' });

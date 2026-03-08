@@ -1695,6 +1695,7 @@ export default function GA4Metrics() {
     const map: Record<string, string> = {
       google_sheets: "Google Sheets", csv: "CSV", manual: "Manual",
       linkedin_api: "LinkedIn Ads", meta_api: "Meta Ads", google_ads_api: "Google Ads",
+      ad_platforms: "Ad Platform",
     };
     return map[type] || type;
   };

@@ -127,6 +127,12 @@ export function AddSpendWizardModal(props: {
   const [adPlatformEndDate, setAdPlatformEndDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [isAdPlatformLoading, setIsAdPlatformLoading] = useState(false);
 
+  // Meta / Google Ads connection state
+  const [adPlatformConnected, setAdPlatformConnected] = useState(false);
+  const [adPlatformConnectionName, setAdPlatformConnectionName] = useState<string>("");
+  const [isAdPlatformTestMode, setIsAdPlatformTestMode] = useState(false);
+  const [isAdPlatformConnecting, setIsAdPlatformConnecting] = useState(false);
+
   // LinkedIn OAuth in-modal flow
   const [linkedInAuthStep, setLinkedInAuthStep] = useState<"idle" | "connecting" | "select_account">("idle");
   const [linkedInAdAccounts, setLinkedInAdAccounts] = useState<Array<{ id: string; name: string }>>([]);
@@ -183,6 +189,10 @@ export function AddSpendWizardModal(props: {
       setSelectedLinkedInAdAccount("");
       setIsLinkedInConnecting(false);
       setIsLinkedInTestMode(false);
+      setAdPlatformConnected(false);
+      setAdPlatformConnectionName("");
+      setIsAdPlatformTestMode(false);
+      setIsAdPlatformConnecting(false);
     }
   }, [props.open]);
 
@@ -860,11 +870,119 @@ export function AddSpendWizardModal(props: {
     }
   };
 
+  // Check Meta / Google Ads connection when entering ad_platform step
+  const checkAdPlatformConnection = async (platform: AdPlatform) => {
+    if (platform === "linkedin") return; // LinkedIn has its own flow
+    try {
+      const endpoint = platform === "google_ads"
+        ? `/api/google-ads/${props.campaignId}/connection`
+        : `/api/meta/${props.campaignId}/connection`;
+      const resp = await fetch(endpoint);
+      const json = await resp.json().catch(() => null);
+      if (json?.connected) {
+        setAdPlatformConnected(true);
+        setAdPlatformConnectionName(
+          platform === "google_ads" ? (json.customerName || "Google Ads Account") : (json.adAccountName || "Meta Account")
+        );
+        setIsAdPlatformTestMode(json.method === "test_mode");
+      }
+    } catch { /* ignore */ }
+  };
+
+  // Handle test mode toggle for Meta / Google Ads
+  const handleAdPlatformTestToggle = async (checked: boolean) => {
+    if (!checked || !selectedPlatform || selectedPlatform === "linkedin") return;
+    setIsAdPlatformConnecting(true);
+    try {
+      const endpoint = selectedPlatform === "google_ads"
+        ? `/api/google-ads/${props.campaignId}/connect-test`
+        : `/api/meta/${props.campaignId}/connect-test`;
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = await resp.json().catch(() => null);
+      if (resp.ok && (json?.success !== false)) {
+        setAdPlatformConnected(true);
+        setAdPlatformConnectionName(
+          selectedPlatform === "google_ads" ? "Test Google Ads Account" : "Test Meta Ad Account"
+        );
+        setIsAdPlatformTestMode(true);
+        toast({ title: "Test mode enabled", description: `Using mock ${selectedPlatform === "google_ads" ? "Google Ads" : "Meta"} data. You can test the full import flow.` });
+      } else {
+        throw new Error(json?.error || "Failed to enable test mode");
+      }
+    } catch (e: any) {
+      toast({ title: "Test mode failed", description: e?.message || "Please try again.", variant: "destructive" });
+      setIsAdPlatformTestMode(false);
+    } finally {
+      setIsAdPlatformConnecting(false);
+    }
+  };
+
+  // OAuth connection for Meta / Google Ads
+  const connectAdPlatformOAuth = async () => {
+    if (!selectedPlatform || selectedPlatform === "linkedin") return;
+    setIsAdPlatformConnecting(true);
+    try {
+      const authEndpoint = selectedPlatform === "google_ads"
+        ? "/api/auth/google-ads/connect"
+        : "/api/auth/meta/connect";
+      const resp = await fetch(authEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId: props.campaignId }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data?.authUrl) throw new Error(data?.message || data?.error || "Failed to start connection");
+
+      const popup = window.open(data.authUrl, `${selectedPlatform}-oauth`, "width=500,height=600");
+      if (!popup) {
+        toast({ title: "Popup blocked", description: "Please allow popups for this site and try again.", variant: "destructive" });
+        setIsAdPlatformConnecting(false);
+        return;
+      }
+
+      const platform = selectedPlatform;
+      const handleMessage = async (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        const successType = platform === "google_ads" ? "google_ads_auth_success" : "meta_auth_success";
+        if (event.data.type === successType) {
+          window.removeEventListener("message", handleMessage);
+          // Check connection status after OAuth
+          await checkAdPlatformConnection(platform);
+          setIsAdPlatformConnecting(false);
+          toast({ title: `Connected to ${platform === "google_ads" ? "Google Ads" : "Meta"}!`, description: "You can now preview and import spend data." });
+        }
+        const errorType = platform === "google_ads" ? "google_ads_auth_error" : "meta_auth_error";
+        if (event.data.type === errorType) {
+          window.removeEventListener("message", handleMessage);
+          setIsAdPlatformConnecting(false);
+          toast({ title: "Connection failed", description: event.data.error || "OAuth failed.", variant: "destructive" });
+        }
+      };
+      window.addEventListener("message", handleMessage);
+
+      // Fallback timeout — clean up listener after 5 minutes
+      setTimeout(() => {
+        window.removeEventListener("message", handleMessage);
+        setIsAdPlatformConnecting(false);
+      }, 300000);
+    } catch (e: any) {
+      toast({ title: "Connection failed", description: e?.message || "Please try again.", variant: "destructive" });
+      setIsAdPlatformConnecting(false);
+    }
+  };
+
   // Load platform connection statuses when ad_platform step is entered
   useEffect(() => {
     if (!props.open || step !== "ad_platform") return;
     checkLinkedInConnection();
     checkMetaStatus();
+    if (selectedPlatform && selectedPlatform !== "linkedin") {
+      checkAdPlatformConnection(selectedPlatform);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.open, step]);
 
@@ -960,7 +1078,7 @@ export function AddSpendWizardModal(props: {
                       <Zap className="w-4 h-4" />
                       Meta / Facebook
                     </CardTitle>
-                    <CardDescription>Pull spend via Meta Marketing API (coming soon).</CardDescription>
+                    <CardDescription>Pull spend via Meta Marketing API.</CardDescription>
                   </CardHeader>
                 </Card>
 
@@ -970,7 +1088,7 @@ export function AddSpendWizardModal(props: {
                       <Zap className="w-4 h-4" />
                       Google Ads
                     </CardTitle>
-                    <CardDescription>Pull spend via Google Ads API (coming soon).</CardDescription>
+                    <CardDescription>Pull spend via Google Ads API.</CardDescription>
                   </CardHeader>
                 </Card>
 
@@ -1334,63 +1452,105 @@ export function AddSpendWizardModal(props: {
                     {/* ── Meta / Google Ads panel ── */}
                     {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && (
                       <div className="rounded-lg border p-4 space-y-4">
-                        <div className="text-sm font-medium">
-                          {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Import spend
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Import spend data from your connected {selectedPlatform === "meta" ? "Meta" : "Google Ads"} account. Select a date range and preview before importing.
-                        </p>
-
-                        {/* Date range selector */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs">Start date</Label>
-                            <Input
-                              type="date"
-                              value={adPlatformStartDate}
-                              onChange={(e) => { setAdPlatformStartDate(e.target.value); setAdPlatformPreview(null); }}
-                              className="text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">End date</Label>
-                            <Input
-                              type="date"
-                              value={adPlatformEndDate}
-                              onChange={(e) => { setAdPlatformEndDate(e.target.value); setAdPlatformPreview(null); }}
-                              className="text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={isAdPlatformLoading}
-                          onClick={() => fetchAdPlatformPreview(selectedPlatform!)}
-                        >
-                          {isAdPlatformLoading ? (
-                            <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Loading...</>
-                          ) : "Preview spend"}
-                        </Button>
-
-                        {/* Preview results */}
-                        {adPlatformPreview && (
-                          <div className="rounded-md bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-3 space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-600 dark:text-slate-400">Total Spend</span>
-                              <span className="font-bold text-slate-900 dark:text-white">${adPlatformPreview.totalSpend.toLocaleString()}</span>
+                        {!adPlatformConnected ? (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-medium">
+                                {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Not connected
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor="ap-test-mode" className="text-xs text-slate-500 cursor-pointer">Test mode</Label>
+                                <Switch
+                                  id="ap-test-mode"
+                                  checked={isAdPlatformTestMode}
+                                  disabled={isAdPlatformConnecting}
+                                  onCheckedChange={handleAdPlatformTestToggle}
+                                />
+                              </div>
                             </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-slate-500 dark:text-slate-400">Days with data</span>
-                              <span className="text-slate-700 dark:text-slate-300">{adPlatformPreview.daysWithData}</span>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Connect your {selectedPlatform === "meta" ? "Meta" : "Google Ads"} account to pull spend data directly.
+                            </p>
+                            {isAdPlatformConnecting ? (
+                              <div className="flex items-center gap-2 text-sm text-slate-500">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                {isAdPlatformTestMode ? "Setting up test data..." : "Connecting..."}
+                              </div>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="default"
+                                size="sm"
+                                onClick={connectAdPlatformOAuth}
+                              >
+                                Connect {selectedPlatform === "meta" ? "Meta Ads" : "Google Ads"}
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-sm font-medium text-green-600 dark:text-green-400">
+                              {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Connected
+                              {adPlatformConnectionName && (
+                                <span className="text-slate-500 dark:text-slate-400 font-normal ml-1">({adPlatformConnectionName})</span>
+                              )}
                             </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-slate-500 dark:text-slate-400">Date range</span>
-                              <span className="text-slate-700 dark:text-slate-300">{adPlatformPreview.dateRange}</span>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Select a date range and preview spend before importing.
+                            </p>
+
+                            {/* Date range selector */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="text-xs">Start date</Label>
+                                <Input
+                                  type="date"
+                                  value={adPlatformStartDate}
+                                  onChange={(e) => { setAdPlatformStartDate(e.target.value); setAdPlatformPreview(null); }}
+                                  className="text-sm"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">End date</Label>
+                                <Input
+                                  type="date"
+                                  value={adPlatformEndDate}
+                                  onChange={(e) => { setAdPlatformEndDate(e.target.value); setAdPlatformPreview(null); }}
+                                  className="text-sm"
+                                />
+                              </div>
                             </div>
-                          </div>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={isAdPlatformLoading}
+                              onClick={() => fetchAdPlatformPreview(selectedPlatform!)}
+                            >
+                              {isAdPlatformLoading ? (
+                                <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Loading...</>
+                              ) : "Preview spend"}
+                            </Button>
+
+                            {/* Preview results */}
+                            {adPlatformPreview && (
+                              <div className="rounded-md bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-3 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-slate-600 dark:text-slate-400">Total Spend</span>
+                                  <span className="font-bold text-slate-900 dark:text-white">${adPlatformPreview.totalSpend.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-500 dark:text-slate-400">Days with data</span>
+                                  <span className="text-slate-700 dark:text-slate-300">{adPlatformPreview.daysWithData}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-500 dark:text-slate-400">Date range</span>
+                                  <span className="text-slate-700 dark:text-slate-300">{adPlatformPreview.dateRange}</span>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}

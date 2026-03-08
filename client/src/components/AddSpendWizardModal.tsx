@@ -132,6 +132,10 @@ export function AddSpendWizardModal(props: {
   const [adPlatformConnectionName, setAdPlatformConnectionName] = useState<string>("");
   const [isAdPlatformTestMode, setIsAdPlatformTestMode] = useState(false);
   const [isAdPlatformConnecting, setIsAdPlatformConnecting] = useState(false);
+  const [adPlatformCampaigns, setAdPlatformCampaigns] = useState<Array<{
+    id: string; name: string; spend: number; impressions: number; clicks: number;
+  }>>([]);
+  const [selectedAdPlatformCampaignIds, setSelectedAdPlatformCampaignIds] = useState<string[]>([]);
 
   // LinkedIn OAuth in-modal flow
   const [linkedInAuthStep, setLinkedInAuthStep] = useState<"idle" | "connecting" | "select_account">("idle");
@@ -193,6 +197,8 @@ export function AddSpendWizardModal(props: {
       setAdPlatformConnectionName("");
       setIsAdPlatformTestMode(false);
       setIsAdPlatformConnecting(false);
+      setAdPlatformCampaigns([]);
+      setSelectedAdPlatformCampaignIds([]);
     }
   }, [props.open]);
 
@@ -800,10 +806,11 @@ export function AddSpendWizardModal(props: {
     } catch { /* ignore */ }
   };
 
-  // Fetch ad platform spend preview (Meta / Google Ads) — fetches all available data
+  // Fetch ad platform spend preview (Meta / Google Ads) — groups by campaign for selection
   const fetchAdPlatformPreview = async (platform: string) => {
     setIsAdPlatformLoading(true);
-    setAdPlatformPreview(null);
+    setAdPlatformCampaigns([]);
+    setSelectedAdPlatformCampaignIds([]);
     const startDate = "2020-01-01";
     const endDate = new Date().toISOString().slice(0, 10);
     try {
@@ -815,27 +822,34 @@ export function AddSpendWizardModal(props: {
       const metrics = json?.metrics || [];
 
       if (!metrics.length) {
-        toast({ title: "No data found", description: `No ${platform === "google_ads" ? "Google Ads" : platform === "meta" ? "Meta" : "LinkedIn"} spend data for this date range.`, variant: "destructive" });
+        toast({ title: "No data found", description: `No ${platform === "google_ads" ? "Google Ads" : "Meta"} spend data available.`, variant: "destructive" });
         setIsAdPlatformLoading(false);
         return;
       }
 
-      const spendByDate = new Map<string, number>();
+      // Group metrics by campaign
+      const campaignIdKey = platform === "google_ads" ? "googleCampaignId" : "metaCampaignId";
+      const campaignNameKey = platform === "google_ads" ? "googleCampaignName" : "metaCampaignName";
+      const grouped = new Map<string, { name: string; spend: number; impressions: number; clicks: number }>();
       for (const m of metrics) {
-        const date = String(m.date || "").trim();
-        const spend = parseFloat(String(m.spend || "0"));
-        if (date && !Number.isNaN(spend)) {
-          spendByDate.set(date, (spendByDate.get(date) || 0) + spend);
-        }
+        const cid = String(m[campaignIdKey] || "unknown");
+        const existing = grouped.get(cid) || { name: String(m[campaignNameKey] || cid), spend: 0, impressions: 0, clicks: 0 };
+        existing.spend += parseFloat(String(m.spend || "0"));
+        existing.impressions += Number(m.impressions || 0);
+        existing.clicks += Number(m.clicks || 0);
+        grouped.set(cid, existing);
       }
 
-      const totalSpend = Array.from(spendByDate.values()).reduce((a, b) => a + b, 0);
-      setAdPlatformPreview({
-        platform,
-        totalSpend: Number(totalSpend.toFixed(2)),
-        daysWithData: spendByDate.size,
-        dateRange: `${adPlatformStartDate} → ${adPlatformEndDate}`,
-      });
+      const campaigns = Array.from(grouped.entries()).map(([id, data]) => ({
+        id,
+        name: data.name,
+        spend: Number(data.spend.toFixed(2)),
+        impressions: data.impressions,
+        clicks: data.clicks,
+      }));
+
+      setAdPlatformCampaigns(campaigns);
+      setSelectedAdPlatformCampaignIds(campaigns.map(c => c.id));
     } catch (e: any) {
       toast({ title: "Preview failed", description: e?.message || "Could not fetch spend data.", variant: "destructive" });
     } finally {
@@ -843,25 +857,46 @@ export function AddSpendWizardModal(props: {
     }
   };
 
-  // Import ad platform spend
+  // Import ad platform spend (selected campaigns only)
   const importAdPlatformSpend = async () => {
-    if (!adPlatformPreview) return;
+    if (!selectedPlatform || selectedAdPlatformCampaignIds.length === 0) {
+      toast({ title: "No campaigns selected", description: "Select at least one campaign to import spend from.", variant: "destructive" });
+      return;
+    }
+    const selectedCampaigns = adPlatformCampaigns.filter(c => selectedAdPlatformCampaignIds.includes(c.id));
+    const selectedSpend = selectedCampaigns.reduce((sum, c) => sum + c.spend, 0);
+    const platformLabel = selectedPlatform === "google_ads" ? "Google Ads" : "Meta Ads";
     setIsProcessing(true);
     try {
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/ad-platform/import`, {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          platform: adPlatformPreview.platform,
-          startDate: "2020-01-01",
-          endDate: new Date().toISOString().slice(0, 10),
+          amount: Number(selectedSpend.toFixed(2)),
+          currency: props.currency || "USD",
+          sourceType: "ad_platforms",
+          displayName: platformLabel,
+          mappingConfig: {
+            platform: selectedPlatform,
+            adAccountName: adPlatformConnectionName || "Test Account",
+            selectedCampaignIds: selectedAdPlatformCampaignIds,
+            breakdown: selectedCampaigns.map(c => ({
+              campaignId: c.id,
+              name: c.name,
+              spend: c.spend,
+              impressions: c.impressions,
+              clicks: c.clicks,
+            })),
+            fetchedAt: new Date().toISOString(),
+            testMode: isAdPlatformTestMode,
+          },
         }),
       });
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to import spend");
       toast({
         title: "Spend imported",
-        description: `Imported $${json.totalSpend.toLocaleString()} from ${json.daysImported} days of ${json.displayName} data.`,
+        description: `Imported $${selectedSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })} from ${selectedCampaigns.length} ${platformLabel} campaign(s).`,
       });
       props.onProcessed?.();
       props.onOpenChange(false);
@@ -1508,18 +1543,69 @@ export function AddSpendWizardModal(props: {
                             {isAdPlatformLoading ? (
                               <div className="flex items-center gap-2 text-sm text-slate-500">
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Fetching spend data...
+                                Fetching campaigns...
                               </div>
-                            ) : adPlatformPreview ? (
-                              <div className="rounded-md bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-3 space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-slate-600 dark:text-slate-400">Total Spend</span>
-                                  <span className="font-bold text-slate-900 dark:text-white">${adPlatformPreview.totalSpend.toLocaleString()}</span>
+                            ) : adPlatformCampaigns.length > 0 ? (
+                              <>
+                                <div className="rounded-md border max-h-64 overflow-y-auto">
+                                  <table className="w-full text-sm">
+                                    <thead className="sticky top-0 bg-white dark:bg-slate-950">
+                                      <tr className="border-b">
+                                        <th className="text-left py-2 px-3 w-8">
+                                          <Checkbox
+                                            checked={selectedAdPlatformCampaignIds.length === adPlatformCampaigns.length}
+                                            onCheckedChange={(checked) => {
+                                              setSelectedAdPlatformCampaignIds(
+                                                checked ? adPlatformCampaigns.map(c => c.id) : []
+                                              );
+                                            }}
+                                          />
+                                        </th>
+                                        <th className="text-left py-2 px-3 font-medium">Campaign</th>
+                                        <th className="text-right py-2 px-3 font-medium">Spend</th>
+                                        <th className="text-right py-2 px-3 font-medium">Impressions</th>
+                                        <th className="text-right py-2 px-3 font-medium">Clicks</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {adPlatformCampaigns.map((c) => (
+                                        <tr key={c.id} className="border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                                          <td className="py-2 px-3">
+                                            <Checkbox
+                                              checked={selectedAdPlatformCampaignIds.includes(c.id)}
+                                              onCheckedChange={(checked) => {
+                                                setSelectedAdPlatformCampaignIds(prev =>
+                                                  checked ? [...prev, c.id] : prev.filter(x => x !== c.id)
+                                                );
+                                              }}
+                                            />
+                                          </td>
+                                          <td className="py-2 px-3">
+                                            <div className="font-medium text-xs">{c.name}</div>
+                                          </td>
+                                          <td className="py-2 px-3 text-right tabular-nums">${c.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                          <td className="py-2 px-3 text-right tabular-nums">{c.impressions.toLocaleString()}</td>
+                                          <td className="py-2 px-3 text-right tabular-nums">{c.clicks.toLocaleString()}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
                                 </div>
-                              </div>
+                                <div className="flex justify-between items-center text-sm pt-1">
+                                  <span className="text-slate-500 dark:text-slate-400">
+                                    {selectedAdPlatformCampaignIds.length} of {adPlatformCampaigns.length} campaigns selected
+                                  </span>
+                                  <span className="font-bold text-slate-900 dark:text-white">
+                                    Total: ${adPlatformCampaigns
+                                      .filter(c => selectedAdPlatformCampaignIds.includes(c.id))
+                                      .reduce((sum, c) => sum + c.spend, 0)
+                                      .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              </>
                             ) : (
                               <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Ready to import spend data.
+                                No campaigns found.
                               </p>
                             )}
                           </>
@@ -1538,12 +1624,15 @@ export function AddSpendWizardModal(props: {
                           {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
                         </Button>
                       )}
-                      {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && adPlatformPreview && (
+                      {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && adPlatformCampaigns.length > 0 && selectedAdPlatformCampaignIds.length > 0 && (
                         <Button
                           onClick={importAdPlatformSpend}
                           disabled={isProcessing}
                         >
-                          {isProcessing ? "Importing..." : `Import $${adPlatformPreview.totalSpend.toLocaleString()}`}
+                          {isProcessing ? "Importing..." : `Import $${adPlatformCampaigns
+                            .filter(c => selectedAdPlatformCampaignIds.includes(c.id))
+                            .reduce((sum, c) => sum + c.spend, 0)
+                            .toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                         </Button>
                       )}
                     </div>

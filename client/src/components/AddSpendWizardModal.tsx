@@ -677,6 +677,8 @@ export function AddSpendWizardModal(props: {
             amount: Number(selectedSpend.toFixed(2)),
             currency: props.currency || "USD",
             dateRange: props.dateRange || "30days",
+            sourceType: "linkedin_api",
+            displayName: "LinkedIn Ads",
           }),
         });
         const json = await resp.json().catch(() => null);

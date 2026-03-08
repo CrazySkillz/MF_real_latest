@@ -2276,23 +2276,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
       const platformContext = (req.body as any)?.platformContext ? String((req.body as any).platformContext) : undefined;
       const subCampaignUrn = (req.body as any)?.subCampaignUrn ? String((req.body as any).subCampaignUrn) : undefined;
+      const overrideSourceType = (req.body as any)?.sourceType ? String((req.body as any).sourceType) : null;
+      const overrideDisplayName = (req.body as any)?.displayName ? String((req.body as any).displayName) : null;
       if (!(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
 
-      // Scope deactivation by platformContext so platform-specific manual spend sources can coexist
-      await deactivateSpendSourcesForCampaign(campaignId, platformContext ? { platformContext } : undefined);
+      // Store as campaign spend-to-date (lifetime) — additive to existing spend
+      const existingSpend = parseNum((campaign as any)?.spend);
+      await storage.updateCampaign(campaignId, { spend: Number((existingSpend + amount).toFixed(2)).toFixed(2) as any, currency: cur } as any);
 
-      // Store as campaign spend-to-date (lifetime).
-      await storage.updateCampaign(campaignId, { spend: Number(amount.toFixed(2)).toFixed(2) as any, currency: cur } as any);
+      const effectiveSourceType = overrideSourceType || "manual";
+      const effectiveDisplayName = overrideDisplayName || (platformContext ? `Manual spend – ${platformContext}` : "Manual entry");
 
       const source = await storage.createSpendSource({
         campaignId,
-        sourceType: "manual",
+        sourceType: effectiveSourceType,
         platformContext: platformContext || null,
-        displayName: platformContext ? `Manual spend – ${platformContext} (to date)` : "Manual spend (to date)",
+        displayName: effectiveDisplayName,
         currency: cur,
         // Persist the last manual amount so the edit modal (pencil) can prefill the input.
         mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "spend_to_date", subCampaignUrn: subCampaignUrn || null }),
@@ -2317,14 +2320,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
 
-      await deactivateSpendSourcesForCampaign(campaignId);
-
       await storage.updateCampaign(campaignId, { spend: Number(amount.toFixed(2)).toFixed(2) as any, currency: cur } as any);
 
       const source = await storage.createSpendSource({
         campaignId,
         sourceType: "connector_derived",
-        displayName: "Connector-derived spend (to date)",
+        displayName: "Connector-derived spend",
         currency: cur,
         mappingConfig: breakdown ? JSON.stringify(breakdown) : null,
         isActive: true,
@@ -2475,15 +2476,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
 
-      // Deactivate old spend sources, update campaign spend, create new source
-      await deactivateSpendSourcesForCampaign(campaignId);
       await storage.updateCampaign(campaignId, { spend: Number(totalSpend.toFixed(2)).toFixed(2) as any, currency: cur } as any);
 
-      const selectedNames = breakdown.map((b: any) => b.campaignId).slice(0, 3).join(", ");
       const source = await storage.createSpendSource({
         campaignId,
         sourceType: "linkedin_api",
-        displayName: `LinkedIn Ads spend${selectedCampaignIds.length > 0 ? ` (${selectedCampaignIds.length} campaigns)` : " (all campaigns)"}`,
+        displayName: "LinkedIn Ads",
         currency: cur,
         mappingConfig: JSON.stringify({
           platform: "linkedin",
@@ -2616,13 +2614,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
-      await deactivateSpendSourcesForCampaign(campaignId);
       await storage.updateCampaign(campaignId, { spend: Number(totalSpend.toFixed(2)).toFixed(2) as any, currency } as any);
 
       const source = await storage.createSpendSource({
         campaignId,
         sourceType: "csv",
-        displayName: (mapping.displayName || file.originalname) + " (to date)",
+        displayName: mapping.displayName || "CSV",
         currency,
         mappingConfig: JSON.stringify({ ...mapping, mode: "spend_to_date" }),
         isActive: true,
@@ -2874,12 +2871,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      if (!existingSheetsSpendSource) {
-        await deactivateSpendSourcesForCampaign(campaignId);
-      } else {
-        // Deactivate any other spend sources (avoid silent double-counting), while keeping this sourceId stable.
-        await deactivateSpendSourcesForCampaign(campaignId, { keepSourceId: String((existingSheetsSpendSource as any).id) });
-      }
       await storage.updateCampaign(campaignId, { spend: Number(totalSpend.toFixed(2)).toFixed(2) as any, currency } as any);
 
       let source: any = existingSheetsSpendSource || null;

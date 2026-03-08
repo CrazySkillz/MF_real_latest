@@ -2887,14 +2887,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source = await storage.createSpendSource({
           campaignId,
           sourceType: "google_sheets",
-          displayName: (mapping.displayName || `${conn.spreadsheetName || "Google Sheet"}${conn.sheetName ? ` (${conn.sheetName})` : ""}`) + " (to date)",
+          displayName: mapping.displayName || "Google Sheets",
           currency,
           mappingConfig: nextSpendMappingConfig,
           isActive: true,
         } as any);
       } else {
         await storage.updateSpendSource(String((source as any).id), {
-          displayName: (mapping.displayName || `${conn.spreadsheetName || "Google Sheet"}${conn.sheetName ? ` (${conn.sheetName})` : ""}`) + " (to date)",
+          displayName: mapping.displayName || "Google Sheets",
           currency,
           mappingConfig: nextSpendMappingConfig,
           isActive: true,

@@ -1690,17 +1690,35 @@ export default function GA4Metrics() {
     return sources?.[0] || null;
   }, [spendSourcesResp]);
 
+  // Friendly labels for spend source types
+  const spendSourceTypeLabel = (type: string) => {
+    const map: Record<string, string> = {
+      google_sheets: "Google Sheets", csv: "CSV", manual: "Manual",
+      linkedin_api: "LinkedIn Ads", meta_api: "Meta Ads", google_ads_api: "Google Ads",
+    };
+    return map[type] || type;
+  };
+
   // Merged spend sources for micro copy display: prefer breakdown (has amounts), fallback to source definitions
   const spendDisplaySources = useMemo(() => {
-    const breakdownSources = Array.isArray(spendBreakdownResp?.sources) ? spendBreakdownResp.sources : [];
-    if (breakdownSources.length > 0) return breakdownSources;
-    // Fallback: use spend source definitions when no spend_records exist (e.g., no date column mapped)
     const defs = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
+    const defsMap = new Map<string, any>();
+    for (const d of defs) if (d) defsMap.set(String(d.id), d);
+
+    const breakdownSources = Array.isArray(spendBreakdownResp?.sources) ? spendBreakdownResp.sources : [];
+    if (breakdownSources.length > 0) {
+      return breakdownSources.map((s: any) => ({
+        ...s,
+        mappingConfig: defsMap.get(String(s.sourceId))?.mappingConfig || null,
+      }));
+    }
+    // Fallback: use spend source definitions when no spend_records exist (e.g., no date column mapped)
     return defs.filter((s: any) => s && s.isActive !== false).map((s: any) => ({
       sourceId: String(s.id),
       displayName: String(s.displayName || s.sourceType || 'Unknown'),
       sourceType: String(s.sourceType || 'unknown'),
       spend: null, // amount unknown — will show total spend instead
+      mappingConfig: s.mappingConfig || null,
     }));
   }, [spendBreakdownResp, spendSourcesResp]);
   const activeRevenueSource = useMemo(() => {
@@ -3090,14 +3108,14 @@ export default function GA4Metrics() {
                                 <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
                                   {spendDisplaySources.map((s: any) => (
                                     <div key={s.sourceId} className="flex items-center justify-between text-xs group/spend">
-                                      <span className="text-slate-500 dark:text-slate-400 min-w-[60px] truncate">{s.displayName}</span>
+                                      <span className="text-slate-500 dark:text-slate-400 min-w-[60px] truncate">{spendSourceTypeLabel(s.sourceType)}</span>
                                       <div className="flex items-center gap-1">
                                         <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">
                                           {s.spend != null ? formatMoney(s.spend) : formatMoney(Number(financialSpend || 0))}
                                         </span>
                                         <button
                                           onClick={() => {
-                                            setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName });
+                                            setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig });
                                             setShowSpendDialog(true);
                                           }}
                                           className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-300 hover:text-slate-600 dark:hover:text-slate-300 opacity-0 group-hover/spend:opacity-100 transition-all"

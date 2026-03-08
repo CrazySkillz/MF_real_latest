@@ -1652,6 +1652,24 @@ export default function GA4Metrics() {
     },
   });
 
+  // Latest-day spend from imported spend records (yesterday)
+  const yesterdayDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }, []);
+  const { data: spendDailyResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/spend-daily`, yesterdayDate],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-daily?date=${yesterdayDate}`);
+      if (!resp.ok) return { success: false, totalSpend: 0 };
+      return resp.json().catch(() => ({ success: false, totalSpend: 0 }));
+    },
+  });
+
   const spendSourceLabels = useMemo(() => {
     const persistedSpend = Number(spendToDateResp?.spendToDate || 0);
     const ids = Array.isArray(spendToDateResp?.sourceIds) ? spendToDateResp.sourceIds.map(String) : [];
@@ -3039,7 +3057,7 @@ export default function GA4Metrics() {
                         {/* Total Spend */}
                         <Card>
                           <CardContent className="p-5">
-                            {Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0 ? (
+                            {(Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0) || financialSpend > 0 ? (
                               <>
                                 <div className="flex items-center justify-between">
                                   <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
@@ -3054,6 +3072,7 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                                   {formatMoney(Number(financialSpend || 0))}
                                 </p>
+                                {Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0 && (
                                 <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
                                   {spendBreakdownResp.sources.map((s: any) => (
                                     <div key={s.sourceId} className="flex items-center justify-between text-xs group/spend">
@@ -3081,6 +3100,7 @@ export default function GA4Metrics() {
                                     </div>
                                   ))}
                                 </div>
+                                )}
                               </>
                             ) : (
                               <>
@@ -3101,7 +3121,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Spend</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                              {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?._raw?.spend || 0 : 0))}
+                              {formatMoney(Number(spendDailyResp?.totalSpend || (ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?._raw?.spend || 0 : 0)))}
                             </p>
                           </CardContent>
                         </Card>
@@ -3327,6 +3347,7 @@ export default function GA4Metrics() {
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
                     }}
@@ -3370,7 +3391,10 @@ export default function GA4Metrics() {
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
+                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
                             } catch (e) {
                               console.error(e);
                             } finally {
@@ -3406,6 +3430,7 @@ export default function GA4Metrics() {
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
                             } catch (e) {

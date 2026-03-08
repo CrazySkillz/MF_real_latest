@@ -887,6 +887,8 @@ export function AddSpendWizardModal(props: {
           platform === "google_ads" ? (json.customerName || "Google Ads Account") : (json.adAccountName || "Meta Account")
         );
         setIsAdPlatformTestMode(json.method === "test_mode");
+        // Auto-fetch spend data
+        await fetchAdPlatformPreview(platform);
       }
     } catch { /* ignore */ }
   };

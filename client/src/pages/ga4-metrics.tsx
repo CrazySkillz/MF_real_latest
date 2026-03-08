@@ -129,6 +129,8 @@ export default function GA4Metrics() {
   const [showDeleteSpendDialog, setShowDeleteSpendDialog] = useState(false);
   const [showRevenueDialog, setShowRevenueDialog] = useState(false);
   const [showDeleteRevenueDialog, setShowDeleteRevenueDialog] = useState(false);
+  const [editingSpendSource, setEditingSpendSource] = useState<any>(null);
+  const [deletingSpendSourceId, setDeletingSpendSourceId] = useState<string | null>(null);
   const [deleteBenchmarkId, setDeleteBenchmarkId] = useState<string | null>(null);
   const [showDeleteBenchmarkDialog, setShowDeleteBenchmarkDialog] = useState(false);
   // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
@@ -1717,9 +1719,9 @@ export default function GA4Metrics() {
   const ga4HasRevenueMetric = !!ga4RevenueMetricName || dailySummedTotals.revenue > 0;
   // Use the higher of (to-date total, summed daily rows) so Total Revenue is never less than Latest Day Revenue.
   const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue);
-  // Unified revenue: GA4 native revenue + imported/CRM revenue (additive).
-  // When GA4 has a revenue metric, include it. Always add imported revenue (CRM sources like HubSpot/Salesforce/Shopify).
-  const financialRevenue = (ga4HasRevenueMetric ? ga4RevenueForFinancials : 0) + importedRevenueForFinancials;
+  // GA4 page: show GA4 native revenue only. Fall back to imported revenue when GA4 has no revenue metric.
+  // Unified cross-platform revenue (GA4 + CRM) lives in campaign-detail.tsx Overview via outcome-totals.
+  const financialRevenue = ga4HasRevenueMetric ? ga4RevenueForFinancials : importedRevenueForFinancials;
   const financialConversions = Math.max(Number((ga4ToDateResp as any)?.totals?.conversions || 0), dailySummedTotals.conversions);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
@@ -1933,8 +1935,8 @@ export default function GA4Metrics() {
       const cpa = conversionsToDate > 0 ? spend / conversionsToDate : 0;
       const convRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
 
-      write(`Revenue (to date): ${fmtCurrency(revenueToDate)}`);
-      write(`Spend (to date): ${fmtCurrency(spend)}`);
+      write(`Revenue: ${fmtCurrency(revenueToDate)}`);
+      write(`Spend: ${fmtCurrency(spend)}`);
       write(`ROAS: ${fmtPct(roas)}`);
       write(`ROI: ${fmtPct(roi)}`);
       write(`CPA: ${fmtCurrency(cpa)}`);
@@ -2971,7 +2973,6 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
                           </CardContent>
                         </Card>
                         <Card>
@@ -2980,7 +2981,6 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
                           </CardContent>
                         </Card>
                         <Card>
@@ -2989,7 +2989,6 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatNumber(financialConversions || 0)}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
                           </CardContent>
                         </Card>
                         <Card>
@@ -2998,7 +2997,6 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatPercentage(rateToPercent(dailySummedTotals.engagementRate || ga4Metrics?.engagementRate || 0))}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
                           </CardContent>
                         </Card>
                         <Card>
@@ -3007,7 +3005,6 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatPercentage(rateToPercent(dailySummedTotals.bounceRate || ga4Metrics?.bounceRate || 0))}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">To date</p>
                           </CardContent>
                         </Card>
                       </div>
@@ -3024,44 +3021,10 @@ export default function GA4Metrics() {
                         {/* Total Revenue */}
                         <Card>
                           <CardContent className="p-5">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
-                              <div className="flex items-center gap-0.5">
-                                <button
-                                  onClick={() => setShowRevenueDialog(true)}
-                                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                                  title="Add revenue source"
-                                >
-                                  <Plus className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => setShowRevenueDialog(true)}
-                                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                                  title="Edit revenue source"
-                                >
-                                  <Edit className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </div>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatMoney(Number(financialRevenue || 0))}
                             </p>
-                            {(ga4HasRevenueMetric || (Array.isArray(revenueBreakdownResp?.sources) && revenueBreakdownResp.sources.length > 0)) && (
-                              <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                                {ga4HasRevenueMetric && (
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="text-slate-500 dark:text-slate-400 min-w-[80px]">GA4 (native)</span>
-                                    <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">{formatMoney(ga4RevenueForFinancials)}</span>
-                                  </div>
-                                )}
-                                {Array.isArray(revenueBreakdownResp?.sources) && revenueBreakdownResp.sources.map((s: any) => (
-                                  <div key={s.sourceId} className="flex items-center justify-between text-xs">
-                                    <span className="text-slate-500 dark:text-slate-400 min-w-[80px]">{s.displayName}</span>
-                                    <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">{formatMoney(s.revenue)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </CardContent>
                         </Card>
                         {/* Latest Day Revenue */}
@@ -3071,36 +3034,65 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.revenue || 0 : 0))}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                              {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
-                            </p>
                           </CardContent>
                         </Card>
                         {/* Total Spend */}
                         <Card>
                           <CardContent className="p-5">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
-                              <button
-                                onClick={() => setShowSpendDialog(true)}
-                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                                title="Add or edit spend source"
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                              {formatMoney(Number(financialSpend || 0))}
-                            </p>
-                            {Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0 && (
-                              <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                                {spendBreakdownResp.sources.map((s: any) => (
-                                  <div key={s.sourceId} className="flex items-center justify-between text-xs">
-                                    <span className="text-slate-500 dark:text-slate-400 min-w-[80px]">{s.displayName}</span>
-                                    <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">{formatMoney(s.spend)}</span>
-                                  </div>
-                                ))}
-                              </div>
+                            {Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0 ? (
+                              <>
+                                <div className="flex items-center justify-between">
+                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                                  <button
+                                    onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}
+                                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                    title="Add spend source"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                  {formatMoney(Number(financialSpend || 0))}
+                                </p>
+                                <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                                  {spendBreakdownResp.sources.map((s: any) => (
+                                    <div key={s.sourceId} className="flex items-center justify-between text-xs group/spend">
+                                      <span className="text-slate-500 dark:text-slate-400 min-w-[60px] truncate">{s.displayName}</span>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">{formatMoney(s.spend)}</span>
+                                        <button
+                                          onClick={() => {
+                                            setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName });
+                                            setShowSpendDialog(true);
+                                          }}
+                                          className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-300 hover:text-slate-600 dark:hover:text-slate-300 opacity-0 group-hover/spend:opacity-100 transition-all"
+                                          title="Edit spend source"
+                                        >
+                                          <Edit className="h-3 w-3" />
+                                        </button>
+                                        <button
+                                          onClick={() => setDeletingSpendSourceId(s.sourceId)}
+                                          className="p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-300 hover:text-red-600 opacity-0 group-hover/spend:opacity-100 transition-all"
+                                          title="Remove spend source"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                                <p className="text-2xl font-bold text-slate-400 dark:text-slate-500 mt-1">$0.00</p>
+                                <div className="mt-2">
+                                  <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}>
+                                    <Plus className="h-3.5 w-3.5 mr-1" />
+                                    Add Spend
+                                  </Button>
+                                </div>
+                              </>
                             )}
                           </CardContent>
                         </Card>
@@ -3110,9 +3102,6 @@ export default function GA4Metrics() {
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Spend</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?._raw?.spend || 0 : 0))}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                              {ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.date : "—"}
                             </p>
                           </CardContent>
                         </Card>
@@ -3332,7 +3321,7 @@ export default function GA4Metrics() {
                     onOpenChange={setShowSpendDialog}
                     currency={(campaign as any)?.currency || "USD"}
                     dateRange={dateRange}
-                    initialSource={activeSpendSource || undefined}
+                    initialSource={editingSpendSource || activeSpendSource || undefined}
                     onProcessed={() => {
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
@@ -3386,6 +3375,43 @@ export default function GA4Metrics() {
                               console.error(e);
                             } finally {
                               setShowDeleteSpendDialog(false);
+                            }
+                          }}
+                        >
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <AlertDialog open={!!deletingSpendSourceId} onOpenChange={(open) => { if (!open) setDeletingSpendSourceId(null); }}>
+                    <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-900 dark:text-white">Remove spend source?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                          This will remove this spend source. Total Spend will be recalculated.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={async () => {
+                            try {
+                              const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources/${deletingSpendSourceId}`, { method: "DELETE" });
+                              const json = await resp.json().catch(() => null);
+                              if (!resp.ok || json?.success === false) {
+                                throw new Error(json?.error || "Failed to remove spend source");
+                              }
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
+                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
+                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
+                            } catch (e) {
+                              console.error(e);
+                            } finally {
+                              setDeletingSpendSourceId(null);
                             }
                           }}
                         >
@@ -4498,7 +4524,7 @@ export default function GA4Metrics() {
 
                     <Card className="border-slate-200 dark:border-slate-700">
                       <CardHeader>
-                        <CardTitle>Executive financials (to date)</CardTitle>
+                        <CardTitle>Executive financials</CardTitle>
                         <CardDescription>
                           Uses spend-to-date and GA4 revenue-to-date (or imported revenue-to-date when GA4 revenue is missing).
                           {(ga4ToDateResp as any)?.startDate ? ` Range: ${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}.` : ""}
@@ -4508,7 +4534,7 @@ export default function GA4Metrics() {
                         <div className="grid gap-4 md:grid-cols-4">
                           <Card>
                             <CardContent className="p-5">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend (to date)</div>
+                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</div>
                               <div className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatMoney(Number(financialSpend || 0))}
                               </div>
@@ -4519,7 +4545,7 @@ export default function GA4Metrics() {
                           </Card>
                           <Card>
                             <CardContent className="p-5">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue (to date)</div>
+                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue</div>
                               <div className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatMoney(Number(financialRevenue || 0))}
                               </div>
@@ -4530,7 +4556,7 @@ export default function GA4Metrics() {
                           </Card>
                           <Card>
                             <CardContent className="p-5">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS (to date)</div>
+                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</div>
                               <div className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {Number(financialROAS || 0).toFixed(2)}x
                               </div>
@@ -4539,7 +4565,7 @@ export default function GA4Metrics() {
                           </Card>
                           <Card>
                             <CardContent className="p-5">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI (to date)</div>
+                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</div>
                               <div className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(Number(financialROI || 0))}
                               </div>
@@ -4946,9 +4972,9 @@ export default function GA4Metrics() {
                     },
                     {
                       name: "Revenue",
-                      formula: "Revenue to date",
+                      formula: "Total revenue",
                       unit: "$",
-                      description: "Total revenue for this campaign (to date)",
+                      description: "Total revenue for this campaign",
                     },
                     {
                       name: "Total Conversions",

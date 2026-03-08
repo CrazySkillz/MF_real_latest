@@ -4706,8 +4706,17 @@ function CampaignInsights({ campaign }: { campaign: Campaign }) {
                 <p className="text-xs text-slate-500 mb-1">Spend</p>
                 <p className="text-lg font-bold text-slate-900 dark:text-white">{fmtCurrency(metrics.totalSpend)}</p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                <p className="text-xs text-slate-500 mb-1">Revenue</p>
+              <div className="text-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 relative group">
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-xs text-slate-500 mb-1">Revenue</p>
+                  <button
+                    onClick={() => setAddRevenueWizardOpen(true)}
+                    className="mb-1 p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Add revenue source"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
                 <p className="text-lg font-bold text-green-600">{fmtCurrency(metrics.totalRevenue)}</p>
                 {metrics.revenueSources.length > 0 && (
                   <div className="mt-1 space-y-0.5">

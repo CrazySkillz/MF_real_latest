@@ -1717,9 +1717,9 @@ export default function GA4Metrics() {
   const ga4HasRevenueMetric = !!ga4RevenueMetricName || dailySummedTotals.revenue > 0;
   // Use the higher of (to-date total, summed daily rows) so Total Revenue is never less than Latest Day Revenue.
   const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue);
-  // Enterprise policy: prefer GA4 revenue when a GA4 revenue metric is configured (even if it's 0).
-  // Only fall back to imported revenue when GA4 revenue metric is not configured/available.
-  const financialRevenue = ga4HasRevenueMetric ? ga4RevenueForFinancials : importedRevenueForFinancials;
+  // Unified revenue: GA4 native revenue + imported/CRM revenue (additive).
+  // When GA4 has a revenue metric, include it. Always add imported revenue (CRM sources like HubSpot/Salesforce/Shopify).
+  const financialRevenue = (ga4HasRevenueMetric ? ga4RevenueForFinancials : 0) + importedRevenueForFinancials;
   const financialConversions = Math.max(Number((ga4ToDateResp as any)?.totals?.conversions || 0), dailySummedTotals.conversions);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
@@ -3026,13 +3026,22 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
-                              <button
-                                onClick={() => setShowRevenueDialog(true)}
-                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                                title="Add or edit revenue source"
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                              </button>
+                              <div className="flex items-center gap-0.5">
+                                <button
+                                  onClick={() => setShowRevenueDialog(true)}
+                                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                  title="Add revenue source"
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setShowRevenueDialog(true)}
+                                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                  title="Edit revenue source"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             </div>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                               {formatMoney(Number(financialRevenue || 0))}

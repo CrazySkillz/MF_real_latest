@@ -56,8 +56,8 @@ export function HubSpotRevenueWizard(props: {
   const isLinkedIn = platformContext === "linkedin";
 
   type Step = "value-source" | "campaign-field" | "crosswalk" | "pipeline" | "revenue" | "review" | "complete";
-  // UX: avoid an intermediate "Connect HubSpot" screen; start at Campaign field.
-  const [step, setStep] = useState<Step>(isLinkedIn ? "value-source" : "campaign-field");
+  // Start at the value-source step so the user can choose Revenue-only vs Revenue+Pipeline.
+  const [step, setStep] = useState<Step>("value-source");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -72,9 +72,8 @@ export function HubSpotRevenueWizard(props: {
   const [conversionValueProperty, setConversionValueProperty] = useState<string>(""); // retained for backward-compat (legacy saved configs)
   // LinkedIn exec flow: HubSpot provides revenue-to-date from deal Amount. Conversion Value is intentionally not offered here.
   const [valueSource, setValueSource] = useState<"revenue">("revenue");
-  // LinkedIn: pipeline proxy can be enabled for an exec "early signal".
-  // Default to enabled to preserve existing behavior; users can switch to Revenue-only.
-  const [pipelineEnabled, setPipelineEnabled] = useState<boolean>(isLinkedIn);
+  // Pipeline proxy can be enabled for an exec "early signal" (useful for long sales cycles on any platform).
+  const [pipelineEnabled, setPipelineEnabled] = useState<boolean>(false);
   const [pipelineStageId, setPipelineStageId] = useState<string>("");
   const [pipelineStageLabel, setPipelineStageLabel] = useState<string>("");
   const [pipelines, setPipelines] = useState<any[]>([]);
@@ -120,7 +119,7 @@ export function HubSpotRevenueWizard(props: {
     const nextPipelineStageId = cfg.pipelineStageId ? String(cfg.pipelineStageId) : "";
     const nextPipelineStageLabel = cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : "";
 
-    setStep(isLinkedIn ? "value-source" : "campaign-field");
+    setStep("value-source");
     setCampaignProperty(nextCampaignProperty);
     setSelectedValues(nextSelectedValues);
     setRevenueProperty(nextRevenueProperty);
@@ -138,16 +137,16 @@ export function HubSpotRevenueWizard(props: {
 
   const steps = useMemo(() => {
     return [
-      ...(isLinkedIn ? [{ id: "value-source" as const, label: "Source", icon: DollarSign }] : []),
+      { id: "value-source" as const, label: "Source", icon: DollarSign },
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
-      // Always render the Pipeline step in the stepper for LinkedIn to prevent the stepper from "jumping"
+      // Always render the Pipeline step in the stepper to prevent it from "jumping"
       // when toggling between Revenue-only vs Revenue+Pipeline.
-      ...(isLinkedIn ? [{ id: "pipeline" as const, label: "Pipeline", icon: Target }] : []),
+      { id: "pipeline" as const, label: "Pipeline", icon: Target },
       { id: "revenue" as const, label: "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ];
-  }, [isLinkedIn]);
+  }, []);
 
   const currentStepIndex = useMemo(() => {
     const idx = steps.findIndex((s) => s.id === step);
@@ -253,7 +252,7 @@ export function HubSpotRevenueWizard(props: {
             description: "Now select the HubSpot deal field used to attribute deals to this campaign.",
           });
           // Mode-first UX: do not skip the source-of-truth selection for LinkedIn.
-          setStep(isLinkedIn ? "value-source" : "campaign-field");
+          setStep("value-source");
         } else if (data.type === "hubspot_auth_error") {
           window.removeEventListener("message", onMessage);
           toast({
@@ -284,8 +283,7 @@ export function HubSpotRevenueWizard(props: {
         setStatusLoading(true);
         const connected = await fetchStatus();
         if (!mounted) return;
-        // Mode-first UX: keep the user on the source-of-truth step for LinkedIn, even if already connected.
-        if (connected && !isLinkedIn) setStep("campaign-field");
+        // Mode-first UX: keep the user on the value-source step so they can choose Revenue vs Pipeline.
       } catch {
         // ignore
       } finally {
@@ -316,7 +314,7 @@ export function HubSpotRevenueWizard(props: {
     })();
   }, [step, portalId, properties.length, toast]);
 
-  // When entering pipeline step, load pipelines once (LinkedIn-only).
+  // When entering pipeline step, load pipelines once.
   useEffect(() => {
     if (step !== "pipeline") return;
     if (!isConnected) return;
@@ -346,9 +344,8 @@ export function HubSpotRevenueWizard(props: {
   }, [properties, revenueProperty]);
 
   const hubspotSourceMode = useMemo(() => {
-    if (!isLinkedIn) return "revenue_only" as const;
     return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);
-  }, [isLinkedIn, pipelineEnabled]);
+  }, [pipelineEnabled]);
 
   const save = async () => {
     setIsSaving(true);
@@ -364,9 +361,9 @@ export function HubSpotRevenueWizard(props: {
           valueSource: "revenue",
           revenueClassification,
           days,
-          pipelineEnabled: isLinkedIn ? pipelineEnabled : false,
-          pipelineStageId: isLinkedIn && pipelineEnabled ? pipelineStageId : null,
-          pipelineStageLabel: isLinkedIn && pipelineEnabled ? (pipelineStageLabel || null) : null,
+          pipelineEnabled,
+          pipelineStageId: pipelineEnabled ? pipelineStageId : null,
+          pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
           platformContext,
           ...(isLinkedIn && campaignMappings.length > 0 ? { campaignMappings } : {}),
         }),
@@ -429,7 +426,7 @@ export function HubSpotRevenueWizard(props: {
         });
         return;
       }
-      setStep(isLinkedIn && pipelineEnabled ? "pipeline" : "revenue");
+      setStep(pipelineEnabled ? "pipeline" : "revenue");
       return;
     }
     if (step === "pipeline") {
@@ -468,14 +465,11 @@ export function HubSpotRevenueWizard(props: {
       return;
     }
     if (step === "campaign-field") {
-      if (isLinkedIn) return setStep("value-source");
-      onBack?.();
-      if (!onBack) onClose?.();
-      return;
+      return setStep("value-source");
     }
     if (step === "crosswalk") return setStep("campaign-field");
     if (step === "pipeline") return setStep("crosswalk");
-    if (step === "revenue") return setStep(isLinkedIn && pipelineEnabled ? "pipeline" : "crosswalk");
+    if (step === "revenue") return setStep(pipelineEnabled ? "pipeline" : "crosswalk");
     if (step === "review") return setStep("revenue");
     if (step === "complete") return setStep("review");
   };
@@ -501,7 +495,7 @@ export function HubSpotRevenueWizard(props: {
       <div className="flex items-center justify-between shrink-0 mb-6">
         {steps.map((s, index) => {
           const StepIcon = s.icon;
-          const isPipelineStep = isLinkedIn && s.id === "pipeline";
+          const isPipelineStep = s.id === "pipeline";
           const isDisabled = isPipelineStep && !pipelineEnabled;
           const isActive = !isDisabled && s.id === step;
           // Don't mark disabled optional steps as "completed"
@@ -589,9 +583,7 @@ export function HubSpotRevenueWizard(props: {
           </CardTitle>
           <CardDescription>
             {step === "value-source" &&
-              (isLinkedIn
-                ? "Choose what HubSpot should provide for this LinkedIn campaign: Total Revenue only, or Total Revenue + Pipeline (Proxy)."
-                : "")}
+              "Choose what HubSpot should provide: Total Revenue only, or Total Revenue + Pipeline (Proxy) for an early signal on long sales cycles."}
             {step === "campaign-field" &&
               (statusLoading
                 ? "Checking HubSpot connection…"
@@ -606,16 +598,14 @@ export function HubSpotRevenueWizard(props: {
               "Select the HubSpot field that represents deal amount."}
             {step === "review" && "Review the settings below, then save mappings."}
             {step === "complete" &&
-              (isLinkedIn
-                ? "HubSpot is connected. Your selected revenue input will be used to compute LinkedIn financial metrics."
-                : "Revenue is connected. It will be used when GA4 revenue is missing.")}
+              "HubSpot is connected. Your selected revenue input will be used to compute financial metrics."}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col min-h-0">
           {/* Scrollable step body to keep footer always visible */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-1 space-y-4">
-            {step === "value-source" && isLinkedIn && (
+            {step === "value-source" && (
               <div className="space-y-3">
                 <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-2">
                   <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
@@ -847,7 +837,7 @@ export function HubSpotRevenueWizard(props: {
               </div>
             )}
 
-            {step === "pipeline" && isLinkedIn && (
+            {step === "pipeline" && (
               <div className="space-y-4">
                 <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-3">
                   <div className="text-sm font-medium">Pipeline stage total (daily signal)</div>
@@ -1002,7 +992,7 @@ export function HubSpotRevenueWizard(props: {
                       <div className="font-medium text-slate-900 dark:text-white">{campaignPropertyLabel}</div>
                     </div>
 
-                    {isLinkedIn && pipelineEnabled && (
+                    {pipelineEnabled && (
                       <div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">Pipeline proxy</div>
                         <div className="font-medium text-slate-900 dark:text-white">

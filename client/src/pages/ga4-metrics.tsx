@@ -1689,6 +1689,20 @@ export default function GA4Metrics() {
     // Backend returns only active sources; pick the most recent if multiple.
     return sources?.[0] || null;
   }, [spendSourcesResp]);
+
+  // Merged spend sources for micro copy display: prefer breakdown (has amounts), fallback to source definitions
+  const spendDisplaySources = useMemo(() => {
+    const breakdownSources = Array.isArray(spendBreakdownResp?.sources) ? spendBreakdownResp.sources : [];
+    if (breakdownSources.length > 0) return breakdownSources;
+    // Fallback: use spend source definitions when no spend_records exist (e.g., no date column mapped)
+    const defs = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
+    return defs.filter((s: any) => s && s.isActive !== false).map((s: any) => ({
+      sourceId: String(s.id),
+      displayName: String(s.displayName || s.sourceType || 'Unknown'),
+      sourceType: String(s.sourceType || 'unknown'),
+      spend: null, // amount unknown — will show total spend instead
+    }));
+  }, [spendBreakdownResp, spendSourcesResp]);
   const activeRevenueSource = useMemo(() => {
     const sources = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
     return sources?.[0] || null;
@@ -3057,7 +3071,7 @@ export default function GA4Metrics() {
                         {/* Total Spend */}
                         <Card>
                           <CardContent className="p-5">
-                            {(Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0) || financialSpend > 0 ? (
+                            {spendDisplaySources.length > 0 || financialSpend > 0 ? (
                               <>
                                 <div className="flex items-center justify-between">
                                   <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
@@ -3072,13 +3086,15 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                                   {formatMoney(Number(financialSpend || 0))}
                                 </p>
-                                {Array.isArray(spendBreakdownResp?.sources) && spendBreakdownResp.sources.length > 0 && (
+                                {spendDisplaySources.length > 0 && (
                                 <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                                  {spendBreakdownResp.sources.map((s: any) => (
+                                  {spendDisplaySources.map((s: any) => (
                                     <div key={s.sourceId} className="flex items-center justify-between text-xs group/spend">
                                       <span className="text-slate-500 dark:text-slate-400 min-w-[60px] truncate">{s.displayName}</span>
                                       <div className="flex items-center gap-1">
-                                        <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">{formatMoney(s.spend)}</span>
+                                        <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">
+                                          {s.spend != null ? formatMoney(s.spend) : formatMoney(Number(financialSpend || 0))}
+                                        </span>
                                         <button
                                           onClick={() => {
                                             setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName });
@@ -3341,7 +3357,7 @@ export default function GA4Metrics() {
                     onOpenChange={setShowSpendDialog}
                     currency={(campaign as any)?.currency || "USD"}
                     dateRange={dateRange}
-                    initialSource={editingSpendSource || activeSpendSource || undefined}
+                    initialSource={editingSpendSource || undefined}
                     onProcessed={() => {
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });

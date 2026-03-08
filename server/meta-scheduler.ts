@@ -24,7 +24,7 @@ const META_MOCK_CAMPAIGNS = [
  * Generate mock Meta data for test mode
  * Creates realistic daily metrics data
  */
-async function generateMockMetaData(
+export async function generateMockMetaData(
   campaignId: string,
   connection: any,
   opts?: { advanceDay?: boolean }

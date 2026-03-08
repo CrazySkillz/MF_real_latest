@@ -892,6 +892,7 @@ export function AddSpendWizardModal(props: {
   // Handle test mode toggle for Meta / Google Ads
   const handleAdPlatformTestToggle = async (checked: boolean) => {
     if (!checked || !selectedPlatform || selectedPlatform === "linkedin") return;
+    setIsAdPlatformTestMode(true);
     setIsAdPlatformConnecting(true);
     try {
       const endpoint = selectedPlatform === "google_ads"

@@ -16629,11 +16629,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         method: 'test_mode',
       });
 
-      // Generate initial mock data so spend preview has data immediately
+      // Generate initial mock data so spend preview has data immediately.
+      // Use generateMockMetaData directly to avoid KPI/alert overhead per iteration.
       try {
-        const { refreshMetaDataForCampaign } = await import('./meta-scheduler');
+        const { generateMockMetaData } = await import('./meta-scheduler');
         for (let i = 0; i < 30; i++) {
-          await refreshMetaDataForCampaign(campaignId, { method: 'test_mode' }, { advanceTestDay: true });
+          await generateMockMetaData(campaignId, { method: 'test_mode' }, { advanceDay: true });
         }
         console.log(`[Meta] Generated initial mock data for campaign ${campaignId}`);
       } catch (mockErr) {

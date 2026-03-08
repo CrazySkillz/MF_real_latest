@@ -895,17 +895,8 @@ export function AddSpendWizardModal(props: {
           {/* ── Body ── */}
           <div className="px-6 py-5 flex-1 min-h-0 flex flex-col overflow-y-auto">
 
-            {isEditPrefillLoading && (
-              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
-                <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Loading your sheet preview…
-                </div>
-              </div>
-            )}
-
             {/* ═══════════════════ STEP: SELECT SOURCE ═══════════════════ */}
-            {!isEditPrefillLoading && step === "select" && (
+            {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => { setSelectedPlatform("linkedin"); setStep("ad_platform"); }}>
                   <CardHeader>

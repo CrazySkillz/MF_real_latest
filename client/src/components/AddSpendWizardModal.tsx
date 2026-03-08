@@ -68,7 +68,7 @@ export function AddSpendWizardModal(props: {
       const st = String((props.initialSource as any)?.sourceType || "").toLowerCase();
       if (st === "google_sheets") return "sheets_map";
       if (st === "csv") return "csv_map";
-      if (st === "linkedin_api" || st === "meta_api" || st === "google_ads_api") return "ad_platform";
+      if (st === "linkedin_api" || st === "meta_api" || st === "google_ads_api" || st === "ad_platforms") return "ad_platform";
       if (st === "manual") return "manual";
       return "select";
     })();
@@ -305,6 +305,34 @@ export function AddSpendWizardModal(props: {
           );
           setLinkedInConnectionStatus({ connected: true, adAccountName: mapping.adAccountName || "Test Mode" });
         }
+      }
+      return;
+    }
+
+    if (sourceType === "ad_platforms") {
+      setStep("ad_platform");
+      const platform = String(mapping?.platform || "meta") as AdPlatform;
+      setSelectedPlatform(platform);
+      setAdPlatformConnected(true);
+      setAdPlatformConnectionName(mapping?.adAccountName || "Connected Account");
+      setIsAdPlatformTestMode(!!mapping?.testMode);
+      // Reconstruct campaign list from stored breakdown
+      const breakdown = Array.isArray(mapping?.breakdown) ? mapping.breakdown : [];
+      if (breakdown.length > 0) {
+        const campaigns = breakdown.map((b: any) => ({
+          id: String(b.campaignId || ""),
+          name: String(b.name || b.campaignId || ""),
+          spend: Number(b.spend || 0),
+          impressions: Number(b.impressions || 0),
+          clicks: Number(b.clicks || 0),
+        }));
+        setAdPlatformCampaigns(campaigns);
+        setSelectedAdPlatformCampaignIds(
+          Array.isArray(mapping.selectedCampaignIds) ? mapping.selectedCampaignIds : campaigns.map((c: any) => c.id)
+        );
+      } else {
+        // No breakdown stored — fetch fresh from daily-metrics
+        checkAdPlatformConnection(platform);
       }
       return;
     }

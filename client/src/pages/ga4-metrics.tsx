@@ -3160,9 +3160,18 @@ export default function GA4Metrics() {
                           </CardContent>
                         </Card>
                       </div>
-                      {/* ROAS/ROI/CPA — only when both revenue and spend exist */}
+                      {/* Profit/ROAS/ROI/CPA — only when both revenue and spend exist */}
                       {financialSpend > 0 && financialRevenue > 0 ? (
-                        <div className="grid gap-4 md:grid-cols-3">
+                        <div className="grid gap-4 md:grid-cols-4">
+                          <Card>
+                            <CardContent className="p-5">
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Profit</p>
+                              <p className={`text-2xl font-bold mt-1 ${(financialRevenue - financialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {formatMoney(financialRevenue - financialSpend)}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue − Spend</p>
+                            </CardContent>
+                          </Card>
                           <Card>
                             <CardContent className="p-5">
                               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
@@ -4590,7 +4599,7 @@ export default function GA4Metrics() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid gap-4 md:grid-cols-4">
+                        <div className="grid gap-4 md:grid-cols-5">
                           <Card>
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</div>
@@ -4615,6 +4624,15 @@ export default function GA4Metrics() {
                           </Card>
                           <Card>
                             <CardContent className="p-5">
+                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Profit</div>
+                              <div className={`text-2xl font-bold ${(financialRevenue - financialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {formatMoney(financialRevenue - financialSpend)}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue − Spend</div>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-5">
                               <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</div>
                               <div className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {Number(financialROAS || 0).toFixed(2)}x
@@ -4628,7 +4646,7 @@ export default function GA4Metrics() {
                               <div className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {formatPercentage(Number(financialROI || 0))}
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">(\(Revenue - Spend\)) ÷ Spend</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</div>
                             </CardContent>
                           </Card>
                         </div>

@@ -1160,7 +1160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return;
 
       const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
-      const endDate = yesterdayUTC();
+      const endDate = new Date().toISOString().slice(0, 10); // include today's records
 
       const sources = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate);
       const totalSpend = sources.reduce((sum: number, s: any) => sum + s.spend, 0);

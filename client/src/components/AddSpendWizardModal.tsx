@@ -261,6 +261,35 @@ export function AddSpendWizardModal(props: {
     if (sourceType === "linkedin_api") {
       setStep("ad_platform");
       setSelectedPlatform("linkedin");
+      // Pre-populate test mode state if this was a test mode source
+      if (mapping?.testMode) {
+        setIsLinkedInTestMode(true);
+        // Reconstruct the mock preview from stored breakdown
+        const breakdown: LinkedInSpendCampaign[] = Array.isArray(mapping?.breakdown)
+          ? mapping.breakdown.map((b: any) => ({
+              id: String(b.campaignId || ""),
+              name: String(b.name || b.campaignId || ""),
+              status: "active",
+              spend: Number(b.spend || 0),
+              impressions: Number(b.impressions || 0),
+              clicks: Number(b.clicks || 0),
+            }))
+          : [];
+        if (breakdown.length > 0) {
+          setLinkedInPreview({
+            adAccountId: mapping.adAccountId || "test-account",
+            adAccountName: mapping.adAccountName || "Test Mode",
+            campaigns: breakdown,
+            totalSpend: breakdown.reduce((s, c) => s + c.spend, 0),
+            currency: mapping.currency || props.currency || "USD",
+            dateRange: mapping.dateRange || "Last 90 days (test data)",
+          });
+          setSelectedLinkedInCampaignIds(
+            Array.isArray(mapping.selectedCampaignIds) ? mapping.selectedCampaignIds : breakdown.map(c => c.id)
+          );
+          setLinkedInConnectionStatus({ connected: true, adAccountName: mapping.adAccountName || "Test Mode" });
+        }
+      }
       return;
     }
 
@@ -667,18 +696,33 @@ export function AddSpendWizardModal(props: {
     try {
       // In test mode, save via manual spend endpoint since there's no real LinkedIn connection
       if (isLinkedInTestMode) {
-        const selectedSpend = linkedInPreview.campaigns
-          .filter((c) => selectedLinkedInCampaignIds.includes(c.id))
-          .reduce((sum, c) => sum + c.spend, 0);
+        const selectedCampaigns = linkedInPreview.campaigns
+          .filter((c) => selectedLinkedInCampaignIds.includes(c.id));
+        const selectedSpend = selectedCampaigns.reduce((sum, c) => sum + c.spend, 0);
         const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/manual`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             amount: Number(selectedSpend.toFixed(2)),
             currency: props.currency || "USD",
-            dateRange: props.dateRange || "30days",
             sourceType: "linkedin_api",
             displayName: "LinkedIn Ads",
+            mappingConfig: {
+              platform: "linkedin",
+              adAccountId: linkedInPreview.adAccountId || "test-account",
+              adAccountName: linkedInPreview.adAccountName || "Test Mode",
+              selectedCampaignIds: selectedLinkedInCampaignIds,
+              breakdown: selectedCampaigns.map(c => ({
+                campaignId: c.id,
+                name: c.name,
+                spend: Number(c.spend.toFixed(2)),
+                impressions: c.impressions || 0,
+                clicks: c.clicks || 0,
+              })),
+              dateRange: props.dateRange || "30days",
+              fetchedAt: new Date().toISOString(),
+              testMode: true,
+            },
           }),
         });
         const json = await resp.json().catch(() => null);

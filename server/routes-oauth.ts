@@ -2287,18 +2287,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const subCampaignUrn = (req.body as any)?.subCampaignUrn ? String((req.body as any).subCampaignUrn) : undefined;
       const overrideSourceType = (req.body as any)?.sourceType ? String((req.body as any).sourceType) : null;
       const overrideDisplayName = (req.body as any)?.displayName ? String((req.body as any).displayName) : null;
+      const clientMappingConfig = (req.body as any)?.mappingConfig || null;
       if (!(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
 
-      // Store as campaign spend-to-date (lifetime) — additive to existing spend
-      const existingSpend = parseNum((campaign as any)?.spend);
-      await storage.updateCampaign(campaignId, { spend: Number((existingSpend + amount).toFixed(2)).toFixed(2) as any, currency: cur } as any);
-
       const effectiveSourceType = overrideSourceType || "manual";
       const effectiveDisplayName = overrideDisplayName || (platformContext ? `Manual spend – ${platformContext}` : "Manual entry");
+
+      // Build mappingConfig: use client-provided config if available, otherwise default
+      const finalMappingConfig = clientMappingConfig
+        ? JSON.stringify({ ...clientMappingConfig, amount: Number(amount.toFixed(2)), currency: cur })
+        : JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "spend_to_date", subCampaignUrn: subCampaignUrn || null });
 
       const source = await storage.createSpendSource({
         campaignId,
@@ -2306,10 +2308,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformContext: platformContext || null,
         displayName: effectiveDisplayName,
         currency: cur,
-        // Persist the last manual amount so the edit modal (pencil) can prefill the input.
-        mappingConfig: JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "spend_to_date", subCampaignUrn: subCampaignUrn || null }),
+        mappingConfig: finalMappingConfig,
         isActive: true,
       } as any);
+
+      // Create a spend_record so spend-breakdown and Latest Day Spend work
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        await storage.createSpendRecords([{
+          campaignId,
+          spendSourceId: String(source.id),
+          date: today,
+          spend: amount.toFixed(2),
+          currency: cur,
+          sourceType: effectiveSourceType,
+          subCampaignUrn: subCampaignUrn || null,
+        }] as any);
+      } catch (e: any) {
+        console.warn("[Manual Spend] Failed to create spend_record:", e?.message);
+      }
+
+      // Recalculate campaign.spend from all active sources (prevents drift/doubling)
+      try {
+        const allSources = await storage.getSpendSources(campaignId);
+        let totalFromSources = 0;
+        for (const s of allSources) {
+          try {
+            const mc = s.mappingConfig ? JSON.parse(String(s.mappingConfig)) : null;
+            totalFromSources += parseNum(mc?.amount);
+          } catch { /* skip unparseable */ }
+        }
+        await storage.updateCampaign(campaignId, { spend: Number(totalFromSources.toFixed(2)).toFixed(2) as any, currency: cur } as any);
+      } catch (e: any) {
+        console.warn("[Manual Spend] Failed to recalculate campaign.spend:", e?.message);
+      }
 
       res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur, platformContext: platformContext || null });
     } catch (e: any) {

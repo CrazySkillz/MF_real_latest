@@ -57,16 +57,24 @@ export function AddSpendWizardModal(props: {
 }) {
   const { toast } = useToast();
   const isEditing = Boolean(props.initialSource?.id);
-  const initialStep = useMemo<Step>(() => {
-    if (!props.initialSource?.id) return "select";
-    const st = String((props.initialSource as any)?.sourceType || "").toLowerCase();
-    if (st === "google_sheets") return "sheets_map";
-    if (st === "csv") return "csv_map";
-    if (st === "linkedin_api" || st === "meta_api" || st === "google_ads_api") return "ad_platform";
-    if (st === "manual") return "manual";
-    return "select";
-  }, [props.initialSource?.id, (props.initialSource as any)?.sourceType]);
-  const [step, setStep] = useState<Step>(initialStep);
+  const [step, setStep] = useState<Step>("select");
+
+  // Compute the correct step for the current initialSource
+  const prevOpenRef = useRef(false);
+  if (props.open && !prevOpenRef.current) {
+    // Modal just opened — set step synchronously during render (no flash)
+    const targetStep: Step = (() => {
+      if (!props.initialSource?.id) return "select";
+      const st = String((props.initialSource as any)?.sourceType || "").toLowerCase();
+      if (st === "google_sheets") return "sheets_map";
+      if (st === "csv") return "csv_map";
+      if (st === "linkedin_api" || st === "meta_api" || st === "google_ads_api") return "ad_platform";
+      if (st === "manual") return "manual";
+      return "select";
+    })();
+    if (step !== targetStep) setStep(targetStep);
+  }
+  prevOpenRef.current = props.open;
 
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null);
@@ -135,22 +143,11 @@ export function AddSpendWizardModal(props: {
   const [csvPrefillMapping, setCsvPrefillMapping] = useState<any>(null);
   const [csvEditNotice, setCsvEditNotice] = useState<string>("");
 
-  // Sync step immediately when modal opens to prevent flash
-  useEffect(() => {
-    if (props.open && props.initialSource?.id) {
-      const st = String((props.initialSource as any)?.sourceType || "").toLowerCase();
-      if (st === "google_sheets") setStep("sheets_map");
-      else if (st === "csv") setStep("csv_map");
-      else if (st === "linkedin_api" || st === "meta_api" || st === "google_ads_api") setStep("ad_platform");
-      else if (st === "manual") setStep("manual");
-    }
-  }, [props.open, props.initialSource]);
-
   useEffect(() => {
     if (!props.open) {
       prefillKeyRef.current = null;
       autoDateDecisionRef.current = null;
-      setStep("select");
+      // Don't reset step here — we set it correctly on open below
       setCsvFile(null);
       setCsvPreview(null);
       setCsvInputKey((k) => k + 1);

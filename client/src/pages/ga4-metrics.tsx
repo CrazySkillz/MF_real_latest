@@ -3089,7 +3089,7 @@ export default function GA4Metrics() {
                         {/* Total Spend */}
                         <Card>
                           <CardContent className="p-5">
-                            {spendDisplaySources.length > 0 || financialSpend > 0 ? (
+                            {spendDisplaySources.length > 0 ? (
                               <>
                                 <div className="flex items-center justify-between">
                                   <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>

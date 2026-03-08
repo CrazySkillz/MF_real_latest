@@ -1759,8 +1759,10 @@ export default function GA4Metrics() {
     if (requiresRevenue && !revenueMetricAvailable) missing.push("Revenue");
     return { requiresSpend, requiresRevenue, missing };
   };
-  // Prefer spend-breakdown total (sums actual spend_records) over spend-to-date (reads campaign.spend column which may be stale/zero)
-  const totalSpendForFinancials = Number(spendBreakdownResp?.totalSpend || spendToDateResp?.spendToDate || 0);
+  // Prefer spend-breakdown total (sums actual spend_records) over spend-to-date (reads campaign.spend column which may be stale/zero).
+  // If no spend sources exist at all, force to 0 — the campaign.spend column may be stale after source deletion.
+  const hasSpendSources = spendDisplaySources.length > 0;
+  const totalSpendForFinancials = hasSpendSources ? Number(spendBreakdownResp?.totalSpend || spendToDateResp?.spendToDate || 0) : 0;
   const usingAutoLinkedInSpend = false;
 
   const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);

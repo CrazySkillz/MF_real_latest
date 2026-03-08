@@ -1520,10 +1520,6 @@ export function AddSpendWizardModal(props: {
                                   <span className="text-slate-500 dark:text-slate-400">Days with data</span>
                                   <span className="text-slate-700 dark:text-slate-300">{adPlatformPreview.daysWithData}</span>
                                 </div>
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-slate-500 dark:text-slate-400">Date range</span>
-                                  <span className="text-slate-700 dark:text-slate-300">{adPlatformPreview.dateRange}</span>
-                                </div>
                               </div>
                             ) : (
                               <p className="text-xs text-slate-500 dark:text-slate-400">

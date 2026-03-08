@@ -1516,10 +1516,6 @@ export function AddSpendWizardModal(props: {
                                   <span className="text-slate-600 dark:text-slate-400">Total Spend</span>
                                   <span className="font-bold text-slate-900 dark:text-white">${adPlatformPreview.totalSpend.toLocaleString()}</span>
                                 </div>
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-slate-500 dark:text-slate-400">Days with data</span>
-                                  <span className="text-slate-700 dark:text-slate-300">{adPlatformPreview.daysWithData}</span>
-                                </div>
                               </div>
                             ) : (
                               <p className="text-xs text-slate-500 dark:text-slate-400">

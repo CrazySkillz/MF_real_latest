@@ -1540,12 +1540,7 @@ export function AddSpendWizardModal(props: {
                               )}
                             </div>
 
-                            {isAdPlatformLoading ? (
-                              <div className="flex items-center gap-2 text-sm text-slate-500">
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Fetching campaigns...
-                              </div>
-                            ) : adPlatformCampaigns.length > 0 ? (
+                            {adPlatformCampaigns.length > 0 ? (
                               <>
                                 <div className="rounded-md border max-h-64 overflow-y-auto">
                                   <table className="w-full text-sm">

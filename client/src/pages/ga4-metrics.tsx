@@ -3111,7 +3111,7 @@ export default function GA4Metrics() {
                                 <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
                                   {spendDisplaySources.map((s: any) => (
                                     <div key={s.sourceId} className="flex items-center justify-between text-xs group/spend">
-                                      <span className="text-slate-500 dark:text-slate-400 min-w-[60px] truncate">{spendSourceTypeLabel(s.sourceType)}</span>
+                                      <span className="text-slate-500 dark:text-slate-400 min-w-[60px] truncate">{s.displayName || spendSourceTypeLabel(s.sourceType)}</span>
                                       <div className="flex items-center gap-1">
                                         <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">
                                           {s.spend != null ? formatMoney(s.spend) : formatMoney(Number(financialSpend || 0))}

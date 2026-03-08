@@ -6830,37 +6830,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Clear LinkedIn connection conversion value
-        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
-        if (linkedInConnection?.conversionValue) {
-          await storage.updateLinkedInConnection(campaignId, {
-            conversionValue: null
-          });
-          devLog(`[Google Sheets] Cleared LinkedIn connection conversion value`);
-          conversionValueCleared = true;
+        try {
+          const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+          if (linkedInConnection?.conversionValue) {
+            await storage.updateLinkedInConnection(campaignId, {
+              conversionValue: null
+            });
+            devLog(`[Google Sheets] Cleared LinkedIn connection conversion value`);
+            conversionValueCleared = true;
+          }
+        } catch (e: any) {
+          console.warn('[Google Sheets] Could not clear LinkedIn conversion value:', e.message);
         }
 
         // Also clear conversion value from LinkedIn import sessions
-        const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-        if (linkedInSessions && linkedInSessions.length > 0) {
-          for (const session of linkedInSessions) {
-            if (session.conversionValue) {
-              await storage.updateLinkedInImportSession(session.id, {
-                conversionValue: null
-              });
-              devLog(`[Google Sheets] Cleared conversion value from LinkedIn import session ${session.id}`);
-              conversionValueCleared = true;
+        try {
+          const linkedInSessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+          if (linkedInSessions && linkedInSessions.length > 0) {
+            for (const session of linkedInSessions) {
+              if (session.conversionValue) {
+                await storage.updateLinkedInImportSession(session.id, {
+                  conversionValue: null
+                });
+                devLog(`[Google Sheets] Cleared conversion value from LinkedIn import session ${session.id}`);
+                conversionValueCleared = true;
+              }
             }
           }
+        } catch (e: any) {
+          console.warn('[Google Sheets] Could not clear LinkedIn session conversion values:', e.message);
         }
 
         // Clear Meta connection conversion value
-        const metaConnection = await storage.getMetaConnection(campaignId);
-        if (metaConnection?.conversionValue) {
-          await storage.updateMetaConnection(campaignId, {
-            conversionValue: null
-          });
-          devLog(`[Google Sheets] Cleared Meta connection conversion value`);
-          conversionValueCleared = true;
+        try {
+          const metaConnection = await storage.getMetaConnection(campaignId);
+          if (metaConnection?.conversionValue) {
+            await storage.updateMetaConnection(campaignId, {
+              conversionValue: null
+            });
+            devLog(`[Google Sheets] Cleared Meta connection conversion value`);
+            conversionValueCleared = true;
+          }
+        } catch (e: any) {
+          console.warn('[Google Sheets] Could not clear Meta conversion value:', e.message);
         }
       } else {
         devLog(`[Google Sheets] Revenue-tracking source(s) still exist (sheets=${remainingRevenueTrackingSheets.length}, hubspot=${remainingRevenueTrackingHubspot.length}, salesforce=${remainingRevenueTrackingSalesforce.length}) - keeping conversion values`);
@@ -6965,24 +6977,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversionValueCleared = true;
         }
 
-        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
-        if (linkedInConnection?.conversionValue) {
-          await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);
-          conversionValueCleared = true;
-        }
-
-        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-        for (const s of sessions || []) {
-          if (s.conversionValue) {
-            await storage.updateLinkedInImportSession(s.id, { conversionValue: null } as any);
+        try {
+          const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+          if (linkedInConnection?.conversionValue) {
+            await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);
             conversionValueCleared = true;
           }
+        } catch (e: any) {
+          console.warn('[HubSpot] Could not clear LinkedIn conversion value:', e.message);
         }
 
-        const metaConnection = await storage.getMetaConnection(campaignId);
-        if (metaConnection?.conversionValue) {
-          await storage.updateMetaConnection(campaignId, { conversionValue: null } as any);
-          conversionValueCleared = true;
+        try {
+          const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+          for (const s of sessions || []) {
+            if (s.conversionValue) {
+              await storage.updateLinkedInImportSession(s.id, { conversionValue: null } as any);
+              conversionValueCleared = true;
+            }
+          }
+        } catch (e: any) {
+          console.warn('[HubSpot] Could not clear LinkedIn session conversion values:', e.message);
+        }
+
+        try {
+          const metaConnection = await storage.getMetaConnection(campaignId);
+          if (metaConnection?.conversionValue) {
+            await storage.updateMetaConnection(campaignId, { conversionValue: null } as any);
+            conversionValueCleared = true;
+          }
+        } catch (e: any) {
+          console.warn('[HubSpot] Could not clear Meta conversion value:', e.message);
         }
       }
 
@@ -7081,22 +7105,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateCampaign(campaignId, { conversionValue: null } as any);
           conversionValueCleared = true;
         }
-        const linkedInConnection = await storage.getLinkedInConnection(campaignId);
-        if (linkedInConnection?.conversionValue) {
-          await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);
-          conversionValueCleared = true;
-        }
-        const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
-        for (const s of sessions || []) {
-          if (s.conversionValue) {
-            await storage.updateLinkedInImportSession(s.id, { conversionValue: null } as any);
+        try {
+          const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+          if (linkedInConnection?.conversionValue) {
+            await storage.updateLinkedInConnection(campaignId, { conversionValue: null } as any);
             conversionValueCleared = true;
           }
+        } catch (e: any) {
+          console.warn('[Salesforce] Could not clear LinkedIn conversion value:', e.message);
         }
-        const metaConnection = await storage.getMetaConnection(campaignId);
-        if (metaConnection?.conversionValue) {
-          await storage.updateMetaConnection(campaignId, { conversionValue: null } as any);
-          conversionValueCleared = true;
+
+        try {
+          const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
+          for (const s of sessions || []) {
+            if (s.conversionValue) {
+              await storage.updateLinkedInImportSession(s.id, { conversionValue: null } as any);
+              conversionValueCleared = true;
+            }
+          }
+        } catch (e: any) {
+          console.warn('[Salesforce] Could not clear LinkedIn session conversion values:', e.message);
+        }
+
+        try {
+          const metaConnection = await storage.getMetaConnection(campaignId);
+          if (metaConnection?.conversionValue) {
+            await storage.updateMetaConnection(campaignId, { conversionValue: null } as any);
+            conversionValueCleared = true;
+          }
+        } catch (e: any) {
+          console.warn('[Salesforce] Could not clear Meta conversion value:', e.message);
         }
       }
 

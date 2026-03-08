@@ -800,14 +800,16 @@ export function AddSpendWizardModal(props: {
     } catch { /* ignore */ }
   };
 
-  // Fetch ad platform spend preview (Meta / Google Ads)
+  // Fetch ad platform spend preview (Meta / Google Ads) — fetches all available data
   const fetchAdPlatformPreview = async (platform: string) => {
     setIsAdPlatformLoading(true);
     setAdPlatformPreview(null);
+    const startDate = "2020-01-01";
+    const endDate = new Date().toISOString().slice(0, 10);
     try {
       const apiPath = platform === "google_ads" ? "google-ads" : platform;
       const resp = await fetch(
-        `/api/${apiPath}/${props.campaignId}/daily-metrics?startDate=${adPlatformStartDate}&endDate=${adPlatformEndDate}`
+        `/api/${apiPath}/${props.campaignId}/daily-metrics?startDate=${startDate}&endDate=${endDate}`
       );
       const json = await resp.json().catch(() => ({ metrics: [] }));
       const metrics = json?.metrics || [];
@@ -851,8 +853,8 @@ export function AddSpendWizardModal(props: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           platform: adPlatformPreview.platform,
-          startDate: adPlatformStartDate,
-          endDate: adPlatformEndDate,
+          startDate: "2020-01-01",
+          endDate: new Date().toISOString().slice(0, 10),
         }),
       });
       const json = await resp.json().catch(() => null);
@@ -911,6 +913,10 @@ export function AddSpendWizardModal(props: {
         );
         setIsAdPlatformTestMode(true);
         toast({ title: "Test mode enabled", description: `Using mock ${selectedPlatform === "google_ads" ? "Google Ads" : "Meta"} data. You can test the full import flow.` });
+        // Auto-fetch all available spend data
+        setIsAdPlatformConnecting(false);
+        await fetchAdPlatformPreview(selectedPlatform);
+        return;
       } else {
         throw new Error(json?.error || "Failed to enable test mode");
       }
@@ -1496,46 +1502,13 @@ export function AddSpendWizardModal(props: {
                                 <span className="text-slate-500 dark:text-slate-400 font-normal ml-1">({adPlatformConnectionName})</span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              Select a date range and preview spend before importing.
-                            </p>
 
-                            {/* Date range selector */}
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <Label className="text-xs">Start date</Label>
-                                <Input
-                                  type="date"
-                                  value={adPlatformStartDate}
-                                  onChange={(e) => { setAdPlatformStartDate(e.target.value); setAdPlatformPreview(null); }}
-                                  className="text-sm"
-                                />
+                            {isAdPlatformLoading ? (
+                              <div className="flex items-center gap-2 text-sm text-slate-500">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Fetching spend data...
                               </div>
-                              <div>
-                                <Label className="text-xs">End date</Label>
-                                <Input
-                                  type="date"
-                                  value={adPlatformEndDate}
-                                  onChange={(e) => { setAdPlatformEndDate(e.target.value); setAdPlatformPreview(null); }}
-                                  className="text-sm"
-                                />
-                              </div>
-                            </div>
-
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={isAdPlatformLoading}
-                              onClick={() => fetchAdPlatformPreview(selectedPlatform!)}
-                            >
-                              {isAdPlatformLoading ? (
-                                <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Loading...</>
-                              ) : "Preview spend"}
-                            </Button>
-
-                            {/* Preview results */}
-                            {adPlatformPreview && (
+                            ) : adPlatformPreview ? (
                               <div className="rounded-md bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-3 space-y-2">
                                 <div className="flex justify-between text-sm">
                                   <span className="text-slate-600 dark:text-slate-400">Total Spend</span>
@@ -1550,6 +1523,10 @@ export function AddSpendWizardModal(props: {
                                   <span className="text-slate-700 dark:text-slate-300">{adPlatformPreview.dateRange}</span>
                                 </div>
                               </div>
+                            ) : (
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Ready to import spend data.
+                              </p>
                             )}
                           </>
                         )}

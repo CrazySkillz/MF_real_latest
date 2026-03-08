@@ -1456,6 +1456,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       await storage.deleteSpendSource(sourceId);
+
+      // Recalculate campaign spend from remaining active sources
+      const campaign = await storage.getCampaign(campaignId);
+      const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
+      const endDate = yesterdayUTC();
+      const remaining = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate);
+      const newTotal = remaining.reduce((sum: number, s: any) => sum + s.spend, 0);
+      await storage.updateCampaign(campaignId, { spend: Number(newTotal.toFixed(2)).toFixed(2) as any } as any);
+
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to delete spend source" });

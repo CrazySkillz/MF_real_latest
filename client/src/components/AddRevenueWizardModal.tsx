@@ -8,8 +8,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, FileSpreadsheet, ShoppingCart, Upload, ArrowLeft, X } from "lucide-react";
+import { Building2, FileSpreadsheet, ShoppingCart, Upload, ArrowLeft, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { HubSpotRevenueWizard } from "@/components/HubSpotRevenueWizard";
 import { SalesforceRevenueWizard } from "@/components/SalesforceRevenueWizard";
 import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
@@ -311,7 +312,6 @@ export function AddRevenueWizardModal(props: {
   const [crmDisconnecting, setCrmDisconnecting] = useState<string | null>(null);
   const handleCrmDisconnect = async (platform: "hubspot" | "salesforce" | "shopify") => {
     const label = platform.charAt(0).toUpperCase() + platform.slice(1);
-    if (!confirm(`Disconnect ${label}? This will remove the revenue source and OAuth connection.`)) return;
     setCrmDisconnecting(platform);
     try {
       // Delete any active revenue source for this platform
@@ -1058,9 +1058,23 @@ export function AddRevenueWizardModal(props: {
                         ) : crmStatus.shopify ? (
                           <span className="ml-auto flex items-center gap-1">
                             <span className="text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
-                            <button className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect Shopify" onClick={(e) => { e.stopPropagation(); void handleCrmDisconnect("shopify"); }}>
-                              <X className="w-3.5 h-3.5 text-red-500" />
-                            </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect Shopify" onClick={(e) => e.stopPropagation()}>
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Disconnect Shopify</AlertDialogTitle>
+                                  <AlertDialogDescription>This will remove the revenue source and OAuth connection. This action cannot be undone.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => void handleCrmDisconnect("shopify")}>Disconnect</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
@@ -1082,9 +1096,23 @@ export function AddRevenueWizardModal(props: {
                         ) : crmStatus.hubspot ? (
                           <span className="ml-auto flex items-center gap-1">
                             <span className="text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
-                            <button className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect HubSpot" onClick={(e) => { e.stopPropagation(); void handleCrmDisconnect("hubspot"); }}>
-                              <X className="w-3.5 h-3.5 text-red-500" />
-                            </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect HubSpot" onClick={(e) => e.stopPropagation()}>
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Disconnect HubSpot</AlertDialogTitle>
+                                  <AlertDialogDescription>This will remove the revenue source and OAuth connection. This action cannot be undone.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => void handleCrmDisconnect("hubspot")}>Disconnect</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
@@ -1106,9 +1134,23 @@ export function AddRevenueWizardModal(props: {
                         ) : crmStatus.salesforce ? (
                           <span className="ml-auto flex items-center gap-1">
                             <span className="text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
-                            <button className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect Salesforce" onClick={(e) => { e.stopPropagation(); void handleCrmDisconnect("salesforce"); }}>
-                              <X className="w-3.5 h-3.5 text-red-500" />
-                            </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect Salesforce" onClick={(e) => e.stopPropagation()}>
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Disconnect Salesforce</AlertDialogTitle>
+                                  <AlertDialogDescription>This will remove the revenue source and OAuth connection. This action cannot be undone.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => void handleCrmDisconnect("salesforce")}>Disconnect</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>

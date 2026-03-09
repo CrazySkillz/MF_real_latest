@@ -74,7 +74,7 @@ User (Clerk) → owns Clients → owns Campaigns → owns Connections/Metrics/So
 | Route | Page | Purpose |
 |-------|------|---------|
 | `/campaigns` | Campaign List | List, create, edit, delete campaigns |
-| `/campaigns/:id` | Campaign Detail | Core config: tabs for Overview, Connections, KPIs, Benchmarks, Reports, Attribution, A/B Tests |
+| `/campaigns/:id` | Campaign Detail | Core config: tabs for Overview, KPIs, Benchmarks, AI Chat, Webhooks |
 | `/campaigns/:id/ga4-metrics` | GA4 Metrics | GA4 analytics: events, users, sessions, revenue, KPIs, financial cards |
 | `/campaigns/:id/linkedin-analytics` | LinkedIn Analytics | LinkedIn campaign perf: KPIs, benchmarks, reports |
 | `/campaigns/:id/meta-analytics` | Meta Analytics | Meta/Facebook campaign perf |
@@ -93,13 +93,11 @@ User (Clerk) → owns Clients → owns Campaigns → owns Connections/Metrics/So
 
 The campaign detail page has these main sections/tabs:
 
-1. **Overview** — Performance Summary grid (Spend, Revenue, ROAS, ROI, Conversions, CPA), KPI Health, Benchmark Health, Recommendations
-2. **Connections** — Connected platform cards (GA4, LinkedIn, Meta, Google Ads), Revenue & Spend Sources with CRM cards (HubSpot, Salesforce, Shopify, Google Sheets, Manual, CSV)
-3. **KPIs** — Campaign-level KPI definitions with targets, alerts, progress tracking
-4. **Benchmarks** — Industry/competitor/historical benchmarks with variance tracking
-5. **Reports** — Scheduled report configurations
-6. **Attribution** — Attribution model dashboard (first/last touch, linear, time decay, position, data-driven)
-7. **A/B Tests** — Test configuration with variants, traffic allocation, statistical significance
+1. **Overview** — Performance Summary grid (Spend, Revenue, ROAS, ROI, Conversions, CPA), KPI Health, Benchmark Health, Recommendations, Connected Platforms
+2. **KPIs** — Campaign-level KPI definitions with targets, alerts, progress tracking
+3. **Benchmarks** — Industry/competitor/historical benchmarks with variance tracking
+4. **AI Chat** — OpenRouter-powered AI chat for campaign analysis (uses campaign context: KPIs, benchmarks, spend/revenue breakdown)
+5. **Webhooks** — Custom integration webhook configuration
 
 ---
 
@@ -431,6 +429,19 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 | Navigation | `components/layout/Navigation.tsx` | Top bar with notifications + user button |
 | Column Mapping | `components/GuidedColumnMapping.tsx` | CSV/Sheets column mapping wizard |
 | Attribution | `components/AttributionDashboard.tsx` | Attribution model visualization |
+| Campaign Chat | `components/CampaignChat.tsx` | AI chat for campaign analysis (OpenRouter) |
+
+---
+
+## AI Campaign Chat
+
+- **Backend**: `POST /api/campaigns/:id/chat` in `routes-oauth.ts` — gathers campaign context (KPIs, benchmarks, spend/revenue breakdown), builds system prompt, proxies to OpenRouter
+- **Frontend**: `CampaignChat.tsx` — chat UI with suggested questions, message bubbles, context badges
+- **Model**: `openai/gpt-oss-120b:free` (configurable via `OPENROUTER_MODEL` env var)
+- **Auth**: Uses `ensureCampaignAccess` — requires Clerk auth
+- **No DB persistence**: Chat history is React state only (no tables, no migrations)
+- **Env vars**: `OPENROUTER_API_KEY` (required), `OPENROUTER_MODEL` (optional override)
+- **Conversation cap**: Last 20 messages sent to avoid token limits
 
 ---
 

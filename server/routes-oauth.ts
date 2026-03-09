@@ -26037,6 +26037,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── AI Campaign Chat (OpenRouter) ────────────────────────────────
+  app.post("/api/campaigns/:id/chat", async (req, res) => {
+    try {
+      const campaign = await ensureCampaignAccess(req as any, res as any, req.params.id);
+      if (!campaign) return;
+
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ success: false, message: "AI chat is not configured. Please set OPENROUTER_API_KEY." });
+      }
+
+      const { messages } = req.body;
+      if (!Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({ success: false, message: "Messages array is required." });
+      }
+
+      // Gather campaign context in parallel
+      const campaignId = String(campaign.id);
+      const today = new Date().toISOString().slice(0, 10);
+      const startDate = campaign.startDate ? new Date(campaign.startDate as any).toISOString().slice(0, 10) : "2020-01-01";
+
+      const [kpis, benchmarks, spendBreakdown, revenueBreakdown] = await Promise.all([
+        storage.getCampaignKPIs(campaignId).catch(() => []),
+        storage.getCampaignBenchmarks(campaignId).catch(() => []),
+        storage.getSpendBreakdownBySource(campaignId, startDate, today).catch(() => []),
+        storage.getRevenueBreakdownBySource(campaignId, startDate, today).catch(() => []),
+      ]);
+
+      const totalSpend = spendBreakdown.reduce((sum: number, s: any) => sum + Number(s.spend || 0), 0);
+      const totalRevenue = revenueBreakdown.reduce((sum: number, s: any) => sum + Number(s.revenue || 0), 0);
+      const roas = totalSpend > 0 ? (totalRevenue / totalSpend).toFixed(2) : "N/A";
+      const roi = totalSpend > 0 ? (((totalRevenue - totalSpend) / totalSpend) * 100).toFixed(1) : "N/A";
+
+      // Build system prompt
+      let systemPrompt = `You are an expert digital marketing analyst for MetricMind, a campaign analytics platform. You are helping analyze campaign "${campaign.name}".
+
+## Campaign Info
+- Name: ${campaign.name}
+- Status: ${(campaign as any).status || "Active"}
+- Platform: ${(campaign as any).platform || "Multi-platform"}
+- Budget: ${(campaign as any).budget ? "$" + Number((campaign as any).budget).toLocaleString() : "Not set"}
+- Total Spend: $${totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+- Total Revenue: $${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+- ROAS: ${roas}x
+- ROI: ${roi}%
+`;
+
+      if (spendBreakdown.length > 0) {
+        systemPrompt += `\n## Spend Breakdown\n`;
+        spendBreakdown.forEach((s: any) => {
+          systemPrompt += `- ${s.displayName}: $${Number(s.spend || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
+        });
+      }
+
+      if (revenueBreakdown.length > 0) {
+        systemPrompt += `\n## Revenue Breakdown\n`;
+        revenueBreakdown.forEach((s: any) => {
+          systemPrompt += `- ${s.displayName}: $${Number(s.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
+        });
+      }
+
+      if (kpis.length > 0) {
+        systemPrompt += `\n## KPIs (${kpis.length})\n`;
+        kpis.slice(0, 20).forEach((k: any) => {
+          systemPrompt += `- ${k.name}: Current ${k.currentValue ?? "—"} / Target ${k.targetValue ?? "—"} (${k.status || "active"})\n`;
+        });
+      }
+
+      if (benchmarks.length > 0) {
+        systemPrompt += `\n## Benchmarks (${benchmarks.length})\n`;
+        benchmarks.slice(0, 10).forEach((b: any) => {
+          systemPrompt += `- ${b.name}: Current ${(b as any).currentValue ?? "—"} / Benchmark ${(b as any).benchmarkValue ?? "—"}\n`;
+        });
+      }
+
+      systemPrompt += `
+## Instructions
+- Answer questions about campaign performance using ONLY the data provided above.
+- When discussing metrics, always cite specific numbers.
+- If asked about data you don't have, say so clearly rather than making up numbers.
+- Provide actionable recommendations when appropriate.
+- Use a professional but conversational tone.
+- Format responses with markdown when helpful (bullet points, bold for emphasis).
+- Keep responses concise but thorough — aim for 2-4 paragraphs maximum unless the user asks for detail.`;
+
+      // Cap conversation history at last 20 messages
+      const cappedMessages = messages.slice(-20).map((m: any) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const openRouterResp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://metricmind.app",
+          "X-Title": "MetricMind Campaign Chat",
+        },
+        body: JSON.stringify({
+          model: process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b:free",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...cappedMessages,
+          ],
+          max_tokens: 1024,
+          temperature: 0.3,
+        }),
+      });
+
+      if (!openRouterResp.ok) {
+        const errText = await openRouterResp.text().catch(() => "");
+        console.error("[AI Chat] OpenRouter error:", openRouterResp.status, errText);
+        return res.status(502).json({ success: false, message: "AI service temporarily unavailable. Please try again." });
+      }
+
+      const data = await openRouterResp.json();
+      const reply = data.choices?.[0]?.message?.content || "I couldn't generate a response. Please try again.";
+
+      res.json({ success: true, reply });
+    } catch (error: any) {
+      console.error("[AI Chat] Error:", error);
+      res.status(500).json({ success: false, message: "Failed to process chat request." });
+    }
+  });
+
   const server = createServer(app);
   return server;
 }

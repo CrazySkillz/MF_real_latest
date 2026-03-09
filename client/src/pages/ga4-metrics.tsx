@@ -2013,7 +2013,7 @@ export default function GA4Metrics() {
       const sessions = Number(breakdownTotals?.sessions || 0);
       const users = Number(breakdownTotals?.users || 0);
       const engagementRate = normalizeRateToPercent(dailySummedTotals.engagementRate || Number(ga4m?.metrics?.engagementRate ?? 0));
-      const spend = Number(spendToDateResp?.spendToDate || 0);
+      const spend = Number(financialSpend || 0);
       const revenueToDate = Number(financialRevenue || 0);
       const conversionsToDate = Number(financialConversions || 0);
 
@@ -2081,12 +2081,12 @@ export default function GA4Metrics() {
         }
         const p = computeKpiProgress(k);
         const t = getKpiEffectiveTarget(k);
-        const statusLabel = p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
+        const statusLabel = p.band === "above" ? "Above Target" : p.band === "near" ? "On Track" : "Below Target";
         write(
           `${String(k?.name || "")} • Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String(k?.unit || "%"))} • Target ${formatNumberByUnit(
             String(t.effectiveTarget || ""),
             String(k?.unit || "%")
-          )} • Progress ${p.pct.toFixed(1)}% • ${statusLabel}`,
+          )} • Progress ${p.attainmentPct.toFixed(1)}% • ${statusLabel}`,
           10
         );
       }

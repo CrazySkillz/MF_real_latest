@@ -289,6 +289,22 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 - Financial metrics (Spend/Revenue/ROAS/ROI/CPA) use the **same sources** as Overview and Insights tabs: `financialSpend`, `financialRevenue`, shared `computeRoasPercent`/`computeRoiPercent`/`computeCpa`.
 - `normalizeRateToPercent` handles GA4's inconsistent rate format: if `v ≤ 1` assumes decimal (×100), if `v > 1` assumes already percentage.
 
+### GA4 Reports Tab (inline in `ga4-metrics.tsx`)
+
+CRUD library for saved report definitions + client-side PDF download. Reports stored in `linkedin_reports` table with `platformType='google_analytics'`. No server-side PDF generation for GA4 — PDF built entirely in browser from already-loaded page data.
+
+**PDF sections** (controlled by `reportType` or `configuration.sections`): Overview, Acquisition (top 25 breakdown rows), Trends (last 25 daily data points), KPIs Snapshot, Benchmarks Snapshot.
+
+**Accuracy (pipeline-verified)**:
+- Overview: Uses `financialSpend`, `financialRevenue`, `financialConversions`, `breakdownTotals` — same sources as Overview tab. ROAS/ROI/CPA computed inline with same formulas.
+- Acquisition: Uses `ga4Breakdown.rows` — same data as Campaign Breakdown section.
+- Trends: Uses `ga4TimeSeries` (alias for `ga4DailyRows`) — same persisted daily facts.
+- KPIs: Uses `computeKpiProgress()` → `p.band` for status, `p.attainmentPct` for progress. Labels: "Above Target"/"On Track"/"Below Target" matching KPI tab.
+- Benchmarks: Uses `computeBenchmarkProgress()` → `p.status` for status, `p.pct` for progress. Correct return shape.
+- **Bug fixed**: KPI section previously read `p.status`/`p.pct` from `computeKpiProgress` (which returns `band`/`attainmentPct`). `p.pct.toFixed(1)` crashed (TypeError). Fixed to use correct field names.
+- **Bug fixed**: PDF Overview used `spendToDateResp?.spendToDate` bypassing the `financialSpend` preference chain. Fixed to use `financialSpend` for consistency with UI.
+- **Design note**: GA4 reports have no email scheduling — scheduler only processes `platformType='linkedin'`. The Reports tab UI does not expose scheduling fields for GA4.
+
 ---
 
 ## Add Spend Wizard (`AddSpendWizardModal.tsx`)

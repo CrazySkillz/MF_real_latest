@@ -153,9 +153,9 @@ export default function GA4Metrics() {
   const [ga4ReportForm, setGa4ReportForm] = useState({
     name: "",
     description: "",
-    reportType: "overview",
+    reportType: "",
     configuration: {
-      sections: { overview: true, kpis: false, benchmarks: false, ads: false, insights: false },
+      sections: { overview: false, kpis: false, benchmarks: false, ads: false, insights: false },
     } as any,
     scheduleEnabled: false,
     scheduleFrequency: "daily",
@@ -6109,7 +6109,7 @@ export default function GA4Metrics() {
                                   insights: nextType === "insights",
                                 },
                               },
-                              name: p.name ? p.name : `GA4 ${t.title} Report`,
+                              name: `GA4 ${t.title} Report`,
                             }));
                           }}
                         >
@@ -6536,8 +6536,8 @@ export default function GA4Metrics() {
                   setGa4ReportForm({
                     name: "",
                     description: "",
-                    reportType: "overview",
-                    configuration: { sections: { overview: true, kpis: false, benchmarks: false, ads: false, insights: false } },
+                    reportType: "",
+                    configuration: { sections: { overview: false, kpis: false, benchmarks: false, ads: false, insights: false } },
                     scheduleEnabled: false,
                     scheduleFrequency: "daily",
                     scheduleDayOfWeek: "monday",
@@ -6555,19 +6555,38 @@ export default function GA4Metrics() {
 
               <div className="flex items-center gap-2">
                 <Button
-                  disabled={!ga4ReportForm.name || createGA4ReportMutation.isPending || updateGA4ReportMutation.isPending}
+                  disabled={!ga4ReportForm.name || !ga4ReportForm.reportType || createGA4ReportMutation.isPending || updateGA4ReportMutation.isPending}
                   onClick={() => {
-                    if (ga4ReportForm.scheduleEnabled && !validateGA4ScheduledReportFields()) return;
-                    const payload = buildGA4ReportPayload();
-                    if (!String(payload.name || "").trim()) {
-                      toast({ title: "Report name is required", variant: "destructive" });
-                      return;
-                    }
-                    if (editingGA4ReportId) {
+                    if (ga4ReportForm.scheduleEnabled) {
+                      // Scheduled report: validate, save to library
+                      if (!validateGA4ScheduledReportFields()) return;
+                      const payload = buildGA4ReportPayload();
+                      if (!String(payload.name || "").trim()) {
+                        toast({ title: "Report name is required", variant: "destructive" });
+                        return;
+                      }
+                      if (editingGA4ReportId) {
+                        updateGA4ReportMutation.mutate({ reportId: editingGA4ReportId, payload });
+                      } else {
+                        createGA4ReportMutation.mutate(payload);
+                      }
+                    } else if (editingGA4ReportId) {
+                      // Editing an existing scheduled report
+                      const payload = buildGA4ReportPayload();
+                      if (!String(payload.name || "").trim()) {
+                        toast({ title: "Report name is required", variant: "destructive" });
+                        return;
+                      }
                       updateGA4ReportMutation.mutate({ reportId: editingGA4ReportId, payload });
-                      return;
+                    } else {
+                      // Generate and download immediately (don't save to library)
+                      downloadGA4Report({
+                        reportType: ga4ReportForm.reportType || "overview",
+                        configuration: ga4ReportForm.configuration,
+                        reportName: ga4ReportForm.name || undefined,
+                      });
+                      setShowGA4ReportModal(false);
                     }
-                    createGA4ReportMutation.mutate(payload);
                   }}
                   className="gap-2"
                 >

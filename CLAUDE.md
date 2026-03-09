@@ -302,9 +302,11 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 ### GA4 Reports Tab (inline in `ga4-metrics.tsx`)
 
-CRUD library for saved report definitions + client-side PDF download + scheduling. Reports stored in `linkedin_reports` table with `platformType='google_analytics'`. PDF built entirely in browser from already-loaded page data.
+Client-side PDF download + optional scheduling. Reports stored in `linkedin_reports` table with `platformType='google_analytics'`. PDF built entirely in browser from already-loaded page data.
 
-**Standard Templates**: Overview, KPIs, Benchmarks, Ad Comparison, Insights (matches LinkedIn Reports pattern exactly).
+**Standard Templates**: Overview, KPIs, Benchmarks, Ad Comparison, Insights (matches LinkedIn Reports pattern exactly). No template is pre-selected on modal open — user must click one. Clicking a template always sets the report name to `GA4 {Template} Report`.
+
+**Generate & Download vs Schedule**: Non-scheduled reports download the PDF immediately (no library save). Only scheduled reports are saved to the reports library. This matches LinkedIn's `handleCreateReport` pattern: `scheduleEnabled ? save to DB : download immediately`.
 
 **Schedule UI**: Both Standard Templates and Custom Report sections include full scheduling capability (frequency, day-of-week/month, quarter timing, time, timezone, email recipients). Matches LinkedIn `LinkedInReportModal.tsx` pattern.
 

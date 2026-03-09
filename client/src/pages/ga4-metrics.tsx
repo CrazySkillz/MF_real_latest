@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -3639,6 +3640,53 @@ export default function GA4Metrics() {
                                                 <h4 className="text-base font-semibold text-slate-900 dark:text-white">
                                                   {kpi.name}
                                                 </h4>
+                                                {/* Alert indicators (matching LinkedIn KPI cards) */}
+                                                {kpi.alertsEnabled && (
+                                                  <UITooltip>
+                                                    <TooltipTrigger asChild>
+                                                      <div className="cursor-help">
+                                                        <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                                                      </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="bg-slate-900 text-white border-slate-700">
+                                                      <p className="text-sm">Alerts enabled</p>
+                                                    </TooltipContent>
+                                                  </UITooltip>
+                                                )}
+                                                {kpi.alertsEnabled && !isBlocked && (() => {
+                                                  const currentVal = parseFloat(String(getLiveKpiValue(kpi) || "0"));
+                                                  const alertThresh = kpi.alertThreshold ? parseFloat(String(kpi.alertThreshold).replace(/,/g, "")) : null;
+                                                  const alertCond = kpi.alertCondition || "below";
+                                                  if (alertThresh === null || !Number.isFinite(alertThresh)) return null;
+
+                                                  let hasActiveAlert = false;
+                                                  switch (alertCond) {
+                                                    case "below": hasActiveAlert = currentVal < alertThresh; break;
+                                                    case "above": hasActiveAlert = currentVal > alertThresh; break;
+                                                    case "equals": hasActiveAlert = Math.abs(currentVal - alertThresh) < 0.01; break;
+                                                  }
+
+                                                  return hasActiveAlert ? (
+                                                    <UITooltip>
+                                                      <TooltipTrigger asChild>
+                                                        <div className="relative flex items-center justify-center cursor-help">
+                                                          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                                          <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                                                        </div>
+                                                      </TooltipTrigger>
+                                                      <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                                        <div className="space-y-2">
+                                                          <p className="font-semibold text-red-400">Alert Threshold Breached</p>
+                                                          <div className="text-xs space-y-1">
+                                                            <p><span className="text-slate-400">Current:</span> {formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}</p>
+                                                            <p><span className="text-slate-400">Alert Threshold:</span> {alertThresh}{kpi.unit}</p>
+                                                            <p><span className="text-slate-400">Condition:</span> {alertCond}</p>
+                                                          </div>
+                                                        </div>
+                                                      </TooltipContent>
+                                                    </UITooltip>
+                                                  ) : null;
+                                                })()}
                                                 <Badge className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                                                   {String(kpi?.metric || kpi?.name || "Custom")}
                                                 </Badge>
@@ -5263,7 +5311,8 @@ export default function GA4Metrics() {
                           inputMode="decimal"
                           placeholder="e.g., 80"
                           value={kpiForm.watch("alertThreshold") || ""}
-                          onChange={(e) => kpiForm.setValue("alertThreshold", e.target.value)}
+                          onChange={(e) => kpiForm.setValue("alertThreshold", formatNumberAsYouType(e.target.value, String(kpiForm.getValues().unit || "%")))}
+                          onBlur={(e) => kpiForm.setValue("alertThreshold", formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
                         />
                         <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
                       </div>

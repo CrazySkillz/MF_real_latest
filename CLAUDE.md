@@ -185,7 +185,7 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - `computeAttainmentFillPct()` — capped 0-100% for progress bar fill
 - Progress bar colors: green ≥100%, amber ≥90%, red <90%
 
-**KPI card rendering**: Current/Target values in 2-col grid, progress bar with uncapped attainment %, delta text below ("X% above/below target"). No status label text — delta text replaces it.
+**KPI card rendering**: Current/Target values in 2-col grid, progress bar with uncapped attainment %, delta text below ("X% above/below target"). No status label text — delta text replaces it. Alert indicators next to KPI name: yellow `AlertTriangle` icon (tooltip "Alerts enabled") when `alertsEnabled`, red pulsing dot (`animate-pulse` + `animate-ping`) when threshold actively breached (tooltip shows current/threshold/condition). Alert threshold input formats on blur (e.g. `500` → `500.00`).
 
 **Create KPI modal layout** (LinkedIn is the reference pattern):
 - Template/metric selection (platform-specific tiles or dropdown)

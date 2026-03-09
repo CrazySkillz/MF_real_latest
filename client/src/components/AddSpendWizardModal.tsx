@@ -1896,6 +1896,12 @@ export function AddSpendWizardModal(props: {
                         inputMode="decimal"
                         value={manualAmount}
                         onChange={(e) => setManualAmount(e.target.value)}
+                        onBlur={() => {
+                          const num = parseFloat(String(manualAmount || "").replace(/[$,]/g, "").trim());
+                          if (Number.isFinite(num) && num > 0) {
+                            setManualAmount(num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                          }
+                        }}
                         placeholder="0.00"
                         className="max-w-xs"
                       />

@@ -657,7 +657,7 @@ export function AddSpendWizardModal(props: {
     try {
       const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;
       const mapping = {
-        displayName: (sheetsPreview?.spreadsheetName ? `${sheetsPreview.spreadsheetName}${sheetsPreview.sheetName ? ` (${sheetsPreview.sheetName})` : ""}` : "Google Sheets spend"),
+        displayName: "Google Sheets",
         dateColumn: null, // date-agnostic: always distribute spend across the selected period
         spendColumn,
         campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,

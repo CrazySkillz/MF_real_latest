@@ -152,7 +152,8 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 
 ### Spend Cards (GA4 Overview)
 - **Total Spend**: Uses `financialSpend` (prefers `spend-breakdown` total, falls back to `spend-to-date`). Shows "+" icon to add sources and per-source breakdown with edit/trash icons when sources exist. Shows "Add Spend" prompt when no spend exists.
-- **Latest Day Spend**: Queries `/spend-daily?date=yesterday` for imported spend, falls back to GA4 daily row data.
+- **Latest Day Revenue**: Uses `ga4ReportDate` to find the most recent **complete** day (skips today's partial intraday data). GA4-only — does not include CRM/imported revenue.
+- **Latest Day Spend**: Queries `/spend-daily` for both today and yesterday, prefers whichever has data. Manual/CSV/ad platform spend records are dated today; scheduler records have actual historical dates. No dead fallback to GA4 `_raw.spend` (ga4_daily_metrics has no spend column).
 - **Empty state gate**: Card shows populated view when `spendBreakdownResp.sources.length > 0 OR financialSpend > 0` (prevents showing $0 when breakdown hasn't loaded but spend exists).
 - Per-source trash uses AlertDialog confirmation → `DELETE /api/campaigns/:id/spend-sources/:sourceId`.
 
@@ -194,6 +195,9 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - Edit prefill `useEffect` routes to correct step and pre-populates state based on `sourceType`
 - ALL processing functions pass `sourceId` when editing to update (not create duplicate)
 - Cancel button closes modal when editing (doesn't go back to source selection)
+
+### Input Formatting
+- Manual spend input formats to 2 decimal places on blur (e.g. `500` → `500.00`) using `toLocaleString("en-US", { minimumFractionDigits: 2 })`
 
 ### Micro Copy Display (`ga4-metrics.tsx`)
 - `spendDisplaySources` merges `spend-breakdown` (has per-source amounts from records) with `spend-sources` (definitions fallback)

@@ -1653,22 +1653,38 @@ export default function GA4Metrics() {
   });
 
   // Latest-day spend from imported spend records (yesterday)
-  const yesterdayDate = useMemo(() => {
+  // Latest Day Spend: try today first (manual/CSV/ad platform records are dated today),
+  // fall back to yesterday (scheduler-sourced records have actual historical dates)
+  const spendDailyToday = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const spendDailyYesterday = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
     return d.toISOString().slice(0, 10);
   }, []);
-  const { data: spendDailyResp } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/spend-daily`, yesterdayDate],
+  const { data: spendDailyTodayResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/spend-daily`, spendDailyToday],
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/spend-daily?date=${yesterdayDate}`);
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-daily?date=${spendDailyToday}`);
       if (!resp.ok) return { success: false, totalSpend: 0 };
       return resp.json().catch(() => ({ success: false, totalSpend: 0 }));
     },
   });
+  const { data: spendDailyYesterdayResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/spend-daily`, spendDailyYesterday],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-daily?date=${spendDailyYesterday}`);
+      if (!resp.ok) return { success: false, totalSpend: 0 };
+      return resp.json().catch(() => ({ success: false, totalSpend: 0 }));
+    },
+  });
+  // Use whichever day has spend data (prefer today, fall back to yesterday)
+  const spendDailyResp = (Number(spendDailyTodayResp?.totalSpend) > 0) ? spendDailyTodayResp : spendDailyYesterdayResp;
 
   const spendSourceLabels = useMemo(() => {
     const persistedSpend = Number(spendToDateResp?.spendToDate || 0);
@@ -3080,12 +3096,16 @@ export default function GA4Metrics() {
                             </p>
                           </CardContent>
                         </Card>
-                        {/* Latest Day Revenue */}
+                        {/* Latest Day Revenue — most recent complete day (skips today's partial) */}
                         <Card>
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Revenue</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                              {formatMoney(Number(ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?.revenue || 0 : 0))}
+                              {formatMoney(Number(
+                                ga4ReportDate
+                                  ? (ga4DailyRows.find((r: any) => String(r?.date) === ga4ReportDate)?.revenue || 0)
+                                  : 0
+                              ))}
                             </p>
                           </CardContent>
                         </Card>
@@ -3153,12 +3173,12 @@ export default function GA4Metrics() {
                             )}
                           </CardContent>
                         </Card>
-                        {/* Latest Day Spend */}
+                        {/* Latest Day Spend — checks today and yesterday for spend records */}
                         <Card>
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Spend</p>
                             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                              {formatMoney(Number(spendDailyResp?.totalSpend || (ga4DailyRows.length > 0 ? ga4DailyRows[ga4DailyRows.length - 1]?._raw?.spend || 0 : 0)))}
+                              {formatMoney(Number(spendDailyResp?.totalSpend || 0))}
                             </p>
                           </CardContent>
                         </Card>

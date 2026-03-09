@@ -173,10 +173,36 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - **Users are non-additive**: Summing users across campaigns or sections over-counts due to user overlap. Landing Pages has a tooltip warning about this.
 - **IMPORTANT**: All GA4 Overview endpoints MUST scope to the current campaign's `ga4CampaignFilter`. Never aggregate filters across all client campaigns — that would mix data from unrelated campaigns sharing the same GA4 property.
 
+### KPI UI Pattern (shared across GA4 and LinkedIn)
+
+**Summary cards** (5-column grid): Total KPIs | Above Target (>+5%) | On Track (±5%) | Below Track (<-5%) | Avg. Progress. Uses `classifyKpiBand()` from `shared/kpi-math.ts` with `NEAR_TARGET_BAND_PCT = 5`.
+
+**Progress logic** (from `shared/kpi-math.ts`):
+- `isLowerIsBetterKpi()` — detects CPC/CPM/CPA/CPL/Spend as "lower is better"
+- `computeEffectiveDeltaPct()` — percent delta vs target (sign-flipped for lower-is-better)
+- `classifyKpiBand()` — above/near/below using ±5% band
+- `computeAttainmentPct()` — uncapped progress percentage (can exceed 100%)
+- `computeAttainmentFillPct()` — capped 0-100% for progress bar fill
+- Progress bar colors: green ≥100%, amber ≥90%, red <90%
+
+**KPI card rendering**: Current/Target values in 2-col grid, progress bar with uncapped attainment %, delta text below ("X% above/below target"). No status label text — delta text replaces it.
+
+**Create KPI modal layout** (LinkedIn is the reference pattern):
+- Template/metric selection (platform-specific tiles or dropdown)
+- Grid 2 cols: KPI Name | [empty]
+- Full width: Description (Textarea with char counter)
+- Grid 3 cols: Current Value | Target Value | Unit (free text input)
+- Grid 2 cols: Priority (Low/Medium/High) | [empty]
+- Alert Settings (border-t separator, no heading):
+  - Checkbox: "Enable alerts for this KPI" + description text
+  - [Conditional when enabled, indented `pl-6`]:
+    - Grid 2 cols: Alert Threshold (free text decimal, "Value at which to trigger the alert") | Alert When (Below/Above/Equals)
+    - Grid 2 cols: Alert Frequency (Immediate/Daily/Weekly) + helper text | Email checkbox + conditional email recipients
+- DialogFooter: Cancel | Create/Update KPI
+
 ### GA4 KPIs Tab
 - **Templates**: ROAS, ROI, CPA, Revenue, Conversions, Engagement Rate, Conversion Rate, Users, Sessions + Custom. Templates requiring spend/revenue are disabled when sources aren't connected.
 - **Live values**: `getLiveKpiValue()` computes current values from live query data (NOT stored `currentValue`). Stored `currentValue` is only a fallback for custom/legacy KPIs.
-- **Progress**: `computeProgress({ current, target, lowerIsBetter })` — ratio ≥ 0.9 = on_track, ≥ 0.7 = needs_attention, else behind. CPA is the only "lower is better" metric.
 - **Blocked KPIs**: KPIs missing required data (spend/revenue) show "Blocked" status with explanation link. Excluded from scoring.
 - **No timeframe scaling**: `timeframe`, `trackingPeriod`, and `rollingAverage` fields were removed from the form. All KPIs evaluate on cumulative values. Targets are absolute goals.
 - **ROAS unit**: GA4 ROAS is stored/displayed as percentage (300 = 3x). LinkedIn ROAS is stored as ratio (3.0). These are separate KPI systems on separate pages — no cross-platform display.

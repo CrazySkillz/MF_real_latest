@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, Download, FileText, Settings, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, RefreshCw, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { SiGoogle } from "react-icons/si";
 import { useForm } from "react-hook-form";
@@ -22,7 +22,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -31,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent } from "@shared/metric-math";
+import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBand, computeAttainmentPct, computeAttainmentFillPct } from "@shared/kpi-math";
 
 interface Campaign {
   id: string;
@@ -68,13 +70,14 @@ const kpiFormSchema = z.object({
   unit: z.string().min(1, "Unit is required"),
   currentValue: z.string().min(1, "Current value is required"),
   targetValue: z.string().min(1, "Target value is required"),
-  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
   targetDate: z.string().optional(),
-  alertThreshold: z.number().min(1).max(100).optional(),
-  alertsEnabled: z.boolean().default(true),
-  emailNotifications: z.boolean().default(false),
-  slackNotifications: z.boolean().default(false),
+  alertsEnabled: z.boolean().default(false),
+  alertThreshold: z.string().optional(),
+  alertCondition: z.enum(["below", "above", "equals"]).default("below"),
   alertFrequency: z.enum(["immediate", "daily", "weekly"]).default("daily"),
+  emailNotifications: z.boolean().default(false),
+  emailRecipients: z.string().optional(),
 });
 
 type KPIFormData = z.infer<typeof kpiFormSchema>;
@@ -207,11 +210,12 @@ export default function GA4Metrics() {
       targetValue: "",
       priority: "medium",
       targetDate: "",
-      alertThreshold: 80,
-      alertsEnabled: true,
-      emailNotifications: false,
-      slackNotifications: false,
+      alertsEnabled: false,
+      alertThreshold: "",
+      alertCondition: "below",
       alertFrequency: "daily",
+      emailNotifications: false,
+      emailRecipients: "",
     },
   });
 
@@ -1818,19 +1822,25 @@ export default function GA4Metrics() {
     return String(kpi?.currentValue ?? "0.00");
   };
 
+  const NEAR_TARGET_BAND_PCT = 5;
+
   const computeKpiProgress = (kpi: any) => {
     const current = parseFloat(String(getLiveKpiValue(kpi) || "0"));
     const safeCurrent = Number.isFinite(current) ? current : 0;
     const { effectiveTarget } = getKpiEffectiveTarget(kpi);
     const safeTarget = Number.isFinite(effectiveTarget) ? effectiveTarget : 0;
 
-    // Direction: most exec KPIs here are "higher is better".
-    // CPA is "lower is better" (cost per conversion).
-    const name = String(kpi?.metric || kpi?.name || "").toLowerCase();
-    const lowerIsBetter = name === "cpa";
-    const p = computeProgress({ current: safeCurrent, target: safeTarget, lowerIsBetter });
-    const color = p.ratio >= 0.9 ? "bg-green-500" : p.ratio >= 0.7 ? "bg-yellow-500" : "bg-red-500";
-    return { ...p, color };
+    const name = String(kpi?.metric || kpi?.name || "");
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: name, name: kpi?.name });
+    const effectiveDeltaPctVal = computeEffectiveDeltaPct({ current: safeCurrent, target: safeTarget, lowerIsBetter });
+    const band = effectiveDeltaPctVal !== null
+      ? classifyKpiBand({ effectiveDeltaPct: effectiveDeltaPctVal, nearTargetBandPct: NEAR_TARGET_BAND_PCT })
+      : "below" as const;
+    const attainmentPct = computeAttainmentPct({ current: safeCurrent, target: safeTarget, lowerIsBetter });
+    const fillPct = attainmentPct !== null ? computeAttainmentFillPct(attainmentPct) : 0;
+    const progressColor = (attainmentPct ?? 0) >= 100 ? "bg-green-500" : (attainmentPct ?? 0) >= 90 ? "bg-amber-500" : "bg-red-500";
+
+    return { band, effectiveDeltaPct: effectiveDeltaPctVal, attainmentPct: attainmentPct ?? 0, fillPct, progressColor, lowerIsBetter };
   };
 
   const computeBenchmarkProgress = (benchmark: any) => {
@@ -2135,9 +2145,9 @@ export default function GA4Metrics() {
   const kpiTracker = useMemo(() => {
     const items = Array.isArray(platformKPIs) ? platformKPIs : [];
     let scored = 0;
-    let onTrack = 0;
-    let needsAttention = 0;
-    let behind = 0;
+    let above = 0;
+    let near = 0;
+    let below = 0;
     let blocked = 0;
     let sumPct = 0;
 
@@ -2152,22 +2162,14 @@ export default function GA4Metrics() {
       if (!Number.isFinite(target) || target <= 0) continue; // can't score without a target
       const p = computeKpiProgress(kpi);
       scored += 1;
-      sumPct += Number(p?.pct || 0);
-      if (p.status === "on_track") onTrack += 1;
-      else if (p.status === "needs_attention") needsAttention += 1;
-      else if (p.status === "behind") behind += 1;
+      sumPct += p.attainmentPct;
+      if (p.band === "above") above += 1;
+      else if (p.band === "near") near += 1;
+      else below += 1;
     }
 
     const avgPct = scored > 0 ? sumPct / scored : 0;
-    return {
-      total: items.length,
-      scored,
-      onTrack,
-      needsAttention,
-      behind,
-      blocked,
-      avgPct,
-    };
+    return { total: items.length, scored, above, near, below, blocked, avgPct };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
   }, [platformKPIs, breakdownTotals, ga4Metrics, financialSpend, spendMetricAvailable, revenueMetricAvailable]);
 
@@ -2375,7 +2377,7 @@ export default function GA4Metrics() {
       const streak = (() => {
         const prog = Array.isArray(analytics?.progress) ? analytics.progress : [];
         if (prog.length === 0) return 0;
-        const lowerIsBetter = String(metric || "").toLowerCase() === "cpa";
+        const lowerIsBetter = isLowerIsBetterKpi({ metric, name: String((k as any)?.name || "") });
         const target = parseFloat(String((k as any)?.targetValue || "0"));
         const statusFor = (val: number) => computeProgress({ current: val, target: target, lowerIsBetter }).status;
         const first = statusFor(parseFloat(String(prog[0]?.value || "0")));
@@ -3524,63 +3526,62 @@ export default function GA4Metrics() {
                             {/* KPI performance tracker (exec snapshot) */}
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                               <Card>
-                                <CardContent className="p-5">
+                                <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total KPIs</p>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
                                       <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpiTracker.total}</p>
                                     </div>
-                                    <Target className="w-7 h-7 text-slate-500" />
+                                    <Target className="w-8 h-8 text-purple-500" />
                                   </div>
                                 </CardContent>
                               </Card>
-
                               <Card>
-                                <CardContent className="p-5">
+                                <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">On Track</p>
-                                      <p className="text-2xl font-bold text-emerald-600">{kpiTracker.onTrack}</p>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                                      <p className="text-2xl font-bold text-green-600">{kpiTracker.above}</p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-500">more than +5% above target</p>
                                     </div>
-                                    <BadgeCheck className="w-7 h-7 text-emerald-600" />
+                                    <TrendingUp className="w-8 h-8 text-green-500" />
                                   </div>
                                 </CardContent>
                               </Card>
-
                               <Card>
-                                <CardContent className="p-5">
+                                <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs Attention</p>
-                                      <p className="text-2xl font-bold text-amber-600">{kpiTracker.needsAttention}</p>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                                      <p className="text-2xl font-bold text-blue-600">{kpiTracker.near}</p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-500">within ±5% of target</p>
                                     </div>
-                                    <AlertTriangle className="w-7 h-7 text-amber-600" />
+                                    <CheckCircle2 className="w-8 h-8 text-blue-500" />
                                   </div>
                                 </CardContent>
                               </Card>
-
                               <Card>
-                                <CardContent className="p-5">
+                                <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Behind</p>
-                                      <p className="text-2xl font-bold text-red-600">{kpiTracker.behind}</p>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Below Track</p>
+                                      <p className="text-2xl font-bold text-amber-600">{kpiTracker.below}</p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-500">more than −5% below target</p>
                                     </div>
-                                    <TrendingDown className="w-7 h-7 text-red-600" />
+                                    <AlertCircle className="w-8 h-8 text-amber-500" />
                                   </div>
                                 </CardContent>
                               </Card>
-
                               <Card>
-                                <CardContent className="p-5">
+                                <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
                                       <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                         {kpiTracker.avgPct.toFixed(1)}%
                                       </p>
                                     </div>
-                                    <TrendingUp className="w-7 h-7 text-violet-600" />
+                                    <TrendingUp className="w-8 h-8 text-violet-600" />
                                   </div>
                                 </CardContent>
                               </Card>
@@ -3624,20 +3625,6 @@ export default function GA4Metrics() {
                                   const t = getKpiEffectiveTarget(kpi);
                                   const metricKey = String(kpi?.metric || kpi?.name || "");
                                   const { Icon, color } = getKpiIcon(metricKey);
-                                  const statusLabel = isBlocked
-                                    ? "Blocked"
-                                    : p!.status === "on_track"
-                                      ? "On Track"
-                                      : p!.status === "needs_attention"
-                                        ? "Needs Attention"
-                                        : "Behind";
-                                  const statusColor = isBlocked
-                                    ? "text-slate-700 dark:text-slate-300"
-                                    : p!.status === "on_track"
-                                      ? "text-emerald-700 dark:text-emerald-300"
-                                      : p!.status === "needs_attention"
-                                        ? "text-amber-700 dark:text-amber-300"
-                                        : "text-red-700 dark:text-red-300";
 
                                   return (
                                     <Card key={kpi.id} className="border-slate-200 dark:border-slate-700">
@@ -3680,11 +3667,12 @@ export default function GA4Metrics() {
                                                   currentValue: formatNumberByUnit(String(getLiveKpiValue(kpi) || "0"), String(kpi?.unit || "%")),
                                                   targetValue: formatNumberByUnit(String(kpi?.targetValue || ""), String(kpi?.unit || "%")),
                                                   priority: (kpi?.priority || "medium") as any,
-                                                  alertsEnabled: Boolean(kpi?.alertsEnabled ?? true),
-                                                  alertThreshold: typeof kpi?.alertThreshold === "number" ? kpi.alertThreshold : Number(kpi?.alertThreshold || 80),
-                                                  emailNotifications: Boolean(kpi?.emailNotifications ?? false),
-                                                  slackNotifications: Boolean(kpi?.slackNotifications ?? false),
+                                                  alertsEnabled: Boolean(kpi?.alertsEnabled ?? false),
+                                                  alertThreshold: kpi?.alertThreshold ? String(kpi.alertThreshold) : "",
+                                                  alertCondition: (kpi?.alertCondition || "below") as any,
                                                   alertFrequency: (kpi?.alertFrequency || "daily") as any,
+                                                  emailNotifications: Boolean(kpi?.emailNotifications ?? false),
+                                                  emailRecipients: String(kpi?.emailRecipients || ""),
                                                 });
                                                 setShowKPIDialog(true);
                                               }}
@@ -3708,47 +3696,62 @@ export default function GA4Metrics() {
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4 mt-4">
-                                          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">Current</div>
-                                            <div className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+                                          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                                            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current</div>
+                                            <div className="text-xl font-bold text-slate-900 dark:text-white">
                                               {isBlocked ? "—" : formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
                                             </div>
                                           </div>
-                                          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">Target</div>
-                                            <div className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+                                          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                                            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Target</div>
+                                            <div className="text-xl font-bold text-slate-900 dark:text-white">
                                               {formatValue(String(t.effectiveTarget), kpi.unit)}
                                             </div>
                                           </div>
                                         </div>
 
-                                        <div className="mt-4">
-                                          <div className="flex items-center justify-between text-sm">
-                                            <span className="text-slate-700 dark:text-slate-300">Progress</span>
-                                            <span className="text-slate-700 dark:text-slate-300">{isBlocked ? "—" : `${p!.labelPct}%`}</span>
-                                          </div>
-                                          <div className="mt-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
-                                            <div
-                                              className={`h-2.5 rounded-full ${isBlocked ? "bg-slate-400" : p!.color}`}
-                                              style={{ width: `${isBlocked ? 0 : p!.pct}%` }}
-                                            />
-                                          </div>
-                                          <div className={`mt-3 text-sm font-medium ${statusColor}`}>
-                                            {statusLabel}
-                                          </div>
-                                          {isBlocked ? (
-                                            <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                                              Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This KPI is paused until inputs are restored.
-                                              <div className="mt-2">
-                                                <Link href={`/campaigns/${campaignId}#overview`}>
-                                                  <Button type="button" variant="outline" size="sm">
-                                                    Manage Connected Platforms
-                                                  </Button>
-                                                </Link>
-                                              </div>
+                                        {/* Progress bar */}
+                                        {!isBlocked && p && (
+                                          <div className="mt-4 space-y-2">
+                                            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                                              <span>Progress</span>
+                                              <span>{Math.round(p.attainmentPct)}%</span>
                                             </div>
-                                          ) : null}
-                                        </div>
+                                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                              <div
+                                                className={`h-2 rounded-full ${p.progressColor}`}
+                                                style={{ width: `${p.fillPct}%` }}
+                                              />
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Delta vs target */}
+                                        {!isBlocked && p && p.effectiveDeltaPct !== null && (
+                                          <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                                            {(() => {
+                                              if (Math.abs(p.effectiveDeltaPct) < 0.0001) return "At target";
+                                              const signed = `${p.effectiveDeltaPct >= 0 ? "+" : ""}${p.effectiveDeltaPct.toFixed(1)}%`;
+                                              const absRounded = `${Math.round(Math.abs(p.effectiveDeltaPct))}%`;
+                                              return p.effectiveDeltaPct > 0
+                                                ? `${absRounded} above target (${signed})`
+                                                : `${absRounded} below target (${signed})`;
+                                            })()}
+                                          </div>
+                                        )}
+
+                                        {isBlocked ? (
+                                          <div className="mt-4 text-sm text-slate-600 dark:text-slate-400">
+                                            Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This KPI is paused until inputs are restored.
+                                            <div className="mt-2">
+                                              <Link href={`/campaigns/${campaignId}#overview`}>
+                                                <Button type="button" variant="outline" size="sm">
+                                                  Manage Connected Platforms
+                                                </Button>
+                                              </Link>
+                                            </div>
+                                          </div>
+                                        ) : null}
                                       </CardContent>
                                     </Card>
                                   );
@@ -5144,262 +5147,195 @@ export default function GA4Metrics() {
                 </div>
               </div>
 
+              {/* KPI Name (full width, like LinkedIn) */}
               <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={kpiForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>KPI Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., ROI, ROAS, CTR" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={kpiForm.control}
-                  name="unit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unit</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select unit" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value={SELECT_UNIT}>Select unit</SelectItem>
-                          <SelectItem value="%">Percentage (%)</SelectItem>
-                          <SelectItem value={String((campaign as any)?.currency || "USD")}>
-                            Currency ({String((campaign as any)?.currency || "USD")})
-                          </SelectItem>
-                          <SelectItem value="count">Count</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={kpiForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Describe what this KPI measures and why it's important"
-                        value={field.value || ""}
-                        maxLength={KPI_DESC_MAX}
-                        onChange={(e) => field.onChange(String(e.target.value || "").slice(0, KPI_DESC_MAX))}
-                        onBlur={field.onBlur}
-                      />
-                    </FormControl>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
-                      {(String(field.value || "")).length}/{KPI_DESC_MAX}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={kpiForm.control}
-                  name="currentValue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Current Value</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="Current value"
-                          value={field.value || ""}
-                          onChange={(e) =>
-                            field.onChange(formatNumberAsYouType(e.target.value, String(kpiForm.getValues().unit || "%")))
-                          }
-                          onBlur={(e) => field.onChange(formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={kpiForm.control}
-                  name="targetValue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Target Value *</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="Target goal"
-                          value={field.value || ""}
-                          required
-                          onChange={(e) =>
-                            field.onChange(formatNumberAsYouType(e.target.value, String(kpiForm.getValues().unit || "%")))
-                          }
-                          onBlur={(e) => field.onChange(formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={kpiForm.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Medium" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
-                <h4 className="font-medium text-slate-900 dark:text-white">Alert Settings</h4>
-
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="flex items-center space-x-3">
-                    <FormField
-                      control={kpiForm.control}
-                      name="alertsEnabled"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                          <FormControl>
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="rounded border-slate-300"
-                            />
-                          </FormControl>
-                          <FormLabel className="text-sm font-medium">
-                            Enable alerts for this KPI
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={kpiForm.control}
-                      name="alertThreshold"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Alert Threshold (%)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="100"
-                              placeholder="80"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                              value={field.value || ''}
-                            />
-                          </FormControl>
-                          <p className="text-xs text-slate-500">Alert when performance falls below this % of target</p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={kpiForm.control}
-                      name="alertFrequency"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Alert Frequency</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="immediate">Immediate</SelectItem>
-                              <SelectItem value="daily">Daily summary</SelectItem>
-                              <SelectItem value="weekly">Weekly summary</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-6">
-                    <FormField
-                      control={kpiForm.control}
-                      name="emailNotifications"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                          <FormControl>
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="rounded border-slate-300"
-                            />
-                          </FormControl>
-                          <FormLabel className="text-sm font-medium">
-                            Email notifications
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={kpiForm.control}
-                      name="slackNotifications"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                          <FormControl>
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="rounded border-slate-300"
-                            />
-                          </FormControl>
-                          <FormLabel className="text-sm font-medium">
-                            Slack notifications
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-name">KPI Name *</Label>
+                  <Input
+                    id="kpi-name"
+                    placeholder="e.g., GA4 ROAS Target"
+                    value={kpiForm.watch("name")}
+                    onChange={(e) => kpiForm.setValue("name", e.target.value)}
+                  />
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="kpi-description">Description</Label>
+                <Textarea
+                  id="kpi-description"
+                  placeholder="Describe what this KPI measures and why it's important"
+                  value={kpiForm.watch("description") || ""}
+                  maxLength={KPI_DESC_MAX}
+                  onChange={(e) => kpiForm.setValue("description", String(e.target.value || "").slice(0, KPI_DESC_MAX))}
+                  rows={3}
+                />
+                <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                  {(String(kpiForm.watch("description") || "")).length}/{KPI_DESC_MAX}
+                </div>
+              </div>
+
+              {/* Current Value | Target Value | Unit (3-col like LinkedIn) */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-current">Current Value</Label>
+                  <Input
+                    id="kpi-current"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={kpiForm.watch("currentValue") || ""}
+                    onChange={(e) =>
+                      kpiForm.setValue("currentValue", formatNumberAsYouType(e.target.value, String(kpiForm.getValues().unit || "%")))
+                    }
+                    onBlur={(e) => kpiForm.setValue("currentValue", formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-target">Target Value *</Label>
+                  <Input
+                    id="kpi-target"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={kpiForm.watch("targetValue") || ""}
+                    onChange={(e) =>
+                      kpiForm.setValue("targetValue", formatNumberAsYouType(e.target.value, String(kpiForm.getValues().unit || "%")))
+                    }
+                    onBlur={(e) => kpiForm.setValue("targetValue", formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-unit">Unit</Label>
+                  <Input
+                    id="kpi-unit"
+                    placeholder="%, $, etc."
+                    value={kpiForm.watch("unit")}
+                    onChange={(e) => kpiForm.setValue("unit", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Priority (2-col grid, left only like LinkedIn) */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="kpi-priority">Priority</Label>
+                  <Select value={kpiForm.watch("priority")} onValueChange={(v) => kpiForm.setValue("priority", v as any)}>
+                    <SelectTrigger id="kpi-priority">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Alert Settings (border-t, matching LinkedIn) */}
+              <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="kpi-alerts-enabled"
+                      checked={kpiForm.watch("alertsEnabled")}
+                      onCheckedChange={(checked) => kpiForm.setValue("alertsEnabled", checked as boolean)}
+                    />
+                    <Label htmlFor="kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                      Enable alerts for this KPI
+                    </Label>
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 pl-6">
+                    Receive notifications for KPI performance alerts on the bell icon &amp; in your Notifications center
+                  </p>
+                </div>
+
+                {kpiForm.watch("alertsEnabled") && (
+                  <div className="space-y-4 pl-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="kpi-alert-threshold">Alert Threshold *</Label>
+                        <Input
+                          id="kpi-alert-threshold"
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="e.g., 80"
+                          value={kpiForm.watch("alertThreshold") || ""}
+                          onChange={(e) => kpiForm.setValue("alertThreshold", e.target.value)}
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="kpi-alert-condition">Alert When</Label>
+                        <Select value={kpiForm.watch("alertCondition")} onValueChange={(v) => kpiForm.setValue("alertCondition", v as any)}>
+                          <SelectTrigger id="kpi-alert-condition">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="below">Value Goes Below</SelectItem>
+                            <SelectItem value="above">Value Goes Above</SelectItem>
+                            <SelectItem value="equals">Value Equals</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="kpi-alert-frequency">Alert Frequency</Label>
+                        <Select
+                          value={kpiForm.watch("alertFrequency") || "daily"}
+                          onValueChange={(v) => kpiForm.setValue("alertFrequency", v as any)}
+                        >
+                          <SelectTrigger id="kpi-alert-frequency">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="immediate">Immediate</SelectItem>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Controls how often you're notified while the alert condition stays true.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2 pt-1">
+                          <Checkbox
+                            id="kpi-email-notifications"
+                            checked={kpiForm.watch("emailNotifications")}
+                            onCheckedChange={(checked) => kpiForm.setValue("emailNotifications", checked as boolean)}
+                          />
+                          <Label htmlFor="kpi-email-notifications" className="cursor-pointer font-medium">
+                            Send email notifications
+                          </Label>
+                        </div>
+                        {kpiForm.watch("emailNotifications") && (
+                          <div className="space-y-2">
+                            <Label htmlFor="kpi-email-recipients">Email addresses *</Label>
+                            <Input
+                              id="kpi-email-recipients"
+                              type="text"
+                              placeholder="email1@example.com, email2@example.com"
+                              value={kpiForm.watch("emailRecipients") || ""}
+                              onChange={(e) => kpiForm.setValue("emailRecipients", e.target.value)}
+                            />
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Comma-separated. Best for execs who want alerts outside the app.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
                 <Button variant="outline" onClick={() => setShowKPIDialog(false)}>
                   Cancel
                 </Button>
@@ -5408,7 +5344,7 @@ export default function GA4Metrics() {
                     ? (updateKPIMutation.isPending ? "Updating..." : "Update KPI")
                     : (createKPIMutation.isPending ? "Creating..." : "Create KPI")}
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
           </Form>
         </DialogContent>

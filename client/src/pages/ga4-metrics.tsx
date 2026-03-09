@@ -69,9 +69,6 @@ const kpiFormSchema = z.object({
   currentValue: z.string().min(1, "Current value is required"),
   targetValue: z.string().min(1, "Target value is required"),
   priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
-  timeframe: z.enum(["daily", "weekly", "monthly", "quarterly"]).default("daily"),
-  trackingPeriod: z.number().min(1).max(365).default(1),
-  rollingAverage: z.enum(["1day", "7day", "30day", "none"]).default("7day"),
   targetDate: z.string().optional(),
   alertThreshold: z.number().min(1).max(100).optional(),
   alertsEnabled: z.boolean().default(true),
@@ -209,9 +206,6 @@ export default function GA4Metrics() {
       currentValue: "",
       targetValue: "",
       priority: "medium",
-      timeframe: "daily",
-      trackingPeriod: 1,
-      rollingAverage: "7day",
       targetDate: "",
       alertThreshold: 80,
       alertsEnabled: true,
@@ -383,9 +377,6 @@ export default function GA4Metrics() {
         body: JSON.stringify({
           ...data,
           campaignId, // Scope KPI to this MetricMind campaign
-          // GA4 KPIs are defined and evaluated on daily values (no UI windowing/scaling).
-          timeframe: data.timeframe || "daily",
-          trackingPeriod: data.trackingPeriod || 1,
           // Prefer the user-visible current value (prefilled live when selecting a template).
           // Fallback to the computed value if for any reason the field is empty.
           currentValue: stripNumberFormatting((data as any)?.currentValue) || calculatedValue,
@@ -424,9 +415,6 @@ export default function GA4Metrics() {
         body: JSON.stringify({
           ...payload.data,
           campaignId,
-          // GA4 KPIs are defined and evaluated on daily values (no UI windowing/scaling).
-          timeframe: (editingKPI as any)?.timeframe || payload.data.timeframe || "daily",
-          trackingPeriod: (editingKPI as any)?.trackingPeriod || payload.data.trackingPeriod || 1,
           currentValue: stripNumberFormatting((payload.data as any)?.currentValue),
           targetValue: stripNumberFormatting((payload.data as any)?.targetValue),
         }),
@@ -1797,14 +1785,11 @@ export default function GA4Metrics() {
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
 
-  // GA4 KPIs are evaluated on strict daily values (no UI window scaling).
-  // Targets should therefore be defined as daily targets.
+  // GA4 KPIs are evaluated on cumulative values — target is the absolute goal.
   const getKpiEffectiveTarget = (kpi: any) => {
     const rawTarget = parseFloat(String(kpi?.targetValue || "0"));
     const safeTarget = Number.isFinite(rawTarget) ? rawTarget : 0;
-    const baseDaysRaw = Number((kpi as any)?.trackingPeriod || 0);
-    const baseDays = Number.isFinite(baseDaysRaw) && baseDaysRaw > 0 ? baseDaysRaw : 0;
-    return { effectiveTarget: safeTarget, baseDays, viewDays: baseDays, scaled: false };
+    return { effectiveTarget: safeTarget, scaled: false };
   };
 
   const getLiveKpiValue = (kpi: any): string => {

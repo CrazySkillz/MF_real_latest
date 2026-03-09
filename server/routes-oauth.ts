@@ -16646,9 +16646,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Connect Meta/Facebook Ads account in test mode
    * For production, this would be replaced with real OAuth flow
    */
-  // Test endpoint to trigger KPI alerts manually
+  // Test endpoint to trigger KPI alerts manually (requires authenticated user)
   app.post("/api/kpis/test-alerts", async (req, res) => {
     try {
+      const actorId = getActorId(req);
+      if (!actorId) return res.status(401).json({ success: false, error: "Authentication required" });
+
       const { checkPerformanceAlerts } = await import("./kpi-scheduler");
       await checkPerformanceAlerts();
       res.json({ success: true, message: "Alert check completed - check bell icon for notifications" });
@@ -19469,26 +19472,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, id);
       if (!ok) return;
 
-      // Ensure DB has the column for user-selected input configs (deployed environments may not have run migrations yet).
-      if (db) {
-        try {
-          await db.execute(sql`
-            ALTER TABLE kpis
-            ADD COLUMN IF NOT EXISTS calculation_config JSONB;
-          `);
-          await db.execute(sql`
-            ALTER TABLE kpis
-            ALTER COLUMN target_value TYPE DECIMAL(18, 2),
-            ALTER COLUMN current_value TYPE DECIMAL(18, 2),
-            ALTER COLUMN last_computed_value TYPE DECIMAL(18, 2),
-            ALTER COLUMN alert_threshold TYPE DECIMAL(18, 2);
-          `);
-        } catch (e) {
-          // Best-effort: do not block request on migration attempt; actual insert may still fail and surface below.
-          console.error("[KPI Create] Failed to ensure calculation_config column:", e);
-        }
-      }
-
       // Convert numeric values to strings for decimal fields
       const requestData = {
         ...req.body,
@@ -19532,25 +19515,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!okCampaign) return;
-
-      // Ensure DB has the column for user-selected input configs (deployed environments may not have run migrations yet).
-      if (db) {
-        try {
-          await db.execute(sql`
-            ALTER TABLE kpis
-            ADD COLUMN IF NOT EXISTS calculation_config JSONB;
-          `);
-          await db.execute(sql`
-            ALTER TABLE kpis
-            ALTER COLUMN target_value TYPE DECIMAL(18, 2),
-            ALTER COLUMN current_value TYPE DECIMAL(18, 2),
-            ALTER COLUMN last_computed_value TYPE DECIMAL(18, 2),
-            ALTER COLUMN alert_threshold TYPE DECIMAL(18, 2);
-          `);
-        } catch (e) {
-          console.error("[KPI Update] Failed to ensure calculation_config column:", e);
-        }
-      }
 
       // Convert numeric values to strings for decimal fields
       const updateData: any = {
@@ -19602,7 +19566,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/campaigns/:id/kpis/:kpiId", async (req, res) => {
     try {
-      const { kpiId } = req.params;
+      const { id, kpiId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, id);
+      if (!ok) return;
 
       const deleted = await storage.deleteKPI(kpiId);
       if (!deleted) {

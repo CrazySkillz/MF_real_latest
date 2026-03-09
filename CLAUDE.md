@@ -173,6 +173,17 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - **Users are non-additive**: Summing users across campaigns or sections over-counts due to user overlap. Landing Pages has a tooltip warning about this.
 - **IMPORTANT**: All GA4 Overview endpoints MUST scope to the current campaign's `ga4CampaignFilter`. Never aggregate filters across all client campaigns — that would mix data from unrelated campaigns sharing the same GA4 property.
 
+### GA4 KPIs Tab
+- **Templates**: ROAS, ROI, CPA, Revenue, Conversions, Engagement Rate, Conversion Rate, Users, Sessions + Custom. Templates requiring spend/revenue are disabled when sources aren't connected.
+- **Live values**: `getLiveKpiValue()` computes current values from live query data (NOT stored `currentValue`). Stored `currentValue` is only a fallback for custom/legacy KPIs.
+- **Progress**: `computeProgress({ current, target, lowerIsBetter })` — ratio ≥ 0.9 = on_track, ≥ 0.7 = needs_attention, else behind. CPA is the only "lower is better" metric.
+- **Blocked KPIs**: KPIs missing required data (spend/revenue) show "Blocked" status with explanation link. Excluded from scoring.
+- **No timeframe scaling**: `timeframe`, `trackingPeriod`, and `rollingAverage` fields were removed from the form. All KPIs evaluate on cumulative values. Targets are absolute goals.
+- **ROAS unit**: GA4 ROAS is stored/displayed as percentage (300 = 3x). LinkedIn ROAS is stored as ratio (3.0). These are separate KPI systems on separate pages — no cross-platform display.
+- **Scheduler**: `ga4-kpi-benchmark-jobs.ts` records daily `kpiProgress` rows. Uses `getSpendTotalForRange()` (NOT `campaign.spend`) for accurate financial KPIs.
+- **Auth**: All KPI CRUD endpoints require `ensureCampaignAccess` or `ensureKpiAccess`. `test-alerts` endpoint requires authenticated user.
+- **Cascade delete**: Deleting a KPI also deletes its `kpiProgress` and `kpiAlerts` rows.
+
 ---
 
 ## Add Spend Wizard (`AddSpendWizardModal.tsx`)

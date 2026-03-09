@@ -237,7 +237,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       // Imported revenue-to-date is stored as a single snapshot record dated "yesterday (UTC)".
       // Summing from a wide range yields the same number.
       const importedRevenueTotals = await storage.getRevenueTotalForRange(campaignId, "2000-01-01", date).catch(() => ({ totalRevenue: 0 }));
-      const spendToDate = Number((campaign as any)?.spend || 0) || 0;
+      // Use actual spend records (not the denormalized campaign.spend field which can be stale)
+      const spendTotalResult = await storage.getSpendTotalForRange(campaignId, "2000-01-01", date).catch(() => ({ totalSpend: 0 }));
+      const spendToDate = Number((spendTotalResult as any)?.totalSpend || 0) || 0;
 
       const rawFilter = String((campaign as any)?.ga4CampaignFilter || "").toLowerCase();
       const forceNoRevenue = rawFilter.includes("no_rev") || rawFilter.includes("no-rev") || rawFilter.includes("no revenue");

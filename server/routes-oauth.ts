@@ -7795,22 +7795,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
-      // Aggregate ga4CampaignFilter across ALL campaigns for the same client
-      const clientId = (campaign as any)?.clientId;
-      let combinedFilterNames: string[] = [];
-      if (clientId) {
-        const allCampaigns = await storage.getCampaigns();
-        for (const c of (allCampaigns || [])) {
-          if (String((c as any)?.clientId || '') !== String(clientId)) continue;
-          const f = parseGA4CampaignFilter((c as any)?.ga4CampaignFilter);
-          if (f) combinedFilterNames.push(...(Array.isArray(f) ? f : [f]));
-        }
-      }
-      if (combinedFilterNames.length === 0) {
-        const f = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-        if (f) combinedFilterNames = Array.isArray(f) ? f : [f];
-      }
-      const campaignFilter = combinedFilterNames.length > 0 ? combinedFilterNames : parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      // Use current campaign's ga4CampaignFilter only (not cross-client)
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
       // Use campaign startDate for cumulative data (no arbitrary date range limit)
       const startDateParam = req.query.startDate ? String(req.query.startDate) : null;
@@ -7908,22 +7894,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
-      // Aggregate ga4CampaignFilter across ALL campaigns for the same client
-      const clientId = (campaign as any)?.clientId;
-      let combinedFilterNames: string[] = [];
-      if (clientId) {
-        const allCampaigns = await storage.getCampaigns();
-        for (const c of (allCampaigns || [])) {
-          if (String((c as any)?.clientId || '') !== String(clientId)) continue;
-          const f = parseGA4CampaignFilter((c as any)?.ga4CampaignFilter);
-          if (f) combinedFilterNames.push(...(Array.isArray(f) ? f : [f]));
-        }
-      }
-      if (combinedFilterNames.length === 0) {
-        const f = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-        if (f) combinedFilterNames = Array.isArray(f) ? f : [f];
-      }
-      const campaignFilter = combinedFilterNames.length > 0 ? combinedFilterNames : parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      // Use current campaign's ga4CampaignFilter only (not cross-client)
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
       // Use campaign startDate for cumulative data (no arbitrary date range limit)
       const startDateParam = req.query.startDate ? String(req.query.startDate) : null;

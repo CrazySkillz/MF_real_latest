@@ -319,6 +319,7 @@ export const linkedinConnections = pgTable("linkedin_connections", {
   // Canonical "last successful data refresh" timestamp (used for exec-safe coverage across tabs).
   campaignUtmMap: text("campaign_utm_map"), // JSON: { linkedinCampaignId: utmCampaignName } for GA4 matching
   lastRefreshAt: timestamp("last_refresh_at"),
+  spendOnly: boolean("spend_only").default(false),
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -337,6 +338,7 @@ export const metaConnections = pgTable("meta_connections", {
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Platform-specific conversion value from Google Sheets/webhook
   selectedCampaignIds: text("selected_campaign_ids"), // JSON array of Meta campaign IDs to import
   campaignUtmMap: text("campaign_utm_map"), // JSON: { metaCampaignId: utmCampaignName } for GA4 matching
+  spendOnly: boolean("spend_only").default(false),
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -360,6 +362,7 @@ export const googleAdsConnections = pgTable("google_ads_connections", {
   selectedCampaignIds: text("selected_campaign_ids"), // JSON array of Google Ads campaign IDs to import
   campaignUtmMap: text("campaign_utm_map"), // JSON: { googleCampaignId: utmCampaignName } for GA4 matching
   lastRefreshAt: timestamp("last_refresh_at"),
+  spendOnly: boolean("spend_only").default(false),
   expiresAt: timestamp("expires_at"),
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),

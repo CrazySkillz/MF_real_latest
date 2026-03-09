@@ -954,7 +954,7 @@ export function AddSpendWizardModal(props: {
       const resp = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ spendOnly: true }),
       });
       const json = await resp.json().catch(() => null);
       if (resp.ok && (json?.success !== false)) {
@@ -990,7 +990,7 @@ export function AddSpendWizardModal(props: {
       const resp = await fetch(authEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId: props.campaignId }),
+        body: JSON.stringify({ campaignId: props.campaignId, spendOnly: true }),
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok || !data?.authUrl) throw new Error(data?.message || data?.error || "Failed to start connection");
@@ -1262,7 +1262,7 @@ export function AddSpendWizardModal(props: {
                                       const resp = await fetch("/api/auth/linkedin/connect", {
                                         method: "POST",
                                         headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ campaignId: props.campaignId }),
+                                        body: JSON.stringify({ campaignId: props.campaignId, spendOnly: true }),
                                       });
                                       const data = await resp.json().catch(() => ({}));
                                       if (!resp.ok || !data?.authUrl) throw new Error(data?.message || "Failed to start LinkedIn connection");
@@ -1380,7 +1380,7 @@ export function AddSpendWizardModal(props: {
                                       const resp = await fetch(`/api/linkedin/${props.campaignId}/select-ad-account`, {
                                         method: "POST",
                                         headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ adAccountId: selectedLinkedInAdAccount }),
+                                        body: JSON.stringify({ adAccountId: selectedLinkedInAdAccount, spendOnly: true }),
                                       });
                                       const data = await resp.json().catch(() => ({}));
                                       if (!resp.ok || !data?.success) throw new Error(data?.error || "Failed to select ad account");

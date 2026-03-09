@@ -646,6 +646,11 @@ process.on('uncaughtException', (error: Error) => {
           await db.execute(sql`ALTER TABLE linkedin_daily_metrics ADD COLUMN IF NOT EXISTS ga4_utm_name TEXT;`);
           await db.execute(sql`ALTER TABLE linkedin_connections ADD COLUMN IF NOT EXISTS campaign_utm_map TEXT;`);
 
+          // Migration 15: spendOnly flag for connections made from spend wizard
+          await db.execute(sql`ALTER TABLE linkedin_connections ADD COLUMN IF NOT EXISTS spend_only BOOLEAN DEFAULT FALSE;`);
+          await db.execute(sql`ALTER TABLE meta_connections ADD COLUMN IF NOT EXISTS spend_only BOOLEAN DEFAULT FALSE;`);
+          await db.execute(sql`ALTER TABLE google_ads_connections ADD COLUMN IF NOT EXISTS spend_only BOOLEAN DEFAULT FALSE;`);
+
           log('✅ Database migrations completed successfully');
         } catch (error) {
           console.error('⚠️  Migration warning (may already exist):', error.message);

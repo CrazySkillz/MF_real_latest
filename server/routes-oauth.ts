@@ -8701,7 +8701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "linkedin",
           name: "LinkedIn Ads",
-          connected: !!(linkedInConnection && linkedInConnection.adAccountId), // Require adAccountId to be considered connected
+          connected: !!(linkedInConnection && linkedInConnection.adAccountId && !(linkedInConnection as any).spendOnly),
           analyticsPath: linkedInAnalyticsPath,
           lastConnectedAt: linkedInConnection?.connectedAt,
           conversionValue: linkedInConversionValue,
@@ -8709,8 +8709,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "facebook",
           name: "Meta/Facebook Ads",
-          connected: !!metaConnection,
-          analyticsPath: metaConnection
+          connected: !!(metaConnection && !(metaConnection as any).spendOnly),
+          analyticsPath: (metaConnection && !(metaConnection as any).spendOnly)
             ? `/campaigns/${campaignId}/meta-analytics`
             : null,
           lastConnectedAt: metaConnection?.connectedAt,
@@ -8719,8 +8719,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "google-ads",
           name: "Google Ads",
-          connected: !!googleAdsConnection,
-          analyticsPath: googleAdsConnection
+          connected: !!(googleAdsConnection && !(googleAdsConnection as any).spendOnly),
+          analyticsPath: (googleAdsConnection && !(googleAdsConnection as any).spendOnly)
             ? `/campaigns/${campaignId}/google-ads-analytics`
             : null,
           lastConnectedAt: googleAdsConnection?.connectedAt,
@@ -15662,7 +15662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   const LINKEDIN_OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-  const signLinkedInOAuthState = (campaignId: string): string => {
+  const signLinkedInOAuthState = (campaignId: string, spendOnly?: boolean): string => {
     const secret =
       process.env.LINKEDIN_OAUTH_STATE_SECRET ||
       process.env.SESSION_SECRET ||
@@ -15674,6 +15674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       c: String(campaignId || "").trim(),
       t: Date.now(),
       n: randomBytes(12).toString("hex"),
+      s: spendOnly ? 1 : 0,
     };
     const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
     const sig = createHmac("sha256", secret).update(payloadB64).digest();
@@ -15681,7 +15682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `${payloadB64}.${sigB64}`;
   };
 
-  const verifyLinkedInOAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
+  const verifyLinkedInOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; spendOnly: boolean } | { ok: false; error: string } => {
     const secret =
       process.env.LINKEDIN_OAUTH_STATE_SECRET ||
       process.env.SESSION_SECRET ||
@@ -15707,7 +15708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignId) return { ok: false, error: "Invalid state" };
       if (!Number.isFinite(t) || t <= 0) return { ok: false, error: "Invalid state" };
       if (Date.now() - t > LINKEDIN_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
-      return { ok: true, campaignId };
+      return { ok: true, campaignId, spendOnly: !!payload.s };
     } catch {
       return { ok: false, error: "Invalid state" };
     }
@@ -15752,7 +15753,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[LinkedIn OAuth] Using redirect URI: ${redirectUri}`);
 
-      const state = signLinkedInOAuthState(String(campaignId));
+      const spendOnly = !!(req.body as any)?.spendOnly;
+      const state = signLinkedInOAuthState(String(campaignId), spendOnly);
 
       // Build LinkedIn OAuth URL
       const authUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
@@ -15839,7 +15841,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const campaignId = verified.campaignId;
-      console.log(`[LinkedIn OAuth] Processing callback for campaign ${campaignId}`);
+      const spendOnly = verified.spendOnly;
+      console.log(`[LinkedIn OAuth] Processing callback for campaign ${campaignId} (spendOnly: ${spendOnly})`);
 
       const accessOk = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!accessOk) {
@@ -15923,6 +15926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expiresAt,
           isActive: true,
           method: "oauth",
+          spendOnly,
         } as any);
       } else {
         await storage.createLinkedInConnection({
@@ -15937,6 +15941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expiresAt,
           isPrimary: true,
           isActive: true,
+          spendOnly,
         } as any);
       }
 
@@ -15951,9 +15956,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <p>Authentication successful. Fetching your ad accounts...</p>
             <script>
               if (window.opener) {
-                window.opener.postMessage({ 
+                window.opener.postMessage({
                   type: 'linkedin_auth_success',
-                  campaignId: '${String(campaignId).replace(/'/g, "\\'")}'
+                  campaignId: '${String(campaignId).replace(/'/g, "\\'")}',
+                  spendOnly: ${spendOnly ? 'true' : 'false'}
                 }, window.location.origin);
               }
               setTimeout(() => window.close(), 1500);
@@ -16064,12 +16070,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update the connection with ad account details
       // (We already fetched `connection` above for the token.)
+      const spendOnly = !!(req.body as any)?.spendOnly;
       if (connection) {
         // Update existing connection
         await storage.updateLinkedInConnection(campaignId, {
           adAccountId,
           adAccountName: selectedAccount.name,
-        });
+          spendOnly,
+        } as any);
       } else {
         // Create new connection (shouldn't happen, but handle it)
         await storage.createLinkedInConnection({
@@ -16080,7 +16088,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
           isPrimary: true,
           isActive: true,
-        });
+          spendOnly,
+        } as any);
       }
 
       console.log(`[LinkedIn] Ad account selected successfully`);
@@ -16189,7 +16198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   const META_OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-  const signMetaOAuthState = (campaignId: string): string => {
+  const signMetaOAuthState = (campaignId: string, spendOnly?: boolean): string => {
     const secret =
       process.env.META_OAUTH_STATE_SECRET ||
       process.env.SESSION_SECRET ||
@@ -16201,6 +16210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       c: String(campaignId || "").trim(),
       t: Date.now(),
       n: randomBytes(12).toString("hex"),
+      s: spendOnly ? 1 : 0,
     };
     const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
     const sig = createHmac("sha256", secret).update(payloadB64).digest();
@@ -16208,7 +16218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `${payloadB64}.${sigB64}`;
   };
 
-  const verifyMetaOAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
+  const verifyMetaOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; spendOnly: boolean } | { ok: false; error: string } => {
     const secret =
       process.env.META_OAUTH_STATE_SECRET ||
       process.env.SESSION_SECRET ||
@@ -16244,7 +16254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return { ok: false, error: "State expired" };
     }
 
-    return { ok: true, campaignId: payload.c };
+    return { ok: true, campaignId: payload.c, spendOnly: !!payload.s };
   };
 
   /**
@@ -16286,7 +16296,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[Meta OAuth] Using redirect URI: ${redirectUri}`);
 
-      const state = signMetaOAuthState(String(campaignId));
+      const spendOnly = !!(req.body as any)?.spendOnly;
+      const state = signMetaOAuthState(String(campaignId), spendOnly);
 
       // Build Meta/Facebook OAuth URL
       // Scopes: ads_read (read ad account data), ads_management (manage campaigns)
@@ -16373,7 +16384,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const campaignId = verified.campaignId;
-      console.log(`[Meta OAuth] Processing callback for campaign ${campaignId}`);
+      const spendOnly = verified.spendOnly;
+      console.log(`[Meta OAuth] Processing callback for campaign ${campaignId} (spendOnly: ${spendOnly})`);
 
       const accessOk = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!accessOk) {
@@ -16522,7 +16534,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adAccountName,
         accessToken,
         expiresAt,
-      });
+        spendOnly,
+      } as any);
 
       console.log(`[Meta OAuth] Connection saved for campaign ${campaignId}`);
 
@@ -16672,13 +16685,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteMetaConnection(campaignId).catch(() => {});
 
       // Create Meta connection in test mode
+      const spendOnly = !!(req.body as any)?.spendOnly;
       await storage.createMetaConnection({
         campaignId,
         adAccountId,
         adAccountName,
         accessToken: `test_token_${Date.now()}`, // Test mode token
         method: 'test_mode',
-      });
+        spendOnly,
+      } as any);
 
       // Generate initial mock data so spend preview has data immediately.
       // Use generateMockMetaData directly to avoid KPI/alert overhead per iteration.
@@ -17517,15 +17532,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const GOOGLE_ADS_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
-  const signGoogleAdsOAuthState = (campaignId: string): string => {
+  const signGoogleAdsOAuthState = (campaignId: string, spendOnly?: boolean): string => {
     const secret = process.env.GOOGLE_ADS_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || "dev-google-ads-state-secret";
-    const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex") };
+    const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex"), s: spendOnly ? 1 : 0 };
     const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
     const sig = createHmac("sha256", secret).update(payloadB64).digest();
     return `${payloadB64}.${Buffer.from(sig).toString("base64url")}`;
   };
 
-  const verifyGoogleAdsOAuthState = (stateRaw: unknown): { ok: true; campaignId: string } | { ok: false; error: string } => {
+  const verifyGoogleAdsOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; spendOnly: boolean } | { ok: false; error: string } => {
     const secret = process.env.GOOGLE_ADS_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || "dev-google-ads-state-secret";
     const state = String(stateRaw || "").trim();
     const parts = state.split(".");
@@ -17541,7 +17556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try { payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")); } catch { return { ok: false, error: "Invalid state" }; }
     if (!payload.c || !payload.t) return { ok: false, error: "Invalid state" };
     if (Date.now() - Number(payload.t) > GOOGLE_ADS_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
-    return { ok: true, campaignId: payload.c };
+    return { ok: true, campaignId: payload.c, spendOnly: !!payload.s };
   };
 
   /**
@@ -17569,7 +17584,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       const redirectUri = `${baseUrl}/api/auth/google-ads/callback`;
 
-      const state = signGoogleAdsOAuthState(String(campaignId));
+      const spendOnly = !!(req.body as any)?.spendOnly;
+      const state = signGoogleAdsOAuthState(String(campaignId), spendOnly);
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(clientId)}&` +
@@ -17619,6 +17635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const campaignId = verified.campaignId;
+      const spendOnly = verified.spendOnly;
       const clientId = process.env.GOOGLE_ADS_CLIENT_ID!;
       const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET!;
       const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '';
@@ -17664,7 +17681,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               type:'google_ads_auth_success',
               campaignId:'${campaignId}',
               tokens:${tokenData},
-              customers:${customersJson}
+              customers:${customersJson},
+              spendOnly:${spendOnly ? 'true' : 'false'}
             },window.location.origin);
           }
           setTimeout(()=>window.close(),1500);
@@ -17698,6 +17716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Delete existing connection if any
       await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
 
+      const spendOnly = !!(req.body as any)?.spendOnly;
       await storage.createGoogleAdsConnection({
         campaignId,
         customerId,
@@ -17710,9 +17729,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         developerToken,
         method: 'oauth',
         expiresAt,
-      });
+        spendOnly,
+      } as any);
 
-      console.log(`[Google Ads] Customer ${customerId} connected to campaign ${campaignId}`);
+      console.log(`[Google Ads] Customer ${customerId} connected to campaign ${campaignId} (spendOnly: ${spendOnly})`);
       res.json({ success: true, message: 'Google Ads customer connected' });
     } catch (error: any) {
       console.error('[Google Ads] Select customer error:', error);
@@ -17730,13 +17750,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
 
+      const spendOnly = !!(req.body as any)?.spendOnly;
       await storage.createGoogleAdsConnection({
         campaignId,
         customerId: customerId || '123-456-7890',
         customerName: customerName || 'Test Google Ads Account',
         method: 'test_mode',
         accessToken: `test_token_${Date.now()}`,
-      });
+        spendOnly,
+      } as any);
 
       console.log(`[Google Ads] Test connection created for campaign ${campaignId}`);
 

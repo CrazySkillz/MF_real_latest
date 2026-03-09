@@ -117,6 +117,14 @@ The campaign detail page has these main sections/tabs:
 | Shopify | `shopifyConnections` | — | `shopDomain`, `mappingConfig` |
 | Custom | `customIntegrations` | `customIntegrationMetrics` | `webhookToken`, flexible schema |
 
+### `spendOnly` Flag (LinkedIn, Meta, Google Ads)
+- `linkedinConnections`, `metaConnections`, `googleAdsConnections` have a `spend_only BOOLEAN DEFAULT FALSE` column
+- Set to `true` when a connection is made from the **Add Spend Wizard** (to import spend data only)
+- Set to `false` (default) when connected from **Create Campaign modal** or **Connected Platforms** section
+- The `connected-platforms` endpoint filters out `spendOnly` connections — they do NOT show as "Connected" or "View Detailed Analytics"
+- `spendOnly` is propagated through OAuth state payloads (`s: 1|0`) so callbacks know the connection's intent
+- Upgrading a spend-only connection to full analytics: reconnecting from Connected Platforms creates/updates with `spendOnly: false`
+
 ---
 
 ## Revenue & Spend Architecture

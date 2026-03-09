@@ -84,7 +84,7 @@ User (Clerk) → owns Clients → owns Campaigns → owns Connections/Metrics/So
 | `/campaigns/:id/performance` | Performance | Time-series perf with KPIs, benchmarks |
 | `/campaigns/:id/financial-analysis` | Financial Analysis | Revenue & spend deep-dive |
 | `/campaigns/:id/executive-summary` | Executive Summary | High-level overview across sources |
-| `/campaigns/:id/trend-analysis` | Trend Analysis | Trend visualization, anomaly detection |
+| `/campaigns/:id/trend-analysis` | Trend Analysis | 5-tab executive analytics: Overview, Efficiency, Funnel, Platform Breakdown, Market Trends |
 | `/campaigns/:id/platform-comparison` | Platform Comparison | Cross-platform metric comparison |
 
 ---
@@ -430,6 +430,7 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 | Column Mapping | `components/GuidedColumnMapping.tsx` | CSV/Sheets column mapping wizard |
 | Attribution | `components/AttributionDashboard.tsx` | Attribution model visualization |
 | Campaign Chat | `components/CampaignChat.tsx` | AI chat for campaign analysis (OpenRouter) |
+| Trend Analysis | `pages/trend-analysis.tsx` | 5-tab executive analytics (Overview, Efficiency, Funnel, Platform, Market) |
 
 ---
 
@@ -442,6 +443,34 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 - **No DB persistence**: Chat history is React state only (no tables, no migrations)
 - **Env vars**: `OPENROUTER_API_KEY` (required), `OPENROUTER_MODEL` (optional override)
 - **Conversation cap**: Last 20 messages sent to avoid token limits
+
+---
+
+## Trend Analysis (`trend-analysis.tsx`)
+
+5-tab executive analytics page under Campaign DeepDive.
+
+### Tabs
+1. **Executive Overview** — 6 summary cards (Spend, Revenue, ROAS, Conversions, CPA, CTR with % change), ComposedChart with metric toggles, anomaly ReferenceDots, KPI target ReferenceLines
+2. **Efficiency Metrics** — ROAS/ROI dual-axis, CPA/CPC dual-axis, CTR/Engagement Rate, CPM area chart
+3. **Conversion Funnel** — Conversion rate trends, funnel volume (impressions→clicks→conversions), GA4 engagement funnel
+4. **Platform Breakdown** — Comparison table (best-value highlighted), spend PieChart, efficiency bars, stacked platform trends
+5. **Market Trends** — Consolidated Google Trends (keyword config, search interest, keyword comparison, monthly patterns, market insights). No demo mode.
+
+### Data Layer
+- Merges GA4 + LinkedIn + Meta + Google Ads daily metrics by date into unified time series
+- Computes daily efficiency: ROAS, ROI, CPA, CPC, CPM, CTR, conversion rate using `shared/metric-math.ts`
+- Period selector (7d/14d/30d/90d) shared across all tabs
+- Anomaly detection: 2σ (warning) / 3σ (critical) from 7-day rolling mean on raw + efficiency metrics
+- Period comparison: fetches `days * 2`, splits into current/previous halves
+
+### Data Sources
+- `daily-financials` (spend + revenue by date)
+- `ga4-daily?days=N` (GA4 users, sessions, conversions, revenue, engagement)
+- `linkedin/:id/daily-metrics` (impressions, clicks, spend, conversions)
+- `meta/:id/daily-metrics` (persisted table, NOT live API)
+- `google-ads/:id/daily-metrics` (impressions, clicks, spend, conversions)
+- `campaigns/:id/kpis` (target reference lines)
 
 ---
 

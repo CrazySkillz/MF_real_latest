@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Brain, Calendar, Target, Users, Award, Zap, AlertTriangle, CheckCircle, ArrowUpRight, ArrowDownRight, Eye, MousePointer, DollarSign, Clock, Settings, Plus, X, FlaskConical } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, Clock, Settings, Plus, X, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare, Search } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -9,7 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ComposedChart } from "recharts";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, ComposedChart, PieChart, Pie, Cell,
+  ReferenceLine, ReferenceDot,
+} from "recharts";
 import { format, subDays } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,52 +22,118 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState, useEffect, useMemo } from "react";
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
+const PLATFORM_COLORS: Record<string, string> = {
+  linkedin: '#0077B5',
+  meta: '#1877F2',
+  google_ads: '#34A853',
+  ga4: '#E37400',
+};
 
+// ─── Helpers ─────────────────────────────────────────────────────────
+const fmtNum = (n: number) => {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+  return n.toLocaleString();
+};
+const fmtCur = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+const pctChange = (curr: number, prev: number) => prev > 0 ? ((curr - prev) / prev) * 100 : curr > 0 ? 100 : 0;
+const sumArr = (arr: any[], key: string) => arr.reduce((s, r) => s + (r[key] || 0), 0);
+const avgArr = (arr: any[], key: string) => arr.length > 0 ? sumArr(arr, key) / arr.length : 0;
+
+const tooltipStyle = {
+  backgroundColor: 'var(--background)',
+  border: '1px solid var(--border)',
+  borderRadius: '6px',
+};
+
+// ─── Anomaly Detection ──────────────────────────────────────────────
+interface Anomaly {
+  date: string;
+  label: string;
+  metric: string;
+  value: number;
+  expected: number;
+  severity: 'warning' | 'critical';
+}
+
+function detectAnomalies(series: any[], metrics: string[]): Anomaly[] {
+  const anomalies: Anomaly[] = [];
+  metrics.forEach(metric => {
+    const values = series.map(r => r[metric] || 0);
+    if (values.length < 8) return;
+    for (let i = 7; i < values.length; i++) {
+      const window = values.slice(i - 7, i);
+      const mean = window.reduce((a, b) => a + b, 0) / window.length;
+      const variance = window.reduce((a, b) => a + (b - mean) ** 2, 0) / window.length;
+      const stddev = Math.sqrt(variance);
+      const val = values[i];
+      if (stddev > 0) {
+        const deviations = Math.abs(val - mean) / stddev;
+        if (deviations > 2) {
+          anomalies.push({
+            date: series[i].date,
+            label: series[i].label,
+            metric,
+            value: val,
+            expected: mean,
+            severity: deviations > 3 ? 'critical' : 'warning',
+          });
+        }
+      }
+    }
+  });
+  return anomalies;
+}
+
+// ─── Main Component ─────────────────────────────────────────────────
 export default function TrendAnalysis() {
   const { id: campaignId } = useParams();
   const { toast } = useToast();
+
+  // Google Trends config state
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [industry, setIndustry] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
-  const [demoMode, setDemoMode] = useState(false);
+
+  // Page-level state
   const [perfPeriod, setPerfPeriod] = useState<string>("30d");
-  const [activeTab, setActiveTab] = useState("performance");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [visibleSeries, setVisibleSeries] = useState<Set<string>>(new Set(['spend', 'revenue', 'conversions']));
+  const [platformMetric, setPlatformMetric] = useState<string>("spend");
 
   const perfDays = perfPeriod === '7d' ? 7 : perfPeriod === '14d' ? 14 : perfPeriod === '90d' ? 90 : 30;
 
+  // ─── Data Queries (all fetched on load, not gated by tab) ────────
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
   });
 
-  const { data: trendsData, isFetching: trendsFetching, isError: trendsError, refetch: refetchTrends } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "google-trends"],
-    enabled: false, // Don't auto-fetch - only fetch when user explicitly requests
-    staleTime: 0, // Prevent showing stale cached data
-    retry: false, // Don't retry automatically to prevent showing stale data on failures
-  });
-
-  const { data: ga4Data } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-metrics"],
-    enabled: !!campaignId,
-  });
-
-  const { data: sheetsData } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
-    enabled: !!campaignId,
-  });
-
-  // Performance Trends queries (only when performance tab is active)
   const { data: connectedPlatforms } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "connected-platforms"],
-    enabled: !!campaignId && activeTab === 'performance',
+    enabled: !!campaignId,
+  });
+
+  const { data: kpis = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaignId}/kpis`],
+    enabled: !!campaignId,
+  });
+
+  const { data: ga4Daily } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "ga4-daily", perfDays],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/ga4-daily?days=${perfDays * 2}`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
   });
 
   const { data: linkedinDaily } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "linkedin-daily", perfDays],
-    enabled: !!campaignId && activeTab === 'performance',
+    enabled: !!campaignId,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/linkedin-daily?days=${perfDays * 2}`);
       if (!resp.ok) return null;
@@ -72,10 +142,24 @@ export default function TrendAnalysis() {
   });
 
   const { data: metaDaily } = useQuery({
-    queryKey: ["/api/meta", campaignId, "insights/daily", perfDays],
-    enabled: !!campaignId && activeTab === 'performance',
+    queryKey: ["/api/meta", campaignId, "daily-metrics", perfDays],
+    enabled: !!campaignId,
     queryFn: async () => {
-      const resp = await fetch(`/api/meta/${campaignId}/insights/daily?days=${perfDays * 2}`);
+      const start = subDays(new Date(), perfDays * 2).toISOString().slice(0, 10);
+      const end = new Date().toISOString().slice(0, 10);
+      const resp = await fetch(`/api/meta/${campaignId}/daily-metrics?startDate=${start}&endDate=${end}`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+
+  const { data: googleAdsDaily } = useQuery({
+    queryKey: ["/api/google-ads", campaignId, "daily-metrics", perfDays],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const start = subDays(new Date(), perfDays * 2).toISOString().slice(0, 10);
+      const end = new Date().toISOString().slice(0, 10);
+      const resp = await fetch(`/api/google-ads/${campaignId}/daily-metrics?startDate=${start}&endDate=${end}`);
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
@@ -83,7 +167,7 @@ export default function TrendAnalysis() {
 
   const { data: dailyFinancials } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "daily-financials", perfDays],
-    enabled: !!campaignId && activeTab === 'performance',
+    enabled: !!campaignId,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/daily-financials?days=${perfDays * 2}`);
       if (!resp.ok) return null;
@@ -91,366 +175,293 @@ export default function TrendAnalysis() {
     },
   });
 
-  // Cross-platform data processing
-  const crossPlatformData = useMemo(() => {
-    if (activeTab !== 'performance') return null;
+  // Google Trends query (manual fetch only)
+  const { data: trendsData, isFetching: trendsFetching, isError: trendsError, refetch: refetchTrends } = useQuery({
+    queryKey: ["/api/campaigns", campaignId, "google-trends"],
+    enabled: false,
+    staleTime: 0,
+    retry: false,
+  });
 
+  // ─── Unified Cross-Platform Data Layer ───────────────────────────
+  const crossPlatformData = useMemo(() => {
     const dateMap: Record<string, any> = {};
     const allDates: string[] = [];
 
-    // Process LinkedIn daily data
+    const addDate = (d: string) => {
+      if (!dateMap[d]) { dateMap[d] = { date: d }; allDates.push(d); }
+    };
+
+    // GA4 daily
+    const ga4Rows = Array.isArray(ga4Daily) ? ga4Daily : (ga4Daily as any)?.data || [];
+    ga4Rows.forEach((row: any) => {
+      const d = (row.date || '').substring(0, 10);
+      if (!d) return;
+      addDate(d);
+      dateMap[d].ga4_users = (dateMap[d].ga4_users || 0) + (parseFloat(row.users) || 0);
+      dateMap[d].ga4_sessions = (dateMap[d].ga4_sessions || 0) + (parseFloat(row.sessions) || 0);
+      dateMap[d].ga4_pageviews = (dateMap[d].ga4_pageviews || 0) + (parseFloat(row.pageviews) || 0);
+      dateMap[d].ga4_conversions = (dateMap[d].ga4_conversions || 0) + (parseFloat(row.conversions) || 0);
+      dateMap[d].ga4_revenue = (dateMap[d].ga4_revenue || 0) + (parseFloat(row.revenue) || 0);
+      dateMap[d].ga4_engagementRate = parseFloat(row.engagementRate) || 0;
+    });
+
+    // LinkedIn daily
     const liRows = Array.isArray(linkedinDaily) ? linkedinDaily : (linkedinDaily as any)?.dailyMetrics || (linkedinDaily as any)?.data || [];
     liRows.forEach((row: any) => {
-      const date = row.date || row.day;
-      if (!date) return;
-      const d = date.substring(0, 10);
-      if (!dateMap[d]) { dateMap[d] = { date: d }; allDates.push(d); }
+      const d = (row.date || row.day || '').substring(0, 10);
+      if (!d) return;
+      addDate(d);
       dateMap[d].li_impressions = (dateMap[d].li_impressions || 0) + (parseFloat(row.impressions) || 0);
       dateMap[d].li_clicks = (dateMap[d].li_clicks || 0) + (parseFloat(row.clicks) || 0);
       dateMap[d].li_spend = (dateMap[d].li_spend || 0) + (parseFloat(row.spend || row.costInLocalCurrency) || 0);
       dateMap[d].li_conversions = (dateMap[d].li_conversions || 0) + (parseFloat(row.conversions || row.externalWebsiteConversions) || 0);
     });
 
-    // Process Meta daily data
-    const metaRows = Array.isArray(metaDaily) ? metaDaily : (metaDaily as any)?.data || (metaDaily as any)?.daily || [];
+    // Meta daily
+    const metaRows = Array.isArray(metaDaily) ? metaDaily : (metaDaily as any)?.metrics || (metaDaily as any)?.data || [];
     metaRows.forEach((row: any) => {
-      const date = row.date || row.date_start;
-      if (!date) return;
-      const d = date.substring(0, 10);
-      if (!dateMap[d]) { dateMap[d] = { date: d }; allDates.push(d); }
+      const d = (row.date || row.date_start || '').substring(0, 10);
+      if (!d) return;
+      addDate(d);
       dateMap[d].meta_impressions = (dateMap[d].meta_impressions || 0) + (parseFloat(row.impressions) || 0);
       dateMap[d].meta_clicks = (dateMap[d].meta_clicks || 0) + (parseFloat(row.clicks) || 0);
       dateMap[d].meta_spend = (dateMap[d].meta_spend || 0) + (parseFloat(row.spend) || 0);
       dateMap[d].meta_conversions = (dateMap[d].meta_conversions || 0) + (parseFloat(row.conversions) || 0);
-      dateMap[d].meta_reach = (dateMap[d].meta_reach || 0) + (parseFloat(row.reach) || 0);
     });
 
-    // Process daily financials (canonical spend/revenue)
+    // Google Ads daily
+    const gadsRows = Array.isArray(googleAdsDaily) ? googleAdsDaily : (googleAdsDaily as any)?.metrics || (googleAdsDaily as any)?.data || [];
+    gadsRows.forEach((row: any) => {
+      const d = (row.date || '').substring(0, 10);
+      if (!d) return;
+      addDate(d);
+      dateMap[d].gads_impressions = (dateMap[d].gads_impressions || 0) + (parseFloat(row.impressions) || 0);
+      dateMap[d].gads_clicks = (dateMap[d].gads_clicks || 0) + (parseFloat(row.clicks) || 0);
+      dateMap[d].gads_spend = (dateMap[d].gads_spend || 0) + (parseFloat(row.spend) || 0);
+      dateMap[d].gads_conversions = (dateMap[d].gads_conversions || 0) + (parseFloat(row.conversions) || 0);
+    });
+
+    // Daily financials (canonical spend/revenue)
     const finRows = Array.isArray(dailyFinancials) ? dailyFinancials : (dailyFinancials as any)?.data || [];
     finRows.forEach((row: any) => {
-      const date = row.date;
-      if (!date) return;
-      const d = date.substring(0, 10);
-      if (!dateMap[d]) { dateMap[d] = { date: d }; allDates.push(d); }
-      dateMap[d].total_spend = (dateMap[d].total_spend || 0) + (parseFloat(row.spend || row.totalSpend) || 0);
-      dateMap[d].total_revenue = (dateMap[d].total_revenue || 0) + (parseFloat(row.revenue || row.totalRevenue) || 0);
+      const d = (row.date || '').substring(0, 10);
+      if (!d) return;
+      addDate(d);
+      dateMap[d].fin_spend = (dateMap[d].fin_spend || 0) + (parseFloat(row.spend || row.totalSpend) || 0);
+      dateMap[d].fin_revenue = (dateMap[d].fin_revenue || 0) + (parseFloat(row.revenue || row.totalRevenue) || 0);
     });
 
-    // Sort dates and compute totals per day
+    // Merge by date
     const sortedDates = [...new Set(allDates)].sort();
     const series = sortedDates.map(d => {
       const pt = dateMap[d];
-      const impressions = (pt.li_impressions || 0) + (pt.meta_impressions || 0);
-      const clicks = (pt.li_clicks || 0) + (pt.meta_clicks || 0);
-      const spend = pt.total_spend || (pt.li_spend || 0) + (pt.meta_spend || 0);
-      const conversions = (pt.li_conversions || 0) + (pt.meta_conversions || 0);
-      const revenue = pt.total_revenue || 0;
+      const impressions = (pt.li_impressions || 0) + (pt.meta_impressions || 0) + (pt.gads_impressions || 0);
+      const clicks = (pt.li_clicks || 0) + (pt.meta_clicks || 0) + (pt.gads_clicks || 0);
+      const adConversions = (pt.li_conversions || 0) + (pt.meta_conversions || 0) + (pt.gads_conversions || 0);
+      const conversions = adConversions || (pt.ga4_conversions || 0);
+      const spend = pt.fin_spend || ((pt.li_spend || 0) + (pt.meta_spend || 0) + (pt.gads_spend || 0));
+      const revenue = pt.fin_revenue || (pt.ga4_revenue || 0);
+      const users = pt.ga4_users || 0;
+      const sessions = pt.ga4_sessions || 0;
+
+      // Efficiency metrics
       const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+      const cpc = clicks > 0 ? spend / clicks : 0;
+      const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+      const cpa = conversions > 0 ? spend / conversions : 0;
+      const roas = spend > 0 ? revenue / spend : 0;
+      const roi = spend > 0 ? ((revenue - spend) / spend) * 100 : 0;
+      const convRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
+      const engagementRate = pt.ga4_engagementRate || 0;
+
       return {
         date: d,
         label: format(new Date(d + 'T00:00:00'), 'MMM dd'),
-        impressions, clicks, spend, conversions, revenue, ctr,
-        li_impressions: pt.li_impressions || 0,
-        li_clicks: pt.li_clicks || 0,
-        li_spend: pt.li_spend || 0,
-        meta_impressions: pt.meta_impressions || 0,
-        meta_clicks: pt.meta_clicks || 0,
-        meta_spend: pt.meta_spend || 0,
+        impressions, clicks, spend, conversions, revenue, users, sessions,
+        ctr, cpc, cpm, cpa, roas, roi, convRate, engagementRate,
+        // Per-platform
+        li_impressions: pt.li_impressions || 0, li_clicks: pt.li_clicks || 0,
+        li_spend: pt.li_spend || 0, li_conversions: pt.li_conversions || 0,
+        meta_impressions: pt.meta_impressions || 0, meta_clicks: pt.meta_clicks || 0,
+        meta_spend: pt.meta_spend || 0, meta_conversions: pt.meta_conversions || 0,
+        gads_impressions: pt.gads_impressions || 0, gads_clicks: pt.gads_clicks || 0,
+        gads_spend: pt.gads_spend || 0, gads_conversions: pt.gads_conversions || 0,
+        ga4_users: pt.ga4_users || 0, ga4_sessions: pt.ga4_sessions || 0,
+        ga4_conversions: pt.ga4_conversions || 0, ga4_revenue: pt.ga4_revenue || 0,
+        ga4_pageviews: pt.ga4_pageviews || 0,
       };
     });
 
     if (series.length === 0) return null;
 
-    // Split into current period and previous period for comparison
     const currentPeriod = series.slice(-perfDays);
     const previousPeriod = series.slice(-perfDays * 2, -perfDays);
 
-    const sumMetric = (arr: any[], key: string) => arr.reduce((s, r) => s + (r[key] || 0), 0);
-    const avgMetric = (arr: any[], key: string) => arr.length > 0 ? sumMetric(arr, key) / arr.length : 0;
-
     const current = {
-      spend: sumMetric(currentPeriod, 'spend'),
-      revenue: sumMetric(currentPeriod, 'revenue'),
-      impressions: sumMetric(currentPeriod, 'impressions'),
-      clicks: sumMetric(currentPeriod, 'clicks'),
-      conversions: sumMetric(currentPeriod, 'conversions'),
-      ctr: avgMetric(currentPeriod, 'ctr'),
+      spend: sumArr(currentPeriod, 'spend'),
+      revenue: sumArr(currentPeriod, 'revenue'),
+      impressions: sumArr(currentPeriod, 'impressions'),
+      clicks: sumArr(currentPeriod, 'clicks'),
+      conversions: sumArr(currentPeriod, 'conversions'),
+      users: sumArr(currentPeriod, 'users'),
+      sessions: sumArr(currentPeriod, 'sessions'),
+      ctr: avgArr(currentPeriod, 'ctr'),
+      cpc: avgArr(currentPeriod, 'cpc'),
+      cpm: avgArr(currentPeriod, 'cpm'),
+      roas: (() => { const s = sumArr(currentPeriod, 'spend'); const r = sumArr(currentPeriod, 'revenue'); return s > 0 ? r / s : 0; })(),
+      cpa: (() => { const s = sumArr(currentPeriod, 'spend'); const c = sumArr(currentPeriod, 'conversions'); return c > 0 ? s / c : 0; })(),
     };
     const previous = {
-      spend: sumMetric(previousPeriod, 'spend'),
-      revenue: sumMetric(previousPeriod, 'revenue'),
-      impressions: sumMetric(previousPeriod, 'impressions'),
-      clicks: sumMetric(previousPeriod, 'clicks'),
-      conversions: sumMetric(previousPeriod, 'conversions'),
-      ctr: avgMetric(previousPeriod, 'ctr'),
+      spend: sumArr(previousPeriod, 'spend'),
+      revenue: sumArr(previousPeriod, 'revenue'),
+      impressions: sumArr(previousPeriod, 'impressions'),
+      clicks: sumArr(previousPeriod, 'clicks'),
+      conversions: sumArr(previousPeriod, 'conversions'),
+      ctr: avgArr(previousPeriod, 'ctr'),
+      roas: (() => { const s = sumArr(previousPeriod, 'spend'); const r = sumArr(previousPeriod, 'revenue'); return s > 0 ? r / s : 0; })(),
+      cpa: (() => { const s = sumArr(previousPeriod, 'spend'); const c = sumArr(previousPeriod, 'conversions'); return c > 0 ? s / c : 0; })(),
     };
-
-    const pctChange = (curr: number, prev: number) => prev > 0 ? ((curr - prev) / prev) * 100 : curr > 0 ? 100 : 0;
 
     const comparison = {
       spend: pctChange(current.spend, previous.spend),
       revenue: pctChange(current.revenue, previous.revenue),
       conversions: pctChange(current.conversions, previous.conversions),
       ctr: pctChange(current.ctr, previous.ctr),
+      roas: pctChange(current.roas, previous.roas),
+      cpa: pctChange(current.cpa, previous.cpa),
     };
 
-    // Anomaly detection: find days where metric deviates >2 stddev from rolling mean
-    const anomalies: Array<{ date: string; metric: string; value: number; expected: number; stddev: number }> = [];
-    const metricsToCheck = ['spend', 'clicks', 'conversions', 'impressions'] as const;
+    const anomalies = detectAnomalies(currentPeriod, ['spend', 'clicks', 'conversions', 'impressions', 'revenue', 'cpa', 'roas']);
 
-    metricsToCheck.forEach(metric => {
-      const values = currentPeriod.map(r => r[metric] || 0);
-      if (values.length < 7) return;
+    // Platform totals for breakdown tab
+    const platformTotals = [
+      { platform: 'LinkedIn', color: PLATFORM_COLORS.linkedin, spend: sumArr(currentPeriod, 'li_spend'), impressions: sumArr(currentPeriod, 'li_impressions'), clicks: sumArr(currentPeriod, 'li_clicks'), conversions: sumArr(currentPeriod, 'li_conversions') },
+      { platform: 'Meta', color: PLATFORM_COLORS.meta, spend: sumArr(currentPeriod, 'meta_spend'), impressions: sumArr(currentPeriod, 'meta_impressions'), clicks: sumArr(currentPeriod, 'meta_clicks'), conversions: sumArr(currentPeriod, 'meta_conversions') },
+      { platform: 'Google Ads', color: PLATFORM_COLORS.google_ads, spend: sumArr(currentPeriod, 'gads_spend'), impressions: sumArr(currentPeriod, 'gads_impressions'), clicks: sumArr(currentPeriod, 'gads_clicks'), conversions: sumArr(currentPeriod, 'gads_conversions') },
+    ].filter(p => p.spend > 0 || p.impressions > 0 || p.clicks > 0).map(p => ({
+      ...p,
+      ctr: p.impressions > 0 ? (p.clicks / p.impressions) * 100 : 0,
+      cpc: p.clicks > 0 ? p.spend / p.clicks : 0,
+      cpa: p.conversions > 0 ? p.spend / p.conversions : 0,
+      cpm: p.impressions > 0 ? (p.spend / p.impressions) * 1000 : 0,
+    }));
 
-      // Rolling 7-day mean and stddev
-      for (let i = 7; i < values.length; i++) {
-        const window = values.slice(i - 7, i);
-        const mean = window.reduce((a, b) => a + b, 0) / window.length;
-        const variance = window.reduce((a, b) => a + (b - mean) ** 2, 0) / window.length;
-        const stddev = Math.sqrt(variance);
-        const val = values[i];
-        if (stddev > 0 && Math.abs(val - mean) > 2 * stddev) {
-          anomalies.push({
-            date: currentPeriod[i].date,
-            metric,
-            value: val,
-            expected: mean,
-            stddev,
-          });
-        }
-      }
-    });
+    return { series: currentPeriod, current, previous, comparison, anomalies, hasPrevious: previousPeriod.length > 0, platformTotals };
+  }, [ga4Daily, linkedinDaily, metaDaily, googleAdsDaily, dailyFinancials, perfDays]);
 
-    return { series: currentPeriod, current, previous, comparison, anomalies, hasPrevious: previousPeriod.length > 0 };
-  }, [activeTab, linkedinDaily, metaDaily, dailyFinancials, perfDays]);
-
-  // Demo mode: generate realistic Google Trends-style data
-  const demoTrendsData = useMemo(() => {
-    if (!demoMode) return null;
-    const now = Math.floor(Date.now() / 1000);
-    const daySeconds = 86400;
-    const generateTimeSeries = (baseValue: number, volatility: number, trendDirection: number) => {
-      const data: any[] = [];
-      for (let i = 90; i >= 0; i--) {
-        const time = String(now - i * daySeconds);
-        const seasonal = Math.sin((90 - i) / 14 * Math.PI) * 8;
-        const trend = trendDirection * (90 - i) * 0.1;
-        const noise = (Math.random() - 0.5) * volatility;
-        const value = Math.max(5, Math.min(100, Math.round(baseValue + seasonal + trend + noise)));
-        data.push({ time, value: [value] });
-      }
-      return data;
-    };
-    return {
-      industry: 'Digital Marketing',
-      trends: [
-        { keyword: 'digital marketing', success: true, data: generateTimeSeries(62, 12, 0.3) },
-        { keyword: 'social media ads', success: true, data: generateTimeSeries(48, 15, -0.2) },
-        { keyword: 'content strategy', success: true, data: generateTimeSeries(35, 10, 0.5) },
-      ],
-    };
-  }, [demoMode]);
-
-  const effectiveTrendsData = demoTrendsData || trendsData;
-
-  const updateKeywordsMutation = useMutation({
-    mutationFn: async (data: { industry: string; trendKeywords: string[] }) => {
-      return await apiRequest('PATCH', `/api/campaigns/${campaignId}`, data);
-    },
-    onSuccess: async () => {
-      // Start 2-minute cooldown to prevent rate limiting
-      setCooldownSeconds(120);
-      
-      toast({
-        title: "Fetching Trend Data...",
-        description: "This may take up to 30 seconds. Please wait.",
-      });
-      
-      setIsConfiguring(false);
-      
-      // Invalidate campaign query to refresh keywords
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
-      
-      // Manually trigger trends fetch
-      refetchTrends();
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to update keywords. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleRefreshTrends = async () => {
-    if (cooldownSeconds > 0) {
-      toast({
-        title: "Cooldown Active",
-        description: `Please wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')} before refreshing again.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setCooldownSeconds(120);
-    toast({
-      title: "Fetching Trend Data...",
-      description: "This may take up to 30 seconds. Please wait.",
-    });
-    
-    await refetchTrends();
-  };
-
-  const handleAddKeyword = () => {
-    if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) {
-      setKeywords([...keywords, newKeyword.trim()]);
-      setNewKeyword("");
-    }
-  };
-
-  const handleRemoveKeyword = (keyword: string) => {
-    setKeywords(keywords.filter(k => k !== keyword));
-  };
-
-  const handleSaveKeywords = () => {
-    // Auto-add any keyword that's currently in the input field
-    let finalKeywords = [...keywords];
-    if (newKeyword.trim() && !finalKeywords.includes(newKeyword.trim())) {
-      finalKeywords.push(newKeyword.trim());
-      setKeywords(finalKeywords);
-      setNewKeyword("");
-    }
-    
-    if (finalKeywords.length === 0) {
-      toast({
-        title: "No Keywords",
-        description: "Please add at least one keyword to track.",
-        variant: "destructive",
-      });
-      return;
-    }
-    updateKeywordsMutation.mutate({ industry, trendKeywords: finalKeywords });
-  };
-
-  // Hydrate form state from campaign data
-  useEffect(() => {
-    if (campaign && !isConfiguring) {
-      setIndustry((campaign as any).industry || "");
-      setKeywords((campaign as any).trendKeywords || []);
-    }
-  }, [campaign, isConfiguring]);
-
-  // Cooldown timer countdown
-  useEffect(() => {
-    if (cooldownSeconds > 0) {
-      const timer = setTimeout(() => {
-        setCooldownSeconds(cooldownSeconds - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [cooldownSeconds]);
-
-  // Process Google Trends data into chart-ready format
+  // ─── Google Trends Processing ────────────────────────────────────
   const processedTrendsData = useMemo(() => {
-    if (!effectiveTrendsData || !(effectiveTrendsData as any).trends) {
-      return null;
-    }
-
-    const trends = (effectiveTrendsData as any).trends;
-    
-    // Create time series data combining all keywords
+    if (!trendsData || !(trendsData as any).trends) return null;
+    const trends = (trendsData as any).trends;
     const timeSeriesData: any[] = [];
     const keywordStats: any = {};
     const monthlyData: any[] = [];
-    
-    // Get the longest dataset to use as time reference
-    const longestDataset = trends.reduce((longest: any, current: any) => {
-      return (current.data?.length || 0) > (longest.data?.length || 0) ? current : longest;
-    }, trends[0] || { data: [] });
 
-    // Process each time point
+    const longestDataset = trends.reduce((longest: any, current: any) =>
+      (current.data?.length || 0) > (longest.data?.length || 0) ? current : longest, trends[0] || { data: [] });
+
     (longestDataset.data || []).forEach((timePoint: any, index: number) => {
       const dataPoint: any = {
         date: format(new Date(parseInt(timePoint.time) * 1000), 'MMM dd'),
         timestamp: parseInt(timePoint.time) * 1000,
       };
-
       trends.forEach((trend: any, trendIndex: number) => {
         const value = trend.data?.[index]?.value?.[0] || 0;
         dataPoint[trend.keyword] = value;
-
-        // Track keyword statistics
         if (!keywordStats[trend.keyword]) {
-          keywordStats[trend.keyword] = {
-            keyword: trend.keyword,
-            values: [],
-            color: COLORS[trendIndex % COLORS.length]
-          };
+          keywordStats[trend.keyword] = { keyword: trend.keyword, values: [], color: COLORS[trendIndex % COLORS.length] };
         }
         keywordStats[trend.keyword].values.push(value);
       });
-
       timeSeriesData.push(dataPoint);
     });
 
-    // Calculate statistics for each keyword
     Object.keys(keywordStats).forEach(keyword => {
       const values = keywordStats[keyword].values;
       const sum = values.reduce((a: number, b: number) => a + b, 0);
       const avg = values.length > 0 ? sum / values.length : 0;
-      const max = Math.max(...values);
-      const min = Math.min(...values);
       const recent = values.slice(-7).reduce((a: number, b: number) => a + b, 0) / 7;
-      const previous = values.slice(-14, -7).reduce((a: number, b: number) => a + b, 0) / 7;
-      const trend = recent > previous ? 'up' : recent < previous ? 'down' : 'stable';
-      const trendPercentage = previous > 0 ? ((recent - previous) / previous) * 100 : 0;
-
+      const prev = values.slice(-14, -7).reduce((a: number, b: number) => a + b, 0) / 7;
       keywordStats[keyword] = {
-        ...keywordStats[keyword],
-        average: avg,
-        max,
-        min,
-        recent,
-        previous,
-        trend,
-        trendPercentage,
-        totalInterest: sum
+        ...keywordStats[keyword], average: avg, max: Math.max(...values), min: Math.min(...values),
+        recent, previous: prev, trend: recent > prev ? 'up' : recent < prev ? 'down' : 'stable',
+        trendPercentage: prev > 0 ? ((recent - prev) / prev) * 100 : 0, totalInterest: sum,
       };
     });
 
-    // Process monthly aggregates
-    const monthlyAggregates: any = {};
+    const monthlyAgg: any = {};
     timeSeriesData.forEach(point => {
       const month = format(new Date(point.timestamp), 'MMM');
-      if (!monthlyAggregates[month]) {
-        monthlyAggregates[month] = {};
-        trends.forEach((trend: any) => {
-          monthlyAggregates[month][trend.keyword] = [];
-        });
-      }
-      trends.forEach((trend: any) => {
-        monthlyAggregates[month][trend.keyword].push(point[trend.keyword] || 0);
+      if (!monthlyAgg[month]) { monthlyAgg[month] = {}; trends.forEach((t: any) => { monthlyAgg[month][t.keyword] = []; }); }
+      trends.forEach((t: any) => { monthlyAgg[month][t.keyword].push(point[t.keyword] || 0); });
+    });
+    Object.keys(monthlyAgg).forEach(month => {
+      const md: any = { month };
+      Object.keys(monthlyAgg[month]).forEach(kw => {
+        const vals = monthlyAgg[month][kw];
+        md[kw] = vals.reduce((a: number, b: number) => a + b, 0) / vals.length;
       });
+      monthlyData.push(md);
     });
 
-    Object.keys(monthlyAggregates).forEach(month => {
-      const monthData: any = { month };
-      Object.keys(monthlyAggregates[month]).forEach(keyword => {
-        const values = monthlyAggregates[month][keyword];
-        monthData[keyword] = values.reduce((a: number, b: number) => a + b, 0) / values.length;
-      });
-      monthlyData.push(monthData);
+    return { timeSeriesData, keywordStats, monthlyData, keywords: Object.keys(keywordStats) };
+  }, [trendsData]);
+
+  // ─── Google Trends mutations & handlers ──────────────────────────
+  const updateKeywordsMutation = useMutation({
+    mutationFn: async (data: { industry: string; trendKeywords: string[] }) => {
+      return await apiRequest('PATCH', `/api/campaigns/${campaignId}`, data);
+    },
+    onSuccess: async () => {
+      setCooldownSeconds(120);
+      toast({ title: "Fetching Trend Data...", description: "This may take up to 30 seconds." });
+      setIsConfiguring(false);
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+      refetchTrends();
+    },
+    onError: () => { toast({ title: "Error", description: "Failed to update keywords.", variant: "destructive" }); },
+  });
+
+  const handleRefreshTrends = async () => {
+    if (cooldownSeconds > 0) { toast({ title: "Cooldown Active", description: `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}`, variant: "destructive" }); return; }
+    setCooldownSeconds(120);
+    toast({ title: "Fetching Trend Data...", description: "This may take up to 30 seconds." });
+    await refetchTrends();
+  };
+  const handleAddKeyword = () => { if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) { setKeywords([...keywords, newKeyword.trim()]); setNewKeyword(""); } };
+  const handleRemoveKeyword = (kw: string) => setKeywords(keywords.filter(k => k !== kw));
+  const handleSaveKeywords = () => {
+    let finalKw = [...keywords];
+    if (newKeyword.trim() && !finalKw.includes(newKeyword.trim())) { finalKw.push(newKeyword.trim()); setKeywords(finalKw); setNewKeyword(""); }
+    if (finalKw.length === 0) { toast({ title: "No Keywords", description: "Add at least one keyword.", variant: "destructive" }); return; }
+    updateKeywordsMutation.mutate({ industry, trendKeywords: finalKw });
+  };
+
+  useEffect(() => { if (campaign && !isConfiguring) { setIndustry((campaign as any).industry || ""); setKeywords((campaign as any).trendKeywords || []); } }, [campaign, isConfiguring]);
+  useEffect(() => { if (cooldownSeconds > 0) { const t = setTimeout(() => setCooldownSeconds(cooldownSeconds - 1), 1000); return () => clearTimeout(t); } }, [cooldownSeconds]);
+
+  const toggleSeries = (key: string) => {
+    setVisibleSeries(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
     });
+  };
 
-    return {
-      timeSeriesData,
-      keywordStats,
-      monthlyData,
-      keywords: Object.keys(keywordStats)
-    };
-  }, [effectiveTrendsData]);
+  // KPI targets for reference lines
+  const kpiTargets = useMemo(() => {
+    const targets: Record<string, number> = {};
+    (kpis || []).forEach((k: any) => {
+      const name = (k.metric || k.name || '').toLowerCase();
+      if (name.includes('revenue') && k.targetValue) targets.revenue = parseFloat(k.targetValue);
+      if (name.includes('conversion') && k.targetValue) targets.conversions = parseFloat(k.targetValue);
+      if (name.includes('roas') && k.targetValue) targets.roas = parseFloat(k.targetValue);
+    });
+    return targets;
+  }, [kpis]);
 
+  // ─── Loading / Error States ──────────────────────────────────────
   if (campaignLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -459,11 +470,9 @@ export default function TrendAnalysis() {
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
+              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
               <div className="grid gap-4 md:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                ))}
+                {[0,1,2,3].map(i => <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded" />)}
               </div>
             </div>
           </main>
@@ -489,287 +498,129 @@ export default function TrendAnalysis() {
     );
   }
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toLocaleString();
-  };
+  const hasData = crossPlatformData && crossPlatformData.series.length > 0;
+  const hasAdPlatforms = crossPlatformData && crossPlatformData.current.impressions > 0;
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
-
-  const getVarianceBadge = (variance: number) => {
-    if (variance > 15) {
-      return <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-        <ArrowUpRight className="w-3 h-3 mr-1" />
-        +{variance.toFixed(1)}%
-      </Badge>;
-    } else if (variance > 5) {
-      return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-        <ArrowUpRight className="w-3 h-3 mr-1" />
-        +{variance.toFixed(1)}%
-      </Badge>;
-    } else if (variance > -5) {
-      return <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-        {variance.toFixed(1)}%
-      </Badge>;
-    } else {
-      return <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
-        <ArrowDownRight className="w-3 h-3 mr-1" />
-        {variance.toFixed(1)}%
-      </Badge>;
-    }
-  };
-
-  const getTrendIcon = (variance: number) => {
-    if (variance > 10) return <TrendingUp className="w-4 h-4 text-green-600" />;
-    if (variance > 0) return <TrendingUp className="w-4 h-4 text-blue-600" />;
-    return <TrendingDown className="w-4 h-4 text-orange-600" />;
-  };
-
+  // ─── Render ──────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <Navigation />
-      
       <div className="flex">
         <Sidebar />
-        
         <main className="flex-1 p-8">
           {/* Header */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-4">
                 <Link href={`/campaigns/${(campaign as any)?.id}`}>
-                  <Button variant="ghost" size="sm" data-testid="button-back-to-campaign">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Campaign
-                  </Button>
+                  <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-2" />Back to Campaign</Button>
                 </Link>
                 <div>
                   <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Trend Analysis</h1>
                   <p className="text-slate-600 dark:text-slate-400 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant={demoMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setDemoMode(!demoMode)}
-                >
-                  <FlaskConical className="w-4 h-4 mr-1" />
-                  {demoMode ? "Demo On" : "Demo Data"}
-                </Button>
-                {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && (
-                  <Button variant="outline" size="sm" onClick={() => {
-                    setIsConfiguring(true);
-                    setIndustry((campaign as any).industry || "");
-                    setKeywords((campaign as any).trendKeywords || []);
-                  }} data-testid="button-configure-trends">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Configure Keywords
-                  </Button>
-                )}
-              </div>
+              {/* Period selector — shared across all tabs */}
+              <Select value={perfPeriod} onValueChange={setPerfPeriod}>
+                <SelectTrigger className="w-[140px] h-9">
+                  <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 Days</SelectItem>
+                  <SelectItem value="14d">Last 14 Days</SelectItem>
+                  <SelectItem value="30d">Last 30 Days</SelectItem>
+                  <SelectItem value="90d">Last 90 Days</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {demoMode && (
-            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                <FlaskConical className="w-4 h-4 inline mr-1" />
-                Showing demo data for testing. Toggle off to see real trend data.
-              </p>
-            </div>
-          )}
-
-          {/* Configuration Card */}
-          {!demoMode && (!(campaign as any)?.trendKeywords?.length || isConfiguring) && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Settings className="w-5 h-5" />
-                  <span>Configure Industry Trend Tracking</span>
-                </CardTitle>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Add keywords to track market trends from Google Trends. For example, if this is a wine campaign, add keywords like "wine", "red wine", "organic wine".
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-900 dark:text-white mb-2 block">
-                    Industry (Optional)
-                  </label>
-                  <Input
-                    placeholder="e.g., Wine, Digital Marketing, Healthcare"
-                    value={industry}
-                    onChange={(e) => setIndustry(e.target.value)}
-                    data-testid="input-industry"
-                  />
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium text-slate-900 dark:text-white mb-2 block">
-                    Trend Keywords *
-                  </label>
-                  <div className="flex items-center space-x-2 mb-3">
-                    <Input
-                      placeholder="e.g., wine"
-                      value={newKeyword}
-                      onChange={(e) => setNewKeyword(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
-                      data-testid="input-keyword"
-                    />
-                    <Button onClick={handleAddKeyword} size="sm" data-testid="button-add-keyword">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  
-                  {keywords.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {keywords.map((keyword, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-sm" data-testid={`badge-keyword-${idx}`}>
-                          {keyword}
-                          <button
-                            onClick={() => handleRemoveKeyword(keyword)}
-                            className="ml-2 hover:text-red-600"
-                            data-testid={`button-remove-keyword-${idx}`}
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {cooldownSeconds > 0 && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                          Cooldown Active
-                        </p>
-                        <p className="text-xs text-blue-700 dark:text-blue-300">
-                          Please wait {Math.floor(cooldownSeconds / 60)}:{String(cooldownSeconds % 60).padStart(2, '0')} before next search to avoid rate limiting
-                        </p>
-                      </div>
-                    </div>
-                    <Progress value={((120 - cooldownSeconds) / 120) * 100} className="mt-2 h-1" />
-                  </div>
-                )}
-
-                <div className="flex items-center space-x-2">
-                  <Button 
-                    onClick={handleSaveKeywords} 
-                    disabled={updateKeywordsMutation.isPending || cooldownSeconds > 0 || trendsFetching}
-                    data-testid="button-save-keywords"
-                  >
-                    {trendsFetching ? "Fetching Data..." : updateKeywordsMutation.isPending ? "Saving..." : cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Save & Track Trends"}
-                  </Button>
-                  {isConfiguring && (campaign as any)?.trendKeywords?.length > 0 && (
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => {
-                        setIsConfiguring(false);
-                        setKeywords([]);
-                        setIndustry("");
-                        setNewKeyword("");
-                      }}
-                      data-testid="button-cancel-configure"
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Performance Trends Tab (always visible) */}
+          {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="performance">Performance Trends</TabsTrigger>
-              <TabsTrigger value="overview">Google Trends</TabsTrigger>
-              <TabsTrigger value="keyword-comparison">Keyword Comparison</TabsTrigger>
-              <TabsTrigger value="seasonal-trends">Seasonal Trends</TabsTrigger>
-              <TabsTrigger value="insights">Market Insights</TabsTrigger>
+              <TabsTrigger value="overview">Executive Overview</TabsTrigger>
+              <TabsTrigger value="efficiency">Efficiency Metrics</TabsTrigger>
+              <TabsTrigger value="funnel">Conversion Funnel</TabsTrigger>
+              <TabsTrigger value="platforms">Platform Breakdown</TabsTrigger>
+              <TabsTrigger value="market">Market Trends</TabsTrigger>
             </TabsList>
 
-            {/* Performance Trends Tab */}
-            <TabsContent value="performance" className="space-y-6">
-              {/* Controls */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Select value={perfPeriod} onValueChange={setPerfPeriod}>
-                    <SelectTrigger className="w-[140px] h-8 text-xs">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="7d">Last 7 Days</SelectItem>
-                      <SelectItem value="14d">Last 14 Days</SelectItem>
-                      <SelectItem value="30d">Last 30 Days</SelectItem>
-                      <SelectItem value="90d">Last 90 Days</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Cross-platform performance data
-                </div>
-              </div>
-
-              {!crossPlatformData || crossPlatformData.series.length === 0 ? (
+            {/* ═══════════ TAB 1: EXECUTIVE OVERVIEW ═══════════ */}
+            <TabsContent value="overview" className="space-y-6">
+              {!hasData ? (
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Activity className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Performance Data Available</h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                      Connect LinkedIn Ads or Meta/Facebook to see cross-platform performance trends.
+                      Connect a platform (GA4, LinkedIn, Meta, or Google Ads) to see performance trends.
                     </p>
                   </CardContent>
                 </Card>
               ) : (
                 <>
-                  {/* Period Comparison Cards */}
+                  {/* Summary Cards */}
                   {crossPlatformData.hasPrevious && (
-                    <div className="grid gap-4 md:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-6">
                       {[
-                        { label: 'Total Spend', current: crossPlatformData.current.spend, change: crossPlatformData.comparison.spend, fmt: 'currency' },
-                        { label: 'Total Revenue', current: crossPlatformData.current.revenue, change: crossPlatformData.comparison.revenue, fmt: 'currency' },
-                        { label: 'Avg CTR', current: crossPlatformData.current.ctr, change: crossPlatformData.comparison.ctr, fmt: 'pct' },
-                        { label: 'Total Conversions', current: crossPlatformData.current.conversions, change: crossPlatformData.comparison.conversions, fmt: 'number' },
-                      ].map((card, i) => (
-                        <Card key={i}>
-                          <CardContent className="p-4">
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{card.label}</div>
-                            <div className="text-xl font-bold text-slate-900 dark:text-white">
-                              {card.fmt === 'currency' ? formatCurrency(card.current) : card.fmt === 'pct' ? `${card.current.toFixed(2)}%` : formatNumber(card.current)}
-                            </div>
-                            <div className={`flex items-center text-xs mt-1 ${card.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
-                              {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}% vs prev period
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                        { label: 'Total Spend', value: fmtCur(crossPlatformData.current.spend), change: crossPlatformData.comparison.spend, invertColor: true },
+                        { label: 'Total Revenue', value: fmtCur(crossPlatformData.current.revenue), change: crossPlatformData.comparison.revenue },
+                        { label: 'ROAS', value: `${crossPlatformData.current.roas.toFixed(1)}x`, change: crossPlatformData.comparison.roas },
+                        { label: 'Conversions', value: fmtNum(crossPlatformData.current.conversions), change: crossPlatformData.comparison.conversions },
+                        { label: 'CPA', value: fmtCur(crossPlatformData.current.cpa), change: crossPlatformData.comparison.cpa, invertColor: true },
+                        { label: 'Avg CTR', value: `${crossPlatformData.current.ctr.toFixed(2)}%`, change: crossPlatformData.comparison.ctr },
+                      ].map((card, i) => {
+                        const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
+                        return (
+                          <Card key={i}>
+                            <CardContent className="p-4">
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{card.label}</div>
+                              <div className="text-xl font-bold text-slate-900 dark:text-white">{card.value}</div>
+                              <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
+                                {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
+                                {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   )}
 
-                  {/* Performance Chart */}
+                  {/* Metric Toggle Row */}
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { key: 'spend', label: 'Spend', color: '#f59e0b' },
+                      { key: 'revenue', label: 'Revenue', color: '#10b981' },
+                      { key: 'conversions', label: 'Conversions', color: '#8b5cf6' },
+                      { key: 'impressions', label: 'Impressions', color: '#3b82f6' },
+                      { key: 'clicks', label: 'Clicks', color: '#06b6d4' },
+                      { key: 'users', label: 'Users', color: '#E37400' },
+                      { key: 'sessions', label: 'Sessions', color: '#ec4899' },
+                    ].map(s => (
+                      <button
+                        key={s.key}
+                        onClick={() => toggleSeries(s.key)}
+                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                          visibleSeries.has(s.key)
+                            ? 'text-white border-transparent'
+                            : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 bg-transparent'
+                        }`}
+                        style={visibleSeries.has(s.key) ? { backgroundColor: s.color } : {}}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Main Chart */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
                         <Activity className="w-5 h-5" />
-                        <span>Cross-Platform Daily Performance</span>
+                        <span>Cross-Platform Performance</span>
                       </CardTitle>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Impressions, clicks, and spend across all connected platforms
-                      </p>
                     </CardHeader>
                     <CardContent>
                       <div className="h-80">
@@ -779,95 +630,33 @@ export default function TrendAnalysis() {
                             <XAxis dataKey="label" className="text-xs" />
                             <YAxis yAxisId="left" className="text-xs" />
                             <YAxis yAxisId="right" orientation="right" className="text-xs" />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: 'var(--background)',
-                                border: '1px solid var(--border)',
-                                borderRadius: '6px',
-                              }}
-                              formatter={(value: any, name: string) => {
-                                if (name.includes('Spend')) return [`$${Number(value).toFixed(2)}`, name];
-                                return [Number(value).toLocaleString(), name];
-                              }}
-                            />
-                            <Area yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.1} stroke="#3b82f6" strokeWidth={2} name="Impressions" />
-                            <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#10b981" strokeWidth={2} dot={false} name="Clicks" />
-                            <Line yAxisId="right" type="monotone" dataKey="spend" stroke="#f59e0b" strokeWidth={2} dot={false} name="Spend ($)" />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => {
+                              if (['Spend', 'Revenue'].some(n => name.includes(n))) return [fmtCur(Number(value)), name];
+                              return [Number(value).toLocaleString(), name];
+                            }} />
+                            {visibleSeries.has('spend') && <Area yAxisId="right" type="monotone" dataKey="spend" fill="#f59e0b" fillOpacity={0.1} stroke="#f59e0b" strokeWidth={2} name="Spend ($)" />}
+                            {visibleSeries.has('revenue') && <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} name="Revenue ($)" />}
+                            {visibleSeries.has('conversions') && <Bar yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />}
+                            {visibleSeries.has('impressions') && <Area yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.08} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />}
+                            {visibleSeries.has('clicks') && <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />}
+                            {visibleSeries.has('users') && <Line yAxisId="left" type="monotone" dataKey="users" stroke="#E37400" strokeWidth={2} dot={false} name="Users" />}
+                            {visibleSeries.has('sessions') && <Line yAxisId="left" type="monotone" dataKey="sessions" stroke="#ec4899" strokeWidth={2} dot={false} name="Sessions" />}
+                            {/* KPI target lines */}
+                            {kpiTargets.revenue && visibleSeries.has('revenue') && (
+                              <ReferenceLine yAxisId="right" y={kpiTargets.revenue} stroke="#10b981" strokeDasharray="5 5" label={{ value: 'Revenue Target', fill: '#10b981', fontSize: 10 }} />
+                            )}
+                            {/* Anomaly dots */}
+                            {crossPlatformData.anomalies.filter(a => visibleSeries.has(a.metric)).slice(0, 8).map((a, i) => (
+                              <ReferenceDot key={i} x={a.label} y={a.value}
+                                yAxisId={['spend', 'revenue'].includes(a.metric) ? 'right' : 'left'}
+                                r={5} fill={a.severity === 'critical' ? '#ef4444' : '#f59e0b'} stroke="white" strokeWidth={2}
+                              />
+                            ))}
                           </ComposedChart>
                         </ResponsiveContainer>
                       </div>
                     </CardContent>
                   </Card>
-
-                  {/* Conversions & Revenue Chart */}
-                  {(crossPlatformData.current.conversions > 0 || crossPlatformData.current.revenue > 0) && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center space-x-2">
-                          <DollarSign className="w-5 h-5" />
-                          <span>Conversions & Revenue</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={crossPlatformData.series}>
-                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                              <XAxis dataKey="label" className="text-xs" />
-                              <YAxis yAxisId="left" className="text-xs" />
-                              <YAxis yAxisId="right" orientation="right" className="text-xs" />
-                              <Tooltip
-                                contentStyle={{
-                                  backgroundColor: 'var(--background)',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: '6px',
-                                }}
-                                formatter={(value: any, name: string) => {
-                                  if (name.includes('Revenue')) return [`$${Number(value).toFixed(2)}`, name];
-                                  return [Number(value).toLocaleString(), name];
-                                }}
-                              />
-                              <Bar yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />
-                              <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} name="Revenue ($)" />
-                            </ComposedChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Platform Breakdown */}
-                  {(crossPlatformData.current.spend > 0) && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center space-x-2">
-                          <BarChart3 className="w-5 h-5" />
-                          <span>Platform Breakdown</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={crossPlatformData.series}>
-                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                              <XAxis dataKey="label" className="text-xs" />
-                              <YAxis className="text-xs" />
-                              <Tooltip
-                                contentStyle={{
-                                  backgroundColor: 'var(--background)',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: '6px',
-                                }}
-                                formatter={(value: any, name: string) => [Number(value).toLocaleString(), name]}
-                              />
-                              <Bar dataKey="li_clicks" stackId="clicks" fill="#0077B5" name="LinkedIn Clicks" />
-                              <Bar dataKey="meta_clicks" stackId="clicks" fill="#1877F2" name="Meta Clicks" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
 
                   {/* Anomaly Alerts */}
                   {crossPlatformData.anomalies.length > 0 && (
@@ -876,30 +665,25 @@ export default function TrendAnalysis() {
                         <CardTitle className="flex items-center space-x-2">
                           <AlertTriangle className="w-5 h-5 text-orange-500" />
                           <span>Anomaly Detection</span>
+                          <Badge variant="outline" className="text-xs">{crossPlatformData.anomalies.length} detected</Badge>
                         </CardTitle>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Data points that deviate more than 2 standard deviations from the 7-day rolling average
-                        </p>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-3">
-                          {crossPlatformData.anomalies.slice(0, 10).map((anomaly, idx) => {
-                            const isSpike = anomaly.value > anomaly.expected;
+                        <div className="space-y-2">
+                          {crossPlatformData.anomalies.slice(0, 8).map((a, i) => {
+                            const isSpike = a.value > a.expected;
                             return (
-                              <div key={idx} className={`p-3 rounded-lg border ${isSpike ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/20' : 'border-blue-200 bg-blue-50 dark:bg-blue-900/20'}`}>
+                              <div key={i} className={`p-3 rounded-lg border ${a.severity === 'critical' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' : 'border-orange-200 bg-orange-50 dark:bg-orange-900/20'}`}>
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center space-x-2">
                                     {isSpike ? <TrendingUp className="w-4 h-4 text-orange-600" /> : <TrendingDown className="w-4 h-4 text-blue-600" />}
-                                    <span className="text-sm font-medium text-slate-900 dark:text-white capitalize">
-                                      {anomaly.metric} {isSpike ? 'Spike' : 'Drop'}
-                                    </span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {format(new Date(anomaly.date + 'T00:00:00'), 'MMM dd')}
-                                    </Badge>
+                                    <span className="text-sm font-medium capitalize">{a.metric} {isSpike ? 'spike' : 'drop'}</span>
+                                    <Badge variant={a.severity === 'critical' ? 'destructive' : 'outline'} className="text-xs">{a.severity}</Badge>
+                                    <Badge variant="outline" className="text-xs">{a.label}</Badge>
                                   </div>
                                   <div className="text-sm text-slate-600 dark:text-slate-400">
-                                    <span className="font-semibold">{anomaly.value.toLocaleString()}</span>
-                                    <span className="text-xs ml-1">(expected ~{Math.round(anomaly.expected).toLocaleString()})</span>
+                                    <span className="font-semibold">{a.metric === 'spend' || a.metric === 'cpa' ? fmtCur(a.value) : a.value.toLocaleString()}</span>
+                                    <span className="text-xs ml-1">(expected ~{a.metric === 'spend' || a.metric === 'cpa' ? fmtCur(a.expected) : Math.round(a.expected).toLocaleString()})</span>
                                   </div>
                                 </div>
                               </div>
@@ -913,810 +697,549 @@ export default function TrendAnalysis() {
               )}
             </TabsContent>
 
-          {/* Google Trends Tabs */}
-          {(demoMode || ((campaign as any)?.trendKeywords?.length > 0 && !isConfiguring)) ? (
-            <>
-
-              {/* Overview Tab */}
-              <TabsContent value="overview" className="space-y-6">
-                {!demoMode && trendsFetching ? (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <div className="flex flex-col items-center space-y-3">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        <p className="text-slate-900 dark:text-white font-medium">Fetching Trend Data via SerpAPI</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">This may take up to 30 seconds...</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : !effectiveTrendsData ? (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <div className="flex flex-col items-center space-y-4">
-                        <TrendingUp className="w-16 h-16 text-slate-300 dark:text-slate-600" />
-                        <div>
-                          <p className="text-slate-900 dark:text-white font-medium text-lg mb-2">No Trend Data Yet</p>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                            Click the button below to fetch Google Trends data for your keywords
-                          </p>
-                        </div>
-                        <Button 
-                          onClick={handleRefreshTrends} 
-                          disabled={cooldownSeconds > 0}
-                          data-testid="button-refresh-trends"
-                        >
-                          {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Refresh Trends Data"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : trendsError || !processedTrendsData || !((effectiveTrendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <div className="flex flex-col items-center space-y-4">
-                        <AlertTriangle className="w-12 h-12 text-yellow-600" />
-                        <div>
-                          <p className="text-slate-900 dark:text-white font-medium text-lg mb-2">Failed to Fetch Trend Data</p>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                            SerpAPI request timed out or failed. This is usually due to Google rate limiting.
-                          </p>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
-                            Please wait 2-5 minutes before trying again.
-                          </p>
-                        </div>
-                        <Button 
-                          onClick={handleRefreshTrends} 
-                          disabled={cooldownSeconds > 0}
-                          variant="outline"
-                          data-testid="button-retry-trends"
-                        >
-                          {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Try Again"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <>
-                    {processedTrendsData.keywords.length === 0 ? (
-                      <Card>
-                        <CardContent className="p-8 text-center">
-                          <AlertTriangle className="w-12 h-12 mx-auto text-amber-500 mb-4" />
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                            No Trend Data Available
-                          </h3>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
-                            Google Trends API is currently unavailable. Please try again later or contact support for assistance.
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      <>
-                        {/* Keyword Summary Cards */}
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {processedTrendsData.keywords.map((keyword: string) => {
-                        const stats = processedTrendsData.keywordStats[keyword];
-                        return (
-                          <Card key={keyword}>
-                            <CardHeader className="pb-3">
-                              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                                "{keyword}"
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-500">Search Interest</span>
-                                <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                                  {Math.round(stats.recent)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-500">7-day avg</span>
-                                <div className="flex items-center space-x-1">
-                                  {stats.trend === 'up' ? (
-                                    <ArrowUpRight className="w-3 h-3 text-green-600" />
-                                  ) : stats.trend === 'down' ? (
-                                    <ArrowDownRight className="w-3 h-3 text-red-600" />
-                                  ) : null}
-                                  <span className={stats.trend === 'up' ? 'text-green-600' : stats.trend === 'down' ? 'text-red-600' : 'text-slate-500'}>
-                                    {stats.trendPercentage > 0 ? '+' : ''}{stats.trendPercentage.toFixed(1)}%
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="pt-2 border-t dark:border-slate-700">
-                                <div className="flex items-center justify-between text-xs text-slate-500">
-                                  <span>Peak: {Math.round(stats.max)}</span>
-                                  <span>Avg: {Math.round(stats.average)}</span>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-
-                    {/* Search Interest Trend Chart */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center space-x-2">
-                          <Activity className="w-5 h-5" />
-                          <span>Search Interest Over Time (90 Days)</span>
-                        </CardTitle>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                          Google Trends search interest (0-100 scale)
-                        </p>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="h-80">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={processedTrendsData.timeSeriesData}>
-                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                              <XAxis dataKey="date" className="text-xs" />
-                              <YAxis domain={[0, 100]} className="text-xs" label={{ value: 'Interest (0-100)', angle: -90, position: 'insideLeft' }} />
-                              <Tooltip 
-                                contentStyle={{ 
-                                  backgroundColor: 'var(--background)', 
-                                  border: '1px solid var(--border)',
-                                  borderRadius: '6px' 
-                                }} 
-                              />
-                              {processedTrendsData.keywords.map((keyword: string, index: number) => (
-                                <Line 
-                                  key={keyword}
-                                  type="monotone" 
-                                  dataKey={keyword} 
-                                  stroke={processedTrendsData.keywordStats[keyword].color}
-                                  strokeWidth={2}
-                                  name={keyword}
-                                  dot={false}
-                                />
-                              ))}
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Top Performing Keyword */}
-                    <div className="grid gap-4 md:grid-cols-3">
-                      {(() => {
-                        const topKeyword = processedTrendsData.keywords.reduce((top: any, current: string) => {
-                          const currentStats = processedTrendsData.keywordStats[current];
-                          const topStats = top ? processedTrendsData.keywordStats[top] : null;
-                          if (!top || currentStats.average > topStats.average) return current;
-                          return top;
-                        }, null);
-                        
-                        const trendingKeyword = processedTrendsData.keywords.reduce((top: any, current: string) => {
-                          const currentStats = processedTrendsData.keywordStats[current];
-                          const topStats = top ? processedTrendsData.keywordStats[top] : null;
-                          if (!top || currentStats.trendPercentage > topStats.trendPercentage) return current;
-                          return top;
-                        }, null);
-
-                        const topStats = topKeyword ? processedTrendsData.keywordStats[topKeyword] : null;
-                        const trendingStats = trendingKeyword ? processedTrendsData.keywordStats[trendingKeyword] : null;
-
-                        return (
-                          <>
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="text-sm flex items-center space-x-2">
-                                  <Award className="w-4 h-4" />
-                                  <span>Top Keyword</span>
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-center">
-                                  <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
-                                    "{topKeyword}"
-                                  </div>
-                                  <div className="text-sm text-slate-600 dark:text-slate-400">
-                                    Avg interest: {topStats ? Math.round(topStats.average) : 0}
-                                  </div>
-                                  <Badge className="mt-2 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                                    Highest Search Volume
-                                  </Badge>
-                                </div>
-                              </CardContent>
-                            </Card>
-
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="text-sm flex items-center space-x-2">
-                                  <TrendingUp className="w-4 h-4" />
-                                  <span>Trending Keyword</span>
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-center">
-                                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">
-                                    "{trendingKeyword}"
-                                  </div>
-                                  <div className="text-sm text-slate-600 dark:text-slate-400">
-                                    {trendingStats ? (trendingStats.trendPercentage > 0 ? '+' : '') : ''}{trendingStats ? trendingStats.trendPercentage.toFixed(1) : 0}% this week
-                                  </div>
-                                  <Badge className="mt-2 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                                    Rising Interest
-                                  </Badge>
-                                </div>
-                              </CardContent>
-                            </Card>
-
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="text-sm flex items-center space-x-2">
-                                  <Target className="w-4 h-4" />
-                                  <span>Market Status</span>
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-center">
-                                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">
-                                    {(effectiveTrendsData as any)?.industry || 'Market'}
-                                  </div>
-                                  <div className="text-sm text-slate-600 dark:text-slate-400">
-                                    Tracking {processedTrendsData.keywords.length} keyword{processedTrendsData.keywords.length > 1 ? 's' : ''}
-                                  </div>
-                                  <Badge className="mt-2 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
-                                    Active Monitoring
-                                  </Badge>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </>
-                        );
-                      })()}
-                    </div>
-                      </>
-                    )}
-                  </>
-                )}
-              </TabsContent>
-
-            {/* Keyword Comparison Tab */}
-            <TabsContent value="keyword-comparison" className="space-y-6">
-              {!demoMode && trendsFetching ? (
-                <Card>
-                  <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                    Loading comparison data...
-                  </CardContent>
-                </Card>
-              ) : !effectiveTrendsData ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <div className="flex flex-col items-center space-y-4">
-                      <BarChart3 className="w-16 h-16 text-slate-300 dark:text-slate-600" />
-                      <div>
-                        <p className="text-slate-900 dark:text-white font-medium text-lg mb-2">No Data Available</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                          Fetch trend data from the Overview tab first
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : !processedTrendsData || !((effectiveTrendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
-                <Card>
-                  <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                    Unable to load comparison data. Please try refreshing from the Overview tab.
-                  </CardContent>
-                </Card>
+            {/* ═══════════ TAB 2: EFFICIENCY METRICS ═══════════ */}
+            <TabsContent value="efficiency" className="space-y-6">
+              {!hasData ? (
+                <Card><CardContent className="p-8 text-center"><Activity className="w-12 h-12 mx-auto text-slate-300 mb-4" /><p className="text-slate-600 dark:text-slate-400">No data available for efficiency analysis.</p></CardContent></Card>
               ) : (
                 <>
-                  {/* Keyword Comparison Chart */}
+                  {/* Summary Cards */}
+                  <div className="grid gap-4 md:grid-cols-4">
+                    {[
+                      { label: 'Avg ROAS', value: `${crossPlatformData.current.roas.toFixed(1)}x`, change: crossPlatformData.comparison.roas },
+                      { label: 'Avg CPA', value: fmtCur(crossPlatformData.current.cpa), change: crossPlatformData.comparison.cpa, invertColor: true },
+                      { label: 'Avg CPC', value: fmtCur(crossPlatformData.current.cpc), change: pctChange(crossPlatformData.current.cpc, avgArr(crossPlatformData.series, 'cpc')), invertColor: true },
+                      { label: 'Avg CPM', value: fmtCur(crossPlatformData.current.cpm), change: pctChange(crossPlatformData.current.cpm, avgArr(crossPlatformData.series, 'cpm')), invertColor: true },
+                    ].map((card, i) => {
+                      const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
+                      return (
+                        <Card key={i}>
+                          <CardContent className="p-4">
+                            <div className="text-xs text-slate-500 mb-1">{card.label}</div>
+                            <div className="text-xl font-bold text-slate-900 dark:text-white">{card.value}</div>
+                            {crossPlatformData.hasPrevious && (
+                              <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
+                                {card.change >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                                {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+
+                  {/* ROAS & ROI Chart */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <BarChart3 className="w-5 h-5" />
-                        <span>Keyword Performance Comparison</span>
-                      </CardTitle>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                        Average search interest by keyword (last 90 days)
-                      </p>
-                    </CardHeader>
+                    <CardHeader><CardTitle className="flex items-center space-x-2"><DollarSign className="w-5 h-5" /><span>ROAS & ROI Trend</span></CardTitle></CardHeader>
                     <CardContent>
-                      <div className="h-64">
+                      <div className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={processedTrendsData.keywords.map((keyword: string) => ({
-                            keyword,
-                            average: Math.round(processedTrendsData.keywordStats[keyword].average),
-                            max: Math.round(processedTrendsData.keywordStats[keyword].max)
-                          }))}>
+                          <ComposedChart data={crossPlatformData.series}>
                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                            <XAxis dataKey="keyword" className="text-xs" />
-                            <YAxis domain={[0, 100]} className="text-xs" />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'var(--background)', 
-                                border: '1px solid var(--border)',
-                                borderRadius: '6px' 
-                              }} 
-                            />
-                            <Bar dataKey="average" fill="#3b82f6" name="Average Interest" />
-                            <Bar dataKey="max" fill="#10b981" fillOpacity={0.6} name="Peak Interest" />
-                          </BarChart>
+                            <XAxis dataKey="label" className="text-xs" />
+                            <YAxis yAxisId="left" className="text-xs" label={{ value: 'ROAS (x)', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} />
+                            <YAxis yAxisId="right" orientation="right" className="text-xs" label={{ value: 'ROI (%)', angle: 90, position: 'insideRight', style: { fontSize: 10 } }} />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [name === 'ROAS' ? `${Number(v).toFixed(2)}x` : `${Number(v).toFixed(1)}%`, name]} />
+                            <Line yAxisId="left" type="monotone" dataKey="roas" stroke="#10b981" strokeWidth={2} dot={false} name="ROAS" />
+                            <Line yAxisId="right" type="monotone" dataKey="roi" stroke="#8b5cf6" strokeWidth={2} dot={false} name="ROI %" />
+                            {kpiTargets.roas && <ReferenceLine yAxisId="left" y={kpiTargets.roas / 100} stroke="#10b981" strokeDasharray="5 5" label={{ value: 'ROAS Target', fill: '#10b981', fontSize: 10 }} />}
+                          </ComposedChart>
                         </ResponsiveContainer>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Keyword Statistics Table */}
+                  {/* CPA & CPC Chart */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Activity className="w-5 h-5" />
-                        <span>Detailed Keyword Statistics</span>
-                      </CardTitle>
-                    </CardHeader>
+                    <CardHeader><CardTitle className="flex items-center space-x-2"><Target className="w-5 h-5" /><span>CPA & CPC Trend</span></CardTitle></CardHeader>
                     <CardContent>
-                      <div className="space-y-3">
-                        {processedTrendsData.keywords.map((keyword: string) => {
-                          const stats = processedTrendsData.keywordStats[keyword];
-                          return (
-                            <div key={keyword} className="p-4 border rounded-lg dark:border-slate-700">
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center space-x-2">
-                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stats.color }}></div>
-                                  <span className="font-semibold text-slate-900 dark:text-white">"{keyword}"</span>
-                                </div>
-                                {stats.trend === 'up' ? (
-                                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                                    <TrendingUp className="w-3 h-3 mr-1" />
-                                    Trending Up
-                                  </Badge>
-                                ) : stats.trend === 'down' ? (
-                                  <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
-                                    <TrendingDown className="w-3 h-3 mr-1" />
-                                    Trending Down
-                                  </Badge>
-                                ) : (
-                                  <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                                    Stable
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-4 gap-4 text-sm">
-                                <div>
-                                  <span className="block text-slate-500 text-xs">Avg Interest</span>
-                                  <span className="text-slate-900 dark:text-white font-semibold">{Math.round(stats.average)}</span>
-                                </div>
-                                <div>
-                                  <span className="block text-slate-500 text-xs">Peak</span>
-                                  <span className="text-slate-900 dark:text-white font-semibold">{Math.round(stats.max)}</span>
-                                </div>
-                                <div>
-                                  <span className="block text-slate-500 text-xs">Recent (7d)</span>
-                                  <span className="text-slate-900 dark:text-white font-semibold">{Math.round(stats.recent)}</span>
-                                </div>
-                                <div>
-                                  <span className="block text-slate-500 text-xs">7d Change</span>
-                                  <span className={`font-semibold ${stats.trend === 'up' ? 'text-green-600' : stats.trend === 'down' ? 'text-red-600' : 'text-slate-600'}`}>
-                                    {stats.trendPercentage > 0 ? '+' : ''}{stats.trendPercentage.toFixed(1)}%
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                      <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={crossPlatformData.series}>
+                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                            <XAxis dataKey="label" className="text-xs" />
+                            <YAxis yAxisId="left" className="text-xs" label={{ value: 'CPA ($)', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} />
+                            <YAxis yAxisId="right" orientation="right" className="text-xs" label={{ value: 'CPC ($)', angle: 90, position: 'insideRight', style: { fontSize: 10 } }} />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [fmtCur(Number(v)), name]} />
+                            <Line yAxisId="left" type="monotone" dataKey="cpa" stroke="#ef4444" strokeWidth={2} dot={false} name="CPA" />
+                            <Line yAxisId="right" type="monotone" dataKey="cpc" stroke="#f59e0b" strokeWidth={2} dot={false} name="CPC" />
+                          </ComposedChart>
+                        </ResponsiveContainer>
                       </div>
                     </CardContent>
                   </Card>
-                </>
-              )}
-            </TabsContent>
 
-            {/* Seasonal Trends Tab */}
-            <TabsContent value="seasonal-trends" className="space-y-6">
-              {!demoMode && trendsFetching ? (
-                <Card>
-                  <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                    Loading seasonal data...
-                  </CardContent>
-                </Card>
-              ) : !effectiveTrendsData ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <div className="flex flex-col items-center space-y-4">
-                      <Calendar className="w-16 h-16 text-slate-300 dark:text-slate-600" />
-                      <div>
-                        <p className="text-slate-900 dark:text-white font-medium text-lg mb-2">No Data Available</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                          Fetch trend data from the Overview tab first
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : !processedTrendsData || !((effectiveTrendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
-                <Card>
-                  <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                    Unable to load seasonal data. Please try refreshing from the Overview tab.
-                  </CardContent>
-                </Card>
-              ) : (
-                <>
-                  {/* Monthly Trends Chart */}
+                  {/* CTR & Engagement Rate Chart */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Calendar className="w-5 h-5" />
-                        <span>Monthly Search Interest Patterns</span>
-                      </CardTitle>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                        Monthly average search interest for each keyword
-                      </p>
-                    </CardHeader>
+                    <CardHeader><CardTitle className="flex items-center space-x-2"><BarChart3 className="w-5 h-5" /><span>CTR & Engagement Rate</span></CardTitle></CardHeader>
                     <CardContent>
-                      <div className="h-80">
+                      <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={processedTrendsData.monthlyData}>
+                          <LineChart data={crossPlatformData.series}>
                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                            <XAxis dataKey="month" className="text-xs" />
-                            <YAxis domain={[0, 100]} className="text-xs" />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'var(--background)', 
-                                border: '1px solid var(--border)',
-                                borderRadius: '6px' 
-                              }} 
-                            />
-                            {processedTrendsData.keywords.map((keyword: string) => (
-                              <Line 
-                                key={keyword}
-                                type="monotone" 
-                                dataKey={keyword} 
-                                stroke={processedTrendsData.keywordStats[keyword].color}
-                                strokeWidth={2}
-                                name={keyword}
-                              />
-                            ))}
+                            <XAxis dataKey="label" className="text-xs" />
+                            <YAxis className="text-xs" />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [`${Number(v).toFixed(2)}%`, name]} />
+                            <Line type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR %" />
+                            <Line type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={false} name="Engagement Rate %" />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Seasonal Insights */}
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {(() => {
-                      const peakKeyword = processedTrendsData.keywords.reduce((peak: any, current: string) => {
-                        const currentStats = processedTrendsData.keywordStats[current];
-                        const peakStats = peak ? processedTrendsData.keywordStats[peak] : null;
-                        if (!peak || currentStats.max > peakStats.max) return current;
-                        return peak;
-                      }, null);
-
-                      const mostStableKeyword = processedTrendsData.keywords.reduce((stable: any, current: string) => {
-                        const currentStats = processedTrendsData.keywordStats[current];
-                        const stableStats = stable ? processedTrendsData.keywordStats[stable] : null;
-                        const currentVariance = currentStats.max - currentStats.min;
-                        const stableVariance = stable ? stableStats.max - stableStats.min : Infinity;
-                        if (currentVariance < stableVariance) return current;
-                        return stable;
-                      }, null);
-
-                      const peakStats = peakKeyword ? processedTrendsData.keywordStats[peakKeyword] : null;
-                      const stableStats = mostStableKeyword ? processedTrendsData.keywordStats[mostStableKeyword] : null;
-
-                      return (
-                        <>
-                          <Card>
-                            <CardHeader>
-                              <CardTitle className="text-sm">Highest Peak</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-center">
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">"{peakKeyword}"</div>
-                                <div className="text-sm text-slate-600 dark:text-slate-400">
-                                  Peak interest: {peakStats ? Math.round(peakStats.max) : 0}
-                                </div>
-                                <Badge className="mt-2 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                                  Maximum Demand
-                                </Badge>
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          <Card>
-                            <CardHeader>
-                              <CardTitle className="text-sm">Most Stable</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-center">
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">"{mostStableKeyword}"</div>
-                                <div className="text-sm text-slate-600 dark:text-slate-400">
-                                  Variance: {stableStats ? Math.round(stableStats.max - stableStats.min) : 0}
-                                </div>
-                                <Badge className="mt-2 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                                  Consistent Interest
-                                </Badge>
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          <Card>
-                            <CardHeader>
-                              <CardTitle className="text-sm">Data Period</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-center">
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">90 Days</div>
-                                <div className="text-sm text-slate-600 dark:text-slate-400">
-                                  Last 3 months
-                                </div>
-                                <Badge className="mt-2 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
-                                  Google Trends
-                                </Badge>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </>
-                      );
-                    })()}
-                  </div>
+                  {/* CPM Chart */}
+                  {hasAdPlatforms && (
+                    <Card>
+                      <CardHeader><CardTitle className="flex items-center space-x-2"><DollarSign className="w-5 h-5" /><span>CPM Trend</span></CardTitle></CardHeader>
+                      <CardContent>
+                        <div className="h-56">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={crossPlatformData.series}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="label" className="text-xs" />
+                              <YAxis className="text-xs" />
+                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtCur(Number(v)), 'CPM']} />
+                              <Area type="monotone" dataKey="cpm" fill="#8b5cf6" fillOpacity={0.15} stroke="#8b5cf6" strokeWidth={2} name="CPM ($)" />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </>
               )}
             </TabsContent>
 
-            {/* Market Insights Tab */}
-            <TabsContent value="insights" className="space-y-6">
-              {!demoMode && trendsFetching ? (
-                <Card>
-                  <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                    Loading market insights...
-                  </CardContent>
-                </Card>
-              ) : !effectiveTrendsData ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <div className="flex flex-col items-center space-y-4">
-                      <Brain className="w-16 h-16 text-slate-300 dark:text-slate-600" />
-                      <div>
-                        <p className="text-slate-900 dark:text-white font-medium text-lg mb-2">No Data Available</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                          Fetch trend data from the Overview tab first
-                        </p>
+            {/* ═══════════ TAB 3: CONVERSION FUNNEL ═══════════ */}
+            <TabsContent value="funnel" className="space-y-6">
+              {!hasData ? (
+                <Card><CardContent className="p-8 text-center"><Layers className="w-12 h-12 mx-auto text-slate-300 mb-4" /><h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Funnel Data</h3><p className="text-sm text-slate-600 dark:text-slate-400">Connect an ad platform to see conversion funnel trends.</p></CardContent></Card>
+              ) : (
+                <>
+                  {/* Funnel Summary Cards */}
+                  <div className="grid gap-4 md:grid-cols-4">
+                    {[
+                      { label: 'Total Impressions', value: fmtNum(crossPlatformData.current.impressions) },
+                      { label: 'Click-Through Rate', value: `${crossPlatformData.current.ctr.toFixed(2)}%` },
+                      { label: 'Conversion Rate', value: `${(crossPlatformData.current.clicks > 0 ? (crossPlatformData.current.conversions / crossPlatformData.current.clicks) * 100 : 0).toFixed(2)}%` },
+                      { label: 'Cost per Conversion', value: fmtCur(crossPlatformData.current.cpa) },
+                    ].map((c, i) => (
+                      <Card key={i}><CardContent className="p-4"><div className="text-xs text-slate-500 mb-1">{c.label}</div><div className="text-xl font-bold text-slate-900 dark:text-white">{c.value}</div></CardContent></Card>
+                    ))}
+                  </div>
+
+                  {/* Conversion Rates Over Time */}
+                  <Card>
+                    <CardHeader><CardTitle className="flex items-center space-x-2"><TrendingUp className="w-5 h-5" /><span>Conversion Rates Over Time</span></CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={crossPlatformData.series}>
+                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                            <XAxis dataKey="label" className="text-xs" />
+                            <YAxis className="text-xs" />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [`${Number(v).toFixed(2)}%`, name]} />
+                            <Line type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR (Impressions → Clicks)" />
+                            <Line type="monotone" dataKey="convRate" stroke="#8b5cf6" strokeWidth={2} dot={false} name="Conv Rate (Clicks → Conversions)" />
+                          </LineChart>
+                        </ResponsiveContainer>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Funnel Stacked Area */}
+                  {hasAdPlatforms && (
+                    <Card>
+                      <CardHeader><CardTitle className="flex items-center space-x-2"><Layers className="w-5 h-5" /><span>Funnel Volume Trends</span></CardTitle></CardHeader>
+                      <CardContent>
+                        <div className="h-72">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={crossPlatformData.series}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="label" className="text-xs" />
+                              <YAxis yAxisId="left" className="text-xs" />
+                              <YAxis yAxisId="right" orientation="right" className="text-xs" />
+                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [Number(v).toLocaleString(), name]} />
+                              <Area yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.1} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />
+                              <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />
+                              <Bar yAxisId="right" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* GA4 Engagement Funnel */}
+                  {crossPlatformData.current.users > 0 && (
+                    <Card>
+                      <CardHeader><CardTitle className="flex items-center space-x-2"><BarChart3 className="w-5 h-5" /><span>GA4 Engagement Funnel</span></CardTitle></CardHeader>
+                      <CardContent>
+                        <div className="h-72">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={crossPlatformData.series}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="label" className="text-xs" />
+                              <YAxis yAxisId="left" className="text-xs" />
+                              <YAxis yAxisId="right" orientation="right" className="text-xs" domain={[0, 100]} />
+                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [name.includes('Rate') ? `${Number(v).toFixed(1)}%` : Number(v).toLocaleString(), name]} />
+                              <Area yAxisId="left" type="monotone" dataKey="ga4_users" fill="#E37400" fillOpacity={0.1} stroke="#E37400" strokeWidth={1.5} name="Users" />
+                              <Line yAxisId="left" type="monotone" dataKey="ga4_sessions" stroke="#3b82f6" strokeWidth={2} dot={false} name="Sessions" />
+                              <Bar yAxisId="left" dataKey="ga4_conversions" fill="#10b981" fillOpacity={0.7} name="Conversions" />
+                              <Line yAxisId="right" type="monotone" dataKey="engagementRate" stroke="#8b5cf6" strokeWidth={2} dot={false} name="Engagement Rate %" />
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
+            </TabsContent>
+
+            {/* ═══════════ TAB 4: PLATFORM BREAKDOWN ═══════════ */}
+            <TabsContent value="platforms" className="space-y-6">
+              {!hasData || !crossPlatformData.platformTotals.length ? (
+                <Card><CardContent className="p-8 text-center"><GitCompare className="w-12 h-12 mx-auto text-slate-300 mb-4" /><h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Platform Data</h3><p className="text-sm text-slate-600 dark:text-slate-400">Connect at least one ad platform to see breakdown analysis.</p></CardContent></Card>
+              ) : (
+                <>
+                  {/* Platform Comparison Table */}
+                  <Card>
+                    <CardHeader><CardTitle className="flex items-center space-x-2"><GitCompare className="w-5 h-5" /><span>Platform Performance Comparison</span></CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-700">
+                              <th className="text-left py-3 px-2 font-medium text-slate-500">Platform</th>
+                              <th className="text-right py-3 px-2 font-medium text-slate-500">Spend</th>
+                              <th className="text-right py-3 px-2 font-medium text-slate-500">Impressions</th>
+                              <th className="text-right py-3 px-2 font-medium text-slate-500">Clicks</th>
+                              <th className="text-right py-3 px-2 font-medium text-slate-500">CTR</th>
+                              <th className="text-right py-3 px-2 font-medium text-slate-500">Conversions</th>
+                              <th className="text-right py-3 px-2 font-medium text-slate-500">CPA</th>
+                              <th className="text-right py-3 px-2 font-medium text-slate-500">CPC</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {crossPlatformData.platformTotals.map((p, i) => {
+                              const bestCpa = Math.min(...crossPlatformData.platformTotals.filter(x => x.cpa > 0).map(x => x.cpa));
+                              const bestCpc = Math.min(...crossPlatformData.platformTotals.filter(x => x.cpc > 0).map(x => x.cpc));
+                              return (
+                                <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
+                                  <td className="py-3 px-2">
+                                    <div className="flex items-center space-x-2">
+                                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }} />
+                                      <span className="font-medium text-slate-900 dark:text-white">{p.platform}</span>
+                                    </div>
+                                  </td>
+                                  <td className="text-right py-3 px-2">{fmtCur(p.spend)}</td>
+                                  <td className="text-right py-3 px-2">{fmtNum(p.impressions)}</td>
+                                  <td className="text-right py-3 px-2">{fmtNum(p.clicks)}</td>
+                                  <td className="text-right py-3 px-2">{p.ctr.toFixed(2)}%</td>
+                                  <td className="text-right py-3 px-2">{fmtNum(p.conversions)}</td>
+                                  <td className={`text-right py-3 px-2 ${p.cpa > 0 && p.cpa === bestCpa ? 'text-green-600 font-semibold' : ''}`}>{p.cpa > 0 ? fmtCur(p.cpa) : '—'}</td>
+                                  <td className={`text-right py-3 px-2 ${p.cpc > 0 && p.cpc === bestCpc ? 'text-green-600 font-semibold' : ''}`}>{p.cpc > 0 ? fmtCur(p.cpc) : '—'}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Spend Distribution Pie + Stacked Trends */}
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Pie Chart */}
+                    <Card>
+                      <CardHeader><CardTitle>Spend Distribution</CardTitle></CardHeader>
+                      <CardContent>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={crossPlatformData.platformTotals.filter(p => p.spend > 0)}
+                                dataKey="spend"
+                                nameKey="platform"
+                                cx="50%" cy="50%"
+                                outerRadius={80}
+                                label={({ platform, percent }) => `${platform} ${(percent * 100).toFixed(0)}%`}
+                              >
+                                {crossPlatformData.platformTotals.filter(p => p.spend > 0).map((p, i) => (
+                                  <Cell key={i} fill={p.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(v: any) => fmtCur(Number(v))} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Efficiency Comparison */}
+                    <Card>
+                      <CardHeader><CardTitle>Efficiency Comparison</CardTitle></CardHeader>
+                      <CardContent>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={crossPlatformData.platformTotals} layout="vertical">
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis type="number" className="text-xs" />
+                              <YAxis dataKey="platform" type="category" className="text-xs" width={80} />
+                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => fmtCur(Number(v))} />
+                              <Bar dataKey="cpa" fill="#ef4444" name="CPA" />
+                              <Bar dataKey="cpc" fill="#f59e0b" name="CPC" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Platform Trends Stacked Bar */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Platform Trends</CardTitle>
+                        <Select value={platformMetric} onValueChange={setPlatformMetric}>
+                          <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="spend">Spend</SelectItem>
+                            <SelectItem value="clicks">Clicks</SelectItem>
+                            <SelectItem value="conversions">Conversions</SelectItem>
+                            <SelectItem value="impressions">Impressions</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={crossPlatformData.series}>
+                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                            <XAxis dataKey="label" className="text-xs" />
+                            <YAxis className="text-xs" />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [platformMetric === 'spend' ? fmtCur(Number(v)) : Number(v).toLocaleString(), name]} />
+                            <Bar dataKey={`li_${platformMetric}`} stackId="a" fill={PLATFORM_COLORS.linkedin} name="LinkedIn" />
+                            <Bar dataKey={`meta_${platformMetric}`} stackId="a" fill={PLATFORM_COLORS.meta} name="Meta" />
+                            <Bar dataKey={`gads_${platformMetric}`} stackId="a" fill={PLATFORM_COLORS.google_ads} name="Google Ads" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </TabsContent>
+
+            {/* ═══════════ TAB 5: MARKET TRENDS ═══════════ */}
+            <TabsContent value="market" className="space-y-6">
+              {/* Keyword Configuration */}
+              {(!(campaign as any)?.trendKeywords?.length || isConfiguring) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2"><Settings className="w-5 h-5" /><span>Configure Keyword Tracking</span></CardTitle>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Add keywords to track search interest from Google Trends.</p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-slate-900 dark:text-white mb-2 block">Industry (Optional)</label>
+                      <Input placeholder="e.g., Wine, Digital Marketing" value={industry} onChange={(e) => setIndustry(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-900 dark:text-white mb-2 block">Trend Keywords *</label>
+                      <div className="flex items-center space-x-2 mb-3">
+                        <Input placeholder="e.g., wine" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()} />
+                        <Button onClick={handleAddKeyword} size="sm"><Plus className="w-4 h-4" /></Button>
+                      </div>
+                      {keywords.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {keywords.map((kw, idx) => (
+                            <Badge key={idx} variant="secondary">{kw}<button onClick={() => handleRemoveKeyword(kw)} className="ml-2 hover:text-red-600"><X className="w-3 h-3" /></button></Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {cooldownSeconds > 0 && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="w-4 h-4 text-blue-600" />
+                          <p className="text-sm text-blue-900 dark:text-blue-100">Cooldown: {Math.floor(cooldownSeconds / 60)}:{String(cooldownSeconds % 60).padStart(2, '0')}</p>
+                        </div>
+                        <Progress value={((120 - cooldownSeconds) / 120) * 100} className="mt-2 h-1" />
+                      </div>
+                    )}
+                    <div className="flex items-center space-x-2">
+                      <Button onClick={handleSaveKeywords} disabled={updateKeywordsMutation.isPending || cooldownSeconds > 0 || trendsFetching}>
+                        {trendsFetching ? "Fetching..." : cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Save & Track Trends"}
+                      </Button>
+                      {isConfiguring && (campaign as any)?.trendKeywords?.length > 0 && (
+                        <Button variant="ghost" onClick={() => { setIsConfiguring(false); setKeywords([]); setIndustry(""); setNewKeyword(""); }}>Cancel</Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              ) : !processedTrendsData || !((effectiveTrendsData as any)?.trends?.some((t: any) => t.success && t.data && t.data.length > 0)) ? (
-                <Card>
-                  <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
-                    Unable to load market insights. Please try refreshing from the Overview tab.
-                  </CardContent>
-                </Card>
-              ) : (
+              )}
+
+              {/* Configure button when keywords exist */}
+              {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && (
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => { setIsConfiguring(true); setIndustry((campaign as any).industry || ""); setKeywords((campaign as any).trendKeywords || []); }}>
+                    <Settings className="w-4 h-4 mr-2" />Configure Keywords
+                  </Button>
+                </div>
+              )}
+
+              {/* Google Trends Content */}
+              {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring ? (
                 <>
-                  {/* Key Market Insights */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Brain className="w-5 h-5" />
-                        <span>Key Market Insights</span>
-                      </CardTitle>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                        Data-driven insights from Google Trends analysis
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {processedTrendsData.keywords.map((keyword: string) => {
-                          const stats = processedTrendsData.keywordStats[keyword];
-                          let insightType = 'info';
-                          let insightMessage = '';
-                          
-                          if (stats.trend === 'up' && stats.trendPercentage > 15) {
-                            insightType = 'success';
-                            insightMessage = `Strong momentum: "${keyword}" search interest increased ${stats.trendPercentage.toFixed(1)}% this week. Consider increasing ad spend to capitalize on growing demand.`;
-                          } else if (stats.trend === 'down' && stats.trendPercentage < -15) {
-                            insightType = 'warning';
-                            insightMessage = `Declining interest: "${keyword}" searches dropped ${Math.abs(stats.trendPercentage).toFixed(1)}% recently. Consider refreshing creative or exploring alternative keywords.`;
-                          } else if (stats.average > 60) {
-                            insightType = 'success';
-                            insightMessage = `High demand: "${keyword}" maintains strong search interest (avg: ${Math.round(stats.average)}). This keyword shows consistent market demand.`;
-                          } else if (stats.average < 30) {
-                            insightType = 'info';
-                            insightMessage = `Niche opportunity: "${keyword}" has moderate search volume (avg: ${Math.round(stats.average)}). Focus on long-tail variations for better targeting.`;
-                          } else {
-                            insightType = 'info';
-                            insightMessage = `Stable interest: "${keyword}" shows steady search patterns (avg: ${Math.round(stats.average)}). Good baseline keyword for consistent reach.`;
-                          }
+                  {trendsFetching ? (
+                    <Card><CardContent className="p-8 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3" /><p className="font-medium">Fetching Trend Data...</p></CardContent></Card>
+                  ) : !trendsData || !processedTrendsData ? (
+                    <Card>
+                      <CardContent className="p-8 text-center">
+                        <Search className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                        <p className="font-medium text-lg mb-2">No Trend Data Yet</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Click below to fetch Google Trends data for your keywords.</p>
+                        <Button onClick={handleRefreshTrends} disabled={cooldownSeconds > 0}>
+                          {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Fetch Trend Data"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      {/* Search Interest Chart */}
+                      <Card>
+                        <CardHeader><CardTitle>Search Interest Over Time</CardTitle></CardHeader>
+                        <CardContent>
+                          <div className="h-72">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={processedTrendsData.timeSeriesData}>
+                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                <XAxis dataKey="date" className="text-xs" />
+                                <YAxis className="text-xs" domain={[0, 100]} />
+                                <Tooltip contentStyle={tooltipStyle} />
+                                {processedTrendsData.keywords.map((kw: string) => (
+                                  <Line key={kw} type="monotone" dataKey={kw} stroke={processedTrendsData.keywordStats[kw]?.color} strokeWidth={2} dot={false} name={kw} />
+                                ))}
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                          const bgColors = {
-                            success: 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800',
-                            warning: 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800',
-                            info: 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-                          };
-
-                          const iconColors = {
-                            success: 'text-green-600 dark:text-green-400',
-                            warning: 'text-orange-600 dark:text-orange-400',
-                            info: 'text-blue-600 dark:text-blue-400'
-                          };
-
-                          const textColors = {
-                            success: 'text-green-700 dark:text-green-300',
-                            warning: 'text-orange-700 dark:text-orange-300',
-                            info: 'text-blue-700 dark:text-blue-300'
-                          };
-
-                          const icons = {
-                            success: CheckCircle,
-                            warning: AlertTriangle,
-                            info: Activity
-                          };
-
-                          const Icon = icons[insightType as keyof typeof icons];
-
+                      {/* Keyword Summary Cards */}
+                      <div className="grid gap-4 md:grid-cols-3">
+                        {processedTrendsData.keywords.map((kw: string) => {
+                          const stats = processedTrendsData.keywordStats[kw];
                           return (
-                            <div key={keyword} className={`p-4 rounded-lg ${bgColors[insightType as keyof typeof bgColors]}`}>
-                              <div className="flex items-start space-x-3">
-                                <Icon className={`w-5 h-5 mt-0.5 ${iconColors[insightType as keyof typeof iconColors]}`} />
-                                <p className={`text-sm ${textColors[insightType as keyof typeof textColors]}`}>
-                                  {insightMessage}
-                                </p>
-                              </div>
-                            </div>
+                            <Card key={kw}>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-medium text-slate-900 dark:text-white">{kw}</span>
+                                  <Badge className={stats.trend === 'up' ? 'bg-green-100 text-green-700' : stats.trend === 'down' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}>
+                                    {stats.trend === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : stats.trend === 'down' ? <ArrowDownRight className="w-3 h-3 mr-1" /> : null}
+                                    {stats.trendPercentage >= 0 ? '+' : ''}{stats.trendPercentage.toFixed(1)}%
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 text-xs">
+                                  <div><span className="text-slate-500">Avg</span><div className="font-semibold">{stats.average.toFixed(0)}</div></div>
+                                  <div><span className="text-slate-500">Peak</span><div className="font-semibold">{stats.max}</div></div>
+                                  <div><span className="text-slate-500">Recent</span><div className="font-semibold">{stats.recent.toFixed(0)}</div></div>
+                                </div>
+                              </CardContent>
+                            </Card>
                           );
                         })}
                       </div>
-                    </CardContent>
-                  </Card>
 
-                  {/* Strategic Recommendations */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Zap className="w-5 h-5" />
-                        <span>Strategic Recommendations</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        {(() => {
-                          const topKeyword = processedTrendsData.keywords.reduce((top: any, current: string) => {
-                            const currentStats = processedTrendsData.keywordStats[current];
-                            const topStats = top ? processedTrendsData.keywordStats[top] : null;
-                            if (!top || currentStats.average > topStats.average) return current;
-                            return top;
-                          }, null);
+                      {/* Keyword Comparison */}
+                      <Card>
+                        <CardHeader><CardTitle>Keyword Comparison</CardTitle></CardHeader>
+                        <CardContent>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={processedTrendsData.keywords.map((kw: string) => ({ keyword: kw, average: processedTrendsData.keywordStats[kw].average, peak: processedTrendsData.keywordStats[kw].max }))}>
+                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                <XAxis dataKey="keyword" className="text-xs" />
+                                <YAxis className="text-xs" domain={[0, 100]} />
+                                <Tooltip contentStyle={tooltipStyle} />
+                                <Bar dataKey="average" fill="#3b82f6" name="Average Interest" />
+                                <Bar dataKey="peak" fill="#8b5cf6" name="Peak Interest" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                          const trendingUp = processedTrendsData.keywords.filter((kw: string) => 
-                            processedTrendsData.keywordStats[kw].trend === 'up'
-                          );
+                      {/* Monthly Patterns */}
+                      {processedTrendsData.monthlyData.length > 0 && (
+                        <Card>
+                          <CardHeader><CardTitle>Monthly Patterns</CardTitle></CardHeader>
+                          <CardContent>
+                            <div className="h-64">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={processedTrendsData.monthlyData}>
+                                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                  <XAxis dataKey="month" className="text-xs" />
+                                  <YAxis className="text-xs" />
+                                  <Tooltip contentStyle={tooltipStyle} />
+                                  {processedTrendsData.keywords.map((kw: string) => (
+                                    <Line key={kw} type="monotone" dataKey={kw} stroke={processedTrendsData.keywordStats[kw]?.color} strokeWidth={2} name={kw} />
+                                  ))}
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
 
-                          const trendingDown = processedTrendsData.keywords.filter((kw: string) => 
-                            processedTrendsData.keywordStats[kw].trend === 'down'
-                          );
-
-                          return (
-                            <>
-                              <div className="border-l-4 border-green-500 pl-4">
-                                <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Capitalize on Demand</h4>
-                                <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                                  <li>• Focus budget on "{topKeyword}" which shows highest search interest</li>
-                                  {trendingUp.length > 0 && (
-                                    <li>• Increase bids for trending keywords: {trendingUp.map((kw: string) => `"${kw}"`).join(', ')}</li>
-                                  )}
-                                  <li>• Create landing pages optimized for high-performing search terms</li>
-                                  <li>• Test ad copy variations that emphasize popular keywords</li>
-                                </ul>
-                              </div>
-
-                              {trendingDown.length > 0 && (
-                                <div className="border-l-4 border-orange-500 pl-4">
-                                  <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Address Declining Interest</h4>
-                                  <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                                    <li>• Review messaging for: {trendingDown.map((kw: string) => `"${kw}"`).join(', ')}</li>
-                                    <li>• Consider seasonal factors affecting search behavior</li>
-                                    <li>• Explore related keywords to capture shifting demand</li>
-                                    <li>• Refresh creative assets to re-engage audience</li>
-                                  </ul>
+                      {/* Market Insights */}
+                      <Card>
+                        <CardHeader><CardTitle>Market Insights</CardTitle></CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {processedTrendsData.keywords.map((kw: string) => {
+                              const stats = processedTrendsData.keywordStats[kw];
+                              const isHot = stats.trend === 'up' && stats.trendPercentage > 15;
+                              const isCold = stats.trend === 'down' && stats.trendPercentage < -15;
+                              const isHighDemand = stats.average > 60;
+                              return (
+                                <div key={kw} className={`p-4 rounded-lg border ${isHot || isHighDemand ? 'border-green-200 bg-green-50 dark:bg-green-900/20' : isCold ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/20' : 'border-slate-200 bg-slate-50 dark:bg-slate-800'}`}>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-medium">{kw}</span>
+                                    <Badge variant="outline">{isHot ? 'Trending Up' : isCold ? 'Declining' : isHighDemand ? 'High Demand' : 'Stable'}</Badge>
+                                  </div>
+                                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                                    {isHot ? `Strong upward trend (+${stats.trendPercentage.toFixed(0)}%). Consider increasing ad spend on this keyword.` :
+                                     isCold ? `Declining interest (${stats.trendPercentage.toFixed(0)}%). Consider reducing spend or pivoting messaging.` :
+                                     isHighDemand ? `High average interest (${stats.average.toFixed(0)}/100). Good keyword to target.` :
+                                     `Stable interest (avg ${stats.average.toFixed(0)}/100). Maintain current strategy.`}
+                                  </p>
                                 </div>
-                              )}
-
-                              <div className="border-l-4 border-blue-500 pl-4">
-                                <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Market Positioning</h4>
-                                <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                                  <li>• Monitor keyword trends weekly to stay ahead of market shifts</li>
-                                  <li>• Align ad spend with search interest patterns</li>
-                                  <li>• Test new keyword variations during high-interest periods</li>
-                                  <li>• Build content strategy around consistent search terms</li>
-                                </ul>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Market Summary */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Eye className="w-5 h-5" />
-                        <span>Market Summary</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-3">
-                          <h5 className="font-semibold text-slate-900 dark:text-white">Market Indicators</h5>
-                          <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                            {processedTrendsData.keywords.filter((kw: string) => processedTrendsData.keywordStats[kw].trend === 'up').length > 0 && (
-                              <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span>
-                                  {processedTrendsData.keywords.filter((kw: string) => processedTrendsData.keywordStats[kw].trend === 'up').length} 
-                                  {processedTrendsData.keywords.filter((kw: string) => processedTrendsData.keywordStats[kw].trend === 'up').length === 1 ? ' keyword' : ' keywords'} trending up
-                                </span>
-                              </div>
-                            )}
-                            {processedTrendsData.keywords.filter((kw: string) => processedTrendsData.keywordStats[kw].trend === 'down').length > 0 && (
-                              <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                <span>
-                                  {processedTrendsData.keywords.filter((kw: string) => processedTrendsData.keywordStats[kw].trend === 'down').length} 
-                                  {processedTrendsData.keywords.filter((kw: string) => processedTrendsData.keywordStats[kw].trend === 'down').length === 1 ? ' keyword' : ' keywords'} declining
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <span>Data from Google Trends (90-day period)</span>
-                            </div>
+                              );
+                            })}
                           </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          <h5 className="font-semibold text-slate-900 dark:text-white">Next Steps</h5>
-                          <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                              <span>Review ad performance by keyword</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                              <span>Adjust bids based on search trends</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              <span>Monitor weekly for market changes</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
                 </>
-              )}
-            </TabsContent>
-            </>
-          ) : (
-            <>
-              {/* Empty fragments for Google Trends tabs when no keywords configured */}
-              <TabsContent value="overview">
+              ) : !isConfiguring ? (
                 <Card>
-                  <CardContent className="p-8 text-center">
-                    <TrendingUp className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Google Trends Not Configured</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Configure industry keywords above to track Google Trends data.</p>
+                  <CardContent className="p-12 text-center">
+                    <Search className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Market Trends</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+                      Track Google search trends for keywords related to your campaign. This is optional — your performance data is available in the other tabs.
+                    </p>
                   </CardContent>
                 </Card>
-              </TabsContent>
-              <TabsContent value="keyword-comparison">
-                <Card><CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">Configure keywords to see comparison data.</CardContent></Card>
-              </TabsContent>
-              <TabsContent value="seasonal-trends">
-                <Card><CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">Configure keywords to see seasonal data.</CardContent></Card>
-              </TabsContent>
-              <TabsContent value="insights">
-                <Card><CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">Configure keywords to see market insights.</CardContent></Card>
-              </TabsContent>
-            </>
-          )}
+              ) : null}
+            </TabsContent>
           </Tabs>
         </main>
       </div>

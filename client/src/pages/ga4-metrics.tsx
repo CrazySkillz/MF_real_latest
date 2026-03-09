@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, RefreshCw, Loader2, Activity, Info, Trophy } from "lucide-react";
 import { Link } from "wouter";
 import { SiGoogle } from "react-icons/si";
 import { useForm } from "react-hook-form";
@@ -150,19 +150,99 @@ export default function GA4Metrics() {
   const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d">("daily");
   const [insightsTrendMetric, setInsightsTrendMetric] = useState<string>("sessions");
   const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
-  const [ga4ReportForm, setGa4ReportForm] = useState<{
-    name: string;
-    description: string;
-    reportType: string;
-    configuration: any;
-  }>({
+  const [ga4ReportForm, setGa4ReportForm] = useState({
     name: "",
     description: "",
     reportType: "overview",
     configuration: {
-      sections: { overview: true, acquisition: false, trends: false, kpis: false, benchmarks: false },
-    },
+      sections: { overview: true, kpis: false, benchmarks: false, ads: false, insights: false },
+    } as any,
+    scheduleEnabled: false,
+    scheduleFrequency: "daily",
+    scheduleDayOfWeek: "monday",
+    scheduleDayOfMonth: "first",
+    quarterTiming: "end",
+    scheduleTime: "9:00 AM",
+    emailRecipients: "",
+    status: "active" as const,
   });
+  const [ga4ReportFormErrors, setGa4ReportFormErrors] = useState<{ emailRecipients?: string }>({});
+  // Timezone helpers for report scheduling
+  const [userTimeZone, setUserTimeZone] = useState('');
+  useEffect(() => {
+    const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    setUserTimeZone(detectedTimeZone);
+  }, []);
+  const getTimeZoneDisplay = () => {
+    if (!userTimeZone) return '';
+    try {
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat('en-US', { timeZone: userTimeZone, timeZoneName: 'short' });
+      const parts = formatter.formatToParts(now);
+      const timeZonePart = parts.find(part => part.type === 'timeZoneName');
+      return timeZonePart?.value || userTimeZone;
+    } catch { return userTimeZone; }
+  };
+  const getOrdinalSuffix = (day: number) => {
+    if (day > 3 && day < 21) return 'th';
+    switch (day % 10) { case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd'; default: return 'th'; }
+  };
+  const dayOfWeekKeyToInt = (v: any): number | null => {
+    const key = String(v || '').trim().toLowerCase();
+    const map: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+    return typeof map[key] === 'number' ? map[key] : null;
+  };
+  const dayOfWeekIntToKey = (v: any): string => {
+    const n = Number(v);
+    const map: Record<number, string> = { 0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday' };
+    return map[n] || 'monday';
+  };
+  const dayOfMonthToInt = (v: any): number | null => {
+    const raw = String(v || '').trim().toLowerCase();
+    if (!raw) return null;
+    if (raw === 'last') return 0;
+    if (raw === 'first') return 1;
+    if (raw === 'mid') return 15;
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n)) return null;
+    return Math.max(0, Math.min(31, n));
+  };
+  const to24HourHHMM = (v: any): string => {
+    const s = String(v || '').trim();
+    const m = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!m) {
+      const m2 = s.match(/^(\d{1,2}):(\d{2})$/);
+      if (m2) return `${String(parseInt(m2[1], 10)).padStart(2, '0')}:${m2[2]}`;
+      return '09:00';
+    }
+    let hh = parseInt(m[1], 10);
+    const mm = m[2];
+    const ampm = String(m[3] || '').toUpperCase();
+    if (ampm === 'AM') { if (hh === 12) hh = 0; } else { if (hh !== 12) hh += 12; }
+    return `${String(hh).padStart(2, '0')}:${mm}`;
+  };
+  const from24HourTo12Hour = (v: any): string => {
+    const s = String(v || '').trim();
+    const m = s.match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return '9:00 AM';
+    let hh = parseInt(m[1], 10);
+    const mm = m[2];
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    if (hh === 0) hh = 12;
+    if (hh > 12) hh -= 12;
+    return `${hh}:${mm} ${ampm}`;
+  };
+  const validateGA4ScheduledReportFields = (): boolean => {
+    if (!ga4ReportForm.scheduleEnabled) { setGa4ReportFormErrors({}); return true; }
+    const recipients = String(ga4ReportForm.emailRecipients || "").trim();
+    if (!recipients) {
+      setGa4ReportFormErrors({ emailRecipients: "Email recipients are required when scheduling is enabled." });
+      return false;
+    }
+    setGa4ReportFormErrors({});
+    return true;
+  };
+
   const [newBenchmark, setNewBenchmark] = useState({
     name: "",
     category: "",
@@ -1943,6 +2023,18 @@ export default function GA4Metrics() {
         },
       }),
       status: "active",
+      scheduleEnabled: ga4ReportForm.scheduleEnabled,
+      scheduleFrequency: ga4ReportForm.scheduleEnabled ? ga4ReportForm.scheduleFrequency : undefined,
+      scheduleDayOfWeek: ga4ReportForm.scheduleEnabled && ga4ReportForm.scheduleFrequency === "weekly"
+        ? dayOfWeekKeyToInt(ga4ReportForm.scheduleDayOfWeek) : undefined,
+      scheduleDayOfMonth: ga4ReportForm.scheduleEnabled && (ga4ReportForm.scheduleFrequency === "monthly" || ga4ReportForm.scheduleFrequency === "quarterly")
+        ? dayOfMonthToInt(ga4ReportForm.scheduleDayOfMonth) : undefined,
+      scheduleTime: ga4ReportForm.scheduleEnabled ? to24HourHHMM(ga4ReportForm.scheduleTime) : undefined,
+      scheduleTimeZone: ga4ReportForm.scheduleEnabled ? userTimeZone : undefined,
+      quarterTiming: ga4ReportForm.scheduleEnabled && ga4ReportForm.scheduleFrequency === "quarterly"
+        ? ga4ReportForm.quarterTiming : undefined,
+      scheduleRecipients: ga4ReportForm.scheduleEnabled
+        ? ga4ReportForm.emailRecipients.split(",").map((e: string) => e.trim()).filter(Boolean) : undefined,
     };
   };
 
@@ -1999,10 +2091,10 @@ export default function GA4Metrics() {
         ? (cfg?.sections || { overview: true })
         : {
           overview: reportType === "overview",
-          acquisition: reportType === "acquisition",
-          trends: reportType === "trends",
           kpis: reportType === "kpis",
           benchmarks: reportType === "benchmarks",
+          ads: reportType === "ads",
+          insights: reportType === "insights",
         };
 
     // Overview section
@@ -2035,36 +2127,58 @@ export default function GA4Metrics() {
       write(" ");
     }
 
-    // Acquisition breakdown
-    if (sections.acquisition) {
-      write("Acquisition Breakdown (top rows)", 13, true);
-      const rows = Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
-      const top = rows.slice(0, 25);
-      for (const r of top) {
-        const sessionsRow = Number((r as any)?.sessionsRaw ?? (r as any)?.sessions ?? 0);
-        write(
-          `${String((r as any)?.channel || "")} • ${String((r as any)?.source || "")}/${String((r as any)?.medium || "")} • Sessions ${fmtCount(
-            sessionsRow
-          )} • Users ${fmtCount((r as any)?.users)} • Conv ${fmtCount((r as any)?.conversions)} • Rev ${fmtCurrency((r as any)?.revenue || 0)}`,
-          10
-        );
+    // Ad Comparison (campaign breakdown)
+    if (sections.ads) {
+      write("Ad Comparison (Campaign Performance)", 13, true);
+      const rows = Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : [];
+      if (rows.length === 0) {
+        write("No campaign breakdown data available.", 10);
+      } else {
+        const sorted = [...rows].sort((a: any, b: any) => Number(b?.sessions || 0) - Number(a?.sessions || 0));
+        const top = sorted.slice(0, 20);
+        for (const r of top) {
+          const sessions = Number((r as any)?.sessions || 0);
+          const users = Number((r as any)?.users || 0);
+          const conversions = Number((r as any)?.conversions || 0);
+          const revenue = Number((r as any)?.revenue || 0);
+          const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
+          const revPerSession = sessions > 0 ? revenue / sessions : 0;
+          write(
+            `${String((r as any)?.campaign || "(not set)")} • Sessions ${fmtCount(sessions)} • Users ${fmtCount(users)} • Conv ${fmtCount(conversions)} • Rev ${fmtCurrency(revenue)} • CR ${fmtPct(cr)} • Rev/Session ${fmtCurrency(revPerSession)}`,
+            10
+          );
+        }
+        if (sorted.length > top.length) write(`… ${sorted.length - top.length} more campaigns`, 10);
+        if (sorted.length > 0) {
+          const best = sorted[0];
+          const worst = sorted[sorted.length - 1];
+          write(" ");
+          write(`Best performing: ${String((best as any)?.campaign || "")} (${fmtCount(Number((best as any)?.sessions || 0))} sessions)`, 10);
+          write(`Lowest performing: ${String((worst as any)?.campaign || "")} (${fmtCount(Number((worst as any)?.sessions || 0))} sessions)`, 10);
+        }
       }
-      if (rows.length > top.length) write(`… ${rows.length - top.length} more rows`, 10);
       write(" ");
     }
 
-    // Trends (time series)
-    if (sections.trends) {
-      write("Trends (time series)", 13, true);
-      const pts = Array.isArray(ga4TimeSeries) ? ga4TimeSeries : [];
-      const last = pts.slice(Math.max(0, pts.length - 25));
-      for (const p of last) {
-        write(
-          `${String((p as any)?.date || "")} • Sessions ${fmtCount((p as any)?.sessions || 0)} • Users ${fmtCount(
-            (p as any)?.users || 0
-          )} • Conv ${fmtCount((p as any)?.conversions || 0)} • Rev ${fmtCurrency((p as any)?.revenue || 0)}`,
-          10
-        );
+    // Insights
+    if (sections.insights) {
+      write("Insights", 13, true);
+      const items = Array.isArray(insights) ? insights : [];
+      if (items.length === 0) {
+        write("No insights available at this time.", 10);
+      } else {
+        const top = items.slice(0, 12);
+        for (const item of top) {
+          const severity = String((item as any)?.severity || "info").toUpperCase();
+          const title = String((item as any)?.title || "");
+          const desc = String((item as any)?.description || "");
+          const rec = String((item as any)?.recommendation || "");
+          write(`[${severity}] ${title}`, 11, true);
+          if (desc) write(desc, 10);
+          if (rec) write(`→ ${rec}`, 10);
+          write(" ");
+        }
+        if (items.length > top.length) write(`… ${items.length - top.length} more insights`, 10);
       }
       write(" ");
     }
@@ -4867,9 +4981,18 @@ export default function GA4Metrics() {
                             description: "",
                             reportType: "overview",
                             configuration: {
-                              sections: { overview: true, acquisition: false, trends: false, kpis: false, benchmarks: false },
+                              sections: { overview: true, kpis: false, benchmarks: false, ads: false, insights: false },
                             },
+                            scheduleEnabled: false,
+                            scheduleFrequency: "daily",
+                            scheduleDayOfWeek: "monday",
+                            scheduleDayOfMonth: "first",
+                            quarterTiming: "end",
+                            scheduleTime: "9:00 AM",
+                            emailRecipients: "",
+                            status: "active",
                           });
+                          setGa4ReportFormErrors({});
                           setShowGA4ReportModal(true);
                         }}
                       >
@@ -4888,27 +5011,39 @@ export default function GA4Metrics() {
                         {ga4Reports.map((r: any) => (
                           <Card key={r.id} className="border-slate-200 dark:border-slate-700">
                             <CardContent className="p-6">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <FileText className="w-4 h-4 text-slate-500" />
-                                    <h3 className="font-semibold text-slate-900 dark:text-white truncate">{r.name}</h3>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{r.name}</h3>
+                                  {r.description && (
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{r.description}</p>
+                                  )}
+                                  <div className="flex items-center gap-4 text-sm">
                                     <Badge variant="outline">{String(r.reportType || "overview")}</Badge>
-                                  </div>
-                                  {r.description ? (
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">{r.description}</p>
-                                  ) : null}
-                                  {r.createdAt ? (
-                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                    {r.scheduleEnabled && r.scheduleFrequency && (
+                                      <span className="text-slate-500 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        {(() => {
+                                          const time = r.scheduleTime ? from24HourTo12Hour(r.scheduleTime) : '';
+                                          const tz = String(r.scheduleTimeZone || '').trim();
+                                          const timeLabel = time ? ` at ${time}${tz ? ` ${tz}` : ''}` : '';
+                                          return `${r.scheduleFrequency}${timeLabel}`;
+                                        })()}
+                                      </span>
+                                    )}
+                                    {r.lastSentAt && (
+                                      <span className="text-slate-500">
+                                        Last sent {new Date(r.lastSentAt).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                    <span className="text-slate-400">
                                       Created {new Date(r.createdAt).toLocaleDateString()}
-                                    </div>
-                                  ) : null}
+                                    </span>
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="gap-2"
                                     onClick={() => {
                                       let cfg: any = { sections: { overview: true } };
                                       try {
@@ -4924,12 +5059,12 @@ export default function GA4Metrics() {
                                       });
                                     }}
                                   >
-                                    <Download className="w-4 h-4" />
+                                    <Download className="w-4 h-4 mr-2" />
                                     Download
                                   </Button>
                                   <Button
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
                                     onClick={() => {
                                       setEditingGA4ReportId(String(r.id));
                                       setGa4ReportModalStep(String(r.reportType || "overview") === "custom" ? "custom" : "standard");
@@ -4940,25 +5075,57 @@ export default function GA4Metrics() {
                                       } catch {
                                         // keep default
                                       }
+                                      const emailRecipientsString = r.scheduleRecipients && Array.isArray(r.scheduleRecipients)
+                                        ? r.scheduleRecipients.join(', ')
+                                        : '';
                                       setGa4ReportForm({
                                         name: String(r.name || ""),
                                         description: String(r.description || ""),
                                         reportType: String(r.reportType || "overview"),
                                         configuration: cfg?.sections ? cfg : { sections: { overview: true } },
+                                        scheduleEnabled: !!r.scheduleEnabled,
+                                        scheduleFrequency: r.scheduleFrequency || "daily",
+                                        scheduleDayOfWeek: cfg?.scheduleDayOfWeek || dayOfWeekIntToKey(r.scheduleDayOfWeek) || "monday",
+                                        scheduleDayOfMonth: cfg?.scheduleDayOfMonth || (r.scheduleDayOfMonth === 0 ? "last" : String(r.scheduleDayOfMonth || "first")),
+                                        quarterTiming: cfg?.quarterTiming || r.quarterTiming || "end",
+                                        scheduleTime: cfg?.scheduleTime || from24HourTo12Hour(r.scheduleTime) || "9:00 AM",
+                                        emailRecipients: emailRecipientsString,
+                                        status: r.status || "active",
                                       });
+                                      setGa4ReportFormErrors({});
                                       setShowGA4ReportModal(true);
                                     }}
                                   >
-                                    <Edit className="w-4 h-4" />
+                                    <Pencil className="w-4 h-4" />
                                   </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-red-600 dark:text-red-400"
-                                    onClick={() => setDeleteGA4ReportId(String(r.id))}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Report</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete "{r.name}"? This action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => deleteGA4ReportMutation.mutate(String(r.id))}
+                                          className="bg-red-600 hover:bg-red-700 text-white"
+                                        >
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
                                 </div>
                               </div>
                             </CardContent>
@@ -5840,7 +6007,7 @@ export default function GA4Metrics() {
                   setGa4ReportForm((p) => ({
                     ...p,
                     reportType: p.reportType === "custom" ? "overview" : p.reportType,
-                    configuration: { sections: { overview: true, acquisition: false, trends: false, kpis: false, benchmarks: false } },
+                    configuration: { sections: { overview: true, kpis: false, benchmarks: false, ads: false, insights: false } },
                   }));
                 }}
               >
@@ -5863,9 +6030,10 @@ export default function GA4Metrics() {
                   setGa4ReportForm((p) => ({
                     ...p,
                     reportType: "custom",
+                    name: p.name || "Custom Report",
                     configuration: p.configuration?.sections
                       ? p.configuration
-                      : { sections: { overview: true, acquisition: true, trends: true, kpis: true, benchmarks: true } },
+                      : { sections: { overview: true, kpis: true, benchmarks: true, ads: true, insights: true } },
                   }));
                 }}
               >
@@ -5903,22 +6071,22 @@ export default function GA4Metrics() {
                         key: "benchmarks",
                         title: "Benchmarks",
                         desc: "Performance benchmarks and comparisons",
-                        Icon: TrendingUp,
-                        chips: ["Current", "Benchmark", "Progress"],
+                        Icon: Trophy,
+                        chips: ["Industry", "Historical", "Goals"],
                       },
                       {
-                        key: "acquisition",
-                        title: "Acquisition Breakdown",
-                        desc: "Top channels/sources/mediums driving sessions, conversions, and revenue",
-                        Icon: Users,
-                        chips: ["Channel", "Source/Medium", "Revenue"],
+                        key: "ads",
+                        title: "Ad Comparison",
+                        desc: "Detailed campaign-level performance analysis",
+                        Icon: Activity,
+                        chips: ["Performance", "Ranking", "Insights"],
                       },
                       {
-                        key: "trends",
-                        title: "Trends",
-                        desc: "Time series trends for sessions, users, conversions, and revenue",
-                        Icon: TrendingUp,
-                        chips: ["Time", "Trend", "Totals"],
+                        key: "insights",
+                        title: "Insights",
+                        desc: "Executive financials, trends, and what changed / what to do next",
+                        Icon: Info,
+                        chips: ["Executive", "Trends", "Actions"],
                       },
                     ].map((t) => {
                       const selected = ga4ReportForm.reportType === t.key;
@@ -5935,10 +6103,10 @@ export default function GA4Metrics() {
                               configuration: {
                                 sections: {
                                   overview: nextType === "overview",
-                                  acquisition: nextType === "acquisition",
-                                  trends: nextType === "trends",
                                   kpis: nextType === "kpis",
                                   benchmarks: nextType === "benchmarks",
+                                  ads: nextType === "ads",
+                                  insights: nextType === "insights",
                                 },
                               },
                               name: p.name ? p.name : `GA4 ${t.title} Report`,
@@ -5962,6 +6130,183 @@ export default function GA4Metrics() {
                         </div>
                       );
                     })}
+
+                    {/* Schedule Automated Reports */}
+                    <div className="pt-4 border-t mt-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Checkbox
+                          id="ga4-schedule-reports"
+                          checked={ga4ReportForm.scheduleEnabled}
+                          onCheckedChange={(checked) => {
+                            const enabled = checked as boolean;
+                            setGa4ReportForm((p) => ({ ...p, scheduleEnabled: enabled }));
+                            if (!enabled) setGa4ReportFormErrors({});
+                          }}
+                        />
+                        <Label htmlFor="ga4-schedule-reports" className="text-base font-semibold cursor-pointer">
+                          Schedule Automated Reports
+                        </Label>
+                      </div>
+
+                      {/* Report Name + Description (always shown) */}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="ga4-report-name">Report Name</Label>
+                          <Input
+                            id="ga4-report-name"
+                            value={ga4ReportForm.name}
+                            onChange={(e) => setGa4ReportForm((p) => ({ ...p, name: e.target.value }))}
+                            placeholder="Enter report name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="ga4-report-description">Description (Optional)</Label>
+                          <Textarea
+                            id="ga4-report-description"
+                            value={ga4ReportForm.description}
+                            onChange={(e) => setGa4ReportForm((p) => ({ ...p, description: e.target.value }))}
+                            placeholder="Add a description for this report"
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+
+                      {ga4ReportForm.scheduleEnabled && (
+                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 space-y-4 mt-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="ga4-schedule-frequency">Frequency</Label>
+                            <Select value={ga4ReportForm.scheduleFrequency} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleFrequency: value }))}>
+                              <SelectTrigger id="ga4-schedule-frequency"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                                <SelectItem value="quarterly">Quarterly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {ga4ReportForm.scheduleFrequency === "weekly" && (
+                            <div className="space-y-2">
+                              <Label htmlFor="ga4-schedule-day">Day of Week</Label>
+                              <Select value={ga4ReportForm.scheduleDayOfWeek} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleDayOfWeek: value }))}>
+                                <SelectTrigger id="ga4-schedule-day"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="monday">Monday</SelectItem>
+                                  <SelectItem value="tuesday">Tuesday</SelectItem>
+                                  <SelectItem value="wednesday">Wednesday</SelectItem>
+                                  <SelectItem value="thursday">Thursday</SelectItem>
+                                  <SelectItem value="friday">Friday</SelectItem>
+                                  <SelectItem value="saturday">Saturday</SelectItem>
+                                  <SelectItem value="sunday">Sunday</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {ga4ReportForm.scheduleFrequency === "quarterly" && (
+                            <div className="space-y-2">
+                              <Label htmlFor="ga4-quarter-timing">Quarter Timing</Label>
+                              <Select value={ga4ReportForm.quarterTiming} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, quarterTiming: value }))}>
+                                <SelectTrigger id="ga4-quarter-timing"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="end">End of Quarter (Mar, Jun, Sep, Dec)</SelectItem>
+                                  <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Choose whether to run reports at the start or end of each quarter</p>
+                            </div>
+                          )}
+
+                          {(ga4ReportForm.scheduleFrequency === "monthly" || ga4ReportForm.scheduleFrequency === "quarterly") && (
+                            <div className="space-y-2">
+                              <Label htmlFor="ga4-schedule-day-month">Day of Month</Label>
+                              <Select value={ga4ReportForm.scheduleDayOfMonth} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleDayOfMonth: value }))}>
+                                <SelectTrigger id="ga4-schedule-day-month"><SelectValue /></SelectTrigger>
+                                <SelectContent className="max-h-[300px]">
+                                  {ga4ReportForm.scheduleFrequency === "quarterly" ? (
+                                    <>
+                                      <SelectItem value="first">First day of month</SelectItem>
+                                      <SelectItem value="last">Last day of month</SelectItem>
+                                      <SelectItem value="15">Mid-month (15th)</SelectItem>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <SelectItem value="first">1st (First day of month)</SelectItem>
+                                      <SelectItem value="last">Last day of month</SelectItem>
+                                      <SelectItem value="15">15th (Mid-month)</SelectItem>
+                                      <div className="border-t my-1"></div>
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Specific Days</div>
+                                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
+                                        const suffix = getOrdinalSuffix(day);
+                                        const isCommon = [1, 5, 10, 15, 20, 25].includes(day);
+                                        return (
+                                          <SelectItem key={day} value={day.toString()} className={isCommon ? "font-medium" : ""}>
+                                            {day}{suffix} {isCommon && "⭐"}
+                                          </SelectItem>
+                                        );
+                                      })}
+                                    </>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {ga4ReportForm.scheduleFrequency === "quarterly"
+                                  ? "Quarterly reports typically run at the start, end, or middle of the quarter month"
+                                  : "For months with fewer days, the report will run on the last available day"}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="space-y-2">
+                            <Label htmlFor="ga4-schedule-time">Time</Label>
+                            <Select value={ga4ReportForm.scheduleTime} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleTime: value }))}>
+                              <SelectTrigger id="ga4-schedule-time"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="6:00 AM">6:00 AM</SelectItem>
+                                <SelectItem value="7:00 AM">7:00 AM</SelectItem>
+                                <SelectItem value="8:00 AM">8:00 AM</SelectItem>
+                                <SelectItem value="9:00 AM">9:00 AM</SelectItem>
+                                <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                                <SelectItem value="11:00 AM">11:00 AM</SelectItem>
+                                <SelectItem value="12:00 PM">12:00 PM</SelectItem>
+                                <SelectItem value="1:00 PM">1:00 PM</SelectItem>
+                                <SelectItem value="2:00 PM">2:00 PM</SelectItem>
+                                <SelectItem value="3:00 PM">3:00 PM</SelectItem>
+                                <SelectItem value="4:00 PM">4:00 PM</SelectItem>
+                                <SelectItem value="5:00 PM">5:00 PM</SelectItem>
+                                <SelectItem value="6:00 PM">6:00 PM</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {userTimeZone && (
+                              <p className="text-sm text-slate-500 dark:text-slate-400">All times are in your time zone: {getTimeZoneDisplay()}</p>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="ga4-email-recipients">Email Recipients{ga4ReportForm.scheduleEnabled ? " *" : ""}</Label>
+                            <Input
+                              id="ga4-email-recipients"
+                              value={ga4ReportForm.emailRecipients}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setGa4ReportForm((p) => ({ ...p, emailRecipients: v }));
+                                if (ga4ReportFormErrors.emailRecipients && String(v || "").trim()) {
+                                  setGa4ReportFormErrors((prev) => ({ ...prev, emailRecipients: undefined }));
+                                }
+                              }}
+                              placeholder="Enter email addresses (comma-separated)"
+                              className={ga4ReportFormErrors.emailRecipients ? "border-red-500 focus-visible:ring-red-500" : undefined}
+                            />
+                            {ga4ReportFormErrors.emailRecipients ? (
+                              <p className="text-sm text-red-600 dark:text-red-400">{ga4ReportFormErrors.emailRecipients}</p>
+                            ) : (
+                              <p className="text-sm text-slate-500 dark:text-slate-400">Reports will be automatically generated and sent to these email addresses</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -5979,10 +6324,10 @@ export default function GA4Metrics() {
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     {[
                       { key: "overview", label: "Overview" },
-                      { key: "acquisition", label: "Acquisition Breakdown" },
-                      { key: "trends", label: "Trends" },
                       { key: "kpis", label: "KPIs Snapshot" },
                       { key: "benchmarks", label: "Benchmarks Snapshot" },
+                      { key: "ads", label: "Ad Comparison" },
+                      { key: "insights", label: "Insights" },
                     ].map((s) => {
                       const checked = !!ga4ReportForm.configuration?.sections?.[s.key];
                       return (
@@ -6002,49 +6347,217 @@ export default function GA4Metrics() {
                     })}
                   </div>
                 </div>
+
+                {/* Schedule Automated Reports for Custom */}
+                <div className="pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Checkbox
+                      id="ga4-custom-schedule-reports"
+                      checked={ga4ReportForm.scheduleEnabled}
+                      onCheckedChange={(checked) => {
+                        const enabled = checked as boolean;
+                        setGa4ReportForm((p) => ({ ...p, scheduleEnabled: enabled }));
+                        if (!enabled) setGa4ReportFormErrors({});
+                      }}
+                    />
+                    <Label htmlFor="ga4-custom-schedule-reports" className="text-base font-semibold cursor-pointer">
+                      Schedule Automated Reports
+                    </Label>
+                  </div>
+
+                  <div className="space-y-4 pl-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="ga4-custom-report-name">Report Name</Label>
+                      <Input
+                        id="ga4-custom-report-name"
+                        value={ga4ReportForm.name}
+                        onChange={(e) => setGa4ReportForm((p) => ({ ...p, name: e.target.value }))}
+                        placeholder="Enter report name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ga4-custom-report-description">Description (Optional)</Label>
+                      <Textarea
+                        id="ga4-custom-report-description"
+                        value={ga4ReportForm.description}
+                        onChange={(e) => setGa4ReportForm((p) => ({ ...p, description: e.target.value }))}
+                        placeholder="Add a description for this report"
+                        rows={2}
+                      />
+                    </div>
+
+                    {ga4ReportForm.scheduleEnabled && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Frequency</Label>
+                          <Select value={ga4ReportForm.scheduleFrequency} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleFrequency: value }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="daily">Daily</SelectItem>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="quarterly">Quarterly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {ga4ReportForm.scheduleFrequency === "weekly" && (
+                          <div className="space-y-2">
+                            <Label>Day of Week</Label>
+                            <Select value={ga4ReportForm.scheduleDayOfWeek} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleDayOfWeek: value }))}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="monday">Monday</SelectItem>
+                                <SelectItem value="tuesday">Tuesday</SelectItem>
+                                <SelectItem value="wednesday">Wednesday</SelectItem>
+                                <SelectItem value="thursday">Thursday</SelectItem>
+                                <SelectItem value="friday">Friday</SelectItem>
+                                <SelectItem value="saturday">Saturday</SelectItem>
+                                <SelectItem value="sunday">Sunday</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {ga4ReportForm.scheduleFrequency === "quarterly" && (
+                          <div className="space-y-2">
+                            <Label>Quarter Timing</Label>
+                            <Select value={ga4ReportForm.quarterTiming} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, quarterTiming: value }))}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="end">End of Quarter (Mar, Jun, Sep, Dec)</SelectItem>
+                                <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Choose whether to run reports at the start or end of each quarter</p>
+                          </div>
+                        )}
+
+                        {(ga4ReportForm.scheduleFrequency === "monthly" || ga4ReportForm.scheduleFrequency === "quarterly") && (
+                          <div className="space-y-2">
+                            <Label>Day of Month</Label>
+                            <Select value={ga4ReportForm.scheduleDayOfMonth} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleDayOfMonth: value }))}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent className="max-h-[300px]">
+                                {ga4ReportForm.scheduleFrequency === "quarterly" ? (
+                                  <>
+                                    <SelectItem value="first">First day of month</SelectItem>
+                                    <SelectItem value="last">Last day of month</SelectItem>
+                                    <SelectItem value="15">Mid-month (15th)</SelectItem>
+                                  </>
+                                ) : (
+                                  <>
+                                    <SelectItem value="first">1st (First day of month)</SelectItem>
+                                    <SelectItem value="last">Last day of month</SelectItem>
+                                    <SelectItem value="15">15th (Mid-month)</SelectItem>
+                                    <div className="border-t my-1"></div>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Specific Days</div>
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
+                                      const suffix = getOrdinalSuffix(day);
+                                      const isCommon = [1, 5, 10, 15, 20, 25].includes(day);
+                                      return (
+                                        <SelectItem key={day} value={day.toString()} className={isCommon ? "font-medium" : ""}>
+                                          {day}{suffix} {isCommon && "⭐"}
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {ga4ReportForm.scheduleFrequency === "quarterly"
+                                ? "Quarterly reports typically run at the start, end, or middle of the quarter month"
+                                : "For months with fewer days, the report will run on the last available day"}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          <Label>Time</Label>
+                          <Select value={ga4ReportForm.scheduleTime} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleTime: value }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="6:00 AM">6:00 AM</SelectItem>
+                              <SelectItem value="7:00 AM">7:00 AM</SelectItem>
+                              <SelectItem value="8:00 AM">8:00 AM</SelectItem>
+                              <SelectItem value="9:00 AM">9:00 AM</SelectItem>
+                              <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                              <SelectItem value="11:00 AM">11:00 AM</SelectItem>
+                              <SelectItem value="12:00 PM">12:00 PM</SelectItem>
+                              <SelectItem value="1:00 PM">1:00 PM</SelectItem>
+                              <SelectItem value="2:00 PM">2:00 PM</SelectItem>
+                              <SelectItem value="3:00 PM">3:00 PM</SelectItem>
+                              <SelectItem value="4:00 PM">4:00 PM</SelectItem>
+                              <SelectItem value="5:00 PM">5:00 PM</SelectItem>
+                              <SelectItem value="6:00 PM">6:00 PM</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {userTimeZone && (
+                            <p className="text-sm text-slate-500 dark:text-slate-400">All times are in your time zone: {getTimeZoneDisplay()}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Email Recipients{ga4ReportForm.scheduleEnabled ? " *" : ""}</Label>
+                          <Input
+                            value={ga4ReportForm.emailRecipients}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setGa4ReportForm((p) => ({ ...p, emailRecipients: v }));
+                              if (ga4ReportFormErrors.emailRecipients && String(v || "").trim()) {
+                                setGa4ReportFormErrors((prev) => ({ ...prev, emailRecipients: undefined }));
+                              }
+                            }}
+                            placeholder="Enter email addresses (comma-separated)"
+                            className={ga4ReportFormErrors.emailRecipients ? "border-red-500 focus-visible:ring-red-500" : undefined}
+                          />
+                          {ga4ReportFormErrors.emailRecipients ? (
+                            <p className="text-sm text-red-600 dark:text-red-400">{ga4ReportFormErrors.emailRecipients}</p>
+                          ) : (
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Reports will be automatically generated and sent to these email addresses</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
-            <div className="mt-8 border-t border-slate-200 dark:border-slate-800 pt-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Report Name *</div>
-                  <Input
-                    value={ga4ReportForm.name}
-                    onChange={(e) => setGa4ReportForm((p) => ({ ...p, name: e.target.value }))}
-                    placeholder="e.g., Monthly GA4 Overview"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</div>
-                  <Input
-                    value={ga4ReportForm.description}
-                    onChange={(e) => setGa4ReportForm((p) => ({ ...p, description: e.target.value }))}
-                    placeholder="Optional description for your report library"
-                  />
-                </div>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between pt-6 border-t mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowGA4ReportModal(false);
+                  setGa4ReportModalStep("standard");
+                  setEditingGA4ReportId(null);
+                  setGa4ReportForm({
+                    name: "",
+                    description: "",
+                    reportType: "overview",
+                    configuration: { sections: { overview: true, kpis: false, benchmarks: false, ads: false, insights: false } },
+                    scheduleEnabled: false,
+                    scheduleFrequency: "daily",
+                    scheduleDayOfWeek: "monday",
+                    scheduleDayOfMonth: "first",
+                    quarterTiming: "end",
+                    scheduleTime: "9:00 AM",
+                    emailRecipients: "",
+                    status: "active",
+                  });
+                  setGa4ReportFormErrors({});
+                }}
+              >
+                Cancel
+              </Button>
 
-              <div className="flex justify-end gap-3 pt-6">
-                <Button variant="outline" onClick={() => setShowGA4ReportModal(false)}>
-                  Cancel
-                </Button>
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="outline"
-                  onClick={() =>
-                    downloadGA4Report({
-                      reportType: ga4ReportForm.reportType,
-                      configuration: ga4ReportForm.configuration,
-                      reportName: ga4ReportForm.name || "GA4 Report",
-                    })
-                  }
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PDF
-                </Button>
-                <Button
-                  disabled={createGA4ReportMutation.isPending || updateGA4ReportMutation.isPending}
+                  disabled={!ga4ReportForm.name || createGA4ReportMutation.isPending || updateGA4ReportMutation.isPending}
                   onClick={() => {
+                    if (ga4ReportForm.scheduleEnabled && !validateGA4ScheduledReportFields()) return;
                     const payload = buildGA4ReportPayload();
                     if (!String(payload.name || "").trim()) {
                       toast({ title: "Report name is required", variant: "destructive" });
@@ -6056,14 +6569,20 @@ export default function GA4Metrics() {
                     }
                     createGA4ReportMutation.mutate(payload);
                   }}
+                  className="gap-2"
                 >
-                  {editingGA4ReportId
-                    ? updateGA4ReportMutation.isPending
-                      ? "Updating..."
-                      : "Update Report"
-                    : createGA4ReportMutation.isPending
-                      ? "Saving..."
-                      : "Save Report"}
+                  {createGA4ReportMutation.isPending || updateGA4ReportMutation.isPending ? (
+                    editingGA4ReportId ? "Updating..." : "Creating..."
+                  ) : editingGA4ReportId ? (
+                    "Update Report"
+                  ) : ga4ReportForm.scheduleEnabled ? (
+                    "Schedule Report"
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      Generate & Download Report
+                    </>
+                  )}
                 </Button>
               </div>
             </div>

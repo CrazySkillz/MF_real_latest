@@ -294,19 +294,24 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 ### GA4 Reports Tab (inline in `ga4-metrics.tsx`)
 
-CRUD library for saved report definitions + client-side PDF download. Reports stored in `linkedin_reports` table with `platformType='google_analytics'`. No server-side PDF generation for GA4 — PDF built entirely in browser from already-loaded page data.
+CRUD library for saved report definitions + client-side PDF download + scheduling. Reports stored in `linkedin_reports` table with `platformType='google_analytics'`. PDF built entirely in browser from already-loaded page data.
 
-**PDF sections** (controlled by `reportType` or `configuration.sections`): Overview, Acquisition (top 25 breakdown rows), Trends (last 25 daily data points), KPIs Snapshot, Benchmarks Snapshot.
+**Standard Templates**: Overview, KPIs, Benchmarks, Ad Comparison, Insights (matches LinkedIn Reports pattern exactly).
+
+**Schedule UI**: Both Standard Templates and Custom Report sections include full scheduling capability (frequency, day-of-week/month, quarter timing, time, timezone, email recipients). Matches LinkedIn `LinkedInReportModal.tsx` pattern.
+
+**PDF sections** (controlled by `reportType` or `configuration.sections`): Overview, KPIs Snapshot, Benchmarks Snapshot, Ad Comparison (campaign breakdown sorted by sessions, best/worst performing), Insights (top 12 insight items with severity/title/description/recommendation).
 
 **Accuracy (pipeline-verified)**:
-- Overview: Uses `financialSpend`, `financialRevenue`, `financialConversions`, `breakdownTotals` — same sources as Overview tab. ROAS/ROI/CPA computed inline with same formulas.
-- Acquisition: Uses `ga4Breakdown.rows` — same data as Campaign Breakdown section.
-- Trends: Uses `ga4TimeSeries` (alias for `ga4DailyRows`) — same persisted daily facts.
-- KPIs: Uses `computeKpiProgress()` → `p.band` for status, `p.attainmentPct` for progress. Labels: "Above Target"/"On Track"/"Below Target" matching KPI tab.
-- Benchmarks: Uses `computeBenchmarkProgress()` → `p.status` for status, `p.pct` for progress. Correct return shape.
-- **Bug fixed**: KPI section previously read `p.status`/`p.pct` from `computeKpiProgress` (which returns `band`/`attainmentPct`). `p.pct.toFixed(1)` crashed (TypeError). Fixed to use correct field names.
-- **Bug fixed**: PDF Overview used `spendToDateResp?.spendToDate` bypassing the `financialSpend` preference chain. Fixed to use `financialSpend` for consistency with UI.
-- **Design note**: GA4 reports have no email scheduling — scheduler only processes `platformType='linkedin'`. The Reports tab UI does not expose scheduling fields for GA4.
+- Overview: Uses `financialSpend`, `financialRevenue`, `financialConversions`, `breakdownTotals` — same sources as Overview tab.
+- Ad Comparison: Uses `campaignBreakdownAgg` — same data as Campaign Comparison tab.
+- Insights: Uses `insights` array (5-category data-driven engine) — same data as Insights tab.
+- KPIs: Uses `computeKpiProgress()` → `p.band` for status, `p.attainmentPct` for progress.
+- Benchmarks: Uses `computeBenchmarkProgress()` → `p.status` for status, `p.pct` for progress.
+
+**Scheduling**: `report-scheduler.ts` fetches both `linkedin` and `google_analytics` platform reports. GA4 scheduled reports use the same scheduler logic as LinkedIn.
+
+**Report Library**: Cards show schedule badges (frequency + time + timezone), "Last sent" date, created date. Edit prefills all schedule fields including recipients.
 
 ---
 

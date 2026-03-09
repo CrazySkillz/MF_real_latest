@@ -746,12 +746,21 @@ export async function checkScheduledReports(): Promise<void> {
     }
 
     try {
-      // Also check platform reports
+      // Also check platform reports (LinkedIn)
       const platformReports = await storage.getPlatformReports('linkedin');
       allReports = allReports.concat(platformReports);
-      console.log(`[Report Scheduler] Found ${platformReports.length} platform reports`);
+      console.log(`[Report Scheduler] Found ${platformReports.length} LinkedIn platform reports`);
     } catch (error) {
-      console.log('[Report Scheduler] No platform reports found');
+      console.log('[Report Scheduler] No LinkedIn platform reports found');
+    }
+
+    try {
+      // Check GA4 platform reports
+      const ga4Reports = await storage.getPlatformReports('google_analytics');
+      allReports = allReports.concat(ga4Reports);
+      console.log(`[Report Scheduler] Found ${ga4Reports.length} GA4 platform reports`);
+    } catch (error) {
+      console.log('[Report Scheduler] No GA4 platform reports found');
     }
 
     if (allReports.length === 0) {

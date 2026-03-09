@@ -221,6 +221,16 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
     - Grid 2 cols: Alert Frequency (Immediate/Daily/Weekly) + helper text | Email checkbox + conditional email recipients
 - DialogFooter: Cancel | Create/Update Benchmark
 
+### Ad Comparison Tab (`ga4-campaign-comparison.tsx`)
+
+Extracted component comparing GA4 campaigns by selected metric. Data from `/api/campaigns/:id/ga4-breakdown` (90-day window), aggregated by campaign name in `campaignBreakdownAgg` memo.
+
+- **Ranking cards** (3-col, shown when ≥2 campaigns): Best Performing (dynamic, sorts by selected metric), Most Efficient (highest CR), Needs Attention (lowest CR, guards against duplicating Best Performing)
+- **Bar chart**: Top 10 campaigns by selected metric (horizontal Recharts `BarChart`)
+- **Summary cards**: Total metric + Campaigns Compared. Users metric shows amber `Info` tooltip warning about non-additivity.
+- **Comparison table**: All campaigns sorted by selected metric, top row green, bottom row red
+- **Users non-additivity**: GA4 users are non-additive across campaigns — summing overcounts. Tooltip warning on Total card when Users selected.
+
 ### GA4 KPIs Tab
 - **Templates**: ROAS, ROI, CPA, Revenue, Conversions, Engagement Rate, Conversion Rate, Users, Sessions + Custom. Templates requiring spend/revenue are disabled when sources aren't connected.
 - **Live values**: `getLiveKpiValue()` computes current values from live query data (NOT stored `currentValue`). Stored `currentValue` is only a fallback for custom/legacy KPIs.

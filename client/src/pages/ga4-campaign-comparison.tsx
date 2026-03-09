@@ -6,7 +6,8 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Zap, AlertTriangle } from "lucide-react";
+import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
 } from "recharts";
@@ -72,16 +73,24 @@ export default function GA4CampaignComparison({
   }, [sortedByMetric, selectedMetric]);
 
   const bestPerforming = useMemo(() => {
-    return [...campaignBreakdownAgg].sort((a, b) => b.conversions - a.conversions)[0];
-  }, [campaignBreakdownAgg]);
+    return [...campaignBreakdownAgg].sort((a, b) => {
+      const av = Number((a as any)[selectedMetric] || 0);
+      const bv = Number((b as any)[selectedMetric] || 0);
+      return bv - av;
+    })[0];
+  }, [campaignBreakdownAgg, selectedMetric]);
 
   const mostEfficient = useMemo(() => {
     return [...campaignBreakdownAgg].filter(c => c.sessions > 0).sort((a, b) => b.conversionRate - a.conversionRate)[0];
   }, [campaignBreakdownAgg]);
 
   const needsAttention = useMemo(() => {
-    return [...campaignBreakdownAgg].filter(c => c.sessions > 0).sort((a, b) => a.conversionRate - b.conversionRate)[0];
-  }, [campaignBreakdownAgg]);
+    const sorted = [...campaignBreakdownAgg].filter(c => c.sessions > 0).sort((a, b) => a.conversionRate - b.conversionRate);
+    // Avoid showing the same campaign as both Best Performing and Needs Attention
+    const candidate = sorted[0];
+    if (candidate && candidate.name === bestPerforming?.name && sorted.length > 1) return sorted[1];
+    return candidate;
+  }, [campaignBreakdownAgg, bestPerforming]);
 
   const fmtMetricValue = (metric: string, value: number) => {
     if (metric === "revenue") return formatMoney(value);
@@ -154,7 +163,7 @@ export default function GA4CampaignComparison({
                   {bestPerforming.name}
                 </div>
                 <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                  {formatNumber(bestPerforming.conversions)} conversions &middot; {bestPerforming.conversionRate.toFixed(2)}% CR
+                  {fmtMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric} &middot; {bestPerforming.conversionRate.toFixed(2)}% CR
                 </div>
               </CardContent>
             </Card>
@@ -222,8 +231,18 @@ export default function GA4CampaignComparison({
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="p-5">
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-400">
+            <div className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">
               Total {METRIC_LABELS[selectedMetric] || selectedMetric}
+              {selectedMetric === "users" && (
+                <UITooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3.5 h-3.5 text-amber-500 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                    <p className="text-xs">Users are non-additive across campaigns. A user who visits multiple campaigns is counted in each, so this total may overcount unique users.</p>
+                  </TooltipContent>
+                </UITooltip>
+              )}
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
               {fmtMetricValue(selectedMetric, totalMetric)}

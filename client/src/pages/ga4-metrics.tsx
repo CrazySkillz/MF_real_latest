@@ -1577,12 +1577,14 @@ export default function GA4Metrics() {
 
   // Use the higher of (to-date API total, summed daily rows) so cumulative totals
   // are never less than individual daily values.
+  // EXCEPTION: Users are non-additive across dates — summing daily rows overcounts.
+  // Prefer the deduplicated ga4-to-date count; only fall back to daily sum when unavailable.
   const breakdownTotals = {
     date: ga4ReportDate,
     sessions: Math.max(Number((ga4ToDateResp as any)?.totals?.sessions || 0), dailySummedTotals.sessions),
     conversions: Math.max(Number((ga4ToDateResp as any)?.totals?.conversions || 0), dailySummedTotals.conversions),
     revenue: Math.max(Number((ga4ToDateResp as any)?.totals?.revenue || 0), dailySummedTotals.revenue),
-    users: Math.max(Number((ga4ToDateResp as any)?.totals?.users || 0), dailySummedTotals.users),
+    users: Number((ga4ToDateResp as any)?.totals?.users || 0) || dailySummedTotals.users,
   };
 
   const { data: importedRevenueToDateResp } = useQuery<any>({

@@ -228,6 +228,13 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
     - Grid 2 cols: Alert Frequency (Immediate/Daily/Weekly) + helper text | Email checkbox + conditional email recipients
 - DialogFooter: Cancel | Create/Update Benchmark
 
+**Accuracy (pipeline-verified)**:
+- `getLiveBenchmarkCurrentValue()` uses the **same data sources** as `getLiveKpiValue()`: `financialSpend`, `financialRevenue`, `breakdownTotals`, `dailySummedTotals`. ROAS: `financialROAS * 100` = `computeRoasPercent(rev, spend)` — identical to KPIs.
+- Users: prefers deduplicated `ga4-to-date` count via `breakdownTotals.users` (same fix as KPIs).
+- CPA correctly identified as "lower is better" in both client (`computeBenchmarkProgress`) and scheduler (`computeBenchmarkVariance`).
+- Progress thresholds (0.9/0.7 ratio) are intentionally different from KPI bands (±5% delta) — benchmarks compare against a standard, KPIs track toward a target.
+- Scheduler uses same `computeKpiValue()` function for both KPIs and Benchmarks. Scheduler's `computeBenchmarkRating` (±5%/±20% bands) is stored in history but not displayed on cards (cards compute their own progress).
+
 ### Ad Comparison Tab (`ga4-campaign-comparison.tsx`)
 
 Extracted component comparing GA4 campaigns by selected metric. Data from `/api/campaigns/:id/ga4-breakdown` (90-day window), aggregated by campaign name in `campaignBreakdownAgg` memo.
@@ -270,6 +277,14 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 - **Scheduler**: `ga4-kpi-benchmark-jobs.ts` records daily `kpiProgress` rows. Uses `getSpendTotalForRange()` (NOT `campaign.spend`) for accurate financial KPIs.
 - **Auth**: All KPI CRUD endpoints require `ensureCampaignAccess` or `ensureKpiAccess`. `test-alerts` endpoint requires authenticated user.
 - **Cascade delete**: Deleting a KPI also deletes its `kpiProgress` and `kpiAlerts` rows.
+
+**Accuracy (pipeline-verified)**:
+- `getLiveKpiValue()` and scheduler `computeKpiValue()` use the **same shared formulas** from `metric-math.ts`: `computeRoasPercent`, `computeRoiPercent`, `computeCpa`, `computeConversionRatePercent`, `normalizeRateToPercent`. Both return ROAS/ROI as percentages, CPA as ratio.
+- `breakdownTotals` uses `Math.max(ga4ToDate, dailySummed)` for sessions/conversions/revenue (additive metrics). For **users**, it prefers the deduplicated `ga4-to-date` count (dimension-free GA4 API query) and only falls back to daily sum (overcounted) when unavailable.
+- Scheduler prefers `getTotalsWithRevenue` API response for all metrics (deduplicated), falling back to summed daily rows only when API fails.
+- Engagement Rate: client uses cumulative weighted average (`engagedSessions / sessions` across all days), scheduler records daily snapshot. This is by design — different time scopes for different purposes.
+- Financial metrics (Spend/Revenue/ROAS/ROI/CPA) use the **same sources** as Overview and Insights tabs: `financialSpend`, `financialRevenue`, shared `computeRoasPercent`/`computeRoiPercent`/`computeCpa`.
+- `normalizeRateToPercent` handles GA4's inconsistent rate format: if `v ≤ 1` assumes decimal (×100), if `v > 1` assumes already percentage.
 
 ---
 

@@ -200,6 +200,27 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
     - Grid 2 cols: Alert Frequency (Immediate/Daily/Weekly) + helper text | Email checkbox + conditional email recipients
 - DialogFooter: Cancel | Create/Update KPI
 
+### Benchmark UI Pattern (shared across GA4 and LinkedIn)
+
+**Summary cards** (5-column grid): Total Benchmarks (purple `Target`) | On Track (green `CheckCircle2`, "meeting or exceeding target") | Needs Attention (amber `AlertCircle`, "within 70–90% of target") | Behind (red `AlertTriangle`, "below 70% of target") | Avg. Progress (violet `TrendingUp`). All use `p-4`, `w-8 h-8` icons, `text-xs` descriptions.
+
+**Progress logic**: Ratio-based thresholds (NOT kpi-math.ts delta bands). `ratio >= 0.9` = on_track (green), `>= 0.7` = needs_attention (yellow), `< 0.7` = behind (red). Lower-is-better detection for CPA/CPC/CPM/CPL/Spend inverts ratio (`benchmark / current`). Progress bar fill capped 0–100%, label shows uncapped.
+
+**Benchmark card rendering**: 2-column grid (`lg:grid-cols-2`). Name with metric `Badge` (outline, font-mono). Inline `Pencil` (blue) + `Trash2` (red) buttons with per-card `AlertDialog` delete confirmation (no dropdown menu). 3-column metrics grid (Current Value | Benchmark Value | Source) in `bg-slate-50 rounded-lg` boxes. Progress bar + delta/performance line below. Alert indicators: yellow `AlertTriangle` when `alertsEnabled`, red pulsing dot when threshold breached (same pattern as KPI cards).
+
+**Create Benchmark modal layout** (LinkedIn is the reference pattern):
+- Template/metric selection (platform-specific tiles or dropdown)
+- Full width: Benchmark Name
+- Full width: Description (Textarea with char counter, 200 max)
+- Grid 3 cols: Current Value | Benchmark Value | Unit (free text input, NOT Select dropdown)
+- Benchmark Type (Industry/Custom) + conditional Industry dropdown
+- Alert Settings (border-t separator):
+  - Checkbox: "Enable alerts for this Benchmark" + description text
+  - [Conditional when enabled, indented `pl-6`]:
+    - Grid 2 cols: Alert Threshold (decimal, formats on blur) | Alert When (Below/Above/Equals)
+    - Grid 2 cols: Alert Frequency (Immediate/Daily/Weekly) + helper text | Email checkbox + conditional email recipients
+- DialogFooter: Cancel | Create/Update Benchmark
+
 ### GA4 KPIs Tab
 - **Templates**: ROAS, ROI, CPA, Revenue, Conversions, Engagement Rate, Conversion Rate, Users, Sessions + Custom. Templates requiring spend/revenue are disabled when sources aren't connected.
 - **Live values**: `getLiveKpiValue()` computes current values from live query data (NOT stored `currentValue`). Stored `currentValue` is only a fallback for custom/legacy KPIs.

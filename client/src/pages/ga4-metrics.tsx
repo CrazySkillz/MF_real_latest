@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, RefreshCw, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { SiGoogle } from "react-icons/si";
 import { useForm } from "react-hook-form";
@@ -174,7 +174,13 @@ export default function GA4Metrics() {
     industry: "",
     geoLocation: "",
     description: "",
-    source: ""
+    source: "",
+    alertsEnabled: false,
+    alertThreshold: "",
+    alertCondition: "below",
+    alertFrequency: "daily",
+    emailNotifications: false,
+    emailRecipients: "",
   });
 
   const { toast } = useToast();
@@ -758,6 +764,12 @@ export default function GA4Metrics() {
       benchmarkValue: stripNumberFormatting(String(newBenchmark.benchmarkValue || "")),
       // Backward-compatible storage: use 'goal' for custom benchmarks in the DB.
       benchmarkType: String(newBenchmark.benchmarkType || "custom") === "custom" ? "goal" : (newBenchmark.benchmarkType || "industry"),
+      alertThreshold: newBenchmark.alertsEnabled ? stripNumberFormatting(String(newBenchmark.alertThreshold || "")) : null,
+      alertCondition: newBenchmark.alertCondition || "below",
+      alertsEnabled: newBenchmark.alertsEnabled || false,
+      alertFrequency: newBenchmark.alertFrequency || "daily",
+      emailNotifications: newBenchmark.emailNotifications || false,
+      emailRecipients: newBenchmark.emailRecipients || "",
     };
     // Benchmarks table requires a category; for fully custom benchmarks (no metric selected),
     // default to a generic category.
@@ -775,7 +787,7 @@ export default function GA4Metrics() {
       });
       return;
     }
-    if (!cleanedBenchmark.unit || String(cleanedBenchmark.unit) === SELECT_UNIT) {
+    if (!cleanedBenchmark.unit || !String(cleanedBenchmark.unit).trim() || String(cleanedBenchmark.unit) === SELECT_UNIT) {
       toast({
         title: "Select a unit",
         description: "Please choose a unit before saving this benchmark.",
@@ -823,6 +835,14 @@ export default function GA4Metrics() {
       geoLocation: benchmark.geoLocation || "",
       description: benchmark.description || "",
       source: benchmark.source || "",
+      alertsEnabled: (benchmark as any).alertsEnabled || false,
+      alertThreshold: (benchmark as any).alertThreshold
+        ? formatNumberByUnit(String((benchmark as any).alertThreshold), String(benchmark.unit || "%"))
+        : "",
+      alertCondition: (benchmark as any).alertCondition || "below",
+      alertFrequency: (benchmark as any).alertFrequency || "daily",
+      emailNotifications: (benchmark as any).emailNotifications || false,
+      emailRecipients: (benchmark as any).emailRecipients || "",
     });
   };
 
@@ -3863,6 +3883,12 @@ export default function GA4Metrics() {
                               geoLocation: "",
                               description: "",
                               source: "",
+                              alertsEnabled: false,
+                              alertThreshold: "",
+                              alertCondition: "below",
+                              alertFrequency: "daily",
+                              emailNotifications: false,
+                              emailRecipients: "",
                             });
                           }
                         }}
@@ -4022,36 +4048,15 @@ export default function GA4Metrics() {
                               </div>
                             </div>
 
-                            {/* Benchmark Name + Unit */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Benchmark Name *</div>
-                                <Input
-                                  value={newBenchmark.name}
-                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, name: e.target.value })}
-                                  placeholder="e.g., Target sessions for this campaign"
-                                  required
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Unit *</div>
-                                <Select
-                                  value={String(newBenchmark.unit || SELECT_UNIT)}
-                                  onValueChange={(v) => setNewBenchmark({ ...newBenchmark, unit: v })}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select unit" />
-                                  </SelectTrigger>
-                                  <SelectContent className="z-[10000]">
-                                    <SelectItem value={SELECT_UNIT}>Select unit</SelectItem>
-                                    <SelectItem value="%">Percentage (%)</SelectItem>
-                                    <SelectItem value="count">Count</SelectItem>
-                                    <SelectItem value={String((campaign as any)?.currency || "USD")}>
-                                      Currency ({String((campaign as any)?.currency || "USD")})
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                            {/* Benchmark Name */}
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Benchmark Name *</div>
+                              <Input
+                                value={newBenchmark.name}
+                                onChange={(e) => setNewBenchmark({ ...newBenchmark, name: e.target.value })}
+                                placeholder="e.g., Target sessions for this campaign"
+                                required
+                              />
                             </div>
 
                             {/* Description */}
@@ -4069,8 +4074,8 @@ export default function GA4Metrics() {
                               </div>
                             </div>
 
-                            {/* Current Value + Benchmark Value */}
-                            <div className="grid grid-cols-2 gap-4">
+                            {/* Current Value + Benchmark Value + Unit */}
+                            <div className="grid grid-cols-3 gap-4">
                               <div className="space-y-2">
                                 <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Current Value</div>
                                 <Input
@@ -4084,7 +4089,7 @@ export default function GA4Metrics() {
                                       currentValue: formatNumberByUnit(e.target.value, String(prev.unit || "%")),
                                     }))
                                   }
-                                  placeholder="Auto-filled from GA4 for the selected metric (edit if needed)"
+                                  placeholder="Auto-filled from GA4"
                                 />
                               </div>
                               <div className="space-y-2">
@@ -4094,11 +4099,9 @@ export default function GA4Metrics() {
                                   inputMode="decimal"
                                   value={newBenchmark.benchmarkValue}
                                   onChange={(e) => {
-                                    const nextRaw = e.target.value;
-                                    // UX: always enforce numeric-only input and format as the user types (commas, no forced .00).
                                     setNewBenchmark({
                                       ...newBenchmark,
-                                      benchmarkValue: formatNumberWhileTyping(nextRaw, String(newBenchmark.unit || "%")),
+                                      benchmarkValue: formatNumberWhileTyping(e.target.value, String(newBenchmark.unit || "%")),
                                     });
                                   }}
                                   onBlur={(e) =>
@@ -4107,8 +4110,16 @@ export default function GA4Metrics() {
                                       benchmarkValue: formatNumberByUnit(e.target.value, String(prev.unit || "%")),
                                     }))
                                   }
-                                  placeholder="Enter your benchmark value"
+                                  placeholder="Enter benchmark value"
                                   required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Unit</div>
+                                <Input
+                                  value={newBenchmark.unit === SELECT_UNIT ? "" : newBenchmark.unit}
+                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, unit: e.target.value })}
+                                  placeholder="%, $, count, etc."
                                 />
                               </div>
                             </div>
@@ -4191,14 +4202,108 @@ export default function GA4Metrics() {
                               )}
                             </div>
 
-                            <div className="flex justify-end space-x-3 pt-2">
+                            {/* Alert Settings */}
+                            <div className="space-y-4 pt-4 border-t">
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  id="ga4-benchmark-alerts-enabled"
+                                  checked={newBenchmark.alertsEnabled}
+                                  onCheckedChange={(checked) => setNewBenchmark({ ...newBenchmark, alertsEnabled: checked as boolean })}
+                                />
+                                <Label htmlFor="ga4-benchmark-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                                  Enable alerts for this Benchmark
+                                </Label>
+                              </div>
+                              <p className="text-sm text-slate-500 dark:text-slate-400 -mt-2">
+                                Receive notifications when this benchmark crosses a threshold you define.
+                              </p>
+
+                              {newBenchmark.alertsEnabled && (
+                                <div className="space-y-4 pl-6">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <Label>Alert Threshold *</Label>
+                                      <Input
+                                        type="text"
+                                        placeholder="e.g., 80"
+                                        inputMode="decimal"
+                                        value={newBenchmark.alertThreshold}
+                                        onChange={(e) => {
+                                          setNewBenchmark({ ...newBenchmark, alertThreshold: formatNumberWhileTyping(e.target.value, String(newBenchmark.unit || "%")) });
+                                        }}
+                                        onBlur={(e) =>
+                                          setNewBenchmark((prev) => ({
+                                            ...prev,
+                                            alertThreshold: formatNumberByUnit(e.target.value, String(prev.unit || "%")),
+                                          }))
+                                        }
+                                      />
+                                      <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Alert When</Label>
+                                      <Select value={newBenchmark.alertCondition} onValueChange={(v) => setNewBenchmark({ ...newBenchmark, alertCondition: v })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent className="z-[10000]">
+                                          <SelectItem value="below">Value Goes Below</SelectItem>
+                                          <SelectItem value="above">Value Goes Above</SelectItem>
+                                          <SelectItem value="equals">Value Equals</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <Label>Alert Frequency</Label>
+                                      <Select value={newBenchmark.alertFrequency || "daily"} onValueChange={(v) => setNewBenchmark({ ...newBenchmark, alertFrequency: v })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent className="z-[10000]">
+                                          <SelectItem value="immediate">Immediate</SelectItem>
+                                          <SelectItem value="daily">Daily</SelectItem>
+                                          <SelectItem value="weekly">Weekly</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        Controls how often you're notified while the alert condition stays true.
+                                      </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <div className="flex items-center space-x-2 pt-1">
+                                        <Checkbox
+                                          id="ga4-benchmark-email-notifications"
+                                          checked={!!newBenchmark.emailNotifications}
+                                          onCheckedChange={(checked) => setNewBenchmark({ ...newBenchmark, emailNotifications: checked as boolean })}
+                                        />
+                                        <Label htmlFor="ga4-benchmark-email-notifications" className="cursor-pointer font-medium">
+                                          Send email notifications
+                                        </Label>
+                                      </div>
+                                      {newBenchmark.emailNotifications && (
+                                        <div className="space-y-2">
+                                          <Label>Email addresses *</Label>
+                                          <Input
+                                            type="text"
+                                            placeholder="email1@example.com, email2@example.com"
+                                            value={newBenchmark.emailRecipients}
+                                            onChange={(e) => setNewBenchmark({ ...newBenchmark, emailRecipients: e.target.value })}
+                                          />
+                                          <p className="text-xs text-slate-500 dark:text-slate-400">Comma-separated email addresses for alerts.</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <DialogFooter>
                               <Button type="button" variant="outline" onClick={() => setShowCreateBenchmark(false)}>
                                 Cancel
                               </Button>
                               <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
                                 {editingBenchmark ? "Update Benchmark" : "Create Benchmark"}
                               </Button>
-                            </div>
+                            </DialogFooter>
                           </form>
                         </DialogContent>
                       </Dialog>
@@ -4223,63 +4328,66 @@ export default function GA4Metrics() {
                           {/* Benchmarks performance tracker (exec snapshot) */}
                           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                             <Card>
-                              <CardContent className="p-5">
+                              <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Benchmarks</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
                                     <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.total}</p>
                                   </div>
-                                  <Target className="w-7 h-7 text-slate-500" />
+                                  <Target className="w-8 h-8 text-purple-500" />
                                 </div>
                               </CardContent>
                             </Card>
 
                             <Card>
-                              <CardContent className="p-5">
+                              <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">On Track</p>
-                                    <p className="text-2xl font-bold text-emerald-600">{benchmarkTracker.onTrack}</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                                    <p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-500">meeting or exceeding target</p>
                                   </div>
-                                  <BadgeCheck className="w-7 h-7 text-emerald-600" />
+                                  <CheckCircle2 className="w-8 h-8 text-green-500" />
                                 </div>
                               </CardContent>
                             </Card>
 
                             <Card>
-                              <CardContent className="p-5">
+                              <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs Attention</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
                                     <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-500">within 70–90% of target</p>
                                   </div>
-                                  <AlertTriangle className="w-7 h-7 text-amber-600" />
+                                  <AlertCircle className="w-8 h-8 text-amber-500" />
                                 </div>
                               </CardContent>
                             </Card>
 
                             <Card>
-                              <CardContent className="p-5">
+                              <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Behind</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">Behind</p>
                                     <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-500">below 70% of target</p>
                                   </div>
-                                  <TrendingDown className="w-7 h-7 text-red-600" />
+                                  <AlertTriangle className="w-8 h-8 text-red-500" />
                                 </div>
                               </CardContent>
                             </Card>
 
                             <Card>
-                              <CardContent className="p-5">
+                              <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Progress</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
                                     <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                       {benchmarkTracker.avgPct.toFixed(1)}%
                                     </p>
                                   </div>
-                                  <TrendingUp className="w-7 h-7 text-violet-600" />
+                                  <TrendingUp className="w-8 h-8 text-violet-600" />
                                 </div>
                               </CardContent>
                             </Card>
@@ -4307,143 +4415,210 @@ export default function GA4Metrics() {
                           ) : null}
 
                           {benchmarks && benchmarks.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {benchmarks.map((benchmark) => (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              {benchmarks.map((benchmark) => {
+                                const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
+                                const isBlocked = deps.missing.length > 0;
+                                return (
                                 <Card key={benchmark.id} className="hover:shadow-lg transition-shadow">
                                   <CardContent className="p-6">
                                     <div className="flex items-start justify-between mb-4">
                                       <div className="flex-1">
-                                        <h4 className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</h4>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <h3 className="font-semibold text-slate-900 dark:text-white text-lg">{benchmark.name}</h3>
+                                          {(benchmark as any)?.metric && (
+                                            <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">
+                                              {getBenchmarkMetricLabel((benchmark as any)?.metric, benchmark.name)}
+                                            </Badge>
+                                          )}
+                                          {(benchmark as any).alertsEnabled && (
+                                            <UITooltip>
+                                              <TooltipTrigger asChild>
+                                                <div className="cursor-help">
+                                                  <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                                                </div>
+                                              </TooltipTrigger>
+                                              <TooltipContent className="bg-slate-900 text-white border-slate-700">
+                                                <p className="text-sm">Alerts enabled</p>
+                                              </TooltipContent>
+                                            </UITooltip>
+                                          )}
+                                          {(benchmark as any).alertsEnabled && !isBlocked && (() => {
+                                            const currentVal = parseFloat(String(getBenchmarkDisplayCurrentValue(benchmark) || "0").replace(/,/g, ""));
+                                            const alertThresh = (benchmark as any).alertThreshold
+                                              ? parseFloat(String((benchmark as any).alertThreshold).replace(/,/g, ""))
+                                              : null;
+                                            const alertCond = (benchmark as any).alertCondition || "below";
+                                            if (alertThresh === null || !Number.isFinite(alertThresh)) return null;
+                                            let hasActiveAlert = false;
+                                            switch (alertCond) {
+                                              case "below": hasActiveAlert = currentVal < alertThresh; break;
+                                              case "above": hasActiveAlert = currentVal > alertThresh; break;
+                                              case "equals": hasActiveAlert = Math.abs(currentVal - alertThresh) < 0.01; break;
+                                            }
+                                            return hasActiveAlert ? (
+                                              <UITooltip>
+                                                <TooltipTrigger asChild>
+                                                  <div className="relative flex items-center justify-center cursor-help">
+                                                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                                    <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                                                  </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                                  <div className="space-y-2">
+                                                    <p className="font-semibold text-red-400">Alert Threshold Breached</p>
+                                                    <div className="text-xs space-y-1">
+                                                      <p><span className="text-slate-400">Current:</span> {formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}</p>
+                                                      <p><span className="text-slate-400">Alert Threshold:</span> {alertThresh}{benchmark.unit}</p>
+                                                      <p><span className="text-slate-400">Condition:</span> {alertCond}</p>
+                                                    </div>
+                                                  </div>
+                                                </TooltipContent>
+                                              </UITooltip>
+                                            ) : null;
+                                          })()}
+                                        </div>
                                         {benchmark.description ? (
                                           <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                                             {benchmark.description}
                                           </div>
                                         ) : null}
-                                        <div className="flex items-center space-x-2 mt-1">
-                                          <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                                            {getBenchmarkMetricLabel((benchmark as any)?.metric, benchmark.name)}
-                                          </span>
-                                        </div>
+                                        {benchmark.industry && (
+                                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                            Industry: {benchmark.industry}
+                                          </div>
+                                        )}
                                       </div>
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" className="h-8 w-8 p-0">
-                                            <MoreVertical className="h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => handleEditBenchmark(benchmark)}>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            Edit
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            onClick={() => handleDeleteBenchmark(benchmark.id)}
-                                            className="text-red-600 dark:text-red-400"
-                                          >
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Delete
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleEditBenchmark(benchmark)}
+                                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                        >
+                                          <Pencil className="w-4 h-4" />
+                                        </Button>
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle className="text-slate-900 dark:text-white">Delete Benchmark</AlertDialogTitle>
+                                              <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                                                Are you sure you want to delete "{benchmark.name}"? This action cannot be undone.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                              <AlertDialogAction
+                                                onClick={() => deleteBenchmarkMutation.mutate(String(benchmark.id))}
+                                                className="bg-red-600 hover:bg-red-700 text-white"
+                                              >
+                                                Delete
+                                              </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                      </div>
                                     </div>
 
-                                    <div className="space-y-3">
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-sm text-slate-600 dark:text-slate-400">Benchmark</span>
-                                        <span className="font-medium text-slate-900 dark:text-white">
+                                    {/* 3-column metrics grid */}
+                                    <div className="grid gap-4 md:grid-cols-3 mb-4">
+                                      <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current Value</div>
+                                        <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                          {isBlocked ? "—" : formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}
+                                        </div>
+                                      </div>
+                                      <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Benchmark Value</div>
+                                        <div className="text-lg font-bold text-slate-900 dark:text-white">
                                           {formatBenchmarkValue(benchmark.benchmarkValue, benchmark.unit)}
-                                        </span>
-                                      </div>
-
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-sm text-slate-600 dark:text-slate-400">Current</span>
-                                        <span className="font-medium text-slate-900 dark:text-white">
-                                          {(() => {
-                                            const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
-                                            const isBlocked = deps.missing.length > 0;
-                                            return isBlocked ? "—" : formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit);
-                                          })()}
-                                        </span>
-                                      </div>
-
-                                      {(() => {
-                                        const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
-                                        const isBlocked = deps.missing.length > 0;
-                                        if (isBlocked) {
-                                          return (
-                                            <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-3">
-                                              <div className="text-sm font-medium text-slate-900 dark:text-white">Blocked</div>
-                                              <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                                                Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. Restore inputs to resume accurate tracking.
-                                              </div>
-                                              <div className="mt-2">
-                                                <Link href={`/campaigns/${campaignId}#overview`}>
-                                                  <Button type="button" variant="outline" size="sm">
-                                                    Manage Connected Platforms
-                                                  </Button>
-                                                </Link>
-                                              </div>
-                                            </div>
-                                          );
-                                        }
-                                        const bench = parseFloat(stripNumberFormatting(String((benchmark as any)?.benchmarkValue || "0")));
-                                        if (!Number.isFinite(bench) || bench <= 0) return null;
-                                        const p = computeBenchmarkProgress(benchmark);
-                                        const statusLabel =
-                                          p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
-                                        const statusColor =
-                                          p.status === "on_track"
-                                            ? "text-green-600 dark:text-green-400"
-                                            : p.status === "needs_attention"
-                                              ? "text-yellow-600 dark:text-yellow-400"
-                                              : "text-red-600 dark:text-red-400";
-
-                                        const delta = Number.isFinite(p.deltaPct) ? p.deltaPct : 0;
-                                        const deltaLabel = `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`;
-
-                                        return (
-                                          <>
-                                            <div className="space-y-2 pt-1">
-                                              <div className="flex items-center justify-between">
-                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Progress to Benchmark</span>
-                                                <span className="text-sm text-slate-500 dark:text-slate-400">{p.labelPct}%</span>
-                                              </div>
-                                              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                                <div className={`h-2 rounded-full ${p.color}`} style={{ width: `${p.pct}%` }} />
-                                              </div>
-                                            </div>
-
-                                            <div className="flex justify-between items-center">
-                                              <span className="text-sm text-slate-600 dark:text-slate-400">Performance</span>
-                                              <div className="flex items-center space-x-2">
-                                                <span className={`font-medium ${statusColor}`}>{deltaLabel}</span>
-                                                {delta >= 0 ? (
-                                                  <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                                ) : (
-                                                  <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
-                                                )}
-                                                <span className={`text-xs font-medium ${statusColor}`}>{statusLabel}</span>
-                                              </div>
-                                            </div>
-                                          </>
-                                        );
-                                      })()}
-
-                                      {benchmark.industry && (
-                                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                                          Industry: {benchmark.industry}
                                         </div>
-                                      )}
-
-                                      {benchmark.source && (
-                                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                                          Source: {benchmark.source}
+                                      </div>
+                                      <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Source</div>
+                                        <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                          {benchmark.industry ? `Industry (${benchmark.industry})` : benchmark.source || "Custom"}
                                         </div>
-                                      )}
+                                      </div>
                                     </div>
+
+                                    {/* Progress + Performance */}
+                                    {(() => {
+                                      if (isBlocked) {
+                                        return (
+                                          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Progress</span>
+                                              <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Blocked</span>
+                                            </div>
+                                            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                              Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. Restore inputs to resume accurate tracking.
+                                            </div>
+                                            <div className="mt-2">
+                                              <Link href={`/campaigns/${campaignId}#overview`}>
+                                                <Button type="button" variant="outline" size="sm">
+                                                  Manage Connected Platforms
+                                                </Button>
+                                              </Link>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      const bench = parseFloat(stripNumberFormatting(String((benchmark as any)?.benchmarkValue || "0")));
+                                      if (!Number.isFinite(bench) || bench <= 0) return null;
+                                      const p = computeBenchmarkProgress(benchmark);
+                                      const statusLabel =
+                                        p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
+                                      const statusColor =
+                                        p.status === "on_track"
+                                          ? "text-green-600 dark:text-green-400"
+                                          : p.status === "needs_attention"
+                                            ? "text-yellow-600 dark:text-yellow-400"
+                                            : "text-red-600 dark:text-red-400";
+
+                                      const delta = Number.isFinite(p.deltaPct) ? p.deltaPct : 0;
+                                      const deltaLabel = `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`;
+
+                                      return (
+                                        <>
+                                          <div className="space-y-2 pt-1">
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-xs text-slate-600 dark:text-slate-400">Progress</span>
+                                              <span className="text-xs text-slate-600 dark:text-slate-400">{p.labelPct}%</span>
+                                            </div>
+                                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                              <div className={`h-2 rounded-full ${p.color}`} style={{ width: `${p.pct}%` }} />
+                                            </div>
+                                          </div>
+
+                                          <div className="flex justify-between items-center mt-3">
+                                            <span className="text-sm text-slate-600 dark:text-slate-400">Performance</span>
+                                            <div className="flex items-center space-x-2">
+                                              <span className={`font-medium ${statusColor}`}>{deltaLabel}</span>
+                                              {delta >= 0 ? (
+                                                <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                              ) : (
+                                                <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                              )}
+                                              <span className={`text-xs font-medium ${statusColor}`}>{statusLabel}</span>
+                                            </div>
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
                                   </CardContent>
                                 </Card>
-                              ))}
+                                );
+                              })}
                             </div>
                           ) : (
                             <Card>

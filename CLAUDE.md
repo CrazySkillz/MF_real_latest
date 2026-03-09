@@ -1,5 +1,12 @@
 # MetricMind (MF_real_latest) — Architecture Reference
 
+> **Enterprise-grade platform.** Marketing executives rely on MetricMind for business-critical decisions. All metrics, computations, and visualizations must be accurate. Specific rules:
+> - **GA4 Users are non-additive** — never sum users across dimensions (dates, devices, sources, campaigns) without a tooltip warning. Per-campaign user counts from breakdown reports are approximate (overcounted).
+> - **Exclude partial intraday data** — GA4 endpoints should use `endDate: "yesterday"` (not `"today"`) to report only complete UTC days. Partial data makes metrics look artificially low.
+> - **Date range consistency** — document when different tabs use different date windows (e.g., 90-day breakdown vs campaign lifetime totals) so executives understand why numbers may differ.
+> - **Financial metrics must match** — spend/revenue totals should be consistent across tabs. Use `recalcCampaignSpend` as single source of truth.
+> - **Full pipeline review required** — when auditing a tab, trace the complete data path: component → memo/aggregation → API query → backend endpoint → external API call → response processing. Component-level logic review alone is insufficient for enterprise accuracy.
+
 ## Stack
 
 - **Frontend:** React 18, TypeScript, Vite, Wouter (routing), TanStack React Query, Radix UI, Tailwind CSS, Recharts
@@ -229,7 +236,30 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 - **Bar chart**: Top 10 campaigns by selected metric (horizontal Recharts `BarChart`)
 - **Summary cards**: Total metric + Campaigns Compared. Users metric shows amber `Info` tooltip warning about non-additivity.
 - **Comparison table**: All campaigns sorted by selected metric, top row green, bottom row red
-- **Users non-additivity**: GA4 users are non-additive across campaigns — summing overcounts. Tooltip warning on Total card when Users selected.
+- **Users non-additivity**: GA4 users are non-additive across breakdown dimensions (dates, devices, sources) AND across campaigns. Per-campaign user counts from the multi-dimensional breakdown are approximate (overcounted). Tooltip warnings on both the Total summary card (when Users selected) and the Users column header in the comparison table.
+- **Date range**: Breakdown endpoint uses `endDate: "yesterday"` to exclude partial intraday data, matching `ga4-to-date`. 90-day window (hardcoded) means totals will be lower than Overview Summary (campaign lifetime) for campaigns older than 90 days — this is by design.
+- **Accurate metrics**: Sessions, conversions, revenue are additive across breakdown dimensions — sums are correct. Conversion rate is properly computed as `(totalConversions / totalSessions) * 100` (weighted, not averaged).
+
+### GA4 Insights Tab (inline in `ga4-metrics.tsx`)
+
+4 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with provenance), Trends (daily/7d/30d rolling window chart + tables), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
+
+**Insights engine** (`insights` useMemo) generates 4 categories:
+- Financial integrity checks (blocked KPIs, mismatched sources, negative ROI, low ROAS)
+- KPI performance (behind/needs_attention with streak + trend from scheduler data)
+- Benchmark performance (behind/below with variance from scheduler data)
+- Anomaly detection (WoW deltas: CR drop ≥15% = high, engagement depth drop ≥20% = medium, requires ≥14 days history)
+
+**Rolling windows** (`insightsRollups` useMemo): Last 7d vs Prior 7d, Last 30d vs Prior 30d. CR and engagement rate computed as proper aggregates (not averaged). Requires 14 days for 7d mode, 60 days for 30d mode.
+
+**Data sources**: `ga4-daily` (persisted daily facts), `ga4-to-date` (lifetime totals), financial APIs (spend/revenue). All client-side computation, no dedicated insights endpoint.
+
+**Accuracy (pipeline-verified)**:
+- Executive Financials uses the exact same `financialSpend`, `financialRevenue`, `financialROAS`, `financialROI` variables as the Overview tab. No divergence.
+- ROAS consistency: `financialROAS` is a ratio (e.g., 2.5). Display: `2.50x`. Insight check: `< 1` (below break-even). KPI/Benchmark ROAS: `* 100` for percentage. All correct within their contexts.
+- Anomaly detection uses `ga4DailyRows` (persisted daily facts, one row per date) — NOT the multi-dimensional breakdown. No Users non-additivity issue. Sessions/conversions/revenue/pageviews are additive across dates.
+- Rolling window CR: properly computed as `(summedConversions / summedSessions) * 100` per window, not averaged from daily CRs.
+- KPI/Benchmark insights use the same `getLiveKpiValue`/`computeKpiProgress`/`computeBenchmarkProgress` functions as the KPI and Benchmarks tabs. Thresholds match (0.9/0.7).
 
 ### GA4 KPIs Tab
 - **Templates**: ROAS, ROI, CPA, Revenue, Conversions, Engagement Rate, Conversion Rate, Users, Sessions + Custom. Templates requiring spend/revenue are disabled when sources aren't connected.

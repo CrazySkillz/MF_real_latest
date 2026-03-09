@@ -814,7 +814,7 @@ export class GoogleAnalytics4Service {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+          dateRanges: [{ startDate: dateRange, endDate: 'yesterday' }],
           dimensions,
           ...((this.buildCampaignDimensionFilter(campaignFilter, preferredCampaignDim || 'sessionCampaignName')) || {}),
           metrics: [
@@ -855,7 +855,7 @@ export class GoogleAnalytics4Service {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+                  dateRanges: [{ startDate: dateRange, endDate: 'yesterday' }],
                   dimensions,
                   ...((this.buildCampaignDimensionFilter(campaignFilter, preferredCampaignDim || 'sessionCampaignName')) || {}),
                   metrics: [

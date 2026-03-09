@@ -734,6 +734,7 @@ export function AddSpendWizardModal(props: {
             currency: props.currency || "USD",
             sourceType: "linkedin_api",
             displayName: "LinkedIn Ads",
+            ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
             mappingConfig: {
               platform: "linkedin",
               adAccountId: linkedInPreview.adAccountId || "test-account",
@@ -887,6 +888,7 @@ export function AddSpendWizardModal(props: {
           currency: props.currency || "USD",
           sourceType: "ad_platforms",
           displayName: platformLabel,
+          ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
           mappingConfig: {
             platform: selectedPlatform,
             adAccountName: adPlatformConnectionName || "Test Account",

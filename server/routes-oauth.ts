@@ -2288,6 +2288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const overrideSourceType = (req.body as any)?.sourceType ? String((req.body as any).sourceType) : null;
       const overrideDisplayName = (req.body as any)?.displayName ? String((req.body as any).displayName) : null;
       const clientMappingConfig = (req.body as any)?.mappingConfig || null;
+      const existingSourceId = (req.body as any)?.sourceId ? String((req.body as any).sourceId) : null;
       if (!(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
@@ -2302,15 +2303,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? JSON.stringify({ ...clientMappingConfig, amount: Number(amount.toFixed(2)), currency: cur })
         : JSON.stringify({ amount: Number(amount.toFixed(2)), currency: cur, mode: "spend_to_date", subCampaignUrn: subCampaignUrn || null });
 
-      const source = await storage.createSpendSource({
-        campaignId,
-        sourceType: effectiveSourceType,
-        platformContext: platformContext || null,
-        displayName: effectiveDisplayName,
-        currency: cur,
-        mappingConfig: finalMappingConfig,
-        isActive: true,
-      } as any);
+      let source: any;
+      if (existingSourceId) {
+        // Update existing source instead of creating a new one
+        source = await storage.updateSpendSource(existingSourceId, {
+          sourceType: effectiveSourceType,
+          displayName: effectiveDisplayName,
+          currency: cur,
+          mappingConfig: finalMappingConfig,
+          isActive: true,
+        } as any);
+        if (!source) {
+          return res.status(404).json({ success: false, error: "Spend source not found" });
+        }
+        // Delete old spend records and create new ones
+        try {
+          await storage.deleteSpendRecordsBySource(existingSourceId);
+        } catch (e: any) {
+          console.warn("[Manual Spend] Failed to delete old spend_records:", e?.message);
+        }
+      } else {
+        source = await storage.createSpendSource({
+          campaignId,
+          sourceType: effectiveSourceType,
+          platformContext: platformContext || null,
+          displayName: effectiveDisplayName,
+          currency: cur,
+          mappingConfig: finalMappingConfig,
+          isActive: true,
+        } as any);
+      }
 
       // Create a spend_record so spend-breakdown and Latest Day Spend work
       try {

@@ -126,7 +126,7 @@ export default function GA4Metrics() {
   const [editingKPI, setEditingKPI] = useState<any>(null);
   const [deleteKPIId, setDeleteKPIId] = useState<string | null>(null);
   const [showSpendDialog, setShowSpendDialog] = useState(false);
-  const [showDeleteSpendDialog, setShowDeleteSpendDialog] = useState(false);
+  // showDeleteSpendDialog removed — dead code, was never triggered
   const [showRevenueDialog, setShowRevenueDialog] = useState(false);
   const [showDeleteRevenueDialog, setShowDeleteRevenueDialog] = useState(false);
   const [editingSpendSource, setEditingSpendSource] = useState<any>(null);
@@ -3415,44 +3415,6 @@ export default function GA4Metrics() {
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
                     }}
                   />
-                  <AlertDialog open={showDeleteSpendDialog} onOpenChange={setShowDeleteSpendDialog}>
-                    <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-white">Remove spend data?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
-                          This will remove spend from Financial metrics (ROAS/ROI/CPA) for this campaign until you add spend again.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                          onClick={async () => {
-                            try {
-                              const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources`, { method: "DELETE" });
-                              const json = await resp.json().catch(() => null);
-                              if (!resp.ok || json?.success === false) {
-                                throw new Error(json?.error || "Failed to remove spend");
-                              }
-                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals`], exact: false });
-                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
-                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-sources`], exact: false });
-                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
-                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
-                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
-                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
-                            } catch (e) {
-                              console.error(e);
-                            } finally {
-                              setShowDeleteSpendDialog(false);
-                            }
-                          }}
-                        >
-                          Remove
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                   <AlertDialog open={!!deletingSpendSourceId} onOpenChange={(open) => { if (!open) setDeletingSpendSourceId(null); }}>
                     <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
                       <AlertDialogHeader>
@@ -3479,8 +3441,10 @@ export default function GA4Metrics() {
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-daily`], exact: false });
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`], exact: false });
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`], exact: false });
-                            } catch (e) {
+                              toast({ title: "Spend source removed", description: "Total Spend has been recalculated." });
+                            } catch (e: any) {
                               console.error(e);
+                              toast({ title: "Delete failed", description: e?.message || "Please try again.", variant: "destructive" });
                             } finally {
                               setDeletingSpendSourceId(null);
                             }

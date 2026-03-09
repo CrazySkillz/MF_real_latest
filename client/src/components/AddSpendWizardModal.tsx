@@ -621,6 +621,7 @@ export function AddSpendWizardModal(props: {
         csvHeaders: Array.isArray(csvPreview?.headers) ? csvPreview?.headers : undefined,
         csvSampleRows: Array.isArray(csvPreview?.sampleRows) ? csvPreview?.sampleRows : undefined,
         csvRowCount: typeof csvPreview?.rowCount === "number" ? csvPreview?.rowCount : undefined,
+        ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
       };
       const fd = new FormData();
       fd.append("file", csvFile);
@@ -631,7 +632,7 @@ export function AddSpendWizardModal(props: {
 
       toast({
         title: isEditing ? "Spend updated" : "Spend imported",
-        description: `Imported ${json.days} day(s), total ${props.currency || "USD"} ${json.totalSpend}.`,
+        description: `Imported ${json.keptRows} row(s), total ${props.currency || "USD"} ${json.spendToDate}.`,
       });
       props.onProcessed?.();
       props.onOpenChange(false);
@@ -674,7 +675,7 @@ export function AddSpendWizardModal(props: {
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process spend");
       toast({
         title: isEditing ? "Spend updated" : "Spend imported",
-        description: `Imported ${json.days} day(s), total ${props.currency || "USD"} ${json.totalSpend}.`,
+        description: `Imported ${json.keptRows} row(s), total ${props.currency || "USD"} ${json.spendToDate}.`,
       });
       props.onProcessed?.();
       props.onOpenChange(false);
@@ -1054,7 +1055,12 @@ export function AddSpendWizardModal(props: {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, currency: props.currency || "USD", dateRange: props.dateRange || "30days" }),
+        body: JSON.stringify({
+          amount,
+          currency: props.currency || "USD",
+          dateRange: props.dateRange || "30days",
+          ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
+        }),
       });
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to save manual spend");

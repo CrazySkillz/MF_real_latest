@@ -115,9 +115,10 @@ The campaign detail page has these main sections/tabs:
 
 ### Spend Flow
 ```
-Source (CSV, Sheets, LinkedIn API, Meta API, Manual)
-  → spendSources (definition)
-  → spendRecords (daily normalized rows: date, spend, currency, platformContext)
+Source (CSV, Sheets, LinkedIn API, Meta API, Google Ads API, Manual)
+  → spendSources (definition: sourceType, displayName, mappingConfig, isActive)
+  → spendRecords (daily normalized rows: date, spend, currency, sourceType)
+  → campaign.spend (denormalized total, recalculated by recalcCampaignSpend)
 ```
 
 ### Revenue Flow
@@ -137,7 +138,13 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - `GET /api/campaigns/:id/spend-totals` / `spend-breakdown` / `spend-to-date` / `spend-daily?date=YYYY-MM-DD`
 - `GET /api/campaigns/:id/revenue-totals` / `revenue-breakdown` / `revenue-to-date`
 - `GET /api/campaigns/:id/outcome-totals` — unified metrics (GA4 + platforms + revenue + spend)
-- `DELETE /api/campaigns/:id/spend-sources/:sourceId` — remove a spend source + its records
+- `DELETE /api/campaigns/:id/spend-sources/:sourceId` — soft-delete a spend source, recalculate total
+
+### Spend Mutation Endpoints
+- `POST /api/campaigns/:id/spend/process/manual` — Manual, LinkedIn test, Meta test, Google Ads test. Accepts optional `sourceId` for edit/update.
+- `POST /api/campaigns/:id/spend/csv/process` — CSV upload. Accepts optional `sourceId` in mapping JSON for edit/update.
+- `POST /api/campaigns/:id/spend/sheets/process` — Google Sheets. Deduplicates by `connectionId` in mappingConfig (auto-detects existing source).
+- `POST /api/campaigns/:id/spend/linkedin/process` — LinkedIn production mode (real API data).
 
 ### Revenue Cards
 - **GA4 page** (`ga4-metrics.tsx`): `financialRevenue` = GA4 native revenue only (falls back to imported if no GA4 revenue metric). This is platform-specific — do NOT add CRM revenue here. No add/edit icons on the GA4 Total Revenue card.
@@ -148,6 +155,50 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - **Latest Day Spend**: Queries `/spend-daily?date=yesterday` for imported spend, falls back to GA4 daily row data.
 - **Empty state gate**: Card shows populated view when `spendBreakdownResp.sources.length > 0 OR financialSpend > 0` (prevents showing $0 when breakdown hasn't loaded but spend exists).
 - Per-source trash uses AlertDialog confirmation → `DELETE /api/campaigns/:id/spend-sources/:sourceId`.
+
+### Spend Recalculation Rules (CRITICAL)
+- **`recalcCampaignSpend(campaignId)`** in `routes-oauth.ts` is the SINGLE SOURCE OF TRUTH for recalculating `campaign.spend`. ALL spend mutation endpoints MUST call it after changes.
+- It sums `spend_records` via `getSpendBreakdownBySource` (uses today as end date, NOT yesterday) + `mappingConfig.amount` for sources without records.
+- **Every spend source MUST create at least one `spend_record`** — even CSV/Sheets without a date column create a single record dated today. Without records, `spend-breakdown` returns $0 for that source and micro copy shows wrong amounts.
+- **Never overwrite `campaign.spend` directly** — always call `recalcCampaignSpend` which sums ALL active sources.
+- **Edit flows MUST pass `sourceId`** to update the existing source (not create a duplicate). The backend checks for `sourceId` in the request body and calls `updateSpendSource` + `deleteSpendRecordsBySource` before creating new records.
+- **Delete endpoint** soft-deletes the source (`isActive = false`), then calls `recalcCampaignSpend` to update the total.
+
+---
+
+## Add Spend Wizard (`AddSpendWizardModal.tsx`)
+
+### Steps
+`select` → source-specific step (`ad_platform`, `csv`, `csv_map`, `sheets_choose`, `sheets_map`, `manual`, `paste`)
+
+### Source Types & Flows
+| Source | sourceType stored | Processing function | Endpoint |
+|--------|------------------|-------------------|----------|
+| LinkedIn (test) | `linkedin_api` | `processLinkedInSpend` | `/spend/process/manual` |
+| LinkedIn (prod) | `linkedin_api` | `processLinkedInSpend` | `/spend/linkedin/process` |
+| Meta (test) | `ad_platforms` | `importAdPlatformSpend` | `/spend/process/manual` |
+| Google Ads (test) | `ad_platforms` | `importAdPlatformSpend` | `/spend/process/manual` |
+| CSV | `csv` | `processCsv` | `/spend/csv/process` |
+| Google Sheets | `google_sheets` | `processSheets` | `/spend/sheets/process` |
+| Manual | `manual` | `processManual` | `/spend/process/manual` |
+
+### Ad Platform Test Mode (LinkedIn, Meta, Google Ads)
+- Test mode toggle → mock campaigns with name, spend, impressions, clicks
+- Campaign selection table with checkboxes (select-all + individual)
+- Import button shows selected total only
+- Saves `mappingConfig.breakdown` with per-campaign data + `selectedCampaignIds`
+- **Must exactly simulate production** — no extra UI elements (date pickers, config) that don't exist in real flow
+
+### Edit Mode
+- `isEditing = Boolean(props.initialSource?.id)` — detects edit mode from passed source
+- Edit prefill `useEffect` routes to correct step and pre-populates state based on `sourceType`
+- ALL processing functions pass `sourceId` when editing to update (not create duplicate)
+- Cancel button closes modal when editing (doesn't go back to source selection)
+
+### Micro Copy Display (`ga4-metrics.tsx`)
+- `spendDisplaySources` merges `spend-breakdown` (has per-source amounts from records) with `spend-sources` (definitions fallback)
+- Each source line shows: `displayName` (e.g. "Meta Ads", "Google Ads") + formatted spend amount
+- Edit icon (pencil) + trash icon per source, "+" button to add new sources
 
 ---
 

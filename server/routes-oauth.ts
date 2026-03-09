@@ -1456,14 +1456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       await storage.deleteSpendSource(sourceId);
-
-      // Recalculate campaign spend from remaining active sources
-      const campaign = await storage.getCampaign(campaignId);
-      const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
-      const endDate = yesterdayUTC();
-      const remaining = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate);
-      const newTotal = remaining.reduce((sum: number, s: any) => sum + s.spend, 0);
-      await storage.updateCampaign(campaignId, { spend: Number(newTotal.toFixed(2)).toFixed(2) as any } as any);
+      await recalcCampaignSpend(campaignId);
 
       res.json({ success: true });
     } catch (e: any) {
@@ -2278,6 +2271,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // Unified campaign.spend recalculation — sums spend_records (via breakdown) + mappingConfig.amount for sources without records
+  const recalcCampaignSpend = async (campaignId: string) => {
+    const campaign = await storage.getCampaign(campaignId);
+    const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
+    const endDate = new Date().toISOString().slice(0, 10);
+    const breakdown = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate);
+    const recordsTotal = breakdown.reduce((sum: number, s: any) => sum + s.spend, 0);
+
+    const breakdownSourceIds = new Set(breakdown.map((s: any) => String(s.sourceId)));
+    const allSources = await storage.getSpendSources(campaignId);
+    let configTotal = 0;
+    for (const s of allSources) {
+      if (breakdownSourceIds.has(String(s.id))) continue;
+      try {
+        const mc = s.mappingConfig ? JSON.parse(String(s.mappingConfig)) : null;
+        configTotal += parseNum(mc?.amount);
+      } catch { /* skip */ }
+    }
+
+    const total = recordsTotal + configTotal;
+    const cur = (campaign as any)?.currency || "USD";
+    await storage.updateCampaign(campaignId, { spend: Number(total.toFixed(2)).toFixed(2) as any, currency: cur } as any);
+    return total;
+  };
+
   app.post("/api/campaigns/:id/spend/process/manual", async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -2350,17 +2368,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn("[Manual Spend] Failed to create spend_record:", e?.message);
       }
 
-      // Recalculate campaign.spend from all active sources (prevents drift/doubling)
+      // Recalculate campaign.spend from all active sources
       try {
-        const allSources = await storage.getSpendSources(campaignId);
-        let totalFromSources = 0;
-        for (const s of allSources) {
-          try {
-            const mc = s.mappingConfig ? JSON.parse(String(s.mappingConfig)) : null;
-            totalFromSources += parseNum(mc?.amount);
-          } catch { /* skip unparseable */ }
-        }
-        await storage.updateCampaign(campaignId, { spend: Number(totalFromSources.toFixed(2)).toFixed(2) as any, currency: cur } as any);
+        await recalcCampaignSpend(campaignId);
       } catch (e: any) {
         console.warn("[Manual Spend] Failed to recalculate campaign.spend:", e?.message);
       }
@@ -2676,17 +2686,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
+      const existingSourceId = mapping?.sourceId || null;
+      const mappingForStorage = { ...mapping, mode: "spend_to_date" };
+      delete mappingForStorage.sourceId; // don't persist sourceId in mappingConfig
 
-      await storage.updateCampaign(campaignId, { spend: Number(totalSpend.toFixed(2)).toFixed(2) as any, currency } as any);
+      let source: any;
+      if (existingSourceId) {
+        source = await storage.updateSpendSource(existingSourceId, {
+          displayName: mapping.displayName || "CSV",
+          currency,
+          mappingConfig: JSON.stringify(mappingForStorage),
+          isActive: true,
+        } as any);
+        if (!source) return res.status(404).json({ success: false, error: "Spend source not found" });
+        await storage.deleteSpendRecordsBySource(existingSourceId);
+      } else {
+        source = await storage.createSpendSource({
+          campaignId,
+          sourceType: "csv",
+          displayName: mapping.displayName || "CSV",
+          currency,
+          mappingConfig: JSON.stringify(mappingForStorage),
+          isActive: true,
+        } as any);
+      }
 
-      const source = await storage.createSpendSource({
-        campaignId,
-        sourceType: "csv",
-        displayName: mapping.displayName || "CSV",
-        currency,
-        mappingConfig: JSON.stringify({ ...mapping, mode: "spend_to_date" }),
-        isActive: true,
-      } as any);
+      // Create spend_record so spend-breakdown shows correct per-source amount
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        await storage.createSpendRecords([{
+          campaignId,
+          spendSourceId: String(source.id),
+          date: today,
+          spend: totalSpend.toFixed(2),
+          currency,
+          sourceType: "csv",
+        }] as any);
+      } catch (e: any) {
+        console.warn("[CSV Spend] Failed to create spend_record:", e?.message);
+      }
+
+      await recalcCampaignSpend(campaignId);
+
       res.json({
         success: true,
         sourceId: source.id,
@@ -2934,8 +2975,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      await storage.updateCampaign(campaignId, { spend: Number(totalSpend.toFixed(2)).toFixed(2) as any, currency } as any);
-
       let source: any = existingSheetsSpendSource || null;
       if (!source) {
         source = await storage.createSpendSource({
@@ -2947,6 +2986,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: true,
         } as any);
       } else {
+        // Delete old spend records before re-inserting updated ones
+        await storage.deleteSpendRecordsBySource(String((source as any).id));
         await storage.updateSpendSource(String((source as any).id), {
           displayName: mapping.displayName || "Google Sheets",
           currency,
@@ -2955,7 +2996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } as any);
       }
 
-      // Populate spend_records with daily granularity if date column provided
+      // Populate spend_records — daily granularity if date column provided, otherwise single record
       if (dateCol && dailySpendMap.size > 0) {
         const spendRecordsToInsert = Array.from(dailySpendMap.entries())
           .filter(([date, spend]) => spend > 0)
@@ -2971,7 +3012,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (spendRecordsToInsert.length > 0) {
           await storage.createSpendRecords(spendRecordsToInsert);
         }
+      } else {
+        // No date column — create a single spend_record dated today so spend-breakdown works
+        const today = new Date().toISOString().split("T")[0];
+        await storage.createSpendRecords([{
+          campaignId,
+          spendSourceId: String((source as any).id),
+          date: today,
+          spend: totalSpend.toFixed(2),
+          currency,
+          sourceType: "google_sheets",
+        }] as any);
       }
+
+      await recalcCampaignSpend(campaignId);
 
       res.json({
         success: true,

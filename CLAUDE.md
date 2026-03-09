@@ -252,15 +252,18 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 4 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with provenance), Trends (daily/7d/30d rolling window chart + tables), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
 
-**Insights engine** (`insights` useMemo) generates 4 categories:
+**Insights engine** (`insights` useMemo) generates 5 categories:
 - Financial integrity checks (blocked KPIs, mismatched sources, negative ROI, low ROAS)
-- KPI performance (behind/needs_attention with streak + trend from scheduler data)
-- Benchmark performance (behind/below with variance from scheduler data)
-- Anomaly detection (WoW deltas: CR drop ≥15% = high, engagement depth drop ≥20% = medium, requires ≥14 days history)
+- KPI performance — channel-enriched recommendations using `channelAnalysis` (lowest-CR channel for conversion KPIs, top revenue/session channels for others)
+- Benchmark performance — channel-enriched recommendations (same pattern as KPIs)
+- Anomaly detection — WoW deltas: CR drop ≥15% (high), engagement depth drop ≥20% (medium), sessions drop ≥20% (high), revenue drop ≥25% (high), conversions drop ≥20% (high). Requires ≥14 days history. Volume anomalies use `insightsRollups.deltas` and include top channel context.
+- Positive signals — sessions/revenue/conversions up WoW, strong ROAS (≥3x), KPIs exceeding target (≥110%). Green "Positive" badge. Minimum volume thresholds to prevent noise.
 
-**Rolling windows** (`insightsRollups` useMemo): Last 7d vs Prior 7d, Last 30d vs Prior 30d. CR and engagement rate computed as proper aggregates (not averaged). Requires 14 days for 7d mode, 60 days for 30d mode.
+**Supporting memos** (defined before `insights` for dependency ordering):
+- `insightsRollups`: Last 7d vs Prior 7d, Last 30d vs Prior 30d with pre-computed deltas. CR and engagement rate as proper aggregates.
+- `channelAnalysis`: Aggregates `ga4Breakdown.rows` by source/medium. Produces top channel by sessions/revenue, lowest-CR significant channel (≥5% of total sessions).
 
-**Data sources**: `ga4-daily` (persisted daily facts), `ga4-to-date` (lifetime totals), financial APIs (spend/revenue). All client-side computation, no dedicated insights endpoint.
+**Data sources**: `ga4-daily` (persisted daily facts), `ga4-to-date` (lifetime totals), `ga4-breakdown` (acquisition channels), financial APIs (spend/revenue). All client-side computation, no dedicated insights endpoint.
 
 **Accuracy (pipeline-verified)**:
 - Executive Financials uses the exact same `financialSpend`, `financialRevenue`, `financialROAS`, `financialROI` variables as the Overview tab. No divergence.

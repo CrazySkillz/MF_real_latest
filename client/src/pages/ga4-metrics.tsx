@@ -2226,6 +2226,135 @@ export default function GA4Metrics() {
     return { total: items.length, scored, onTrack, needsAttention, behind, blocked, avgPct };
   }, [benchmarks, spendMetricAvailable, revenueMetricAvailable]);
 
+  // --- Rolling window rollups (moved above insights so insights can use them) ---
+  const insightsRollups = useMemo(() => {
+    const rows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]) : [];
+    const byDate = rows
+      .map((r: any) => ({
+        date: String(r?.date || "").trim(),
+        sessions: Number(r?.sessions || 0) || 0,
+        conversions: Number(r?.conversions || 0) || 0,
+        revenue: Number(r?.revenue || 0) || 0,
+        pageviews: Number(r?.pageviews || 0) || 0,
+      }))
+      .filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(r.date))
+      .sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+
+    const dates = byDate.map((r: any) => r.date);
+    const rollup = (n: number, offsetFromEnd: number = 0) => {
+      const endIdxExclusive = Math.max(0, dates.length - offsetFromEnd);
+      const startIdx = Math.max(0, endIdxExclusive - n);
+      const slice = byDate.slice(startIdx, endIdxExclusive);
+      const sums = slice.reduce(
+        (acc: any, r: any) => {
+          acc.sessions += r.sessions;
+          acc.conversions += r.conversions;
+          acc.revenue += r.revenue;
+          acc.pageviews += r.pageviews;
+          return acc;
+        },
+        { sessions: 0, conversions: 0, revenue: 0, pageviews: 0 }
+      );
+      const cr = sums.sessions > 0 ? (sums.conversions / sums.sessions) * 100 : 0;
+      const pvps = sums.sessions > 0 ? sums.pageviews / sums.sessions : 0;
+      const startDate = slice[0]?.date || null;
+      const endDate = slice[slice.length - 1]?.date || null;
+      return { ...sums, cr, pvps, startDate, endDate, days: slice.length };
+    };
+
+    const last7 = rollup(7, 0);
+    const prior7 = rollup(7, 7);
+    const last30 = rollup(30, 0);
+    const prior30 = rollup(30, 30);
+
+    const deltaPct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
+
+    return {
+      availableDays: dates.length,
+      last7,
+      prior7,
+      last30,
+      prior30,
+      deltas: {
+        sessions7: deltaPct(last7.sessions, prior7.sessions),
+        conversions7: deltaPct(last7.conversions, prior7.conversions),
+        revenue7: deltaPct(last7.revenue, prior7.revenue),
+        cr7: prior7.cr > 0 ? ((last7.cr - prior7.cr) / prior7.cr) * 100 : 0,
+        pvps7: prior7.pvps > 0 ? ((last7.pvps - prior7.pvps) / prior7.pvps) * 100 : 0,
+        sessions30: deltaPct(last30.sessions, prior30.sessions),
+        conversions30: deltaPct(last30.conversions, prior30.conversions),
+        revenue30: deltaPct(last30.revenue, prior30.revenue),
+        cr30: prior30.cr > 0 ? ((last30.cr - prior30.cr) / prior30.cr) * 100 : 0,
+        pvps30: prior30.pvps > 0 ? ((last30.pvps - prior30.pvps) / prior30.pvps) * 100 : 0,
+      },
+    };
+  }, [ga4TimeSeries]);
+
+  // --- Channel analysis for data-driven recommendations ---
+  const channelAnalysis = useMemo(() => {
+    const rows = Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
+    if (rows.length === 0) return null;
+
+    const byChannel = new Map<string, { label: string; sessions: number; conversions: number; revenue: number }>();
+    let totalSessions = 0;
+    let totalConversions = 0;
+    let totalRevenue = 0;
+
+    for (const r of rows) {
+      const source = String((r as any)?.source || "(direct)").trim();
+      const medium = String((r as any)?.medium || "(none)").trim();
+      const label = `${source} / ${medium}`;
+      const existing = byChannel.get(label) || { label, sessions: 0, conversions: 0, revenue: 0 };
+      const s = Number((r as any)?.sessions || 0);
+      const c = Number((r as any)?.conversions || 0);
+      const rev = Number((r as any)?.revenue || 0);
+      existing.sessions += s;
+      existing.conversions += c;
+      existing.revenue += rev;
+      totalSessions += s;
+      totalConversions += c;
+      totalRevenue += rev;
+      byChannel.set(label, existing);
+    }
+
+    const channels = Array.from(byChannel.values());
+
+    const bySessionsDesc = [...channels].sort((a, b) => b.sessions - a.sessions);
+    const topSessionChannel = bySessionsDesc[0] || null;
+    const topSessionShare = totalSessions > 0 && topSessionChannel
+      ? (topSessionChannel.sessions / totalSessions * 100)
+      : 0;
+
+    const byRevenueDesc = [...channels].sort((a, b) => b.revenue - a.revenue);
+    const topRevenueChannel = byRevenueDesc[0] || null;
+    const topRevenueShare = totalRevenue > 0 && topRevenueChannel
+      ? (topRevenueChannel.revenue / totalRevenue * 100)
+      : 0;
+
+    const significantChannels = channels.filter(
+      ch => totalSessions > 0 && ch.sessions >= totalSessions * 0.05
+    );
+    const withCR = significantChannels.map(ch => ({
+      ...ch,
+      cr: ch.sessions > 0 ? (ch.conversions / ch.sessions) * 100 : 0,
+    }));
+    const lowestCRChannel = withCR.length > 0
+      ? withCR.reduce((a, b) => a.cr < b.cr ? a : b)
+      : null;
+
+    return {
+      totalSessions,
+      totalConversions,
+      totalRevenue,
+      topSessionChannel,
+      topSessionShare,
+      topRevenueChannel,
+      topRevenueShare,
+      lowestCRChannel,
+      channelCount: channels.length,
+    };
+  }, [ga4Breakdown]);
+
   type InsightItem = {
     id: string;
     severity: "high" | "medium" | "low";
@@ -2430,14 +2559,35 @@ export default function GA4Metrics() {
           String(effectiveTarget),
           String((k as any)?.unit || "%")
         )} (${attPct.toFixed(1)}% progress).${streakNote}${trendNote}`,
-        recommendation:
-          metric.toLowerCase().includes("conversion")
-            ? "Check landing page changes, funnel breaks, and traffic mix shifts (source/medium)."
-            : metric.toLowerCase().includes("revenue")
-              ? "Check top channels/campaigns for traffic or conversion drops; validate revenue tracking configuration."
-              : metric.toLowerCase() === "cpa"
-                ? "Audit conversion volume and spend allocation; verify conversion events are firing correctly."
-                : "Review the primary drivers for this KPI and adjust budgets/creative/landing pages accordingly.",
+        recommendation: (() => {
+          const m = metric.toLowerCase();
+          const ch = channelAnalysis;
+          if (m.includes("conversion") || m === "conversionrate") {
+            const base = "Check landing page changes, funnel breaks, and traffic mix shifts.";
+            return ch?.lowestCRChannel
+              ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${ch.lowestCRChannel.cr.toFixed(2)}%) among significant channels — audit targeting and landing pages for this source.`
+              : base;
+          }
+          if (m.includes("revenue")) {
+            const base = "Check top channels for traffic or conversion drops; validate revenue tracking.";
+            return ch?.topRevenueChannel
+              ? `${base} "${ch.topRevenueChannel.label}" drives ${ch.topRevenueShare.toFixed(0)}% of revenue — prioritize investigation there.`
+              : base;
+          }
+          if (m === "sessions" || m === "users") {
+            const base = "Review traffic sources and campaign spend allocation.";
+            return ch?.topSessionChannel
+              ? `${base} "${ch.topSessionChannel.label}" drives ${ch.topSessionShare.toFixed(0)}% of sessions — check if this source declined.`
+              : base;
+          }
+          if (m === "cpa") {
+            return "Audit conversion volume and spend allocation; verify conversion events are firing correctly.";
+          }
+          const base = "Review the primary drivers for this KPI and adjust budgets/creative/landing pages.";
+          return ch?.topSessionChannel
+            ? `${base} Top traffic source: "${ch.topSessionChannel.label}" (${ch.topSessionShare.toFixed(0)}% of sessions).`
+            : base;
+        })(),
       });
     }
 
@@ -2463,12 +2613,29 @@ export default function GA4Metrics() {
           String((b as any)?.benchmarkValue || "0"),
           String((b as any)?.unit || "%")
         )} (${String(p?.labelPct || "0")}% to benchmark).${trendNote}${volNote}`,
-        recommendation:
-          metric.toLowerCase().includes("conversion")
-            ? "Focus on landing page UX and traffic quality; validate conversion tagging."
-            : metric.toLowerCase().includes("engagement")
-              ? "Review content relevance and landing page engagement; check mobile performance."
-              : "Identify which channels/campaigns are underperforming and iterate targeting/creative/landing page.",
+        recommendation: (() => {
+          const m = metric.toLowerCase();
+          const ch = channelAnalysis;
+          if (m.includes("conversion") || m === "conversionrate") {
+            const base = "Focus on landing page UX and traffic quality; validate conversion tagging.";
+            return ch?.lowestCRChannel
+              ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${ch.lowestCRChannel.cr.toFixed(2)}%) — start there.`
+              : base;
+          }
+          if (m.includes("engagement")) {
+            return "Review content relevance and landing page engagement; check mobile performance.";
+          }
+          if (m.includes("revenue")) {
+            const base = "Identify which channels are underperforming and iterate targeting/creative.";
+            return ch?.topRevenueChannel
+              ? `${base} "${ch.topRevenueChannel.label}" drives ${ch.topRevenueShare.toFixed(0)}% of revenue — investigate changes there first.`
+              : base;
+          }
+          const base = "Identify which channels/campaigns are underperforming and iterate targeting/creative/landing page.";
+          return ch?.topSessionChannel
+            ? `${base} Top traffic source: "${ch.topSessionChannel.label}" (${ch.topSessionShare.toFixed(0)}% of sessions).`
+            : base;
+        })(),
       });
     }
 
@@ -2536,6 +2703,78 @@ export default function GA4Metrics() {
           recommendation: "Review landing page relevance, page speed, and mobile UX; check if traffic sources shifted toward lower-intent audiences.",
         });
       }
+
+      // 3b) Volume anomalies using pre-computed insightsRollups deltas
+      const sessionsDelta7 = insightsRollups.deltas.sessions7;
+      const revenueDelta7 = insightsRollups.deltas.revenue7;
+      const convDelta7 = insightsRollups.deltas.conversions7;
+      const ch = channelAnalysis;
+
+      if (sessionsDelta7 <= -20 && insightsRollups.prior7.sessions > 0) {
+        const channelNote = ch?.topSessionChannel
+          ? ` Top source: "${ch.topSessionChannel.label}" (${ch.topSessionShare.toFixed(0)}% of sessions).`
+          : "";
+        out.push({
+          id: "anomaly:sessions:wow",
+          severity: "high",
+          title: `Sessions dropped ${Math.abs(sessionsDelta7).toFixed(1)}% week-over-week`,
+          description: `Last 7d: ${formatNumber(insightsRollups.last7.sessions)} sessions vs prior 7d: ${formatNumber(insightsRollups.prior7.sessions)}.${channelNote}`,
+          recommendation: "Check paid campaign budgets, SEO ranking changes, and whether any traffic sources were paused or reduced.",
+        });
+      }
+
+      if (revenueDelta7 <= -25 && insightsRollups.prior7.revenue > 0) {
+        const channelNote = ch?.topRevenueChannel
+          ? ` Top revenue source: "${ch.topRevenueChannel.label}" (${ch.topRevenueShare.toFixed(0)}% of revenue).`
+          : "";
+        out.push({
+          id: "anomaly:revenue:wow",
+          severity: "high",
+          title: `Revenue dropped ${Math.abs(revenueDelta7).toFixed(1)}% week-over-week`,
+          description: `Last 7d: ${formatMoney(insightsRollups.last7.revenue)} vs prior 7d: ${formatMoney(insightsRollups.prior7.revenue)}.${channelNote}`,
+          recommendation: "Investigate conversion rate changes, AOV shifts, and whether high-value campaigns were paused.",
+        });
+      }
+
+      if (convDelta7 <= -20 && insightsRollups.prior7.conversions > 0) {
+        out.push({
+          id: "anomaly:conversions:wow",
+          severity: "high",
+          title: `Conversions dropped ${Math.abs(convDelta7).toFixed(1)}% week-over-week`,
+          description: `Last 7d: ${formatNumber(insightsRollups.last7.conversions)} vs prior 7d: ${formatNumber(insightsRollups.prior7.conversions)}.`,
+          recommendation: "Check conversion event configuration, landing page changes, and traffic quality by source/medium.",
+        });
+      }
+
+      // 3c) Positive signals — what's working
+      if (sessionsDelta7 >= 15 && insightsRollups.prior7.sessions > 50) {
+        out.push({
+          id: "positive:sessions:wow",
+          severity: "low",
+          title: `Sessions up ${sessionsDelta7.toFixed(1)}% week-over-week`,
+          description: `Last 7d: ${formatNumber(insightsRollups.last7.sessions)} sessions vs prior 7d: ${formatNumber(insightsRollups.prior7.sessions)}.`,
+          recommendation: "Momentum is positive. Consider increasing budget on top-performing channels to accelerate growth.",
+        });
+      }
+
+      if (revenueDelta7 >= 20 && insightsRollups.prior7.revenue > 0) {
+        out.push({
+          id: "positive:revenue:wow",
+          severity: "low",
+          title: `Revenue up ${revenueDelta7.toFixed(1)}% week-over-week`,
+          description: `Last 7d: ${formatMoney(insightsRollups.last7.revenue)} vs prior 7d: ${formatMoney(insightsRollups.prior7.revenue)}.`,
+          recommendation: "Revenue momentum is strong. Identify which channels drove the increase and double down.",
+        });
+      }
+
+      if (convDelta7 >= 15 && insightsRollups.prior7.conversions > 5) {
+        out.push({
+          id: "positive:conversions:wow",
+          severity: "low",
+          title: `Conversions up ${convDelta7.toFixed(1)}% week-over-week`,
+          description: `Last 7d: ${formatNumber(insightsRollups.last7.conversions)} vs prior 7d: ${formatNumber(insightsRollups.prior7.conversions)}.`,
+        });
+      }
     } else if (dates.length > 0) {
       out.push({
         id: "anomaly:not-enough-history",
@@ -2543,6 +2782,37 @@ export default function GA4Metrics() {
         title: "Anomaly detection needs more history",
         description: `Need at least 14 days of daily data to compute week-over-week deltas. Available days: ${dates.length}.`,
       });
+    }
+
+    // 4) Positive signals that don't depend on daily history
+    if (Number(financialROAS || 0) >= 3) {
+      out.push({
+        id: "positive:roas:lifetime",
+        severity: "low",
+        title: `ROAS is strong at ${Number(financialROAS).toFixed(2)}x`,
+        description: `Campaign ROAS is ${Number(financialROAS).toFixed(2)}x to date, well above the 1.0x breakeven point.`,
+        recommendation: "Performance is strong. Consider scaling spend on high-ROAS channels or testing new audiences.",
+      });
+    }
+
+    for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
+      const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
+      if (deps.missing.length > 0) continue;
+      const p = computeKpiProgress(k);
+      const attPct = p?.attainmentPct ?? 0;
+      if (attPct >= 110) {
+        const metric = String((k as any)?.metric || (k as any)?.name || "KPI");
+        out.push({
+          id: `positive:kpi:${String((k as any)?.id || metric)}`,
+          severity: "low",
+          title: `${String((k as any)?.name || metric)} exceeds target by ${(attPct - 100).toFixed(0)}%`,
+          description: `Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String((k as any)?.unit || "%"))} vs target ${formatNumberByUnit(
+            String((getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? ""),
+            String((k as any)?.unit || "%")
+          )}.`,
+          recommendation: "This KPI is performing well. Consider raising the target or reallocating budget toward underperforming KPIs.",
+        });
+      }
     }
 
     // Stable ordering: high -> medium -> low
@@ -2565,70 +2835,9 @@ export default function GA4Metrics() {
     String((ga4ToDateResp as any)?.endDate || ""),
     kpiAnalyticsById,
     benchmarkAnalyticsById,
+    insightsRollups,
+    channelAnalysis,
   ]);
-
-  const insightsRollups = useMemo(() => {
-    const rows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]) : [];
-    const byDate = rows
-      .map((r: any) => ({
-        date: String(r?.date || "").trim(),
-        sessions: Number(r?.sessions || 0) || 0,
-        conversions: Number(r?.conversions || 0) || 0,
-        revenue: Number(r?.revenue || 0) || 0,
-        pageviews: Number(r?.pageviews || 0) || 0,
-      }))
-      .filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(r.date))
-      .sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
-
-    const dates = byDate.map((r: any) => r.date);
-    const rollup = (n: number, offsetFromEnd: number = 0) => {
-      const endIdxExclusive = Math.max(0, dates.length - offsetFromEnd);
-      const startIdx = Math.max(0, endIdxExclusive - n);
-      const slice = byDate.slice(startIdx, endIdxExclusive);
-      const sums = slice.reduce(
-        (acc: any, r: any) => {
-          acc.sessions += r.sessions;
-          acc.conversions += r.conversions;
-          acc.revenue += r.revenue;
-          acc.pageviews += r.pageviews;
-          return acc;
-        },
-        { sessions: 0, conversions: 0, revenue: 0, pageviews: 0 }
-      );
-      const cr = sums.sessions > 0 ? (sums.conversions / sums.sessions) * 100 : 0;
-      const pvps = sums.sessions > 0 ? sums.pageviews / sums.sessions : 0;
-      const startDate = slice[0]?.date || null;
-      const endDate = slice[slice.length - 1]?.date || null;
-      return { ...sums, cr, pvps, startDate, endDate, days: slice.length };
-    };
-
-    const last7 = rollup(7, 0);
-    const prior7 = rollup(7, 7);
-    const last30 = rollup(30, 0);
-    const prior30 = rollup(30, 30);
-
-    const deltaPct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
-
-    return {
-      availableDays: dates.length,
-      last7,
-      prior7,
-      last30,
-      prior30,
-      deltas: {
-        sessions7: deltaPct(last7.sessions, prior7.sessions),
-        conversions7: deltaPct(last7.conversions, prior7.conversions),
-        revenue7: deltaPct(last7.revenue, prior7.revenue),
-        cr7: prior7.cr > 0 ? ((last7.cr - prior7.cr) / prior7.cr) * 100 : 0,
-        pvps7: prior7.pvps > 0 ? ((last7.pvps - prior7.pvps) / prior7.pvps) * 100 : 0,
-        sessions30: deltaPct(last30.sessions, prior30.sessions),
-        conversions30: deltaPct(last30.conversions, prior30.conversions),
-        revenue30: deltaPct(last30.revenue, prior30.revenue),
-        cr30: prior30.cr > 0 ? ((last30.cr - prior30.cr) / prior30.cr) * 100 : 0,
-        pvps30: prior30.pvps > 0 ? ((last30.pvps - prior30.pvps) / prior30.pvps) * 100 : 0,
-      },
-    };
-  }, [ga4TimeSeries]);
 
   // Collect GA4 campaign names from all imported campaigns (for filtering Ad Comparison)
   const importedGA4CampaignNames = useMemo(() => {
@@ -5147,13 +5356,16 @@ export default function GA4Metrics() {
                         ) : (
                           <div className="space-y-3">
                             {insights.slice(0, 12).map((i) => {
+                              const isPositive = i.id.startsWith("positive:");
                               const badgeClass =
                                 i.severity === "high"
                                   ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
                                   : i.severity === "medium"
                                     ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
-                                    : "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
-                              const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : "Low";
+                                    : isPositive
+                                      ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-900"
+                                      : "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
+                              const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : isPositive ? "Positive" : "Low";
                               return (
                                 <div key={i.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
                                   <div className="flex items-start justify-between gap-3">

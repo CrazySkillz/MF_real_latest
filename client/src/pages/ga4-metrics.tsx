@@ -2388,10 +2388,10 @@ export default function GA4Metrics() {
       const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
       if (deps.missing.length > 0) continue; // blocked KPIs are handled in integrity checks above
       const p = computeKpiProgress(k);
-      const status = String(p?.status || "");
-      if (status !== "behind" && status !== "needs_attention") continue;
+      const attPct = p?.attainmentPct ?? 100;
+      if (attPct >= 90) continue; // Only flag KPIs below 90% attainment
 
-      const sev: InsightItem["severity"] = status === "behind" ? "high" : "medium";
+      const sev: InsightItem["severity"] = attPct < 70 ? "high" : "medium";
       const metric = String((k as any)?.metric || (k as any)?.name || "KPI");
       const effectiveTarget = (getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? "";
       const analytics = kpiAnalyticsById.get(String((k as any)?.id || "")) || null;
@@ -2425,11 +2425,11 @@ export default function GA4Metrics() {
       out.push({
         id: `kpi:${String((k as any)?.id || metric)}`,
         severity: sev,
-        title: `${metric} is ${status === "behind" ? "Behind" : "Needs Attention"}`,
+        title: `${metric} is ${attPct < 70 ? "Behind" : "Needs Attention"}`,
         description: `Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String((k as any)?.unit || "%"))} vs target ${formatNumberByUnit(
           String(effectiveTarget),
           String((k as any)?.unit || "%")
-        )} (${String(p?.labelPct || "0")}% progress).${streakNote}${trendNote}`,
+        )} (${attPct.toFixed(1)}% progress).${streakNote}${trendNote}`,
         recommendation:
           metric.toLowerCase().includes("conversion")
             ? "Check landing page changes, funnel breaks, and traffic mix shifts (source/medium)."

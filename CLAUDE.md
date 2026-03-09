@@ -6,6 +6,7 @@
 > - **Date range consistency** — document when different tabs use different date windows (e.g., 90-day breakdown vs campaign lifetime totals) so executives understand why numbers may differ.
 > - **Financial metrics must match** — spend/revenue totals should be consistent across tabs. Use `recalcCampaignSpend` as single source of truth.
 > - **Full pipeline review required** — when auditing a tab, trace the complete data path: component → memo/aggregation → API query → backend endpoint → external API call → response processing. Component-level logic review alone is insufficient for enterprise accuracy.
+> - **Verify return shape contracts** — when a function's result is consumed (e.g., `p?.status`), verify the field actually exists in the function's return type. Two similar functions (e.g., `computeKpiProgress` vs `computeBenchmarkProgress`) may return different field names for equivalent concepts (`band` vs `status`, `attainmentPct` vs `labelPct`). Confirming "correct function called" is insufficient — must also confirm "correct fields accessed."
 
 ## Stack
 
@@ -267,6 +268,8 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 - Anomaly detection uses `ga4DailyRows` (persisted daily facts, one row per date) — NOT the multi-dimensional breakdown. No Users non-additivity issue. Sessions/conversions/revenue/pageviews are additive across dates.
 - Rolling window CR: properly computed as `(summedConversions / summedSessions) * 100` per window, not averaged from daily CRs.
 - KPI/Benchmark insights use the same `getLiveKpiValue`/`computeKpiProgress`/`computeBenchmarkProgress` functions as the KPI and Benchmarks tabs. Thresholds match (0.9/0.7).
+- **KPI insights bug fix**: `computeKpiProgress()` returns `{ band, attainmentPct }` (NOT `status`). The insights code previously read `p?.status` which was always `undefined`, silently skipping all KPI insights. Fixed to use `p?.attainmentPct` with 90%/70% thresholds (matching benchmark logic). Also fixed `p?.labelPct` → `attPct.toFixed(1)` since KPI progress has no `labelPct` field.
+- **Return shape difference**: `computeKpiProgress` → `{ band, attainmentPct, fillPct, progressColor }`. `computeBenchmarkProgress` → `{ status, pct, labelPct, color, deltaPct }`. These are NOT interchangeable — always use the correct field names for each.
 
 ### GA4 KPIs Tab
 - **Templates**: ROAS, ROI, CPA, Revenue, Conversions, Engagement Rate, Conversion Rate, Users, Sessions + Custom. Templates requiring spend/revenue are disabled when sources aren't connected.

@@ -280,31 +280,25 @@ export function AddSpendWizardModal(props: {
       // Pre-populate test mode state if this was a test mode source
       if (mapping?.testMode) {
         setIsLinkedInTestMode(true);
-        // Reconstruct the mock preview from stored breakdown
-        const breakdown: LinkedInSpendCampaign[] = Array.isArray(mapping?.breakdown)
-          ? mapping.breakdown.map((b: any) => ({
-              id: String(b.campaignId || ""),
-              name: String(b.name || b.campaignId || ""),
-              status: "active",
-              spend: Number(b.spend || 0),
-              impressions: Number(b.impressions || 0),
-              clicks: Number(b.clicks || 0),
-            }))
-          : [];
-        if (breakdown.length > 0) {
-          setLinkedInPreview({
-            adAccountId: mapping.adAccountId || "test-account",
-            adAccountName: mapping.adAccountName || "Test Mode",
-            campaigns: breakdown,
-            totalSpend: breakdown.reduce((s, c) => s + c.spend, 0),
-            currency: mapping.currency || props.currency || "USD",
-            dateRange: mapping.dateRange || "Last 90 days (test data)",
-          });
-          setSelectedLinkedInCampaignIds(
-            Array.isArray(mapping.selectedCampaignIds) ? mapping.selectedCampaignIds : breakdown.map(c => c.id)
-          );
-          setLinkedInConnectionStatus({ connected: true, adAccountName: mapping.adAccountName || "Test Mode" });
-        }
+        // Show ALL mock campaigns (not just previously selected), pre-check the ones that were selected
+        const allMockCampaigns: LinkedInSpendCampaign[] = [
+          { id: "mock-001", name: "Brand Awareness Q1 2025", status: "active", spend: 4250.50, impressions: 145230, clicks: 3845 },
+          { id: "mock-002", name: "Lead Generation - Tech Professionals", status: "active", spend: 3180.25, impressions: 89420, clicks: 2156 },
+          { id: "mock-003", name: "Product Launch - Enterprise Software", status: "active", spend: 6890.75, impressions: 203450, clicks: 5234 },
+          { id: "mock-004", name: "Recruitment Marketing Campaign", status: "paused", spend: 1250.00, impressions: 45120, clicks: 892 },
+        ];
+        setLinkedInPreview({
+          adAccountId: mapping.adAccountId || "test-account",
+          adAccountName: mapping.adAccountName || "Test Mode",
+          campaigns: allMockCampaigns,
+          totalSpend: allMockCampaigns.reduce((s, c) => s + c.spend, 0),
+          currency: mapping.currency || props.currency || "USD",
+        });
+        // Pre-select only the previously selected campaigns
+        setSelectedLinkedInCampaignIds(
+          Array.isArray(mapping.selectedCampaignIds) ? mapping.selectedCampaignIds : allMockCampaigns.map(c => c.id)
+        );
+        setLinkedInConnectionStatus({ connected: true, adAccountName: mapping.adAccountName || "Test Mode" });
       }
       return;
     }
@@ -316,24 +310,13 @@ export function AddSpendWizardModal(props: {
       setAdPlatformConnected(true);
       setAdPlatformConnectionName(mapping?.adAccountName || "Connected Account");
       setIsAdPlatformTestMode(!!mapping?.testMode);
-      // Reconstruct campaign list from stored breakdown
-      const breakdown = Array.isArray(mapping?.breakdown) ? mapping.breakdown : [];
-      if (breakdown.length > 0) {
-        const campaigns = breakdown.map((b: any) => ({
-          id: String(b.campaignId || ""),
-          name: String(b.name || b.campaignId || ""),
-          spend: Number(b.spend || 0),
-          impressions: Number(b.impressions || 0),
-          clicks: Number(b.clicks || 0),
-        }));
-        setAdPlatformCampaigns(campaigns);
-        setSelectedAdPlatformCampaignIds(
-          Array.isArray(mapping.selectedCampaignIds) ? mapping.selectedCampaignIds : campaigns.map((c: any) => c.id)
-        );
-      } else {
-        // No breakdown stored — fetch fresh from daily-metrics
-        checkAdPlatformConnection(platform);
-      }
+      // Fetch ALL campaigns from daily-metrics, then pre-select previously selected ones
+      const prevSelectedIds = Array.isArray(mapping?.selectedCampaignIds) ? mapping.selectedCampaignIds : null;
+      fetchAdPlatformPreview(platform).then(() => {
+        if (prevSelectedIds) {
+          setSelectedAdPlatformCampaignIds(prevSelectedIds);
+        }
+      });
       return;
     }
 
@@ -1638,7 +1621,7 @@ export function AddSpendWizardModal(props: {
 
                     {/* Action buttons */}
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
+                      <Button variant="outline" onClick={() => isEditing ? props.onOpenChange(false) : setStep("select")}>Cancel</Button>
                       {selectedPlatform === "linkedin" && linkedInPreview && (
                         <Button
                           onClick={processLinkedInSpend}

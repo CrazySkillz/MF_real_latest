@@ -197,7 +197,8 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 
 ### Micro Copy Display (`ga4-metrics.tsx`)
 - `spendDisplaySources` merges `spend-breakdown` (has per-source amounts from records) with `spend-sources` (definitions fallback)
-- Each source line shows: `displayName` (e.g. "Meta Ads", "Google Ads") + formatted spend amount
+- Each source line shows: `displayName` (e.g. "Meta Ads", "Google Ads", "Google Sheets") + formatted spend amount
+- **displayName must be a clean platform label** — use "Google Sheets" (NOT the spreadsheet name), "Meta Ads", "Google Ads", "LinkedIn Ads", "CSV" etc.
 - Edit icon (pencil) + trash icon per source, "+" button to add new sources
 
 ---

@@ -310,7 +310,7 @@ Client-side PDF download + optional scheduling. Reports stored in `linkedin_repo
 
 **Schedule UI**: Both Standard Templates and Custom Report sections include full scheduling capability (frequency, day-of-week/month, quarter timing, time, timezone, email recipients). Matches LinkedIn `LinkedInReportModal.tsx` pattern.
 
-**PDF sections** (controlled by `reportType` or `configuration.sections`): Overview, KPIs Snapshot, Benchmarks Snapshot, Ad Comparison (campaign breakdown sorted by sessions, best/worst performing), Insights (top 12 insight items with severity/title/description/recommendation).
+**PDF design** (styled to match LinkedIn PDFs): Google blue header bar with white title, colored section bars per section. Overview: 2-column metric cards in rounded gray boxes. Ad Comparison: table with header row, alternating row backgrounds, Best/Worst summary cards. KPIs: rounded border cards with metric badges, progress bars, status badges. Benchmarks: same card pattern. Insights: bordered cards with colored severity pill badges. Footer: "MetricMind Analytics Platform".
 
 **Accuracy (pipeline-verified)**:
 - Overview: Uses `financialSpend`, `financialRevenue`, `financialConversions`, `breakdownTotals` — same sources as Overview tab.

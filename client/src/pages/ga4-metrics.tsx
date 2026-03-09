@@ -2042,30 +2042,57 @@ export default function GA4Metrics() {
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
 
-    const marginX = 14;
-    let y = 14;
-    const lineHeight = 6;
-    const pageBottom = 285;
-
-    const ensureSpace = (extra: number) => {
-      if (y + extra > pageBottom) {
-        doc.addPage();
-        y = 14;
-      }
+    // --- Design system ---
+    const COLORS = {
+      headerBar: [66, 133, 244] as [number, number, number],   // Google blue
+      overview: [52, 168, 83] as [number, number, number],      // Green
+      ads: [54, 162, 235] as [number, number, number],          // Blue
+      insights: [16, 185, 129] as [number, number, number],     // Teal
+      kpis: [156, 39, 176] as [number, number, number],         // Purple
+      benchmarks: [255, 99, 132] as [number, number, number],   // Red/pink
+      excellent: [52, 168, 83] as [number, number, number],
+      good: [66, 139, 202] as [number, number, number],
+      fair: [255, 193, 7] as [number, number, number],
+      poor: [220, 53, 69] as [number, number, number],
+      cardBg: [245, 245, 245] as [number, number, number],
+      barBg: [230, 230, 230] as [number, number, number],
+      tableBg: [240, 240, 240] as [number, number, number],
+      textDark: [40, 40, 40] as [number, number, number],
+      textMid: [100, 100, 100] as [number, number, number],
+      textLight: [150, 150, 150] as [number, number, number],
+      white: [255, 255, 255] as [number, number, number],
+      border: [200, 200, 200] as [number, number, number],
     };
 
-    const write = (text: string, size = 11, bold = false) => {
-      ensureSpace(lineHeight);
-      doc.setFontSize(size);
-      doc.setFont("helvetica", bold ? "bold" : "normal");
-      const lines = doc.splitTextToSize(String(text || ""), 180);
-      for (const l of lines) {
-        ensureSpace(lineHeight);
-        doc.text(l, marginX, y);
-        y += lineHeight;
-      }
+    let y = 0;
+    const pageW = 210;
+
+    const checkPage = (extra: number) => {
+      if (y + extra > 272) { doc.addPage(); y = 20; }
     };
 
+    const addFooter = () => {
+      doc.setFontSize(8);
+      doc.setTextColor(...COLORS.textLight);
+      doc.text("MetricMind Analytics Platform", pageW / 2, 289, { align: "center" });
+    };
+
+    const addSection = (title: string, color: [number, number, number]) => {
+      checkPage(20);
+      doc.setFillColor(...color);
+      doc.rect(15, y, 180, 10, "F");
+      doc.setTextColor(...COLORS.white);
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "bold");
+      doc.text(title, 20, y + 7);
+      y += 15;
+      doc.setTextColor(...COLORS.textDark);
+      doc.setFont("helvetica", "normal");
+    };
+
+    const truncate = (s: string, max: number) => s.length > max ? s.slice(0, max - 1) + "…" : s;
+
+    // --- Formatters ---
     const currency = String((campaign as any)?.currency || "USD");
     const fmtCurrency = (n: number) =>
       `${currency} ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -2075,162 +2102,388 @@ export default function GA4Metrics() {
     const reportName = String(opts.reportName || ga4ReportForm.name || "GA4 Report").trim() || "GA4 Report";
     const reportType = String(opts.reportType || "overview");
     const cfg = opts.configuration || ga4ReportForm.configuration || {};
-
-    // Header
-    write(reportName, 16, true);
-    write(`Campaign: ${String((campaign as any)?.name || "")}`);
-    write(`Date Range: ${String((selectedPeriodLabel as any) || dateRange)}`);
     const ga4m = ga4Metrics as any;
-    if (ga4m?.propertyId) write(`Property: ${String(ga4m?.displayName || ga4m?.propertyName || "")} (${ga4m?.propertyId})`);
-    if ((campaign as any)?.ga4CampaignFilter) write(`Campaign Filter: ${String((campaign as any).ga4CampaignFilter)}`);
-    write(`Generated: ${new Date().toLocaleString()}`);
-    write(" ");
+
+    // === HEADER ===
+    doc.setFillColor(...COLORS.headerBar);
+    doc.rect(0, 0, pageW, 40, "F");
+    doc.setTextColor(...COLORS.white);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text(truncate(reportName, 50), 20, 18);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text("GA4 Analytics", 20, 28);
+    // Metadata
+    doc.setTextColor(...COLORS.textMid);
+    doc.setFontSize(9);
+    y = 50;
+    doc.text(`Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, y); y += 6;
+    doc.text(`Campaign: ${String((campaign as any)?.name || "—")}`, 20, y); y += 6;
+    if (ga4m?.propertyId) { doc.text(`Property: ${String(ga4m?.displayName || ga4m?.propertyName || "")} (${ga4m.propertyId})`, 20, y); y += 6; }
+    if ((campaign as any)?.ga4CampaignFilter) { doc.text(`Filter: ${String((campaign as any).ga4CampaignFilter)}`, 20, y); y += 6; }
+    y += 4;
 
     const sections =
       reportType === "custom"
         ? (cfg?.sections || { overview: true })
-        : {
-          overview: reportType === "overview",
-          kpis: reportType === "kpis",
-          benchmarks: reportType === "benchmarks",
-          ads: reportType === "ads",
-          insights: reportType === "insights",
-        };
+        : { overview: reportType === "overview", kpis: reportType === "kpis", benchmarks: reportType === "benchmarks", ads: reportType === "ads", insights: reportType === "insights" };
 
-    // Overview section
+    // === OVERVIEW ===
     if (sections.overview) {
-      write("Overview", 13, true);
-      const revenue = Number(breakdownTotals?.revenue || 0);
-      const conversions = Number(breakdownTotals?.conversions || 0);
-      const sessions = Number(breakdownTotals?.sessions || 0);
-      const users = Number(breakdownTotals?.users || 0);
-      const engagementRate = normalizeRateToPercent(dailySummedTotals.engagementRate || Number(ga4m?.metrics?.engagementRate ?? 0));
+      addSection("Performance Overview", COLORS.overview);
       const spend = Number(financialSpend || 0);
       const revenueToDate = Number(financialRevenue || 0);
       const conversionsToDate = Number(financialConversions || 0);
-
+      const sessions = Number(breakdownTotals?.sessions || 0);
+      const users = Number(breakdownTotals?.users || 0);
+      const conversions = Number(breakdownTotals?.conversions || 0);
+      const engagementRate = normalizeRateToPercent(dailySummedTotals.engagementRate || Number(ga4m?.metrics?.engagementRate ?? 0));
       const roas = spend > 0 ? (revenueToDate / spend) * 100 : 0;
       const roi = spend > 0 ? ((revenueToDate - spend) / spend) * 100 : 0;
       const cpa = conversionsToDate > 0 ? spend / conversionsToDate : 0;
       const convRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
 
-      write(`Revenue: ${fmtCurrency(revenueToDate)}`);
-      write(`Spend: ${fmtCurrency(spend)}`);
-      write(`ROAS: ${fmtPct(roas)}`);
-      write(`ROI: ${fmtPct(roi)}`);
-      write(`CPA: ${fmtCurrency(cpa)}`);
-      write(`Conversions: ${fmtCount(conversions)}`);
-      write(`Conversion Rate: ${fmtPct(convRate)}`);
-      write(`Users: ${fmtCount(users)}`);
-      write(`Sessions: ${fmtCount(sessions)}`);
-      write(`Engagement Rate: ${fmtPct(engagementRate)}`);
-      write(" ");
+      const metricCards: [string, string][] = [
+        ["Revenue", fmtCurrency(revenueToDate)],
+        ["Spend", fmtCurrency(spend)],
+        ["ROAS", fmtPct(roas)],
+        ["ROI", fmtPct(roi)],
+        ["CPA", fmtCurrency(cpa)],
+        ["Conversions", fmtCount(conversions)],
+        ["Conversion Rate", fmtPct(convRate)],
+        ["Users", fmtCount(users)],
+        ["Sessions", fmtCount(sessions)],
+        ["Engagement Rate", fmtPct(engagementRate)],
+      ];
+
+      const cardW = 84;
+      const cardH = 22;
+      const gap = 4;
+      for (let i = 0; i < metricCards.length; i += 2) {
+        checkPage(cardH + gap);
+        for (let col = 0; col < 2 && i + col < metricCards.length; col++) {
+          const [label, value] = metricCards[i + col];
+          const x = col === 0 ? 18 : 18 + cardW + gap;
+          doc.setFillColor(...COLORS.cardBg);
+          doc.roundedRect(x, y, cardW, cardH, 2, 2, "F");
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(...COLORS.textMid);
+          doc.text(label.toUpperCase(), x + 5, y + 7);
+          doc.setFontSize(13);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(...COLORS.textDark);
+          doc.text(value, x + 5, y + 17);
+        }
+        y += cardH + gap;
+      }
+      y += 6;
     }
 
-    // Ad Comparison (campaign breakdown)
+    // === AD COMPARISON ===
     if (sections.ads) {
-      write("Ad Comparison (Campaign Performance)", 13, true);
+      addSection("Ad Comparison", COLORS.ads);
       const rows = Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : [];
       if (rows.length === 0) {
-        write("No campaign breakdown data available.", 10);
+        doc.setFontSize(10); doc.setTextColor(...COLORS.textMid);
+        doc.text("No campaign breakdown data available.", 20, y); y += 10;
       } else {
         const sorted = [...rows].sort((a: any, b: any) => Number(b?.sessions || 0) - Number(a?.sessions || 0));
-        const top = sorted.slice(0, 20);
-        for (const r of top) {
-          const sessions = Number((r as any)?.sessions || 0);
-          const users = Number((r as any)?.users || 0);
-          const conversions = Number((r as any)?.conversions || 0);
-          const revenue = Number((r as any)?.revenue || 0);
-          const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
-          const revPerSession = sessions > 0 ? revenue / sessions : 0;
-          write(
-            `${String((r as any)?.campaign || "(not set)")} • Sessions ${fmtCount(sessions)} • Users ${fmtCount(users)} • Conv ${fmtCount(conversions)} • Rev ${fmtCurrency(revenue)} • CR ${fmtPct(cr)} • Rev/Session ${fmtCurrency(revPerSession)}`,
-            10
-          );
+        const top = sorted.slice(0, 15);
+
+        // Table header
+        checkPage(12);
+        doc.setFillColor(...COLORS.tableBg);
+        doc.rect(18, y - 4, 174, 8, "F");
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(80, 80, 80);
+        doc.text("CAMPAIGN", 20, y);
+        doc.text("SESSIONS", 100, y);
+        doc.text("USERS", 120, y);
+        doc.text("CONV", 138, y);
+        doc.text("REVENUE", 153, y);
+        doc.text("CR%", 180, y);
+        y += 7;
+
+        // Table rows
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        for (let i = 0; i < top.length; i++) {
+          checkPage(10);
+          const r = top[i] as any;
+          const sess = Number(r?.sessions || 0);
+          const usrs = Number(r?.users || 0);
+          const conv = Number(r?.conversions || 0);
+          const rev = Number(r?.revenue || 0);
+          const cr = sess > 0 ? (conv / sess) * 100 : 0;
+
+          // Alternating row background
+          if (i % 2 === 1) {
+            doc.setFillColor(248, 248, 248);
+            doc.rect(18, y - 4, 174, 8, "F");
+          }
+
+          doc.setTextColor(...COLORS.textDark);
+          doc.text(truncate(String(r?.campaign || "(not set)"), 40), 20, y);
+          doc.text(fmtCount(sess), 100, y);
+          doc.text(fmtCount(usrs), 120, y);
+          doc.text(fmtCount(conv), 138, y);
+          doc.text(fmtCurrency(rev), 153, y);
+          doc.text(fmtPct(cr), 180, y);
+          y += 8;
         }
-        if (sorted.length > top.length) write(`… ${sorted.length - top.length} more campaigns`, 10);
+        if (sorted.length > top.length) {
+          doc.setFontSize(8); doc.setTextColor(...COLORS.textMid);
+          doc.text(`+ ${sorted.length - top.length} more campaigns`, 20, y); y += 8;
+        }
+
+        // Best / Worst summary cards
         if (sorted.length > 0) {
-          const best = sorted[0];
-          const worst = sorted[sorted.length - 1];
-          write(" ");
-          write(`Best performing: ${String((best as any)?.campaign || "")} (${fmtCount(Number((best as any)?.sessions || 0))} sessions)`, 10);
-          write(`Lowest performing: ${String((worst as any)?.campaign || "")} (${fmtCount(Number((worst as any)?.sessions || 0))} sessions)`, 10);
+          y += 4;
+          checkPage(24);
+          const best = sorted[0] as any;
+          const worst = sorted[sorted.length - 1] as any;
+          // Best card
+          doc.setFillColor(240, 253, 244);
+          doc.roundedRect(18, y, 84, 18, 2, 2, "F");
+          doc.setFillColor(...COLORS.excellent);
+          doc.rect(18, y, 2, 18, "F"); // left border accent
+          doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.excellent);
+          doc.text("BEST PERFORMING", 24, y + 6);
+          doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textDark);
+          doc.text(truncate(String(best?.campaign || ""), 30), 24, y + 13);
+          // Worst card
+          doc.setFillColor(254, 242, 242);
+          doc.roundedRect(108, y, 84, 18, 2, 2, "F");
+          doc.setFillColor(...COLORS.poor);
+          doc.rect(108, y, 2, 18, "F");
+          doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.poor);
+          doc.text("NEEDS ATTENTION", 114, y + 6);
+          doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textDark);
+          doc.text(truncate(String(worst?.campaign || ""), 30), 114, y + 13);
+          y += 24;
         }
       }
-      write(" ");
+      y += 6;
     }
 
-    // Insights
+    // === INSIGHTS ===
     if (sections.insights) {
-      write("Insights", 13, true);
+      addSection("Insights", COLORS.insights);
       const items = Array.isArray(insights) ? insights : [];
       if (items.length === 0) {
-        write("No insights available at this time.", 10);
+        doc.setFontSize(10); doc.setTextColor(...COLORS.textMid);
+        doc.text("No insights available at this time.", 20, y); y += 10;
       } else {
         const top = items.slice(0, 12);
         for (const item of top) {
-          const severity = String((item as any)?.severity || "info").toUpperCase();
+          const severity = String((item as any)?.severity || "info").toLowerCase();
           const title = String((item as any)?.title || "");
           const desc = String((item as any)?.description || "");
           const rec = String((item as any)?.recommendation || "");
-          write(`[${severity}] ${title}`, 11, true);
-          if (desc) write(desc, 10);
-          if (rec) write(`→ ${rec}`, 10);
-          write(" ");
+
+          // Estimate card height
+          const descLines = desc ? doc.splitTextToSize(desc, 155).length : 0;
+          const recLines = rec ? doc.splitTextToSize(`→ ${rec}`, 155).length : 0;
+          const cardH2 = 14 + descLines * 5 + recLines * 5 + 4;
+          checkPage(cardH2 + 4);
+
+          // Card border
+          doc.setDrawColor(...COLORS.border);
+          doc.roundedRect(18, y - 2, 174, cardH2, 2, 2, "S");
+
+          // Severity badge
+          const sevColor: [number, number, number] =
+            severity === "high" ? COLORS.poor
+            : severity === "positive" ? COLORS.excellent
+            : severity === "medium" ? COLORS.fair
+            : COLORS.good;
+          doc.setFillColor(...sevColor);
+          const sevLabel = severity.toUpperCase();
+          const sevW = Math.max(doc.getTextWidth(sevLabel) + 4, 16);
+          doc.roundedRect(22, y, sevW, 5, 1.5, 1.5, "F");
+          doc.setFontSize(6); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.white);
+          doc.text(sevLabel, 22 + sevW / 2, y + 3.5, { align: "center" });
+
+          // Title
+          doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.textDark);
+          doc.text(truncate(title, 80), 22 + sevW + 4, y + 3.5);
+          y += 10;
+
+          // Description
+          if (desc) {
+            doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textMid);
+            const dLines = doc.splitTextToSize(desc, 155);
+            for (const dl of dLines) { doc.text(dl, 22, y); y += 5; }
+          }
+          // Recommendation
+          if (rec) {
+            doc.setFontSize(9); doc.setFont("helvetica", "italic"); doc.setTextColor(60, 130, 100);
+            const rLines = doc.splitTextToSize(`→ ${rec}`, 155);
+            for (const rl of rLines) { doc.text(rl, 22, y); y += 5; }
+          }
+          y += 6;
         }
-        if (items.length > top.length) write(`… ${items.length - top.length} more insights`, 10);
+        if (items.length > top.length) {
+          doc.setFontSize(8); doc.setTextColor(...COLORS.textMid);
+          doc.text(`+ ${items.length - top.length} more insights`, 20, y); y += 8;
+        }
       }
-      write(" ");
+      y += 4;
     }
 
-    // KPIs snapshot
+    // === KPIs ===
     if (sections.kpis) {
-      write("KPIs Snapshot", 13, true);
+      addSection("Key Performance Indicators", COLORS.kpis);
       const items = Array.isArray(platformKPIs) ? platformKPIs : [];
-      for (const k of items) {
-        const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
-        if (deps.missing.length > 0) {
-          write(`${String(k?.name || "")} • Blocked (missing ${deps.missing.join(" + ")})`, 10);
-          continue;
+      if (items.length === 0) {
+        doc.setFontSize(10); doc.setTextColor(...COLORS.textMid);
+        doc.text("No KPIs configured yet.", 20, y); y += 10;
+      } else {
+        for (const k of items) {
+          const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
+          if (deps.missing.length > 0) {
+            checkPage(18);
+            doc.setDrawColor(...COLORS.border);
+            doc.roundedRect(18, y - 2, 174, 14, 2, 2, "S");
+            doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.textDark);
+            doc.text(String(k?.name || ""), 22, y + 4);
+            doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.poor);
+            doc.text(`Blocked — missing ${deps.missing.join(" + ")}`, 22, y + 10);
+            y += 18;
+            continue;
+          }
+
+          const cardH3 = 55;
+          checkPage(cardH3 + 4);
+          const p = computeKpiProgress(k);
+          const t = getKpiEffectiveTarget(k);
+          const liveVal = getLiveKpiValue(k);
+          const progress = Math.min(p.attainmentPct, 100);
+          const statusLabel = p.band === "above" ? "Above Target" : p.band === "near" ? "On Track" : "Below Target";
+          const statusColor: [number, number, number] = p.band === "above" ? COLORS.excellent : p.band === "near" ? COLORS.good : COLORS.poor;
+
+          // Card border
+          doc.setDrawColor(...COLORS.border);
+          doc.roundedRect(18, y - 2, 174, cardH3, 2, 2, "S");
+
+          // Name
+          doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.textDark);
+          doc.text(String(k?.name || ""), 22, y + 4);
+
+          // Metric badge
+          if ((k as any)?.metric) {
+            const metricLabel = String((k as any).metric).toUpperCase();
+            doc.setFillColor(...COLORS.good);
+            doc.roundedRect(22, y + 7, 28, 5, 1.5, 1.5, "F");
+            doc.setFontSize(6); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.white);
+            doc.text(metricLabel, 36, y + 10.5, { align: "center" });
+          }
+
+          // Current / Target
+          doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...COLORS.textDark);
+          doc.text(`Current: ${formatNumberByUnit(String(liveVal || "0"), String(k?.unit || "%"))}`, 22, y + 18);
+          doc.text(`Target: ${formatNumberByUnit(String(t.effectiveTarget || ""), String(k?.unit || "%"))}`, 100, y + 18);
+
+          // Priority
+          doc.setFontSize(8); doc.setTextColor(...COLORS.textMid);
+          doc.text(`Priority: ${String((k as any)?.priority || "medium")}`, 22, y + 24);
+
+          // Progress bar
+          doc.setFillColor(...COLORS.barBg);
+          doc.roundedRect(22, y + 29, 160, 7, 2, 2, "F");
+          if (progress > 0) {
+            const fillColor: [number, number, number] = progress >= 100 ? COLORS.excellent : COLORS.good;
+            doc.setFillColor(...fillColor);
+            doc.roundedRect(22, y + 29, (160 * progress) / 100, 7, 2, 2, "F");
+          }
+          doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.white);
+          doc.text(`${p.attainmentPct.toFixed(1)}%`, 102, y + 34, { align: "center" });
+
+          // Status badge
+          doc.setFillColor(...statusColor);
+          doc.roundedRect(22, y + 40, 36, 6, 2, 2, "F");
+          doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.white);
+          doc.text(statusLabel, 40, y + 44, { align: "center" });
+
+          doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textDark);
+          y += cardH3 + 6;
         }
-        const p = computeKpiProgress(k);
-        const t = getKpiEffectiveTarget(k);
-        const statusLabel = p.band === "above" ? "Above Target" : p.band === "near" ? "On Track" : "Below Target";
-        write(
-          `${String(k?.name || "")} • Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String(k?.unit || "%"))} • Target ${formatNumberByUnit(
-            String(t.effectiveTarget || ""),
-            String(k?.unit || "%")
-          )} • Progress ${p.attainmentPct.toFixed(1)}% • ${statusLabel}`,
-          10
-        );
       }
-      write(" ");
+      y += 4;
     }
 
-    // Benchmarks snapshot
+    // === BENCHMARKS ===
     if (sections.benchmarks) {
-      write("Benchmarks Snapshot", 13, true);
+      addSection("Performance Benchmarks", COLORS.benchmarks);
       const items = Array.isArray(benchmarks) ? benchmarks : [];
-      for (const b of items) {
-        const deps = getMissingDependenciesForMetric(String((b as any)?.metric || ""));
-        if (deps.missing.length > 0) {
-          write(`${String((b as any)?.name || "")} • Blocked (missing ${deps.missing.join(" + ")})`, 10);
-          continue;
+      if (items.length === 0) {
+        doc.setFontSize(10); doc.setTextColor(...COLORS.textMid);
+        doc.text("No benchmarks configured yet.", 20, y); y += 10;
+      } else {
+        for (const b of items) {
+          const deps = getMissingDependenciesForMetric(String((b as any)?.metric || ""));
+          if (deps.missing.length > 0) {
+            checkPage(18);
+            doc.setDrawColor(...COLORS.border);
+            doc.roundedRect(18, y - 2, 174, 14, 2, 2, "S");
+            doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.textDark);
+            doc.text(String((b as any)?.name || ""), 22, y + 4);
+            doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.poor);
+            doc.text(`Blocked — missing ${deps.missing.join(" + ")}`, 22, y + 10);
+            y += 18;
+            continue;
+          }
+
+          const cardH4 = 48;
+          checkPage(cardH4 + 4);
+          const p = computeBenchmarkProgress(b);
+          const currentLive = getBenchmarkDisplayCurrentValue(b);
+          const progress = Math.min(p.pct, 100);
+          const statusLabel = p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
+          const statusColor: [number, number, number] = p.status === "on_track" ? COLORS.excellent : p.status === "needs_attention" ? COLORS.fair : COLORS.poor;
+
+          // Card border
+          doc.setDrawColor(...COLORS.border);
+          doc.roundedRect(18, y - 2, 174, cardH4, 2, 2, "S");
+
+          // Name
+          doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.textDark);
+          doc.text(String((b as any)?.name || ""), 22, y + 4);
+
+          // Current / Benchmark
+          doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...COLORS.textDark);
+          doc.text(`Current: ${formatBenchmarkValue(currentLive, (b as any)?.unit)}`, 22, y + 14);
+          doc.text(`Benchmark: ${formatBenchmarkValue((b as any)?.benchmarkValue || "0", (b as any)?.unit)}`, 100, y + 14);
+
+          // Progress bar
+          doc.setFillColor(...COLORS.barBg);
+          doc.roundedRect(22, y + 21, 160, 7, 2, 2, "F");
+          if (progress > 0) {
+            const fillColor: [number, number, number] = progress >= 100 ? COLORS.excellent : progress >= 70 ? COLORS.good : COLORS.poor;
+            doc.setFillColor(...fillColor);
+            doc.roundedRect(22, y + 21, (160 * progress) / 100, 7, 2, 2, "F");
+          }
+          doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.white);
+          doc.text(`${p.pct.toFixed(1)}%`, 102, y + 26, { align: "center" });
+
+          // Status badge
+          doc.setFillColor(...statusColor);
+          doc.roundedRect(22, y + 33, 40, 6, 2, 2, "F");
+          doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.white);
+          doc.text(statusLabel, 42, y + 37, { align: "center" });
+
+          doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textDark);
+          y += cardH4 + 6;
         }
-        const p = computeBenchmarkProgress(b);
-        const statusLabel = p.status === "on_track" ? "On Track" : p.status === "needs_attention" ? "Needs Attention" : "Behind";
-        const currentLive = getBenchmarkDisplayCurrentValue(b);
-        write(
-          `${String((b as any)?.name || "")} • Current ${formatBenchmarkValue(currentLive, (b as any)?.unit)} • Benchmark ${formatBenchmarkValue(
-            (b as any)?.benchmarkValue || "0",
-            (b as any)?.unit
-          )} • Progress ${p.pct.toFixed(1)}% • ${statusLabel}`,
-          10
-        );
       }
-      write(" ");
+      y += 4;
     }
 
+    // Footer
+    addFooter();
     doc.save(`${reportName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
   };
 

@@ -484,4 +484,5 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 - **Styling:** Tailwind CSS with dark mode support (`dark:` variants)
 - **Charts:** Recharts (LineChart, BarChart, PieChart)
 - **Date formatting:** `date-fns`
-- **Transitions:** All `TabsContent` elements use `fade-in` CSS class (200ms fade + 4px slide). Period-dependent queries use `placeholderData: keepPreviousData` (TanStack React Query v5) so charts stay visible during data refresh, with `chart-transition`/`chart-refreshing` classes for subtle opacity dimming.
+- **Transitions:** All `TabsContent` elements use `fade-in` CSS class (200ms fade + 4px slide). Period-dependent queries use `placeholderData: keepPreviousData` (TanStack React Query v5) so charts stay visible during data refresh, with `chart-transition`/`chart-refreshing` classes for subtle opacity dimming. All analytics pages (GA4, LinkedIn, Meta, Google Ads) scroll to top on mount (`useEffect(() => { window.scrollTo(0, 0); }, [])`) for smooth navigation from campaign detail.
+- **Scheduled Reports:** Email recipients are optional for scheduled reports (both GA4 and LinkedIn). Reports can be scheduled without email — they save to the reports library regardless.

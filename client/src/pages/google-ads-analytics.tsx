@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -104,6 +104,9 @@ export default function GoogleAdsAnalytics() {
   const campaignId = params?.id;
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Scroll to top on mount (smooth transition from campaign detail)
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   // KPI state
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);

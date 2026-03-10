@@ -100,6 +100,9 @@ const LINKEDIN_KPI_TEMPLATES = [
 ];
 
 function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
+  // Scroll to top on mount (smooth transition from campaign detail)
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
   const devLog = (...args: any[]) => {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
@@ -456,12 +459,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     if (!reportForm.scheduleEnabled) {
       setReportFormErrors({});
       return true;
-    }
-
-    const recipients = String(reportForm.emailRecipients || "").trim();
-    if (!recipients) {
-      setReportFormErrors({ emailRecipients: "Email recipients are required when scheduling is enabled." });
-      return false;
     }
 
     setReportFormErrors({});

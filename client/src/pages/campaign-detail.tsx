@@ -5774,7 +5774,7 @@ export default function CampaignDetail() {
                                       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
                                     }}
                                   >
-                                    <X className="w-3.5 h-3.5 text-red-500" />
+                                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
                                   </Button>
                                 )}
                               </div>

@@ -110,6 +110,10 @@ interface Benchmark {
 export default function GA4Metrics() {
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
+
+  // Scroll to top on mount (smooth transition from campaign detail)
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
   // GA4 UI now operates on strict daily values (persisted server-side).
   // We keep an internal lookback window for charts/supporting reports, but there is no user-selectable date range.
   // Need at least 60 days to compute "last 30 vs prior 30" and 14 days for WoW anomaly detection.
@@ -234,11 +238,6 @@ export default function GA4Metrics() {
   };
   const validateGA4ScheduledReportFields = (): boolean => {
     if (!ga4ReportForm.scheduleEnabled) { setGa4ReportFormErrors({}); return true; }
-    const recipients = String(ga4ReportForm.emailRecipients || "").trim();
-    if (!recipients) {
-      setGa4ReportFormErrors({ emailRecipients: "Email recipients are required when scheduling is enabled." });
-      return false;
-    }
     setGa4ReportFormErrors({});
     return true;
   };
@@ -4531,7 +4530,7 @@ export default function GA4Metrics() {
                       >
                         <DialogTrigger asChild>
                           <Button
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                             onClick={() => {
                               setEditingBenchmark(null);
                             }}
@@ -4936,7 +4935,7 @@ export default function GA4Metrics() {
                               <Button type="button" variant="outline" onClick={() => setShowCreateBenchmark(false)}>
                                 Cancel
                               </Button>
-                              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                                 {editingBenchmark ? "Update Benchmark" : "Create Benchmark"}
                               </Button>
                             </DialogFooter>
@@ -6595,7 +6594,7 @@ export default function GA4Metrics() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="ga4-email-recipients">Email Recipients{ga4ReportForm.scheduleEnabled ? " *" : ""}</Label>
+                            <Label htmlFor="ga4-email-recipients">Email Recipients</Label>
                             <Input
                               id="ga4-email-recipients"
                               value={ga4ReportForm.emailRecipients}

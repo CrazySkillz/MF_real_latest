@@ -5243,7 +5243,7 @@ export default function CampaignDetail() {
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
               <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
-              <TabsTrigger value="insights">Let's Freestyle</TabsTrigger>
+              <TabsTrigger value="insights">Freestyle Chat</TabsTrigger>
               <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
             </TabsList>
 

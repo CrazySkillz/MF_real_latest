@@ -1098,6 +1098,28 @@ export default function TrendAnalysis() {
                 <>
                   {trendsFetching ? (
                     <Card><CardContent className="p-8 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3" /><p className="font-medium">Fetching Trend Data...</p></CardContent></Card>
+                  ) : trendsError ? (
+                    <Card>
+                      <CardContent className="p-8 text-center">
+                        <AlertTriangle className="w-12 h-12 mx-auto text-red-400 mb-4" />
+                        <p className="font-medium text-lg mb-2">Failed to Fetch Trends</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Google Trends data could not be retrieved. This may be a temporary issue — try again shortly.</p>
+                        <Button onClick={handleRefreshTrends} disabled={cooldownSeconds > 0}>
+                          {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Retry"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : trendsData && (trendsData as any).meta?.failed > 0 && (trendsData as any).meta?.successful === 0 ? (
+                    <Card>
+                      <CardContent className="p-8 text-center">
+                        <AlertTriangle className="w-12 h-12 mx-auto text-amber-400 mb-4" />
+                        <p className="font-medium text-lg mb-2">No Trend Data Available</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Google Trends returned no data for your keywords. This can happen with very niche terms or temporary service issues.</p>
+                        <Button onClick={handleRefreshTrends} disabled={cooldownSeconds > 0}>
+                          {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Retry"}
+                        </Button>
+                      </CardContent>
+                    </Card>
                   ) : !trendsData || !processedTrendsData ? (
                     <Card>
                       <CardContent className="p-8 text-center">

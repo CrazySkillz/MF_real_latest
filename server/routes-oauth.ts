@@ -15574,7 +15574,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch Google Trends data using free google-trends-api (no API key required)
-      const googleTrends = require("google-trends-api");
+      const googleTrends = await import("google-trends-api");
+      const interestOverTime = googleTrends.default?.interestOverTime || googleTrends.interestOverTime;
       const now = new Date();
       const startTime = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // 90 days ago
 
@@ -15582,7 +15583,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // google-trends-api supports multiple keywords in one call
       try {
-        const rawResult = await googleTrends.interestOverTime({
+        console.log(`[Google Trends] Fetching data for keywords: ${keywords.join(", ")}`);
+        const rawResult = await interestOverTime({
           keyword: keywords,
           startTime,
           endTime: now,
@@ -15613,7 +15615,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.warn("⚠️  Google Trends: No timeline data returned");
         }
       } catch (e) {
-        console.error("✗ Google Trends API error:", e instanceof Error ? e.message : String(e));
+        const errMsg = e instanceof Error ? e.message : String(e);
+        console.error("✗ Google Trends API error:", errMsg);
         // If the batch call fails, mark all keywords as failed
         for (const kw of keywords) {
           trendsData.push({ keyword: kw, data: [], success: false });

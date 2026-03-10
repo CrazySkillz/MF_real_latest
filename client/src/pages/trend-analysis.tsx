@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, Clock, Settings, Plus, X, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare, Search, RefreshCw } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, Settings, Plus, X, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare, Search } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, BarChart, Bar, ComposedChart, PieChart, Pie, Cell,
@@ -95,7 +94,6 @@ export default function TrendAnalysis() {
   const [industry, setIndustry] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState("");
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   // Page-level state
   const [perfPeriod, setPerfPeriod] = useState<string>("30d");
@@ -175,13 +173,21 @@ export default function TrendAnalysis() {
     },
   });
 
-  // Google Trends query (auto-fetch when keywords exist, cached 5 min)
-  const { data: trendsData, isFetching: trendsFetching, isError: trendsError, refetch: refetchTrends } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "google-trends"],
-    enabled: !!(campaign as any)?.trendKeywords?.length,
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-  });
+  // Google Trends embed URLs (built from campaign keywords — no API needed)
+  const trendsEmbedUrls = useMemo(() => {
+    const kws: string[] = (campaign as any)?.trendKeywords || [];
+    if (kws.length === 0) return null;
+    const q = kws.map(k => encodeURIComponent(k)).join(",");
+    const comparisonItems = kws.map(k => ({ keyword: k, geo: "", time: "today 3-m" }));
+    const req = encodeURIComponent(JSON.stringify({ comparisonItem: comparisonItems, category: 0, property: "" }));
+    const guestPath = encodeURIComponent("https://trends.google.com:443/trends/embed/");
+    return {
+      timeseries: `https://trends.google.com/trends/embed/explore/TIMESERIES?req=${req}&tz=${new Date().getTimezoneOffset()}&eq=q=${q}&date=today%203-m`,
+      geo: `https://trends.google.com/trends/embed/explore/GEO_MAP?req=${req}&tz=${new Date().getTimezoneOffset()}&eq=q=${q}&date=today%203-m`,
+      related: `https://trends.google.com/trends/embed/explore/RELATED_QUERIES?req=${req}&tz=${new Date().getTimezoneOffset()}&eq=q=${q}&date=today%203-m`,
+      explore: `https://trends.google.com/trends/explore?date=today%203-m&q=${q}`,
+    };
+  }, [campaign]);
 
   // ─── Unified Cross-Platform Data Layer ───────────────────────────
   const crossPlatformData = useMemo(() => {
@@ -350,85 +356,19 @@ export default function TrendAnalysis() {
     return { series: currentPeriod, current, previous, comparison, anomalies, hasPrevious: previousPeriod.length > 0, platformTotals };
   }, [ga4Daily, linkedinDaily, metaDaily, googleAdsDaily, dailyFinancials, perfDays]);
 
-  // ─── Google Trends Processing ────────────────────────────────────
-  const processedTrendsData = useMemo(() => {
-    if (!trendsData || !(trendsData as any).trends) return null;
-    const trends = (trendsData as any).trends;
-    const timeSeriesData: any[] = [];
-    const keywordStats: any = {};
-    const monthlyData: any[] = [];
-
-    const longestDataset = trends.reduce((longest: any, current: any) =>
-      (current.data?.length || 0) > (longest.data?.length || 0) ? current : longest, trends[0] || { data: [] });
-
-    (longestDataset.data || []).forEach((timePoint: any, index: number) => {
-      const dataPoint: any = {
-        date: format(new Date(parseInt(timePoint.time) * 1000), 'MMM dd'),
-        timestamp: parseInt(timePoint.time) * 1000,
-      };
-      trends.forEach((trend: any, trendIndex: number) => {
-        const value = trend.data?.[index]?.value?.[0] || 0;
-        dataPoint[trend.keyword] = value;
-        if (!keywordStats[trend.keyword]) {
-          keywordStats[trend.keyword] = { keyword: trend.keyword, values: [], color: COLORS[trendIndex % COLORS.length] };
-        }
-        keywordStats[trend.keyword].values.push(value);
-      });
-      timeSeriesData.push(dataPoint);
-    });
-
-    Object.keys(keywordStats).forEach(keyword => {
-      const values = keywordStats[keyword].values;
-      const sum = values.reduce((a: number, b: number) => a + b, 0);
-      const avg = values.length > 0 ? sum / values.length : 0;
-      const recent = values.slice(-7).reduce((a: number, b: number) => a + b, 0) / 7;
-      const prev = values.slice(-14, -7).reduce((a: number, b: number) => a + b, 0) / 7;
-      keywordStats[keyword] = {
-        ...keywordStats[keyword], average: avg, max: Math.max(...values), min: Math.min(...values),
-        recent, previous: prev, trend: recent > prev ? 'up' : recent < prev ? 'down' : 'stable',
-        trendPercentage: prev > 0 ? ((recent - prev) / prev) * 100 : 0, totalInterest: sum,
-      };
-    });
-
-    const monthlyAgg: any = {};
-    timeSeriesData.forEach(point => {
-      const month = format(new Date(point.timestamp), 'MMM');
-      if (!monthlyAgg[month]) { monthlyAgg[month] = {}; trends.forEach((t: any) => { monthlyAgg[month][t.keyword] = []; }); }
-      trends.forEach((t: any) => { monthlyAgg[month][t.keyword].push(point[t.keyword] || 0); });
-    });
-    Object.keys(monthlyAgg).forEach(month => {
-      const md: any = { month };
-      Object.keys(monthlyAgg[month]).forEach(kw => {
-        const vals = monthlyAgg[month][kw];
-        md[kw] = vals.reduce((a: number, b: number) => a + b, 0) / vals.length;
-      });
-      monthlyData.push(md);
-    });
-
-    return { timeSeriesData, keywordStats, monthlyData, keywords: Object.keys(keywordStats) };
-  }, [trendsData]);
-
   // ─── Google Trends mutations & handlers ──────────────────────────
   const updateKeywordsMutation = useMutation({
     mutationFn: async (data: { industry: string; trendKeywords: string[] }) => {
       return await apiRequest('PATCH', `/api/campaigns/${campaignId}`, data);
     },
     onSuccess: async () => {
-      toast({ title: "Fetching Trend Data...", description: "This may take up to 30 seconds." });
+      toast({ title: "Keywords Saved", description: "Google Trends widgets updated." });
       setIsConfiguring(false);
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
-      await refetchTrends();
-      setCooldownSeconds(120);
     },
     onError: () => { toast({ title: "Error", description: "Failed to update keywords.", variant: "destructive" }); },
   });
 
-  const handleRefreshTrends = async () => {
-    if (cooldownSeconds > 0) { toast({ title: "Cooldown Active", description: `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}`, variant: "destructive" }); return; }
-    toast({ title: "Fetching Trend Data...", description: "This may take up to 30 seconds." });
-    await refetchTrends();
-    setCooldownSeconds(120);
-  };
   const handleAddKeyword = () => { if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) { setKeywords([...keywords, newKeyword.trim()]); setNewKeyword(""); } };
   const handleRemoveKeyword = (kw: string) => setKeywords(keywords.filter(k => k !== kw));
   const handleSaveKeywords = () => {
@@ -439,7 +379,6 @@ export default function TrendAnalysis() {
   };
 
   useEffect(() => { if (campaign && !isConfiguring) { setIndustry((campaign as any).industry || ""); setKeywords((campaign as any).trendKeywords || []); } }, [campaign, isConfiguring]);
-  useEffect(() => { if (cooldownSeconds > 0) { const t = setTimeout(() => setCooldownSeconds(cooldownSeconds - 1), 1000); return () => clearTimeout(t); } }, [cooldownSeconds]);
 
   const toggleSeries = (key: string) => {
     setVisibleSeries(prev => {
@@ -1063,18 +1002,9 @@ export default function TrendAnalysis() {
                         </div>
                       )}
                     </div>
-                    {cooldownSeconds > 0 && (
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                        <div className="flex items-center space-x-2">
-                          <Clock className="w-4 h-4 text-blue-600" />
-                          <p className="text-sm text-blue-900 dark:text-blue-100">Cooldown: {Math.floor(cooldownSeconds / 60)}:{String(cooldownSeconds % 60).padStart(2, '0')}</p>
-                        </div>
-                        <Progress value={((120 - cooldownSeconds) / 120) * 100} className="mt-2 h-1" />
-                      </div>
-                    )}
                     <div className="flex items-center space-x-2">
-                      <Button onClick={handleSaveKeywords} disabled={updateKeywordsMutation.isPending || cooldownSeconds > 0 || trendsFetching}>
-                        {trendsFetching ? "Fetching..." : cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Save & Track Trends"}
+                      <Button onClick={handleSaveKeywords} disabled={updateKeywordsMutation.isPending}>
+                        {updateKeywordsMutation.isPending ? "Saving..." : "Save & Track Trends"}
                       </Button>
                       {isConfiguring && (campaign as any)?.trendKeywords?.length > 0 && (
                         <Button variant="ghost" onClick={() => { setIsConfiguring(false); setKeywords([]); setIndustry(""); setNewKeyword(""); }}>Cancel</Button>
@@ -1084,171 +1014,76 @@ export default function TrendAnalysis() {
                 </Card>
               )}
 
-              {/* Configure button when keywords exist */}
+              {/* Configure button + View on Google Trends link */}
               {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && (
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" size="sm" onClick={handleRefreshTrends} disabled={cooldownSeconds > 0 || trendsFetching}>
-                    <RefreshCw className={`w-4 h-4 mr-2 ${trendsFetching ? "animate-spin" : ""}`} />
-                    {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Refresh"}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => { setIsConfiguring(true); setIndustry((campaign as any).industry || ""); setKeywords((campaign as any).trendKeywords || []); }}>
-                    <Settings className="w-4 h-4 mr-2" />Configure Keywords
-                  </Button>
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-wrap gap-2">
+                    {((campaign as any).trendKeywords || []).map((kw: string, idx: number) => (
+                      <Badge key={idx} variant="outline" className="text-xs">{kw}</Badge>
+                    ))}
+                  </div>
+                  <div className="flex space-x-2">
+                    {trendsEmbedUrls && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={trendsEmbedUrls.explore} target="_blank" rel="noopener noreferrer">
+                          <ArrowUpRight className="w-4 h-4 mr-2" />View on Google Trends
+                        </a>
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => { setIsConfiguring(true); setIndustry((campaign as any).industry || ""); setKeywords((campaign as any).trendKeywords || []); }}>
+                      <Settings className="w-4 h-4 mr-2" />Configure Keywords
+                    </Button>
+                  </div>
                 </div>
               )}
 
-              {/* Google Trends Content */}
-              {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring ? (
+              {/* Google Trends Embed Widgets */}
+              {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && trendsEmbedUrls ? (
                 <>
-                  {trendsFetching ? (
-                    <Card><CardContent className="p-8 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3" /><p className="font-medium">Fetching Trend Data...</p></CardContent></Card>
-                  ) : trendsError ? (
-                    <Card>
-                      <CardContent className="p-8 text-center">
-                        <AlertTriangle className="w-12 h-12 mx-auto text-red-400 mb-4" />
-                        <p className="font-medium text-lg mb-2">Failed to Fetch Trends</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Google Trends data could not be retrieved. This may be a temporary issue — try again shortly.</p>
-                        <Button onClick={handleRefreshTrends} disabled={cooldownSeconds > 0}>
-                          {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Retry"}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ) : trendsData && (trendsData as any).meta?.failed > 0 && (trendsData as any).meta?.successful === 0 ? (
-                    <Card>
-                      <CardContent className="p-8 text-center">
-                        <AlertTriangle className="w-12 h-12 mx-auto text-amber-400 mb-4" />
-                        <p className="font-medium text-lg mb-2">No Trend Data Available</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Google Trends returned no data for your keywords. This can happen with very niche terms or temporary service issues.</p>
-                        <Button onClick={handleRefreshTrends} disabled={cooldownSeconds > 0}>
-                          {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Retry"}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ) : !trendsData || !processedTrendsData ? (
-                    <Card>
-                      <CardContent className="p-8 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3" />
-                        <p className="font-medium">Loading Trend Data...</p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <>
-                      {/* Search Interest Chart */}
-                      <Card>
-                        <CardHeader><CardTitle>Search Interest Over Time</CardTitle></CardHeader>
-                        <CardContent>
-                          <div className="h-72">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={processedTrendsData.timeSeriesData}>
-                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                <XAxis dataKey="date" className="text-xs" />
-                                <YAxis className="text-xs" domain={[0, 100]} />
-                                <Tooltip contentStyle={tooltipStyle} />
-                                {processedTrendsData.keywords.map((kw: string) => (
-                                  <Line key={kw} type="monotone" dataKey={kw} stroke={processedTrendsData.keywordStats[kw]?.color} strokeWidth={2} dot={false} name={kw} />
-                                ))}
-                              </LineChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </CardContent>
-                      </Card>
+                  {/* Interest Over Time */}
+                  <Card>
+                    <CardHeader><CardTitle>Search Interest Over Time</CardTitle></CardHeader>
+                    <CardContent>
+                      <iframe
+                        src={trendsEmbedUrls.timeseries}
+                        width="100%"
+                        height="400"
+                        frameBorder="0"
+                        style={{ border: "none" }}
+                        title="Google Trends - Interest Over Time"
+                      />
+                    </CardContent>
+                  </Card>
 
-                      {/* Keyword Summary Cards */}
-                      <div className="grid gap-4 md:grid-cols-3">
-                        {processedTrendsData.keywords.map((kw: string) => {
-                          const stats = processedTrendsData.keywordStats[kw];
-                          return (
-                            <Card key={kw}>
-                              <CardContent className="p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="font-medium text-slate-900 dark:text-white">{kw}</span>
-                                  <Badge className={stats.trend === 'up' ? 'bg-green-100 text-green-700' : stats.trend === 'down' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}>
-                                    {stats.trend === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : stats.trend === 'down' ? <ArrowDownRight className="w-3 h-3 mr-1" /> : null}
-                                    {stats.trendPercentage >= 0 ? '+' : ''}{stats.trendPercentage.toFixed(1)}%
-                                  </Badge>
-                                </div>
-                                <div className="grid grid-cols-3 gap-2 text-xs">
-                                  <div><span className="text-slate-500">Avg</span><div className="font-semibold">{stats.average.toFixed(0)}</div></div>
-                                  <div><span className="text-slate-500">Peak</span><div className="font-semibold">{stats.max}</div></div>
-                                  <div><span className="text-slate-500">Recent</span><div className="font-semibold">{stats.recent.toFixed(0)}</div></div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
-                      </div>
+                  {/* Geographic Interest */}
+                  <Card>
+                    <CardHeader><CardTitle>Interest by Region</CardTitle></CardHeader>
+                    <CardContent>
+                      <iframe
+                        src={trendsEmbedUrls.geo}
+                        width="100%"
+                        height="400"
+                        frameBorder="0"
+                        style={{ border: "none" }}
+                        title="Google Trends - Interest by Region"
+                      />
+                    </CardContent>
+                  </Card>
 
-                      {/* Keyword Comparison */}
-                      <Card>
-                        <CardHeader><CardTitle>Keyword Comparison</CardTitle></CardHeader>
-                        <CardContent>
-                          <div className="h-64">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={processedTrendsData.keywords.map((kw: string) => ({ keyword: kw, average: processedTrendsData.keywordStats[kw].average, peak: processedTrendsData.keywordStats[kw].max }))}>
-                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                <XAxis dataKey="keyword" className="text-xs" />
-                                <YAxis className="text-xs" domain={[0, 100]} />
-                                <Tooltip contentStyle={tooltipStyle} />
-                                <Bar dataKey="average" fill="#3b82f6" name="Average Interest" />
-                                <Bar dataKey="peak" fill="#8b5cf6" name="Peak Interest" />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Monthly Patterns */}
-                      {processedTrendsData.monthlyData.length > 0 && (
-                        <Card>
-                          <CardHeader><CardTitle>Monthly Patterns</CardTitle></CardHeader>
-                          <CardContent>
-                            <div className="h-64">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={processedTrendsData.monthlyData}>
-                                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                  <XAxis dataKey="month" className="text-xs" />
-                                  <YAxis className="text-xs" />
-                                  <Tooltip contentStyle={tooltipStyle} />
-                                  {processedTrendsData.keywords.map((kw: string) => (
-                                    <Line key={kw} type="monotone" dataKey={kw} stroke={processedTrendsData.keywordStats[kw]?.color} strokeWidth={2} name={kw} />
-                                  ))}
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Market Insights */}
-                      <Card>
-                        <CardHeader><CardTitle>Market Insights</CardTitle></CardHeader>
-                        <CardContent>
-                          <div className="space-y-3">
-                            {processedTrendsData.keywords.map((kw: string) => {
-                              const stats = processedTrendsData.keywordStats[kw];
-                              const isHot = stats.trend === 'up' && stats.trendPercentage > 15;
-                              const isCold = stats.trend === 'down' && stats.trendPercentage < -15;
-                              const isHighDemand = stats.average > 60;
-                              return (
-                                <div key={kw} className={`p-4 rounded-lg border ${isHot || isHighDemand ? 'border-green-200 bg-green-50 dark:bg-green-900/20' : isCold ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/20' : 'border-slate-200 bg-slate-50 dark:bg-slate-800'}`}>
-                                  <div className="flex items-center justify-between mb-1">
-                                    <span className="font-medium">{kw}</span>
-                                    <Badge variant="outline">{isHot ? 'Trending Up' : isCold ? 'Declining' : isHighDemand ? 'High Demand' : 'Stable'}</Badge>
-                                  </div>
-                                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                                    {isHot ? `Strong upward trend (+${stats.trendPercentage.toFixed(0)}%). Consider increasing ad spend on this keyword.` :
-                                     isCold ? `Declining interest (${stats.trendPercentage.toFixed(0)}%). Consider reducing spend or pivoting messaging.` :
-                                     isHighDemand ? `High average interest (${stats.average.toFixed(0)}/100). Good keyword to target.` :
-                                     `Stable interest (avg ${stats.average.toFixed(0)}/100). Maintain current strategy.`}
-                                  </p>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </>
-                  )}
+                  {/* Related Queries */}
+                  <Card>
+                    <CardHeader><CardTitle>Related Queries</CardTitle></CardHeader>
+                    <CardContent>
+                      <iframe
+                        src={trendsEmbedUrls.related}
+                        width="100%"
+                        height="400"
+                        frameBorder="0"
+                        style={{ border: "none" }}
+                        title="Google Trends - Related Queries"
+                      />
+                    </CardContent>
+                  </Card>
                 </>
               ) : !isConfiguring ? (
                 <Card>

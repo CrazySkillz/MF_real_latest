@@ -96,7 +96,7 @@ export default function HomePage() {
             <div className="flex items-center gap-3 mb-4">
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, hsl(221, 83%, 53%), hsl(260, 70%, 55%))' }}
+                style={{ background: 'linear-gradient(135deg, hsl(24, 95%, 53%), hsl(15, 90%, 45%))' }}
               >
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
@@ -146,7 +146,7 @@ export default function HomePage() {
               <Card className="col-span-2 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group">
                 <div
                   className="h-48 flex items-end p-6"
-                  style={{ background: 'linear-gradient(135deg, hsl(221, 83%, 30%), hsl(260, 70%, 35%))' }}
+                  style={{ background: 'linear-gradient(135deg, hsl(24, 80%, 35%), hsl(15, 75%, 28%))' }}
                 >
                   <div>
                     <Badge className={CATEGORY_COLORS[featured.category] || ""}>{featured.category}</Badge>

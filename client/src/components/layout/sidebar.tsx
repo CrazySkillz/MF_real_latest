@@ -21,6 +21,7 @@ export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const { clients, selectedClientId, setSelectedClientId } = useClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(selectedClientId);
 
   const { data: integrations = [] } = useQuery<Integration[]>({
     queryKey: ["/api/integrations"],
@@ -38,7 +39,13 @@ export default function Sidebar() {
 
   const handleClientClick = (clientId: string) => {
     setSelectedClientId(clientId);
+    setExpandedClientId(clientId);
     setLocation("/dashboard");
+  };
+
+  const handleToggleExpand = (clientId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedClientId(expandedClientId === clientId ? null : clientId);
   };
 
   return (
@@ -80,28 +87,38 @@ export default function Sidebar() {
             ) : (
               clients.map((client) => {
                 const isSelected = selectedClientId === client.id;
+                const isExpanded = expandedClientId === client.id;
                 return (
                   <div key={client.id}>
                     {/* Client row */}
-                    <button
-                      onClick={() => handleClientClick(client.id)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                    <div
+                      className={`w-full flex items-center gap-1 px-2 py-2 rounded-md text-sm transition-colors ${
                         isSelected
                           ? "bg-primary/10 text-primary font-medium"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
-                      {isSelected ? (
-                        <ChevronDown className="w-3.5 h-3.5 shrink-0" />
-                      ) : (
-                        <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-                      )}
-                      <Building2 className="w-4 h-4 shrink-0" />
-                      <span className="truncate">{client.name}</span>
-                    </button>
+                      <button
+                        onClick={(e) => handleToggleExpand(client.id, e)}
+                        className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors shrink-0"
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleClientClick(client.id)}
+                        className="flex items-center gap-2 min-w-0 flex-1"
+                      >
+                        <Building2 className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{client.name}</span>
+                      </button>
+                    </div>
 
-                    {/* Sub-navigation (expanded when selected) */}
-                    {isSelected && (
+                    {/* Sub-navigation (expanded) */}
+                    {isExpanded && (
                       <div className="ml-4 pl-3 border-l border-border space-y-0.5 py-1">
                         {clientNavItems.map((item) => {
                           const Icon = item.icon;

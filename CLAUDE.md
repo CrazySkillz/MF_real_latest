@@ -51,7 +51,8 @@ User (Clerk) → owns Clients → owns Campaigns → owns Connections/Metrics/So
 - `campaigns` table: `clientId` (tenant isolation), `ownerId` (claimed on first access)
 - `ClientProvider` context supplies `selectedClientId` (persisted to localStorage)
 - `WelcomeGate` redirects to `/` (Home) when no clients exist; Home is always accessible
-- Sidebar shows Home link + expandable client list (selected client shows sub-nav: Dashboard, Campaigns, Audiences, Reports, Notifications) + "Add Client" button
+- Sidebar shows Home link + expandable client list (chevron toggles expand/collapse independently; clicking client name selects + navigates to Dashboard) + "Add Client" button
+- **Color scheme:** Orange primary (`hsl(24, 95%, 53%)`), defined via `--primary` / `--gradient-primary` CSS variables in `index.css`
 
 ---
 
@@ -425,7 +426,7 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 | HubSpot Wizard | `components/HubSpotRevenueWizard.tsx` | HubSpot deal mapping + pipeline proxy |
 | Salesforce Wizard | `components/SalesforceRevenueWizard.tsx` | Salesforce opportunity mapping |
 | Shopify Wizard | `components/ShopifyRevenueWizard.tsx` | Shopify store connection |
-| Sidebar | `components/layout/sidebar.tsx` | Main nav with client dropdown |
+| Sidebar | `components/layout/sidebar.tsx` | Home link + expandable client list with sub-nav |
 | Navigation | `components/layout/Navigation.tsx` | Top bar with notifications + user button |
 | Column Mapping | `components/GuidedColumnMapping.tsx` | CSV/Sheets column mapping wizard |
 | Attribution | `components/AttributionDashboard.tsx` | Attribution model visualization |

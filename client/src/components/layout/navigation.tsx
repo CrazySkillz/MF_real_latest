@@ -161,7 +161,7 @@ export default function Navigation() {
             <span
               className="text-2xl font-bold tracking-tight"
               style={{
-                background: 'linear-gradient(135deg, hsl(221, 83%, 53%), hsl(260, 70%, 55%))',
+                background: 'linear-gradient(135deg, hsl(24, 95%, 53%), hsl(15, 90%, 45%))',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}

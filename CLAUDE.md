@@ -74,7 +74,7 @@ User (Clerk) → owns Clients → owns Campaigns → owns Connections/Metrics/So
 | Route | Page | Purpose |
 |-------|------|---------|
 | `/campaigns` | Campaign List | List, create, edit, delete campaigns |
-| `/campaigns/:id` | Campaign Detail | Core config: tabs for Overview, KPIs, Benchmarks, AI Chat, Webhooks |
+| `/campaigns/:id` | Campaign Detail | Core config: tabs for Overview, KPIs, Benchmarks, Let's Freestyle, Webhooks |
 | `/campaigns/:id/ga4-metrics` | GA4 Metrics | GA4 analytics: events, users, sessions, revenue, KPIs, financial cards |
 | `/campaigns/:id/linkedin-analytics` | LinkedIn Analytics | LinkedIn campaign perf: KPIs, benchmarks, reports |
 | `/campaigns/:id/meta-analytics` | Meta Analytics | Meta/Facebook campaign perf |
@@ -96,7 +96,7 @@ The campaign detail page has these main sections/tabs:
 1. **Overview** — Performance Summary grid (Spend, Revenue, ROAS, ROI, Conversions, CPA), KPI Health, Benchmark Health, Recommendations, Connected Platforms
 2. **KPIs** — Campaign-level KPI definitions with targets, alerts, progress tracking
 3. **Benchmarks** — Industry/competitor/historical benchmarks with variance tracking
-4. **AI Chat** — OpenRouter-powered AI chat for campaign analysis (uses campaign context: KPIs, benchmarks, spend/revenue breakdown)
+4. **Let's Freestyle** — OpenRouter-powered AI chat for campaign analysis (uses campaign context: KPIs, benchmarks, spend/revenue breakdown)
 5. **Webhooks** — Custom integration webhook configuration
 
 ---

@@ -1193,7 +1193,7 @@ export default function GoogleAdsAnalytics() {
           </div>
 
           {/* 6-Tab Layout */}
-          <Tabs defaultValue="overview" className="space-y-6">
+          <Tabs defaultValue="overview" className="space-y-6 fade-in">
             <TabsList className="grid grid-cols-6 w-full">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
@@ -1204,7 +1204,7 @@ export default function GoogleAdsAnalytics() {
             </TabsList>
 
             {/* ==================== OVERVIEW TAB ==================== */}
-            <TabsContent value="overview" className="space-y-6">
+            <TabsContent value="overview" className="space-y-6 fade-in">
               {/* Primary Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <SummaryCard icon={<Eye className="w-4 h-4" />} label="Impressions" value={fmt(summary.impressions)} />
@@ -1297,7 +1297,7 @@ export default function GoogleAdsAnalytics() {
             </TabsContent>
 
             {/* ==================== KPIS TAB ==================== */}
-            <TabsContent value="kpis" className="space-y-6">
+            <TabsContent value="kpis" className="space-y-6 fade-in">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
@@ -1409,7 +1409,7 @@ export default function GoogleAdsAnalytics() {
             </TabsContent>
 
             {/* ==================== BENCHMARKS TAB ==================== */}
-            <TabsContent value="benchmarks" className="space-y-6">
+            <TabsContent value="benchmarks" className="space-y-6 fade-in">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Benchmarks</h2>
@@ -1507,7 +1507,7 @@ export default function GoogleAdsAnalytics() {
             </TabsContent>
 
             {/* ==================== AD COMPARISON TAB ==================== */}
-            <TabsContent value="ad-comparison" className="space-y-6">
+            <TabsContent value="ad-comparison" className="space-y-6 fade-in">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Campaign Comparison</h2>
@@ -1704,7 +1704,7 @@ export default function GoogleAdsAnalytics() {
             </TabsContent>
 
             {/* ==================== INSIGHTS TAB ==================== */}
-            <TabsContent value="insights" className="space-y-6">
+            <TabsContent value="insights" className="space-y-6 fade-in">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -2193,7 +2193,7 @@ export default function GoogleAdsAnalytics() {
             </TabsContent>
 
             {/* ==================== REPORTS TAB ==================== */}
-            <TabsContent value="reports" className="space-y-6">
+            <TabsContent value="reports" className="space-y-6 fade-in">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Reports</h2>

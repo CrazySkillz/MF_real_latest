@@ -772,7 +772,7 @@ export default function MetaAnalytics() {
           </div>
 
           {/* Tabs */}
-          <Tabs defaultValue="overview" className="space-y-6">
+          <Tabs defaultValue="overview" className="space-y-6 fade-in">
             <TabsList className="grid grid-cols-6 w-full">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
@@ -782,7 +782,7 @@ export default function MetaAnalytics() {
               <TabsTrigger value="reports">Reports</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-8">
+            <TabsContent value="overview" className="space-y-8 fade-in">
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
             <Card>
@@ -1249,7 +1249,7 @@ export default function MetaAnalytics() {
           </Card>
             </TabsContent>
 
-            <TabsContent value="kpis" className="space-y-6">
+            <TabsContent value="kpis" className="space-y-6 fade-in">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
@@ -1483,7 +1483,7 @@ export default function MetaAnalytics() {
               )}
             </TabsContent>
 
-            <TabsContent value="benchmarks" className="space-y-6">
+            <TabsContent value="benchmarks" className="space-y-6 fade-in">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
@@ -1717,7 +1717,7 @@ export default function MetaAnalytics() {
               )}
             </TabsContent>
 
-            <TabsContent value="ad-comparison" className="space-y-6">
+            <TabsContent value="ad-comparison" className="space-y-6 fade-in">
               {/* Header */}
               <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Campaign Comparison</h2>
@@ -2027,8 +2027,8 @@ export default function MetaAnalytics() {
               )}
             </TabsContent>
 
-            <TabsContent value="insights" className="space-y-6">
-              <div className="space-y-6">
+            <TabsContent value="insights" className="space-y-6 fade-in">
+              <div className="space-y-6 fade-in">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -2728,7 +2728,7 @@ export default function MetaAnalytics() {
               </div>
             </TabsContent>
 
-            <TabsContent value="reports" className="space-y-6">
+            <TabsContent value="reports" className="space-y-6 fade-in">
               {/* Header with Create Button */}
               <div className="flex items-center justify-between">
                 <div>

@@ -102,4 +102,22 @@
   .status-disconnected {
     @apply bg-slate-400;
   }
+
+  /* Smooth content transitions */
+  .fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .chart-transition {
+    transition: opacity 0.25s ease-in-out;
+  }
+
+  .chart-refreshing {
+    opacity: 0.5;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

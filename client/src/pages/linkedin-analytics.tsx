@@ -4908,7 +4908,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                   </TabsList>
 
                   {/* Overview Tab */}
-                  <TabsContent value="overview" className="space-y-6" data-testid="content-overview">
+                  <TabsContent value="overview" className="space-y-6 fade-in" data-testid="content-overview">
                     {sessionLoading ? (
                       <div className="animate-pulse space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -5371,7 +5371,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                   </TabsContent>
 
                   {/* Insights Tab */}
-                  <TabsContent value="insights" className="space-y-6" data-testid="content-insights">
+                  <TabsContent value="insights" className="space-y-6 fade-in" data-testid="content-insights">
                     {sessionLoading ? (
                       <div className="animate-pulse space-y-4">
                         <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
@@ -6435,7 +6435,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                   {/* Connected Data Sources tab removed */}
 
                   {/* KPIs Tab */}
-                  <TabsContent value="kpis" className="space-y-6" data-testid="content-kpis">
+                  <TabsContent value="kpis" className="space-y-6 fade-in" data-testid="content-kpis">
                     {kpisLoading ? (
                       <div className="animate-pulse space-y-4">
                         <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
@@ -6862,7 +6862,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                   </TabsContent>
 
                   {/* Benchmarks Tab */}
-                  <TabsContent value="benchmarks" className="space-y-6" data-testid="content-benchmarks">
+                  <TabsContent value="benchmarks" className="space-y-6 fade-in" data-testid="content-benchmarks">
                     {benchmarksIsError ? (
                       <LinkedInTabErrorState
                         title="Benchmarks"
@@ -7212,7 +7212,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                   </TabsContent>
 
                   {/* Ad Comparison Tab */}
-                  <TabsContent value="ads" className="space-y-6" data-testid="content-ads">
+                  <TabsContent value="ads" className="space-y-6 fade-in" data-testid="content-ads">
                     {adsLoading ? (
                       <div className="animate-pulse space-y-4">
                         <div className="h-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
@@ -7644,7 +7644,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                   </TabsContent>
 
                   {/* Reports Tab */}
-                  <TabsContent value="reports" className="space-y-6" data-testid="content-reports">
+                  <TabsContent value="reports" className="space-y-6 fade-in" data-testid="content-reports">
                     {/* Header with Create Button */}
                     <div className="flex items-center justify-between">
                       <div>

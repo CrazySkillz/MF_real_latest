@@ -1135,7 +1135,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -3313,7 +3313,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -4855,7 +4855,7 @@ export default function CampaignDetail() {
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
-            <div className="space-y-6">
+            <div className="space-y-6 fade-in">
               <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
               <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -5036,7 +5036,7 @@ export default function CampaignDetail() {
             Quick health check and key insights at a glance
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 fade-in">
           
           {/* Campaign Health Status */}
           <div className={`p-4 rounded-lg ${healthStatus.bgColor}`}>
@@ -5238,7 +5238,7 @@ export default function CampaignDetail() {
           </div>
 
           {/* Tabs Navigation */}
-          <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks','insights','webhooks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6">
+          <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks','insights','webhooks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6 fade-in">
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="kpis">KPIs</TabsTrigger>
@@ -5247,7 +5247,7 @@ export default function CampaignDetail() {
               <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-6">
+            <TabsContent value="overview" className="space-y-6 fade-in">
 
               {/* Campaign DeepDive */}
               <Card>
@@ -5346,7 +5346,7 @@ export default function CampaignDetail() {
               </Card>
 
               {/* Connected Platforms */}
-              <div className="space-y-6">
+              <div className="space-y-6 fade-in">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Connected Platforms</h2>
                   <p className="text-slate-600 dark:text-slate-400">Platform performance and connection status</p>
@@ -6023,21 +6023,21 @@ export default function CampaignDetail() {
               )}
             </TabsContent>
 
-            <TabsContent value="kpis" className="space-y-6">
+            <TabsContent value="kpis" className="space-y-6 fade-in">
               <CampaignKPIs campaign={campaign} />
             </TabsContent>
 
-            <TabsContent value="benchmarks" className="space-y-6">
+            <TabsContent value="benchmarks" className="space-y-6 fade-in">
               <CampaignBenchmarks campaign={campaign} />
             </TabsContent>
 
-            <TabsContent value="insights" className="space-y-6">
+            <TabsContent value="insights" className="space-y-6 fade-in">
               <CampaignChat campaign={campaign} />
             </TabsContent>
 
 
 
-            <TabsContent value="webhooks" className="space-y-6">
+            <TabsContent value="webhooks" className="space-y-6 fade-in">
               {campaign && (
                 <WebhookTester campaignId={campaign.id} campaignName={campaign.name} />
               )}

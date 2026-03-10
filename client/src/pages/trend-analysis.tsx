@@ -1,5 +1,5 @@
 import { useParams } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, keepPreviousData } from "@tanstack/react-query";
 import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, Settings, Plus, X, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare, Search } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -119,9 +119,10 @@ export default function TrendAnalysis() {
     enabled: !!campaignId,
   });
 
-  const { data: ga4Daily } = useQuery({
+  const { data: ga4Daily, isPlaceholderData: isRefreshing } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-daily", perfDays],
     enabled: !!campaignId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/ga4-daily?days=${perfDays * 2}`);
       if (!resp.ok) return null;
@@ -132,6 +133,7 @@ export default function TrendAnalysis() {
   const { data: linkedinDaily } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "linkedin-daily", perfDays],
     enabled: !!campaignId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/linkedin-daily?days=${perfDays * 2}`);
       if (!resp.ok) return null;
@@ -142,6 +144,7 @@ export default function TrendAnalysis() {
   const { data: metaDaily } = useQuery({
     queryKey: ["/api/meta", campaignId, "daily-metrics", perfDays],
     enabled: !!campaignId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const start = subDays(new Date(), perfDays * 2).toISOString().slice(0, 10);
       const end = new Date().toISOString().slice(0, 10);
@@ -154,6 +157,7 @@ export default function TrendAnalysis() {
   const { data: googleAdsDaily } = useQuery({
     queryKey: ["/api/google-ads", campaignId, "daily-metrics", perfDays],
     enabled: !!campaignId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const start = subDays(new Date(), perfDays * 2).toISOString().slice(0, 10);
       const end = new Date().toISOString().slice(0, 10);
@@ -166,6 +170,7 @@ export default function TrendAnalysis() {
   const { data: dailyFinancials } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "daily-financials", perfDays],
     enabled: !!campaignId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/daily-financials?days=${perfDays * 2}`);
       if (!resp.ok) return null;
@@ -486,7 +491,7 @@ export default function TrendAnalysis() {
             </TabsList>
 
             {/* ═══════════ TAB 1: EXECUTIVE OVERVIEW ═══════════ */}
-            <TabsContent value="overview" className="space-y-6">
+            <TabsContent value="overview" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
               {!hasData ? (
                 <Card>
                   <CardContent className="p-8 text-center">
@@ -637,7 +642,7 @@ export default function TrendAnalysis() {
             </TabsContent>
 
             {/* ═══════════ TAB 2: EFFICIENCY METRICS ═══════════ */}
-            <TabsContent value="efficiency" className="space-y-6">
+            <TabsContent value="efficiency" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
               {!hasData ? (
                 <Card><CardContent className="p-8 text-center"><Activity className="w-12 h-12 mx-auto text-slate-300 mb-4" /><p className="text-slate-600 dark:text-slate-400">No data available for efficiency analysis.</p></CardContent></Card>
               ) : (
@@ -752,7 +757,7 @@ export default function TrendAnalysis() {
             </TabsContent>
 
             {/* ═══════════ TAB 3: CONVERSION FUNNEL ═══════════ */}
-            <TabsContent value="funnel" className="space-y-6">
+            <TabsContent value="funnel" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
               {!hasData ? (
                 <Card><CardContent className="p-8 text-center"><Layers className="w-12 h-12 mx-auto text-slate-300 mb-4" /><h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Funnel Data</h3><p className="text-sm text-slate-600 dark:text-slate-400">Connect an ad platform to see conversion funnel trends.</p></CardContent></Card>
               ) : (
@@ -839,7 +844,7 @@ export default function TrendAnalysis() {
             </TabsContent>
 
             {/* ═══════════ TAB 4: PLATFORM BREAKDOWN ═══════════ */}
-            <TabsContent value="platforms" className="space-y-6">
+            <TabsContent value="platforms" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
               {!hasData || !crossPlatformData.platformTotals.length ? (
                 <Card><CardContent className="p-8 text-center"><GitCompare className="w-12 h-12 mx-auto text-slate-300 mb-4" /><h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Platform Data</h3><p className="text-sm text-slate-600 dark:text-slate-400">Connect at least one ad platform to see breakdown analysis.</p></CardContent></Card>
               ) : (
@@ -975,7 +980,7 @@ export default function TrendAnalysis() {
             </TabsContent>
 
             {/* ═══════════ TAB 5: MARKET TRENDS ═══════════ */}
-            <TabsContent value="market" className="space-y-6">
+            <TabsContent value="market" className="space-y-6 fade-in">
               {/* Keyword Configuration */}
               {(!(campaign as any)?.trendKeywords?.length || isConfiguring) && (
                 <Card>

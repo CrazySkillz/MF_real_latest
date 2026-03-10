@@ -455,7 +455,7 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 2. **Efficiency Metrics** — ROAS/ROI dual-axis, CPA/CPC dual-axis, CTR/Engagement Rate, CPM area chart
 3. **Conversion Funnel** — Conversion rate trends, funnel volume (impressions→clicks→conversions), GA4 engagement funnel
 4. **Platform Breakdown** — Comparison table (best-value highlighted), spend PieChart, efficiency bars, stacked platform trends
-5. **Market Trends** — Consolidated Google Trends (keyword config, search interest, keyword comparison, monthly patterns, market insights). No demo mode.
+5. **Market Trends** — Google Trends embed widgets (Interest Over Time, Interest by Region, Related Queries). Users configure keywords → saved to campaign → iframes load instantly from user's browser. No server-side API needed (cloud IPs blocked by Google). "View on Google Trends" link opens full Google Trends page.
 
 ### Data Layer
 - Merges GA4 + LinkedIn + Meta + Google Ads daily metrics by date into unified time series
@@ -483,3 +483,4 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 - **Styling:** Tailwind CSS with dark mode support (`dark:` variants)
 - **Charts:** Recharts (LineChart, BarChart, PieChart)
 - **Date formatting:** `date-fns`
+- **Transitions:** All `TabsContent` elements use `fade-in` CSS class (200ms fade + 4px slide). Period-dependent queries use `placeholderData: keepPreviousData` (TanStack React Query v5) so charts stay visible during data refresh, with `chart-transition`/`chart-refreshing` classes for subtle opacity dimming.

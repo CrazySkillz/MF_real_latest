@@ -3671,7 +3671,7 @@ export default function GA4Metrics() {
                   <TabsTrigger value="reports">Reports</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="overview">
+                <TabsContent value="overview" className="fade-in">
                   <div className="space-y-8">
                     {/* Summary Cards */}
                     <div>
@@ -4155,7 +4155,7 @@ export default function GA4Metrics() {
                   </AlertDialog>
                 </TabsContent>
 
-                <TabsContent value="kpis">
+                <TabsContent value="kpis" className="fade-in">
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -4469,7 +4469,7 @@ export default function GA4Metrics() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="benchmarks">
+                <TabsContent value="benchmarks" className="fade-in">
                   <div className="space-y-6">
                     <AlertDialog open={showDeleteBenchmarkDialog} onOpenChange={setShowDeleteBenchmarkDialog}>
                       <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
@@ -5273,7 +5273,7 @@ export default function GA4Metrics() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="reports">
+                <TabsContent value="reports" className="fade-in">
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -5457,7 +5457,7 @@ export default function GA4Metrics() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="campaigns">
+                <TabsContent value="campaigns" className="fade-in">
                   <GA4CampaignComparison
                     campaignBreakdownAgg={campaignBreakdownAgg}
                     breakdownLoading={breakdownLoading}
@@ -5468,7 +5468,7 @@ export default function GA4Metrics() {
                   />
                 </TabsContent>
 
-                <TabsContent value="insights">
+                <TabsContent value="insights" className="fade-in">
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Insights</h3>

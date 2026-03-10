@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, Clock, Settings, Plus, X, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare, Search } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, Clock, Settings, Plus, X, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare, Search, RefreshCw } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -175,12 +175,12 @@ export default function TrendAnalysis() {
     },
   });
 
-  // Google Trends query (manual fetch only)
+  // Google Trends query (auto-fetch when keywords exist, cached 5 min)
   const { data: trendsData, isFetching: trendsFetching, isError: trendsError, refetch: refetchTrends } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "google-trends"],
-    enabled: false,
-    staleTime: 0,
-    retry: false,
+    enabled: !!(campaign as any)?.trendKeywords?.length,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 
   // ─── Unified Cross-Platform Data Layer ───────────────────────────
@@ -414,20 +414,20 @@ export default function TrendAnalysis() {
       return await apiRequest('PATCH', `/api/campaigns/${campaignId}`, data);
     },
     onSuccess: async () => {
-      setCooldownSeconds(120);
       toast({ title: "Fetching Trend Data...", description: "This may take up to 30 seconds." });
       setIsConfiguring(false);
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
-      refetchTrends();
+      await refetchTrends();
+      setCooldownSeconds(120);
     },
     onError: () => { toast({ title: "Error", description: "Failed to update keywords.", variant: "destructive" }); },
   });
 
   const handleRefreshTrends = async () => {
     if (cooldownSeconds > 0) { toast({ title: "Cooldown Active", description: `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}`, variant: "destructive" }); return; }
-    setCooldownSeconds(120);
     toast({ title: "Fetching Trend Data...", description: "This may take up to 30 seconds." });
     await refetchTrends();
+    setCooldownSeconds(120);
   };
   const handleAddKeyword = () => { if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) { setKeywords([...keywords, newKeyword.trim()]); setNewKeyword(""); } };
   const handleRemoveKeyword = (kw: string) => setKeywords(keywords.filter(k => k !== kw));
@@ -1086,7 +1086,11 @@ export default function TrendAnalysis() {
 
               {/* Configure button when keywords exist */}
               {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && (
-                <div className="flex justify-end">
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" size="sm" onClick={handleRefreshTrends} disabled={cooldownSeconds > 0 || trendsFetching}>
+                    <RefreshCw className={`w-4 h-4 mr-2 ${trendsFetching ? "animate-spin" : ""}`} />
+                    {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Refresh"}
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => { setIsConfiguring(true); setIndustry((campaign as any).industry || ""); setKeywords((campaign as any).trendKeywords || []); }}>
                     <Settings className="w-4 h-4 mr-2" />Configure Keywords
                   </Button>
@@ -1123,12 +1127,8 @@ export default function TrendAnalysis() {
                   ) : !trendsData || !processedTrendsData ? (
                     <Card>
                       <CardContent className="p-8 text-center">
-                        <Search className="w-12 h-12 mx-auto text-slate-300 mb-4" />
-                        <p className="font-medium text-lg mb-2">No Trend Data Yet</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Click below to fetch Google Trends data for your keywords.</p>
-                        <Button onClick={handleRefreshTrends} disabled={cooldownSeconds > 0}>
-                          {cooldownSeconds > 0 ? `Wait ${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, '0')}` : "Fetch Trend Data"}
-                        </Button>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3" />
+                        <p className="font-medium">Loading Trend Data...</p>
                       </CardContent>
                     </Card>
                   ) : (

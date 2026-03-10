@@ -5738,6 +5738,7 @@ export default function CampaignDetail() {
 
                     return (
                       <DropdownMenu key={crm.key}>
+                        <div className="relative">
                         <DropdownMenuTrigger asChild>
                           <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
                             <CardContent className="p-4">
@@ -5757,30 +5758,33 @@ export default function CampaignDetail() {
                                 ) : (
                                   <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
                                 )}
-                                {isConnected && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="ml-1 h-6 w-6 p-0 shrink-0"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                      if (!confirm(`Disconnect ${crm.label}? This will remove the revenue source and OAuth connection.`)) return;
-                                      if (revenueEntry) {
-                                        await apiRequest('DELETE', `/api/campaigns/${campaignId}/revenue-sources/${revenueEntry.id}`);
-                                      }
-                                      await apiRequest('DELETE', `/api/${crm.key}/${campaignId}/connection`);
-                                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
-                                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                                    }}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                                  </Button>
-                                )}
+                                {/* Spacer for trash button positioned outside trigger */}
+                                {isConnected && <div className="w-6 shrink-0" />}
                               </div>
                             </CardContent>
                           </Card>
                         </DropdownMenuTrigger>
+                        {isConnected && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 p-0 shrink-0 z-10"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              if (!confirm(`Disconnect ${crm.label}? This will remove the revenue source and OAuth connection.`)) return;
+                              if (revenueEntry) {
+                                await apiRequest('DELETE', `/api/campaigns/${campaignId}/revenue-sources/${revenueEntry.id}`);
+                              }
+                              await apiRequest('DELETE', `/api/${crm.key}/${campaignId}/connection`);
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
+                              queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                          </Button>
+                        )}
+                        </div>
                         <DropdownMenuContent align="start">
                           <DropdownMenuLabel>Associate with platform</DropdownMenuLabel>
                           {connectedPlatforms.length === 0 ? (

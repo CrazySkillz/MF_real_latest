@@ -24,7 +24,7 @@ export default function WelcomePage() {
 
             {/* Heading */}
             <h1 className="text-3xl font-bold text-slate-900 mb-3">
-              Welcome to PerformanceCore
+              Welcome to MimoSaaS
             </h1>
             <p className="text-slate-500 mb-8 text-lg leading-relaxed">
               Get started by creating your first client. All your campaigns, reports, and analytics will be organised under each client.

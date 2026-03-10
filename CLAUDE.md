@@ -1,6 +1,6 @@
-# MetricMind (MF_real_latest) — Architecture Reference
+# MimoSaaS (MF_real_latest) — Architecture Reference
 
-> **Enterprise-grade platform.** Marketing executives rely on MetricMind for business-critical decisions. All metrics, computations, and visualizations must be accurate. Specific rules:
+> **Enterprise-grade platform.** Marketing executives rely on MimoSaaS for business-critical decisions. All metrics, computations, and visualizations must be accurate. Specific rules:
 > - **GA4 Users are non-additive** — never sum users across dimensions (dates, devices, sources, campaigns) without a tooltip warning. Per-campaign user counts from breakdown reports are approximate (overcounted).
 > - **Exclude partial intraday data** — GA4 endpoints should use `endDate: "yesterday"` (not `"today"`) to report only complete UTC days. Partial data makes metrics look artificially low.
 > - **Date range consistency** — document when different tabs use different date windows (e.g., 90-day breakdown vs campaign lifetime totals) so executives understand why numbers may differ.
@@ -50,8 +50,8 @@ User (Clerk) → owns Clients → owns Campaigns → owns Connections/Metrics/So
 - `clients` table: `ownerId` (Clerk user ID), `name`
 - `campaigns` table: `clientId` (tenant isolation), `ownerId` (claimed on first access)
 - `ClientProvider` context supplies `selectedClientId` (persisted to localStorage)
-- `WelcomeGate` redirects to `/welcome` when no clients exist
-- Sidebar shows client dropdown; navigation greyed out when no client selected
+- `WelcomeGate` redirects to `/` (Home) when no clients exist; Home is always accessible
+- Sidebar shows Home link + expandable client list (selected client shows sub-nav: Dashboard, Campaigns, Audiences, Reports, Notifications) + "Add Client" button
 
 ---
 
@@ -61,8 +61,8 @@ User (Clerk) → owns Clients → owns Campaigns → owns Connections/Metrics/So
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Dashboard | Aggregated metrics cards, performance charts, campaign table |
-| `/welcome` | Welcome | First-time onboarding, client creation |
+| `/` | Home | Landing page with hero + marketing news (always accessible) |
+| `/dashboard` | Dashboard | Aggregated metrics cards, performance charts, campaign table |
 | `/clients` | Clients | Create/switch clients |
 | `/audiences` | Audiences | Audience segmentation |
 | `/reports` | Reports | Report scheduling |
@@ -308,7 +308,7 @@ Client-side PDF download + optional scheduling. Reports stored in `linkedin_repo
 
 **Schedule UI**: Both Standard Templates and Custom Report sections include full scheduling capability (frequency, day-of-week/month, quarter timing, time, timezone, email recipients). Matches LinkedIn `LinkedInReportModal.tsx` pattern.
 
-**PDF design** (styled to match LinkedIn PDFs): Google blue header bar with white title, colored section bars per section. Overview: 2-column metric cards in rounded gray boxes. Ad Comparison: table with header row, alternating row backgrounds, Best/Worst summary cards. KPIs: rounded border cards with metric badges, progress bars, status badges. Benchmarks: same card pattern. Insights: bordered cards with colored severity pill badges. Footer: "MetricMind Analytics Platform".
+**PDF design** (styled to match LinkedIn PDFs): Google blue header bar with white title, colored section bars per section. Overview: 2-column metric cards in rounded gray boxes. Ad Comparison: table with header row, alternating row backgrounds, Best/Worst summary cards. KPIs: rounded border cards with metric badges, progress bars, status badges. Benchmarks: same card pattern. Insights: bordered cards with colored severity pill badges. Footer: "MimoSaaS Analytics Platform".
 
 **Accuracy (pipeline-verified)**:
 - Overview: Uses `financialSpend`, `financialRevenue`, `financialConversions`, `breakdownTotals` — same sources as Overview tab.

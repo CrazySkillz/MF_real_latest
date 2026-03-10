@@ -442,7 +442,7 @@ export function getLinkedInPdfGenerators(ctx: any) {
     // Footer
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text("PerformanceCore Analytics Platform", 105, 285, { align: "center" });
+    doc.text("MimoSaaS Analytics Platform", 105, 285, { align: "center" });
   };
 
   // Generate KPIs PDF
@@ -545,7 +545,7 @@ export function getLinkedInPdfGenerators(ctx: any) {
 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text("PerformanceCore Analytics Platform", 105, 285, { align: "center" });
+    doc.text("MimoSaaS Analytics Platform", 105, 285, { align: "center" });
   };
 
   // Generate Benchmarks PDF
@@ -597,7 +597,7 @@ export function getLinkedInPdfGenerators(ctx: any) {
 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text("PerformanceCore Analytics Platform", 105, 285, { align: "center" });
+    doc.text("MimoSaaS Analytics Platform", 105, 285, { align: "center" });
   };
 
   // Generate Ad Comparison PDF (Standard Template)
@@ -618,7 +618,7 @@ export function getLinkedInPdfGenerators(ctx: any) {
 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text("PerformanceCore Analytics Platform", 105, 285, { align: "center" });
+    doc.text("MimoSaaS Analytics Platform", 105, 285, { align: "center" });
   };
 
   // Generate Insights PDF (Standard Template)
@@ -631,7 +631,7 @@ export function getLinkedInPdfGenerators(ctx: any) {
 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text("PerformanceCore Analytics Platform", 105, 285, { align: "center" });
+    doc.text("MimoSaaS Analytics Platform", 105, 285, { align: "center" });
   };
 
   // Back-compat: saved report downloads call this for custom reports.
@@ -787,7 +787,7 @@ export function getLinkedInPdfGenerators(ctx: any) {
 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text("PerformanceCore Analytics Platform", 105, 285, { align: "center" });
+    doc.text("MimoSaaS Analytics Platform", 105, 285, { align: "center" });
   };
 
   return {

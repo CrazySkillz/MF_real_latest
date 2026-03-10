@@ -6,101 +6,131 @@ import {
   FileText,
   Bell,
   Building2,
+  Home,
+  Plus,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Integration } from "@shared/schema";
 import { useClient } from "@/lib/clientContext";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import CreateClientModal from "@/components/modals/create-client-modal";
 
 export default function Sidebar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { clients, selectedClientId, setSelectedClientId } = useClient();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: integrations = [] } = useQuery<Integration[]>({
     queryKey: ["/api/integrations"],
   });
 
   const connectedIntegrations = integrations.filter(integration => integration.connected);
-  const hasClient = selectedClientId !== null && clients.length > 0;
 
-  const navItems = [
-    { path: "/", label: "Dashboard", icon: BarChart3 },
+  const clientNavItems = [
+    { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
     { path: "/campaigns", label: "Campaigns", icon: Target },
     { path: "/audiences", label: "Audiences", icon: Users },
     { path: "/reports", label: "Reports", icon: FileText },
     { path: "/notifications", label: "Notifications", icon: Bell },
   ];
 
+  const handleClientClick = (clientId: string) => {
+    setSelectedClientId(clientId);
+    setLocation("/dashboard");
+  };
+
   return (
     <aside className="w-64 shrink-0 bg-background border-r border-border flex flex-col min-h-screen">
       <div className="p-6 space-y-4">
-        {/* Clients nav item — always active */}
+        {/* Home link — always visible */}
         <nav className="space-y-1">
-          <Link href="/clients">
-            <div className={`nav-link ${location === "/clients" ? "nav-link-active" : "nav-link-inactive"}`}>
-              <Building2 className="w-5 h-5" />
-              <span>Clients</span>
+          <Link href="/">
+            <div className={`nav-link ${location === "/" ? "nav-link-active" : "nav-link-inactive"}`}>
+              <Home className="w-5 h-5" />
+              <span>Home</span>
             </div>
           </Link>
         </nav>
 
-        {/* Client dropdown — shown when at least one client exists */}
-        {clients.length > 0 && (
-          <Select
-            value={selectedClientId ?? ""}
-            onValueChange={(val) => setSelectedClientId(val)}
-          >
-            <SelectTrigger className="w-full">
-              <div className="flex items-center gap-2 min-w-0">
-                <Building2 className="w-4 h-4 shrink-0 text-muted-foreground" />
-                <SelectValue placeholder="Select client" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {clients.map((client) => (
-                <SelectItem key={client.id} value={client.id}>
-                  {client.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        {/* Clients section */}
+        <div>
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Clients</span>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="w-5 h-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Add client"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-        {/* Main nav — greyed out when no client selected */}
-        <nav className="space-y-2">
-          {navItems.map((item) => {
-            const isActive = location === item.path;
-            const Icon = item.icon;
+          {/* Client list */}
+          <div className="space-y-0.5 max-h-[calc(100vh-380px)] overflow-y-auto">
+            {clients.length === 0 ? (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="w-full text-left px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Plus className="w-4 h-4 inline mr-2" />
+                Add your first client
+              </button>
+            ) : (
+              clients.map((client) => {
+                const isSelected = selectedClientId === client.id;
+                return (
+                  <div key={client.id}>
+                    {/* Client row */}
+                    <button
+                      onClick={() => handleClientClick(client.id)}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                        isSelected
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      {isSelected ? (
+                        <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+                      )}
+                      <Building2 className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{client.name}</span>
+                    </button>
 
-            if (!hasClient) {
-              return (
-                <div
-                  key={item.path}
-                  className="nav-link nav-link-inactive opacity-40 pointer-events-none cursor-not-allowed"
-                  aria-disabled="true"
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </div>
-              );
-            }
-
-            return (
-              <Link key={item.path} href={item.path}>
-                <div className={`nav-link ${isActive ? "nav-link-active" : "nav-link-inactive"}`}>
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </div>
-              </Link>
-            );
-          })}
-        </nav>
+                    {/* Sub-navigation (expanded when selected) */}
+                    {isSelected && (
+                      <div className="ml-4 pl-3 border-l border-border space-y-0.5 py-1">
+                        {clientNavItems.map((item) => {
+                          const Icon = item.icon;
+                          const isActive = item.path === "/dashboard"
+                            ? location === "/dashboard"
+                            : location.startsWith(item.path);
+                          return (
+                            <Link key={item.path} href={item.path}>
+                              <div
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                                  isActive
+                                    ? "bg-primary/10 text-primary font-medium"
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                }`}
+                              >
+                                <Icon className="w-4 h-4" />
+                                <span>{item.label}</span>
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Integration Status */}
@@ -141,6 +171,8 @@ export default function Sidebar() {
           )}
         </div>
       </div>
+
+      <CreateClientModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </aside>
   );
 }

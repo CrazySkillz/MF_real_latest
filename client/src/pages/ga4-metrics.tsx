@@ -2085,7 +2085,7 @@ export default function GA4Metrics() {
       doc.line(MX, 282, PW - MX, 282);
       doc.setFontSize(7);
       doc.setTextColor(...C.textTert);
-      doc.text("MetricMind Analytics", MX, 287);
+      doc.text("MimoSaaS Analytics", MX, 287);
       doc.text(new Date().toLocaleDateString(), PW - MX, 287, { align: "right" });
     };
 

@@ -158,7 +158,16 @@ export default function Navigation() {
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'var(--gradient-primary)' }}>
               <i className="fas fa-chart-line text-white text-sm"></i>
             </div>
-            <span className="text-2xl font-bold text-gradient-primary">PerformanceCore</span>
+            <span
+              className="text-2xl font-bold tracking-tight"
+              style={{
+                background: 'linear-gradient(135deg, hsl(221, 83%, 53%), hsl(260, 70%, 55%))',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              MimoSaaS
+            </span>
           </div>
         </div>
 

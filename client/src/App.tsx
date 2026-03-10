@@ -36,6 +36,7 @@ import Notifications from "@/pages/notifications";
 import GoogleAuthCallback from "@/pages/auth/google-callback";
 import WelcomePage from "@/pages/welcome";
 import ClientsPage from "@/pages/clients";
+import HomePage from "@/pages/home";
 import NotFound from "@/pages/not-found";
 
 function AuthPage() {
@@ -81,18 +82,12 @@ function WelcomeGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Always allow /clients and /welcome routes through
-  const alwaysAllowed = location === "/clients" || location === "/welcome" || location.startsWith("/auth/");
+  // Always allow Home, /clients, /welcome, and /auth routes through
+  const alwaysAllowed = location === "/" || location === "/clients" || location === "/welcome" || location.startsWith("/auth/");
   if (alwaysAllowed) return <>{children}</>;
 
-  // No clients → redirect to welcome
+  // No clients → redirect to Home
   if (clients.length === 0) {
-    setLocation("/welcome");
-    return null;
-  }
-
-  // Has clients and on /welcome → redirect to dashboard
-  if (location === "/welcome") {
     setLocation("/");
     return null;
   }
@@ -105,9 +100,10 @@ function ProtectedRouter() {
     <ClientProvider>
       <WelcomeGate>
         <Switch>
-          <Route path="/welcome" component={WelcomePage} />
+          <Route path="/" component={HomePage} />
+          <Route path="/welcome" component={HomePage} />
+          <Route path="/dashboard" component={Dashboard} />
           <Route path="/clients" component={ClientsPage} />
-          <Route path="/" component={Dashboard} />
           <Route path="/campaigns" component={Campaigns} />
           <Route path="/campaigns/:id" component={CampaignDetail} />
           <Route path="/campaigns/:id/performance" component={CampaignPerformance} />

@@ -2767,7 +2767,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     // Footer
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
+    doc.text('MimoSaaS Analytics Platform', 105, 285, { align: 'center' });
   };
 
   // Generate KPIs PDF
@@ -2914,7 +2914,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
+    doc.text('MimoSaaS Analytics Platform', 105, 285, { align: 'center' });
   };
 
   // Generate Benchmarks PDF
@@ -3051,7 +3051,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
+    doc.text('MimoSaaS Analytics Platform', 105, 285, { align: 'center' });
   };
 
   // Generate Ad Comparison PDF
@@ -3239,7 +3239,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
+    doc.text('MimoSaaS Analytics Platform', 105, 285, { align: 'center' });
   };
 
   // Generate Insights PDF (Standard Template)
@@ -3252,7 +3252,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
+    doc.text('MimoSaaS Analytics Platform', 105, 285, { align: 'center' });
   };
 
   // Back-compat: saved report downloads call this for custom reports.
@@ -3741,7 +3741,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     // Footer
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text('PerformanceCore Analytics Platform', 105, 285, { align: 'center' });
+    doc.text('MimoSaaS Analytics Platform', 105, 285, { align: 'center' });
   };
 
   // Dynamic labels based on benchmark type

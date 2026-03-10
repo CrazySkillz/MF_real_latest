@@ -20260,7 +20260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!freq) return res.status(400).json({ success: false, message: "scheduleFrequency is required when scheduleEnabled=true" });
         if (!tz) return res.status(400).json({ success: false, message: "scheduleTimeZone is required when scheduleEnabled=true" });
         if (!/^\d{1,2}:\d{2}$/.test(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
-        if (!recipients || recipients.length === 0) return res.status(400).json({ success: false, message: "scheduleRecipients is required when scheduleEnabled=true" });
+        // Email recipients are optional — reports save to library regardless
 
         if (freq === "weekly") {
           const dow = Number(body?.scheduleDayOfWeek);
@@ -20343,7 +20343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!freq) return res.status(400).json({ success: false, message: "scheduleFrequency is required when scheduleEnabled=true" });
         if (!tz) return res.status(400).json({ success: false, message: "scheduleTimeZone is required when scheduleEnabled=true" });
         if (!/^\d{1,2}:\d{2}$/.test(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
-        if (!recipients || recipients.length === 0) return res.status(400).json({ success: false, message: "scheduleRecipients is required when scheduleEnabled=true" });
+        // Email recipients are optional — reports save to library regardless
       }
 
       const allowedReportTypes = new Set(["overview", "kpis", "benchmarks", "ads", "insights", "custom"]);

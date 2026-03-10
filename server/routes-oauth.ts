@@ -15552,7 +15552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Google Trends API endpoint
+  // Google Trends API endpoint (uses free google-trends-api library — no API key needed)
   app.get("/api/campaigns/:id/google-trends", async (req, res) => {
     try {
       const { id } = req.params;
@@ -15563,7 +15563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Campaign not found" });
       }
 
-      const keywords = (campaign as any).trendKeywords || [];
+      const keywords: string[] = (campaign as any).trendKeywords || [];
       const industry = (campaign as any).industry;
 
       if (!keywords || keywords.length === 0) {
@@ -15573,86 +15573,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check for SerpAPI key
-      const apiKey = process.env.SERPAPI_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({
-          message: "SerpAPI key not configured",
-          suggestion: "Add SERPAPI_API_KEY to Replit Secrets"
+      // Fetch Google Trends data using free google-trends-api (no API key required)
+      const googleTrends = require("google-trends-api");
+      const now = new Date();
+      const startTime = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // 90 days ago
+
+      const trendsData: Array<{ keyword: string; data: any[]; success: boolean }> = [];
+
+      // google-trends-api supports multiple keywords in one call
+      try {
+        const rawResult = await googleTrends.interestOverTime({
+          keyword: keywords,
+          startTime,
+          endTime: now,
         });
-      }
 
-      // Fetch Google Trends data using SerpAPI
-      const { getJson } = await import("serpapi");
-      const trendsData = [];
+        const parsed = JSON.parse(rawResult);
+        const timelineData = parsed?.default?.timelineData || [];
 
-      for (const keyword of keywords) {
-        let success = false;
-        let data = [];
-
-        try {
-          const response = await getJson({
-            engine: "google_trends",
-            q: keyword,
-            data_type: "TIMESERIES",
-            date: "today 3-m", // Last 90 days
-            api_key: apiKey,
-            timeout: 30000 // 30 second timeout
-          });
-
-          // SerpAPI returns timeline data in interest_over_time.timeline_data
-          const timelineData = response?.interest_over_time?.timeline_data || [];
-
-          if (timelineData && timelineData.length > 0) {
-            // Transform SerpAPI format to match Google Trends format expected by frontend
-            // SerpAPI provides: timestamp (Unix epoch), date (formatted string), values array
-            data = timelineData.map((item: any) => {
-              const keywordValue = item.values?.find((v: any) => v.query === keyword);
-              return {
-                time: item.timestamp, // Unix timestamp for frontend parsing
-                formattedTime: item.date, // Human-readable date range
-                formattedAxisTime: item.date.split(' ')[0], // Shortened for axis display
-                value: [keywordValue?.extracted_value || 0], // Numeric value (0-100)
-                formattedValue: [String(keywordValue?.extracted_value || 0)] // String format
-              };
-            });
-
-            console.log(`✓ SerpAPI: Fetched ${data.length} data points for "${keyword}"`);
-            success = true;
-          } else {
-            console.warn(`⚠️  SerpAPI: No data returned for "${keyword}"`);
+        if (timelineData.length > 0) {
+          // Split the multi-keyword response into per-keyword trend arrays
+          for (let ki = 0; ki < keywords.length; ki++) {
+            const kw = keywords[ki];
+            const data = timelineData.map((item: any) => ({
+              time: Number(item.time),
+              formattedTime: item.formattedTime || "",
+              formattedAxisTime: (item.formattedAxisTime || item.formattedTime || "").split(" ")[0],
+              value: [item.value?.[ki] ?? 0],
+              formattedValue: [String(item.value?.[ki] ?? 0)],
+            }));
+            trendsData.push({ keyword: kw, data, success: true });
+            console.log(`✓ Google Trends: ${data.length} data points for "${kw}"`);
           }
-        } catch (e) {
-          console.error(`✗ SerpAPI error for "${keyword}":`, e instanceof Error ? e.message : String(e));
+        } else {
+          // No data returned — mark all keywords as failed
+          for (const kw of keywords) {
+            trendsData.push({ keyword: kw, data: [], success: false });
+          }
+          console.warn("⚠️  Google Trends: No timeline data returned");
         }
-
-        trendsData.push({
-          keyword,
-          data,
-          success
-        });
+      } catch (e) {
+        console.error("✗ Google Trends API error:", e instanceof Error ? e.message : String(e));
+        // If the batch call fails, mark all keywords as failed
+        for (const kw of keywords) {
+          trendsData.push({ keyword: kw, data: [], success: false });
+        }
       }
 
       const totalDataPoints = trendsData.reduce((sum, t) => sum + (t.data?.length || 0), 0);
       const successCount = trendsData.filter(t => t.success).length;
       const failedCount = trendsData.filter(t => !t.success).length;
 
-      console.log(`[Google Trends via SerpAPI] Returned ${trendsData.length} keywords (${successCount} successful, ${failedCount} failed) with ${totalDataPoints} total data points`);
+      console.log(`[Google Trends] Returned ${trendsData.length} keywords (${successCount} successful, ${failedCount} failed) with ${totalDataPoints} total data points`);
 
       res.json({
         industry,
         keywords,
         trends: trendsData,
-        timeframe: 'Last 90 days',
+        timeframe: "Last 90 days",
         meta: {
           totalKeywords: trendsData.length,
           successful: successCount,
           failed: failedCount,
-          source: 'SerpAPI'
-        }
+          source: "google-trends-api",
+        },
       });
     } catch (error) {
-      console.error('Google Trends fetch error:', error);
+      console.error("Google Trends fetch error:", error);
       res.status(500).json({ message: "Failed to fetch Google Trends data" });
     }
   });

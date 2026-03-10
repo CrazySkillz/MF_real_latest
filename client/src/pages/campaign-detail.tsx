@@ -5811,32 +5811,55 @@ export default function CampaignDetail() {
                     const gsSpend = (dataSources?.spendSources || []).filter((s: any) => s?.sourceType === 'google_sheets' && s?.isActive !== false);
                     const isConnected = gsRevenue.length > 0 || gsSpend.length > 0;
                     const totalRevenue = gsRevenue.reduce((sum: number, s: any) => sum + (Number(s.lastRevenue) || 0), 0);
+                    const connectedPlatformsForSheets = [
+                      platformStatusMap.get("google-analytics")?.connected && { label: "Google Analytics (GA4)", value: "ga4" as const },
+                      platformStatusMap.get("linkedin")?.connected && { label: "LinkedIn", value: "linkedin" as const },
+                      platformStatusMap.get("facebook")?.connected && { label: "Meta (Facebook)", value: "meta" as const },
+                    ].filter(Boolean) as { label: string; value: 'ga4' | 'linkedin' | 'meta' }[];
                     return (
-                      <Link href={`/campaigns/${campaign?.id}/google-sheets-data`} className="block">
-                      <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
-                              <FileSpreadsheet className={`w-5 h-5 ${isConnected ? 'text-green-600' : 'text-slate-400'}`} />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                                <FileSpreadsheet className={`w-5 h-5 ${isConnected ? 'text-green-600' : 'text-slate-400'}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-slate-900 dark:text-white">Google Sheets</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  {isConnected
+                                    ? `${gsRevenue.length > 0 ? 'Revenue' : ''}${gsRevenue.length > 0 && gsSpend.length > 0 ? ' & ' : ''}${gsSpend.length > 0 ? 'Spend' : ''} connected`
+                                    : 'Import revenue & spend data'}
+                                  {totalRevenue > 0 ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalRevenue)}` : ''}
+                                </p>
+                              </div>
+                              {isConnected ? (
+                                <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                              )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">Google Sheets</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
-                                {isConnected
-                                  ? `${gsRevenue.length > 0 ? 'Revenue' : ''}${gsRevenue.length > 0 && gsSpend.length > 0 ? ' & ' : ''}${gsSpend.length > 0 ? 'Spend' : ''} connected`
-                                  : 'Import revenue & spend data'}
-                                {totalRevenue > 0 ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalRevenue)}` : ''}
-                              </p>
-                            </div>
-                            {isConnected ? (
-                              <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                      </Link>
+                          </CardContent>
+                        </Card>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuLabel>Associate with platform</DropdownMenuLabel>
+                          {connectedPlatformsForSheets.length === 0 ? (
+                            <DropdownMenuItem disabled>No platforms connected</DropdownMenuItem>
+                          ) : (
+                            connectedPlatformsForSheets.map((p) => (
+                              <DropdownMenuItem key={p.value} onClick={() => {
+                                setRevenueWizardPlatformContext(p.value);
+                                setRevenueWizardInitialStep('sheets_choose');
+                                setAddRevenueWizardOpen(true);
+                              }}>
+                                {p.label}
+                              </DropdownMenuItem>
+                            ))
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     );
                   })()}
 

@@ -92,6 +92,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // ── Dashboard data endpoints ────────────────────────────────────────────
+  app.get("/api/metrics", async (_req, res) => {
+    const data = await storage.getMetrics();
+    res.json(data);
+  });
+  app.post("/api/metrics", async (req, res) => {
+    const metric = await storage.createMetric(req.body);
+    res.json(metric);
+  });
+
+  app.get("/api/performance", async (_req, res) => {
+    const data = await storage.getPerformanceData();
+    res.json(data);
+  });
+  app.post("/api/performance", async (req, res) => {
+    const item = await storage.createPerformanceData(req.body);
+    res.json(item);
+  });
+
+  app.get("/api/integrations", async (_req, res) => {
+    const data = await storage.getIntegrations();
+    res.json(data);
+  });
+  app.post("/api/integrations", async (req, res) => {
+    const integration = await storage.createIntegration(req.body);
+    res.json(integration);
+  });
+
   // --------------------------------------------------------------------------
   // Production-safe logging
   // - Avoid noisy console logs in production endpoints (exec-grade reliability).

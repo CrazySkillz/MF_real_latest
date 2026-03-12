@@ -3,27 +3,27 @@
 @tailwind utilities;
 
 :root {
-  /* Soft Rounded Modern Theme */
-  --background: hsl(30, 20%, 98%);
-  --foreground: hsl(20, 15%, 15%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(20, 15%, 15%);
+  /* Soft Rounded Modern Theme — warm cream/beige tones */
+  --background: hsl(35, 30%, 93%);
+  --foreground: hsl(20, 20%, 15%);
+  --card: hsl(36, 30%, 98%);
+  --card-foreground: hsl(20, 20%, 15%);
   --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(20, 15%, 15%);
+  --popover-foreground: hsl(20, 20%, 15%);
   --primary: hsl(24, 95%, 53%);
   --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(30, 15%, 95%);
-  --secondary-foreground: hsl(20, 15%, 25%);
-  --muted: hsl(30, 12%, 94%);
-  --muted-foreground: hsl(20, 8%, 50%);
-  --accent: hsl(24, 40%, 95%);
-  --accent-foreground: hsl(24, 60%, 35%);
+  --secondary: hsl(35, 25%, 90%);
+  --secondary-foreground: hsl(20, 20%, 20%);
+  --muted: hsl(35, 20%, 90%);
+  --muted-foreground: hsl(20, 10%, 45%);
+  --accent: hsl(30, 40%, 92%);
+  --accent-foreground: hsl(24, 70%, 30%);
   --destructive: hsl(0, 72%, 55%);
   --destructive-foreground: hsl(0, 0%, 100%);
-  --border: hsl(30, 15%, 90%);
-  --input: hsl(30, 15%, 90%);
+  --border: hsl(30, 20%, 85%);
+  --input: hsl(30, 20%, 85%);
   --ring: hsl(24, 95%, 53%);
-  --radius: 0.75rem;
+  --radius: 1rem;
   --gradient-primary: linear-gradient(135deg, hsl(24, 95%, 53%), hsl(15, 90%, 45%));
 
   /* Chart colors — warm palette */
@@ -86,23 +86,23 @@
 @layer components {
   /* Soft Rounded Modern utility classes */
   .gradient-card {
-    @apply rounded-2xl bg-card shadow-sm border-0;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+    @apply rounded-2xl bg-card border-0;
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.06);
   }
 
   .gradient-card:hover {
-    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.08);
   }
 
   .metric-card {
-    @apply bg-card rounded-2xl p-6 shadow-sm transition-all duration-200;
+    @apply bg-card rounded-2xl p-6 transition-all duration-200;
     border: none;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.06);
   }
 
   .metric-card:hover {
-    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-    transform: translateY(-1px);
+    box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
   }
 
   .nav-link {
@@ -118,9 +118,14 @@
   }
 
   .integration-card {
-    @apply w-full flex items-center justify-between p-4 bg-card rounded-2xl hover:shadow-md transition-all duration-200;
+    @apply w-full flex items-center justify-between p-4 bg-card rounded-2xl transition-all duration-200;
     border: none;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .integration-card:hover {
+    box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
   }
 
   .status-indicator {

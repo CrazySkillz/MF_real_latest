@@ -49,7 +49,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 shrink-0 bg-card/50 border-r border-border/50 flex flex-col min-h-screen">
+    <aside className="w-64 shrink-0 bg-card border-r border-border/40 flex flex-col min-h-screen">
       <div className="p-6 space-y-4">
         {/* Home link — always visible */}
         <nav className="space-y-1">

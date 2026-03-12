@@ -86,7 +86,7 @@ export default function HomePage() {
   const rest = MOCK_NEWS.filter((n) => !n.featured);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-background dark:bg-slate-950">
       <Navigation />
       <div className="flex">
         <Sidebar />

@@ -40,7 +40,7 @@ export default function ExecutiveSummary() {
 
   if (campaignLoading || summaryLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -61,7 +61,7 @@ export default function ExecutiveSummary() {
 
   if (campaignError || !campaign || summaryError || !executiveSummary) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -134,7 +134,7 @@ export default function ExecutiveSummary() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-background dark:bg-slate-900">
       <Navigation />
       
       <div className="flex">

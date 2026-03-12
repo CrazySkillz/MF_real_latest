@@ -3326,7 +3326,7 @@ export default function GA4Metrics() {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -3348,7 +3348,7 @@ export default function GA4Metrics() {
   // Prevent a "flash" of the GA4 connection flow before the connection check finishes.
   if (ga4ConnLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -3369,7 +3369,7 @@ export default function GA4Metrics() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -3392,7 +3392,7 @@ export default function GA4Metrics() {
   // If GA4 is not connected or has no connections, show connection flow
   if (!ga4Connection?.connected || ga4Connection?.totalConnections === 0) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -3436,7 +3436,7 @@ export default function GA4Metrics() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-background dark:bg-slate-900">
       <Navigation />
 
       <div className="flex">

@@ -4740,7 +4740,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -4768,7 +4768,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   return (
     <LinkedInErrorBoundary>
       <TooltipProvider>
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <div className="min-h-screen bg-background dark:bg-slate-900">
           <Navigation />
 
           <div className="flex">
@@ -8032,7 +8032,7 @@ export default function LinkedInAnalytics() {
   // LinkedIn analytics is campaign-scoped; without a campaignId we show a safe landing state.
   if (!campaignId) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />

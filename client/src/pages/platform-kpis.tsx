@@ -246,7 +246,7 @@ export default function PlatformKPIs() {
 
   if (!platformType) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -268,7 +268,7 @@ export default function PlatformKPIs() {
 
   if (kpisLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -289,7 +289,7 @@ export default function PlatformKPIs() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-background dark:bg-slate-900">
       <Navigation />
       
       <div className="flex">

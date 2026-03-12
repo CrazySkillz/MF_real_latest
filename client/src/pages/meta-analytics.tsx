@@ -493,7 +493,7 @@ export default function MetaAnalytics() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -512,7 +512,7 @@ export default function MetaAnalytics() {
 
   if (!analyticsData) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -742,7 +742,7 @@ export default function MetaAnalytics() {
   const getTimeZoneDisplay = () => userTimeZone.replace(/_/g, ' ');
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-background dark:bg-slate-900">
       <Navigation />
       <div className="flex">
         <Sidebar />

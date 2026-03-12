@@ -593,7 +593,7 @@ export default function GoogleAdsAnalytics() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen bg-background dark:bg-slate-950">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -613,7 +613,7 @@ export default function GoogleAdsAnalytics() {
   // No data state
   if (!summary) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen bg-background dark:bg-slate-950">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -1163,7 +1163,7 @@ export default function GoogleAdsAnalytics() {
   const getTimeZoneDisplay = () => userTimeZone.replace(/_/g, ' ');
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-background dark:bg-slate-950">
       <Navigation />
       <div className="flex">
         <Sidebar />

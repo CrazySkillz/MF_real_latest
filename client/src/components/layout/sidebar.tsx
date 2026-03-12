@@ -49,7 +49,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 shrink-0 bg-background border-r border-border flex flex-col min-h-screen">
+    <aside className="w-64 shrink-0 bg-card/50 border-r border-border/50 flex flex-col min-h-screen">
       <div className="p-6 space-y-4">
         {/* Home link — always visible */}
         <nav className="space-y-1">
@@ -79,7 +79,7 @@ export default function Sidebar() {
             {clients.length === 0 ? (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="w-full text-left px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                className="w-full text-left px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
               >
                 <Plus className="w-4 h-4 inline mr-2" />
                 Add your first client
@@ -92,10 +92,10 @@ export default function Sidebar() {
                   <div key={client.id}>
                     {/* Client row */}
                     <div
-                      className={`w-full flex items-center gap-1 px-2 py-2 rounded-md text-sm transition-colors ${
+                      className={`w-full flex items-center gap-1 px-2 py-2 rounded-xl text-sm transition-all duration-200 ${
                         isSelected
                           ? "bg-primary/10 text-primary font-medium"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                       }`}
                     >
                       <button
@@ -119,7 +119,7 @@ export default function Sidebar() {
 
                     {/* Sub-navigation (expanded) */}
                     {isExpanded && (
-                      <div className="ml-4 pl-3 border-l border-border space-y-0.5 py-1">
+                      <div className="ml-4 pl-3 border-l border-border/50 space-y-0.5 py-1">
                         {clientNavItems.map((item) => {
                           const Icon = item.icon;
                           const isActive = item.path === "/dashboard"
@@ -128,10 +128,10 @@ export default function Sidebar() {
                           return (
                             <Link key={item.path} href={item.path}>
                               <div
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm transition-all duration-200 ${
                                   isActive
                                     ? "bg-primary/10 text-primary font-medium"
-                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                                 }`}
                               >
                                 <Icon className="w-4 h-4" />
@@ -151,7 +151,7 @@ export default function Sidebar() {
       </div>
 
       {/* Integration Status */}
-      <div className="p-6 mt-auto gradient-card border-t border-border m-4 rounded-3xl">
+      <div className="p-5 mt-auto bg-accent/50 border-t border-border/30 m-4 rounded-2xl">
         <h3 className="text-sm font-semibold text-foreground mb-3">Connected Platforms</h3>
         <div className="space-y-3">
           {connectedIntegrations.length === 0 ? (

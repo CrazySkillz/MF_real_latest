@@ -753,7 +753,7 @@ export default function GoogleSheetsData() {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -774,7 +774,7 @@ export default function GoogleSheetsData() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -856,7 +856,7 @@ export default function GoogleSheetsData() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-background dark:bg-slate-900">
       <Navigation />
       
       <div className="flex">

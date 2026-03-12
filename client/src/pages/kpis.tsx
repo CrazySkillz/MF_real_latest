@@ -403,7 +403,7 @@ export default function KPIsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-background dark:bg-slate-900">
         <div className="flex flex-col">
           <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
             <div className="p-8">
@@ -427,7 +427,7 @@ export default function KPIsPage() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Campaign not found</h2>
           <Link href="/campaigns">
@@ -442,7 +442,7 @@ export default function KPIsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-background dark:bg-slate-900">
       <div className="flex flex-col">
         {/* Header */}
         <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">

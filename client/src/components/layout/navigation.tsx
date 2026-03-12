@@ -151,7 +151,7 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="gradient-card border-b border-border px-6 py-4 backdrop-blur-md">
+    <nav className="bg-card/80 border-b border-border/50 px-6 py-4 backdrop-blur-md">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">

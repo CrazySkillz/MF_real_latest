@@ -408,15 +408,15 @@ export default function TrendAnalysis() {
   // ─── Loading / Error States ──────────────────────────────────────
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
+              <div className="h-8 bg-muted rounded w-1/3" />
               <div className="grid gap-4 md:grid-cols-4">
-                {[0,1,2,3].map(i => <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded" />)}
+                {[0,1,2,3].map(i => <div key={i} className="h-24 bg-muted rounded" />)}
               </div>
             </div>
           </main>
@@ -427,14 +427,14 @@ export default function TrendAnalysis() {
 
   if (campaignError || !campaign) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="text-center py-8">
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Campaign Not Found</h1>
-              <p className="text-slate-600 dark:text-slate-400">Unable to load campaign data for trend analysis.</p>
+              <h1 className="text-xl font-semibold text-foreground mb-2">Campaign Not Found</h1>
+              <p className="text-muted-foreground/70">Unable to load campaign data for trend analysis.</p>
             </div>
           </main>
         </div>
@@ -447,7 +447,7 @@ export default function TrendAnalysis() {
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       <div className="flex">
         <Sidebar />
@@ -460,8 +460,8 @@ export default function TrendAnalysis() {
                   <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-2" />Back to Campaign</Button>
                 </Link>
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Trend Analysis</h1>
-                  <p className="text-slate-600 dark:text-slate-400 mt-1">{(campaign as any)?.name}</p>
+                  <h1 className="text-3xl font-bold text-foreground">Trend Analysis</h1>
+                  <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
               {/* Period selector — shared across all tabs */}
@@ -495,9 +495,9 @@ export default function TrendAnalysis() {
               {!hasData ? (
                 <Card>
                   <CardContent className="p-8 text-center">
-                    <Activity className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Performance Data Available</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                    <Activity className="w-16 h-16 mx-auto text-muted-foreground/60 mb-4" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2">No Performance Data Available</h3>
+                    <p className="text-sm text-muted-foreground/70">
                       Connect a platform (GA4, LinkedIn, Meta, or Google Ads) to see performance trends.
                     </p>
                   </CardContent>
@@ -519,8 +519,8 @@ export default function TrendAnalysis() {
                         return (
                           <Card key={i}>
                             <CardContent className="p-4">
-                              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{card.label}</div>
-                              <div className="text-xl font-bold text-slate-900 dark:text-white">{card.value}</div>
+                              <div className="text-xs text-muted-foreground/70 mb-1">{card.label}</div>
+                              <div className="text-xl font-bold text-foreground">{card.value}</div>
                               <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
                                 {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
                                 {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
@@ -549,7 +549,7 @@ export default function TrendAnalysis() {
                         className={`px-3 py-1 text-xs rounded-full border transition-colors ${
                           visibleSeries.has(s.key)
                             ? 'text-white border-transparent'
-                            : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 bg-transparent'
+                            : 'text-muted-foreground/70 border-border bg-transparent'
                         }`}
                         style={visibleSeries.has(s.key) ? { backgroundColor: s.color } : {}}
                       >
@@ -625,7 +625,7 @@ export default function TrendAnalysis() {
                                     <Badge variant={a.severity === 'critical' ? 'destructive' : 'outline'} className="text-xs">{a.severity}</Badge>
                                     <Badge variant="outline" className="text-xs">{a.label}</Badge>
                                   </div>
-                                  <div className="text-sm text-slate-600 dark:text-slate-400">
+                                  <div className="text-sm text-muted-foreground/70">
                                     <span className="font-semibold">{a.metric === 'spend' || a.metric === 'cpa' ? fmtCur(a.value) : a.value.toLocaleString()}</span>
                                     <span className="text-xs ml-1">(expected ~{a.metric === 'spend' || a.metric === 'cpa' ? fmtCur(a.expected) : Math.round(a.expected).toLocaleString()})</span>
                                   </div>
@@ -644,7 +644,7 @@ export default function TrendAnalysis() {
             {/* ═══════════ TAB 2: EFFICIENCY METRICS ═══════════ */}
             <TabsContent value="efficiency" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
               {!hasData ? (
-                <Card><CardContent className="p-8 text-center"><Activity className="w-12 h-12 mx-auto text-slate-300 mb-4" /><p className="text-slate-600 dark:text-slate-400">No data available for efficiency analysis.</p></CardContent></Card>
+                <Card><CardContent className="p-8 text-center"><Activity className="w-12 h-12 mx-auto text-muted-foreground/60 mb-4" /><p className="text-muted-foreground/70">No data available for efficiency analysis.</p></CardContent></Card>
               ) : (
                 <>
                   {/* Summary Cards */}
@@ -659,8 +659,8 @@ export default function TrendAnalysis() {
                       return (
                         <Card key={i}>
                           <CardContent className="p-4">
-                            <div className="text-xs text-slate-500 mb-1">{card.label}</div>
-                            <div className="text-xl font-bold text-slate-900 dark:text-white">{card.value}</div>
+                            <div className="text-xs text-muted-foreground mb-1">{card.label}</div>
+                            <div className="text-xl font-bold text-foreground">{card.value}</div>
                             {crossPlatformData.hasPrevious && (
                               <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
                                 {card.change >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
@@ -759,7 +759,7 @@ export default function TrendAnalysis() {
             {/* ═══════════ TAB 3: CONVERSION FUNNEL ═══════════ */}
             <TabsContent value="funnel" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
               {!hasData ? (
-                <Card><CardContent className="p-8 text-center"><Layers className="w-12 h-12 mx-auto text-slate-300 mb-4" /><h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Funnel Data</h3><p className="text-sm text-slate-600 dark:text-slate-400">Connect an ad platform to see conversion funnel trends.</p></CardContent></Card>
+                <Card><CardContent className="p-8 text-center"><Layers className="w-12 h-12 mx-auto text-muted-foreground/60 mb-4" /><h3 className="text-lg font-semibold text-foreground mb-2">No Funnel Data</h3><p className="text-sm text-muted-foreground/70">Connect an ad platform to see conversion funnel trends.</p></CardContent></Card>
               ) : (
                 <>
                   {/* Funnel Summary Cards */}
@@ -770,7 +770,7 @@ export default function TrendAnalysis() {
                       { label: 'Conversion Rate', value: `${(crossPlatformData.current.clicks > 0 ? (crossPlatformData.current.conversions / crossPlatformData.current.clicks) * 100 : 0).toFixed(2)}%` },
                       { label: 'Cost per Conversion', value: fmtCur(crossPlatformData.current.cpa) },
                     ].map((c, i) => (
-                      <Card key={i}><CardContent className="p-4"><div className="text-xs text-slate-500 mb-1">{c.label}</div><div className="text-xl font-bold text-slate-900 dark:text-white">{c.value}</div></CardContent></Card>
+                      <Card key={i}><CardContent className="p-4"><div className="text-xs text-muted-foreground mb-1">{c.label}</div><div className="text-xl font-bold text-foreground">{c.value}</div></CardContent></Card>
                     ))}
                   </div>
 
@@ -846,7 +846,7 @@ export default function TrendAnalysis() {
             {/* ═══════════ TAB 4: PLATFORM BREAKDOWN ═══════════ */}
             <TabsContent value="platforms" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
               {!hasData || !crossPlatformData.platformTotals.length ? (
-                <Card><CardContent className="p-8 text-center"><GitCompare className="w-12 h-12 mx-auto text-slate-300 mb-4" /><h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Platform Data</h3><p className="text-sm text-slate-600 dark:text-slate-400">Connect at least one ad platform to see breakdown analysis.</p></CardContent></Card>
+                <Card><CardContent className="p-8 text-center"><GitCompare className="w-12 h-12 mx-auto text-muted-foreground/60 mb-4" /><h3 className="text-lg font-semibold text-foreground mb-2">No Platform Data</h3><p className="text-sm text-muted-foreground/70">Connect at least one ad platform to see breakdown analysis.</p></CardContent></Card>
               ) : (
                 <>
                   {/* Platform Comparison Table */}
@@ -856,15 +856,15 @@ export default function TrendAnalysis() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="border-b border-slate-200 dark:border-slate-700">
-                              <th className="text-left py-3 px-2 font-medium text-slate-500">Platform</th>
-                              <th className="text-right py-3 px-2 font-medium text-slate-500">Spend</th>
-                              <th className="text-right py-3 px-2 font-medium text-slate-500">Impressions</th>
-                              <th className="text-right py-3 px-2 font-medium text-slate-500">Clicks</th>
-                              <th className="text-right py-3 px-2 font-medium text-slate-500">CTR</th>
-                              <th className="text-right py-3 px-2 font-medium text-slate-500">Conversions</th>
-                              <th className="text-right py-3 px-2 font-medium text-slate-500">CPA</th>
-                              <th className="text-right py-3 px-2 font-medium text-slate-500">CPC</th>
+                            <tr className="border-b border-border">
+                              <th className="text-left py-3 px-2 font-medium text-muted-foreground">Platform</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Spend</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Impressions</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Clicks</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">CTR</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Conversions</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">CPA</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">CPC</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -872,11 +872,11 @@ export default function TrendAnalysis() {
                               const bestCpa = Math.min(...crossPlatformData.platformTotals.filter(x => x.cpa > 0).map(x => x.cpa));
                               const bestCpc = Math.min(...crossPlatformData.platformTotals.filter(x => x.cpc > 0).map(x => x.cpc));
                               return (
-                                <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
+                                <tr key={i} className="border-b border-slate-100">
                                   <td className="py-3 px-2">
                                     <div className="flex items-center space-x-2">
                                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }} />
-                                      <span className="font-medium text-slate-900 dark:text-white">{p.platform}</span>
+                                      <span className="font-medium text-foreground">{p.platform}</span>
                                     </div>
                                   </td>
                                   <td className="text-right py-3 px-2">{fmtCur(p.spend)}</td>
@@ -986,15 +986,15 @@ export default function TrendAnalysis() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2"><Settings className="w-5 h-5" /><span>Configure Keyword Tracking</span></CardTitle>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Add keywords to track search interest from Google Trends.</p>
+                    <p className="text-sm text-muted-foreground/70">Add keywords to track search interest from Google Trends.</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-slate-900 dark:text-white mb-2 block">Industry (Optional)</label>
+                      <label className="text-sm font-medium text-foreground mb-2 block">Industry (Optional)</label>
                       <Input placeholder="e.g., Wine, Digital Marketing" value={industry} onChange={(e) => setIndustry(e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-slate-900 dark:text-white mb-2 block">Trend Keywords *</label>
+                      <label className="text-sm font-medium text-foreground mb-2 block">Trend Keywords *</label>
                       <div className="flex items-center space-x-2 mb-3">
                         <Input placeholder="e.g., wine" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()} />
                         <Button onClick={handleAddKeyword} size="sm"><Plus className="w-4 h-4" /></Button>
@@ -1093,9 +1093,9 @@ export default function TrendAnalysis() {
               ) : !isConfiguring ? (
                 <Card>
                   <CardContent className="p-12 text-center">
-                    <Search className="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Market Trends</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+                    <Search className="w-16 h-16 mx-auto text-muted-foreground/60 mb-4" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Market Trends</h3>
+                    <p className="text-sm text-muted-foreground/70 max-w-md mx-auto">
                       Track Google search trends for keywords related to your campaign. This is optional — your performance data is available in the other tabs.
                     </p>
                   </CardContent>

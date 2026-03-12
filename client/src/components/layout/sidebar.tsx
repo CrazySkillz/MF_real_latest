@@ -100,7 +100,7 @@ export default function Sidebar() {
                     >
                       <button
                         onClick={(e) => handleToggleExpand(client.id, e)}
-                        className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors shrink-0"
+                        className="p-0.5 rounded hover:bg-black/10/10 transition-colors shrink-0"
                       >
                         {isExpanded ? (
                           <ChevronDown className="w-3.5 h-3.5" />
@@ -159,7 +159,7 @@ export default function Sidebar() {
           ) : (
             connectedIntegrations.map((integration) => {
               let icon = "fas fa-plug";
-              let iconColor = "text-slate-500";
+              let iconColor = "text-muted-foreground";
 
               if (integration.platform === "facebook") {
                 icon = "fab fa-facebook";

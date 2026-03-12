@@ -98,7 +98,7 @@ export default function IntegrationModal({ isOpen, onClose, platform }: Integrat
       case "tiktok":
         return "fab fa-tiktok text-black";
       default:
-        return "fas fa-plug text-slate-500";
+        return "fas fa-plug text-muted-foreground";
     }
   };
 
@@ -178,7 +178,7 @@ export default function IntegrationModal({ isOpen, onClose, platform }: Integrat
               {...form.register("accessToken")}
               disabled={isConnecting}
             />
-            <p className="text-xs text-slate-500">{getTokenDescription(platform)}</p>
+            <p className="text-xs text-muted-foreground">{getTokenDescription(platform)}</p>
             {form.formState.errors.accessToken && (
               <p className="text-sm text-destructive">{form.formState.errors.accessToken.message}</p>
             )}

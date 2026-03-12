@@ -162,7 +162,7 @@ export default function Notifications() {
       case "normal":
         return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Normal</Badge>;
       case "low":
-        return <Badge className="bg-slate-100 text-slate-600 border-slate-200">Low</Badge>;
+        return <Badge className="bg-muted text-muted-foreground border-border">Low</Badge>;
       default:
         return <Badge variant="outline">{priority}</Badge>;
     }
@@ -183,7 +183,7 @@ export default function Notifications() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="flex">
@@ -193,12 +193,12 @@ export default function Notifications() {
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
-                <Bell className="w-6 h-6 text-slate-600" />
+                <Bell className="w-6 h-6 text-muted-foreground" />
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  <h1 className="text-2xl font-bold text-foreground">
                     Notifications
                   </h1>
-                  <p className="text-slate-500 dark:text-slate-400">
+                  <p className="text-muted-foreground/70">
                     {unreadCount > 0 ? `${unreadCount} unread notifications` : "All notifications are read"}
                   </p>
                 </div>
@@ -302,18 +302,18 @@ export default function Notifications() {
               <div className="text-center py-12">
                 <div className="inline-flex items-center space-x-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  <span className="text-slate-500">Loading notifications...</span>
+                  <span className="text-muted-foreground">Loading notifications...</span>
                 </div>
               </div>
             ) : filteredNotifications.length === 0 ? (
               <Card>
                 <CardContent className="py-12">
                   <div className="text-center">
-                    <Bell className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+                    <Bell className="w-12 h-12 text-muted-foreground/60 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">
                       No notifications found
                     </h3>
-                    <p className="text-slate-500 dark:text-slate-400">
+                    <p className="text-muted-foreground/70">
                       {notifications.length === 0
                         ? "You don't have any notifications yet."
                         : "No notifications match your current filters."}
@@ -341,17 +341,17 @@ export default function Notifications() {
                           
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center space-x-2 mb-1">
-                              <h3 className={`font-semibold ${!notification.read ? "text-slate-900" : "text-slate-700"}`}>
+                              <h3 className={`font-semibold ${!notification.read ? "text-foreground" : "text-foreground/80"}`}>
                                 {notification.title}
                               </h3>
                               {/* Unread state is shown via left blue border + subtle background */}
                             </div>
                             
-                            <p className="text-slate-600 text-sm mb-2">
+                            <p className="text-muted-foreground text-sm mb-2">
                               {notification.message}
                             </p>
                             
-                            <div className="flex items-center space-x-4 text-xs text-slate-500">
+                            <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                               {notification.campaignName && (
                                 <div className="flex items-center space-x-1">
                                   <span>Campaign:</span>
@@ -539,7 +539,7 @@ export default function Notifications() {
                             // Show ellipsis after first page if needed
                             if (startPage > 2) {
                               pages.push(
-                                <span key="ellipsis-start" className="px-2 text-slate-400">
+                                <span key="ellipsis-start" className="px-2 text-muted-foreground/70">
                                   ...
                                 </span>
                               );
@@ -563,7 +563,7 @@ export default function Notifications() {
                             // Show ellipsis before last page if needed
                             if (endPage < totalPages - 1) {
                               pages.push(
-                                <span key="ellipsis-end" className="px-2 text-slate-400">
+                                <span key="ellipsis-end" className="px-2 text-muted-foreground/70">
                                   ...
                                 </span>
                               );

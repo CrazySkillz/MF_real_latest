@@ -376,7 +376,7 @@ export default function Reports() {
   };
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       <div className="flex">
         <Sidebar />
@@ -385,8 +385,8 @@ export default function Reports() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Reports</h1>
-                <p className="text-slate-600 dark:text-slate-400 mt-1">
+                <h1 className="text-3xl font-bold text-foreground">Reports</h1>
+                <p className="text-muted-foreground/70 mt-1">
                   Manage scheduled reports and download historical data
                 </p>
               </div>
@@ -452,7 +452,7 @@ export default function Reports() {
                       </div>
                       
                       {scheduleEnabled && (
-                        <div className="ml-6 space-y-4 p-4 border rounded-lg bg-slate-50 dark:bg-slate-800">
+                        <div className="ml-6 space-y-4 p-4 border rounded-lg bg-muted">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                               <Label>Frequency</Label>
@@ -552,7 +552,7 @@ export default function Reports() {
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <CardTitle className="text-lg">{report.name}</CardTitle>
-                            <div className="flex items-center space-x-4 text-sm text-slate-600 dark:text-slate-400">
+                            <div className="flex items-center space-x-4 text-sm text-muted-foreground/70">
                               <div className="flex items-center space-x-1">
                                 <FileText className="w-4 h-4" />
                                 <span>{report.type}</span>
@@ -581,24 +581,24 @@ export default function Reports() {
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                             <div>
-                              <span className="font-medium text-slate-900 dark:text-white">Next Run:</span>
-                              <div className="text-slate-600 dark:text-slate-400">
+                              <span className="font-medium text-foreground">Next Run:</span>
+                              <div className="text-muted-foreground/70">
                                 {report.nextRun ? format(report.nextRun, "MMM d, yyyy 'at' h:mm a") : "Not scheduled"}
                               </div>
                             </div>
                             <div>
-                              <span className="font-medium text-slate-900 dark:text-white">Last Generated:</span>
-                              <div className="text-slate-600 dark:text-slate-400">
+                              <span className="font-medium text-foreground">Last Generated:</span>
+                              <div className="text-muted-foreground/70">
                                 {format(report.lastGenerated, "MMM d, yyyy")}
                               </div>
                             </div>
                             <div>
-                              <span className="font-medium text-slate-900 dark:text-white">Format:</span>
-                              <div className="text-slate-600 dark:text-slate-400">{report.format}</div>
+                              <span className="font-medium text-foreground">Format:</span>
+                              <div className="text-muted-foreground/70">{report.format}</div>
                             </div>
                             <div>
-                              <span className="font-medium text-slate-900 dark:text-white">Campaigns:</span>
-                              <div className="text-slate-600 dark:text-slate-400">
+                              <span className="font-medium text-foreground">Campaigns:</span>
+                              <div className="text-muted-foreground/70">
                                 {Array.isArray(report.campaigns) ? report.campaigns.join(", ") : report.campaigns}
                               </div>
                             </div>
@@ -645,7 +645,7 @@ export default function Reports() {
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <CardTitle className="text-lg">{report.name}</CardTitle>
-                            <div className="flex items-center space-x-4 text-sm text-slate-600 dark:text-slate-400">
+                            <div className="flex items-center space-x-4 text-sm text-muted-foreground/70">
                               <div className="flex items-center space-x-1">
                                 <FileText className="w-4 h-4" />
                                 <span>{report.type}</span>
@@ -679,24 +679,24 @@ export default function Reports() {
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                             <div>
-                              <span className="font-medium text-slate-900 dark:text-white">Created:</span>
-                              <div className="text-slate-600 dark:text-slate-400">
+                              <span className="font-medium text-foreground">Created:</span>
+                              <div className="text-muted-foreground/70">
                                 {format(report.generatedAt, "MMM d, yyyy 'at' h:mm a")}
                               </div>
                             </div>
                             <div>
-                              <span className="font-medium text-slate-900 dark:text-white">Schedule:</span>
-                              <div className="text-slate-600 dark:text-slate-400">
+                              <span className="font-medium text-foreground">Schedule:</span>
+                              <div className="text-muted-foreground/70">
                                 {report.schedule ? `${report.schedule.frequency} at ${report.schedule.time}` : 'Not scheduled'}
                               </div>
                             </div>
                             <div>
-                              <span className="font-medium text-slate-900 dark:text-white">Format:</span>
-                              <div className="text-slate-600 dark:text-slate-400">{report.format}</div>
+                              <span className="font-medium text-foreground">Format:</span>
+                              <div className="text-muted-foreground/70">{report.format}</div>
                             </div>
                             <div>
-                              <span className="font-medium text-slate-900 dark:text-white">Data Included:</span>
-                              <div className="text-slate-600 dark:text-slate-400">
+                              <span className="font-medium text-foreground">Data Included:</span>
+                              <div className="text-muted-foreground/70">
                                 {report.includeKPIs || report.includeBenchmarks 
                                   ? `${report.includeKPIs ? 'KPIs' : ''}${report.includeKPIs && report.includeBenchmarks ? ', ' : ''}${report.includeBenchmarks ? 'Benchmarks' : ''}`
                                   : 'Standard metrics'}
@@ -754,7 +754,7 @@ export default function Reports() {
                         <div className="space-y-2">
                           <Label>Search</Label>
                           <div className="relative">
-                            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                            <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground/70" />
                             <Input
                               placeholder="Search reports or campaigns..."
                               value={searchQuery}
@@ -836,7 +836,7 @@ export default function Reports() {
                     {filteredReports.length === 0 ? (
                       <Card>
                         <CardContent className="py-12">
-                          <div className="text-center text-slate-500 dark:text-slate-400">
+                          <div className="text-center text-muted-foreground/70">
                             <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                             <p className="text-lg font-medium mb-2">No reports found</p>
                             <p>Try adjusting your filters or create a new report from a campaign page.</p>
@@ -846,7 +846,7 @@ export default function Reports() {
                     ) : (
                       <>
                         <div className="flex items-center justify-between">
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                          <p className="text-sm text-muted-foreground/70">
                             Showing {filteredReports.length} of {allStoredReports.length} reports
                           </p>
                           <Button 
@@ -883,13 +883,13 @@ export default function Reports() {
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                                       <div>
-                                        <span className="font-medium text-slate-900 dark:text-white">Type:</span>
-                                        <div className="text-slate-600 dark:text-slate-400">{report.type}</div>
+                                        <span className="font-medium text-foreground">Type:</span>
+                                        <div className="text-muted-foreground/70">{report.type}</div>
                                       </div>
                                       
                                       <div>
-                                        <span className="font-medium text-slate-900 dark:text-white">Format:</span>
-                                        <div className="text-slate-600 dark:text-slate-400">
+                                        <span className="font-medium text-foreground">Format:</span>
+                                        <div className="text-muted-foreground/70">
                                           {report.format}
                                           {report.size && ` (${report.size})`}
                                         </div>
@@ -897,16 +897,16 @@ export default function Reports() {
                                       
                                       {report.campaignName && (
                                         <div>
-                                          <span className="font-medium text-slate-900 dark:text-white">Campaign:</span>
-                                          <div className="text-slate-600 dark:text-slate-400">{report.campaignName}</div>
+                                          <span className="font-medium text-foreground">Campaign:</span>
+                                          <div className="text-muted-foreground/70">{report.campaignName}</div>
                                         </div>
                                       )}
                                       
                                       <div>
-                                        <span className="font-medium text-slate-900 dark:text-white">
+                                        <span className="font-medium text-foreground">
                                           {report.status === 'Scheduled' ? 'Created:' : 'Generated:'}
                                         </span>
-                                        <div className="text-slate-600 dark:text-slate-400">
+                                        <div className="text-muted-foreground/70">
                                           {format(report.generatedAt, "MMM d, yyyy 'at' h:mm a")}
                                         </div>
                                       </div>
@@ -914,8 +914,8 @@ export default function Reports() {
 
                                     {report.schedule && (
                                       <div className="text-sm">
-                                        <span className="font-medium text-slate-900 dark:text-white">Schedule:</span>
-                                        <span className="text-slate-600 dark:text-slate-400 ml-2">
+                                        <span className="font-medium text-foreground">Schedule:</span>
+                                        <span className="text-muted-foreground/70 ml-2">
                                           {report.schedule.frequency} at {report.schedule.time}
                                           {report.schedule.recipients.length > 0 && 
                                             ` • ${report.schedule.recipients.length} recipient(s)`
@@ -984,7 +984,7 @@ export default function Reports() {
                     <CardTitle>Report Templates</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                    <div className="text-center py-12 text-muted-foreground/70">
                       <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>Custom report templates will be available soon</p>
                     </div>

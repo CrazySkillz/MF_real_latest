@@ -89,16 +89,16 @@ export default function PlatformComparison() {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
+              <div className="h-8 bg-muted rounded w-1/3"></div>
               <div className="grid gap-4 md:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                  <div key={i} className="h-24 bg-muted rounded"></div>
                 ))}
               </div>
             </div>
@@ -110,14 +110,14 @@ export default function PlatformComparison() {
 
   if (campaignError || !campaign) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="text-center py-8">
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Campaign Not Found</h1>
-              <p className="text-slate-600 dark:text-slate-400">Unable to load campaign data for platform comparison.</p>
+              <h1 className="text-xl font-semibold text-foreground mb-2">Campaign Not Found</h1>
+              <p className="text-muted-foreground/70">Unable to load campaign data for platform comparison.</p>
             </div>
           </main>
         </div>
@@ -339,7 +339,7 @@ export default function PlatformComparison() {
   const bestCTR = getBestPerformer('ctr');
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="flex">
@@ -357,8 +357,8 @@ export default function PlatformComparison() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Platform Comparison</h1>
-                  <p className="text-slate-600 dark:text-slate-400 mt-1">{(campaign as any)?.name}</p>
+                  <h1 className="text-3xl font-bold text-foreground">Platform Comparison</h1>
+                  <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
               <Button
@@ -396,7 +396,7 @@ export default function PlatformComparison() {
                   {realPlatformMetrics.map((platform, index) => (
                     <Card key={index} className="border-l-4" style={{ borderLeftColor: platform.color }} data-testid={`platform-card-${index}`}>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                        <CardTitle className="text-sm font-medium text-muted-foreground/70">
                           <div className="flex items-center space-x-2">
                             <span>{platform.platform}</span>
                             {platform.isAnalyticsOnly && (
@@ -407,20 +407,20 @@ export default function PlatformComparison() {
                       </CardHeader>
                       <CardContent className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">Conversions</span>
-                          <span className="font-semibold text-slate-900 dark:text-white">{platform.conversions > 0 ? formatNumber(platform.conversions) : '—'}</span>
+                          <span className="text-xs text-muted-foreground">Conversions</span>
+                          <span className="font-semibold text-foreground">{platform.conversions > 0 ? formatNumber(platform.conversions) : '—'}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">Spend</span>
-                          <span className="font-semibold text-slate-900 dark:text-white">{platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</span>
+                          <span className="text-xs text-muted-foreground">Spend</span>
+                          <span className="font-semibold text-foreground">{platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">ROAS</span>
-                          <span className="font-semibold text-slate-900 dark:text-white">{platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}</span>
+                          <span className="text-xs text-muted-foreground">ROAS</span>
+                          <span className="font-semibold text-foreground">{platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">ROI</span>
-                          <span className={`font-semibold ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
+                          <span className="text-xs text-muted-foreground">ROI</span>
+                          <span className={`font-semibold ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
                             {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}
                           </span>
                         </div>
@@ -430,7 +430,7 @@ export default function PlatformComparison() {
                 </div>
               ) : (
                 <Card>
-                  <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
+                  <CardContent className="p-6 text-center text-muted-foreground/70">
                     <p>No platform data available. Connect platforms (LinkedIn, Meta) or revenue sources (Shopify, HubSpot, Salesforce) to see comparison data.</p>
                   </CardContent>
                 </Card>
@@ -447,21 +447,21 @@ export default function PlatformComparison() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
-                            <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Platform</th>
-                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Spend</th>
-                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Impressions</th>
-                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Clicks</th>
-                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">CTR</th>
-                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Conversions</th>
-                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Revenue</th>
-                            <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">ROAS</th>
+                          <tr className="border-b bg-muted/50">
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground/70">Platform</th>
+                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Spend</th>
+                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Impressions</th>
+                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Clicks</th>
+                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">CTR</th>
+                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Conversions</th>
+                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Revenue</th>
+                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">ROAS</th>
                           </tr>
                         </thead>
                         <tbody>
                           {realPlatformMetrics.map((platform: any, index: number) => (
-                            <tr key={index} className="border-b hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                              <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
+                            <tr key={index} className="border-b hover:bg-muted/30">
+                              <td className="py-3 px-4 font-medium text-foreground">
                                 <div className="flex items-center space-x-2">
                                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
                                   <span>{platform.platform}</span>
@@ -494,8 +494,8 @@ export default function PlatformComparison() {
                             const weightedCtr = totImpressions > 0 ? (totClicks / totImpressions) * 100 : 0;
                             const weightedRoas = totSpend > 0 ? totRevenue / totSpend : 0;
                             return (
-                              <tr className="bg-slate-50 dark:bg-slate-800/50 font-semibold">
-                                <td className="py-3 px-4 text-slate-900 dark:text-white">Total</td>
+                              <tr className="bg-muted/50 font-semibold">
+                                <td className="py-3 px-4 text-foreground">Total</td>
                                 <td className="text-right py-3 px-4">{formatCurrency(totSpend)}</td>
                                 <td className="text-right py-3 px-4">{formatNumber(totImpressions)}</td>
                                 <td className="text-right py-3 px-4">{formatNumber(totClicks)}</td>
@@ -517,8 +517,8 @@ export default function PlatformComparison() {
               {revenueSourcesData.length > 0 && (
                 <>
                   <div className="border-t pt-6 mt-2">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Revenue Tracking Platforms</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                    <h3 className="text-lg font-semibold text-foreground mb-1">Revenue Tracking Platforms</h3>
+                    <p className="text-sm text-muted-foreground/70 mb-4">
                       Connected e-commerce and CRM platforms — track revenue only, no advertising spend.
                     </p>
                   </div>
@@ -528,7 +528,7 @@ export default function PlatformComparison() {
                       <Card key={index} className="border-l-4" style={{ borderLeftColor: source.color }}>
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                            <CardTitle className="text-sm font-medium text-muted-foreground/70">
                               {source.name}
                             </CardTitle>
                             {source.platformLabel && (
@@ -540,21 +540,21 @@ export default function PlatformComparison() {
                         </CardHeader>
                         <CardContent className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500">Total Revenue</span>
+                            <span className="text-xs text-muted-foreground">Total Revenue</span>
                             <span className="font-semibold text-green-600 dark:text-green-400">
                               {formatCurrency(source.revenue)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500">Classification</span>
+                            <span className="text-xs text-muted-foreground">Classification</span>
                             <Badge variant="outline" className="text-xs">
                               {source.offsite ? 'Offsite' : 'Onsite'}
                             </Badge>
                           </div>
                           {source.platformLabel && (
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-slate-500">Linked to</span>
-                              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              <span className="text-xs text-muted-foreground">Linked to</span>
+                              <span className="text-xs font-medium text-foreground/80/60">
                                 {source.platformLabel} Ads
                               </span>
                             </div>
@@ -564,12 +564,12 @@ export default function PlatformComparison() {
                     ))}
                   </div>
 
-                  <Card className="bg-slate-50 dark:bg-slate-800/50 border-2">
+                  <Card className="bg-muted/50 border-2">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Total Revenue (All Tracking Sources)</p>
-                          <p className="text-xs text-slate-500 mt-1">{revenueSourcesData.length} source{revenueSourcesData.length !== 1 ? 's' : ''} connected</p>
+                          <p className="text-sm font-medium text-foreground/80/60">Total Revenue (All Tracking Sources)</p>
+                          <p className="text-xs text-muted-foreground mt-1">{revenueSourcesData.length} source{revenueSourcesData.length !== 1 ? 's' : ''} connected</p>
                         </div>
                         <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                           {formatCurrency(totalRevenueSourceRevenue)}
@@ -597,10 +597,10 @@ export default function PlatformComparison() {
                       <CardContent>
                         <div className="space-y-4">
                           {realPlatformMetrics.map((platform, index) => (
-                            <div key={index} className="p-3 border rounded-lg dark:border-slate-700" data-testid={`metrics-detail-${index}`}>
+                            <div key={index} className="p-3 border rounded-lg" data-testid={`metrics-detail-${index}`}>
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center space-x-2">
-                                  <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
+                                  <span className="font-semibold text-foreground">{platform.platform}</span>
                                   {platform.isAnalyticsOnly && (
                                     <Badge variant="outline" className="text-xs">Analytics</Badge>
                                   )}
@@ -609,19 +609,19 @@ export default function PlatformComparison() {
                               </div>
                               <div className="grid grid-cols-4 gap-2 text-xs">
                                 <div>
-                                  <span className="block text-slate-500 font-medium">CTR</span>
-                                  <span className="text-slate-900 dark:text-white font-semibold">{platform.ctr > 0 ? `${platform.ctr.toFixed(2)}%` : '—'}</span>
+                                  <span className="block text-muted-foreground font-medium">CTR</span>
+                                  <span className="text-foreground font-semibold">{platform.ctr > 0 ? `${platform.ctr.toFixed(2)}%` : '—'}</span>
                                 </div>
                                 <div>
-                                  <span className="block text-slate-500 font-medium">CPC</span>
-                                  <span className="text-slate-900 dark:text-white font-semibold">{platform.cpc > 0 ? formatCurrency(platform.cpc) : '—'}</span>
+                                  <span className="block text-muted-foreground font-medium">CPC</span>
+                                  <span className="text-foreground font-semibold">{platform.cpc > 0 ? formatCurrency(platform.cpc) : '—'}</span>
                                 </div>
                                 <div>
-                                  <span className="block text-slate-500 font-medium">Conv. Rate</span>
-                                  <span className="text-slate-900 dark:text-white font-semibold">{platform.conversionRate > 0 ? `${platform.conversionRate.toFixed(2)}%` : '—'}</span>
+                                  <span className="block text-muted-foreground font-medium">Conv. Rate</span>
+                                  <span className="text-foreground font-semibold">{platform.conversionRate > 0 ? `${platform.conversionRate.toFixed(2)}%` : '—'}</span>
                                 </div>
                                 <div>
-                                  <span className="block text-slate-500 font-medium">ROI</span>
+                                  <span className="block text-muted-foreground font-medium">ROI</span>
                                   <span className={`font-semibold ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
                                     {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}
                                   </span>
@@ -646,15 +646,15 @@ export default function PlatformComparison() {
                           {realPlatformMetrics.map((platform, index) => (
                             <div key={index} className="space-y-2">
                               <div className="flex items-center justify-between text-sm">
-                                <span className="font-medium text-slate-900 dark:text-white">{platform.platform}</span>
+                                <span className="font-medium text-foreground">{platform.platform}</span>
                                 <div className="flex items-center space-x-3">
-                                  <span className="text-slate-600 dark:text-slate-400">{platform.roas > 0 ? `${platform.roas.toFixed(2)}x ROAS` : '—'}</span>
-                                  <span className={`font-medium ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`}>
+                                  <span className="text-muted-foreground/70">{platform.roas > 0 ? `${platform.roas.toFixed(2)}x ROAS` : '—'}</span>
+                                  <span className={`font-medium ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground/70'}`}>
                                     {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}% ROI` : '—'}
                                   </span>
                                 </div>
                               </div>
-                              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                              <div className="w-full bg-muted rounded-full h-2">
                                 <div
                                   className="h-2 rounded-full transition-all"
                                   style={{
@@ -663,7 +663,7 @@ export default function PlatformComparison() {
                                   }}
                                 />
                               </div>
-                              <div className="flex justify-between text-xs text-slate-500">
+                              <div className="flex justify-between text-xs text-muted-foreground">
                                 <span>CPA: {platform.conversions > 0 && platform.spend > 0 ? formatCurrency(platform.spend / platform.conversions) : '—'}</span>
                                 <span>{platform.conversions > 0 ? `${formatNumber(platform.conversions)} Conv.` : '—'}</span>
                               </div>
@@ -694,7 +694,7 @@ export default function PlatformComparison() {
                             <div key={index} className="space-y-3">
                               <div className="flex items-center space-x-3">
                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
-                                <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
+                                <span className="font-semibold text-foreground">{platform.platform}</span>
                                 {platform.isAnalyticsOnly && (
                                   <Badge variant="outline" className="text-xs">Analytics</Badge>
                                 )}
@@ -703,12 +703,12 @@ export default function PlatformComparison() {
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between text-sm">
-                                    <span className="text-slate-600 dark:text-slate-400">Impressions</span>
-                                    <span className="font-semibold text-slate-900 dark:text-white">
+                                    <span className="text-muted-foreground/70">Impressions</span>
+                                    <span className="font-semibold text-foreground">
                                       {platform.impressions > 0 ? formatNumber(platform.impressions) : '—'}
                                     </span>
                                   </div>
-                                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                  <div className="w-full bg-muted rounded-full h-2">
                                     <div
                                       className="h-2 rounded-full transition-all"
                                       style={{
@@ -721,12 +721,12 @@ export default function PlatformComparison() {
 
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between text-sm">
-                                    <span className="text-slate-600 dark:text-slate-400">Clicks / Sessions</span>
-                                    <span className="font-semibold text-slate-900 dark:text-white">
+                                    <span className="text-muted-foreground/70">Clicks / Sessions</span>
+                                    <span className="font-semibold text-foreground">
                                       {engagementValue > 0 ? formatNumber(engagementValue) : '—'}
                                     </span>
                                   </div>
-                                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                  <div className="w-full bg-muted rounded-full h-2">
                                     <div
                                       className="h-2 rounded-full transition-all"
                                       style={{
@@ -746,7 +746,7 @@ export default function PlatformComparison() {
                 </>
               ) : (
                 <Card>
-                  <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
+                  <CardContent className="p-6 text-center text-muted-foreground/70">
                     <p>No platform data available. Connect platforms (LinkedIn, Meta) to see performance metrics.</p>
                   </CardContent>
                 </Card>
@@ -788,7 +788,7 @@ export default function PlatformComparison() {
                             </ResponsiveContainer>
                           </div>
                         ) : (
-                          <div className="h-64 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                          <div className="h-64 flex items-center justify-center text-muted-foreground/70">
                             <p>No cost data available</p>
                           </div>
                         )}
@@ -835,16 +835,16 @@ export default function PlatformComparison() {
                                   <div key={index} className="flex items-center justify-between text-sm">
                                     <div className="flex items-center space-x-2">
                                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                                      <span className="text-slate-700 dark:text-slate-300">{entry.name}</span>
+                                      <span className="text-foreground/80/60">{entry.name}</span>
                                     </div>
-                                    <span className="text-slate-600 dark:text-slate-400">{formatCurrency(entry.value)} ({pct}%)</span>
+                                    <span className="text-muted-foreground/70">{formatCurrency(entry.value)} ({pct}%)</span>
                                   </div>
                                 );
                               })}
                             </div>
                           </>
                         ) : (
-                          <div className="h-64 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                          <div className="h-64 flex items-center justify-center text-muted-foreground/70">
                             <p>No budget data available</p>
                           </div>
                         )}
@@ -859,17 +859,17 @@ export default function PlatformComparison() {
                         <TrendingUp className="w-5 h-5" />
                         <span>Return on Investment (ROI) & Return on Ad Spend (ROAS)</span>
                       </CardTitle>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                      <p className="text-sm text-muted-foreground/70 mt-2">
                         ROI shows profit percentage, while ROAS shows revenue multiples
                       </p>
                     </CardHeader>
                     <CardContent>
                       <div className="grid gap-4 md:grid-cols-2">
                         {realPlatformMetrics.map((platform, index) => (
-                          <div key={index} className="p-4 border rounded-lg dark:border-slate-700 space-y-3" data-testid={`roi-card-${index}`}>
+                          <div key={index} className="p-4 border rounded-lg space-y-3" data-testid={`roi-card-${index}`}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
-                                <span className="font-semibold text-slate-900 dark:text-white">{platform.platform}</span>
+                                <span className="font-semibold text-foreground">{platform.platform}</span>
                                 {platform.isAnalyticsOnly && (
                                   <Badge variant="outline" className="text-xs">Analytics</Badge>
                                 )}
@@ -879,31 +879,31 @@ export default function PlatformComparison() {
 
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <div className="text-xs text-slate-500 mb-1">ROI (Profit %)</div>
-                                <div className={`text-2xl font-bold ${platform.spend > 0 ? (platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400') : 'text-slate-400'}`}>
+                                <div className="text-xs text-muted-foreground mb-1">ROI (Profit %)</div>
+                                <div className={`text-2xl font-bold ${platform.spend > 0 ? (platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400') : 'text-muted-foreground/70'}`}>
                                   {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}
                                 </div>
                                 {platform.spend > 0 && (
-                                  <div className="text-xs text-slate-500 mt-1">
+                                  <div className="text-xs text-muted-foreground mt-1">
                                     {platform.roi >= 100 ? 'Excellent' : platform.roi >= 50 ? 'Good' : platform.roi >= 0 ? 'Break-even+' : 'Loss'}
                                   </div>
                                 )}
                               </div>
 
                               <div>
-                                <div className="text-xs text-slate-500 mb-1">ROAS (Revenue)</div>
-                                <div className={`text-2xl font-bold ${platform.roas > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+                                <div className="text-xs text-muted-foreground mb-1">ROAS (Revenue)</div>
+                                <div className={`text-2xl font-bold ${platform.roas > 0 ? 'text-foreground' : 'text-muted-foreground/70'}`}>
                                   {platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}
                                 </div>
                                 {platform.roas > 0 && (
-                                  <div className="text-xs text-slate-500 mt-1">
+                                  <div className="text-xs text-muted-foreground mt-1">
                                     {platform.roas >= 4 ? 'Excellent' : platform.roas >= 3 ? 'Good' : platform.roas >= 1 ? 'Fair' : 'Poor'}
                                   </div>
                                 )}
                               </div>
                             </div>
 
-                            <div className="pt-2 border-t dark:border-slate-600 text-xs text-slate-600 dark:text-slate-400">
+                            <div className="pt-2 border-t dark:border-slate-600 text-xs text-muted-foreground/70">
                               <div className="flex justify-between">
                                 <span>Total Spend:</span>
                                 <span className="font-medium">{platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</span>
@@ -921,7 +921,7 @@ export default function PlatformComparison() {
                 </>
               ) : (
                 <Card>
-                  <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
+                  <CardContent className="p-6 text-center text-muted-foreground/70">
                     <p>No platform data available. Connect platforms (LinkedIn, Meta) to see cost analysis.</p>
                   </CardContent>
                 </Card>
@@ -1081,7 +1081,7 @@ export default function PlatformComparison() {
                         <Zap className="w-5 h-5" />
                         <span>Strategic Recommendations</span>
                       </CardTitle>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                      <p className="text-sm text-muted-foreground/70 mt-2">
                         <strong>Note:</strong> These recommendations are directional guidance based on platform performance data. 
                         Budget allocations and optimization strategies should be validated against your specific business objectives, 
                         profit margins, competitive landscape, and strategic goals before implementation.
@@ -1095,8 +1095,8 @@ export default function PlatformComparison() {
                           const platformsWithData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
                           return platformsWithData.length > 1 && bestROAS ? (
                             <div className="border-l-4 border-green-500 pl-4">
-                              <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Budget Reallocation Strategy</h4>
-                              <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                              <h4 className="font-semibold text-foreground mb-2">Budget Reallocation Strategy</h4>
+                              <ul className="space-y-1 text-sm text-muted-foreground/70">
                                 {platformsWithData.map((platform, idx) => {
                                   const isTop = platform.platform === bestROAS.platform;
                                   const isWeakest = platform.roas === Math.min(...platformsWithData.map(p => p.roas));
@@ -1132,8 +1132,8 @@ export default function PlatformComparison() {
                           const platformsWithData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
                           return platformsWithData.length > 0 ? (
                             <div className="border-l-4 border-blue-500 pl-4">
-                              <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Platform-Specific Optimizations</h4>
-                              <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                              <h4 className="font-semibold text-foreground mb-2">Platform-Specific Optimizations</h4>
+                              <ul className="space-y-1 text-sm text-muted-foreground/70">
                                 {platformsWithData.map((platform, idx) => {
                                   let recommendation = '';
                                   
@@ -1162,7 +1162,7 @@ export default function PlatformComparison() {
                 </div>
               ) : (
                 <Card>
-                  <CardContent className="p-6 text-center text-slate-600 dark:text-slate-400">
+                  <CardContent className="p-6 text-center text-muted-foreground/70">
                     <p>No platform data available. Connect platforms (LinkedIn, Meta) to see insights and recommendations.</p>
                   </CardContent>
                 </Card>

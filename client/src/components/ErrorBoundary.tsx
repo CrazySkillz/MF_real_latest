@@ -52,7 +52,7 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-muted p-4">
           <Card className="w-full max-w-2xl">
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -65,7 +65,7 @@ class ErrorBoundary extends Component<Props, State> {
             </CardHeader>
             <CardContent className="space-y-4">
               {this.state.error && (
-                <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-md">
+                <div className="bg-muted p-4 rounded-md">
                   <p className="text-sm font-mono text-destructive break-all">
                     {this.state.error.toString()}
                   </p>
@@ -74,12 +74,12 @@ class ErrorBoundary extends Component<Props, State> {
                       Stack trace
                     </summary>
                     {"stack" in this.state.error && (this.state.error as any).stack && (
-                      <pre className="mt-2 text-xs overflow-auto max-h-48 bg-slate-900 text-slate-100 p-2 rounded">
+                      <pre className="mt-2 text-xs overflow-auto max-h-48 bg-card text-slate-100 p-2 rounded">
                         {(this.state.error as any).stack}
                       </pre>
                     )}
                     {this.state.errorInfo && (
-                      <pre className="mt-2 text-xs overflow-auto max-h-48 bg-slate-900 text-slate-100 p-2 rounded">
+                      <pre className="mt-2 text-xs overflow-auto max-h-48 bg-card text-slate-100 p-2 rounded">
                         {this.state.errorInfo.componentStack}
                       </pre>
                     )}

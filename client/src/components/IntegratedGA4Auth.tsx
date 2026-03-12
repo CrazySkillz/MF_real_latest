@@ -119,7 +119,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
   }, [campaignId, checkConnectionStatus, cleanupPopup, onError]);
 
   return (
-    <Card className="w-full border border-slate-200">
+    <Card className="w-full border border-border">
       <CardHeader className="text-center">
         <CardTitle className="flex items-center gap-2">
           <SiGoogle className="w-5 h-5 text-blue-600" />
@@ -162,7 +162,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
           </Button>
 
           {isConnecting && (
-            <p className="text-xs text-slate-500 text-center">
+            <p className="text-xs text-muted-foreground text-center">
               We opened a Google sign-in window. Complete the login to continue.
             </p>
           )}

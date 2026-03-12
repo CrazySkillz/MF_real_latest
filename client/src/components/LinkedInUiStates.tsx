@@ -22,7 +22,7 @@ export function LinkedInTabErrorState({
   secondaryAction,
 }: LinkedInTabStateProps) {
   return (
-    <Card className="border-slate-200 dark:border-slate-700">
+    <Card className="border-border">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
@@ -66,13 +66,13 @@ export function LinkedInTabEmptyState({
   secondaryAction,
 }: LinkedInTabStateProps) {
   return (
-    <Card className="border-slate-200 dark:border-slate-700">
+    <Card className="border-border">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="text-sm text-slate-600 dark:text-slate-400">
+        <div className="text-sm text-muted-foreground/70">
           {message || "No data available yet."}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -119,7 +119,7 @@ export class LinkedInErrorBoundary extends React.Component<
 
     return (
       <div className="p-6">
-        <Card className="border-slate-200 dark:border-slate-700">
+        <Card className="border-border">
           <CardHeader>
             <CardTitle>Something went wrong</CardTitle>
             <CardDescription>LinkedIn analytics couldn’t be displayed.</CardDescription>

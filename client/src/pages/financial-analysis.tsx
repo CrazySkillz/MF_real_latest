@@ -130,16 +130,16 @@ export default function FinancialAnalysis() {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              <div className="h-8 bg-muted rounded animate-pulse"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                  <div key={i} className="h-24 bg-muted rounded animate-pulse"></div>
                 ))}
               </div>
             </div>
@@ -151,13 +151,13 @@ export default function FinancialAnalysis() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Campaign not found</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">Campaign not found</h2>
               <Link href="/campaigns">
                 <Button>
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -314,7 +314,7 @@ export default function FinancialAnalysis() {
   } : null;
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="flex">
@@ -332,10 +332,10 @@ export default function FinancialAnalysis() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                  <h1 className="text-3xl font-bold text-foreground">
                     Budget & Financial Analysis
                   </h1>
-                  <p className="text-slate-600 dark:text-slate-400 mt-1">
+                  <p className="text-muted-foreground/70 mt-1">
                     {campaign.name} - Comprehensive financial performance overview
                   </p>
                 </div>
@@ -372,19 +372,19 @@ export default function FinancialAnalysis() {
             <TabsContent value="overview" className="space-y-6">
               {dataLoading ? (
                 <div className="space-y-6">
-                  <div className="h-48 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  <div className="h-48 bg-muted rounded-lg animate-pulse"></div>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
-                    <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                    <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
+                    <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
                   </div>
                   <div className="grid gap-6 md:grid-cols-2">
-                    <div className="h-40 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
-                    <div className="h-40 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                    <div className="h-40 bg-muted rounded-lg animate-pulse"></div>
+                    <div className="h-40 bg-muted rounded-lg animate-pulse"></div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-3">
-                    <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
-                    <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
-                    <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                    <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
+                    <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
+                    <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
                   </div>
                 </div>
               ) : <>
@@ -560,9 +560,9 @@ export default function FinancialAnalysis() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                        <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
                         <div className="flex items-center justify-between">
-                          <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          <p className="text-2xl font-bold text-foreground">
                             {formatCurrency(totalSpend)}
                           </p>
                           {historicalMetrics && renderTrendIndicator(calculateChange(totalSpend, historicalMetrics.spend))}
@@ -577,9 +577,9 @@ export default function FinancialAnalysis() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions</p>
+                        <p className="text-sm font-medium text-muted-foreground/70">Conversions</p>
                         <div className="flex items-center justify-between">
-                          <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          <p className="text-2xl font-bold text-foreground">
                             {formatNumber(totalConversions)}
                           </p>
                           {historicalMetrics && effectiveSnapshot && renderTrendIndicator(calculateChange(totalConversions, effectiveSnapshot.totalConversions || 0))}
@@ -705,8 +705,8 @@ export default function FinancialAnalysis() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Cost Per Click</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                        <p className="text-sm font-medium text-muted-foreground/70">Cost Per Click</p>
+                        <p className="text-xl font-bold text-foreground">
                           {formatCurrency(cpc)}
                         </p>
                       </div>
@@ -719,8 +719,8 @@ export default function FinancialAnalysis() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Cost Per Acquisition</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                        <p className="text-sm font-medium text-muted-foreground/70">Cost Per Acquisition</p>
+                        <p className="text-xl font-bold text-foreground">
                           {formatCurrency(cpa)}
                         </p>
                       </div>
@@ -733,12 +733,12 @@ export default function FinancialAnalysis() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Rate</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                        <p className="text-sm font-medium text-muted-foreground/70">Conversion Rate</p>
+                        <p className="text-xl font-bold text-foreground">
                           {formatPercentage(conversionRate)}
                         </p>
                         {conversionRate > 100 && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          <p className="text-xs text-muted-foreground/70 mt-1">
                             * Exceeds 100% due to view-through conversions from ad impressions
                           </p>
                         )}
@@ -754,8 +754,8 @@ export default function FinancialAnalysis() {
             <TabsContent value="roi-roas" className="space-y-6">
               {dataLoading ? (
                 <div className="space-y-6">
-                  <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
-                  <div className="h-48 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  <div className="h-64 bg-muted rounded-lg animate-pulse"></div>
+                  <div className="h-48 bg-muted rounded-lg animate-pulse"></div>
                 </div>
               ) : <Card>
                 <CardHeader>
@@ -858,7 +858,7 @@ export default function FinancialAnalysis() {
 
                       {/* No data message */}
                       {totalSpend === 0 && (
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
+                        <div className="p-4 bg-muted rounded-lg text-center">
                           <p className="text-sm text-muted-foreground">
                             No platform data available yet. Connect platforms or upload data to see performance breakdown.
                           </p>
@@ -940,7 +940,7 @@ export default function FinancialAnalysis() {
 
                       {/* No data message */}
                       {totalSpend === 0 && (
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
+                        <div className="p-4 bg-muted rounded-lg text-center">
                           <p className="text-sm text-muted-foreground">
                             No platform data available yet. Connect platforms or upload data to see performance breakdown.
                           </p>
@@ -955,7 +955,7 @@ export default function FinancialAnalysis() {
             <TabsContent value="costs" className="space-y-6">
               {dataLoading ? (
                 <div className="space-y-6">
-                  <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  <div className="h-64 bg-muted rounded-lg animate-pulse"></div>
                 </div>
               ) : <Card>
                 <CardHeader>
@@ -1072,7 +1072,7 @@ export default function FinancialAnalysis() {
             <TabsContent value="budget" className="space-y-6">
               {dataLoading ? (
                 <div className="space-y-6">
-                  <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  <div className="h-64 bg-muted rounded-lg animate-pulse"></div>
                 </div>
               ) : <Card>
                 <CardHeader>
@@ -1164,7 +1164,7 @@ export default function FinancialAnalysis() {
                                     <span className="font-medium">{platform.name}</span>
                                     <div className="flex items-center space-x-2">
                                       {hasNoData ? (
-                                        <Badge className="bg-slate-100 text-slate-700">No Data Available</Badge>
+                                        <Badge className="bg-muted text-foreground/80">No Data Available</Badge>
                                       ) : (
                                         <Badge className={
                                           performanceColor === 'green' ? "bg-green-100 text-green-700" : 
@@ -1217,7 +1217,7 @@ export default function FinancialAnalysis() {
             <TabsContent value="insights" className="space-y-6">
               {dataLoading ? (
                 <div className="space-y-6">
-                  <div className="h-64 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  <div className="h-64 bg-muted rounded-lg animate-pulse"></div>
                 </div>
               ) : <Card>
                 <CardHeader>
@@ -1411,7 +1411,7 @@ export default function FinancialAnalysis() {
                             )}
 
                             {platformsWithSpend.length === 0 && (
-                              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
+                              <div className="p-4 bg-muted rounded-lg text-center">
                                 <p className="text-sm text-muted-foreground">
                                   No platform spending data available. Insights will appear when campaign data is collected.
                                 </p>

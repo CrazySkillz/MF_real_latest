@@ -18,8 +18,8 @@ const PLATFORM_OPTIONS = [
   { id: 'google_ads', label: 'Google Ads', icon: 'fab fa-google', color: 'text-red-500' },
   { id: 'ga4', label: 'Google Analytics (GA4)', icon: 'fas fa-chart-line', color: 'text-orange-500' },
   { id: 'twitter_ads', label: 'Twitter / X', icon: 'fab fa-twitter', color: 'text-blue-400' },
-  { id: 'tiktok_ads', label: 'TikTok', icon: 'fab fa-tiktok', color: 'text-slate-800' },
-  { id: 'other', label: 'Other', icon: 'fas fa-globe', color: 'text-slate-500' },
+  { id: 'tiktok_ads', label: 'TikTok', icon: 'fab fa-tiktok', color: 'text-foreground' },
+  { id: 'other', label: 'Other', icon: 'fas fa-globe', color: 'text-muted-foreground' },
 ] as const;
 
 interface GoogleSheetsConnection {
@@ -241,7 +241,7 @@ export function GoogleSheetsDatasetsView({
     return (
       <Card>
         <CardContent className="p-6 text-center">
-          <p className="text-slate-600 dark:text-slate-400">
+          <p className="text-muted-foreground/70">
             No Google Sheets datasets connected yet.
           </p>
         </CardContent>
@@ -252,10 +252,10 @@ export function GoogleSheetsDatasetsView({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+        <h3 className="text-lg font-semibold text-foreground mb-2">
           Connected Datasets ({visibleConnections.length})
         </h3>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
+        <p className="text-sm text-muted-foreground/70">
           Manage your Google Sheets connections and column mappings
         </p>
       </div>
@@ -270,7 +270,7 @@ export function GoogleSheetsDatasetsView({
               key={conn.id}
               className={`${mapped
                   ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"
-                  : "border-slate-200 dark:border-slate-700"
+                  : "border-border"
                 }`}
             >
               <CardContent className="p-4">
@@ -279,7 +279,7 @@ export function GoogleSheetsDatasetsView({
                     <FileSpreadsheet className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium text-slate-900 dark:text-white truncate">
+                        <h4 className="font-medium text-foreground truncate">
                           {conn.spreadsheetName || `Sheet ${conn.spreadsheetId.slice(0, 8)}...`}
                         </h4>
                         {conn.isPrimary && (
@@ -300,7 +300,7 @@ export function GoogleSheetsDatasetsView({
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-muted-foreground/70">
                         {conn.spreadsheetId}
                       </p>
                       {/* Platform badges */}
@@ -344,7 +344,7 @@ export function GoogleSheetsDatasetsView({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 text-slate-400 hover:text-red-600"
+                          className="h-8 w-8 p-0 text-muted-foreground/70 hover:text-red-600"
                           title="Delete connection"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -376,8 +376,8 @@ export function GoogleSheetsDatasetsView({
 
                 {/* Platform selector (expandable) */}
                 {isPlatformExpanded && (
-                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p className="text-xs font-medium text-muted-foreground/70 mb-2">
                       Which platforms does this sheet contain data for?
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -389,7 +389,7 @@ export function GoogleSheetsDatasetsView({
                             className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors ${
                               checked
                                 ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800'
-                                : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
+                                : 'hover:bg-muted border border-transparent'
                             }`}
                           >
                             <Checkbox

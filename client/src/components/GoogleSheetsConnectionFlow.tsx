@@ -286,7 +286,7 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
           <CardDescription>
             Enter your Google Sheets ID manually. You can find this in your spreadsheet URL.
             <br />
-            <span className="text-xs text-slate-400">Example: 1ABC...XYZ from docs.google.com/spreadsheets/d/1ABC...XYZ/edit</span>
+            <span className="text-xs text-muted-foreground/70">Example: 1ABC...XYZ from docs.google.com/spreadsheets/d/1ABC...XYZ/edit</span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -324,8 +324,8 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
           <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
-          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Connected!</h3>
-          <p className="text-slate-500 dark:text-slate-400">
+          <h3 className="text-lg font-medium text-foreground mb-2">Connected!</h3>
+          <p className="text-muted-foreground/70">
             Your Google Sheets data is now connected and will sync automatically.
           </p>
         </CardContent>
@@ -368,7 +368,7 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
                 <div className="space-y-2">
                   <Label>Select Sheet/Tab</Label>
                   {isLoadingSheets ? (
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <RefreshCw className="w-4 h-4 animate-spin" />
                       Loading sheets...
                     </div>
@@ -386,11 +386,11 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-muted-foreground">
                       Using first sheet (default)
                     </p>
                   )}
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground/70">
                     {availableSheets.length > 0 
                       ? `Select which tab to use from this spreadsheet. If not selected, the first tab will be used.`
                       : `The first tab in the spreadsheet will be used.`}
@@ -414,7 +414,7 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
           ) : (
             <div className="text-center py-4">
               <AlertCircle className="w-8 h-8 mx-auto text-orange-500 mb-2" />
-              <p className="text-slate-600 dark:text-slate-400">No spreadsheets found in your Google Drive</p>
+              <p className="text-muted-foreground/70">No spreadsheets found in your Google Drive</p>
               <Button variant="outline" onClick={() => setStep('credentials')} className="mt-4">
                 Try Again
               </Button>
@@ -443,8 +443,8 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
               <FileSpreadsheet className="w-8 h-8 text-green-500" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Connect Your Spreadsheets</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
+              <h3 className="text-lg font-medium text-foreground mb-2">Connect Your Spreadsheets</h3>
+              <p className="text-muted-foreground/70 text-sm">
                 Access your Google Sheets data to automatically import campaign metrics, budgets, and performance data.
               </p>
             </div>
@@ -457,7 +457,7 @@ export function GoogleSheetsConnectionFlow({ campaignId, onConnectionSuccess }: 
           <div className="space-y-4">
             <div>
               <Badge variant="outline" className="mb-3">OAuth Setup Required</Badge>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              <p className="text-sm text-muted-foreground/70 mb-4">
                 To connect Google Sheets, provide your OAuth credentials from Google Cloud Console.
               </p>
             </div>

@@ -63,12 +63,12 @@ export default function IntegrationPanel({ onIntegrationClick }: IntegrationPane
       {/* Add New Integration */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-slate-900">Add Integration</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Add Integration</CardTitle>
         </CardHeader>
         <CardContent>
           {pendingIntegrations.length === 0 ? (
             <div className="text-center py-4">
-              <p className="text-sm text-slate-500">All available platforms are connected!</p>
+              <p className="text-sm text-muted-foreground">All available platforms are connected!</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -81,11 +81,11 @@ export default function IntegrationPanel({ onIntegrationClick }: IntegrationPane
                   <div className="flex items-center space-x-3">
                     <i className={`${integration.icon} ${integration.color} text-xl`}></i>
                     <div className="text-left">
-                      <div className="font-medium text-slate-900">{integration.name}</div>
-                      <div className="text-sm text-slate-500">{integration.description}</div>
+                      <div className="font-medium text-foreground">{integration.name}</div>
+                      <div className="text-sm text-muted-foreground">{integration.description}</div>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/70 group-hover:text-primary transition-colors" />
                 </button>
               ))}
             </div>
@@ -96,7 +96,7 @@ export default function IntegrationPanel({ onIntegrationClick }: IntegrationPane
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-slate-900">Quick Actions</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">

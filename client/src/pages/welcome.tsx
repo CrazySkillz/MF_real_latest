@@ -23,10 +23,10 @@ export default function WelcomePage() {
             </div>
 
             {/* Heading */}
-            <h1 className="text-3xl font-bold text-slate-900 mb-3">
+            <h1 className="text-3xl font-bold text-foreground mb-3">
               Welcome to MimoSaaS
             </h1>
-            <p className="text-slate-500 mb-8 text-lg leading-relaxed">
+            <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
               Get started by creating your first client. All your campaigns, reports, and analytics will be organised under each client.
             </p>
 
@@ -48,13 +48,13 @@ export default function WelcomePage() {
                 { icon: FileText, label: "Reports", desc: "Schedule and export reports" },
                 { icon: Bell, label: "Notifications", desc: "KPI alerts and reminders" },
               ].map(({ icon: Icon, label, desc }) => (
-                <div key={label} className="flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-100">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4 text-slate-400" />
+                <div key={label} className="flex items-start gap-3 p-3 rounded-xl bg-card border border-slate-100">
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4 text-muted-foreground/70" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-700">{label}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                    <p className="text-sm font-medium text-foreground/80">{label}</p>
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">{desc}</p>
                   </div>
                 </div>
               ))}

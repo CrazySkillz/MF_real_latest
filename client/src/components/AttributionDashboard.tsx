@@ -134,7 +134,7 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
     return (
       <Card>
         <CardContent className="p-6">
-          <p className="text-center text-slate-500">Loading channel attribution data...</p>
+          <p className="text-center text-muted-foreground">Loading channel attribution data...</p>
         </CardContent>
       </Card>
     );
@@ -145,9 +145,9 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
       <Card>
         <CardContent className="p-12">
           <div className="text-center">
-            <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Channel Data Available</h3>
-            <p className="text-slate-600 dark:text-slate-400">
+            <Target className="w-12 h-12 text-muted-foreground/70 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Channel Data Available</h3>
+            <p className="text-muted-foreground/70">
               Connect platforms (LinkedIn, Meta, GA4) to see channel attribution data.
             </p>
           </div>
@@ -173,8 +173,8 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Channel Attribution</h2>
-          <p className="text-slate-600 dark:text-slate-400">
+          <h2 className="text-2xl font-bold text-foreground">Channel Attribution</h2>
+          <p className="text-muted-foreground/70">
             Performance breakdown across connected platforms (last 30 days)
           </p>
         </div>
@@ -200,48 +200,48 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-1">
-              <p className="text-sm text-slate-600 dark:text-slate-400">Total Spend</p>
-              <DollarSign className="w-4 h-4 text-slate-400" />
+              <p className="text-sm text-muted-foreground/70">Total Spend</p>
+              <DollarSign className="w-4 h-4 text-muted-foreground/70" />
             </div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmt(totalSpend)}</p>
-            <p className="text-xs text-slate-500 mt-1">{spendChannels.length} channel{spendChannels.length !== 1 ? 's' : ''}</p>
+            <p className="text-2xl font-bold text-foreground">{fmt(totalSpend)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{spendChannels.length} channel{spendChannels.length !== 1 ? 's' : ''}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-1">
-              <p className="text-sm text-slate-600 dark:text-slate-400">Impressions</p>
-              <Eye className="w-4 h-4 text-slate-400" />
+              <p className="text-sm text-muted-foreground/70">Impressions</p>
+              <Eye className="w-4 h-4 text-muted-foreground/70" />
             </div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtN(totalImpressions)}</p>
+            <p className="text-2xl font-bold text-foreground">{fmtN(totalImpressions)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-1">
-              <p className="text-sm text-slate-600 dark:text-slate-400">Clicks</p>
-              <MousePointer className="w-4 h-4 text-slate-400" />
+              <p className="text-sm text-muted-foreground/70">Clicks</p>
+              <MousePointer className="w-4 h-4 text-muted-foreground/70" />
             </div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtN(totalClicks)}</p>
-            <p className="text-xs text-slate-500 mt-1">{totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00'}% CTR</p>
+            <p className="text-2xl font-bold text-foreground">{fmtN(totalClicks)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00'}% CTR</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-1">
-              <p className="text-sm text-slate-600 dark:text-slate-400">Conversions</p>
-              <Target className="w-4 h-4 text-slate-400" />
+              <p className="text-sm text-muted-foreground/70">Conversions</p>
+              <Target className="w-4 h-4 text-muted-foreground/70" />
             </div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtN(totalConversions)}</p>
-            <p className="text-xs text-slate-500 mt-1">{overallCpa > 0 ? fmt(overallCpa) : '—'} CPA</p>
+            <p className="text-2xl font-bold text-foreground">{fmtN(totalConversions)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{overallCpa > 0 ? fmt(overallCpa) : '—'} CPA</p>
           </CardContent>
         </Card>
         {hasRevenue && (
           <Card>
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-1">
-                <p className="text-sm text-slate-600 dark:text-slate-400">Revenue</p>
-                <TrendingUp className="w-4 h-4 text-slate-400" />
+                <p className="text-sm text-muted-foreground/70">Revenue</p>
+                <TrendingUp className="w-4 h-4 text-muted-foreground/70" />
               </div>
               <p className="text-2xl font-bold text-green-600">{fmt(totalRevenue)}</p>
             </CardContent>
@@ -251,10 +251,10 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-1">
-                <p className="text-sm text-slate-600 dark:text-slate-400">ROAS</p>
-                <Activity className="w-4 h-4 text-slate-400" />
+                <p className="text-sm text-muted-foreground/70">ROAS</p>
+                <Activity className="w-4 h-4 text-muted-foreground/70" />
               </div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{overallRoas.toFixed(2)}x</p>
+              <p className="text-2xl font-bold text-foreground">{overallRoas.toFixed(2)}x</p>
             </CardContent>
           </Card>
         )}
@@ -281,49 +281,49 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {ch.spend > 0 && (
                     <div>
-                      <p className="text-slate-500">Spend</p>
+                      <p className="text-muted-foreground">Spend</p>
                       <p className="font-semibold">{fmt(ch.spend)}</p>
                     </div>
                   )}
                   {ch.conversions > 0 && (
                     <div>
-                      <p className="text-slate-500">Conversions</p>
+                      <p className="text-muted-foreground">Conversions</p>
                       <p className="font-semibold">{fmtN(ch.conversions)}</p>
                     </div>
                   )}
                   {ch.clicks > 0 && (
                     <div>
-                      <p className="text-slate-500">Clicks</p>
+                      <p className="text-muted-foreground">Clicks</p>
                       <p className="font-semibold">{fmtN(ch.clicks)}</p>
                     </div>
                   )}
                   {ctr > 0 && (
                     <div>
-                      <p className="text-slate-500">CTR</p>
+                      <p className="text-muted-foreground">CTR</p>
                       <p className="font-semibold">{ctr.toFixed(2)}%</p>
                     </div>
                   )}
                   {cpa > 0 && (
                     <div>
-                      <p className="text-slate-500">CPA</p>
+                      <p className="text-muted-foreground">CPA</p>
                       <p className="font-semibold">{fmt(cpa)}</p>
                     </div>
                   )}
                   {ch.revenue > 0 && (
                     <div>
-                      <p className="text-slate-500">Revenue</p>
+                      <p className="text-muted-foreground">Revenue</p>
                       <p className="font-semibold text-green-600">{fmt(ch.revenue)}</p>
                     </div>
                   )}
                   {roas > 0 && (
                     <div>
-                      <p className="text-slate-500">ROAS</p>
+                      <p className="text-muted-foreground">ROAS</p>
                       <p className="font-semibold">{roas.toFixed(2)}x</p>
                     </div>
                   )}
                   {ch.leads > 0 && (
                     <div>
-                      <p className="text-slate-500">Leads</p>
+                      <p className="text-muted-foreground">Leads</p>
                       <p className="font-semibold">{fmtN(ch.leads)}</p>
                     </div>
                   )}
@@ -402,16 +402,16 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
-                  <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Channel</th>
-                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Spend</th>
-                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Impressions</th>
-                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Clicks</th>
-                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">CTR</th>
-                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Conversions</th>
-                  <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">CPA</th>
-                  {hasRevenue && <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Revenue</th>}
-                  {hasRevenue && totalSpend > 0 && <th className="text-right py-3 px-4 font-medium text-slate-600 dark:text-slate-400">ROAS</th>}
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground/70">Channel</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Spend</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Impressions</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Clicks</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">CTR</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Conversions</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">CPA</th>
+                  {hasRevenue && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Revenue</th>}
+                  {hasRevenue && totalSpend > 0 && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">ROAS</th>}
                 </tr>
               </thead>
               <tbody>
@@ -420,8 +420,8 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
                   const roas = ch.spend > 0 && ch.revenue > 0 ? ch.revenue / ch.spend : 0;
                   const ctr = ch.impressions > 0 ? (ch.clicks / ch.impressions) * 100 : 0;
                   return (
-                    <tr key={ch.name} className="border-b hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">{ch.name}</td>
+                    <tr key={ch.name} className="border-b hover:bg-muted/30">
+                      <td className="py-3 px-4 font-medium text-foreground">{ch.name}</td>
                       <td className="text-right py-3 px-4">{ch.spend > 0 ? fmt(ch.spend) : '—'}</td>
                       <td className="text-right py-3 px-4">{ch.impressions > 0 ? fmtN(ch.impressions) : '—'}</td>
                       <td className="text-right py-3 px-4">{ch.clicks > 0 ? fmtN(ch.clicks) : '—'}</td>
@@ -435,8 +435,8 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
                 })}
               </tbody>
               <tfoot>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 font-semibold">
-                  <td className="py-3 px-4 text-slate-900 dark:text-white">Total</td>
+                <tr className="bg-muted/50 font-semibold">
+                  <td className="py-3 px-4 text-foreground">Total</td>
                   <td className="text-right py-3 px-4">{totalSpend > 0 ? fmt(totalSpend) : '—'}</td>
                   <td className="text-right py-3 px-4">{totalImpressions > 0 ? fmtN(totalImpressions) : '—'}</td>
                   <td className="text-right py-3 px-4">{totalClicks > 0 ? fmtN(totalClicks) : '—'}</td>

@@ -160,7 +160,7 @@ export function SimpleGA4Auth({ campaignId, propertyId, onSuccess, onError }: Si
               value={credentials.propertyId}
               onChange={(e) => setCredentials(prev => ({ ...prev, propertyId: e.target.value }))}
             />
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-muted-foreground">
               Find this in Google Analytics → Admin → Property Settings
             </div>
           </div>
@@ -182,9 +182,9 @@ export function SimpleGA4Auth({ campaignId, propertyId, onSuccess, onError }: Si
           </Button>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+        <div className="p-4 bg-muted rounded-lg">
           <h4 className="font-medium text-sm mb-2">Security Information:</h4>
-          <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+          <ul className="text-xs text-muted-foreground/70 space-y-1">
             <li>• <strong>Secure Authentication:</strong> Your credentials are used to generate secure access tokens</li>
             <li>• <strong>Automatic Renewal:</strong> Tokens are automatically refreshed in the background</li>
             <li>• <strong>Data Protection:</strong> Your login details are not stored permanently</li>

@@ -109,7 +109,7 @@ export default function Navigation() {
       case 'trend-alert':
         return <TrendingUp className="w-4 h-4 text-orange-500" />;
       default:
-        return <Bell className="w-4 h-4 text-slate-500" />;
+        return <Bell className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
@@ -214,9 +214,9 @@ export default function Navigation() {
               <ScrollArea className="h-[400px]">
                 {notifications.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Bell className="w-12 h-12 text-slate-300 mb-3" />
-                    <p className="text-sm text-slate-500">No notifications yet</p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <Bell className="w-12 h-12 text-muted-foreground/60 mb-3" />
+                    <p className="text-sm text-muted-foreground">No notifications yet</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">
                       You'll see alerts here when KPIs need attention
                     </p>
                   </div>
@@ -227,7 +227,7 @@ export default function Navigation() {
                         key={notification.id}
                         role="button"
                         tabIndex={0}
-                        className={`w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''
+                        className={`w-full text-left p-4 hover:bg-muted transition-colors cursor-pointer ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''
                           }`}
                         onClick={() => handleNotificationClick(notification)}
                         onKeyDown={(e) => {
@@ -242,19 +242,19 @@ export default function Navigation() {
                             {getNotificationIcon(notification.type)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium ${!notification.read ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                            <p className={`text-sm font-medium ${!notification.read ? 'text-foreground' : 'text-foreground/80/60'}`}>
                               {notification.title}
                             </p>
-                            <p className={`text-xs mt-0.5 ${!notification.read ? 'text-slate-600 dark:text-slate-400' : 'text-slate-500 dark:text-slate-500'}`}>
+                            <p className={`text-xs mt-0.5 ${!notification.read ? 'text-muted-foreground/70' : 'text-muted-foreground'}`}>
                               {notification.message}
                             </p>
                             <div className="flex items-center gap-2 mt-1">
                               {notification.campaignName && (
-                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                <span className="text-xs text-muted-foreground/70">
                                   Campaign: {notification.campaignName}
                                 </span>
                               )}
-                              <span className="text-xs text-slate-400">
+                              <span className="text-xs text-muted-foreground/70">
                                 {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                               </span>
                             </div>

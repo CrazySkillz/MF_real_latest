@@ -54,7 +54,7 @@ export default function CampaignTable() {
 
   const getPlatformIcon = (platform: string | null) => {
     if (!platform) {
-      return "fas fa-ad text-slate-500";
+      return "fas fa-ad text-muted-foreground";
     }
     switch (platform.toLowerCase()) {
       case "facebook":
@@ -66,7 +66,7 @@ export default function CampaignTable() {
       case "twitter":
         return "fab fa-twitter text-blue-400";
       default:
-        return "fas fa-ad text-slate-500";
+        return "fas fa-ad text-muted-foreground";
     }
   };
 
@@ -77,7 +77,7 @@ export default function CampaignTable() {
       case "paused":
         return <Badge className="bg-warning/10 text-warning border-warning/20">Paused</Badge>;
       case "completed":
-        return <Badge className="bg-slate-100 text-slate-600 border-slate-200">Completed</Badge>;
+        return <Badge className="bg-muted text-muted-foreground border-border">Completed</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -98,7 +98,7 @@ export default function CampaignTable() {
         <CardContent>
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-16 bg-slate-100 rounded animate-pulse"></div>
+              <div key={i} className="h-16 bg-muted rounded animate-pulse"></div>
             ))}
           </div>
         </CardContent>
@@ -110,7 +110,7 @@ export default function CampaignTable() {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-slate-900">Active Campaigns</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Active Campaigns</CardTitle>
           <Button>
             <Plus className="w-4 h-4 mr-2" />
             New Campaign
@@ -120,8 +120,8 @@ export default function CampaignTable() {
       <CardContent>
         {campaigns.length === 0 ? (
           <div className="text-center py-8">
-            <div className="text-lg font-medium text-slate-900 mb-2">No campaigns found</div>
-            <p className="text-slate-500 mb-4">Get started by creating your first marketing campaign</p>
+            <div className="text-lg font-medium text-foreground mb-2">No campaigns found</div>
+            <p className="text-muted-foreground mb-4">Get started by creating your first marketing campaign</p>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
               Create Campaign
@@ -145,11 +145,11 @@ export default function CampaignTable() {
               </TableHeader>
               <TableBody>
                 {campaigns.map((campaign) => (
-                  <TableRow key={campaign.id} className="hover:bg-slate-50">
+                  <TableRow key={campaign.id} className="hover:bg-muted">
                     <TableCell>
                       <div>
-                        <div className="font-medium text-slate-900">{campaign.name}</div>
-                        <div className="text-sm text-slate-500">{campaign.type}</div>
+                        <div className="font-medium text-foreground">{campaign.name}</div>
+                        <div className="text-sm text-muted-foreground">{campaign.type}</div>
                       </div>
                     </TableCell>
                     <TableCell>

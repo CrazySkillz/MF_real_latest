@@ -104,7 +104,7 @@ export default function Audiences() {
   const getPlatformIcons = (platforms: string[]) => {
     return platforms.map((platform, index) => {
       let iconClass = "fas fa-ad";
-      let colorClass = "text-slate-500";
+      let colorClass = "text-muted-foreground";
       
       switch (platform.toLowerCase()) {
         case "facebook":
@@ -135,7 +135,7 @@ export default function Audiences() {
   const avgConversionRate = (audienceSegments.reduce((sum, segment) => sum + segment.conversion_rate, 0) / audienceSegments.length).toFixed(1);
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="flex">
@@ -145,8 +145,8 @@ export default function Audiences() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Audience Management</h1>
-                <p className="text-slate-600 dark:text-slate-400 mt-1">Analyze and manage your customer segments and targeting</p>
+                <h1 className="text-3xl font-bold text-foreground">Audience Management</h1>
+                <p className="text-muted-foreground/70 mt-1">Analyze and manage your customer segments and targeting</p>
               </div>
               
               <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
@@ -221,8 +221,8 @@ export default function Audiences() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Audiences</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{audienceSegments.length}</p>
+                      <p className="text-sm font-medium text-muted-foreground/70">Total Audiences</p>
+                      <p className="text-2xl font-bold text-foreground">{audienceSegments.length}</p>
                     </div>
                     <Users className="w-8 h-8 text-primary" />
                   </div>
@@ -233,8 +233,8 @@ export default function Audiences() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Reach</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(totalAudienceSize)}</p>
+                      <p className="text-sm font-medium text-muted-foreground/70">Total Reach</p>
+                      <p className="text-2xl font-bold text-foreground">{formatNumber(totalAudienceSize)}</p>
                     </div>
                     <Target className="w-8 h-8 text-accent" />
                   </div>
@@ -245,8 +245,8 @@ export default function Audiences() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Conversion</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{avgConversionRate}%</p>
+                      <p className="text-sm font-medium text-muted-foreground/70">Avg. Conversion</p>
+                      <p className="text-2xl font-bold text-foreground">{avgConversionRate}%</p>
                     </div>
                     <TrendingUp className="w-8 h-8 text-warning" />
                   </div>
@@ -257,8 +257,8 @@ export default function Audiences() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Active Segments</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                      <p className="text-sm font-medium text-muted-foreground/70">Active Segments</p>
+                      <p className="text-2xl font-bold text-foreground">
                         {audienceSegments.filter(s => s.status === 'active').length}
                       </p>
                     </div>
@@ -279,24 +279,24 @@ export default function Audiences() {
             <TabsContent value="segments">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Audience Segments</CardTitle>
+                  <CardTitle className="text-lg font-semibold text-foreground">Audience Segments</CardTitle>
                   <CardDescription>Manage your custom audience segments and their performance</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {audienceSegments.map((segment) => (
-                      <div key={segment.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <div key={segment.id} className="border border-border rounded-lg p-4 hover:bg-muted transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="flex items-center space-x-3 mb-2">
-                              <h3 className="font-semibold text-slate-900 dark:text-white">{segment.name}</h3>
+                              <h3 className="font-semibold text-foreground">{segment.name}</h3>
                               {getStatusBadge(segment.status)}
                             </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">{segment.description}</p>
+                            <p className="text-sm text-muted-foreground/70 mb-3">{segment.description}</p>
                             
                             <div className="flex items-center space-x-6 text-sm">
                               <div className="flex items-center space-x-1">
-                                <Users className="w-4 h-4 text-slate-400" />
+                                <Users className="w-4 h-4 text-muted-foreground/70" />
                                 <span className="font-medium">{formatNumber(segment.size)}</span>
                                 <span className={`text-xs ${segment.growth.startsWith('+') ? 'text-accent' : 'text-destructive'}`}>
                                   {segment.growth}
@@ -304,13 +304,13 @@ export default function Audiences() {
                               </div>
                               
                               <div className="flex items-center space-x-1">
-                                <TrendingUp className="w-4 h-4 text-slate-400" />
+                                <TrendingUp className="w-4 h-4 text-muted-foreground/70" />
                                 <span>{segment.conversion_rate}% CVR</span>
                               </div>
                               
                               <div className="flex items-center space-x-1">
                                 {getPlatformIcons(segment.platforms)}
-                                <span className="text-slate-500">{segment.platforms.length} platforms</span>
+                                <span className="text-muted-foreground">{segment.platforms.length} platforms</span>
                               </div>
                             </div>
                           </div>
@@ -335,7 +335,7 @@ export default function Audiences() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Age Distribution</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Age Distribution</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-64">
@@ -362,19 +362,19 @@ export default function Audiences() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Top Locations</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Top Locations</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {locationData.map((location, index) => (
                         <div key={index} className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <MapPin className="w-4 h-4 text-slate-400" />
-                            <span className="font-medium text-slate-900 dark:text-white">{location.location}</span>
+                            <MapPin className="w-4 h-4 text-muted-foreground/70" />
+                            <span className="font-medium text-foreground">{location.location}</span>
                           </div>
                           <div className="flex items-center space-x-3">
                             <Progress value={location.percentage} className="w-20" />
-                            <span className="text-sm text-slate-600 dark:text-slate-400 w-16 text-right">
+                            <span className="text-sm text-muted-foreground/70 w-16 text-right">
                               {formatNumber(location.users)}
                             </span>
                           </div>
@@ -386,7 +386,7 @@ export default function Audiences() {
 
                 <Card className="lg:col-span-2">
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Interest Categories</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Interest Categories</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-64">
@@ -415,12 +415,12 @@ export default function Audiences() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Audience Growth</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Audience Growth</CardTitle>
                     <CardDescription>Monthly audience size changes</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                      <div className="text-center py-8 text-muted-foreground/70">
                         <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
                         <p>Connect your platforms to see audience growth insights</p>
                       </div>
@@ -430,24 +430,24 @@ export default function Audiences() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Performance Insights</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Performance Insights</CardTitle>
                     <CardDescription>Key audience performance metrics</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                      <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                         <span className="text-sm font-medium">Best Performing Segment</span>
                         <span className="text-sm text-accent">Cart Abandoners (12.1% CVR)</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                      <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                         <span className="text-sm font-medium">Fastest Growing</span>
                         <span className="text-sm text-accent">Website Visitors (+23%)</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                      <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                         <span className="text-sm font-medium">Largest Segment</span>
                         <span className="text-sm text-accent">Website Visitors (25.6K)</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                      <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                         <span className="text-sm font-medium">Needs Attention</span>
                         <span className="text-sm text-destructive">Cart Abandoners (-5%)</span>
                       </div>

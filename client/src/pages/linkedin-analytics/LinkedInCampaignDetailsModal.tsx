@@ -45,68 +45,68 @@ export function LinkedInCampaignDetailsModal(props: any) {
         <div className="space-y-6 mt-4">
           {/* Core Metrics Section */}
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Core Metrics</h4>
+            <h4 className="text-sm font-semibold text-foreground">Core Metrics</h4>
             <div className="grid grid-cols-3 gap-4">
               {/* Impressions */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Impressions</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-xs text-muted-foreground/70 uppercase mb-1">Impressions</p>
+                <p className="text-lg font-bold text-foreground">
                   {formatNumber(selectedCampaignDetails?.metrics.impressions || 0)}
                 </p>
               </div>
               {/* Reach */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Reach</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-xs text-muted-foreground/70 uppercase mb-1">Reach</p>
+                <p className="text-lg font-bold text-foreground">
                   {formatNumber(selectedCampaignDetails?.metrics.reach || 0)}
                 </p>
               </div>
               {/* Clicks */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Clicks</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-xs text-muted-foreground/70 uppercase mb-1">Clicks</p>
+                <p className="text-lg font-bold text-foreground">
                   {formatNumber(selectedCampaignDetails?.metrics.clicks || 0)}
                 </p>
               </div>
               {/* Engagements */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Engagements</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-xs text-muted-foreground/70 uppercase mb-1">Engagements</p>
+                <p className="text-lg font-bold text-foreground">
                   {formatNumber(selectedCampaignDetails?.metrics.engagements || 0)}
                 </p>
               </div>
               {/* Spend */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Spend</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-xs text-muted-foreground/70 uppercase mb-1">Spend</p>
+                <p className="text-lg font-bold text-foreground">
                   {formatCurrency(selectedCampaignDetails?.metrics.spend || 0)}
                 </p>
               </div>
               {/* Conversions */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Conversions</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-xs text-muted-foreground/70 uppercase mb-1">Conversions</p>
+                <p className="text-lg font-bold text-foreground">
                   {formatNumber(selectedCampaignDetails?.metrics.conversions || 0)}
                 </p>
               </div>
               {/* Leads */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Leads</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-xs text-muted-foreground/70 uppercase mb-1">Leads</p>
+                <p className="text-lg font-bold text-foreground">
                   {formatNumber(selectedCampaignDetails?.metrics.leads || 0)}
                 </p>
               </div>
               {/* Video Views */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Video Views</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-xs text-muted-foreground/70 uppercase mb-1">Video Views</p>
+                <p className="text-lg font-bold text-foreground">
                   {formatNumber(selectedCampaignDetails?.metrics.videoviews || selectedCampaignDetails?.metrics.videoViews || 0)}
                 </p>
               </div>
               {/* Viral Impressions */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase mb-1">Viral Impressions</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-xs text-muted-foreground/70 uppercase mb-1">Viral Impressions</p>
+                <p className="text-lg font-bold text-foreground">
                   {formatNumber(
                     selectedCampaignDetails?.metrics.viralimpressions || selectedCampaignDetails?.metrics.viralImpressions || 0
                   )}
@@ -116,13 +116,13 @@ export function LinkedInCampaignDetailsModal(props: any) {
           </div>
 
           {/* Derived Metrics Section */}
-          <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Derived Metrics</h4>
+          <div className="space-y-3 pt-4 border-t border-border">
+            <h4 className="text-sm font-semibold text-foreground">Derived Metrics</h4>
             <div className="grid grid-cols-3 gap-4">
               {/* CTR */}
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CTR (Click-Through Rate)</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs text-muted-foreground/70 mb-1">CTR (Click-Through Rate)</p>
+                <p className="text-sm font-semibold text-foreground">
                   {formatPercentage(
                     selectedCampaignDetails?.metrics.impressions > 0
                       ? (selectedCampaignDetails?.metrics.clicks / selectedCampaignDetails?.metrics.impressions) * 100
@@ -132,8 +132,8 @@ export function LinkedInCampaignDetailsModal(props: any) {
               </div>
               {/* CPC */}
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPC (Cost Per Click)</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs text-muted-foreground/70 mb-1">CPC (Cost Per Click)</p>
+                <p className="text-sm font-semibold text-foreground">
                   {formatCurrency(
                     selectedCampaignDetails?.metrics.clicks > 0
                       ? selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.clicks
@@ -143,8 +143,8 @@ export function LinkedInCampaignDetailsModal(props: any) {
               </div>
               {/* CPM */}
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPM (Cost Per Mille)</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs text-muted-foreground/70 mb-1">CPM (Cost Per Mille)</p>
+                <p className="text-sm font-semibold text-foreground">
                   {formatCurrency(
                     selectedCampaignDetails?.metrics.impressions > 0
                       ? (selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.impressions) * 1000
@@ -154,8 +154,8 @@ export function LinkedInCampaignDetailsModal(props: any) {
               </div>
               {/* CVR */}
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CVR (Conversion Rate)</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs text-muted-foreground/70 mb-1">CVR (Conversion Rate)</p>
+                <p className="text-sm font-semibold text-foreground">
                   {formatPercentage(
                     selectedCampaignDetails?.metrics.clicks > 0
                       ? (selectedCampaignDetails?.metrics.conversions / selectedCampaignDetails?.metrics.clicks) * 100
@@ -165,8 +165,8 @@ export function LinkedInCampaignDetailsModal(props: any) {
               </div>
               {/* CPA */}
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPA (Cost Per Acquisition)</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs text-muted-foreground/70 mb-1">CPA (Cost Per Acquisition)</p>
+                <p className="text-sm font-semibold text-foreground">
                   {formatCurrency(
                     selectedCampaignDetails?.metrics.conversions > 0
                       ? selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.conversions
@@ -176,8 +176,8 @@ export function LinkedInCampaignDetailsModal(props: any) {
               </div>
               {/* CPL */}
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">CPL (Cost Per Lead)</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs text-muted-foreground/70 mb-1">CPL (Cost Per Lead)</p>
+                <p className="text-sm font-semibold text-foreground">
                   {formatCurrency(
                     selectedCampaignDetails?.metrics.leads > 0
                       ? selectedCampaignDetails?.metrics.spend / selectedCampaignDetails?.metrics.leads
@@ -187,8 +187,8 @@ export function LinkedInCampaignDetailsModal(props: any) {
               </div>
               {/* ER */}
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ER (Engagement Rate)</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs text-muted-foreground/70 mb-1">ER (Engagement Rate)</p>
+                <p className="text-sm font-semibold text-foreground">
                   {formatPercentage(
                     selectedCampaignDetails?.metrics.impressions > 0
                       ? (selectedCampaignDetails?.metrics.engagements / selectedCampaignDetails?.metrics.impressions) * 100
@@ -218,7 +218,7 @@ export function LinkedInCampaignDetailsModal(props: any) {
               return (
                 <div className="space-y-3 pt-4 border-t border-green-200 dark:border-green-800">
                   <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Revenue Analytics</h4>
+                    <h4 className="text-sm font-semibold text-foreground">Revenue Analytics</h4>
                     <Badge
                       variant="secondary"
                       className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
@@ -229,27 +229,27 @@ export function LinkedInCampaignDetailsModal(props: any) {
                   <div className="grid grid-cols-3 gap-4">
                     {/* Total Revenue */}
                     <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Total Revenue</p>
+                      <p className="text-xs text-muted-foreground/70 mb-1">Total Revenue</p>
                       <p className="text-lg font-bold text-green-700 dark:text-green-400">{formatCurrency(campaignRevenue)}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {campaignConversions.toLocaleString()} conversions × {formatCurrency(conversionValue)}
                       </p>
                     </div>
 
                     {/* ROAS */}
                     <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROAS (Return on Ad Spend)</p>
+                      <p className="text-xs text-muted-foreground/70 mb-1">ROAS (Return on Ad Spend)</p>
                       <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{campaignROAS.toFixed(2)}x</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {formatCurrency(campaignRevenue)} / {formatCurrency(campaignSpend)}
                       </p>
                     </div>
 
                     {/* ROI */}
                     <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROI (Return on Investment)</p>
+                      <p className="text-xs text-muted-foreground/70 mb-1">ROI (Return on Investment)</p>
                       <p className="text-lg font-bold text-purple-700 dark:text-purple-400">{campaignROI.toFixed(1)}%</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{campaignROI >= 0 ? "Profitable" : "Loss"}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{campaignROI >= 0 ? "Profitable" : "Loss"}</p>
                     </div>
 
                     {/* Profit */}
@@ -260,7 +260,7 @@ export function LinkedInCampaignDetailsModal(props: any) {
                           : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
                       }`}
                     >
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit</p>
+                      <p className="text-xs text-muted-foreground/70 mb-1">Profit</p>
                       <p
                         className={`text-lg font-bold ${
                           campaignProfit >= 0 ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
@@ -268,22 +268,22 @@ export function LinkedInCampaignDetailsModal(props: any) {
                       >
                         {formatCurrency(campaignProfit)}
                       </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Revenue - Spend</p>
+                      <p className="text-xs text-muted-foreground mt-1">Revenue - Spend</p>
                     </div>
 
                     {/* Profit Margin */}
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Profit Margin</p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white">{campaignProfitMargin.toFixed(1)}%</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Profit / Revenue</p>
+                    <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                      <p className="text-xs text-muted-foreground/70 mb-1">Profit Margin</p>
+                      <p className="text-lg font-bold text-foreground">{campaignProfitMargin.toFixed(1)}%</p>
+                      <p className="text-xs text-muted-foreground mt-1">Profit / Revenue</p>
                     </div>
 
                     {/* Revenue Per Lead */}
                     {campaignLeads > 0 && (
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Revenue Per Lead</p>
-                        <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(campaignRevenuePerLead)}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{campaignLeads.toLocaleString()} leads</p>
+                      <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                        <p className="text-xs text-muted-foreground/70 mb-1">Revenue Per Lead</p>
+                        <p className="text-lg font-bold text-foreground">{formatCurrency(campaignRevenuePerLead)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{campaignLeads.toLocaleString()} leads</p>
                       </div>
                     )}
                   </div>
@@ -293,8 +293,8 @@ export function LinkedInCampaignDetailsModal(props: any) {
 
           {/* Performance Indicators - Only shown when industry is selected */}
           {campaignData?.industry && selectedCampaignDetails && (
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Performance Analysis</h4>
+            <div className="pt-4 border-t border-border">
+              <h4 className="text-sm font-semibold text-foreground mb-3">Performance Analysis</h4>
               <div className="flex items-center gap-3 flex-wrap">
                 {(() => {
                   const campaignName = selectedCampaignDetails.name;

@@ -191,14 +191,14 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
     return (
       <div className="space-y-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
+          <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="grid gap-4 md:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+              <div key={i} className="h-24 bg-muted rounded"></div>
             ))}
           </div>
-          <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/4 mt-8"></div>
-          <div className="h-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
+          <div className="h-8 bg-muted rounded w-1/4 mt-8"></div>
+          <div className="h-48 bg-muted rounded"></div>
         </div>
       </div>
     );
@@ -208,8 +208,8 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
     <div className="space-y-8">
       {/* Section A: Connected Ad Platforms */}
       <div>
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Connected Ad Platforms</h3>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+        <h3 className="text-lg font-semibold text-foreground mb-1">Connected Ad Platforms</h3>
+        <p className="text-sm text-muted-foreground/70 mb-4">
           Platforms sending advertising data to this campaign. Connect new platforms from the Overview tab.
         </p>
         <div className="grid gap-4 md:grid-cols-3">
@@ -224,11 +224,11 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
                       {connected ? (
                         <CheckCircle2 className="w-5 h-5 text-green-500" />
                       ) : (
-                        <XCircle className="w-5 h-5 text-slate-400" />
+                        <XCircle className="w-5 h-5 text-muted-foreground/70" />
                       )}
                       <div>
-                        <p className="font-medium text-slate-900 dark:text-white">{meta.label}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="font-medium text-foreground">{meta.label}</p>
+                        <p className="text-xs text-muted-foreground">
                           {connected ? 'Connected' : 'Not connected'}
                           {status?.lastConnectedAt && ` · ${new Date(status.lastConnectedAt).toLocaleDateString()}`}
                         </p>
@@ -250,7 +250,7 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
                           title={`Disconnect ${meta.label}`}
                           onClick={() => onDisconnectPlatform(key, meta.label)}
                         >
-                          <Settings className="w-3.5 h-3.5 text-slate-400" />
+                          <Settings className="w-3.5 h-3.5 text-muted-foreground/70" />
                         </Button>
                       )}
                     </div>
@@ -266,8 +266,8 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Revenue Sources</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <h3 className="text-lg font-semibold text-foreground mb-1">Revenue Sources</h3>
+            <p className="text-sm text-muted-foreground/70">
               Connected e-commerce and CRM platforms feeding revenue data into ad platform analytics.
             </p>
           </div>
@@ -289,29 +289,29 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
               const revenue = parseFloat(cfg?.lastTotalRevenue || source.lastTotalRevenue || 0);
 
               return (
-                <Card key={source.id} className="hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
+                <Card key={source.id} className="hover:border-border dark:hover:border-slate-600 transition-colors">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-800">
-                          <IconComp className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-muted">
+                          <IconComp className="w-5 h-5 text-muted-foreground/70" />
                         </div>
                         <div>
                           <div className="flex items-center space-x-2">
-                            <p className="font-medium text-slate-900 dark:text-white">{displayName}</p>
+                            <p className="font-medium text-foreground">{displayName}</p>
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getPlatformBadgeColor(ctx)}`}>
                               {getPlatformLabel(ctx)} Revenue
                             </span>
                           </div>
                           <div className="flex items-center space-x-3 mt-0.5">
-                            <span className="text-xs text-slate-500">{iconInfo.label}</span>
+                            <span className="text-xs text-muted-foreground">{iconInfo.label}</span>
                             {revenue > 0 && (
                               <span className="text-xs font-medium text-green-600 dark:text-green-400">
                                 {formatCurrency(revenue)}
                               </span>
                             )}
                             {source.connectedAt && (
-                              <span className="text-xs text-slate-400">
+                              <span className="text-xs text-muted-foreground/70">
                                 Added {new Date(source.connectedAt).toLocaleDateString()}
                               </span>
                             )}
@@ -340,9 +340,9 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
         ) : (
           <Card className="border-dashed">
             <CardContent className="p-8 text-center">
-              <DollarSign className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">No revenue sources connected</p>
-              <p className="text-xs text-slate-500 mb-4">
+              <DollarSign className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
+              <p className="text-sm font-medium text-muted-foreground/70 mb-1">No revenue sources connected</p>
+              <p className="text-xs text-muted-foreground mb-4">
                 Connect Shopify, HubSpot, Salesforce, or import via CSV/Google Sheets to track revenue.
               </p>
               <Button variant="outline" size="sm" onClick={handleAddRevenue}>
@@ -382,8 +382,8 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Spend Sources</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <h3 className="text-lg font-semibold text-foreground mb-1">Spend Sources</h3>
+            <p className="text-sm text-muted-foreground/70">
               Sources providing advertising spend data (manual entry, CSV, Google Sheets).
             </p>
           </div>
@@ -404,24 +404,24 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
               const totalSpend = parseFloat(cfg?.lastTotalSpend || source.lastTotalSpend || 0);
 
               return (
-                <Card key={source.id} className="hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
+                <Card key={source.id} className="hover:border-border dark:hover:border-slate-600 transition-colors">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-800">
-                          <IconComp className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-muted">
+                          <IconComp className="w-5 h-5 text-muted-foreground/70" />
                         </div>
                         <div>
-                          <p className="font-medium text-slate-900 dark:text-white">{displayName}</p>
+                          <p className="font-medium text-foreground">{displayName}</p>
                           <div className="flex items-center space-x-3 mt-0.5">
-                            <span className="text-xs text-slate-500">{iconInfo.label}</span>
+                            <span className="text-xs text-muted-foreground">{iconInfo.label}</span>
                             {totalSpend > 0 && (
-                              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              <span className="text-xs font-medium text-foreground/80/60">
                                 {formatCurrency(totalSpend)}
                               </span>
                             )}
                             {source.connectedAt && (
-                              <span className="text-xs text-slate-400">
+                              <span className="text-xs text-muted-foreground/70">
                                 Added {new Date(source.connectedAt).toLocaleDateString()}
                               </span>
                             )}
@@ -447,9 +447,9 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
         ) : (
           <Card className="border-dashed">
             <CardContent className="p-8 text-center">
-              <BarChart3 className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">No spend sources connected</p>
-              <p className="text-xs text-slate-500 mb-4">
+              <BarChart3 className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
+              <p className="text-sm font-medium text-muted-foreground/70 mb-1">No spend sources connected</p>
+              <p className="text-xs text-muted-foreground mb-4">
                 Import spend data via manual entry, CSV upload, or Google Sheets.
               </p>
               <Button variant="outline" size="sm" onClick={() => setSpendWizardOpen(true)}>
@@ -484,7 +484,7 @@ export function DataSourcesTab({ campaignId, campaign, connectedPlatformStatuses
               >
                 <CardContent className="flex items-center gap-3 p-3">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }}></div>
-                  <span className="font-medium text-slate-900 dark:text-white">{p.label}</span>
+                  <span className="font-medium text-foreground">{p.label}</span>
                 </CardContent>
               </Card>
             ))}

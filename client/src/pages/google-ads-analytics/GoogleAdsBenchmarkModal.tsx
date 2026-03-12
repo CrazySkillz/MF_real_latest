@@ -397,7 +397,7 @@ export function GoogleAdsBenchmarkModal(props: any) {
               rows={3}
               data-testid="input-benchmark-description"
             />
-            <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+            <div className="text-xs text-muted-foreground/70 text-right">
               {benchmarkForm.description.length}/{BENCHMARK_DESC_MAX}
             </div>
           </div>
@@ -496,7 +496,7 @@ export function GoogleAdsBenchmarkModal(props: any) {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Benchmark value will be auto-filled based on Google Ads industry standards</p>
+              <p className="text-xs text-muted-foreground/70">Benchmark value will be auto-filled based on Google Ads industry standards</p>
             </div>
           )}
 
@@ -514,7 +514,7 @@ export function GoogleAdsBenchmarkModal(props: any) {
                   Enable alerts for this Benchmark
                 </Label>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 pl-6">
+              <p className="text-sm text-muted-foreground/70 pl-6">
                 Receive notifications for Benchmark performance alerts on the bell icon &amp; in your Notifications center
               </p>
             </div>
@@ -536,7 +536,7 @@ export function GoogleAdsBenchmarkModal(props: any) {
                       }}
                       data-testid="input-benchmark-alert-threshold"
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
+                    <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="benchmark-alert-condition">Alert When</Label>
@@ -569,7 +569,7 @@ export function GoogleAdsBenchmarkModal(props: any) {
                         <SelectItem value="weekly">Weekly</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-muted-foreground/70">
                       Controls how often you're notified while the alert condition stays true.
                     </p>
                   </div>
@@ -597,7 +597,7 @@ export function GoogleAdsBenchmarkModal(props: any) {
                           onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
                           data-testid="input-benchmark-email-recipients"
                         />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Comma-separated email addresses for alerts.</p>
+                        <p className="text-xs text-muted-foreground/70">Comma-separated email addresses for alerts.</p>
                       </div>
                     )}
                   </div>

@@ -237,7 +237,7 @@ export function GoogleAdsConnectionFlow({
               </div>
             </div>
           ) : (
-            <div className="text-sm text-slate-500">
+            <div className="text-sm text-muted-foreground">
               <p>No accessible customer accounts found. Make sure your Google account has access to a Google Ads account.</p>
               <Button variant="ghost" className="mt-2" onClick={() => setStep('idle')}>Back</Button>
             </div>
@@ -278,11 +278,11 @@ export function GoogleAdsConnectionFlow({
         </CardHeader>
         <CardContent>
           {loadingCampaigns ? (
-            <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
+            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading campaigns...
             </div>
           ) : adsCampaigns.length === 0 ? (
-            <div className="text-sm text-slate-500 py-4">
+            <div className="text-sm text-muted-foreground py-4">
               <p>No campaigns found yet. Data will be available after the first import.</p>
               <Button className="mt-3" onClick={() => { toast({ title: 'Google Ads Connected!' }); onConnectionSuccess?.(); }}>
                 Continue
@@ -299,7 +299,7 @@ export function GoogleAdsConnectionFlow({
               </div>
               <div className="max-h-60 overflow-y-auto space-y-1 border rounded-md p-2">
                 {adsCampaigns.map((c) => (
-                  <div key={c.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-slate-50 dark:hover:bg-slate-800 rounded">
+                  <div key={c.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-muted rounded">
                     <Checkbox
                       checked={c.selected}
                       onCheckedChange={(checked) => setAdsCampaigns(adsCampaigns.map(x => x.id === c.id ? { ...x, selected: !!checked } : x))}
@@ -308,7 +308,7 @@ export function GoogleAdsConnectionFlow({
                       <p className="text-sm truncate">{c.name}</p>
                     </div>
                     {c.spend > 0 && (
-                      <span className="text-xs text-slate-500 shrink-0">${c.spend.toFixed(0)} spent</span>
+                      <span className="text-xs text-muted-foreground shrink-0">${c.spend.toFixed(0)} spent</span>
                     )}
                   </div>
                 ))}
@@ -349,7 +349,7 @@ export function GoogleAdsConnectionFlow({
               onCheckedChange={setIsTestMode}
               id="google-ads-test-mode"
             />
-            <Label htmlFor="google-ads-test-mode" className="text-xs text-slate-500">
+            <Label htmlFor="google-ads-test-mode" className="text-xs text-muted-foreground">
               Test Mode (use simulated data)
             </Label>
           </div>

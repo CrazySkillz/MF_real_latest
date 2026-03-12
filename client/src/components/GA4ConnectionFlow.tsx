@@ -354,7 +354,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
             {isLoadingCampaigns ? (
               <div className="flex items-center justify-center py-8 border rounded-md">
                 <Loader2 className="w-5 h-5 animate-spin text-blue-600 mr-2" />
-                <span className="text-sm text-slate-500">Loading campaigns from GA4...</span>
+                <span className="text-sm text-muted-foreground">Loading campaigns from GA4...</span>
               </div>
             ) : availableCampaigns.length > 0 ? (
               <div>
@@ -373,7 +373,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   >
                     Clear
                   </Button>
-                  <span className="text-xs text-slate-500 ml-auto">
+                  <span className="text-xs text-muted-foreground ml-auto">
                     {ga4CampaignFilter.length} of {availableCampaigns.length} selected
                   </span>
                 </div>
@@ -383,7 +383,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                     return (
                       <label
                         key={c.name}
-                        className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                        className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
                       >
                         <Checkbox
                           checked={checked}
@@ -396,7 +396,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                           }}
                         />
                         <span className="text-sm flex-1">{c.name}</span>
-                        <span className="text-xs text-slate-500">{c.users.toLocaleString()} users</span>
+                        <span className="text-xs text-muted-foreground">{c.users.toLocaleString()} users</span>
                       </label>
                     );
                   })}
@@ -404,7 +404,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   No UTM campaigns found in this GA4 property for the last 30 days. You can retry or add campaign names manually.
                 </p>
                 <Button
@@ -453,7 +453,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   {ga4CampaignFilter.length > 0 && (
                     <div className="border rounded-md p-2 space-y-1">
                       {ga4CampaignFilter.map((name) => (
-                        <div key={name} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <div key={name} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted">
                           <Checkbox
                             checked={true}
                             onCheckedChange={() => setGa4CampaignFilter(prev => prev.filter(v => v !== name))}
@@ -529,7 +529,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               </div>
             </div>
           ) : (
-            <div className="text-sm text-slate-500">
+            <div className="text-sm text-muted-foreground">
               <p>No GA4 properties found. Make sure your Google account has access to a GA4 property.</p>
               <Button variant="ghost" className="mt-2" onClick={() => setStep('idle')}>Back</Button>
             </div>
@@ -560,7 +560,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               id="ga4-test-mode"
             />
             <Label htmlFor="ga4-test-mode" className="text-sm cursor-pointer">
-              Test mode {isTestMode && <span className="text-xs text-slate-500">(mock data)</span>}
+              Test mode {isTestMode && <span className="text-xs text-muted-foreground">(mock data)</span>}
             </Label>
           </div>
           <Button

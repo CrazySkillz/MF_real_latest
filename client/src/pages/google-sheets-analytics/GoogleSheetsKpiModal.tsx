@@ -129,7 +129,7 @@ export function GoogleSheetsKpiModal(props: any) {
               onChange={(e) => setForm({ ...form, description: e.target.value.slice(0, KPI_DESC_MAX) })}
               rows={3}
             />
-            <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+            <div className="text-xs text-muted-foreground/70 text-right">
               {form.description.length}/{KPI_DESC_MAX}
             </div>
           </div>
@@ -211,7 +211,7 @@ export function GoogleSheetsKpiModal(props: any) {
                   Enable alerts for this KPI
                 </Label>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 pl-6">
+              <p className="text-sm text-muted-foreground/70 pl-6">
                 Receive notifications when this KPI crosses your alert threshold
               </p>
             </div>
@@ -229,7 +229,7 @@ export function GoogleSheetsKpiModal(props: any) {
                       value={form.alertThreshold}
                       onChange={(e) => setForm({ ...form, alertThreshold: formatNumberAsYouType(e.target.value) })}
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
+                    <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="gs-kpi-alert-condition">Alert When</Label>
@@ -285,7 +285,7 @@ export function GoogleSheetsKpiModal(props: any) {
                           value={form.emailRecipients}
                           onChange={(e) => setForm({ ...form, emailRecipients: e.target.value })}
                         />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Comma-separated email addresses</p>
+                        <p className="text-xs text-muted-foreground/70">Comma-separated email addresses</p>
                       </div>
                     )}
                   </div>

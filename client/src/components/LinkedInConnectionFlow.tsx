@@ -535,8 +535,8 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
               <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Successfully Connected!</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mb-3">
+              <h3 className="text-lg font-medium text-foreground mb-2">Successfully Connected!</h3>
+              <p className="text-muted-foreground/70 text-sm mb-3">
                 Your LinkedIn ad data is now connected to this campaign. You can now access detailed analytics and campaign metrics.
               </p>
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-left">
@@ -598,7 +598,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                   className={`border rounded-lg p-4 transition-all ${
                     campaign.selected 
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' 
-                      : 'border-slate-200 dark:border-slate-700'
+                      : 'border-border'
                   }`}
                   data-testid={`campaign-option-${campaign.id}`}
                 >
@@ -614,7 +614,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                       <div className="flex-1">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h4 className="font-medium text-slate-900 dark:text-white">{campaign.name}</h4>
+                            <h4 className="font-medium text-foreground">{campaign.name}</h4>
                             <div className="flex items-center gap-2 mt-1">
                               <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
                                 {campaign.status}
@@ -627,11 +627,11 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
 
                     {/* Metrics Information */}
                     {campaign.selected && (
-                      <div className="ml-9 space-y-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+                      <div className="ml-9 space-y-4 pt-3 border-t border-border">
                         {/* Core Metrics */}
                         <div className="space-y-2">
                           <Label className="text-sm font-medium">Core Metrics</Label>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">These metrics will be imported automatically</p>
+                          <p className="text-xs text-muted-foreground/70">These metrics will be imported automatically</p>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                             {AVAILABLE_METRICS.map((metric) => {
                               const Icon = metric.icon;
@@ -639,12 +639,12 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                               return (
                                 <div
                                   key={metric.key}
-                                  className="flex items-center gap-2 p-2 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+                                  className="flex items-center gap-2 p-2 rounded border border-border bg-muted/50"
                                   data-testid={`core-metric-${campaign.id}-${metric.key}`}
                                 >
                                   <Icon className="w-4 h-4 text-blue-500" />
                                   <div className="flex-1">
-                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{metric.label}</p>
+                                    <p className="text-xs font-medium text-foreground/80/60">{metric.label}</p>
                                   </div>
                                 </div>
                               );
@@ -655,7 +655,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                         {/* Derived Metrics & Revenue Analytics */}
                         <div className="space-y-2">
                           <Label className="text-sm font-medium">Derived Metrics & Revenue Analytics</Label>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Calculated from core metrics</p>
+                          <p className="text-xs text-muted-foreground/70">Calculated from core metrics</p>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                             {[
                               { key: 'ctr', label: 'Click-Through Rate (CTR)', icon: Percent, requiresConversion: false },
@@ -683,7 +683,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                                   <Icon className="w-4 h-4 text-green-600" />
                                   <div className="flex-1">
                                     <div className="flex items-center gap-1 flex-wrap">
-                                      <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{metric.label}</p>
+                                      <p className="text-xs font-medium text-foreground/80/60">{metric.label}</p>
                                       {metric.requiresConversion && (
                                         <TooltipProvider>
                                           <Tooltip>
@@ -716,7 +716,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
           </div>
 
           <div className="flex items-center justify-between pt-4 border-t">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-sm text-muted-foreground/70">
               {selectedCount} campaign{selectedCount !== 1 ? 's' : ''} selected
             </p>
             <div className="flex gap-3">
@@ -785,7 +785,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
           ) : (
             <div className="text-center py-6">
               <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-              <p className="text-slate-600 dark:text-slate-400 mb-4">
+              <p className="text-muted-foreground/70 mb-4">
                 No ad accounts found. Make sure you have admin access to at least one LinkedIn ad account.
               </p>
               <Button 
@@ -811,10 +811,10 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
               <SiLinkedin className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+              <h3 className="text-lg font-medium text-foreground mb-2">
                 {isTestMode ? 'Connecting in Test Mode...' : 'Connecting to LinkedIn...'}
               </h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
+              <p className="text-muted-foreground/70 text-sm">
                 {isTestMode 
                   ? 'Simulating OAuth connection with sample data' 
                   : 'Please complete the authentication in the popup window'}
@@ -839,12 +839,12 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Test Mode Toggle */}
-        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
           <div className="flex items-center gap-2">
-            <FlaskConical className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+            <FlaskConical className="w-4 h-4 text-muted-foreground/70" />
             <div>
               <Label htmlFor="test-mode" className="text-sm font-medium cursor-pointer">Test Mode</Label>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Use sample data for testing</p>
+              <p className="text-xs text-muted-foreground/70">Use sample data for testing</p>
             </div>
           </div>
           <Switch
@@ -865,8 +865,8 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
                 <FlaskConical className="w-3 h-3 mr-1" />
                 Test Mode Active
               </Badge>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Test with Sample Data</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+              <h3 className="text-lg font-medium text-foreground mb-2">Test with Sample Data</h3>
+              <p className="text-muted-foreground/70 text-sm mb-4">
                 Connect using simulated OAuth flow with realistic sample campaign data. Perfect for testing and development.
               </p>
             </div>
@@ -888,8 +888,8 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
             </div>
             <div className="text-center">
               <Badge variant="outline" className="mb-3">Secure sign-in</Badge>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Connect LinkedIn Ads</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+              <h3 className="text-lg font-medium text-foreground mb-2">Connect LinkedIn Ads</h3>
+              <p className="text-muted-foreground/70 text-sm mb-4">
                 Click below to sign in with LinkedIn in a popup window. You’ll come back here automatically and then pick your ad account.
               </p>
             </div>

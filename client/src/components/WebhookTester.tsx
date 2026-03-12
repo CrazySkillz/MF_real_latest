@@ -120,11 +120,11 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <FlaskConical className="w-5 h-5 text-blue-600" />
             Test Conversion Webhook
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-muted-foreground/70 mt-1">
             Send test conversion events to verify webhook integration
           </p>
         </div>
@@ -153,7 +153,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
             <Input
               value={`${window.location.origin}/api/webhook/conversion/${campaignId}`}
               readOnly
-              className="font-mono text-sm bg-white dark:bg-slate-800"
+              className="font-mono text-sm bg-card"
             />
             <Button
               variant="outline"
@@ -165,7 +165,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
               Copy URL
             </Button>
           </div>
-          <div className="mt-3 p-3 bg-white dark:bg-slate-800 rounded border border-blue-200 dark:border-blue-700">
+          <div className="mt-3 p-3 bg-card rounded border border-blue-200 dark:border-blue-700">
             <p className="text-xs font-semibold text-blue-900 dark:text-blue-200 mb-2">
               📋 Production Setup Steps:
             </p>
@@ -226,7 +226,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="value">
-                Value * <span className="text-xs text-slate-500">(Required)</span>
+                Value * <span className="text-xs text-muted-foreground">(Required)</span>
               </Label>
               <Input
                 id="value"
@@ -294,7 +294,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
                 setOccurredAt(date.toISOString());
               }}
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Leave empty to use current time
             </p>
           </div>
@@ -309,7 +309,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
               rows={4}
               className="font-mono text-sm"
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Optional: Additional data as JSON object
             </p>
           </div>
@@ -336,7 +336,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <pre className="text-xs bg-white dark:bg-slate-800 p-3 rounded border overflow-auto max-h-64">
+            <pre className="text-xs bg-card p-3 rounded border overflow-auto max-h-64">
               {JSON.stringify(response, null, 2)}
             </pre>
           </CardContent>
@@ -388,7 +388,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
                 not the fixed conversion value. This is much more accurate!
               </p>
             </div>
-            <div className="bg-white dark:bg-slate-800 p-3 rounded border border-green-200 dark:border-green-700 mt-3">
+            <div className="bg-card p-3 rounded border border-green-200 dark:border-green-700 mt-3">
               <p className="text-xs font-mono text-green-900 dark:text-green-100">
                 <strong>Example:</strong> You send events: $29.99, $149.99, $5.00<br />
                 → Campaign's "Conversion Value" auto-updates to: $61.66 (average)<br />

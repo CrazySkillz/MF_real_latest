@@ -131,7 +131,7 @@ export function SupermetricsStyleAuth({ campaignId, propertyId, onSuccess, onErr
               value={currentPropertyId}
               onChange={(e) => setCurrentPropertyId(e.target.value)}
             />
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-muted-foreground">
               Find this in Google Analytics → Admin → Property Settings
             </div>
           </div>
@@ -161,7 +161,7 @@ export function SupermetricsStyleAuth({ campaignId, propertyId, onSuccess, onErr
                 <p className="font-medium">Setup Required (One-time only)</p>
                 <p>To complete the connection, add our service account to your GA4 property:</p>
                 
-                <div className="bg-white dark:bg-slate-800 p-3 rounded border">
+                <div className="bg-card p-3 rounded border">
                   <div className="flex items-center justify-between">
                     <code className="text-sm font-mono">{serviceAccountEmail}</code>
                     <Button
@@ -199,9 +199,9 @@ export function SupermetricsStyleAuth({ campaignId, propertyId, onSuccess, onErr
           </Alert>
         )}
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+        <div className="p-4 bg-muted rounded-lg">
           <h4 className="font-medium text-sm mb-2">Why Service Account Authentication?</h4>
-          <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+          <ul className="text-xs text-muted-foreground/70 space-y-1">
             <li>• <strong>Enterprise Security:</strong> Same method used by Supermetrics, Funnel, and other professional platforms</li>
             <li>• <strong>No Personal Credentials:</strong> Never requires your Google password</li>
             <li>• <strong>Permanent Access:</strong> Never expires, no re-authentication needed</li>

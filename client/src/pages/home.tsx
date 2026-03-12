@@ -86,7 +86,7 @@ export default function HomePage() {
   const rest = MOCK_NEWS.filter((n) => !n.featured);
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-950">
+    <div className="min-h-screen bg-background">
       <Navigation />
       <div className="flex">
         <Sidebar />
@@ -101,15 +101,15 @@ export default function HomePage() {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+                <h1 className="text-3xl font-bold text-foreground tracking-tight">
                   Welcome to MimoSaaS
                 </h1>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                <p className="text-muted-foreground/70 text-sm">
                   Your marketing command center
                 </p>
               </div>
             </div>
-            <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed max-w-3xl">
+            <p className="text-muted-foreground/70 text-lg leading-relaxed max-w-3xl">
               Track campaigns across every platform, uncover insights with AI-powered analytics,
               and make data-driven decisions that move the needle. All your marketing performance — one dashboard.
             </p>
@@ -121,11 +121,11 @@ export default function HomePage() {
                 { icon: TrendingUp, label: "Real-Time KPIs", desc: "Automated tracking & alerts" },
                 { icon: Zap, label: "AI-Powered Insights", desc: "Anomaly detection & recommendations" },
               ].map(({ icon: Icon, label, desc }) => (
-                <div key={label} className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div key={label} className="flex items-center gap-3 px-4 py-3 bg-card rounded-xl border border-border">
                   <Icon className="w-5 h-5 text-primary shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{label}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{desc}</p>
+                    <p className="text-sm font-medium text-foreground">{label}</p>
+                    <p className="text-xs text-muted-foreground/70">{desc}</p>
                   </div>
                 </div>
               ))}
@@ -134,8 +134,8 @@ export default function HomePage() {
 
           {/* ─── Marketing News ─── */}
           <div className="mb-6 flex items-center gap-2">
-            <Newspaper className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Marketing Pulse</h2>
+            <Newspaper className="w-5 h-5 text-foreground/80/60" />
+            <h2 className="text-xl font-bold text-foreground">Marketing Pulse</h2>
             <Badge variant="outline" className="text-xs">Latest</Badge>
           </div>
 
@@ -156,8 +156,8 @@ export default function HomePage() {
                   </div>
                 </div>
                 <CardContent className="p-5">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{featured.summary}</p>
-                  <div className="flex items-center gap-3 mt-3 text-xs text-slate-400">
+                  <p className="text-muted-foreground/70 text-sm leading-relaxed">{featured.summary}</p>
+                  <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground/70">
                     <span>{featured.date}</span>
                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{featured.readTime} read</span>
                   </div>
@@ -171,11 +171,11 @@ export default function HomePage() {
                 <Card key={article.id} className="flex-1 hover:shadow-lg transition-shadow cursor-pointer group">
                   <CardContent className="p-5 flex flex-col h-full">
                     <Badge className={`w-fit ${CATEGORY_COLORS[article.category] || ""}`}>{article.category}</Badge>
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white mt-2 group-hover:underline decoration-1 underline-offset-2 line-clamp-2">
+                    <h3 className="text-sm font-semibold text-foreground mt-2 group-hover:underline decoration-1 underline-offset-2 line-clamp-2">
                       {article.title}
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 line-clamp-2 flex-1">{article.summary}</p>
-                    <div className="flex items-center gap-3 mt-3 text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground/70 mt-1.5 line-clamp-2 flex-1">{article.summary}</p>
+                    <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground/70">
                       <span>{article.date}</span>
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{article.readTime}</span>
                     </div>
@@ -191,11 +191,11 @@ export default function HomePage() {
               <Card key={article.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
                 <CardContent className="p-5">
                   <Badge className={`w-fit ${CATEGORY_COLORS[article.category] || ""}`}>{article.category}</Badge>
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white mt-2 group-hover:underline decoration-1 underline-offset-2 line-clamp-2">
+                  <h3 className="text-sm font-semibold text-foreground mt-2 group-hover:underline decoration-1 underline-offset-2 line-clamp-2">
                     {article.title}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 line-clamp-3">{article.summary}</p>
-                  <div className="flex items-center gap-3 mt-3 text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground/70 mt-1.5 line-clamp-3">{article.summary}</p>
+                  <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground/70">
                     <span>{article.date}</span>
                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{article.readTime}</span>
                   </div>

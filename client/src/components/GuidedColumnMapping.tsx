@@ -586,7 +586,7 @@ export function GuidedColumnMapping({
     return (
       <div className="flex flex-col items-center justify-center p-8 space-y-4">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <p className="text-slate-600 dark:text-slate-400">Detecting columns from your Google Sheet...</p>
+        <p className="text-muted-foreground/70">Detecting columns from your Google Sheet...</p>
       </div>
     );
   }
@@ -641,7 +641,7 @@ export function GuidedColumnMapping({
                     ? 'bg-blue-600 border-blue-600 text-white'
                     : isCompleted
                     ? 'bg-green-600 border-green-600 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400'
+                    : 'bg-muted border-border dark:border-slate-600 text-muted-foreground/70'
                 }`}>
                   {isCompleted ? (
                     <CheckCircle2 className="w-5 h-5" />
@@ -654,14 +654,14 @@ export function GuidedColumnMapping({
                     ? 'text-blue-600 font-medium'
                     : isCompleted
                     ? 'text-green-600'
-                    : 'text-slate-400'
+                    : 'text-muted-foreground/70'
                 }`}>
                   {step.label}
                 </p>
               </div>
               {index < steps.length - 1 && (
                 <div className={`flex-1 h-0.5 mx-2 ${
-                  isCompleted ? 'bg-green-600' : 'bg-slate-200 dark:bg-slate-700'
+                  isCompleted ? 'bg-green-600' : 'bg-muted'
                 }`} />
               )}
             </div>
@@ -795,8 +795,8 @@ export function GuidedColumnMapping({
           {/* Crosswalk Step */}
           {currentStep === 'crosswalk' && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                <p className="text-sm text-slate-700 dark:text-slate-300">
+              <div className="p-3 rounded-lg bg-muted border border-border">
+                <p className="text-sm text-foreground/80/60">
                   <strong>MetricMind Campaign:</strong> {campaignName}
                 </p>
               </div>
@@ -825,7 +825,7 @@ export function GuidedColumnMapping({
                   </p>
                 )}
                 {uniqueValuesData?.truncated && (
-                  <p className="text-xs mt-2 text-slate-500">
+                  <p className="text-xs mt-2 text-muted-foreground">
                     Showing the first {uniqueValuesData.values.length} values (list truncated).
                   </p>
                 )}
@@ -833,7 +833,7 @@ export function GuidedColumnMapping({
                 {/* Fallback: allow manual entry when values cannot be loaded or list is empty */}
                 {(!uniqueValuesLoading && (uniqueValuesError || (uniqueValuesData && (uniqueValuesData.values || []).length === 0))) && (
                   <div className="mt-3">
-                    <Label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
+                    <Label className="text-xs text-muted-foreground/70 mb-1 block">
                       Or enter a value manually
                     </Label>
                     <Input
@@ -919,7 +919,7 @@ export function GuidedColumnMapping({
 
               {valueMode === 'conversion_value' && selectedConversionValue && (
                 <div className="space-y-3">
-                  <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                  <div className="p-3 rounded-lg border border-border bg-muted">
                     <Label className="text-sm font-medium mb-2 block">
                       What does this column represent?
                     </Label>
@@ -932,7 +932,7 @@ export function GuidedColumnMapping({
                         <RadioGroupItem value="revenue_per_row" id="meaning-rev-row" className="mt-1" />
                         <Label htmlFor="meaning-rev-row" className="cursor-pointer">
                           <div className="font-medium">Actual revenue per row</div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-muted-foreground">
                             Each row is a deal/closed-won amount (or a revenue event). We’ll sum it for the linked campaign.
                           </div>
                         </Label>
@@ -941,7 +941,7 @@ export function GuidedColumnMapping({
                         <RadioGroupItem value="revenue_aggregated" id="meaning-rev-agg" className="mt-1" />
                         <Label htmlFor="meaning-rev-agg" className="cursor-pointer">
                           <div className="font-medium">Pre-aggregated campaign revenue</div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-muted-foreground">
                             Rows may already be totals (often per time period). We’ll sum totals to standardize across periods.
                           </div>
                         </Label>
@@ -950,7 +950,7 @@ export function GuidedColumnMapping({
                         <RadioGroupItem value="value_per_conversion" id="meaning-vpc" className="mt-1" />
                         <Label htmlFor="meaning-vpc" className="cursor-pointer">
                           <div className="font-medium">Estimated value per conversion</div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-muted-foreground">
                             This is not revenue—it's a planning assumption (e.g., "$75 per lead"). We'll multiply by platform conversions.
                           </div>
                         </Label>
@@ -959,12 +959,12 @@ export function GuidedColumnMapping({
                   </div>
 
                   {valueColumnMeaning === 'value_per_conversion' && (
-                    <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="p-3 rounded-lg border border-border">
                       <div className="text-sm font-medium mb-2">Multiple values for this estimate?</div>
                       {dateCandidates.length > 0 ? (
                         <div className="space-y-3">
                           <div>
-                            <Label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
+                            <Label className="text-xs text-muted-foreground/70 mb-1 block">
                               Date column (used to pick the latest value)
                             </Label>
                             <Select value={convValueDateColumn || ""} onValueChange={setConvValueDateColumn}>
@@ -992,13 +992,13 @@ export function GuidedColumnMapping({
                             </div>
                           </RadioGroup>
                           {convValueDateStrategy === 'median' && (
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-muted-foreground">
                               Median protects against outliers and inconsistent entries.
                             </p>
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           No date column detected. We’ll default to the median value to protect against outliers.
                         </p>
                       )}
@@ -1031,7 +1031,7 @@ export function GuidedColumnMapping({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="skip">
-                      <span className="text-slate-500">— Skip (entire sheet is for {platformDisplayName}) —</span>
+                      <span className="text-muted-foreground">— Skip (entire sheet is for {platformDisplayName}) —</span>
                     </SelectItem>
                     {detectedColumns.map((column) => (
                       <SelectItem key={column.index} value={column.index.toString()}>
@@ -1054,8 +1054,8 @@ export function GuidedColumnMapping({
                 </div>
               )}
               {skipPlatform && (
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-xs text-muted-foreground/70">
                     The entire sheet will be used for {platformDisplayName} data.
                   </p>
                 </div>

@@ -221,9 +221,9 @@ export default function PlatformKPIs() {
       case "linkedin":
         return <SiLinkedin className="w-5 h-5 text-blue-700" />;
       case "x":
-        return <SiX className="w-5 h-5 text-slate-900 dark:text-white" />;
+        return <SiX className="w-5 h-5 text-foreground" />;
       default:
-        return <BarChart3 className="w-5 h-5 text-slate-500" />;
+        return <BarChart3 className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
@@ -246,13 +246,13 @@ export default function PlatformKPIs() {
 
   if (!platformType) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Platform not found</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">Platform not found</h2>
               <Link href="/integrations">
                 <Button>
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -268,17 +268,17 @@ export default function PlatformKPIs() {
 
   if (kpisLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-              <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              <div className="h-8 bg-muted rounded animate-pulse"></div>
+              <div className="h-32 bg-muted rounded animate-pulse"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {[...Array(6)].map((_, i) => (
-                  <div key={i} className="h-48 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                  <div key={i} className="h-48 bg-muted rounded animate-pulse"></div>
                 ))}
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function PlatformKPIs() {
   }
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="flex">
@@ -309,10 +309,10 @@ export default function PlatformKPIs() {
                 <div className="flex items-center space-x-3">
                   {getPlatformIcon(platformType)}
                   <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                    <h1 className="text-3xl font-bold text-foreground">
                       {getPlatformName(platformType)} KPIs
                     </h1>
-                    <p className="text-slate-600 dark:text-slate-400 mt-1">
+                    <p className="text-muted-foreground/70 mt-1">
                       Manage key performance indicators for {getPlatformName(platformType)}
                     </p>
                   </div>
@@ -332,8 +332,8 @@ export default function PlatformKPIs() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total KPIs</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpis.length}</p>
+                    <p className="text-sm font-medium text-muted-foreground/70">Total KPIs</p>
+                    <p className="text-2xl font-bold text-foreground">{kpis.length}</p>
                   </div>
                   <Target className="w-8 h-8 text-blue-500" />
                 </div>
@@ -344,8 +344,8 @@ export default function PlatformKPIs() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Achieved</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                    <p className="text-sm font-medium text-muted-foreground/70">Achieved</p>
+                    <p className="text-2xl font-bold text-foreground">
                       {kpis.filter(kpi => kpi.status === "achieved").length}
                     </p>
                   </div>
@@ -358,8 +358,8 @@ export default function PlatformKPIs() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">At Risk</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                    <p className="text-sm font-medium text-muted-foreground/70">At Risk</p>
+                    <p className="text-2xl font-bold text-foreground">
                       {kpis.filter(kpi => kpi.status === "at_risk" || kpi.status === "critical").length}
                     </p>
                   </div>
@@ -372,8 +372,8 @@ export default function PlatformKPIs() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">High Priority</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                    <p className="text-sm font-medium text-muted-foreground/70">High Priority</p>
+                    <p className="text-2xl font-bold text-foreground">
                       {kpis.filter(kpi => kpi.priority === "high" || kpi.priority === "critical").length}
                     </p>
                   </div>
@@ -387,9 +387,9 @@ export default function PlatformKPIs() {
           {kpis.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
-                <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No KPIs yet</h3>
-                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                <Target className="w-12 h-12 text-muted-foreground/70 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No KPIs yet</h3>
+                <p className="text-muted-foreground/70 mb-4">
                   Start tracking your key performance indicators for {getPlatformName(platformType)}.
                 </p>
                 <Button onClick={() => setShowKPIDialog(true)}>
@@ -438,14 +438,14 @@ export default function PlatformKPIs() {
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Current</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                        <p className="text-sm text-muted-foreground/70">Current</p>
+                        <p className="text-2xl font-bold text-foreground">
                           {formatValue(kpi.currentValue, kpi.unit)}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Target</p>
-                        <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">
+                        <p className="text-sm text-muted-foreground/70">Target</p>
+                        <p className="text-lg font-semibold text-foreground/80/60">
                           {formatValue(kpi.targetValue, kpi.unit)}
                         </p>
                       </div>
@@ -455,7 +455,7 @@ export default function PlatformKPIs() {
                       <Badge className={`${getStatusColor(kpi.status)} text-xs`}>
                         {kpi.status.replace('_', ' ')}
                       </Badge>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                      <span className="text-xs text-muted-foreground/70">
                         {kpi.priority} priority
                       </span>
                     </div>

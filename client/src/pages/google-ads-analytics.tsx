@@ -593,7 +593,7 @@ export default function GoogleAdsAnalytics() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-950">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -601,7 +601,7 @@ export default function GoogleAdsAnalytics() {
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600 mx-auto mb-4"></div>
-                <p className="text-slate-600 dark:text-slate-400">Loading Google Ads analytics...</p>
+                <p className="text-muted-foreground/70">Loading Google Ads analytics...</p>
               </div>
             </div>
           </main>
@@ -613,7 +613,7 @@ export default function GoogleAdsAnalytics() {
   // No data state
   if (!summary) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-950">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -624,11 +624,11 @@ export default function GoogleAdsAnalytics() {
               </Link>
               <div className="flex items-center gap-2">
                 <i className="fab fa-google text-yellow-600 text-xl" />
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Google Ads Analytics</h1>
+                <h1 className="text-2xl font-bold text-foreground">Google Ads Analytics</h1>
               </div>
             </div>
             <Card>
-              <CardContent className="py-12 text-center text-slate-500">
+              <CardContent className="py-12 text-center text-muted-foreground">
                 <p className="text-lg font-medium">No data yet</p>
                 <p className="text-sm mt-1">Click "Refresh Data" to generate initial metrics.</p>
               </CardContent>
@@ -1163,7 +1163,7 @@ export default function GoogleAdsAnalytics() {
   const getTimeZoneDisplay = () => userTimeZone.replace(/_/g, ' ');
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-950">
+    <div className="min-h-screen bg-background">
       <Navigation />
       <div className="flex">
         <Sidebar />
@@ -1175,7 +1175,7 @@ export default function GoogleAdsAnalytics() {
             </Link>
             <div className="flex items-center gap-2">
               <i className="fab fa-google text-yellow-600 text-xl" />
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Google Ads Analytics</h1>
+              <h1 className="text-2xl font-bold text-foreground">Google Ads Analytics</h1>
             </div>
             {connection?.connected && (
               <Badge className="bg-blue-600 text-white ml-2">
@@ -1219,32 +1219,32 @@ export default function GoogleAdsAnalytics() {
 
               {/* Financial Metrics */}
               {summary.conversionValue > 0 && (
-                <Card className="border-slate-200 dark:border-slate-700">
+                <Card className="border-border">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Financial Metrics</CardTitle>
                     <CardDescription>Revenue and efficiency metrics from Google Ads conversion tracking</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Spend</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.spend)}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Source: Google Ads</p>
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground/70 mb-1">Total Spend</p>
+                        <p className="text-2xl font-bold text-foreground">{fmtCurrency(summary.spend)}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Source: Google Ads</p>
                       </div>
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Conversion Value</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.conversionValue)}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total value from conversions</p>
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground/70 mb-1">Conversion Value</p>
+                        <p className="text-2xl font-bold text-foreground">{fmtCurrency(summary.conversionValue)}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Total value from conversions</p>
                       </div>
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">ROAS</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{summary.roas.toFixed(2)}x</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Conv. Value / Spend</p>
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground/70 mb-1">ROAS</p>
+                        <p className="text-2xl font-bold text-foreground">{summary.roas.toFixed(2)}x</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Conv. Value / Spend</p>
                       </div>
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">ROI</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{summary.roi.toFixed(1)}%</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Value - Spend) / Spend</p>
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground/70 mb-1">ROI</p>
+                        <p className="text-2xl font-bold text-foreground">{summary.roi.toFixed(1)}%</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">(Value - Spend) / Spend</p>
                       </div>
                     </div>
                   </CardContent>
@@ -1259,37 +1259,37 @@ export default function GoogleAdsAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                       <Activity className="h-5 w-5 text-muted-foreground mb-2" />
                       <p className="text-xs text-muted-foreground font-medium">CTR</p>
                       <p className="text-xl font-bold">{fmtPct(summary.ctr)}</p>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                       <DollarSign className="h-5 w-5 text-muted-foreground mb-2" />
                       <p className="text-xs text-muted-foreground font-medium">CPC</p>
                       <p className="text-xl font-bold">{fmtCurrency(summary.cpc)}</p>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                       <Eye className="h-5 w-5 text-muted-foreground mb-2" />
                       <p className="text-xs text-muted-foreground font-medium">CPM</p>
                       <p className="text-xl font-bold">{fmtCurrency(summary.cpm)}</p>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                       <Target className="h-5 w-5 text-muted-foreground mb-2" />
                       <p className="text-xs text-muted-foreground font-medium">Cost/Conv</p>
                       <p className="text-xl font-bold">{fmtCurrency(summary.costPerConv)}</p>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                       <Activity className="h-5 w-5 text-muted-foreground mb-2" />
                       <p className="text-xs text-muted-foreground font-medium">Conv Rate</p>
                       <p className="text-xl font-bold">{fmtPct(summary.convRate)}</p>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                       <Search className="h-5 w-5 text-muted-foreground mb-2" />
                       <p className="text-xs text-muted-foreground font-medium">Search Imp. Share</p>
                       <p className="text-xl font-bold">{fmtPct(summary.searchImpressionShare)}</p>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                       <DollarSign className="h-5 w-5 text-muted-foreground mb-2" />
                       <p className="text-xs text-muted-foreground font-medium">Conv. Value</p>
                       <p className="text-xl font-bold">{fmtCurrency(summary.conversionValue)}</p>
@@ -1303,8 +1303,8 @@ export default function GoogleAdsAnalytics() {
             <TabsContent value="kpis" className="space-y-6 fade-in">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Track your Google Ads campaign KPIs and targets</p>
+                  <h2 className="text-2xl font-bold text-foreground">Key Performance Indicators</h2>
+                  <p className="text-sm text-muted-foreground/70 mt-1">Track your Google Ads campaign KPIs and targets</p>
                 </div>
                 <Button
                   onClick={() => {
@@ -1312,33 +1312,33 @@ export default function GoogleAdsAnalytics() {
                     setKpiForm({ name: '', metric: '', targetValue: '', description: '', currentValue: '', unit: '', priority: 'high', status: 'active', category: '', timeframe: 'monthly', trackingPeriod: '30', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' });
                     setIsKPIModalOpen(true);
                   }}
-                  variant="outline" size="sm" className="border-slate-300 dark:border-slate-700"
+                  variant="outline" size="sm" className="border-border"
                 >
                   <Plus className="w-4 h-4 mr-2" /> Add KPI
                 </Button>
               </div>
 
               {/* Info bar */}
-              <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">
+              <div className="rounded-md border border-border p-3 text-xs text-muted-foreground/70">
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
-                  <div><span className="font-medium text-slate-700 dark:text-slate-300">KPIs:</span> {kpiTracker.total}</div>
-                  <div><span className="font-medium text-slate-700 dark:text-slate-300">Campaigns:</span> {campaignBreakdown.length}</div>
-                  <div><span className="font-medium text-slate-700 dark:text-slate-300">Data source:</span> Google Ads API</div>
+                  <div><span className="font-medium text-foreground/80/60">KPIs:</span> {kpiTracker.total}</div>
+                  <div><span className="font-medium text-foreground/80/60">Campaigns:</span> {campaignBreakdown.length}</div>
+                  <div><span className="font-medium text-foreground/80/60">Data source:</span> Google Ads API</div>
                 </div>
               </div>
 
               {/* Performance Tracker Panel */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p><p className="text-2xl font-bold text-slate-900 dark:text-white">{kpiTracker.total}</p></div><Target className="w-8 h-8 text-purple-500" /></div></CardContent></Card>
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-slate-600 dark:text-slate-400">On Track</p><p className="text-2xl font-bold text-green-600">{kpiTracker.onTrack}</p><p className="text-xs text-slate-500">meeting or exceeding target</p></div><CheckCircle2 className="w-8 h-8 text-green-500" /></div></CardContent></Card>
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p><p className="text-2xl font-bold text-amber-600">{kpiTracker.needsAttention}</p><p className="text-xs text-slate-500">within 70-90% of target</p></div><AlertCircle className="w-8 h-8 text-amber-500" /></div></CardContent></Card>
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-slate-600 dark:text-slate-400">Behind</p><p className="text-2xl font-bold text-red-600">{kpiTracker.behind}</p><p className="text-xs text-slate-500">below 70% of target</p></div><AlertTriangle className="w-8 h-8 text-red-500" /></div></CardContent></Card>
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p><p className="text-2xl font-bold text-slate-900 dark:text-white">{kpiTracker.avgPct.toFixed(1)}%</p></div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Total KPIs</p><p className="text-2xl font-bold text-foreground">{kpiTracker.total}</p></div><Target className="w-8 h-8 text-purple-500" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">On Track</p><p className="text-2xl font-bold text-green-600">{kpiTracker.onTrack}</p><p className="text-xs text-muted-foreground">meeting or exceeding target</p></div><CheckCircle2 className="w-8 h-8 text-green-500" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Needs Attention</p><p className="text-2xl font-bold text-amber-600">{kpiTracker.needsAttention}</p><p className="text-xs text-muted-foreground">within 70-90% of target</p></div><AlertCircle className="w-8 h-8 text-amber-500" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Behind</p><p className="text-2xl font-bold text-red-600">{kpiTracker.behind}</p><p className="text-xs text-muted-foreground">below 70% of target</p></div><AlertTriangle className="w-8 h-8 text-red-500" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Avg. Progress</p><p className="text-2xl font-bold text-foreground">{kpiTracker.avgPct.toFixed(1)}%</p></div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
               </div>
 
               {/* KPI Cards */}
               {kpisLoading ? (
-                <div className="animate-pulse space-y-4"><div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div><div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div></div>
+                <div className="animate-pulse space-y-4"><div className="h-32 bg-muted rounded"></div><div className="h-32 bg-muted rounded"></div></div>
               ) : Array.isArray(kpisData) && kpisData.length > 0 ? (
                 <div className="grid gap-6 lg:grid-cols-2">
                   {kpisData.map((kpi: any) => {
@@ -1358,18 +1358,18 @@ export default function GoogleAdsAnalytics() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
                                 <CardTitle className="text-lg">{kpi.name}</CardTitle>
-                                {metricKey && <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">{metricKey.toUpperCase()}</Badge>}
+                                {metricKey && <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono">{metricKey.toUpperCase()}</Badge>}
                               </div>
                               <CardDescription className="text-sm">{kpi.description || `Track ${metricDef.label} performance against target`}</CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
                                 onClick={() => { setEditingKPI(kpi); setKpiForm({ name: kpi.name || '', metric: metricKey, targetValue: kpi.targetValue || '', description: kpi.description || '' } as any); setIsKPIModalOpen(true); }}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"><Trash2 className="h-4 w-4" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"><Trash2 className="h-4 w-4" /></Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader><AlertDialogTitle>Delete KPI</AlertDialogTitle><AlertDialogDescription>Are you sure you want to delete "{kpi.name}"? This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
@@ -1381,23 +1381,23 @@ export default function GoogleAdsAnalytics() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current</div>
-                              <div className="text-xl font-bold text-slate-900 dark:text-white">{formatGoogleAdsMetricValue(metricKey, currentVal)}</div>
+                            <div className="p-3 bg-muted rounded-lg">
+                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
+                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, currentVal)}</div>
                             </div>
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Target</div>
-                              <div className="text-xl font-bold text-slate-900 dark:text-white">{formatGoogleAdsMetricValue(metricKey, targetVal)}</div>
+                            <div className="p-3 bg-muted rounded-lg">
+                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">Target</div>
+                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, targetVal)}</div>
                             </div>
                           </div>
                           {targetVal > 0 && (
                             <div className="space-y-2">
-                              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400"><span>Progress</span><span>{Math.round(progress.pct)}%</span></div>
+                              <div className="flex items-center justify-between text-xs text-muted-foreground/70"><span>Progress</span><span>{Math.round(progress.pct)}%</span></div>
                               <Progress value={progressFill} className="h-2" indicatorClassName={progressColor} />
                             </div>
                           )}
                           {targetVal > 0 && (
-                            <div className="text-xs text-slate-600 dark:text-slate-400">
+                            <div className="text-xs text-muted-foreground/70">
                               {Math.abs(deltaPct) < 0.01 ? 'At target' : deltaPct > 0 ? `${Math.round(Math.abs(deltaPct))}% above target (+${deltaPct.toFixed(1)}%)` : `${Math.round(Math.abs(deltaPct))}% below target (${deltaPct.toFixed(1)}%)`}
                             </div>
                           )}
@@ -1407,7 +1407,7 @@ export default function GoogleAdsAnalytics() {
                   })}
                 </div>
               ) : (
-                <div className="text-sm text-slate-600 dark:text-slate-400">No KPIs have been created yet. Click "Add KPI" to track your first Google Ads performance indicator.</div>
+                <div className="text-sm text-muted-foreground/70">No KPIs have been created yet. Click "Add KPI" to track your first Google Ads performance indicator.</div>
               )}
             </TabsContent>
 
@@ -1415,8 +1415,8 @@ export default function GoogleAdsAnalytics() {
             <TabsContent value="benchmarks" className="space-y-6 fade-in">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Benchmarks</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Compare your Google Ads metrics against industry benchmarks</p>
+                  <h2 className="text-2xl font-bold text-foreground">Benchmarks</h2>
+                  <p className="text-sm text-muted-foreground/70 mt-1">Compare your Google Ads metrics against industry benchmarks</p>
                 </div>
                 <Button
                   onClick={() => {
@@ -1424,7 +1424,7 @@ export default function GoogleAdsAnalytics() {
                     setBenchmarkForm({ name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', unit: '', benchmarkType: 'industry', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' });
                     setIsBenchmarkModalOpen(true);
                   }}
-                  variant="outline" size="sm" className="border-slate-300 dark:border-slate-700"
+                  variant="outline" size="sm" className="border-border"
                 >
                   <Plus className="w-4 h-4 mr-2" /> Add Benchmark
                 </Button>
@@ -1432,16 +1432,16 @@ export default function GoogleAdsAnalytics() {
 
               {/* Benchmark Tracker Panel */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p><p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.total}</p></div><Target className="w-8 h-8 text-purple-500" /></div></CardContent></Card>
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-slate-600 dark:text-slate-400">On Track</p><p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p><p className="text-xs text-slate-500">meeting or exceeding benchmark</p></div><CheckCircle2 className="w-8 h-8 text-green-500" /></div></CardContent></Card>
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p><p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p><p className="text-xs text-slate-500">within 70-90% of benchmark</p></div><AlertCircle className="w-8 h-8 text-amber-500" /></div></CardContent></Card>
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-slate-600 dark:text-slate-400">Behind</p><p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p><p className="text-xs text-slate-500">below 70% of benchmark</p></div><AlertTriangle className="w-8 h-8 text-red-500" /></div></CardContent></Card>
-                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p><p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.avgPct.toFixed(1)}%</p></div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Total Benchmarks</p><p className="text-2xl font-bold text-foreground">{benchmarkTracker.total}</p></div><Target className="w-8 h-8 text-purple-500" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">On Track</p><p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p><p className="text-xs text-muted-foreground">meeting or exceeding benchmark</p></div><CheckCircle2 className="w-8 h-8 text-green-500" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Needs Attention</p><p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p><p className="text-xs text-muted-foreground">within 70-90% of benchmark</p></div><AlertCircle className="w-8 h-8 text-amber-500" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Behind</p><p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p><p className="text-xs text-muted-foreground">below 70% of benchmark</p></div><AlertTriangle className="w-8 h-8 text-red-500" /></div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Avg. Progress</p><p className="text-2xl font-bold text-foreground">{benchmarkTracker.avgPct.toFixed(1)}%</p></div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
               </div>
 
               {/* Benchmark Cards */}
               {benchmarksLoading ? (
-                <div className="animate-pulse space-y-4"><div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div></div>
+                <div className="animate-pulse space-y-4"><div className="h-32 bg-muted rounded"></div></div>
               ) : Array.isArray(benchmarksData) && benchmarksData.length > 0 ? (
                 <div className="grid gap-6 lg:grid-cols-2">
                   {benchmarksData.map((b: any) => {
@@ -1460,19 +1460,19 @@ export default function GoogleAdsAnalytics() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
                                 <CardTitle className="text-lg">{b.name}</CardTitle>
-                                {metricKey && <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">{metricKey.toUpperCase()}</Badge>}
+                                {metricKey && <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono">{metricKey.toUpperCase()}</Badge>}
                                 {b.industry && <Badge variant="secondary" className="text-xs">{b.industry}</Badge>}
                               </div>
                               <CardDescription className="text-sm">{b.description || `Benchmark ${metricDef.label} against industry standards`}</CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
                                 onClick={() => { setEditingBenchmark(b); setBenchmarkForm({ name: b.name || '', metric: metricKey, benchmarkValue: b.benchmarkValue || b.targetValue || '', description: b.description || '', industry: b.industry || '', currentValue: '', unit: '', benchmarkType: b.benchmarkType || 'industry', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' }); setIsBenchmarkModalOpen(true); }}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"><Trash2 className="h-4 w-4" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"><Trash2 className="h-4 w-4" /></Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader><AlertDialogTitle>Delete Benchmark</AlertDialogTitle><AlertDialogDescription>Are you sure you want to delete "{b.name}"? This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
@@ -1484,18 +1484,18 @@ export default function GoogleAdsAnalytics() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current</div>
-                              <div className="text-xl font-bold text-slate-900 dark:text-white">{formatGoogleAdsMetricValue(metricKey, currentVal)}</div>
+                            <div className="p-3 bg-muted rounded-lg">
+                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
+                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, currentVal)}</div>
                             </div>
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Benchmark</div>
-                              <div className="text-xl font-bold text-slate-900 dark:text-white">{formatGoogleAdsMetricValue(metricKey, benchVal)}</div>
+                            <div className="p-3 bg-muted rounded-lg">
+                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">Benchmark</div>
+                              <div className="text-xl font-bold text-foreground">{formatGoogleAdsMetricValue(metricKey, benchVal)}</div>
                             </div>
                           </div>
                           {benchVal > 0 && (
                             <div className="space-y-2">
-                              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400"><span>Progress</span><span>{Math.round(progress.pct)}%</span></div>
+                              <div className="flex items-center justify-between text-xs text-muted-foreground/70"><span>Progress</span><span>{Math.round(progress.pct)}%</span></div>
                               <Progress value={progressFill} className="h-2" indicatorClassName={progressColor} />
                             </div>
                           )}
@@ -1505,7 +1505,7 @@ export default function GoogleAdsAnalytics() {
                   })}
                 </div>
               ) : (
-                <div className="text-sm text-slate-600 dark:text-slate-400">No benchmarks have been created yet. Click "Add Benchmark" to compare your metrics against industry standards.</div>
+                <div className="text-sm text-muted-foreground/70">No benchmarks have been created yet. Click "Add Benchmark" to compare your metrics against industry standards.</div>
               )}
             </TabsContent>
 
@@ -1513,8 +1513,8 @@ export default function GoogleAdsAnalytics() {
             <TabsContent value="ad-comparison" className="space-y-6 fade-in">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Campaign Comparison</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Compare performance across all Google Ads campaigns</p>
+                  <h2 className="text-2xl font-bold text-foreground">Campaign Comparison</h2>
+                  <p className="text-sm text-muted-foreground/70 mt-1">Compare performance across all Google Ads campaigns</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Select value={sortBy} onValueChange={setSortBy}>
@@ -1544,7 +1544,7 @@ export default function GoogleAdsAnalytics() {
                       {bestPerforming && (
                         <div>
                           <p className="font-semibold text-green-600">{bestPerforming.name}</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400">Conversions: {fmt(Math.round(bestPerforming.conversions))} | CTR: {fmtPct(bestPerforming.ctr)}</p>
+                          <p className="text-xs text-muted-foreground/70">Conversions: {fmt(Math.round(bestPerforming.conversions))} | CTR: {fmtPct(bestPerforming.ctr)}</p>
                         </div>
                       )}
                     </CardContent>
@@ -1557,7 +1557,7 @@ export default function GoogleAdsAnalytics() {
                       {mostEfficient && (
                         <div>
                           <p className="font-semibold text-blue-600">{mostEfficient.name}</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400">CPC: {fmtCurrency(mostEfficient.cpc)} | CPM: {fmtCurrency(mostEfficient.cpm)}</p>
+                          <p className="text-xs text-muted-foreground/70">CPC: {fmtCurrency(mostEfficient.cpc)} | CPM: {fmtCurrency(mostEfficient.cpm)}</p>
                         </div>
                       )}
                     </CardContent>
@@ -1570,7 +1570,7 @@ export default function GoogleAdsAnalytics() {
                       {needsAttentionCampaign && needsAttentionCampaign.name !== mostEfficient?.name && (
                         <div>
                           <p className="font-semibold text-orange-600">{needsAttentionCampaign.name}</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400">CTR: {fmtPct(needsAttentionCampaign.ctr)} | Conv Rate: {fmtPct(needsAttentionCampaign.conversionRate)}</p>
+                          <p className="text-xs text-muted-foreground/70">CTR: {fmtPct(needsAttentionCampaign.ctr)} | Conv Rate: {fmtPct(needsAttentionCampaign.conversionRate)}</p>
                         </div>
                       )}
                     </CardContent>
@@ -1617,8 +1617,8 @@ export default function GoogleAdsAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Total {campaignChartLabel.replace(/ \(.*\)/, '')}</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                        <p className="text-sm text-muted-foreground/70">Total {campaignChartLabel.replace(/ \(.*\)/, '')}</p>
+                        <p className="text-2xl font-bold text-foreground">
                           {(() => {
                             if (sortBy === 'ctr') {
                               const totalImpressions = campaignBreakdown.reduce((s: number, c: any) => s + c.impressions, 0);
@@ -1639,8 +1639,8 @@ export default function GoogleAdsAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Campaigns Compared</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{campaignBreakdown.length}</p>
+                        <p className="text-sm text-muted-foreground/70">Campaigns Compared</p>
+                        <p className="text-2xl font-bold text-foreground">{campaignBreakdown.length}</p>
                       </div>
                       <Activity className="w-8 h-8 text-purple-500" />
                     </div>
@@ -1658,7 +1658,7 @@ export default function GoogleAdsAnalytics() {
                   <div className="overflow-hidden border rounded-md">
                     <div className="max-h-[480px] overflow-y-auto">
                       <table className="w-full text-sm table-fixed">
-                        <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
+                        <thead className="sticky top-0 z-10 bg-muted border-b">
                           <tr>
                             <th className="text-left font-medium px-2 py-2 w-[40px]">#</th>
                             <th className="text-left font-medium px-2 py-2">Campaign</th>
@@ -1682,8 +1682,8 @@ export default function GoogleAdsAnalytics() {
                                 key={c.name || idx}
                                 className={`border-b last:border-b-0 ${isTop ? "bg-emerald-50 dark:bg-emerald-900/10" : isBottom ? "bg-red-50 dark:bg-red-900/10" : ""}`}
                               >
-                                <td className="px-2 py-2 text-slate-500 tabular-nums">{idx + 1}</td>
-                                <td className="px-2 py-2 truncate font-medium text-slate-900 dark:text-white" title={c.name}>{c.name}</td>
+                                <td className="px-2 py-2 text-muted-foreground tabular-nums">{idx + 1}</td>
+                                <td className="px-2 py-2 truncate font-medium text-foreground" title={c.name}>{c.name}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{fmt(c.impressions)}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{fmt(c.clicks)}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{fmtCurrency(c.spend)}</td>
@@ -1691,8 +1691,8 @@ export default function GoogleAdsAnalytics() {
                                 <td className="px-2 py-2 text-right tabular-nums">{fmtPct(c.conversionRate)}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{fmtCurrency(c.cpc)}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{c.roas.toFixed(2)}x</td>
-                                <td className="px-2 py-2 text-right tabular-nums">{c.ga4Roas !== null ? fmtCurrency(c.ga4Revenue) : <span className="text-slate-400">—</span>}</td>
-                                <td className={`px-2 py-2 text-right tabular-nums font-medium ${c.ga4Roas === null ? "text-slate-400" : c.ga4Roas >= 1 ? "text-emerald-600" : "text-red-600"}`}>
+                                <td className="px-2 py-2 text-right tabular-nums">{c.ga4Roas !== null ? fmtCurrency(c.ga4Revenue) : <span className="text-muted-foreground/70">—</span>}</td>
+                                <td className={`px-2 py-2 text-right tabular-nums font-medium ${c.ga4Roas === null ? "text-muted-foreground/70" : c.ga4Roas >= 1 ? "text-emerald-600" : "text-red-600"}`}>
                                   {c.ga4Roas !== null ? `${c.ga4Roas.toFixed(2)}x` : "—"}
                                 </td>
                               </tr>
@@ -1709,8 +1709,8 @@ export default function GoogleAdsAnalytics() {
             {/* ==================== INSIGHTS TAB ==================== */}
             <TabsContent value="insights" className="space-y-6 fade-in">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                <h2 className="text-2xl font-bold text-foreground">Insights</h2>
+                <p className="text-sm text-muted-foreground/70 mt-1">
                   Actionable insights from financial integrity checks plus KPI + Benchmark performance.
                 </p>
               </div>
@@ -1727,34 +1727,34 @@ export default function GoogleAdsAnalytics() {
                   <div className="grid gap-4 md:grid-cols-4">
                     <Card>
                       <CardContent className="p-5">
-                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.spend)}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Source: Google Ads</div>
+                        <div className="text-sm font-medium text-muted-foreground/70">Spend</div>
+                        <div className="text-2xl font-bold text-foreground">{fmtCurrency(summary.spend)}</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">Source: Google Ads</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-5">
-                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Value</div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{fmtCurrency(summary.conversionValue)}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total value from conversions</div>
+                        <div className="text-sm font-medium text-muted-foreground/70">Conversion Value</div>
+                        <div className="text-2xl font-bold text-foreground">{fmtCurrency(summary.conversionValue)}</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">Total value from conversions</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-5">
-                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{summary.roas.toFixed(2)}x</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Conv. Value / Spend</div>
+                        <div className="text-sm font-medium text-muted-foreground/70">ROAS</div>
+                        <div className="text-2xl font-bold text-foreground">{summary.roas.toFixed(2)}x</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">Conv. Value / Spend</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-5">
-                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{fmtPct(summary.roi)}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">((Value - Spend) / Spend)</div>
+                        <div className="text-sm font-medium text-muted-foreground/70">ROI</div>
+                        <div className="text-2xl font-bold text-foreground">{fmtPct(summary.roi)}</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">((Value - Spend) / Spend)</div>
                       </CardContent>
                     </Card>
                   </div>
-                  <div className="mt-4 pt-3 border-t text-xs text-slate-600 dark:text-slate-400">
+                  <div className="mt-4 pt-3 border-t text-xs text-muted-foreground/70">
                     <div className="font-medium mb-1">Sources used</div>
                     <div className="grid gap-1">
                       <div><span className="font-medium">Spend</span>: Google Ads import session</div>
@@ -1807,8 +1807,8 @@ export default function GoogleAdsAnalytics() {
                     const minRequired = insightsTrendMode === 'daily' ? 2 : insightsTrendMode === '7d' ? 14 : 60;
                     const available = insightsRollups.availableDays;
 
-                    if (available <= 0) return <div className="text-sm text-slate-600 dark:text-slate-400">No daily history available yet.</div>;
-                    if (available < minRequired) return <div className="text-sm text-slate-600 dark:text-slate-400">Need at least {minRequired} days for this view. Available: {available}.</div>;
+                    if (available <= 0) return <div className="text-sm text-muted-foreground/70">No daily history available yet.</div>;
+                    if (available < minRequired) return <div className="text-sm text-muted-foreground/70">Need at least {minRequired} days for this view. Available: {available}.</div>;
 
                     const formatChartValue = (v: any) => {
                       const n = Number(v || 0) || 0;
@@ -1840,7 +1840,7 @@ export default function GoogleAdsAnalytics() {
                           {insightsTrendMode === 'daily' ? (
                             <div>
                               <table className="w-full text-sm table-fixed">
-                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                <thead className="bg-muted border-b">
                                   <tr>
                                     <th className="text-left p-3 w-[38%]">Date</th>
                                     <th className="text-right p-3 w-[31%]">{labels[insightsTrendMetric] || 'Metric'}</th>
@@ -1852,7 +1852,7 @@ export default function GoogleAdsAnalytics() {
                                     const daily = dailySeries.daily;
                                     const visibleDays = insightsDailyShowMore ? 14 : 7;
                                     const rows = daily.slice(-visibleDays);
-                                    if (rows.length === 0) return <tr><td colSpan={3} className="p-4 text-sm text-slate-600 dark:text-slate-400">No daily records available yet.</td></tr>;
+                                    if (rows.length === 0) return <tr><td colSpan={3} className="p-4 text-sm text-muted-foreground/70">No daily records available yet.</td></tr>;
                                     return rows.map((r: any, idx: number, arr: any[]) => {
                                       const prev = idx > 0 ? arr[idx - 1] : null;
                                       const curVal = Number(r?.[insightsTrendMetric] ?? 0) || 0;
@@ -1861,9 +1861,9 @@ export default function GoogleAdsAnalytics() {
                                       const showDelta = !!prev && prevVal > 0;
                                       return (
                                         <tr key={r.date} className="border-b">
-                                          <td className="p-3"><div className="font-medium text-slate-900 dark:text-white">{formatShortDate(String(r.date || ''))}</div></td>
-                                          <td className="p-3 text-right"><div className="font-medium text-slate-900 dark:text-white">{formatChartValue(curVal)}</div></td>
-                                          <td className="p-3 text-right"><div className={`text-xs ${showDelta ? (deltaPctVal >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300') : 'text-slate-400'}`}>{showDelta ? `${deltaPctVal >= 0 ? '+' : ''}${deltaPctVal.toFixed(1)}%` : '—'}</div></td>
+                                          <td className="p-3"><div className="font-medium text-foreground">{formatShortDate(String(r.date || ''))}</div></td>
+                                          <td className="p-3 text-right"><div className="font-medium text-foreground">{formatChartValue(curVal)}</div></td>
+                                          <td className="p-3 text-right"><div className={`text-xs ${showDelta ? (deltaPctVal >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300') : 'text-muted-foreground/70'}`}>{showDelta ? `${deltaPctVal >= 0 ? '+' : ''}${deltaPctVal.toFixed(1)}%` : '—'}</div></td>
                                         </tr>
                                       );
                                     });
@@ -1871,14 +1871,14 @@ export default function GoogleAdsAnalytics() {
                                 </tbody>
                               </table>
                               {dailySeries.daily.length > 7 && (
-                                <div className="flex justify-end px-3 py-2 bg-white dark:bg-slate-950">
+                                <div className="flex justify-end px-3 py-2 bg-card">
                                   <Button type="button" variant="ghost" size="sm" onClick={() => setInsightsDailyShowMore((v) => !v)} className="h-8 text-xs">{insightsDailyShowMore ? 'View less' : 'View more'}</Button>
                                 </div>
                               )}
                             </div>
                           ) : (
                             <table className="w-full text-sm table-fixed">
-                              <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                              <thead className="bg-muted border-b">
                                 <tr>
                                   <th className="text-left p-3 w-[38%]">Period</th>
                                   <th className="text-right p-3 w-[31%]">{labels[insightsTrendMetric] || 'Metric'}</th>
@@ -1889,7 +1889,7 @@ export default function GoogleAdsAnalytics() {
                                 {(() => {
                                   const is7 = insightsTrendMode === '7d';
                                   const minReq = is7 ? 14 : 60;
-                                  if (insightsRollups.availableDays < minReq) return <tr><td colSpan={3} className="p-4 text-sm text-slate-600 dark:text-slate-400">Need at least {minReq} days. Available: {insightsRollups.availableDays}.</td></tr>;
+                                  if (insightsRollups.availableDays < minReq) return <tr><td colSpan={3} className="p-4 text-sm text-muted-foreground/70">Need at least {minReq} days. Available: {insightsRollups.availableDays}.</td></tr>;
                                   const row = is7
                                     ? { key: '7d', cur: insightsRollups.last7, d: insightsRollups.deltas, label: 'Last 7d vs prior 7d' }
                                     : { key: '30d', cur: insightsRollups.last30, d: insightsRollups.deltas, label: 'Last 30d vs prior 30d' };
@@ -1903,8 +1903,8 @@ export default function GoogleAdsAnalytics() {
                                   const deltaColor = delta >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300';
                                   return (
                                     <tr key={row.key} className="border-b">
-                                      <td className="p-3"><div className="font-medium text-slate-900 dark:text-white">{row.cur.endDate}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{row.cur.startDate} → {row.cur.endDate} ({row.label})</div></td>
-                                      <td className="p-3 text-right"><div className="font-medium text-slate-900 dark:text-white">{valueFor(row.cur)}</div></td>
+                                      <td className="p-3"><div className="font-medium text-foreground">{row.cur.endDate}</div><div className="text-xs text-muted-foreground/70 mt-0.5">{row.cur.startDate} → {row.cur.endDate} ({row.label})</div></td>
+                                      <td className="p-3 text-right"><div className="font-medium text-foreground">{valueFor(row.cur)}</div></td>
                                       <td className="p-3 text-right"><div className={`text-xs ${deltaColor}`}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}%</div></td>
                                     </tr>
                                   );
@@ -1925,10 +1925,10 @@ export default function GoogleAdsAnalytics() {
                   <CardContent className="p-5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total insights</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{googleAdsInsights.length}</p>
+                        <p className="text-sm font-medium text-muted-foreground/70">Total insights</p>
+                        <p className="text-2xl font-bold text-foreground">{googleAdsInsights.length}</p>
                       </div>
-                      <BarChart3 className="w-7 h-7 text-slate-600 dark:text-slate-400" />
+                      <BarChart3 className="w-7 h-7 text-muted-foreground/70" />
                     </div>
                   </CardContent>
                 </Card>
@@ -1936,7 +1936,7 @@ export default function GoogleAdsAnalytics() {
                   <CardContent className="p-5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">High priority</p>
+                        <p className="text-sm font-medium text-muted-foreground/70">High priority</p>
                         <p className="text-2xl font-bold text-red-600">{googleAdsInsights.filter(i => i.severity === 'high').length}</p>
                       </div>
                       <AlertTriangle className="w-7 h-7 text-red-600" />
@@ -1947,7 +1947,7 @@ export default function GoogleAdsAnalytics() {
                   <CardContent className="p-5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs attention</p>
+                        <p className="text-sm font-medium text-muted-foreground/70">Needs attention</p>
                         <p className="text-2xl font-bold text-amber-600">{googleAdsInsights.filter(i => i.severity === 'medium').length}</p>
                       </div>
                       <TrendingDown className="w-7 h-7 text-amber-600" />
@@ -1966,7 +1966,7 @@ export default function GoogleAdsAnalytics() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {/* Data metadata */}
-                  <div className="rounded-md border p-3 text-xs text-slate-600 dark:text-slate-400">
+                  <div className="rounded-md border p-3 text-xs text-muted-foreground/70">
                     <div className="flex flex-wrap gap-x-4 gap-y-1">
                       <div><span className="font-medium">Data through:</span> {dailySeries.daily.length > 0 ? dailySeries.daily[dailySeries.daily.length - 1].date + ' (UTC)' : '—'}</div>
                       <div><span className="font-medium">Available days:</span> {insightsRollups.availableDays}</div>
@@ -1978,16 +1978,16 @@ export default function GoogleAdsAnalytics() {
                   {/* Goal Impact: KPI + Benchmark gaps */}
                   {(kpiTracker.total > 0 || benchmarkTracker.total > 0) && (
                     <div className="rounded-md border p-3">
-                      <div className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Goal impact (KPIs & Benchmarks)</div>
+                      <div className="text-sm font-semibold text-foreground mb-3">Goal impact (KPIs & Benchmarks)</div>
                       <div className="grid gap-3 md:grid-cols-2">
                         {/* Top KPI gaps */}
                         <div className="rounded-md border p-3">
                           <div className="flex items-center justify-between mb-2">
-                            <div className="text-sm font-semibold text-slate-900 dark:text-white">Top KPI gaps</div>
+                            <div className="text-sm font-semibold text-foreground">Top KPI gaps</div>
                             <Badge variant="secondary">{kpiTracker.behind}</Badge>
                           </div>
                           {kpiTracker.total === 0 ? (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">No KPIs configured yet.</p>
+                            <p className="text-xs text-muted-foreground/70">No KPIs configured yet.</p>
                           ) : kpiTracker.behind === 0 && kpiTracker.needsAttention === 0 ? (
                             <p className="text-xs text-emerald-600 dark:text-emerald-400">All KPIs on track.</p>
                           ) : (
@@ -2003,9 +2003,9 @@ export default function GoogleAdsAnalytics() {
                                   <div key={kpi.id} className="flex items-center justify-between text-xs">
                                     <div className="flex items-center gap-1.5">
                                       {p.status === 'behind' ? <AlertTriangle className="w-3.5 h-3.5 text-red-500" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
-                                      <span className="font-medium text-slate-900 dark:text-white">{kpi.name}</span>
+                                      <span className="font-medium text-foreground">{kpi.name}</span>
                                     </div>
-                                    <span className="text-slate-500 dark:text-slate-400">{def.format(current)} / {def.format(target)}</span>
+                                    <span className="text-muted-foreground/70">{def.format(current)} / {def.format(target)}</span>
                                   </div>
                                 );
                               })}
@@ -2016,11 +2016,11 @@ export default function GoogleAdsAnalytics() {
                         {/* Top Benchmark gaps */}
                         <div className="rounded-md border p-3">
                           <div className="flex items-center justify-between mb-2">
-                            <div className="text-sm font-semibold text-slate-900 dark:text-white">Top Benchmark gaps</div>
+                            <div className="text-sm font-semibold text-foreground">Top Benchmark gaps</div>
                             <Badge variant="secondary">{benchmarkTracker.behind}</Badge>
                           </div>
                           {benchmarkTracker.total === 0 ? (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">No benchmarks configured yet.</p>
+                            <p className="text-xs text-muted-foreground/70">No benchmarks configured yet.</p>
                           ) : benchmarkTracker.behind === 0 && benchmarkTracker.needsAttention === 0 ? (
                             <p className="text-xs text-emerald-600 dark:text-emerald-400">All benchmarks on track.</p>
                           ) : (
@@ -2036,9 +2036,9 @@ export default function GoogleAdsAnalytics() {
                                   <div key={b.id} className="flex items-center justify-between text-xs">
                                     <div className="flex items-center gap-1.5">
                                       {p.status === 'behind' ? <AlertTriangle className="w-3.5 h-3.5 text-red-500" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
-                                      <span className="font-medium text-slate-900 dark:text-white">{b.name}</span>
+                                      <span className="font-medium text-foreground">{b.name}</span>
                                     </div>
-                                    <span className="text-slate-500 dark:text-slate-400">{def.format(current)} / {def.format(benchVal)}</span>
+                                    <span className="text-muted-foreground/70">{def.format(current)} / {def.format(benchVal)}</span>
                                   </div>
                                 );
                               })}
@@ -2110,7 +2110,7 @@ export default function GoogleAdsAnalytics() {
 
                   {/* Insights list */}
                   {googleAdsInsights.length === 0 ? (
-                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                    <div className="text-sm text-muted-foreground/70">
                       No insights available yet. Import Google Ads data, then create KPIs/Benchmarks to unlock more insights.
                     </div>
                   ) : (
@@ -2122,7 +2122,7 @@ export default function GoogleAdsAnalytics() {
                         return (
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                              <div className="text-sm font-semibold text-slate-900 dark:text-white">Data integrity & configuration</div>
+                              <div className="text-sm font-semibold text-foreground">Data integrity & configuration</div>
                               <Badge variant="secondary">{integrity.length}</Badge>
                             </div>
                             {integrity.map((insight) => (
@@ -2132,14 +2132,14 @@ export default function GoogleAdsAnalytics() {
                                     {insight.severity === 'high' ? <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" /> : <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />}
                                     <div className="flex-1">
                                       <div className="flex items-center justify-between">
-                                        <h4 className="font-medium text-slate-900 dark:text-white">{insight.title}</h4>
+                                        <h4 className="font-medium text-foreground">{insight.title}</h4>
                                         <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setInsightsExpanded(prev => ({ ...prev, [insight.id]: !prev[insight.id] }))}>
                                           {insightsExpanded[insight.id] ? 'Less' : 'More'}
                                         </Button>
                                       </div>
-                                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{insight.description}</p>
+                                      <p className="text-sm text-muted-foreground/70 mt-1">{insight.description}</p>
                                       {insightsExpanded[insight.id] && (
-                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 italic">{insight.recommendation}</p>
+                                        <p className="text-sm text-muted-foreground/70 mt-2 italic">{insight.recommendation}</p>
                                       )}
                                     </div>
                                   </div>
@@ -2157,7 +2157,7 @@ export default function GoogleAdsAnalytics() {
                         return (
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                              <div className="text-sm font-semibold text-slate-900 dark:text-white">Performance & anomalies</div>
+                              <div className="text-sm font-semibold text-foreground">Performance & anomalies</div>
                               <Badge variant="secondary">{performance.length}</Badge>
                             </div>
                             {performance.map((insight) => (
@@ -2167,14 +2167,14 @@ export default function GoogleAdsAnalytics() {
                                     {insight.severity === 'high' ? <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" /> : <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />}
                                     <div className="flex-1">
                                       <div className="flex items-center justify-between">
-                                        <h4 className="font-medium text-slate-900 dark:text-white">{insight.title}</h4>
+                                        <h4 className="font-medium text-foreground">{insight.title}</h4>
                                         <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setInsightsExpanded(prev => ({ ...prev, [insight.id]: !prev[insight.id] }))}>
                                           {insightsExpanded[insight.id] ? 'Less' : 'More'}
                                         </Button>
                                       </div>
-                                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{insight.description}</p>
+                                      <p className="text-sm text-muted-foreground/70 mt-1">{insight.description}</p>
                                       {insightsExpanded[insight.id] && (
-                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 italic">{insight.recommendation}</p>
+                                        <p className="text-sm text-muted-foreground/70 mt-2 italic">{insight.recommendation}</p>
                                       )}
                                     </div>
                                   </div>
@@ -2187,7 +2187,7 @@ export default function GoogleAdsAnalytics() {
 
                       {/* No issues fallback */}
                       {googleAdsInsights.filter(i => i.group === 'integrity').length === 0 && googleAdsInsights.filter(i => i.group === 'performance').length === 0 && (
-                        <div className="text-sm text-slate-600 dark:text-slate-400">No issues detected. System is operating normally.</div>
+                        <div className="text-sm text-muted-foreground/70">No issues detected. System is operating normally.</div>
                       )}
                     </>
                   )}
@@ -2199,8 +2199,8 @@ export default function GoogleAdsAnalytics() {
             <TabsContent value="reports" className="space-y-6 fade-in">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Reports</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Create, schedule, and manage Google Ads analytics reports</p>
+                  <h2 className="text-2xl font-bold text-foreground">Reports</h2>
+                  <p className="text-sm text-muted-foreground/70 mt-1">Create, schedule, and manage Google Ads analytics reports</p>
                 </div>
                 <Button
                   className="gap-2"
@@ -2218,7 +2218,7 @@ export default function GoogleAdsAnalytics() {
               </div>
 
               {reportsLoading ? (
-                <div className="animate-pulse space-y-4"><div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div></div>
+                <div className="animate-pulse space-y-4"><div className="h-32 bg-muted rounded"></div></div>
               ) : reportsData && Array.isArray(reportsData) && reportsData.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {(reportsData as any[]).map((report: any) => (
@@ -2226,12 +2226,12 @@ export default function GoogleAdsAnalytics() {
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{report.name}</h3>
-                            {report.description && <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{report.description}</p>}
+                            <h3 className="font-semibold text-foreground mb-1">{report.name}</h3>
+                            {report.description && <p className="text-sm text-muted-foreground/70 mb-3">{report.description}</p>}
                             <div className="flex items-center gap-4 text-sm">
                               <Badge variant="outline">{report.reportType || 'performance_summary'}</Badge>
-                              {report.scheduleEnabled && report.scheduleFrequency && <span className="text-slate-500">{report.scheduleFrequency}{report.scheduleTime ? ` at ${report.scheduleTime}` : ''}</span>}
-                              <span className="text-slate-400">Created {new Date(report.createdAt).toLocaleDateString()}</span>
+                              {report.scheduleEnabled && report.scheduleFrequency && <span className="text-muted-foreground">{report.scheduleFrequency}{report.scheduleTime ? ` at ${report.scheduleTime}` : ''}</span>}
+                              <span className="text-muted-foreground/70">Created {new Date(report.createdAt).toLocaleDateString()}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -2261,9 +2261,9 @@ export default function GoogleAdsAnalytics() {
                 <Card>
                   <CardContent>
                     <div className="text-center py-12">
-                      <Activity className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-                      <p className="text-slate-500 dark:text-slate-400">No reports created yet</p>
-                      <p className="text-sm text-slate-400 dark:text-slate-500 mt-2">Create your first report to get started</p>
+                      <Activity className="w-12 h-12 text-muted-foreground/60/80 mx-auto mb-4" />
+                      <p className="text-muted-foreground/70">No reports created yet</p>
+                      <p className="text-sm text-muted-foreground/70 mt-2">Create your first report to get started</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -2333,11 +2333,11 @@ function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: str
   return (
     <Card>
       <CardContent className="pt-4 pb-3 px-4">
-        <div className="flex items-center gap-2 text-slate-500 mb-1">
+        <div className="flex items-center gap-2 text-muted-foreground mb-1">
           {icon}
           <span className="text-xs font-medium">{label}</span>
         </div>
-        <div className="text-lg font-bold text-slate-900 dark:text-white">{value}</div>
+        <div className="text-lg font-bold text-foreground">{value}</div>
       </CardContent>
     </Card>
   );

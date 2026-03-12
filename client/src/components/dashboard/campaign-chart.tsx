@@ -42,7 +42,7 @@ export default function CampaignChart() {
           <CardTitle>Campaign Performance</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 bg-slate-100 rounded animate-pulse"></div>
+          <div className="h-64 bg-muted rounded animate-pulse"></div>
         </CardContent>
       </Card>
     );
@@ -51,12 +51,12 @@ export default function CampaignChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold text-slate-900">Campaign Performance</CardTitle>
+        <CardTitle className="text-lg font-semibold text-foreground">Campaign Performance</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-64">
           {campaigns.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-slate-500">
+            <div className="h-full flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <div className="text-lg font-medium mb-2">No campaign data available</div>
                 <div className="text-sm">Create campaigns to see performance distribution</div>
@@ -84,7 +84,7 @@ export default function CampaignChart() {
                 <Legend 
                   verticalAlign="bottom" 
                   height={36}
-                  formatter={(value) => <span className="text-sm text-slate-600">{value}</span>}
+                  formatter={(value) => <span className="text-sm text-muted-foreground">{value}</span>}
                 />
               </PieChart>
             </ResponsiveContainer>

@@ -359,7 +359,7 @@ export function LinkedInBenchmarkModal(props: any) {
               rows={3}
               data-testid="input-benchmark-description"
             />
-            <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+            <div className="text-xs text-muted-foreground/70 text-right">
               {benchmarkForm.description.length}/{BENCHMARK_DESC_MAX}
             </div>
           </div>
@@ -416,7 +416,7 @@ export function LinkedInBenchmarkModal(props: any) {
                   <SelectItem value="specific">Specific Campaign</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+              <p className="text-xs text-muted-foreground/70">
                 Choose whether this benchmark applies to all campaigns combined or a specific individual campaign
               </p>
             </div>
@@ -462,7 +462,7 @@ export function LinkedInBenchmarkModal(props: any) {
                   )}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+              <p className="text-xs text-muted-foreground/70">
                 Select the specific LinkedIn campaign this benchmark applies to
               </p>
             </div>
@@ -611,7 +611,7 @@ export function LinkedInBenchmarkModal(props: any) {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-500 dark:text-slate-400">💡 Benchmark value will be auto-filled based on industry standards</p>
+              <p className="text-xs text-muted-foreground/70">💡 Benchmark value will be auto-filled based on industry standards</p>
             </div>
           )}
 
@@ -646,7 +646,7 @@ export function LinkedInBenchmarkModal(props: any) {
                       }}
                       data-testid="input-benchmark-alert-threshold"
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
+                    <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="benchmark-alert-condition">Alert When</Label>
@@ -679,7 +679,7 @@ export function LinkedInBenchmarkModal(props: any) {
                         <SelectItem value="weekly">Weekly</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-muted-foreground/70">
                       Controls how often you’re notified while the alert condition stays true.
                     </p>
                   </div>
@@ -707,7 +707,7 @@ export function LinkedInBenchmarkModal(props: any) {
                           onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
                           data-testid="input-benchmark-email-recipients"
                         />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Comma-separated email addresses for alerts.</p>
+                        <p className="text-xs text-muted-foreground/70">Comma-separated email addresses for alerts.</p>
                       </div>
                     )}
                   </div>
@@ -757,8 +757,8 @@ export function LinkedInBenchmarkModal(props: any) {
 
           {/* Performance Indicators - shown in Campaign Details Modal context only */}
           {campaignData?.industry && selectedCampaignDetails && (
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Performance Analysis</h4>
+            <div className="pt-4 border-t border-border">
+              <h4 className="text-sm font-semibold text-foreground mb-3">Performance Analysis</h4>
               <div className="flex items-center gap-3 flex-wrap">
                 {(() => {
                   // This section uses selectedCampaignDetails, not linkedInCampaign

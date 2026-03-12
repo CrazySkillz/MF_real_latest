@@ -1217,7 +1217,7 @@ export function AddSpendWizardModal(props: {
                                 <div className="flex items-center justify-between">
                                   <div className="text-sm font-medium">LinkedIn Ads — Not connected</div>
                                   <div className="flex items-center gap-2">
-                                    <Label htmlFor="li-test-mode" className="text-xs text-slate-500 cursor-pointer">Test mode</Label>
+                                    <Label htmlFor="li-test-mode" className="text-xs text-muted-foreground cursor-pointer">Test mode</Label>
                                     <Switch
                                       id="li-test-mode"
                                       checked={isLinkedInTestMode}
@@ -1247,7 +1247,7 @@ export function AddSpendWizardModal(props: {
                                     />
                                   </div>
                                 </div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                <p className="text-xs text-muted-foreground/70">
                                   Connect your LinkedIn Ads account to pull spend data directly.
                                 </p>
                                 <Button
@@ -1349,7 +1349,7 @@ export function AddSpendWizardModal(props: {
                                 <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
                                 <div>
                                   <div className="text-sm font-medium">Connecting to LinkedIn…</div>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">Complete the authorization in the popup window.</p>
+                                  <p className="text-xs text-muted-foreground/70">Complete the authorization in the popup window.</p>
                                 </div>
                               </div>
                             )}
@@ -1357,7 +1357,7 @@ export function AddSpendWizardModal(props: {
                             {linkedInAuthStep === "select_account" && (
                               <div className="space-y-3">
                                 <div className="text-sm font-medium">Select an ad account</div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                <p className="text-xs text-muted-foreground/70">
                                   Choose which LinkedIn ad account to use for pulling spend data.
                                 </p>
                                 <Select value={selectedLinkedInAdAccount} onValueChange={setSelectedLinkedInAdAccount}>
@@ -1410,7 +1410,7 @@ export function AddSpendWizardModal(props: {
                               <div className="text-sm font-medium">LinkedIn Ads — Connected</div>
                               {isLinkedInTestMode && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">Test mode</Badge>}
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               {linkedInConnectionStatus?.adAccountName
                                 ? `Ad account: ${linkedInConnectionStatus.adAccountName}`
                                 : "Your LinkedIn Ads account is connected."}
@@ -1439,7 +1439,7 @@ export function AddSpendWizardModal(props: {
                                   <div className="text-sm font-medium">LinkedIn Ads spend</div>
                                   {isLinkedInTestMode && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">Test data</Badge>}
                                 </div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                <p className="text-xs text-muted-foreground/70">
                                   {linkedInPreview.adAccountName || "Ad account"} · {linkedInPreview.dateRange || "Last 90 days"}
                                 </p>
                               </div>
@@ -1452,18 +1452,18 @@ export function AddSpendWizardModal(props: {
                                     return selectedSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                   })()}
                                 </div>
-                                <div className="text-xs text-slate-500">{selectedLinkedInCampaignIds.length} of {linkedInPreview.campaigns.length} campaigns selected</div>
+                                <div className="text-xs text-muted-foreground">{selectedLinkedInCampaignIds.length} of {linkedInPreview.campaigns.length} campaigns selected</div>
                               </div>
                             </div>
 
                             {linkedInPreview.campaigns.length === 0 ? (
-                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                              <div className="text-xs text-muted-foreground/70">
                                 No campaigns with spend found in the last 90 days.
                               </div>
                             ) : (
                               <div className="rounded-md border max-h-64 overflow-y-auto">
                                 <table className="w-full text-sm">
-                                  <thead className="sticky top-0 bg-white dark:bg-slate-950">
+                                  <thead className="sticky top-0 bg-card">
                                     <tr className="border-b">
                                       <th className="text-left py-2 px-3 w-8">
                                         <Checkbox
@@ -1483,7 +1483,7 @@ export function AddSpendWizardModal(props: {
                                   </thead>
                                   <tbody>
                                     {linkedInPreview.campaigns.map((c) => (
-                                      <tr key={c.id} className="border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                                      <tr key={c.id} className="border-b last:border-b-0 hover:bg-muted/50">
                                         <td className="py-2 px-3">
                                           <Checkbox
                                             checked={selectedLinkedInCampaignIds.includes(c.id)}
@@ -1496,7 +1496,7 @@ export function AddSpendWizardModal(props: {
                                         </td>
                                         <td className="py-2 px-3">
                                           <div className="font-medium text-xs">{c.name}</div>
-                                          <div className="text-[10px] text-slate-400">{c.status}</div>
+                                          <div className="text-[10px] text-muted-foreground/70">{c.status}</div>
                                         </td>
                                         <td className="py-2 px-3 text-right tabular-nums">{c.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 px-3 text-right tabular-nums">{c.impressions.toLocaleString()}</td>
@@ -1522,7 +1522,7 @@ export function AddSpendWizardModal(props: {
                                 {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Not connected
                               </div>
                               <div className="flex items-center gap-2">
-                                <Label htmlFor="ap-test-mode" className="text-xs text-slate-500 cursor-pointer">Test mode</Label>
+                                <Label htmlFor="ap-test-mode" className="text-xs text-muted-foreground cursor-pointer">Test mode</Label>
                                 <Switch
                                   id="ap-test-mode"
                                   checked={isAdPlatformTestMode}
@@ -1531,11 +1531,11 @@ export function AddSpendWizardModal(props: {
                                 />
                               </div>
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               Connect your {selectedPlatform === "meta" ? "Meta" : "Google Ads"} account to pull spend data directly.
                             </p>
                             {isAdPlatformConnecting ? (
-                              <div className="flex items-center gap-2 text-sm text-slate-500">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Loader2 className="w-4 h-4 animate-spin" />
                                 {isAdPlatformTestMode ? "Setting up test data..." : "Connecting..."}
                               </div>
@@ -1555,7 +1555,7 @@ export function AddSpendWizardModal(props: {
                             <div className="text-sm font-medium text-green-600 dark:text-green-400">
                               {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Connected
                               {adPlatformConnectionName && (
-                                <span className="text-slate-500 dark:text-slate-400 font-normal ml-1">({adPlatformConnectionName})</span>
+                                <span className="text-muted-foreground/70 font-normal ml-1">({adPlatformConnectionName})</span>
                               )}
                             </div>
 
@@ -1563,7 +1563,7 @@ export function AddSpendWizardModal(props: {
                               <>
                                 <div className="rounded-md border max-h-64 overflow-y-auto">
                                   <table className="w-full text-sm">
-                                    <thead className="sticky top-0 bg-white dark:bg-slate-950">
+                                    <thead className="sticky top-0 bg-card">
                                       <tr className="border-b">
                                         <th className="text-left py-2 px-3 w-8">
                                           <Checkbox
@@ -1583,7 +1583,7 @@ export function AddSpendWizardModal(props: {
                                     </thead>
                                     <tbody>
                                       {adPlatformCampaigns.map((c) => (
-                                        <tr key={c.id} className="border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                                        <tr key={c.id} className="border-b last:border-b-0 hover:bg-muted/50">
                                           <td className="py-2 px-3">
                                             <Checkbox
                                               checked={selectedAdPlatformCampaignIds.includes(c.id)}
@@ -1606,10 +1606,10 @@ export function AddSpendWizardModal(props: {
                                   </table>
                                 </div>
                                 <div className="flex justify-between items-center text-sm pt-1">
-                                  <span className="text-slate-500 dark:text-slate-400">
+                                  <span className="text-muted-foreground/70">
                                     {selectedAdPlatformCampaignIds.length} of {adPlatformCampaigns.length} campaigns selected
                                   </span>
-                                  <span className="font-bold text-slate-900 dark:text-white">
+                                  <span className="font-bold text-foreground">
                                     Total: ${adPlatformCampaigns
                                       .filter(c => selectedAdPlatformCampaignIds.includes(c.id))
                                       .reduce((sum, c) => sum + c.spend, 0)
@@ -1618,7 +1618,7 @@ export function AddSpendWizardModal(props: {
                                 </div>
                               </>
                             ) : (
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                              <p className="text-xs text-muted-foreground/70">
                                 No campaigns found.
                               </p>
                             )}
@@ -1666,7 +1666,7 @@ export function AddSpendWizardModal(props: {
                     {sheetsConnections.length === 0 ? (
                       <div className="space-y-3">
                         <div className="text-sm font-medium">Google Sheets</div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground/70">
                           No Sheets are connected to this campaign yet.
                         </p>
                         {!showSheetsConnect ? (
@@ -1706,7 +1706,7 @@ export function AddSpendWizardModal(props: {
                     ) : showSheetsConnect ? (
                       <div className="space-y-3">
                         <div className="text-sm font-medium">Connect Google Sheets</div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground/70">
                           No Sheets are connected to this campaign yet. Connect once, then we’ll let you pick a sheet/tab.
                         </p>
                         <SimpleGoogleSheetsAuth
@@ -1778,7 +1778,7 @@ export function AddSpendWizardModal(props: {
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground/70">
                           This uses your Google Sheets connection for this campaign.
                         </p>
                       </div>
@@ -1807,7 +1807,7 @@ export function AddSpendWizardModal(props: {
                       </div>
                     </div>
                     {csvEditNotice && (
-                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                      <div className="text-xs text-muted-foreground/70">
                         {csvEditNotice}
                       </div>
                     )}
@@ -1825,10 +1825,10 @@ export function AddSpendWizardModal(props: {
                         id="csv-file"
                         type="file"
                         accept=".csv,text/csv"
-                        className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700"
+                        className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted"
                         onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
                       />
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-muted-foreground/70">
                         Required columns: Spend. Optional: Date + Campaign (for multi-campaign files).
                       </p>
                     </div>
@@ -1864,7 +1864,7 @@ export function AddSpendWizardModal(props: {
                         placeholder={"Paste from Excel/Google Sheets with a header row.\nExample:\nDate\tSpend\tCampaign\n2026-01-01\t125.50\tbrand_awareness"}
                         className="min-h-[140px] font-mono text-xs"
                       />
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-muted-foreground/70">
                         Works with tab-delimited (copy/paste) or comma-delimited text. We’ll preview it before processing.
                       </p>
                     </div>
@@ -1927,14 +1927,14 @@ export function AddSpendWizardModal(props: {
                     {step === "csv_map" && !csvPreview?.success ? (
                       <div className="space-y-4">
                         {csvEditNotice && (
-                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                          <div className="text-xs text-muted-foreground/70">
                             {csvEditNotice}
                           </div>
                         )}
                         {(spendColumn || campaignKeyColumn || campaignKeyValues.length > 0) && (
-                          <div className="rounded-md bg-slate-50 dark:bg-slate-900 border p-3">
-                            <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Current mapping</div>
-                            <div className="text-xs text-slate-600 dark:text-slate-400">
+                          <div className="rounded-md bg-muted border p-3">
+                            <div className="text-xs font-medium text-foreground/80/60 mb-1">Current mapping</div>
+                            <div className="text-xs text-muted-foreground/70">
                               Spend: <span className="font-medium">{spendColumn || "—"}</span>
                               {campaignKeyColumn ? (
                                 <>
@@ -1945,12 +1945,12 @@ export function AddSpendWizardModal(props: {
                             {campaignKeyValues.length > 0 && (
                               <div className="mt-2 flex flex-wrap gap-1">
                                 {campaignKeyValues.slice(0, 6).map((v) => (
-                                  <span key={v} className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-700 dark:text-slate-300">
+                                  <span key={v} className="text-[11px] px-2 py-0.5 rounded-full bg-card border text-foreground/80/60">
                                     {v}
                                   </span>
                                 ))}
                                 {campaignKeyValues.length > 6 && (
-                                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border text-slate-500 dark:text-slate-400">
+                                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-card border text-muted-foreground/70">
                                     +{campaignKeyValues.length - 6} more
                                   </span>
                                 )}
@@ -1972,10 +1972,10 @@ export function AddSpendWizardModal(props: {
                             id="csv-file-remap"
                             type="file"
                             accept=".csv,text/csv"
-                            className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-800 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700"
+                            className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted"
                             onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
                           />
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                          <p className="text-xs text-muted-foreground/70">
                             Re-upload the CSV to preview rows, adjust columns, and re-process spend.
                           </p>
                         </div>
@@ -1991,10 +1991,10 @@ export function AddSpendWizardModal(props: {
                         <div className="flex items-start justify-between gap-4">
                           <div className="space-y-1">
                             <div className="text-sm font-medium">Columns</div>
-                            <div className="text-sm text-slate-700 dark:text-slate-300">
+                            <div className="text-sm text-foreground/80/60">
                               Spend: <span className="font-medium">{spendColumn || "—"}</span>
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               We’ll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
                             </p>
                           </div>
@@ -2020,7 +2020,7 @@ export function AddSpendWizardModal(props: {
                         <div className="pt-2 border-t space-y-3">
                           <div className="space-y-1">
                             <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign.
                             </p>
                           </div>
@@ -2052,9 +2052,9 @@ export function AddSpendWizardModal(props: {
                               />
                               <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
                                 {!effectiveCampaignColumn ? (
-                                  <div className="text-xs text-slate-500 dark:text-slate-400">Upload/preview data to see campaign values.</div>
+                                  <div className="text-xs text-muted-foreground/70">Upload/preview data to see campaign values.</div>
                                 ) : uniqueCampaignKeyValues.length === 0 ? (
-                                  <div className="text-xs text-slate-500 dark:text-slate-400">No values found in the preview.</div>
+                                  <div className="text-xs text-muted-foreground/70">No values found in the preview.</div>
                                 ) : (
                                   uniqueCampaignKeyValues.map((val) => (
                                     <div key={val} className="flex items-start gap-2">
@@ -2068,7 +2068,7 @@ export function AddSpendWizardModal(props: {
                                           });
                                         }}
                                       />
-                                      <div className="text-sm text-slate-700 dark:text-slate-300">{val}</div>
+                                      <div className="text-sm text-foreground/80/60">{val}</div>
                                     </div>
                                   ))
                                 )}
@@ -2095,14 +2095,14 @@ export function AddSpendWizardModal(props: {
                               {previewRows.slice(0, 5).map((r, idx) => (
                                 <tr key={idx} className="border-b last:border-b-0">
                                   {headers.slice(0, 6).map((h) => (
-                                    <td key={h} className="py-2 pr-4 text-slate-700 dark:text-slate-300">{String((r as any)[h] ?? "")}</td>
+                                    <td key={h} className="py-2 pr-4 text-foreground/80/60">{String((r as any)[h] ?? "")}</td>
                                   ))}
                                 </tr>
                               ))}
                             </tbody>
                           </table>
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                        <p className="text-xs text-muted-foreground/70 mt-2">
                           Processing will automatically **sum spend by day**, so unaggregated rows are OK.
                         </p>
                       </div>

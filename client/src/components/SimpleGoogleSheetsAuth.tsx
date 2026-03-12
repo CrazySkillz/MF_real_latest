@@ -333,7 +333,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
   // Show spreadsheet selection after auth
   if (authCompleted && spreadsheets.length > 0) {
     return (
-      <Card className="w-full border border-slate-200">
+      <Card className="w-full border border-border">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-green-600" />
@@ -378,13 +378,13 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
                 )}
               </div>
               {isLoadingSheets ? (
-                <div className="flex items-center gap-2 text-sm text-slate-500">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <RefreshCw className="w-4 h-4 animate-spin" />
                   Loading sheets...
                 </div>
               ) : availableSheets.length > 0 ? (
                 <>
-                  <div className="space-y-2 max-h-64 overflow-y-auto border border-slate-200 rounded-md p-3">
+                  <div className="space-y-2 max-h-64 overflow-y-auto border border-border rounded-md p-3">
                     {isRevenueConnector ? (
                       <RadioGroup
                         value={selectedSheetNames[0] || ""}
@@ -423,11 +423,11 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   Using first sheet (default)
                 </p>
               )}
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground/70">
                 {availableSheets.length > 0 
                   ? (isRevenueConnector
                       ? `Select exactly 1 tab. You’ll map Revenue or Conversion Value columns in the next step.`
@@ -459,7 +459,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
               )}
             </Button>
           ) : (
-            <div className="text-xs text-slate-500 text-center">
+            <div className="text-xs text-muted-foreground text-center">
               {isSelectingSpreadsheet ? "Connecting your selected tab…" : "Select a tab to continue."}
             </div>
           )}
@@ -470,7 +470,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
 
   // Initial connection screen
   return (
-    <Card className="w-full border border-slate-200">
+    <Card className="w-full border border-border">
       <CardHeader className="text-center">
         <CardTitle className="flex items-center gap-2">
           <SiGoogle className="w-5 h-5 text-green-600" />
@@ -513,7 +513,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
           </Button>
 
           {isConnecting && (
-            <p className="text-xs text-slate-500 text-center">
+            <p className="text-xs text-muted-foreground text-center">
               We opened a Google sign-in window. Complete the login to continue.
             </p>
           )}

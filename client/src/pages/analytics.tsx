@@ -220,7 +220,7 @@ export default function Analytics() {
   });
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="flex">
@@ -230,8 +230,8 @@ export default function Analytics() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Advanced Analytics</h1>
-                <p className="text-slate-600 dark:text-slate-400 mt-1">Deep insights into your marketing performance and ROI</p>
+                <h1 className="text-3xl font-bold text-foreground">Advanced Analytics</h1>
+                <p className="text-muted-foreground/70 mt-1">Deep insights into your marketing performance and ROI</p>
               </div>
               
               <div className="flex items-center space-x-4">
@@ -286,7 +286,7 @@ export default function Analytics() {
               {ga4Loading ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
                   {[...Array(11)].map((_, i) => (
-                    <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                    <div key={i} className="h-32 bg-muted rounded animate-pulse"></div>
                   ))}
                 </div>
               ) : (
@@ -297,8 +297,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Sessions</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-sessions">
+                            <p className="text-sm font-medium text-muted-foreground/70">Sessions</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-sessions">
                               {formatNumber(ga4Metrics?.sessions || 2847)}
                             </p>
                           </div>
@@ -311,8 +311,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Page Views</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-pageviews">
+                            <p className="text-sm font-medium text-muted-foreground/70">Page Views</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-pageviews">
                               {formatNumber(ga4Metrics?.pageviews || 8521)}
                             </p>
                           </div>
@@ -325,8 +325,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Bounce Rate</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-bounce-rate">
+                            <p className="text-sm font-medium text-muted-foreground/70">Bounce Rate</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-bounce-rate">
                               {formatPercentage(ga4Metrics?.bounceRate || 42.8)}
                             </p>
                           </div>
@@ -339,8 +339,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Session Duration</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-avg-session-duration">
+                            <p className="text-sm font-medium text-muted-foreground/70">Avg. Session Duration</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-avg-session-duration">
                               {formatDuration(ga4Metrics?.averageSessionDuration || 195)}
                             </p>
                           </div>
@@ -353,8 +353,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-conversions">
+                            <p className="text-sm font-medium text-muted-foreground/70">Conversions</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-conversions">
                               {formatNumber(ga4Metrics?.conversions || 67)}
                             </p>
                           </div>
@@ -367,8 +367,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Users</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-users">
+                            <p className="text-sm font-medium text-muted-foreground/70">Users</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-users">
                               {formatNumber(ga4Metrics?.users || 2847)}
                             </p>
                           </div>
@@ -381,8 +381,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">New Users</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-new-users">
+                            <p className="text-sm font-medium text-muted-foreground/70">New Users</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-new-users">
                               {formatNumber(ga4Metrics?.newUsers || 2156)}
                             </p>
                           </div>
@@ -395,8 +395,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engaged Sessions</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-engaged-sessions">
+                            <p className="text-sm font-medium text-muted-foreground/70">Engaged Sessions</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-engaged-sessions">
                               {formatNumber(ga4Metrics?.engagedSessions || 2847)}
                             </p>
                           </div>
@@ -409,8 +409,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-engagement-rate">
+                            <p className="text-sm font-medium text-muted-foreground/70">Engagement Rate</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-engagement-rate">
                               {formatPercentage(ga4Metrics?.engagementRate || 57.2)}
                             </p>
                           </div>
@@ -423,8 +423,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Events</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-total-events">
+                            <p className="text-sm font-medium text-muted-foreground/70">Total Events</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-total-events">
                               {formatNumber(ga4Metrics?.eventCount || 22776)}
                             </p>
                           </div>
@@ -437,8 +437,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Events per Session</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-events-per-session">
+                            <p className="text-sm font-medium text-muted-foreground/70">Events per Session</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-events-per-session">
                               {(ga4Metrics?.eventsPerSession || 8.2).toFixed(1)}
                             </p>
                           </div>
@@ -454,8 +454,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-total-revenue">{formatCurrency(calculateTotalRevenue())}</p>
+                            <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-total-revenue">{formatCurrency(calculateTotalRevenue())}</p>
                             <div className="flex items-center space-x-1 mt-1">
                               <ArrowUpRight className="w-4 h-4 text-accent" />
                               <span className="text-sm text-accent">+12.5%</span>
@@ -470,8 +470,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-roas">{calculateROAS()}x</p>
+                            <p className="text-sm font-medium text-muted-foreground/70">ROAS</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-roas">{calculateROAS()}x</p>
                             <div className="flex items-center space-x-1 mt-1">
                               <ArrowUpRight className="w-4 h-4 text-accent" />
                               <span className="text-sm text-accent">+8.2%</span>
@@ -486,8 +486,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversion Rate</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-conversion-rate">{calculateConversionRate()}%</p>
+                            <p className="text-sm font-medium text-muted-foreground/70">Conversion Rate</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-conversion-rate">{calculateConversionRate()}%</p>
                             <div className="flex items-center space-x-1 mt-1">
                               <ArrowDownRight className="w-4 h-4 text-destructive" />
                               <span className="text-sm text-destructive">-2.1%</span>
@@ -502,8 +502,8 @@ export default function Analytics() {
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-total-spend">{formatCurrency(calculateTotalSpend())}</p>
+                            <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
+                            <p className="text-2xl font-bold text-foreground" data-testid="text-total-spend">{formatCurrency(calculateTotalSpend())}</p>
                             <div className="flex items-center space-x-1 mt-1">
                               <ArrowUpRight className="w-4 h-4 text-warning" />
                               <span className="text-sm text-warning">+15.3%</span>
@@ -523,7 +523,7 @@ export default function Analytics() {
                 <Card className="lg:col-span-2">
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Google Analytics Performance Overview</CardTitle>
+                      <CardTitle className="text-lg font-semibold text-foreground">Google Analytics Performance Overview</CardTitle>
                       <Select value={selectedMetric} onValueChange={setSelectedMetric}>
                         <SelectTrigger className="w-32">
                           <SelectValue />
@@ -568,45 +568,45 @@ export default function Analytics() {
                 {/* GA4 Real-time Metrics */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Real-time Analytics</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Real-time Analytics</CardTitle>
                     <CardDescription>Live Google Analytics data</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div>
-                          <span className="font-medium text-slate-900 dark:text-white">Active Users</span>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Currently on site</p>
+                          <span className="font-medium text-foreground">Active Users</span>
+                          <p className="text-sm text-muted-foreground/70">Currently on site</p>
                         </div>
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                           247
                         </Badge>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div>
-                          <span className="font-medium text-slate-900 dark:text-white">Page Views (24h)</span>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Total page views today</p>
+                          <span className="font-medium text-foreground">Page Views (24h)</span>
+                          <p className="text-sm text-muted-foreground/70">Total page views today</p>
                         </div>
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                           12,456
                         </Badge>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div>
-                          <span className="font-medium text-slate-900 dark:text-white">Sessions (24h)</span>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Total sessions today</p>
+                          <span className="font-medium text-foreground">Sessions (24h)</span>
+                          <p className="text-sm text-muted-foreground/70">Total sessions today</p>
                         </div>
                         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                           8,923
                         </Badge>
                       </div>
 
-                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div>
-                          <span className="font-medium text-slate-900 dark:text-white">Bounce Rate</span>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Percentage of single-page sessions</p>
+                          <span className="font-medium text-foreground">Bounce Rate</span>
+                          <p className="text-sm text-muted-foreground/70">Percentage of single-page sessions</p>
                         </div>
                         <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
                           42.3%
@@ -619,45 +619,45 @@ export default function Analytics() {
                 {/* Top Pages */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Top Pages</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Top Pages</CardTitle>
                     <CardDescription>Most viewed pages today</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <div className="flex items-center justify-between p-3 border border-border rounded-lg">
                         <div>
-                          <span className="font-medium text-slate-900 dark:text-white">/products</span>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Product catalog</p>
+                          <span className="font-medium text-foreground">/products</span>
+                          <p className="text-sm text-muted-foreground/70">Product catalog</p>
                         </div>
                         <Badge variant="outline">
                           3,245 views
                         </Badge>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <div className="flex items-center justify-between p-3 border border-border rounded-lg">
                         <div>
-                          <span className="font-medium text-slate-900 dark:text-white">/blog</span>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Blog posts</p>
+                          <span className="font-medium text-foreground">/blog</span>
+                          <p className="text-sm text-muted-foreground/70">Blog posts</p>
                         </div>
                         <Badge variant="outline">
                           2,156 views
                         </Badge>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <div className="flex items-center justify-between p-3 border border-border rounded-lg">
                         <div>
-                          <span className="font-medium text-slate-900 dark:text-white">/</span>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Homepage</p>
+                          <span className="font-medium text-foreground">/</span>
+                          <p className="text-sm text-muted-foreground/70">Homepage</p>
                         </div>
                         <Badge variant="outline">
                           1,987 views
                         </Badge>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <div className="flex items-center justify-between p-3 border border-border rounded-lg">
                         <div>
-                          <span className="font-medium text-slate-900 dark:text-white">/pricing</span>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Pricing page</p>
+                          <span className="font-medium text-foreground">/pricing</span>
+                          <p className="text-sm text-muted-foreground/70">Pricing page</p>
                         </div>
                         <Badge variant="outline">
                           1,534 views
@@ -673,7 +673,7 @@ export default function Analytics() {
                 {/* Traffic Sources */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Traffic Sources</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Traffic Sources</CardTitle>
                     <CardDescription>Where your visitors come from</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -721,7 +721,7 @@ export default function Analytics() {
                               className="w-3 h-3 rounded-full" 
                               style={{ backgroundColor: source.color }}
                             ></div>
-                            <span className="text-sm text-slate-600 dark:text-slate-400">{source.name}</span>
+                            <span className="text-sm text-muted-foreground/70">{source.name}</span>
                           </div>
                           <span className="text-sm font-medium">{source.value}</span>
                         </div>
@@ -733,7 +733,7 @@ export default function Analytics() {
                 {/* Geographic Data */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Top Countries</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Top Countries</CardTitle>
                     <CardDescription>Visitor distribution by country</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -746,17 +746,17 @@ export default function Analytics() {
                         { country: 'Australia', users: 1234, percentage: 8, flag: '🇦🇺' },
                         { country: 'France', users: 987, percentage: 7, flag: '🇫🇷' }
                       ].map((country, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                           <div className="flex items-center space-x-3">
                             <span className="text-lg">{country.flag}</span>
                             <div>
-                              <span className="font-medium text-slate-900 dark:text-white">{country.country}</span>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">{formatNumber(country.users)} users</p>
+                              <span className="font-medium text-foreground">{country.country}</span>
+                              <p className="text-sm text-muted-foreground/70">{formatNumber(country.users)} users</p>
                             </div>
                           </div>
                           <div className="text-right">
                             <Badge variant="outline">{country.percentage}%</Badge>
-                            <div className="w-16 bg-slate-200 dark:bg-slate-700 rounded-full h-2 mt-1">
+                            <div className="w-16 bg-muted rounded-full h-2 mt-1">
                               <div 
                                 className="bg-primary h-2 rounded-full transition-all duration-300" 
                                 style={{ width: `${country.percentage}%` }}
@@ -776,7 +776,7 @@ export default function Analytics() {
                 <Card className="lg:col-span-2">
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Performance Over Time</CardTitle>
+                      <CardTitle className="text-lg font-semibold text-foreground">Performance Over Time</CardTitle>
                       <Select value={selectedMetric} onValueChange={setSelectedMetric}>
                         <SelectTrigger className="w-32">
                           <SelectValue />
@@ -820,25 +820,25 @@ export default function Analytics() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Platform Performance</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Platform Performance</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {platformData.map((platform, index) => (
-                        <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        <div key={index} className="border border-border rounded-lg p-4">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-slate-900 dark:text-white">{platform.platform}</span>
+                            <span className="font-medium text-foreground">{platform.platform}</span>
                             <Badge variant="outline" style={{ borderColor: platform.color, color: platform.color }}>
                               {platform.roas}x ROAS
                             </Badge>
                           </div>
                           <div className="space-y-1 text-sm">
                             <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Spend:</span>
+                              <span className="text-muted-foreground/70">Spend:</span>
                               <span className="font-medium">{formatCurrency(platform.spend)}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Revenue:</span>
+                              <span className="text-muted-foreground/70">Revenue:</span>
                               <span className="font-medium">{formatCurrency(platform.revenue)}</span>
                             </div>
                           </div>
@@ -854,7 +854,7 @@ export default function Analytics() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Attribution Models</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Attribution Models</CardTitle>
                     <CardDescription>How conversions are attributed to different touchpoints</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -883,16 +883,16 @@ export default function Analytics() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Attribution Breakdown</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Attribution Breakdown</CardTitle>
                     <CardDescription>Percentage contribution by model</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {attributionData.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                           <div>
-                            <span className="font-medium text-slate-900 dark:text-white">{item.touchpoint}</span>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{item.conversions} conversions</p>
+                            <span className="font-medium text-foreground">{item.touchpoint}</span>
+                            <p className="text-sm text-muted-foreground/70">{item.conversions} conversions</p>
                           </div>
                           <Badge variant="outline">
                             {item.percentage}%
@@ -907,69 +907,69 @@ export default function Analytics() {
               {/* Customer Journey Analysis */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Customer Journey Paths</CardTitle>
+                  <CardTitle className="text-lg font-semibold text-foreground">Customer Journey Paths</CardTitle>
                   <CardDescription>Multi-touch conversion paths and channel contribution analysis</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-4">
-                      <h4 className="font-semibold text-slate-900 dark:text-white">Top Conversion Paths</h4>
+                      <h4 className="font-semibold text-foreground">Top Conversion Paths</h4>
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
                               <span className="text-xs font-bold text-purple-600 dark:text-purple-400">1</span>
                             </div>
                             <div>
-                              <span className="text-sm font-medium text-slate-900 dark:text-white">TikTok → Product Page → Cart → Purchase</span>
-                              <div className="text-xs text-slate-600 dark:text-slate-400">Mobile-first journey, impulse buying</div>
+                              <span className="text-sm font-medium text-foreground">TikTok → Product Page → Cart → Purchase</span>
+                              <div className="text-xs text-muted-foreground/70">Mobile-first journey, impulse buying</div>
                             </div>
                           </div>
-                          <span className="text-sm font-bold text-slate-900 dark:text-white">42%</span>
+                          <span className="text-sm font-bold text-foreground">42%</span>
                         </div>
                         
-                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                               <span className="text-xs font-bold text-blue-600 dark:text-blue-400">2</span>
                             </div>
                             <div>
-                              <span className="text-sm font-medium text-slate-900 dark:text-white">Instagram → Browse → Email → Purchase</span>
-                              <div className="text-xs text-slate-600 dark:text-slate-400">Discovery through social, nurtured via email</div>
+                              <span className="text-sm font-medium text-foreground">Instagram → Browse → Email → Purchase</span>
+                              <div className="text-xs text-muted-foreground/70">Discovery through social, nurtured via email</div>
                             </div>
                           </div>
-                          <span className="text-sm font-bold text-slate-900 dark:text-white">31%</span>
+                          <span className="text-sm font-bold text-foreground">31%</span>
                         </div>
                         
-                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
                               <span className="text-xs font-bold text-green-600 dark:text-green-400">3</span>
                             </div>
                             <div>
-                              <span className="text-sm font-medium text-slate-900 dark:text-white">Google → Compare → Return → Purchase</span>
-                              <div className="text-xs text-slate-600 dark:text-slate-400">Research-driven, multiple touchpoints</div>
+                              <span className="text-sm font-medium text-foreground">Google → Compare → Return → Purchase</span>
+                              <div className="text-xs text-muted-foreground/70">Research-driven, multiple touchpoints</div>
                             </div>
                           </div>
-                          <span className="text-sm font-bold text-slate-900 dark:text-white">27%</span>
+                          <span className="text-sm font-bold text-foreground">27%</span>
                         </div>
                       </div>
                     </div>
                     
                     <div className="space-y-4">
-                      <h4 className="font-semibold text-slate-900 dark:text-white">Attribution Insights</h4>
+                      <h4 className="font-semibold text-foreground">Attribution Insights</h4>
                       <div className="grid gap-4">
-                        <div className="text-center p-4 border rounded-lg dark:border-slate-700">
+                        <div className="text-center p-4 border rounded-lg">
                           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">2.3</div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400">Avg. Sessions to Convert</div>
+                          <div className="text-sm text-muted-foreground/70">Avg. Sessions to Convert</div>
                         </div>
-                        <div className="text-center p-4 border rounded-lg dark:border-slate-700">
+                        <div className="text-center p-4 border rounded-lg">
                           <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">4.2 days</div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400">Avg. Time to Convert</div>
+                          <div className="text-sm text-muted-foreground/70">Avg. Time to Convert</div>
                         </div>
-                        <div className="text-center p-4 border rounded-lg dark:border-slate-700">
+                        <div className="text-center p-4 border rounded-lg">
                           <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-2">68%</div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400">First-Touch Attribution</div>
+                          <div className="text-sm text-muted-foreground/70">First-Touch Attribution</div>
                         </div>
                       </div>
                     </div>
@@ -982,7 +982,7 @@ export default function Analytics() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Conversion Funnel</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Conversion Funnel</CardTitle>
                     <CardDescription>User journey from awareness to conversion</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -993,11 +993,11 @@ export default function Analytics() {
                         
                         return (
                           <div key={index} className="relative">
-                            <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg" 
+                            <div className="flex items-center justify-between p-4 border border-border rounded-lg" 
                                  style={{ borderLeftColor: step.fill, borderLeftWidth: '4px' }}>
                               <div>
-                                <span className="font-medium text-slate-900 dark:text-white">{step.name}</span>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">{formatNumber(step.value)} users</p>
+                                <span className="font-medium text-foreground">{step.name}</span>
+                                <p className="text-sm text-muted-foreground/70">{formatNumber(step.value)} users</p>
                               </div>
                               {conversionRate && (
                                 <Badge variant="outline">
@@ -1014,7 +1014,7 @@ export default function Analytics() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Funnel Insights</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground">Funnel Insights</CardTitle>
                     <CardDescription>Key optimization opportunities</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1057,7 +1057,7 @@ export default function Analytics() {
             <TabsContent value="cohort">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Cohort Analysis</CardTitle>
+                  <CardTitle className="text-lg font-semibold text-foreground">Cohort Analysis</CardTitle>
                   <CardDescription>User retention and revenue patterns over time</CardDescription>
                 </CardHeader>
                 <CardContent>

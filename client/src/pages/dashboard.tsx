@@ -38,8 +38,8 @@ export default function Dashboard() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">Marketing Dashboard</h1>
-                <p className="text-slate-600 mt-1">Track your campaign performance and marketing metrics</p>
+                <h1 className="text-3xl font-bold text-foreground">Marketing Dashboard</h1>
+                <p className="text-muted-foreground mt-1">Track your campaign performance and marketing metrics</p>
               </div>
               
               {/* Date Range Filter */}

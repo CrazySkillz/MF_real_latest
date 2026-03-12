@@ -403,20 +403,20 @@ export default function KPIsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <div className="flex flex-col">
-          <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+          <div className="bg-card border-b border-border">
             <div className="p-8">
               <div className="flex items-center space-x-4">
-                <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-32"></div>
-                <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-48"></div>
+                <div className="h-10 bg-muted rounded animate-pulse w-32"></div>
+                <div className="h-8 bg-muted rounded animate-pulse w-48"></div>
               </div>
             </div>
           </div>
           <main className="flex-1 p-8">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-48 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                <div key={i} className="h-48 bg-muted rounded-lg animate-pulse"></div>
               ))}
             </div>
           </main>
@@ -427,9 +427,9 @@ export default function KPIsPage() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Campaign not found</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">Campaign not found</h2>
           <Link href="/campaigns">
             <Button>
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -442,10 +442,10 @@ export default function KPIsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <div className="flex flex-col">
         {/* Header */}
-        <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+        <div className="bg-card border-b border-border">
           <div className="p-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -458,9 +458,9 @@ export default function KPIsPage() {
                 <div>
                   <div className="flex items-center space-x-3 mb-2">
                     <Target className="w-8 h-8 text-blue-500" />
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">KPI Tracking</h1>
+                    <h1 className="text-3xl font-bold text-foreground">KPI Tracking</h1>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-400">Manage key performance indicators for {campaign.name}</p>
+                  <p className="text-muted-foreground/70">Manage key performance indicators for {campaign.name}</p>
                 </div>
               </div>
               
@@ -482,7 +482,7 @@ export default function KPIsPage() {
                     </Button>
                   </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[75vh] overflow-y-auto p-4 !fixed !top-1/2 !left-1/2 !transform !-translate-x-1/2 !-translate-y-1/2 !z-[9999]">
-                  <DialogClose className="absolute right-4 top-4 rounded-full p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors z-[60]">
+                  <DialogClose className="absolute right-4 top-4 rounded-full p-2 bg-muted hover:bg-muted dark:hover:bg-slate-700 transition-colors z-[60]">
                     <X className="h-4 w-4" />
                     <span className="sr-only">Close</span>
                   </DialogClose>
@@ -496,7 +496,7 @@ export default function KPIsPage() {
                   <div className="space-y-6">
                     {/* Quick Presets */}
                     <div>
-                      <label className="text-sm font-medium text-slate-900 dark:text-white mb-3 block">
+                      <label className="text-sm font-medium text-foreground mb-3 block">
                         Quick Setup
                       </label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -518,7 +518,7 @@ export default function KPIsPage() {
                       <form onSubmit={kpiForm.handleSubmit(onCreateKPI)} className="space-y-6">
                         {/* Basic Information */}
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Basic Information</h3>
+                          <h3 className="text-lg font-semibold text-foreground">Basic Information</h3>
                           
                           <div className="grid grid-cols-2 gap-4">
                             <FormField
@@ -583,7 +583,7 @@ export default function KPIsPage() {
 
                         {/* Target and Priority */}
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Target & Priority</h3>
+                          <h3 className="text-lg font-semibold text-foreground">Target & Priority</h3>
                           
                           <div className="grid grid-cols-3 gap-4">
                             <FormField
@@ -648,7 +648,7 @@ export default function KPIsPage() {
 
                         {/* Time-Based Tracking */}
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Time-Based Tracking</h3>
+                          <h3 className="text-lg font-semibold text-foreground">Time-Based Tracking</h3>
                           
                           <div className="grid grid-cols-2 gap-4">
                             <FormField
@@ -755,7 +755,7 @@ export default function KPIsPage() {
 
                         {/* Alert Settings */}
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Alert Settings</h3>
+                          <h3 className="text-lg font-semibold text-foreground">Alert Settings</h3>
                           
                           <FormField
                             control={kpiForm.control}
@@ -781,7 +781,7 @@ export default function KPIsPage() {
                           />
                           
                           {kpiForm.watch("alertsEnabled") && (
-                            <div className="space-y-4 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                            <div className="space-y-4 pl-4 border-l-2 border-border">
                               <FormField
                                 control={kpiForm.control}
                                 name="alertThreshold"
@@ -905,9 +905,9 @@ export default function KPIsPage() {
         <main className="flex-1 p-8">
           {kpis.length === 0 ? (
             <div className="text-center py-12">
-              <Target className="w-16 h-16 mx-auto text-slate-400 mb-6" />
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No KPIs Set Up</h3>
-              <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-md mx-auto">
+              <Target className="w-16 h-16 mx-auto text-muted-foreground/70 mb-6" />
+              <h3 className="text-lg font-medium text-foreground mb-2">No KPIs Set Up</h3>
+              <p className="text-muted-foreground/70 mb-6 max-w-md mx-auto">
                 Start tracking your campaign performance by setting up key performance indicators like ROI, ROAS, and more.
               </p>
               <Button onClick={() => setShowCreateDialog(true)}>
@@ -941,10 +941,10 @@ export default function KPIsPage() {
                     <CardContent className="space-y-4">
                       {/* Current vs Target */}
                       <div className="text-center space-y-2">
-                        <div className="text-3xl font-bold text-slate-900 dark:text-white">
+                        <div className="text-3xl font-bold text-foreground">
                           {formatValue(kpi.currentValue || "0", kpi.unit)}
                         </div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">
+                        <div className="text-sm text-muted-foreground/70">
                           Target: {formatValue(kpi.targetValue, kpi.unit)}
                         </div>
                       </div>
@@ -952,8 +952,8 @@ export default function KPIsPage() {
                       {/* Progress Bar */}
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-slate-600 dark:text-slate-400">Progress</span>
-                          <span className={`font-medium ${isAchieved ? 'text-green-600' : 'text-slate-900 dark:text-white'}`}>
+                          <span className="text-muted-foreground/70">Progress</span>
+                          <span className={`font-medium ${isAchieved ? 'text-green-600' : 'text-foreground'}`}>
                             {Math.round(progress)}%
                           </span>
                         </div>
@@ -1120,8 +1120,8 @@ export default function KPIsPage() {
               </Select>
             </div>
             
-            <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-              <div className="text-sm text-slate-600 dark:text-slate-400">
+            <div className="bg-muted p-3 rounded-lg">
+              <div className="text-sm text-muted-foreground/70">
                 <p><strong>Report will include:</strong></p>
                 <ul className="mt-1 space-y-1">
                   <li>• All KPI progress data</li>

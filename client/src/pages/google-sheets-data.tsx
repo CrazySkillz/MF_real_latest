@@ -753,16 +753,16 @@ export default function GoogleSheetsData() {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              <div className="h-8 bg-muted rounded animate-pulse"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                  <div key={i} className="h-24 bg-muted rounded animate-pulse"></div>
                 ))}
               </div>
             </div>
@@ -774,13 +774,13 @@ export default function GoogleSheetsData() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Campaign not found</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">Campaign not found</h2>
               <Link href="/campaigns">
                 <Button>
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -856,7 +856,7 @@ export default function GoogleSheetsData() {
   }
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="flex">
@@ -876,9 +876,9 @@ export default function GoogleSheetsData() {
                 <div>
                   <div className="flex items-center space-x-3 mb-2">
                     <SiGooglesheets className="w-8 h-8 text-green-600" />
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Google Sheets Data</h1>
+                    <h1 className="text-3xl font-bold text-foreground">Google Sheets Data</h1>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-400">Marketing data for {campaign.name}</p>
+                  <p className="text-muted-foreground/70">Marketing data for {campaign.name}</p>
                 </div>
               </div>
               
@@ -915,7 +915,7 @@ export default function GoogleSheetsData() {
             {googleSheetsConnections.length > 0 && (
               <div className="mb-6 space-y-3">
                 <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                  <label className="text-sm font-medium text-foreground/80/60 whitespace-nowrap">
                     View Data From:
                   </label>
                   <Select
@@ -989,7 +989,7 @@ export default function GoogleSheetsData() {
 
                 {/* Active Sheet Indicator */}
                 {sheetsData && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground/70">
                     <Badge variant="outline" className="text-xs">
                       {isCombinedView ? (
                         <>
@@ -1037,7 +1037,7 @@ export default function GoogleSheetsData() {
                       <span className="text-xs">
                         • {sheetsData.filteredRows.toLocaleString()} rows used for summary
                         {sheetsData.filteredRows < sheetsData.totalRows && (
-                          <span className="text-slate-500"> (filtered from {sheetsData.totalRows.toLocaleString()} total)</span>
+                          <span className="text-muted-foreground"> (filtered from {sheetsData.totalRows.toLocaleString()} total)</span>
                         )}
                       </span>
                     )}
@@ -1050,9 +1050,9 @@ export default function GoogleSheetsData() {
           {sheetsError ? (
             <Card className="mb-8">
               <CardContent className="text-center py-12">
-                <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load Data</h3>
-                <p className="text-slate-500 dark:text-slate-400 mb-4">
+                <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Failed to Load Data</h3>
+                <p className="text-muted-foreground/70 mb-4">
                   {sheetsError.message.includes('TOKEN_EXPIRED') || sheetsError.message.includes('401') || (sheetsError as any)?.requiresReauthorization
                     ? 'Your Google Sheets connection has expired. Please reconnect to continue accessing your data.'
                     : sheetsError.message.includes('MISSING_SPREADSHEET') || sheetsError.message.includes('no spreadsheet')
@@ -1088,7 +1088,7 @@ export default function GoogleSheetsData() {
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                  <div key={i} className="h-32 bg-muted rounded animate-pulse"></div>
                 ))}
               </div>
               <Tabs defaultValue="data" className="space-y-6">
@@ -1124,9 +1124,9 @@ export default function GoogleSheetsData() {
             <div className="relative">
               {/* Subtle loading indicator - non-blocking */}
               {sheetsFetching && (
-                <div className="absolute top-4 right-4 z-50 flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg px-3 py-2 shadow-lg border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute top-4 right-4 z-50 flex items-center gap-2 bg-card rounded-lg px-3 py-2 shadow-lg border border-border animate-in fade-in slide-in-from-top-2 duration-200">
                   <Loader2 className="w-4 h-4 text-green-600 animate-spin" />
-                  <span className="text-sm text-slate-600 dark:text-slate-300">Loading...</span>
+                  <span className="text-sm text-muted-foreground/60">Loading...</span>
                 </div>
               )}
               <div className="transition-opacity duration-300 ease-in-out" style={{ opacity: sheetsFetching ? 0.7 : 1 }}>
@@ -1173,7 +1173,7 @@ export default function GoogleSheetsData() {
                         <span>
                           {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                           {sheetsData.lastDataRefreshAt && (
-                            <span className="ml-2 text-xs text-slate-400">
+                            <span className="ml-2 text-xs text-muted-foreground/70">
                               (cached {new Date(sheetsData.lastDataRefreshAt).toLocaleString()})
                             </span>
                           )}
@@ -1219,9 +1219,9 @@ export default function GoogleSheetsData() {
                         </div>
                       ) : (
                         <div className="text-center py-8">
-                          <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                          <p className="text-slate-600 dark:text-slate-400">No data available</p>
-                          <p className="text-sm text-slate-500 mt-2">
+                          <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                          <p className="text-muted-foreground/70">No data available</p>
+                          <p className="text-sm text-muted-foreground mt-2">
                             {sheetsData.totalRows > 0 
                               ? `${sheetsData.totalRows} rows found but no data to display`
                               : 'No rows found in the spreadsheet'
@@ -1265,9 +1265,9 @@ export default function GoogleSheetsData() {
                           <Card>
                             <CardContent className="py-12">
                               <div className="text-center">
-                                <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                                <p className="text-slate-600 dark:text-slate-400">No numeric columns detected</p>
-                                <p className="text-sm text-slate-500 mt-1">Map columns in Connection Details to see metrics here</p>
+                                <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                                <p className="text-muted-foreground/70">No numeric columns detected</p>
+                                <p className="text-sm text-muted-foreground mt-1">Map columns in Connection Details to see metrics here</p>
                               </div>
                             </CardContent>
                           </Card>
@@ -1306,17 +1306,17 @@ export default function GoogleSheetsData() {
                                     return (
                                       <div
                                         key={col.name}
-                                        className="relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 p-5"
+                                        className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 p-5"
                                       >
                                         <div className="flex items-center justify-between mb-3">
-                                          <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                                            <IconComp className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                                            <IconComp className="w-5 h-5 text-muted-foreground/60" />
                                           </div>
                                         </div>
-                                        <p className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                                        <p className="text-2xl font-bold text-foreground tracking-tight">
                                           {formatSummaryValue(col.total, col.type, col.name)}
                                         </p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate" title={col.name}>
+                                        <p className="text-xs text-muted-foreground/70 mt-1 truncate" title={col.name}>
                                           {col.name}
                                         </p>
                                       </div>
@@ -1329,18 +1329,18 @@ export default function GoogleSheetsData() {
                               {supporting.length > 0 && (
                                 <>
                                   {hero.length > 0 && (
-                                    <div className="border-t border-slate-100 dark:border-slate-800 mb-4" />
+                                    <div className="border-t border-slate-100 mb-4" />
                                   )}
                                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                                     {supporting.map((col) => (
                                       <div
                                         key={col.name}
-                                        className="rounded-lg bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5 border border-slate-100 dark:border-slate-700/50"
+                                        className="rounded-lg bg-muted/50 px-3 py-2.5 border border-slate-100/50"
                                       >
-                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mb-0.5" title={col.name}>
+                                        <p className="text-[11px] text-muted-foreground/70 truncate mb-0.5" title={col.name}>
                                           {col.name}
                                         </p>
-                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                        <p className="text-sm font-semibold text-foreground dark:text-slate-200">
                                           {formatSummaryValue(col.total, col.type, col.name)}
                                         </p>
                                       </div>
@@ -1352,17 +1352,17 @@ export default function GoogleSheetsData() {
                               {/* Data Breakdown — categorical columns */}
                               {section.categoricalColumns && section.categoricalColumns.length > 0 && (
                                 <>
-                                  <div className="border-t border-slate-100 dark:border-slate-800 mt-6 mb-4" />
+                                  <div className="border-t border-slate-100 mt-6 mb-4" />
                                   <div className="mb-2">
-                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Data Breakdown</p>
+                                    <p className="text-sm font-semibold text-foreground/80/60">Data Breakdown</p>
                                   </div>
                                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                                     {section.categoricalColumns.map((cat: any) => {
                                       const maxCount = cat.topValues[0]?.count || 1;
                                       return (
-                                        <div key={cat.name} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4">
+                                        <div key={cat.name} className="rounded-lg border border-border bg-card/50 p-4">
                                           <div className="flex items-center justify-between mb-3">
-                                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{cat.name}</p>
+                                            <p className="text-sm font-medium text-foreground dark:text-slate-200">{cat.name}</p>
                                             <Badge variant="outline" className="text-[10px]">
                                               {cat.uniqueCount} unique
                                             </Badge>
@@ -1371,14 +1371,14 @@ export default function GoogleSheetsData() {
                                             {cat.topValues.slice(0, 8).map((v: any) => (
                                               <div key={v.value}>
                                                 <div className="flex items-center justify-between text-xs mb-0.5">
-                                                  <span className="text-slate-700 dark:text-slate-300 truncate mr-2 max-w-[60%]" title={v.value}>
+                                                  <span className="text-foreground/80/60 truncate mr-2 max-w-[60%]" title={v.value}>
                                                     {v.value}
                                                   </span>
-                                                  <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                                    {v.count.toLocaleString()} <span className="text-slate-400 dark:text-slate-500">({v.percentage}%)</span>
+                                                  <span className="text-muted-foreground/70 whitespace-nowrap">
+                                                    {v.count.toLocaleString()} <span className="text-muted-foreground/70">({v.percentage}%)</span>
                                                   </span>
                                                 </div>
-                                                <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                                                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                                                   <div
                                                     className="h-full rounded-full bg-blue-500 dark:bg-blue-400"
                                                     style={{ width: `${Math.round((v.count / maxCount) * 100)}%` }}
@@ -1387,7 +1387,7 @@ export default function GoogleSheetsData() {
                                               </div>
                                             ))}
                                             {cat.topValues.length > 8 && (
-                                              <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+                                              <p className="text-[11px] text-muted-foreground/70 pt-1">
                                                 +{cat.topValues.length - 8} more
                                               </p>
                                             )}
@@ -1401,7 +1401,7 @@ export default function GoogleSheetsData() {
 
                               {/* Edge case: no metrics at all */}
                               {hero.length === 0 && supporting.length === 0 && (!section.categoricalColumns || section.categoricalColumns.length === 0) && (
-                                <p className="text-sm text-slate-500 text-center py-4">
+                                <p className="text-sm text-muted-foreground text-center py-4">
                                   No data detected in this sheet
                                 </p>
                               )}
@@ -1417,15 +1417,15 @@ export default function GoogleSheetsData() {
                 <TabsContent value="kpis" className="mt-6 space-y-6">
                   {kpisLoading ? (
                     <div className="animate-pulse space-y-4">
-                      <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                      <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-32 bg-muted rounded"></div>
+                      <div className="h-64 bg-muted rounded"></div>
                     </div>
                   ) : kpisIsError ? (
                     <Card>
                       <CardContent className="text-center py-12">
                         <AlertCircle className="w-12 h-12 mx-auto text-red-400 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load KPIs</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mb-4">{(kpisError as any)?.message || "An error occurred."}</p>
+                        <h3 className="text-lg font-medium text-foreground mb-2">Failed to Load KPIs</h3>
+                        <p className="text-muted-foreground/70 mb-4">{(kpisError as any)?.message || "An error occurred."}</p>
                         <Button variant="outline" onClick={() => void refetchKpis()}>Retry</Button>
                       </CardContent>
                     </Card>
@@ -1433,8 +1433,8 @@ export default function GoogleSheetsData() {
                     <>
                       <div className="flex items-center justify-between">
                         <div>
-                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          <h2 className="text-2xl font-bold text-foreground">Key Performance Indicators</h2>
+                          <p className="text-sm text-muted-foreground/70 mt-1">
                             Track your KPI targets against your Google Sheets data
                           </p>
                         </div>
@@ -1458,7 +1458,7 @@ export default function GoogleSheetsData() {
                                     <div className="flex items-center gap-2 mb-1">
                                       <CardTitle className="text-lg">{kpi.name}</CardTitle>
                                       {kpi.metric && (
-                                        <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono text-xs">
+                                        <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono text-xs">
                                           {kpi.metric}
                                         </Badge>
                                       )}
@@ -1513,17 +1513,17 @@ export default function GoogleSheetsData() {
                               <CardContent>
                                 <div className="space-y-3">
                                   <div className="flex justify-between text-sm">
-                                    <span className="text-slate-600 dark:text-slate-400">Current: <span className="font-semibold text-slate-900 dark:text-white">{formatMetricValue(currentVal, col?.type)}</span></span>
-                                    <span className="text-slate-600 dark:text-slate-400">Target: <span className="font-semibold text-slate-900 dark:text-white">{formatMetricValue(targetVal, col?.type)}{kpi.unit ? ` ${kpi.unit}` : ''}</span></span>
+                                    <span className="text-muted-foreground/70">Current: <span className="font-semibold text-foreground">{formatMetricValue(currentVal, col?.type)}</span></span>
+                                    <span className="text-muted-foreground/70">Target: <span className="font-semibold text-foreground">{formatMetricValue(targetVal, col?.type)}{kpi.unit ? ` ${kpi.unit}` : ''}</span></span>
                                   </div>
-                                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
+                                  <div className="w-full bg-muted rounded-full h-3">
                                     <div
                                       className={`h-3 rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : pct >= 75 ? 'bg-blue-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
                                       style={{ width: `${pct}%` }}
                                     />
                                   </div>
                                   <div className="flex justify-between items-center">
-                                    <span className="text-xs text-slate-500">{pct.toFixed(1)}% of target</span>
+                                    <span className="text-xs text-muted-foreground">{pct.toFixed(1)}% of target</span>
                                     <Badge variant="outline" className={pct >= 100 ? 'bg-green-50 text-green-700 border-green-200' : pct >= 75 ? 'bg-blue-50 text-blue-700 border-blue-200' : pct >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-700 border-red-200'}>
                                       {pct >= 100 ? 'On Target' : pct >= 75 ? 'Near Target' : pct >= 50 ? 'Below Target' : 'At Risk'}
                                     </Badge>
@@ -1538,9 +1538,9 @@ export default function GoogleSheetsData() {
                   ) : (
                     <Card>
                       <CardContent className="text-center py-12">
-                        <Target className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No KPIs Yet</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mb-4">
+                        <Target className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-2">No KPIs Yet</h3>
+                        <p className="text-muted-foreground/70 mb-4">
                           Set targets and track KPIs based on your Google Sheets metrics.
                         </p>
                         <Button onClick={() => setIsKpiModalOpen(true)} className="bg-purple-600 hover:bg-purple-700">
@@ -1556,15 +1556,15 @@ export default function GoogleSheetsData() {
                 <TabsContent value="benchmarks" className="mt-6 space-y-6">
                   {benchmarksLoading ? (
                     <div className="animate-pulse space-y-4">
-                      <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                      <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-32 bg-muted rounded"></div>
+                      <div className="h-64 bg-muted rounded"></div>
                     </div>
                   ) : benchmarksIsError ? (
                     <Card>
                       <CardContent className="text-center py-12">
                         <AlertCircle className="w-12 h-12 mx-auto text-red-400 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load Benchmarks</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mb-4">{(benchmarksError as any)?.message || "An error occurred."}</p>
+                        <h3 className="text-lg font-medium text-foreground mb-2">Failed to Load Benchmarks</h3>
+                        <p className="text-muted-foreground/70 mb-4">{(benchmarksError as any)?.message || "An error occurred."}</p>
                         <Button variant="outline" onClick={() => void refetchBenchmarks()}>Retry</Button>
                       </CardContent>
                     </Card>
@@ -1572,8 +1572,8 @@ export default function GoogleSheetsData() {
                     <>
                       <div className="flex items-center justify-between">
                         <div>
-                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Benchmarks</h2>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          <h2 className="text-2xl font-bold text-foreground">Benchmarks</h2>
+                          <p className="text-sm text-muted-foreground/70 mt-1">
                             Compare your actual metrics against custom benchmark values
                           </p>
                         </div>
@@ -1598,7 +1598,7 @@ export default function GoogleSheetsData() {
                                     <div className="flex items-center gap-2 mb-1">
                                       <CardTitle className="text-lg">{bm.name}</CardTitle>
                                       {bm.metric && (
-                                        <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono text-xs">
+                                        <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono text-xs">
                                           {bm.metric}
                                         </Badge>
                                       )}
@@ -1653,15 +1653,15 @@ export default function GoogleSheetsData() {
                                 <div className="space-y-3">
                                   <div className="grid grid-cols-3 gap-4 text-center">
                                     <div>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Actual</p>
-                                      <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatMetricValue(currentVal, col?.type)}</p>
+                                      <p className="text-xs text-muted-foreground/70 mb-1">Actual</p>
+                                      <p className="text-lg font-semibold text-foreground">{formatMetricValue(currentVal, col?.type)}</p>
                                     </div>
                                     <div>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Benchmark</p>
-                                      <p className="text-lg font-semibold text-slate-900 dark:text-white">{formatMetricValue(benchmarkVal, col?.type)}{bm.unit ? ` ${bm.unit}` : ''}</p>
+                                      <p className="text-xs text-muted-foreground/70 mb-1">Benchmark</p>
+                                      <p className="text-lg font-semibold text-foreground">{formatMetricValue(benchmarkVal, col?.type)}{bm.unit ? ` ${bm.unit}` : ''}</p>
                                     </div>
                                     <div>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Variance</p>
+                                      <p className="text-xs text-muted-foreground/70 mb-1">Variance</p>
                                       <p className={`text-lg font-semibold ${isAbove ? 'text-green-600' : 'text-red-600'}`}>
                                         {isAbove ? '+' : ''}{variance.toFixed(1)}%
                                       </p>
@@ -1682,9 +1682,9 @@ export default function GoogleSheetsData() {
                   ) : (
                     <Card>
                       <CardContent className="text-center py-12">
-                        <BarChart3 className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Benchmarks Yet</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mb-4">
+                        <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-2">No Benchmarks Yet</h3>
+                        <p className="text-muted-foreground/70 mb-4">
                           Compare your Google Sheets metrics against custom benchmark values.
                         </p>
                         <Button onClick={() => setIsBenchmarkModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
@@ -1701,8 +1701,8 @@ export default function GoogleSheetsData() {
                   {isCombinedView ? (
                     <div className="space-y-6">
                       <div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h2 className="text-2xl font-bold text-foreground">Insights</h2>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Overview across all connected sheets. Select an individual sheet for detailed analysis.
                         </p>
                       </div>
@@ -1723,10 +1723,10 @@ export default function GoogleSheetsData() {
                                   : sheet.sheetName || sheet.spreadsheetName || 'Sheet';
                                 const colCount = sheet.detectedColumns?.length || 0;
                                 return (
-                                  <div key={idx} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                                  <div key={idx} className="flex items-center justify-between p-3 rounded-lg border border-border">
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{sheetLabel}</p>
-                                      <p className="text-xs text-slate-500 mt-0.5">{sheet.rowCount?.toLocaleString() || 0} rows, {colCount} metrics detected</p>
+                                      <p className="text-sm font-medium text-foreground truncate">{sheetLabel}</p>
+                                      <p className="text-xs text-muted-foreground mt-0.5">{sheet.rowCount?.toLocaleString() || 0} rows, {colCount} metrics detected</p>
                                     </div>
                                     <Badge variant="outline" className="text-xs shrink-0">
                                       {sheet.rowCount > 0 ? 'Active' : 'Empty'}
@@ -1735,7 +1735,7 @@ export default function GoogleSheetsData() {
                                 );
                               })}
                             </div>
-                            <p className="text-xs text-slate-500 mt-4">
+                            <p className="text-xs text-muted-foreground mt-4">
                               Select a specific sheet from the dropdown above to see detailed insights, trend charts, and recommendations.
                             </p>
                           </CardContent>
@@ -1743,9 +1743,9 @@ export default function GoogleSheetsData() {
                       ) : (
                         <Card>
                           <CardContent className="text-center py-12">
-                            <Lightbulb className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Sheets Connected</h3>
-                            <p className="text-slate-500 dark:text-slate-400">
+                            <Lightbulb className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                            <h3 className="text-lg font-medium text-foreground mb-2">No Sheets Connected</h3>
+                            <p className="text-muted-foreground/70">
                               Connect Google Sheets to generate insights.
                             </p>
                           </CardContent>
@@ -1756,8 +1756,8 @@ export default function GoogleSheetsData() {
                     <div className="space-y-6">
                       {/* Header */}
                       <div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h2 className="text-2xl font-bold text-foreground">Insights</h2>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Actionable insights from statistical analysis of your sheet data.
                         </p>
                       </div>
@@ -1769,10 +1769,10 @@ export default function GoogleSheetsData() {
                             <CardContent className="p-5">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total insights</p>
-                                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{sheetsData.insights.summary.total}</p>
+                                  <p className="text-sm font-medium text-muted-foreground/70">Total insights</p>
+                                  <p className="text-2xl font-bold text-foreground">{sheetsData.insights.summary.total}</p>
                                 </div>
-                                <BarChart3 className="w-7 h-7 text-slate-600" />
+                                <BarChart3 className="w-7 h-7 text-muted-foreground" />
                               </div>
                             </CardContent>
                           </Card>
@@ -1780,7 +1780,7 @@ export default function GoogleSheetsData() {
                             <CardContent className="p-5">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">High priority</p>
+                                  <p className="text-sm font-medium text-muted-foreground/70">High priority</p>
                                   <p className="text-2xl font-bold text-red-600">{sheetsData.insights.summary.high}</p>
                                 </div>
                                 <AlertTriangle className="w-7 h-7 text-red-600" />
@@ -1791,7 +1791,7 @@ export default function GoogleSheetsData() {
                             <CardContent className="p-5">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs attention</p>
+                                  <p className="text-sm font-medium text-muted-foreground/70">Needs attention</p>
                                   <p className="text-2xl font-bold text-amber-600">{sheetsData.insights.summary.medium}</p>
                                 </div>
                                 <TrendingDown className="w-7 h-7 text-amber-600" />
@@ -1802,26 +1802,26 @@ export default function GoogleSheetsData() {
                       )}
 
                       {/* Data Context Metadata + Data Quality */}
-                      <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">
+                      <div className="rounded-md border border-border p-3 text-xs text-muted-foreground/70">
                         <div className="flex flex-wrap gap-x-4 gap-y-1">
-                          <div><span className="font-medium text-slate-700 dark:text-slate-300">Data points:</span> {sheetsData.insights.totalDataPoints?.toLocaleString() || 0}</div>
+                          <div><span className="font-medium text-foreground/80/60">Data points:</span> {sheetsData.insights.totalDataPoints?.toLocaleString() || 0}</div>
                           {sheetsData.insights.dateRange && (
-                            <div><span className="font-medium text-slate-700 dark:text-slate-300">Date range:</span> {sheetsData.insights.dateRange.start} to {sheetsData.insights.dateRange.end}</div>
+                            <div><span className="font-medium text-foreground/80/60">Date range:</span> {sheetsData.insights.dateRange.start} to {sheetsData.insights.dateRange.end}</div>
                           )}
-                          <div><span className="font-medium text-slate-700 dark:text-slate-300">Metrics analyzed:</span> {sheetsData.insights.trendMetrics?.length || 0}</div>
+                          <div><span className="font-medium text-foreground/80/60">Metrics analyzed:</span> {sheetsData.insights.trendMetrics?.length || 0}</div>
                           {sheetsData.insights.labelColumn && (
-                            <div><span className="font-medium text-slate-700 dark:text-slate-300">Grouped by:</span> {sheetsData.insights.labelColumn}</div>
+                            <div><span className="font-medium text-foreground/80/60">Grouped by:</span> {sheetsData.insights.labelColumn}</div>
                           )}
                           {sheetsData.insights.dataQuality && (
                             <>
                               <div>
-                                <span className="font-medium text-slate-700 dark:text-slate-300">Completeness:</span>{' '}
+                                <span className="font-medium text-foreground/80/60">Completeness:</span>{' '}
                                 <span className={sheetsData.insights.dataQuality.completeness >= 95 ? 'text-green-600' : sheetsData.insights.dataQuality.completeness >= 80 ? 'text-amber-600' : 'text-red-600'}>
                                   {sheetsData.insights.dataQuality.completeness}%
                                 </span>
                               </div>
                               {sheetsData.insights.dataQuality.outliers?.length > 0 && (
-                                <div><span className="font-medium text-slate-700 dark:text-slate-300">Outliers:</span> {sheetsData.insights.dataQuality.outliers.length}</div>
+                                <div><span className="font-medium text-foreground/80/60">Outliers:</span> {sheetsData.insights.dataQuality.outliers.length}</div>
                               )}
                             </>
                           )}
@@ -1830,7 +1830,7 @@ export default function GoogleSheetsData() {
 
                       {/* Trend Chart */}
                       {sheetsData.insights.trendSeries?.length >= 2 && sheetsData.insights.trendMetrics?.length > 0 && (
-                        <Card className="border-slate-200 dark:border-slate-700">
+                        <Card className="border-border">
                           <CardHeader>
                             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                               <div>
@@ -1888,7 +1888,7 @@ export default function GoogleSheetsData() {
 
                       {/* Performance Insights */}
                       {(sheetsData.insights.topPerformers?.length > 0 || sheetsData.insights.bottomPerformers?.length > 0) && (
-                        <Card className="border-slate-200 dark:border-slate-700">
+                        <Card className="border-border">
                           <CardHeader>
                             <CardTitle>Performance</CardTitle>
                             <CardDescription>Top and bottom performers across your metrics</CardDescription>
@@ -1901,12 +1901,12 @@ export default function GoogleSheetsData() {
                                   ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
                                   : 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900';
                               return (
-                                <div key={`top-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                <div key={`top-${i}`} className="rounded-lg border border-border p-4">
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <TrendingUp className="w-4 h-4 text-green-600 shrink-0" />
-                                        <span className="font-semibold text-slate-900 dark:text-white">{insight.message}</span>
+                                        <span className="font-semibold text-foreground">{insight.message}</span>
                                         <Badge className={`text-xs border ${severityClass}`}>
                                           {insight.severity === 'high' ? 'High' : insight.severity === 'medium' ? 'Medium' : 'Low'}
                                         </Badge>
@@ -1920,8 +1920,8 @@ export default function GoogleSheetsData() {
                                         )}
                                       </div>
                                       {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
-                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-                                          <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                        <div className="text-xs text-muted-foreground/70 mt-2">
+                                          <span className="font-medium text-foreground/80/60">Evidence:</span>{' '}
                                           {insight.evidence.join(' \u2022 ')}
                                         </div>
                                       )}
@@ -1935,21 +1935,21 @@ export default function GoogleSheetsData() {
                                 ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
                                 : insight.severity === 'medium'
                                   ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
-                                  : 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700';
+                                  : 'bg-muted text-foreground border-border dark:text-slate-200';
                               return (
-                                <div key={`bottom-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                <div key={`bottom-${i}`} className="rounded-lg border border-border p-4">
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <TrendingDown className="w-4 h-4 text-red-600 shrink-0" />
-                                        <span className="font-semibold text-slate-900 dark:text-white">{insight.message}</span>
+                                        <span className="font-semibold text-foreground">{insight.message}</span>
                                         <Badge className={`text-xs border ${severityClass}`}>
                                           {insight.severity === 'high' ? 'High' : insight.severity === 'medium' ? 'Medium' : 'Low'}
                                         </Badge>
                                       </div>
                                       {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
-                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-                                          <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                        <div className="text-xs text-muted-foreground/70 mt-2">
+                                          <span className="font-medium text-foreground/80/60">Evidence:</span>{' '}
                                           {insight.evidence.join(' \u2022 ')}
                                         </div>
                                       )}
@@ -1964,7 +1964,7 @@ export default function GoogleSheetsData() {
 
                       {/* Anomalies & Trends */}
                       {(sheetsData.insights.anomalies?.length > 0 || sheetsData.insights.trends?.length > 0) && (
-                        <Card className="border-slate-200 dark:border-slate-700">
+                        <Card className="border-border">
                           <CardHeader>
                             <CardTitle>Anomalies & Trends</CardTitle>
                             <CardDescription>Statistical outliers and directional changes in your data</CardDescription>
@@ -1977,7 +1977,7 @@ export default function GoogleSheetsData() {
                                   ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
                                   : 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900';
                               return (
-                                <div key={`trend-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                <div key={`trend-${i}`} className="rounded-lg border border-border p-4">
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center gap-2 flex-wrap">
@@ -1986,7 +1986,7 @@ export default function GoogleSheetsData() {
                                         ) : (
                                           <TrendingDown className="w-4 h-4 text-red-600 shrink-0" />
                                         )}
-                                        <span className="font-semibold text-slate-900 dark:text-white">{insight.message}</span>
+                                        <span className="font-semibold text-foreground">{insight.message}</span>
                                         <Badge className={`text-xs border ${severityClass}`}>
                                           {insight.severity === 'high' ? 'High' : insight.severity === 'medium' ? 'Medium' : 'Low'}
                                         </Badge>
@@ -2000,8 +2000,8 @@ export default function GoogleSheetsData() {
                                         )}
                                       </div>
                                       {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
-                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-                                          <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                        <div className="text-xs text-muted-foreground/70 mt-2">
+                                          <span className="font-medium text-foreground/80/60">Evidence:</span>{' '}
                                           {insight.evidence.join(' \u2022 ')}
                                         </div>
                                       )}
@@ -2018,19 +2018,19 @@ export default function GoogleSheetsData() {
                                 ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
                                 : 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900';
                               return (
-                                <div key={`anomaly-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                <div key={`anomaly-${i}`} className="rounded-lg border border-border p-4">
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                                        <span className="font-semibold text-slate-900 dark:text-white">{insight.message}</span>
+                                        <span className="font-semibold text-foreground">{insight.message}</span>
                                         <Badge className={`text-xs border ${severityClass}`}>
                                           {insight.severity === 'high' ? 'High' : 'Medium'}
                                         </Badge>
                                       </div>
                                       {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
-                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-                                          <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                        <div className="text-xs text-muted-foreground/70 mt-2">
+                                          <span className="font-medium text-foreground/80/60">Evidence:</span>{' '}
                                           {insight.evidence.join(' \u2022 ')}
                                         </div>
                                       )}
@@ -2048,19 +2048,19 @@ export default function GoogleSheetsData() {
 
                       {/* Correlations */}
                       {sheetsData.insights.correlations?.length > 0 && (
-                        <Card className="border-slate-200 dark:border-slate-700">
+                        <Card className="border-border">
                           <CardHeader>
                             <CardTitle>Correlations</CardTitle>
                             <CardDescription>Statistically significant relationships between metrics</CardDescription>
                           </CardHeader>
                           <CardContent className="space-y-3">
                             {sheetsData.insights.correlations.map((insight: any, i: number) => (
-                              <div key={`corr-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                              <div key={`corr-${i}`} className="rounded-lg border border-border p-4">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <Target className="w-4 h-4 text-purple-600 shrink-0" />
-                                      <span className="font-semibold text-slate-900 dark:text-white">{insight.message}</span>
+                                      <span className="font-semibold text-foreground">{insight.message}</span>
                                       {insight.confidence && (
                                         <Badge className={`text-xs border ${
                                           insight.confidence === 'high' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900' :
@@ -2071,8 +2071,8 @@ export default function GoogleSheetsData() {
                                       )}
                                     </div>
                                     {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
-                                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-                                        <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                      <div className="text-xs text-muted-foreground/70 mt-2">
+                                        <span className="font-medium text-foreground/80/60">Evidence:</span>{' '}
                                         {insight.evidence.join(' \u2022 ')}
                                       </div>
                                     )}
@@ -2091,7 +2091,7 @@ export default function GoogleSheetsData() {
 
                       {/* Recommendations */}
                       {sheetsData.insights.recommendations?.length > 0 && (
-                        <Card className="border-slate-200 dark:border-slate-700">
+                        <Card className="border-border">
                           <CardHeader>
                             <CardTitle>What to do next</CardTitle>
                             <CardDescription>Actionable recommendations based on the analysis above</CardDescription>
@@ -2102,21 +2102,21 @@ export default function GoogleSheetsData() {
                                 ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
                                 : r.severity === 'medium'
                                   ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
-                                  : 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700';
+                                  : 'bg-muted text-foreground border-border dark:text-slate-200';
                               return (
-                                <div key={`rec-${i}`} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                <div key={`rec-${i}`} className="rounded-lg border border-border p-4">
                                   <div className="flex items-start gap-3">
                                     <Badge className={`text-xs border shrink-0 ${severityClass}`}>
                                       {r.priority === 'high' ? 'High' : r.priority === 'medium' ? 'Medium' : 'Low'}
                                     </Badge>
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-medium text-slate-900 dark:text-white">{r.message}</p>
-                                      <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">
+                                      <p className="text-sm font-medium text-foreground">{r.message}</p>
+                                      <p className="text-sm text-foreground/80/60 mt-1">
                                         <span className="font-medium">Next step:</span> {r.action}
                                       </p>
                                       {Array.isArray(r.evidence) && r.evidence.length > 0 && (
-                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-                                          <span className="font-medium text-slate-700 dark:text-slate-300">Evidence:</span>{' '}
+                                        <div className="text-xs text-muted-foreground/70 mt-2">
+                                          <span className="font-medium text-foreground/80/60">Evidence:</span>{' '}
                                           {r.evidence.join(' \u2022 ')}
                                         </div>
                                       )}
@@ -2143,7 +2143,7 @@ export default function GoogleSheetsData() {
                         if (atRiskKpis.length === 0 && missedBenchmarks.length === 0) return null;
 
                         return (
-                          <Card className="border-slate-200 dark:border-slate-700">
+                          <Card className="border-border">
                             <CardHeader>
                               <CardTitle>Goal Impact</CardTitle>
                               <CardDescription>KPIs and Benchmarks that need attention</CardDescription>
@@ -2151,9 +2151,9 @@ export default function GoogleSheetsData() {
                             <CardContent>
                               <div className="grid gap-4 md:grid-cols-2">
                                 {atRiskKpis.length > 0 && (
-                                  <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3">
+                                  <div className="rounded-md border border-border p-3">
                                     <div className="flex items-center justify-between mb-3">
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">KPI Gaps</div>
+                                      <div className="text-sm font-semibold text-foreground">KPI Gaps</div>
                                       <Badge variant="outline" className="text-xs">{atRiskKpis.length}</Badge>
                                     </div>
                                     <div className="space-y-2">
@@ -2164,8 +2164,8 @@ export default function GoogleSheetsData() {
                                         return (
                                           <div key={k.id} className="flex items-center justify-between gap-2">
                                             <div className="min-w-0">
-                                              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{k.name}</p>
-                                              <p className="text-xs text-slate-500 truncate">
+                                              <p className="text-sm font-medium text-foreground truncate">{k.name}</p>
+                                              <p className="text-xs text-muted-foreground truncate">
                                                 {k.metric || 'No metric'} {'\u2022'} Gap: {gapPct.toFixed(1)}%
                                               </p>
                                             </div>
@@ -2183,9 +2183,9 @@ export default function GoogleSheetsData() {
                                   </div>
                                 )}
                                 {missedBenchmarks.length > 0 && (
-                                  <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3">
+                                  <div className="rounded-md border border-border p-3">
                                     <div className="flex items-center justify-between mb-3">
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">Benchmark Gaps</div>
+                                      <div className="text-sm font-semibold text-foreground">Benchmark Gaps</div>
                                       <Badge variant="outline" className="text-xs">{missedBenchmarks.length}</Badge>
                                     </div>
                                     <div className="space-y-2">
@@ -2196,8 +2196,8 @@ export default function GoogleSheetsData() {
                                         return (
                                           <div key={b.id} className="flex items-center justify-between gap-2">
                                             <div className="min-w-0">
-                                              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{b.name}</p>
-                                              <p className="text-xs text-slate-500 truncate">
+                                              <p className="text-sm font-medium text-foreground truncate">{b.name}</p>
+                                              <p className="text-xs text-muted-foreground truncate">
                                                 {b.metric || 'No metric'} {'\u2022'} Gap: {gapPct.toFixed(1)}%
                                               </p>
                                             </div>
@@ -2220,9 +2220,9 @@ export default function GoogleSheetsData() {
                       {(!sheetsData.insights.summary || sheetsData.insights.summary.total === 0) && (
                         <Card>
                           <CardContent className="text-center py-12">
-                            <Lightbulb className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Insights Yet</h3>
-                            <p className="text-slate-500 dark:text-slate-400">
+                            <Lightbulb className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                            <h3 className="text-lg font-medium text-foreground mb-2">No Insights Yet</h3>
+                            <p className="text-muted-foreground/70">
                               Add more data to your sheet to generate insights. At least 10 data points are needed for trend and anomaly detection.
                             </p>
                           </CardContent>
@@ -2232,9 +2232,9 @@ export default function GoogleSheetsData() {
                   ) : (
                     <Card>
                       <CardContent className="text-center py-12">
-                        <Lightbulb className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Insights Available</h3>
-                        <p className="text-slate-500 dark:text-slate-400">
+                        <Lightbulb className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-2">No Insights Available</h3>
+                        <p className="text-muted-foreground/70">
                           Insights will appear here once your sheet data is analyzed.
                         </p>
                       </CardContent>
@@ -2246,15 +2246,15 @@ export default function GoogleSheetsData() {
                 <TabsContent value="reports" className="mt-6 space-y-6">
                   {reportsLoading ? (
                     <div className="animate-pulse space-y-4">
-                      <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                      <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                      <div className="h-32 bg-muted rounded"></div>
+                      <div className="h-64 bg-muted rounded"></div>
                     </div>
                   ) : reportsIsError ? (
                     <Card>
                       <CardContent className="text-center py-12">
                         <AlertCircle className="w-12 h-12 mx-auto text-red-400 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Failed to Load Reports</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mb-4">{(reportsError as any)?.message || "An error occurred."}</p>
+                        <h3 className="text-lg font-medium text-foreground mb-2">Failed to Load Reports</h3>
+                        <p className="text-muted-foreground/70 mb-4">{(reportsError as any)?.message || "An error occurred."}</p>
                         <Button variant="outline" onClick={() => void refetchReports()}>Retry</Button>
                       </CardContent>
                     </Card>
@@ -2262,8 +2262,8 @@ export default function GoogleSheetsData() {
                     <>
                       <div className="flex items-center justify-between">
                         <div>
-                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Reports</h2>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          <h2 className="text-2xl font-bold text-foreground">Reports</h2>
+                          <p className="text-sm text-muted-foreground/70 mt-1">
                             Schedule and generate reports from your Google Sheets data
                           </p>
                         </div>
@@ -2280,7 +2280,7 @@ export default function GoogleSheetsData() {
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-3 mb-1">
-                                    <h3 className="font-semibold text-slate-900 dark:text-white">{report.name}</h3>
+                                    <h3 className="font-semibold text-foreground">{report.name}</h3>
                                     <Badge variant="outline" className="capitalize">{report.reportType || 'overview'}</Badge>
                                     {report.scheduleEnabled && (
                                       <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300">
@@ -2290,9 +2290,9 @@ export default function GoogleSheetsData() {
                                     )}
                                   </div>
                                   {report.description && (
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">{report.description}</p>
+                                    <p className="text-sm text-muted-foreground/70">{report.description}</p>
                                   )}
-                                  <div className="flex gap-4 mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                  <div className="flex gap-4 mt-2 text-xs text-muted-foreground/70">
                                     {report.scheduleEnabled && report.scheduleRecipients && (
                                       <span className="flex items-center gap-1">
                                         <Mail className="w-3 h-3" />
@@ -2358,9 +2358,9 @@ export default function GoogleSheetsData() {
                   ) : (
                     <Card>
                       <CardContent className="text-center py-12">
-                        <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Reports Yet</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mb-4">
+                        <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-2">No Reports Yet</h3>
+                        <p className="text-muted-foreground/70 mb-4">
                           Schedule and generate reports from your Google Sheets data.
                         </p>
                         <Button onClick={() => { setReportModalStep("standard"); setIsReportModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700">
@@ -2401,8 +2401,8 @@ export default function GoogleSheetsData() {
                       <CardContent>
                         {googleSheetsConnections.length === 0 ? (
                           <div className="text-center py-8">
-                            <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                            <p className="text-slate-600 dark:text-slate-400 mb-4">
+                            <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                            <p className="text-muted-foreground/70 mb-4">
                               No Google Sheets datasets connected yet.
                             </p>
                             <Button onClick={() => setShowAddDatasetModal(true)}>
@@ -2416,7 +2416,7 @@ export default function GoogleSheetsData() {
                               return (
                                 <Card
                                   key={conn.id}
-                                  className="border-slate-200 dark:border-slate-700"
+                                  className="border-border"
                                 >
                                   <CardContent className="p-4">
                                     <div className="flex items-center justify-between">
@@ -2424,16 +2424,16 @@ export default function GoogleSheetsData() {
                                         <FileSpreadsheet className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-2 mb-1">
-                                            <h4 className="font-medium text-slate-900 dark:text-white truncate">
+                                            <h4 className="font-medium text-foreground truncate">
                                               {conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`}
                                             </h4>
                                           </div>
                                           <div className="space-y-0.5">
-                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            <p className="text-xs text-muted-foreground/70">
                                               {conn.spreadsheetId}
                                             </p>
                                             {conn.sheetName && (
-                                              <p className="text-xs text-slate-600 dark:text-slate-300">
+                                              <p className="text-xs text-muted-foreground/60">
                                                 Tab: <span className="font-medium">{conn.sheetName}</span>
                                               </p>
                                             )}
@@ -2456,7 +2456,7 @@ export default function GoogleSheetsData() {
                                             <Button
                                               variant="ghost"
                                               size="sm"
-                                              className="h-8 w-8 p-0 text-slate-400 hover:text-red-600"
+                                              className="h-8 w-8 p-0 text-muted-foreground/70 hover:text-red-600"
                                               title="Remove connection"
                                             >
                                               <Trash2 className="w-4 h-4" />
@@ -2501,9 +2501,9 @@ export default function GoogleSheetsData() {
             ) : (
             <Card>
               <CardContent className="text-center py-12">
-                <FileSpreadsheet className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Data Available</h3>
-                <p className="text-slate-500 dark:text-slate-400">Unable to load Google Sheets data for this campaign.</p>
+                <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No Data Available</h3>
+                <p className="text-muted-foreground/70">Unable to load Google Sheets data for this campaign.</p>
               </CardContent>
             </Card>
           )}

@@ -70,7 +70,7 @@ export default function SimpleGeographicMap({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="relative w-full h-80 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="relative w-full h-80 bg-muted rounded-lg border border-border overflow-hidden">
         {/* World regions as colored rectangles */}
         {worldRegions.map((region) => {
           const regionData = region.countries.map(country => countryDataMap.get(country)).filter(Boolean);
@@ -85,7 +85,7 @@ export default function SimpleGeographicMap({
               onMouseEnter={() => setHoveredCountry(region.name)}
               onMouseLeave={() => setHoveredCountry(null)}
             >
-              <div className="flex flex-col items-center justify-center h-full text-xs font-medium text-slate-700 dark:text-slate-200">
+              <div className="flex flex-col items-center justify-center h-full text-xs font-medium text-foreground/80 dark:text-slate-200">
                 <div className="text-center">
                   <div className="font-semibold">{region.name}</div>
                   <div className="text-xs mt-1">
@@ -93,7 +93,7 @@ export default function SimpleGeographicMap({
                       <div>{totalUsers.toLocaleString()} users</div>
                     )}
                     {totalSessions > 0 && (
-                      <div className="text-slate-500 dark:text-slate-400">{totalSessions.toLocaleString()} sessions</div>
+                      <div className="text-muted-foreground/70">{totalSessions.toLocaleString()} sessions</div>
                     )}
                   </div>
                 </div>
@@ -104,10 +104,10 @@ export default function SimpleGeographicMap({
 
         {/* Central title */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-          <div className="text-lg font-semibold text-slate-400 dark:text-slate-500 mb-2">
+          <div className="text-lg font-semibold text-muted-foreground/70 mb-2">
             World Map View
           </div>
-          <div className="text-sm text-slate-500 dark:text-slate-400">
+          <div className="text-sm text-muted-foreground/70">
             {data.length} countries tracked
           </div>
         </div>
@@ -118,26 +118,26 @@ export default function SimpleGeographicMap({
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-1">
             <div className="w-4 h-3 bg-gray-100 dark:bg-gray-800 border border-gray-300"></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">No data</span>
+            <span className="text-xs text-muted-foreground/70">No data</span>
           </div>
           <div className="flex items-center space-x-1">
             <div className="w-4 h-3 bg-blue-200 dark:bg-blue-800/50 border border-gray-300"></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">Low</span>
+            <span className="text-xs text-muted-foreground/70">Low</span>
           </div>
           <div className="flex items-center space-x-1">
             <div className="w-4 h-3 bg-blue-400 dark:bg-blue-600/80 border border-gray-300"></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">Medium</span>
+            <span className="text-xs text-muted-foreground/70">Medium</span>
           </div>
           <div className="flex items-center space-x-1">
             <div className="w-4 h-3 bg-blue-500 dark:bg-blue-500 border border-gray-300"></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">High</span>
+            <span className="text-xs text-muted-foreground/70">High</span>
           </div>
         </div>
       </div>
 
       {/* Hover tooltip */}
       {hoveredCountry && (
-        <div className="absolute top-2 left-2 bg-slate-900 text-white px-3 py-2 rounded-lg text-sm z-10">
+        <div className="absolute top-2 left-2 bg-card text-white px-3 py-2 rounded-lg text-sm z-10">
           {hoveredCountry} Region
         </div>
       )}

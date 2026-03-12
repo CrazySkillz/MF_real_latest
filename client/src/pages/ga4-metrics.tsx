@@ -1151,9 +1151,9 @@ export default function GA4Metrics() {
     if (n === "cpa") return { Icon: Target, color: "text-blue-600" };
     if (n.includes("conversion")) return { Icon: Target, color: "text-indigo-600" };
     if (n.includes("engagement")) return { Icon: MousePointer, color: "text-orange-600" };
-    if (n.includes("session")) return { Icon: Clock, color: "text-slate-600" };
-    if (n.includes("user")) return { Icon: Users, color: "text-slate-600" };
-    return { Icon: BarChart3, color: "text-slate-600" };
+    if (n.includes("session")) return { Icon: Clock, color: "text-muted-foreground" };
+    if (n.includes("user")) return { Icon: Users, color: "text-muted-foreground" };
+    return { Icon: BarChart3, color: "text-muted-foreground" };
   };
 
   // Helper function for benchmark values
@@ -3326,16 +3326,16 @@ export default function GA4Metrics() {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              <div className="h-8 bg-muted rounded animate-pulse"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                  <div key={i} className="h-24 bg-muted rounded animate-pulse"></div>
                 ))}
               </div>
             </div>
@@ -3348,16 +3348,16 @@ export default function GA4Metrics() {
   // Prevent a "flash" of the GA4 connection flow before the connection check finishes.
   if (ga4ConnLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              <div className="h-8 bg-muted rounded animate-pulse"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                  <div key={i} className="h-24 bg-muted rounded animate-pulse"></div>
                 ))}
               </div>
             </div>
@@ -3369,13 +3369,13 @@ export default function GA4Metrics() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Campaign not found</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">Campaign not found</h2>
               <Link href="/campaigns">
                 <Button>
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -3392,7 +3392,7 @@ export default function GA4Metrics() {
   // If GA4 is not connected or has no connections, show connection flow
   if (!ga4Connection?.connected || ga4Connection?.totalConnections === 0) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -3406,8 +3406,8 @@ export default function GA4Metrics() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Google Analytics Metrics</h1>
-                  <p className="text-slate-600 dark:text-slate-400 mt-1">for {campaign.name}</p>
+                  <h1 className="text-3xl font-bold text-foreground">Google Analytics Metrics</h1>
+                  <p className="text-muted-foreground/70 mt-1">for {campaign.name}</p>
                 </div>
               </div>
             </div>
@@ -3417,8 +3417,8 @@ export default function GA4Metrics() {
                 <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-6">
                   <SiGoogle className="w-8 h-8 text-orange-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Connect Google Analytics</h2>
-                <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md">
+                <h2 className="text-2xl font-bold text-foreground mb-4">Connect Google Analytics</h2>
+                <p className="text-muted-foreground/70 mb-8 max-w-md">
                   Connect your Google Analytics account to view detailed metrics and insights for this campaign.
                 </p>
                 <GA4ConnectionFlow
@@ -3436,7 +3436,7 @@ export default function GA4Metrics() {
   }
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
 
       <div className="flex">
@@ -3456,9 +3456,9 @@ export default function GA4Metrics() {
                 <div>
                   <div className="flex items-center space-x-3 mb-2">
                     <SiGoogle className="w-8 h-8 text-orange-500" />
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Google Analytics</h1>
+                    <h1 className="text-3xl font-bold text-foreground">Google Analytics</h1>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-400">Detailed metrics for {campaign.name}</p>
+                  <p className="text-muted-foreground/70">Detailed metrics for {campaign.name}</p>
 
                 </div>
               </div>
@@ -3490,7 +3490,7 @@ export default function GA4Metrics() {
                     ))}
                     {selectedGa4CampaignFilterList.length > 3 && (
                       <span
-                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground/70"
                         title={selectedGa4CampaignFilterList.slice(3).join(", ")}
                       >
                         +{selectedGa4CampaignFilterList.length - 3} more
@@ -3500,25 +3500,25 @@ export default function GA4Metrics() {
                 )}
               </div>
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              <span className="font-medium text-slate-600 dark:text-slate-300">Data:</span> {provenanceProperty}
+            <div className="text-xs text-muted-foreground/70">
+              <span className="font-medium text-muted-foreground/60">Data:</span> {provenanceProperty}
               {provenancePropertyId ? ` (Property ID: ${provenancePropertyId})` : ""}
               {" • "}
-              <span className="font-medium text-slate-600 dark:text-slate-300">Report date (UTC):</span> {ga4ReportDate || "—"}
+              <span className="font-medium text-muted-foreground/60">Report date (UTC):</span> {ga4ReportDate || "—"}
               {(
                 (Array.isArray(selectedGa4CampaignFilterList) && selectedGa4CampaignFilterList.length > 0) ||
                 provenanceCampaignFilter
               ) ? (
                 <>
                   {" • "}
-                  <span className="font-medium text-slate-600 dark:text-slate-300">Campaigns:</span>{" "}
+                  <span className="font-medium text-muted-foreground/60">Campaigns:</span>{" "}
                   {selectedGa4CampaignFilterList.length} selected
                 </>
               ) : null}
               {provenanceLastUpdated ? (
                 <>
                   {" • "}
-                  <span className="font-medium text-slate-600 dark:text-slate-300">Last updated:</span>{" "}
+                  <span className="font-medium text-muted-foreground/60">Last updated:</span>{" "}
                   {new Date(provenanceLastUpdated).toLocaleString()}
                 </>
               ) : null}
@@ -3556,14 +3556,14 @@ export default function GA4Metrics() {
                       key={connection.id}
                       className={`p-4 rounded-lg border ${connection.isPrimary
                         ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950'
-                        : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800'
+                        : 'border-border bg-muted'
                         }`}
                       data-testid={`property-card-${connection.id}`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
-                            <h4 className="font-medium text-slate-900 dark:text-white">
+                            <h4 className="font-medium text-foreground">
                               {connection.displayName || connection.propertyName}
                             </h4>
                             {connection.isPrimary && (
@@ -3572,15 +3572,15 @@ export default function GA4Metrics() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+                          <p className="text-sm text-muted-foreground/70 mb-1">
                             Property ID: {connection.propertyId}
                           </p>
                           {connection.websiteUrl && (
-                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                            <p className="text-sm text-muted-foreground/70 mb-2">
                               {connection.websiteUrl}
                             </p>
                           )}
-                          <p className="text-xs text-slate-500 dark:text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             Connected {new Date(connection.connectedAt).toLocaleDateString()}
                           </p>
                         </div>
@@ -3654,7 +3654,7 @@ export default function GA4Metrics() {
           {ga4Loading && !ga4Metrics ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                <div key={i} className="h-32 bg-muted rounded animate-pulse"></div>
               ))}
             </div>
           ) : (
@@ -3675,46 +3675,46 @@ export default function GA4Metrics() {
                     {/* Summary Cards */}
                     <div>
                       <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Summary</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Key performance metrics for your GA4 property</p>
+                        <h3 className="text-base font-semibold text-foreground">Summary</h3>
+                        <p className="text-sm text-muted-foreground/70">Key performance metrics for your GA4 property</p>
                       </div>
                       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Sessions</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                            <p className="text-sm font-medium text-muted-foreground/70">Sessions</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
                               {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
                             </p>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Users</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                            <p className="text-sm font-medium text-muted-foreground/70">Users</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
                               {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
                             </p>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Conversions</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                            <p className="text-sm font-medium text-muted-foreground/70">Conversions</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
                               {formatNumber(financialConversions || 0)}
                             </p>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Engagement Rate</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                            <p className="text-sm font-medium text-muted-foreground/70">Engagement Rate</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
                               {formatPercentage(rateToPercent(dailySummedTotals.engagementRate || ga4Metrics?.engagementRate || 0))}
                             </p>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Bounce Rate</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                            <p className="text-sm font-medium text-muted-foreground/70">Bounce Rate</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
                               {formatPercentage(rateToPercent(dailySummedTotals.bounceRate || ga4Metrics?.bounceRate || 0))}
                             </p>
                           </CardContent>
@@ -3725,16 +3725,16 @@ export default function GA4Metrics() {
                     {/* Revenue & Financial */}
                     <div>
                       <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Revenue & Financial</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Financial performance and return on investment</p>
+                        <h3 className="text-base font-semibold text-foreground">Revenue & Financial</h3>
+                        <p className="text-sm text-muted-foreground/70">Financial performance and return on investment</p>
                       </div>
                       {/* Revenue & Spend cards — always show when any financial data exists */}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
                         {/* Total Revenue */}
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                            <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
                               {formatMoney(Number(financialRevenue || 0))}
                             </p>
                           </CardContent>
@@ -3742,8 +3742,8 @@ export default function GA4Metrics() {
                         {/* Latest Day Revenue — most recent complete day (skips today's partial) */}
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Revenue</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                            <p className="text-sm font-medium text-muted-foreground/70">Latest Day Revenue</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
                               {formatMoney(Number(
                                 ga4ReportDate
                                   ? (ga4DailyRows.find((r: any) => String(r?.date) === ga4ReportDate)?.revenue || 0)
@@ -3758,25 +3758,25 @@ export default function GA4Metrics() {
                             {spendDisplaySources.length > 0 ? (
                               <>
                                 <div className="flex items-center justify-between">
-                                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
+                                  <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
                                   <button
                                     onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}
-                                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
                                     title="Add spend source"
                                   >
                                     <Plus className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                <p className="text-2xl font-bold text-foreground mt-1">
                                   {formatMoney(Number(financialSpend || 0))}
                                 </p>
                                 {spendDisplaySources.length > 0 && (
-                                <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                                <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
                                   {spendDisplaySources.map((s: any) => (
                                     <div key={s.sourceId} className="flex items-center justify-between text-xs group/spend">
-                                      <span className="text-slate-500 dark:text-slate-400 min-w-[60px] truncate">{s.displayName || spendSourceTypeLabel(s.sourceType)}</span>
+                                      <span className="text-muted-foreground/70 min-w-[60px] truncate">{s.displayName || spendSourceTypeLabel(s.sourceType)}</span>
                                       <div className="flex items-center gap-1">
-                                        <span className="text-slate-700 dark:text-slate-300 font-medium tabular-nums">
+                                        <span className="text-foreground/80/60 font-medium tabular-nums">
                                           {s.spend != null ? formatMoney(s.spend) : formatMoney(Number(financialSpend || 0))}
                                         </span>
                                         <button
@@ -3784,14 +3784,14 @@ export default function GA4Metrics() {
                                             setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig });
                                             setShowSpendDialog(true);
                                           }}
-                                          className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-300 hover:text-slate-600 dark:hover:text-slate-300 opacity-0 group-hover/spend:opacity-100 transition-all"
+                                          className="p-0.5 rounded hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground dark:hover:text-muted-foreground/60 opacity-0 group-hover/spend:opacity-100 transition-all"
                                           title="Edit spend source"
                                         >
                                           <Edit className="h-3 w-3" />
                                         </button>
                                         <button
                                           onClick={() => setDeletingSpendSourceId(s.sourceId)}
-                                          className="p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-300 hover:text-red-600 opacity-0 group-hover/spend:opacity-100 transition-all"
+                                          className="p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/60 hover:text-red-600 opacity-0 group-hover/spend:opacity-100 transition-all"
                                           title="Remove spend source"
                                         >
                                           <Trash2 className="h-3 w-3" />
@@ -3804,8 +3804,8 @@ export default function GA4Metrics() {
                               </>
                             ) : (
                               <>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Spend</p>
-                                <p className="text-2xl font-bold text-slate-400 dark:text-slate-500 mt-1">$0.00</p>
+                                <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
+                                <p className="text-2xl font-bold text-muted-foreground/70 mt-1">$0.00</p>
                                 <div className="mt-2">
                                   <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}>
                                     <Plus className="h-3.5 w-3.5 mr-1" />
@@ -3819,8 +3819,8 @@ export default function GA4Metrics() {
                         {/* Latest Day Spend — checks today and yesterday for spend records */}
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Latest Day Spend</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                            <p className="text-sm font-medium text-muted-foreground/70">Latest Day Spend</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
                               {formatMoney(Number(spendDailyResp?.totalSpend || 0))}
                             </p>
                           </CardContent>
@@ -3831,47 +3831,47 @@ export default function GA4Metrics() {
                         <div className="grid gap-4 md:grid-cols-4">
                           <Card>
                             <CardContent className="p-5">
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Profit</p>
+                              <p className="text-sm font-medium text-muted-foreground/70">Profit</p>
                               <p className={`text-2xl font-bold mt-1 ${(financialRevenue - financialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {formatMoney(financialRevenue - financialSpend)}
                               </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue − Spend</p>
+                              <p className="text-xs text-muted-foreground/70 mt-1">Revenue − Spend</p>
                             </CardContent>
                           </Card>
                           <Card>
                             <CardContent className="p-5">
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              <p className="text-sm font-medium text-muted-foreground/70">ROAS</p>
+                              <p className="text-2xl font-bold text-foreground mt-1">
                                 {financialROAS.toFixed(2)}x
                               </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</p>
+                              <p className="text-xs text-muted-foreground/70 mt-1">Revenue ÷ Spend</p>
                             </CardContent>
                           </Card>
                           <Card>
                             <CardContent className="p-5">
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              <p className="text-sm font-medium text-muted-foreground/70">ROI</p>
+                              <p className="text-2xl font-bold text-foreground mt-1">
                                 {formatPercentage(financialROI)}
                               </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</p>
+                              <p className="text-xs text-muted-foreground/70 mt-1">(Revenue − Spend) ÷ Spend</p>
                             </CardContent>
                           </Card>
                           <Card>
                             <CardContent className="p-5">
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">CPA</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                              <p className="text-sm font-medium text-muted-foreground/70">CPA</p>
+                              <p className="text-2xl font-bold text-foreground mt-1">
                                 {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
                               </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              <p className="text-xs text-muted-foreground/70 mt-1">
                                 Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions > 0)" : ""}
                               </p>
                             </CardContent>
                           </Card>
                         </div>
                       ) : financialSpend <= 0 ? (
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
-                          <p className="text-sm font-medium text-slate-900 dark:text-white">Add spend to unlock ROAS / ROI / CPA</p>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <div className="rounded-lg border border-border bg-muted/40 p-4">
+                          <p className="text-sm font-medium text-foreground">Add spend to unlock ROAS / ROI / CPA</p>
+                          <p className="text-sm text-muted-foreground/70 mt-1">
                             To calculate ROAS/ROI/CPA, add spend from any source (ad platform, spreadsheet, or manual entry).
                           </p>
                           <div className="mt-3">
@@ -3887,18 +3887,18 @@ export default function GA4Metrics() {
                     {/* Campaign Breakdown */}
                     <div>
                       <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Campaign Breakdown</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Performance metrics aggregated by UTM campaign</p>
+                        <h3 className="text-base font-semibold text-foreground">Campaign Breakdown</h3>
+                        <p className="text-sm text-muted-foreground/70">Performance metrics aggregated by UTM campaign</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
                           {breakdownLoading ? (
-                            <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                            <div className="h-32 bg-muted rounded animate-pulse" />
                           ) : campaignBreakdownAgg.length > 0 ? (
                             <div className="overflow-hidden border rounded-md">
                               <div className="max-h-[420px] overflow-y-auto">
                                 <table className="w-full text-sm table-fixed">
-                                  <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
+                                  <thead className="sticky top-0 z-10 bg-muted border-b">
                                     <tr>
                                       <th className="text-left font-medium px-2 py-2">Campaign</th>
                                       <th className="text-right font-medium px-2 py-2 w-[90px]">Sessions</th>
@@ -3924,7 +3924,7 @@ export default function GA4Metrics() {
                               </div>
                             </div>
                           ) : (
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                            <div className="text-sm text-muted-foreground/70">
                               No campaign breakdown data available for this date range.
                             </div>
                           )}
@@ -3935,15 +3935,15 @@ export default function GA4Metrics() {
                     {/* Landing Pages */}
                     <div>
                       <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Landing Pages</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Cumulative across all campaigns — where users land and which pages drive outcomes</p>
+                        <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
+                        <p className="text-sm text-muted-foreground/70">Cumulative across all campaigns — where users land and which pages drive outcomes</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
                           {Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0 ? (
                             <div className="overflow-hidden border rounded-md">
                               <table className="w-full text-sm table-fixed">
-                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                <thead className="bg-muted border-b">
                                   <tr>
                                     <th className="text-left p-3 w-[34%]">Landing page</th>
                                     <th className="text-left p-3 w-[16%]">Source/Medium</th>
@@ -3951,7 +3951,7 @@ export default function GA4Metrics() {
                                     <th className="text-right p-3">
                                       <div className="flex items-center justify-end gap-1">
                                         Users
-                                        <AlertCircle className="w-3.5 h-3.5 text-slate-400" title="Non-additive: Unique users can appear on multiple landing pages" />
+                                        <AlertCircle className="w-3.5 h-3.5 text-muted-foreground/70" title="Non-additive: Unique users can appear on multiple landing pages" />
                                       </div>
                                     </th>
                                     <th className="text-right p-3">Conversions</th>
@@ -3967,11 +3967,11 @@ export default function GA4Metrics() {
                                     return (
                                       <tr key={`${r?.landingPage || idx}:${idx}`} className="border-b">
                                         <td className="p-3">
-                                          <div className="font-medium text-slate-900 dark:text-white truncate" title={String(r?.landingPage || "(not set)")}>
+                                          <div className="font-medium text-foreground truncate" title={String(r?.landingPage || "(not set)")}>
                                             {String(r?.landingPage || "(not set)")}
                                           </div>
                                         </td>
-                                        <td className="p-3 text-slate-600 dark:text-slate-400">
+                                        <td className="p-3 text-muted-foreground/70">
                                           <span className="truncate" title={`${String(r?.source || "(not set)")}/${String(r?.medium || "(not set)")}`}>
                                             {String(r?.source || "(not set)")}/{String(r?.medium || "(not set)")}
                                           </span>
@@ -3988,7 +3988,7 @@ export default function GA4Metrics() {
                               </table>
                             </div>
                           ) : (
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                            <div className="text-sm text-muted-foreground/70">
                               No landing page data available yet for this property/campaign selection.
                             </div>
                           )}
@@ -3999,15 +3999,15 @@ export default function GA4Metrics() {
                     {/* Conversion Events */}
                     <div>
                       <div className="mb-3">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Conversion Events</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Cumulative across all campaigns — which conversion events are driving results</p>
+                        <h3 className="text-base font-semibold text-foreground">Conversion Events</h3>
+                        <p className="text-sm text-muted-foreground/70">Cumulative across all campaigns — which conversion events are driving results</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
                           {Array.isArray(ga4ConversionEvents?.rows) && ga4ConversionEvents.rows.length > 0 ? (
                             <div className="overflow-hidden border rounded-md">
                               <table className="w-full text-sm table-fixed">
-                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                <thead className="bg-muted border-b">
                                   <tr>
                                     <th className="text-left p-3 w-[36%]">Event</th>
                                     <th className="text-right p-3">Conversions</th>
@@ -4020,7 +4020,7 @@ export default function GA4Metrics() {
                                   {ga4ConversionEvents.rows.slice(0, 25).map((r: any, idx: number) => (
                                     <tr key={`${r?.eventName || idx}:${idx}`} className="border-b">
                                       <td className="p-3">
-                                        <div className="font-medium text-slate-900 dark:text-white truncate" title={String(r?.eventName || "(not set)")}>
+                                        <div className="font-medium text-foreground truncate" title={String(r?.eventName || "(not set)")}>
                                           {String(r?.eventName || "(not set)")}
                                         </div>
                                       </td>
@@ -4034,7 +4034,7 @@ export default function GA4Metrics() {
                               </table>
                             </div>
                           ) : (
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                            <div className="text-sm text-muted-foreground/70">
                               No conversion event breakdown available yet for this property/campaign selection.
                             </div>
                           )}
@@ -4079,10 +4079,10 @@ export default function GA4Metrics() {
                     }}
                   />
                   <AlertDialog open={!!deletingSpendSourceId} onOpenChange={(open) => { if (!open) setDeletingSpendSourceId(null); }}>
-                    <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                    <AlertDialogContent className="bg-card border-border">
                       <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-white">Remove spend source?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                        <AlertDialogTitle className="text-foreground">Remove spend source?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground/70">
                           This will remove this spend source. Total Spend will be recalculated.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -4119,10 +4119,10 @@ export default function GA4Metrics() {
                     </AlertDialogContent>
                   </AlertDialog>
                   <AlertDialog open={showDeleteRevenueDialog} onOpenChange={setShowDeleteRevenueDialog}>
-                    <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                    <AlertDialogContent className="bg-card border-border">
                       <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-white">Remove revenue source?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                        <AlertDialogTitle className="text-foreground">Remove revenue source?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground/70">
                           This will remove imported revenue for this campaign until you add a revenue source again.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -4158,8 +4158,8 @@ export default function GA4Metrics() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Key Performance Indicators</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h2 className="text-lg font-semibold text-foreground">Key Performance Indicators</h2>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Track daily GA4 KPIs and progress toward targets (blocked items are excluded from scoring).
                         </p>
                       </div>
@@ -4174,7 +4174,7 @@ export default function GA4Metrics() {
                         {kpisLoading ? (
                           <div className="space-y-4">
                             {[...Array(3)].map((_, i) => (
-                              <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                              <div key={i} className="h-24 bg-muted rounded animate-pulse"></div>
                             ))}
                           </div>
                         ) : (
@@ -4185,8 +4185,8 @@ export default function GA4Metrics() {
                                 <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpiTracker.total}</p>
+                                      <p className="text-sm text-muted-foreground/70">Total KPIs</p>
+                                      <p className="text-2xl font-bold text-foreground">{kpiTracker.total}</p>
                                     </div>
                                     <Target className="w-8 h-8 text-purple-500" />
                                   </div>
@@ -4196,9 +4196,9 @@ export default function GA4Metrics() {
                                 <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm text-slate-600 dark:text-slate-400">Above Target</p>
+                                      <p className="text-sm text-muted-foreground/70">Above Target</p>
                                       <p className="text-2xl font-bold text-green-600">{kpiTracker.above}</p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-500">more than +5% above target</p>
+                                      <p className="text-xs text-muted-foreground">more than +5% above target</p>
                                     </div>
                                     <TrendingUp className="w-8 h-8 text-green-500" />
                                   </div>
@@ -4208,9 +4208,9 @@ export default function GA4Metrics() {
                                 <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                                      <p className="text-sm text-muted-foreground/70">On Track</p>
                                       <p className="text-2xl font-bold text-blue-600">{kpiTracker.near}</p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-500">within ±5% of target</p>
+                                      <p className="text-xs text-muted-foreground">within ±5% of target</p>
                                     </div>
                                     <CheckCircle2 className="w-8 h-8 text-blue-500" />
                                   </div>
@@ -4220,9 +4220,9 @@ export default function GA4Metrics() {
                                 <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm text-slate-600 dark:text-slate-400">Below Track</p>
+                                      <p className="text-sm text-muted-foreground/70">Below Track</p>
                                       <p className="text-2xl font-bold text-amber-600">{kpiTracker.below}</p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-500">more than −5% below target</p>
+                                      <p className="text-xs text-muted-foreground">more than −5% below target</p>
                                     </div>
                                     <AlertCircle className="w-8 h-8 text-amber-500" />
                                   </div>
@@ -4232,8 +4232,8 @@ export default function GA4Metrics() {
                                 <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
-                                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                      <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
+                                      <p className="text-2xl font-bold text-foreground">
                                         {kpiTracker.avgPct.toFixed(1)}%
                                       </p>
                                     </div>
@@ -4247,8 +4247,8 @@ export default function GA4Metrics() {
                               <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
-                                    <div className="font-semibold text-slate-900 dark:text-white">Some KPIs are Blocked</div>
-                                    <div className="text-sm text-slate-700 dark:text-slate-300 mt-1">
+                                    <div className="font-semibold text-foreground">Some KPIs are Blocked</div>
+                                    <div className="text-sm text-foreground/80/60 mt-1">
                                       {kpiTracker.blocked} KPI{kpiTracker.blocked === 1 ? "" : "s"} can’t be evaluated because Spend and/or Revenue was removed.
                                       Blocked KPIs are excluded from performance scoring to avoid misleading executives.
                                     </div>
@@ -4265,10 +4265,10 @@ export default function GA4Metrics() {
                             ) : null}
 
                             {platformKPIs.length === 0 ? (
-                              <div className="text-center text-slate-500 dark:text-slate-400 py-8">
-                                <Target className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No KPIs yet</h3>
-                                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                              <div className="text-center text-muted-foreground/70 py-8">
+                                <Target className="w-12 h-12 text-muted-foreground/70 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold text-foreground mb-2">No KPIs yet</h3>
+                                <p className="text-muted-foreground/70 mb-4">
                                   Create your first KPI to track GA4 performance for this campaign.
                                 </p>
                               </div>
@@ -4283,16 +4283,16 @@ export default function GA4Metrics() {
                                   const { Icon, color } = getKpiIcon(metricKey);
 
                                   return (
-                                    <Card key={kpi.id} className="border-slate-200 dark:border-slate-700">
+                                    <Card key={kpi.id} className="border-border">
                                       <CardContent className="p-5">
                                         <div className="flex items-start justify-between gap-3">
                                           <div className="flex items-start gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                                               <Icon className={`w-5 h-5 ${color}`} />
                                             </div>
                                             <div>
                                               <div className="flex items-center gap-2 flex-wrap">
-                                                <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+                                                <h4 className="text-base font-semibold text-foreground">
                                                   {kpi.name}
                                                 </h4>
                                                 {/* Alert indicators (matching LinkedIn KPI cards) */}
@@ -4303,7 +4303,7 @@ export default function GA4Metrics() {
                                                         <AlertTriangle className="w-4 h-4 text-yellow-500" />
                                                       </div>
                                                     </TooltipTrigger>
-                                                    <TooltipContent className="bg-slate-900 text-white border-slate-700">
+                                                    <TooltipContent className="bg-card text-white border-border">
                                                       <p className="text-sm">Alerts enabled</p>
                                                     </TooltipContent>
                                                   </UITooltip>
@@ -4329,25 +4329,25 @@ export default function GA4Metrics() {
                                                           <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping" />
                                                         </div>
                                                       </TooltipTrigger>
-                                                      <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                                      <TooltipContent className="max-w-xs bg-card text-white border-border">
                                                         <div className="space-y-2">
                                                           <p className="font-semibold text-red-400">Alert Threshold Breached</p>
                                                           <div className="text-xs space-y-1">
-                                                            <p><span className="text-slate-400">Current:</span> {formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}</p>
-                                                            <p><span className="text-slate-400">Alert Threshold:</span> {alertThresh}{kpi.unit}</p>
-                                                            <p><span className="text-slate-400">Condition:</span> {alertCond}</p>
+                                                            <p><span className="text-muted-foreground/70">Current:</span> {formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}</p>
+                                                            <p><span className="text-muted-foreground/70">Alert Threshold:</span> {alertThresh}{kpi.unit}</p>
+                                                            <p><span className="text-muted-foreground/70">Condition:</span> {alertCond}</p>
                                                           </div>
                                                         </div>
                                                       </TooltipContent>
                                                     </UITooltip>
                                                   ) : null;
                                                 })()}
-                                                <Badge className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                                                <Badge className="text-xs bg-muted text-foreground/80 dark:text-slate-200 border border-border">
                                                   {String(kpi?.metric || kpi?.name || "Custom")}
                                                 </Badge>
                                               </div>
                                               {kpi.description ? (
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                                <p className="text-sm text-muted-foreground/70 mt-1">
                                                   {kpi.description}
                                                 </p>
                                               ) : null}
@@ -4399,15 +4399,15 @@ export default function GA4Metrics() {
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4 mt-4">
-                                          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
-                                            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current</div>
-                                            <div className="text-xl font-bold text-slate-900 dark:text-white">
+                                          <div className="bg-muted rounded-lg p-3">
+                                            <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
+                                            <div className="text-xl font-bold text-foreground">
                                               {isBlocked ? "—" : formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
                                             </div>
                                           </div>
-                                          <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
-                                            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Target</div>
-                                            <div className="text-xl font-bold text-slate-900 dark:text-white">
+                                          <div className="bg-muted rounded-lg p-3">
+                                            <div className="text-sm font-medium text-muted-foreground/70 mb-1">Target</div>
+                                            <div className="text-xl font-bold text-foreground">
                                               {formatValue(String(t.effectiveTarget), kpi.unit)}
                                             </div>
                                           </div>
@@ -4416,11 +4416,11 @@ export default function GA4Metrics() {
                                         {/* Progress bar */}
                                         {!isBlocked && p && (
                                           <div className="mt-4 space-y-2">
-                                            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                                            <div className="flex items-center justify-between text-xs text-muted-foreground/70">
                                               <span>Progress</span>
                                               <span>{Math.round(p.attainmentPct)}%</span>
                                             </div>
-                                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                            <div className="w-full bg-muted rounded-full h-2">
                                               <div
                                                 className={`h-2 rounded-full ${p.progressColor}`}
                                                 style={{ width: `${p.fillPct}%` }}
@@ -4431,7 +4431,7 @@ export default function GA4Metrics() {
 
                                         {/* Delta vs target */}
                                         {!isBlocked && p && p.effectiveDeltaPct !== null && (
-                                          <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                                          <div className="mt-2 text-xs text-muted-foreground/70">
                                             {(() => {
                                               if (Math.abs(p.effectiveDeltaPct) < 0.0001) return "At target";
                                               const signed = `${p.effectiveDeltaPct >= 0 ? "+" : ""}${p.effectiveDeltaPct.toFixed(1)}%`;
@@ -4444,7 +4444,7 @@ export default function GA4Metrics() {
                                         )}
 
                                         {isBlocked ? (
-                                          <div className="mt-4 text-sm text-slate-600 dark:text-slate-400">
+                                          <div className="mt-4 text-sm text-muted-foreground/70">
                                             Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This KPI is paused until inputs are restored.
                                             <div className="mt-2">
                                               <Link href={`/campaigns/${campaignId}#overview`}>
@@ -4471,10 +4471,10 @@ export default function GA4Metrics() {
                 <TabsContent value="benchmarks" className="fade-in">
                   <div className="space-y-6">
                     <AlertDialog open={showDeleteBenchmarkDialog} onOpenChange={setShowDeleteBenchmarkDialog}>
-                      <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                      <AlertDialogContent className="bg-card border-border">
                         <AlertDialogHeader>
-                          <AlertDialogTitle className="text-slate-900 dark:text-white">Delete benchmark?</AlertDialogTitle>
-                          <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                          <AlertDialogTitle className="text-foreground">Delete benchmark?</AlertDialogTitle>
+                          <AlertDialogDescription className="text-muted-foreground/70">
                             This will permanently remove the benchmark from this GA4 Benchmarks list.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -4494,8 +4494,8 @@ export default function GA4Metrics() {
                     {/* Header with Create Button */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Performance Benchmarks</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h3 className="text-lg font-semibold text-foreground">Performance Benchmarks</h3>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Track and measure performance against industry standards and custom targets
                         </p>
                       </div>
@@ -4540,9 +4540,9 @@ export default function GA4Metrics() {
                           </Button>
                         </DialogTrigger>
                         {/* Avoid forcing extreme z-index here; it can cause Radix Select menus to render behind the modal. */}
-                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 p-6">
-                          <DialogClose className="absolute right-4 top-4 rounded-full p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors z-[60]">
-                            <X className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border p-6">
+                          <DialogClose className="absolute right-4 top-4 rounded-full p-2 bg-muted hover:bg-muted dark:hover:bg-slate-700 transition-colors z-[60]">
+                            <X className="h-4 w-4 text-muted-foreground/70" />
                             <span className="sr-only">Close</span>
                           </DialogClose>
                           <DialogHeader className="pb-4 pr-8">
@@ -4555,11 +4555,11 @@ export default function GA4Metrics() {
                           </DialogHeader>
                           <form onSubmit={handleCreateBenchmark} className="space-y-6">
                             {/* Select Benchmark Template (mirrors KPI modal template grid) */}
-                            <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                            <div className="space-y-3 p-4 bg-muted rounded-lg">
                               <div className="flex items-start justify-between gap-3">
                                 <div>
-                                  <h4 className="font-medium text-slate-900 dark:text-white">Select Benchmark Template</h4>
-                                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                                  <h4 className="font-medium text-foreground">Select Benchmark Template</h4>
+                                  <p className="text-sm text-muted-foreground/70">
                                     Choose a metric to benchmark, then fill in the benchmark details below.
                                   </p>
                                 </div>
@@ -4593,7 +4593,7 @@ export default function GA4Metrics() {
                                       className={`p-3 border-2 rounded-lg transition-all ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                                         } ${!isCustom && selectedBenchmarkTemplate?.metric === template.metric
                                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                                          : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                                          : "border-border hover:border-blue-300"
                                         }`}
                                       onClick={() => {
                                         if (disabled) return;
@@ -4663,11 +4663,11 @@ export default function GA4Metrics() {
                                         }
                                       }}
                                     >
-                                      <div className="font-medium text-sm text-slate-900 dark:text-white">
+                                      <div className="font-medium text-sm text-foreground">
                                         {template.name}
                                       </div>
                                       {disabled ? (
-                                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                                        <div className="mt-1 text-xs text-muted-foreground/70">
                                           {requiresSpend && !spendMetricAvailable && requiresRevenue && !revenueMetricAvailable
                                             ? "Spend + Revenue required (add both to unlock)"
                                             : requiresSpend && !spendMetricAvailable
@@ -4685,7 +4685,7 @@ export default function GA4Metrics() {
 
                             {/* Benchmark Name */}
                             <div className="space-y-2">
-                              <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Benchmark Name *</div>
+                              <div className="text-sm font-medium text-foreground/80/60">Benchmark Name *</div>
                               <Input
                                 value={newBenchmark.name}
                                 onChange={(e) => setNewBenchmark({ ...newBenchmark, name: e.target.value })}
@@ -4696,7 +4696,7 @@ export default function GA4Metrics() {
 
                             {/* Description */}
                             <div className="space-y-2">
-                              <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</div>
+                              <div className="text-sm font-medium text-foreground/80/60">Description</div>
                               <Textarea
                                 value={newBenchmark.description}
                                 maxLength={BENCHMARK_DESC_MAX}
@@ -4704,7 +4704,7 @@ export default function GA4Metrics() {
                                 rows={3}
                                 placeholder="What is this benchmark and why does it matter?"
                               />
-                              <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                              <div className="text-xs text-muted-foreground/70 text-right">
                                 {(newBenchmark.description || "").length}/{BENCHMARK_DESC_MAX}
                               </div>
                             </div>
@@ -4712,7 +4712,7 @@ export default function GA4Metrics() {
                             {/* Current Value + Benchmark Value + Unit */}
                             <div className="grid grid-cols-3 gap-4">
                               <div className="space-y-2">
-                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Current Value</div>
+                                <div className="text-sm font-medium text-foreground/80/60">Current Value</div>
                                 <Input
                                   type="text"
                                   inputMode="decimal"
@@ -4728,7 +4728,7 @@ export default function GA4Metrics() {
                                 />
                               </div>
                               <div className="space-y-2">
-                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Benchmark Value *</div>
+                                <div className="text-sm font-medium text-foreground/80/60">Benchmark Value *</div>
                                 <Input
                                   type="text"
                                   inputMode="decimal"
@@ -4750,7 +4750,7 @@ export default function GA4Metrics() {
                                 />
                               </div>
                               <div className="space-y-2">
-                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Unit</div>
+                                <div className="text-sm font-medium text-foreground/80/60">Unit</div>
                                 <Input
                                   value={newBenchmark.unit === SELECT_UNIT ? "" : newBenchmark.unit}
                                   onChange={(e) => setNewBenchmark({ ...newBenchmark, unit: e.target.value })}
@@ -4762,7 +4762,7 @@ export default function GA4Metrics() {
                             {/* Benchmark Type */}
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Benchmark Type *</div>
+                                <div className="text-sm font-medium text-foreground/80/60">Benchmark Type *</div>
                                 <Select
                                   value={newBenchmark.benchmarkType || "custom"}
                                   onValueChange={(v) => {
@@ -4787,7 +4787,7 @@ export default function GA4Metrics() {
 
                               {newBenchmark.benchmarkType === "industry" && (
                                 <div className="space-y-2">
-                                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Industry</div>
+                                  <div className="text-sm font-medium text-foreground/80/60">Industry</div>
                                   <Select
                                     value={newBenchmark.industry}
                                     onValueChange={async (industry) => {
@@ -4830,7 +4830,7 @@ export default function GA4Metrics() {
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                                  <div className="text-xs text-muted-foreground/70">
                                     Selecting an industry will auto-fill a suggested Benchmark Value for the chosen metric.
                                   </div>
                                 </div>
@@ -4849,7 +4849,7 @@ export default function GA4Metrics() {
                                   Enable alerts for this Benchmark
                                 </Label>
                               </div>
-                              <p className="text-sm text-slate-500 dark:text-slate-400 -mt-2">
+                              <p className="text-sm text-muted-foreground/70 -mt-2">
                                 Receive notifications when this benchmark crosses a threshold you define.
                               </p>
 
@@ -4873,7 +4873,7 @@ export default function GA4Metrics() {
                                           }))
                                         }
                                       />
-                                      <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
+                                      <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
                                     </div>
                                     <div className="space-y-2">
                                       <Label>Alert When</Label>
@@ -4898,7 +4898,7 @@ export default function GA4Metrics() {
                                           <SelectItem value="weekly">Weekly</SelectItem>
                                         </SelectContent>
                                       </Select>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                                      <p className="text-xs text-muted-foreground/70">
                                         Controls how often you're notified while the alert condition stays true.
                                       </p>
                                     </div>
@@ -4922,7 +4922,7 @@ export default function GA4Metrics() {
                                             value={newBenchmark.emailRecipients}
                                             onChange={(e) => setNewBenchmark({ ...newBenchmark, emailRecipients: e.target.value })}
                                           />
-                                          <p className="text-xs text-slate-500 dark:text-slate-400">Comma-separated email addresses for alerts.</p>
+                                          <p className="text-xs text-muted-foreground/70">Comma-separated email addresses for alerts.</p>
                                         </div>
                                       )}
                                     </div>
@@ -4951,9 +4951,9 @@ export default function GA4Metrics() {
                           {[1, 2, 3].map((i) => (
                             <Card key={i} className="animate-pulse">
                               <CardContent className="p-6">
-                                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
-                                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mb-4"></div>
-                                <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                                <div className="h-3 bg-muted rounded w-1/2 mb-4"></div>
+                                <div className="h-8 bg-muted rounded"></div>
                               </CardContent>
                             </Card>
                           ))}
@@ -4966,8 +4966,8 @@ export default function GA4Metrics() {
                               <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
-                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.total}</p>
+                                    <p className="text-sm text-muted-foreground/70">Total Benchmarks</p>
+                                    <p className="text-2xl font-bold text-foreground">{benchmarkTracker.total}</p>
                                   </div>
                                   <Target className="w-8 h-8 text-purple-500" />
                                 </div>
@@ -4978,9 +4978,9 @@ export default function GA4Metrics() {
                               <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                                    <p className="text-sm text-muted-foreground/70">On Track</p>
                                     <p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-500">meeting or exceeding target</p>
+                                    <p className="text-xs text-muted-foreground">meeting or exceeding target</p>
                                   </div>
                                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                                 </div>
@@ -4991,9 +4991,9 @@ export default function GA4Metrics() {
                               <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
+                                    <p className="text-sm text-muted-foreground/70">Needs Attention</p>
                                     <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-500">within 70–90% of target</p>
+                                    <p className="text-xs text-muted-foreground">within 70–90% of target</p>
                                   </div>
                                   <AlertCircle className="w-8 h-8 text-amber-500" />
                                 </div>
@@ -5004,9 +5004,9 @@ export default function GA4Metrics() {
                               <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">Behind</p>
+                                    <p className="text-sm text-muted-foreground/70">Behind</p>
                                     <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-500">below 70% of target</p>
+                                    <p className="text-xs text-muted-foreground">below 70% of target</p>
                                   </div>
                                   <AlertTriangle className="w-8 h-8 text-red-500" />
                                 </div>
@@ -5017,8 +5017,8 @@ export default function GA4Metrics() {
                               <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
-                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
+                                    <p className="text-2xl font-bold text-foreground">
                                       {benchmarkTracker.avgPct.toFixed(1)}%
                                     </p>
                                   </div>
@@ -5032,8 +5032,8 @@ export default function GA4Metrics() {
                             <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                  <div className="font-semibold text-slate-900 dark:text-white">Some Benchmarks are Blocked</div>
-                                  <div className="text-sm text-slate-700 dark:text-slate-300 mt-1">
+                                  <div className="font-semibold text-foreground">Some Benchmarks are Blocked</div>
+                                  <div className="text-sm text-foreground/80/60 mt-1">
                                     {benchmarkTracker.blocked} benchmark{benchmarkTracker.blocked === 1 ? "" : "s"} can’t be evaluated because Spend and/or Revenue was removed.
                                     Blocked benchmarks are excluded from performance scoring to avoid misleading executives.
                                   </div>
@@ -5060,9 +5060,9 @@ export default function GA4Metrics() {
                                     <div className="flex items-start justify-between mb-4">
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          <h3 className="font-semibold text-slate-900 dark:text-white text-lg">{benchmark.name}</h3>
+                                          <h3 className="font-semibold text-foreground text-lg">{benchmark.name}</h3>
                                           {(benchmark as any)?.metric && (
-                                            <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">
+                                            <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono">
                                               {getBenchmarkMetricLabel((benchmark as any)?.metric, benchmark.name)}
                                             </Badge>
                                           )}
@@ -5073,7 +5073,7 @@ export default function GA4Metrics() {
                                                   <AlertTriangle className="w-4 h-4 text-yellow-500" />
                                                 </div>
                                               </TooltipTrigger>
-                                              <TooltipContent className="bg-slate-900 text-white border-slate-700">
+                                              <TooltipContent className="bg-card text-white border-border">
                                                 <p className="text-sm">Alerts enabled</p>
                                               </TooltipContent>
                                             </UITooltip>
@@ -5099,13 +5099,13 @@ export default function GA4Metrics() {
                                                     <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping" />
                                                   </div>
                                                 </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                                <TooltipContent className="max-w-xs bg-card text-white border-border">
                                                   <div className="space-y-2">
                                                     <p className="font-semibold text-red-400">Alert Threshold Breached</p>
                                                     <div className="text-xs space-y-1">
-                                                      <p><span className="text-slate-400">Current:</span> {formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}</p>
-                                                      <p><span className="text-slate-400">Alert Threshold:</span> {alertThresh}{benchmark.unit}</p>
-                                                      <p><span className="text-slate-400">Condition:</span> {alertCond}</p>
+                                                      <p><span className="text-muted-foreground/70">Current:</span> {formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}</p>
+                                                      <p><span className="text-muted-foreground/70">Alert Threshold:</span> {alertThresh}{benchmark.unit}</p>
+                                                      <p><span className="text-muted-foreground/70">Condition:</span> {alertCond}</p>
                                                     </div>
                                                   </div>
                                                 </TooltipContent>
@@ -5114,12 +5114,12 @@ export default function GA4Metrics() {
                                           })()}
                                         </div>
                                         {benchmark.description ? (
-                                          <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                          <div className="text-sm text-muted-foreground/70 mt-1">
                                             {benchmark.description}
                                           </div>
                                         ) : null}
                                         {benchmark.industry && (
-                                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                          <div className="text-xs text-muted-foreground/70 mt-1">
                                             Industry: {benchmark.industry}
                                           </div>
                                         )}
@@ -5143,10 +5143,10 @@ export default function GA4Metrics() {
                                               <Trash2 className="w-4 h-4" />
                                             </Button>
                                           </AlertDialogTrigger>
-                                          <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                                          <AlertDialogContent className="bg-card border-border">
                                             <AlertDialogHeader>
-                                              <AlertDialogTitle className="text-slate-900 dark:text-white">Delete Benchmark</AlertDialogTitle>
-                                              <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                                              <AlertDialogTitle className="text-foreground">Delete Benchmark</AlertDialogTitle>
+                                              <AlertDialogDescription className="text-muted-foreground/70">
                                                 Are you sure you want to delete "{benchmark.name}"? This action cannot be undone.
                                               </AlertDialogDescription>
                                             </AlertDialogHeader>
@@ -5166,21 +5166,21 @@ export default function GA4Metrics() {
 
                                     {/* 3-column metrics grid */}
                                     <div className="grid gap-4 md:grid-cols-3 mb-4">
-                                      <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current Value</div>
-                                        <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                      <div className="p-3 bg-muted rounded-lg">
+                                        <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current Value</div>
+                                        <div className="text-lg font-bold text-foreground">
                                           {isBlocked ? "—" : formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}
                                         </div>
                                       </div>
-                                      <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Benchmark Value</div>
-                                        <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                      <div className="p-3 bg-muted rounded-lg">
+                                        <div className="text-sm font-medium text-muted-foreground/70 mb-1">Benchmark Value</div>
+                                        <div className="text-lg font-bold text-foreground">
                                           {formatBenchmarkValue(benchmark.benchmarkValue, benchmark.unit)}
                                         </div>
                                       </div>
-                                      <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                        <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Source</div>
-                                        <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                      <div className="p-3 bg-muted rounded-lg">
+                                        <div className="text-sm font-medium text-muted-foreground/70 mb-1">Source</div>
+                                        <div className="text-lg font-bold text-foreground">
                                           {benchmark.industry ? `Industry (${benchmark.industry})` : benchmark.source || "Custom"}
                                         </div>
                                       </div>
@@ -5195,7 +5195,7 @@ export default function GA4Metrics() {
                                               <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Progress</span>
                                               <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Blocked</span>
                                             </div>
-                                            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                            <div className="text-sm text-muted-foreground/70 mt-1">
                                               Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. Restore inputs to resume accurate tracking.
                                             </div>
                                             <div className="mt-2">
@@ -5227,16 +5227,16 @@ export default function GA4Metrics() {
                                         <>
                                           <div className="space-y-2 pt-1">
                                             <div className="flex items-center justify-between">
-                                              <span className="text-xs text-slate-600 dark:text-slate-400">Progress</span>
-                                              <span className="text-xs text-slate-600 dark:text-slate-400">{p.labelPct}%</span>
+                                              <span className="text-xs text-muted-foreground/70">Progress</span>
+                                              <span className="text-xs text-muted-foreground/70">{p.labelPct}%</span>
                                             </div>
-                                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                            <div className="w-full bg-muted rounded-full h-2">
                                               <div className={`h-2 rounded-full ${p.color}`} style={{ width: `${p.pct}%` }} />
                                             </div>
                                           </div>
 
                                           <div className="flex justify-between items-center mt-3">
-                                            <span className="text-sm text-slate-600 dark:text-slate-400">Performance</span>
+                                            <span className="text-sm text-muted-foreground/70">Performance</span>
                                             <div className="flex items-center space-x-2">
                                               <span className={`font-medium ${statusColor}`}>{deltaLabel}</span>
                                               {delta >= 0 ? (
@@ -5258,9 +5258,9 @@ export default function GA4Metrics() {
                           ) : (
                             <Card>
                               <CardContent className="p-8 text-center">
-                                <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No Benchmarks Yet</h3>
-                                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                                <TrendingUp className="w-12 h-12 text-muted-foreground/70 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-foreground mb-2">No Benchmarks Yet</h3>
+                                <p className="text-muted-foreground/70 mb-4">
                                   Create your first benchmark to start tracking performance against industry standards
                                 </p>
                               </CardContent>
@@ -5276,8 +5276,8 @@ export default function GA4Metrics() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Reports</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h2 className="text-lg font-semibold text-foreground">Reports</h2>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Create and download exec-ready GA4 reports (PDF) from this campaign’s live data.
                         </p>
                       </div>
@@ -5313,24 +5313,24 @@ export default function GA4Metrics() {
 
                     {ga4ReportsLoading ? (
                       <div className="animate-pulse space-y-4">
-                        <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded" />
-                        <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded" />
+                        <div className="h-24 bg-muted rounded" />
+                        <div className="h-24 bg-muted rounded" />
                       </div>
                     ) : Array.isArray(ga4Reports) && ga4Reports.length > 0 ? (
                       <div className="grid grid-cols-1 gap-4">
                         {ga4Reports.map((r: any) => (
-                          <Card key={r.id} className="border-slate-200 dark:border-slate-700">
+                          <Card key={r.id} className="border-border">
                             <CardContent className="p-6">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{r.name}</h3>
+                                  <h3 className="font-semibold text-foreground mb-1">{r.name}</h3>
                                   {r.description && (
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{r.description}</p>
+                                    <p className="text-sm text-muted-foreground/70 mb-3">{r.description}</p>
                                   )}
                                   <div className="flex items-center gap-4 text-sm">
                                     <Badge variant="outline">{String(r.reportType || "overview")}</Badge>
                                     {r.scheduleEnabled && r.scheduleFrequency && (
-                                      <span className="text-slate-500 flex items-center gap-1">
+                                      <span className="text-muted-foreground flex items-center gap-1">
                                         <Clock className="w-3 h-3" />
                                         {(() => {
                                           const time = r.scheduleTime ? from24HourTo12Hour(r.scheduleTime) : '';
@@ -5341,11 +5341,11 @@ export default function GA4Metrics() {
                                       </span>
                                     )}
                                     {r.lastSentAt && (
-                                      <span className="text-slate-500">
+                                      <span className="text-muted-foreground">
                                         Last sent {new Date(r.lastSentAt).toLocaleDateString()}
                                       </span>
                                     )}
-                                    <span className="text-slate-400">
+                                    <span className="text-muted-foreground/70">
                                       Created {new Date(r.createdAt).toLocaleDateString()}
                                     </span>
                                   </div>
@@ -5443,11 +5443,11 @@ export default function GA4Metrics() {
                         ))}
                       </div>
                     ) : (
-                      <Card className="border-slate-200 dark:border-slate-700">
+                      <Card className="border-border">
                         <CardContent className="p-10 text-center">
-                          <FileText className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                          <div className="text-slate-900 dark:text-white font-medium">No reports created yet</div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          <FileText className="w-10 h-10 text-muted-foreground/70 mx-auto mb-3" />
+                          <div className="text-foreground font-medium">No reports created yet</div>
+                          <div className="text-sm text-muted-foreground/70 mt-1">
                             Create your first GA4 report to download a PDF snapshot.
                           </div>
                         </CardContent>
@@ -5470,13 +5470,13 @@ export default function GA4Metrics() {
                 <TabsContent value="insights" className="fade-in">
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Insights</h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                      <h3 className="text-lg font-semibold text-foreground">Insights</h3>
+                      <p className="text-sm text-muted-foreground/70 mt-1">
                         Actionable insights from financial integrity checks, KPI + Benchmark performance, plus anomaly detection from daily deltas.
                       </p>
                     </div>
 
-                    <Card className="border-slate-200 dark:border-slate-700">
+                    <Card className="border-border">
                       <CardHeader>
                         <CardTitle>Executive financials</CardTitle>
                         <CardDescription>
@@ -5488,58 +5488,58 @@ export default function GA4Metrics() {
                         <div className="grid gap-4 md:grid-cols-5">
                           <Card>
                             <CardContent className="p-5">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</div>
-                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                              <div className="text-sm font-medium text-muted-foreground/70">Spend</div>
+                              <div className="text-2xl font-bold text-foreground">
                                 {formatMoney(Number(financialSpend || 0))}
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              <div className="text-xs text-muted-foreground/70 mt-1">
                                 Source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
                               </div>
                             </CardContent>
                           </Card>
                           <Card>
                             <CardContent className="p-5">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Revenue</div>
-                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                              <div className="text-sm font-medium text-muted-foreground/70">Revenue</div>
+                              <div className="text-2xl font-bold text-foreground">
                                 {formatMoney(Number(financialRevenue || 0))}
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              <div className="text-xs text-muted-foreground/70 mt-1">
                                 {ga4HasRevenueMetric ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
                               </div>
                             </CardContent>
                           </Card>
                           <Card>
                             <CardContent className="p-5">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Profit</div>
+                              <div className="text-sm font-medium text-muted-foreground/70">Profit</div>
                               <div className={`text-2xl font-bold ${(financialRevenue - financialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {formatMoney(financialRevenue - financialSpend)}
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue − Spend</div>
+                              <div className="text-xs text-muted-foreground/70 mt-1">Revenue − Spend</div>
                             </CardContent>
                           </Card>
                           <Card>
                             <CardContent className="p-5">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</div>
-                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                              <div className="text-sm font-medium text-muted-foreground/70">ROAS</div>
+                              <div className="text-2xl font-bold text-foreground">
                                 {Number(financialROAS || 0).toFixed(2)}x
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</div>
+                              <div className="text-xs text-muted-foreground/70 mt-1">Revenue ÷ Spend</div>
                             </CardContent>
                           </Card>
                           <Card>
                             <CardContent className="p-5">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</div>
-                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                              <div className="text-sm font-medium text-muted-foreground/70">ROI</div>
+                              <div className="text-2xl font-bold text-foreground">
                                 {formatPercentage(Number(financialROI || 0))}
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue − Spend) ÷ Spend</div>
+                              <div className="text-xs text-muted-foreground/70 mt-1">(Revenue − Spend) ÷ Spend</div>
                             </CardContent>
                           </Card>
                         </div>
 
                         {/* Sources used (provenance) */}
-                        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
-                          <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Sources used</div>
+                        <div className="mt-4 pt-3 border-t border-border text-xs text-muted-foreground/70">
+                          <div className="font-medium text-foreground/80/60 mb-1">Sources used</div>
                           <div className="grid gap-1">
                             <div>
                               <span className="font-medium">Spend</span>: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Not connected"}
@@ -5561,7 +5561,7 @@ export default function GA4Metrics() {
                     </Card>
 
                     {/* Trends card — replaces Performance Rollups with chart + metric selector */}
-                    <Card className="border-slate-200 dark:border-slate-700">
+                    <Card className="border-border">
                       <CardHeader>
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                           <div>
@@ -5605,7 +5605,7 @@ export default function GA4Metrics() {
                           const dailyRows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];
                           if (dailyRows.length < 2) {
                             return (
-                              <div className="text-sm text-slate-600 dark:text-slate-400 py-4">
+                              <div className="text-sm text-muted-foreground/70 py-4">
                                 Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.
                               </div>
                             );
@@ -5673,7 +5673,7 @@ export default function GA4Metrics() {
                               {insightsTrendMode === "daily" ? (
                                 <div className="overflow-hidden border rounded-md">
                                   <table className="w-full text-sm">
-                                    <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                    <thead className="bg-muted border-b">
                                       <tr>
                                         <th className="text-left p-3">Date</th>
                                         <th className="text-right p-3">{trendMetricLabels[metric] || metric}</th>
@@ -5691,10 +5691,10 @@ export default function GA4Metrics() {
                                           const delta = prevRow ? deltaPct(curVal, prevVal) : 0;
                                           return (
                                             <tr key={r.date || idx} className="border-b last:border-b-0">
-                                              <td className="p-3 text-slate-900 dark:text-white">{r.date}</td>
-                                              <td className="p-3 text-right font-medium tabular-nums text-slate-900 dark:text-white">{fmtValue(curVal)}</td>
+                                              <td className="p-3 text-foreground">{r.date}</td>
+                                              <td className="p-3 text-right font-medium tabular-nums text-foreground">{fmtValue(curVal)}</td>
                                               <td className="p-3 text-right">
-                                                {prevRow ? <span className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</span> : <span className="text-xs text-slate-400">—</span>}
+                                                {prevRow ? <span className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</span> : <span className="text-xs text-muted-foreground/70">—</span>}
                                               </td>
                                             </tr>
                                           );
@@ -5703,7 +5703,7 @@ export default function GA4Metrics() {
                                     </tbody>
                                   </table>
                                   {sorted.length > 7 && (
-                                    <div className="px-3 py-2 border-t bg-slate-50 dark:bg-slate-800">
+                                    <div className="px-3 py-2 border-t bg-muted">
                                       <Button variant="ghost" size="sm" onClick={() => setInsightsDailyShowMore(!insightsDailyShowMore)}>
                                         {insightsDailyShowMore ? "Show less" : "View more"}
                                       </Button>
@@ -5713,7 +5713,7 @@ export default function GA4Metrics() {
                               ) : (
                                 <div className="overflow-hidden border rounded-md">
                                   <table className="w-full text-sm table-fixed">
-                                    <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                    <thead className="bg-muted border-b">
                                       <tr>
                                         <th className="text-left p-3 w-[30%]">Window</th>
                                         <th className="text-right p-3">Sessions</th>
@@ -5737,27 +5737,27 @@ export default function GA4Metrics() {
                                         return (
                                           <tr key={row.key} className="border-b">
                                             <td className="p-3">
-                                              <div className="font-medium text-slate-900 dark:text-white">{row.label}</div>
-                                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{row.cur.startDate} → {row.cur.endDate}</div>
+                                              <div className="font-medium text-foreground">{row.label}</div>
+                                              <div className="text-xs text-muted-foreground/70 mt-0.5">{row.cur.startDate} → {row.cur.endDate}</div>
                                             </td>
                                             <td className="p-3 text-right">
-                                              <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.sessions || 0)}</div>
+                                              <div className="font-medium text-foreground">{formatNumber(row.cur.sessions || 0)}</div>
                                               <div className={`text-xs ${deltaColor(sd)}`}>{fmtDelta(sd)}</div>
                                             </td>
                                             <td className="p-3 text-right">
-                                              <div className="font-medium text-slate-900 dark:text-white">{formatNumber(row.cur.conversions || 0)}</div>
+                                              <div className="font-medium text-foreground">{formatNumber(row.cur.conversions || 0)}</div>
                                               <div className={`text-xs ${deltaColor(cd)}`}>{fmtDelta(cd)}</div>
                                             </td>
                                             <td className="p-3 text-right">
-                                              <div className="font-medium text-slate-900 dark:text-white">{row.cur.cr.toFixed(2)}%</div>
+                                              <div className="font-medium text-foreground">{row.cur.cr.toFixed(2)}%</div>
                                               <div className={`text-xs ${deltaColor(crd)}`}>{fmtDelta(crd)}</div>
                                             </td>
                                             <td className="p-3 text-right">
-                                              <div className="font-medium text-slate-900 dark:text-white">{formatMoney(Number(row.cur.revenue || 0))}</div>
+                                              <div className="font-medium text-foreground">{formatMoney(Number(row.cur.revenue || 0))}</div>
                                               <div className={`text-xs ${deltaColor(rd)}`}>{fmtDelta(rd)}</div>
                                             </td>
                                             <td className="p-3 text-right">
-                                              <div className="font-medium text-slate-900 dark:text-white">{row.cur.pvps.toFixed(2)}</div>
+                                              <div className="font-medium text-foreground">{row.cur.pvps.toFixed(2)}</div>
                                               <div className={`text-xs ${deltaColor(pvd)}`}>{fmtDelta(pvd)}</div>
                                             </td>
                                           </tr>
@@ -5766,7 +5766,7 @@ export default function GA4Metrics() {
                                     </tbody>
                                   </table>
                                   {Number(insightsRollups?.availableDays || 0) < (insightsTrendMode === "7d" ? 14 : 60) && (
-                                    <div className="p-3 text-sm text-slate-600 dark:text-slate-400">
+                                    <div className="p-3 text-sm text-muted-foreground/70">
                                       Need at least {insightsTrendMode === "7d" ? 14 : 60} days of history. Available: {Number(insightsRollups?.availableDays || 0)}.
                                     </div>
                                   )}
@@ -5783,10 +5783,10 @@ export default function GA4Metrics() {
                         <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total insights</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">{insights.length}</p>
+                              <p className="text-sm font-medium text-muted-foreground/70">Total insights</p>
+                              <p className="text-2xl font-bold text-foreground">{insights.length}</p>
                             </div>
-                            <BarChart3 className="w-7 h-7 text-slate-600" />
+                            <BarChart3 className="w-7 h-7 text-muted-foreground" />
                           </div>
                         </CardContent>
                       </Card>
@@ -5794,7 +5794,7 @@ export default function GA4Metrics() {
                         <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">High priority</p>
+                              <p className="text-sm font-medium text-muted-foreground/70">High priority</p>
                               <p className="text-2xl font-bold text-red-600">
                                 {insights.filter((i) => i.severity === "high").length}
                               </p>
@@ -5807,7 +5807,7 @@ export default function GA4Metrics() {
                         <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs attention</p>
+                              <p className="text-sm font-medium text-muted-foreground/70">Needs attention</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {insights.filter((i) => i.severity === "medium").length}
                               </p>
@@ -5818,7 +5818,7 @@ export default function GA4Metrics() {
                       </Card>
                     </div>
 
-                    <Card className="border-slate-200 dark:border-slate-700">
+                    <Card className="border-border">
                       <CardHeader>
                         <CardTitle>What changed, what to do next</CardTitle>
                         <CardDescription>
@@ -5827,7 +5827,7 @@ export default function GA4Metrics() {
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {insights.length === 0 ? (
-                          <div className="text-sm text-slate-600 dark:text-slate-400">
+                          <div className="text-sm text-muted-foreground/70">
                             No issues detected for the selected range. Create KPIs/Benchmarks to unlock more insights.
                           </div>
                         ) : (
@@ -5841,19 +5841,19 @@ export default function GA4Metrics() {
                                     ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
                                     : isPositive
                                       ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-900"
-                                      : "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
+                                      : "bg-muted text-foreground border-border dark:text-slate-200";
                               const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : isPositive ? "Positive" : "Low";
                               return (
-                                <div key={i.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                <div key={i.id} className="rounded-lg border border-border p-4">
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-2 flex-wrap">
-                                        <div className="font-semibold text-slate-900 dark:text-white">{i.title}</div>
+                                        <div className="font-semibold text-foreground">{i.title}</div>
                                         <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
                                       </div>
-                                      <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{i.description}</div>
+                                      <div className="text-sm text-muted-foreground/70 mt-1">{i.description}</div>
                                       {i.recommendation ? (
-                                        <div className="text-sm text-slate-700 dark:text-slate-300 mt-2">
+                                        <div className="text-sm text-foreground/80/60 mt-2">
                                           <span className="font-medium">Next step:</span> {i.recommendation}
                                         </div>
                                       ) : null}
@@ -5877,7 +5877,7 @@ export default function GA4Metrics() {
 
       {/* Create KPI Dialog */}
       <Dialog open={showKPIDialog} onOpenChange={setShowKPIDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
           <DialogHeader className="pb-4 pr-8">
             <DialogTitle>{editingKPI ? "Edit KPI" : "Create New KPI"}</DialogTitle>
             <DialogDescription>
@@ -5888,9 +5888,9 @@ export default function GA4Metrics() {
           <Form {...kpiForm}>
             <form onSubmit={kpiForm.handleSubmit(onSubmitKPI)} className="space-y-6">
               {/* KPI Template Selection */}
-              <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+              <div className="space-y-4 p-4 bg-muted rounded-lg">
                 <div className="flex items-center justify-between gap-3">
-                  <h4 className="font-medium text-slate-900 dark:text-white">Select KPI Template</h4>
+                  <h4 className="font-medium text-foreground">Select KPI Template</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -5912,7 +5912,7 @@ export default function GA4Metrics() {
                     Reset
                   </Button>
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
+                <p className="text-sm text-muted-foreground/70">
                   Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.
                 </p>
 
@@ -5992,7 +5992,7 @@ export default function GA4Metrics() {
                         className={`p-3 border-2 rounded-lg transition-all ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                           } ${!isCustom && selectedKPITemplate?.name === template.name
                             ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                            : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                            : "border-border hover:border-blue-300"
                           }`}
                         onClick={() => {
                           if (disabled) return;
@@ -6036,16 +6036,16 @@ export default function GA4Metrics() {
                           kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit));
                         }}
                       >
-                        <div className="font-medium text-sm text-slate-900 dark:text-white">
+                        <div className="font-medium text-sm text-foreground">
                           {template.name}
                         </div>
                         {isCustom && (
-                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                          <div className="mt-1 text-xs text-muted-foreground/70">
                             Choose name + unit, then set values
                           </div>
                         )}
                         {!isCustom && disabled && (
-                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                          <div className="mt-1 text-xs text-muted-foreground/70">
                             {requiresSpend && !spendMetricAvailable && requiresRevenue && !revenueMetricAvailable
                               ? "Spend + Revenue required (add both to unlock)"
                               : requiresSpend && !spendMetricAvailable
@@ -6085,7 +6085,7 @@ export default function GA4Metrics() {
                   onChange={(e) => kpiForm.setValue("description", String(e.target.value || "").slice(0, KPI_DESC_MAX))}
                   rows={3}
                 />
-                <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                <div className="text-xs text-muted-foreground/70 text-right">
                   {(String(kpiForm.watch("description") || "")).length}/{KPI_DESC_MAX}
                 </div>
               </div>
@@ -6149,7 +6149,7 @@ export default function GA4Metrics() {
               </div>
 
               {/* Alert Settings (border-t, matching LinkedIn) */}
-              <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <div className="space-y-4 pt-4 border-t border-border">
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -6161,7 +6161,7 @@ export default function GA4Metrics() {
                       Enable alerts for this KPI
                     </Label>
                   </div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 pl-6">
+                  <p className="text-sm text-muted-foreground/70 pl-6">
                     Receive notifications for KPI performance alerts on the bell icon &amp; in your Notifications center
                   </p>
                 </div>
@@ -6180,7 +6180,7 @@ export default function GA4Metrics() {
                           onChange={(e) => kpiForm.setValue("alertThreshold", formatNumberAsYouType(e.target.value, String(kpiForm.getValues().unit || "%")))}
                           onBlur={(e) => kpiForm.setValue("alertThreshold", formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
                         />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
+                        <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="kpi-alert-condition">Alert When</Label>
@@ -6213,7 +6213,7 @@ export default function GA4Metrics() {
                             <SelectItem value="weekly">Weekly</SelectItem>
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground/70">
                           Controls how often you're notified while the alert condition stays true.
                         </p>
                       </div>
@@ -6239,7 +6239,7 @@ export default function GA4Metrics() {
                               value={kpiForm.watch("emailRecipients") || ""}
                               onChange={(e) => kpiForm.setValue("emailRecipients", e.target.value)}
                             />
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               Comma-separated. Best for execs who want alerts outside the app.
                             </p>
                           </div>
@@ -6267,17 +6267,17 @@ export default function GA4Metrics() {
 
       {/* Delete KPI Confirmation Dialog */}
       <AlertDialog open={deleteKPIId !== null} onOpenChange={() => setDeleteKPIId(null)}>
-        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-900 dark:text-white">Delete KPI</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+            <AlertDialogTitle className="text-foreground">Delete KPI</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground/70">
               Are you sure you want to delete this KPI? This action cannot be undone and will remove all associated progress tracking and alerts.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={() => setDeleteKPIId(null)}
-              className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700"
+              className="bg-muted text-foreground border-border hover:bg-muted dark:hover:bg-slate-700"
             >
               Cancel
             </AlertDialogCancel>
@@ -6310,7 +6310,7 @@ export default function GA4Metrics() {
               <div
                 className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${ga4ReportModalStep === "standard"
                   ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                  : "border-slate-200 dark:border-slate-700"
+                  : "border-border"
                   }`}
                 onClick={() => {
                   setGa4ReportModalStep("standard");
@@ -6324,8 +6324,8 @@ export default function GA4Metrics() {
                 <div className="flex items-start gap-3">
                   <FileText className="w-6 h-6 text-blue-600 mt-1" />
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Standard Templates</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Pre-built professional report templates</p>
+                    <h3 className="text-lg font-bold text-foreground">Standard Templates</h3>
+                    <p className="text-sm text-muted-foreground/70 mt-1">Pre-built professional report templates</p>
                   </div>
                 </div>
               </div>
@@ -6333,7 +6333,7 @@ export default function GA4Metrics() {
               <div
                 className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${ga4ReportModalStep === "custom"
                   ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                  : "border-slate-200 dark:border-slate-700"
+                  : "border-border"
                   }`}
                 onClick={() => {
                   setGa4ReportModalStep("custom");
@@ -6350,8 +6350,8 @@ export default function GA4Metrics() {
                 <div className="flex items-start gap-3">
                   <Settings className="w-6 h-6 text-blue-600 mt-1" />
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Custom Report</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Build your own customized report</p>
+                    <h3 className="text-lg font-bold text-foreground">Custom Report</h3>
+                    <p className="text-sm text-muted-foreground/70 mt-1">Build your own customized report</p>
                   </div>
                 </div>
               </div>
@@ -6360,7 +6360,7 @@ export default function GA4Metrics() {
             {ga4ReportModalStep === "standard" ? (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Choose Template</h3>
+                  <h3 className="text-lg font-bold text-foreground mb-4">Choose Template</h3>
                   <div className="space-y-4">
                     {[
                       {
@@ -6403,7 +6403,7 @@ export default function GA4Metrics() {
                       return (
                         <div
                           key={t.key}
-                          className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${selected ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-slate-200 dark:border-slate-700"
+                          className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${selected ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-border"
                             }`}
                           onClick={() => {
                             const nextType = String(t.key);
@@ -6424,13 +6424,13 @@ export default function GA4Metrics() {
                           }}
                         >
                           <div className="flex items-start gap-3">
-                            <t.Icon className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                            <t.Icon className="w-5 h-5 text-foreground mt-0.5" />
                             <div className="flex-1">
-                              <h4 className="font-semibold text-slate-900 dark:text-white">{t.title}</h4>
-                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{t.desc}</p>
+                              <h4 className="font-semibold text-foreground">{t.title}</h4>
+                              <p className="text-sm text-muted-foreground/70 mt-1">{t.desc}</p>
                               <div className="flex gap-2 mt-3 flex-wrap">
                                 {t.chips.map((c) => (
-                                  <span key={c} className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">
+                                  <span key={c} className="text-xs px-2 py-1 bg-muted rounded">
                                     {c}
                                   </span>
                                 ))}
@@ -6482,7 +6482,7 @@ export default function GA4Metrics() {
                       </div>
 
                       {ga4ReportForm.scheduleEnabled && (
-                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 space-y-4 mt-4">
+                        <div className="bg-muted/50 rounded-lg p-4 space-y-4 mt-4">
                           <div className="space-y-2">
                             <Label htmlFor="ga4-schedule-frequency">Frequency</Label>
                             <Select value={ga4ReportForm.scheduleFrequency} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleFrequency: value }))}>
@@ -6524,7 +6524,7 @@ export default function GA4Metrics() {
                                   <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
                                 </SelectContent>
                               </Select>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Choose whether to run reports at the start or end of each quarter</p>
+                              <p className="text-xs text-muted-foreground/70">Choose whether to run reports at the start or end of each quarter</p>
                             </div>
                           )}
 
@@ -6546,7 +6546,7 @@ export default function GA4Metrics() {
                                       <SelectItem value="last">Last day of month</SelectItem>
                                       <SelectItem value="15">15th (Mid-month)</SelectItem>
                                       <div className="border-t my-1"></div>
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Specific Days</div>
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground/70">Specific Days</div>
                                       {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
                                         const suffix = getOrdinalSuffix(day);
                                         const isCommon = [1, 5, 10, 15, 20, 25].includes(day);
@@ -6560,7 +6560,7 @@ export default function GA4Metrics() {
                                   )}
                                 </SelectContent>
                               </Select>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                              <p className="text-xs text-muted-foreground/70">
                                 {ga4ReportForm.scheduleFrequency === "quarterly"
                                   ? "Quarterly reports typically run at the start, end, or middle of the quarter month"
                                   : "For months with fewer days, the report will run on the last available day"}
@@ -6589,7 +6589,7 @@ export default function GA4Metrics() {
                               </SelectContent>
                             </Select>
                             {userTimeZone && (
-                              <p className="text-sm text-slate-500 dark:text-slate-400">All times are in your time zone: {getTimeZoneDisplay()}</p>
+                              <p className="text-sm text-muted-foreground/70">All times are in your time zone: {getTimeZoneDisplay()}</p>
                             )}
                           </div>
 
@@ -6611,7 +6611,7 @@ export default function GA4Metrics() {
                             {ga4ReportFormErrors.emailRecipients ? (
                               <p className="text-sm text-red-600 dark:text-red-400">{ga4ReportFormErrors.emailRecipients}</p>
                             ) : (
-                              <p className="text-sm text-slate-500 dark:text-slate-400">Reports will be automatically generated and sent to these email addresses</p>
+                              <p className="text-sm text-muted-foreground/70">Reports will be automatically generated and sent to these email addresses</p>
                             )}
                           </div>
                         </div>
@@ -6623,14 +6623,14 @@ export default function GA4Metrics() {
             ) : (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Custom Report</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                  <h3 className="text-lg font-bold text-foreground mb-2">Custom Report</h3>
+                  <p className="text-sm text-muted-foreground/70">
                     Choose which GA4 sections to include in your PDF.
                   </p>
                 </div>
 
-                <div className="border rounded-lg p-4 border-slate-200 dark:border-slate-700">
-                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Sections</div>
+                <div className="border rounded-lg p-4 border-border">
+                  <div className="text-sm font-medium text-foreground/80/60 mb-3">Sections</div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     {[
                       { key: "overview", label: "Overview" },
@@ -6739,7 +6739,7 @@ export default function GA4Metrics() {
                                 <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
                               </SelectContent>
                             </Select>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Choose whether to run reports at the start or end of each quarter</p>
+                            <p className="text-xs text-muted-foreground/70">Choose whether to run reports at the start or end of each quarter</p>
                           </div>
                         )}
 
@@ -6761,7 +6761,7 @@ export default function GA4Metrics() {
                                     <SelectItem value="last">Last day of month</SelectItem>
                                     <SelectItem value="15">15th (Mid-month)</SelectItem>
                                     <div className="border-t my-1"></div>
-                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Specific Days</div>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground/70">Specific Days</div>
                                     {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
                                       const suffix = getOrdinalSuffix(day);
                                       const isCommon = [1, 5, 10, 15, 20, 25].includes(day);
@@ -6775,7 +6775,7 @@ export default function GA4Metrics() {
                                 )}
                               </SelectContent>
                             </Select>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               {ga4ReportForm.scheduleFrequency === "quarterly"
                                 ? "Quarterly reports typically run at the start, end, or middle of the quarter month"
                                 : "For months with fewer days, the report will run on the last available day"}
@@ -6804,7 +6804,7 @@ export default function GA4Metrics() {
                             </SelectContent>
                           </Select>
                           {userTimeZone && (
-                            <p className="text-sm text-slate-500 dark:text-slate-400">All times are in your time zone: {getTimeZoneDisplay()}</p>
+                            <p className="text-sm text-muted-foreground/70">All times are in your time zone: {getTimeZoneDisplay()}</p>
                           )}
                         </div>
 
@@ -6825,7 +6825,7 @@ export default function GA4Metrics() {
                           {ga4ReportFormErrors.emailRecipients ? (
                             <p className="text-sm text-red-600 dark:text-red-400">{ga4ReportFormErrors.emailRecipients}</p>
                           ) : (
-                            <p className="text-sm text-slate-500 dark:text-slate-400">Reports will be automatically generated and sent to these email addresses</p>
+                            <p className="text-sm text-muted-foreground/70">Reports will be automatically generated and sent to these email addresses</p>
                           )}
                         </div>
                       </div>
@@ -6927,7 +6927,7 @@ export default function GA4Metrics() {
           if (!open) setGa4CampaignSearch("");
         }}
       >
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto bg-card border-border">
           <DialogHeader>
             <DialogTitle>Select GA4 campaigns to import</DialogTitle>
             <DialogDescription>
@@ -6946,7 +6946,7 @@ export default function GA4Metrics() {
               />
             </div>
 
-            <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 max-h-[45vh] overflow-y-auto">
+            <div className="rounded-lg border border-border p-3 max-h-[45vh] overflow-y-auto">
               {Array.isArray(ga4CampaignValuesResp?.campaigns) && ga4CampaignValuesResp.campaigns.length > 0 ? (
                 <div className="space-y-2">
                   {ga4CampaignValuesResp.campaigns
@@ -6961,7 +6961,7 @@ export default function GA4Metrics() {
                       if (!name) return null;
                       const checked = selectedGa4Campaigns.includes(name);
                       return (
-                        <label key={name} className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                        <label key={name} className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-muted cursor-pointer">
                           <div className="flex items-center gap-3 min-w-0">
                             <input
                               type="checkbox"
@@ -6974,8 +6974,8 @@ export default function GA4Metrics() {
                               }}
                             />
                             <div className="min-w-0">
-                              <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{name}</div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400">Users: {Number(c?.users || 0).toLocaleString()}</div>
+                              <div className="text-sm font-medium text-foreground truncate">{name}</div>
+                              <div className="text-xs text-muted-foreground/70">Users: {Number(c?.users || 0).toLocaleString()}</div>
                             </div>
                           </div>
                         </label>
@@ -6983,7 +6983,7 @@ export default function GA4Metrics() {
                     })}
                 </div>
               ) : (
-                <div className="text-sm text-slate-600 dark:text-slate-400">
+                <div className="text-sm text-muted-foreground/70">
                   No campaigns found. This can happen if GA4 reporting is delayed or the selected range has no campaign-tagged traffic.
                 </div>
               )}
@@ -7043,10 +7043,10 @@ export default function GA4Metrics() {
 
       {/* Delete Report Confirmation */}
       <AlertDialog open={deleteGA4ReportId !== null} onOpenChange={() => setDeleteGA4ReportId(null)}>
-        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-900 dark:text-white">Delete Report</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+            <AlertDialogTitle className="text-foreground">Delete Report</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground/70">
               Are you sure you want to delete this report? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -507,18 +507,18 @@ export function HubSpotRevenueWizard(props: {
               <div className="flex flex-col items-center flex-1">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isDisabled
-                      ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
+                      ? "bg-muted border-border text-muted-foreground/70"
                       : isActive
                         ? "bg-blue-600 border-blue-600 text-white"
                         : isCompleted
                           ? "bg-green-600 border-green-600 text-white"
-                          : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400"
+                          : "bg-muted border-border dark:border-slate-600 text-muted-foreground/70"
                     }`}
                 >
                   {!isDisabled && isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
                 </div>
                 <p
-                  className={`text-xs mt-2 text-center whitespace-nowrap ${isDisabled ? "text-slate-400" : isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-slate-400"
+                  className={`text-xs mt-2 text-center whitespace-nowrap ${isDisabled ? "text-muted-foreground/70" : isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-muted-foreground/70"
                     }`}
                 >
                   {s.label}
@@ -526,7 +526,7 @@ export function HubSpotRevenueWizard(props: {
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className={`flex-1 h-0.5 mx-2 ${isConnectorCompleted ? "bg-green-600" : "bg-slate-200 dark:bg-slate-700"}`}
+                  className={`flex-1 h-0.5 mx-2 ${isConnectorCompleted ? "bg-green-600" : "bg-muted"}`}
                 />
               )}
             </div>
@@ -607,9 +607,9 @@ export function HubSpotRevenueWizard(props: {
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-1 space-y-4">
             {step === "value-source" && (
               <div className="space-y-3">
-                <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-2">
+                <div className="rounded-lg border bg-card p-4 space-y-2">
                   <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                  <div className="text-xs text-muted-foreground/70 mb-2">
                     <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.
                   </div>
                   <div className="flex items-start justify-between gap-3">
@@ -634,7 +634,7 @@ export function HubSpotRevenueWizard(props: {
                         <RadioGroupItem id="hs-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
                         <label htmlFor="hs-mode-revenue-pipeline" className="cursor-pointer">
                           <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
-                          <div className="text-xs text-slate-500 leading-snug">
+                          <div className="text-xs text-muted-foreground leading-snug">
                             Total Revenue comes from mapped deal Amounts (to date). Adds a Pipeline (Proxy) card using a stage like SQL as an early signal.
                           </div>
                         </label>
@@ -643,7 +643,7 @@ export function HubSpotRevenueWizard(props: {
                         <RadioGroupItem id="hs-mode-revenue-only" value="revenue_only" className="mt-0.5" />
                         <label htmlFor="hs-mode-revenue-only" className="cursor-pointer">
                           <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
-                          <div className="text-xs text-slate-500 leading-snug">
+                          <div className="text-xs text-muted-foreground leading-snug">
                             Imports revenue-to-date from mapped deal Amounts. No Pipeline (Proxy) section in Overview.
                           </div>
                         </label>
@@ -663,7 +663,7 @@ export function HubSpotRevenueWizard(props: {
                     )}
                   </div>
 
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-muted-foreground">
                     {hubspotSourceMode === "revenue_plus_pipeline"
                       ? "Next, you’ll choose which Pipeline stage should count as “pipeline created”."
                       : "Next, you’ll map HubSpot deals to this campaign."}
@@ -674,12 +674,12 @@ export function HubSpotRevenueWizard(props: {
             {step === "campaign-field" && (
               <div className="space-y-3">
                 {!statusLoading && !isConnected ? (
-                  <div className="rounded-lg border bg-white dark:bg-slate-950 p-4">
+                  <div className="rounded-lg border bg-card p-4">
                     <div className="text-sm font-medium flex items-center gap-2">
                       <Building2 className="w-4 h-4 text-blue-600" />
                       Connect HubSpot to continue
                     </div>
-                    <div className="text-xs text-slate-500 mt-1">
+                    <div className="text-xs text-muted-foreground mt-1">
                       HubSpot must be connected before we can load Deal properties.
                     </div>
                     <div className="mt-3 flex items-center gap-2">
@@ -721,7 +721,7 @@ export function HubSpotRevenueWizard(props: {
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-muted-foreground">
                       Tip: pick the HubSpot property your team uses for “LinkedIn campaign” or “UTM campaign”.
                     </div>
                   </div>
@@ -732,7 +732,7 @@ export function HubSpotRevenueWizard(props: {
             {step === "crosswalk" && (
               <div className="flex flex-col gap-3 min-h-0">
                 <div className="flex items-center justify-between gap-2 shrink-0">
-                  <div className="text-sm text-slate-600">
+                  <div className="text-sm text-muted-foreground">
                     {isLinkedIn && linkedinCampaigns.length > 0
                       ? <>Mapped: <strong>{campaignMappings.length}</strong> of {uniqueValues.length} values</>
                       : <>Selected: <strong>{selectedValues.length}</strong></>}
@@ -751,23 +751,23 @@ export function HubSpotRevenueWizard(props: {
 
                 <div className="border rounded p-3 flex-1 min-h-0 overflow-y-auto">
                   {valuesLoading ? (
-                    <div className="text-sm text-slate-500">Loading values…</div>
+                    <div className="text-sm text-muted-foreground">Loading values…</div>
                   ) : uniqueValues.length === 0 ? (
-                    <div className="text-sm text-slate-500">No values found.</div>
+                    <div className="text-sm text-muted-foreground">No values found.</div>
                   ) : isLinkedIn && linkedinCampaigns.length > 0 ? (
                     /* LinkedIn campaign mapping mode */
                     <div className="space-y-3">
-                      <div className="text-xs text-slate-500 mb-2">
+                      <div className="text-xs text-muted-foreground mb-2">
                         Map each HubSpot value to a LinkedIn campaign. Unmapped values will be skipped.
                       </div>
                       {uniqueValues.map((v) => {
                         const value = String(v.value);
                         const existing = campaignMappings.find(m => m.crmValue === value);
                         return (
-                          <div key={value} className="flex items-center gap-3 p-2 rounded border border-slate-100 dark:border-slate-800">
+                          <div key={value} className="flex items-center gap-3 p-2 rounded border border-slate-100">
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium truncate">{value}</div>
-                              <div className="text-xs text-slate-500">{v.count} deal(s)</div>
+                              <div className="text-xs text-muted-foreground">{v.count} deal(s)</div>
                             </div>
                             <Select
                               value={existing?.linkedinCampaignUrn || "__none__"}
@@ -822,7 +822,7 @@ export function HubSpotRevenueWizard(props: {
                             />
                             <div className="flex-1">
                               <div className="text-sm">{value}</div>
-                              <div className="text-xs text-slate-500">{v.count} deal(s)</div>
+                              <div className="text-xs text-muted-foreground">{v.count} deal(s)</div>
                             </div>
                           </div>
                         );
@@ -831,7 +831,7 @@ export function HubSpotRevenueWizard(props: {
                   )}
                 </div>
 
-                <div className="text-xs text-slate-500 shrink-0">
+                <div className="text-xs text-muted-foreground shrink-0">
                   Tip: after you update deals in HubSpot, use "Refresh values" to reload this list.
                 </div>
               </div>
@@ -839,9 +839,9 @@ export function HubSpotRevenueWizard(props: {
 
             {step === "pipeline" && (
               <div className="space-y-4">
-                <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-3">
+                <div className="rounded-lg border bg-card p-4 space-y-3">
                   <div className="text-sm font-medium">Pipeline stage total (daily signal)</div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-muted-foreground">
                     Pipeline (Proxy) is <span className="font-medium">not</span> Closed Won revenue. It’s an early indicator (deals currently in a stage like SQL/Opportunity).
                   </div>
 
@@ -885,7 +885,7 @@ export function HubSpotRevenueWizard(props: {
                         })}
                       </SelectContent>
                     </Select>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-muted-foreground">
                       MetricMind will sum Deal Amounts for deals currently in this stage (stage subset).
                     </div>
                   </div>
@@ -918,12 +918,12 @@ export function HubSpotRevenueWizard(props: {
                         ))}
                     </SelectContent>
                   </Select>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-muted-foreground">
                     Default (recommended): Deal amount.
                   </div>
                 </div>
 
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted-foreground">
                   Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
                 </div>
 
@@ -940,7 +940,7 @@ export function HubSpotRevenueWizard(props: {
                           <SelectItem value="onsite_in_ga4">Onsite (also tracked in GA4)</SelectItem>
                         </SelectContent>
                       </Select>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-muted-foreground">
                         Default is Offsite. Change only if this HubSpot revenue is already included in GA4 to avoid double counting in campaign totals.
                       </div>
                     </div>
@@ -951,11 +951,11 @@ export function HubSpotRevenueWizard(props: {
 
             {step === "review" && (
               <div className="space-y-4">
-                <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4">
-                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                <div className="rounded-lg border border-border bg-muted/40 p-4">
+                  <div className="text-sm font-semibold text-foreground">
                     Review HubSpot revenue settings
                   </div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  <div className="text-sm text-muted-foreground/70 mt-1">
                     Confirm these details before saving.
                     {isLinkedIn ? (
                       <>
@@ -972,42 +972,42 @@ export function HubSpotRevenueWizard(props: {
 
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">HubSpot account</div>
-                      <div className="font-medium text-slate-900 dark:text-white">
+                      <div className="text-xs text-muted-foreground/70">HubSpot account</div>
+                      <div className="font-medium text-foreground">
                         {portalName ? portalName : portalId ? `Portal ${portalId}` : "—"}
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                      <div className="text-xs text-muted-foreground/70">
                         Revenue field
                       </div>
-                      <div className="font-medium text-slate-900 dark:text-white">
+                      <div className="font-medium text-foreground">
                         {revenuePropertyLabel}
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Campaign identifier field</div>
-                      <div className="font-medium text-slate-900 dark:text-white">{campaignPropertyLabel}</div>
+                      <div className="text-xs text-muted-foreground/70">Campaign identifier field</div>
+                      <div className="font-medium text-foreground">{campaignPropertyLabel}</div>
                     </div>
 
                     {pipelineEnabled && (
                       <div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Pipeline proxy</div>
-                        <div className="font-medium text-slate-900 dark:text-white">
+                        <div className="text-xs text-muted-foreground/70">Pipeline proxy</div>
+                        <div className="font-medium text-foreground">
                           {pipelineStageLabel || pipelineStageId || "—"}
                         </div>
                       </div>
                     )}
 
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Selected value(s)</div>
-                      <div className="font-medium text-slate-900 dark:text-white">
+                      <div className="text-xs text-muted-foreground/70">Selected value(s)</div>
+                      <div className="font-medium text-foreground">
                         {selectedValues.length.toLocaleString()}
                       </div>
                       {selectedValues.length > 0 ? (
-                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                        <div className="mt-1 text-xs text-muted-foreground/70">
                           {selectedValues.slice(0, 6).join(", ")}
                           {selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}
                         </div>
@@ -1021,7 +1021,7 @@ export function HubSpotRevenueWizard(props: {
 
             {step === "complete" && (
               <div className="space-y-3">
-                <div className="text-sm text-slate-700">
+                <div className="text-sm text-foreground/80">
                   Revenue connected:{" "}
                   <strong>
                     ${Number(lastSaveResult?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1045,7 +1045,7 @@ export function HubSpotRevenueWizard(props: {
 
           {/* Footer nav (hide on connect/complete) */}
           {step !== "connect" && step !== "complete" && (
-            <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-200 dark:border-slate-800 shrink-0">
+            <div className="flex items-center justify-between pt-3 mt-3 border-t border-border shrink-0">
               <Button variant="outline" onClick={handleBackStep} disabled={valuesLoading || isSaving}>
                 Back
               </Button>

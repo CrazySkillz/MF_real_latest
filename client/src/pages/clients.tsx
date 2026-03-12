@@ -29,8 +29,8 @@ export default function ClientsPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Clients</h1>
-              <p className="text-slate-500 mt-1">Manage the clients you work with</p>
+              <h1 className="text-3xl font-bold text-foreground">Clients</h1>
+              <p className="text-muted-foreground mt-1">Manage the clients you work with</p>
             </div>
             <Button onClick={() => setIsModalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
@@ -41,11 +41,11 @@ export default function ClientsPage() {
           {/* Client list */}
           {clients.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                <Building2 className="w-8 h-8 text-slate-400" />
+              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                <Building2 className="w-8 h-8 text-muted-foreground/70" />
               </div>
-              <h2 className="text-lg font-semibold text-slate-700 mb-2">No clients yet</h2>
-              <p className="text-slate-400 mb-6 max-w-xs">
+              <h2 className="text-lg font-semibold text-foreground/80 mb-2">No clients yet</h2>
+              <p className="text-muted-foreground/70 mb-6 max-w-xs">
                 Create your first client to start managing campaigns and data.
               </p>
               <Button onClick={() => setIsModalOpen(true)}>
@@ -59,20 +59,20 @@ export default function ClientsPage() {
                 <button
                   key={client.id}
                   onClick={() => handleSelectClient(client.id)}
-                  className="w-full flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all text-left group"
+                  className="w-full flex items-center justify-between p-4 bg-card rounded-xl border border-border hover:border-blue-300 hover:shadow-sm transition-all text-left group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--gradient-primary)' }}>
                       <Building2 className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900">{client.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="font-semibold text-foreground">{client.name}</p>
+                      <p className="text-xs text-muted-foreground/70 mt-0.5">
                         Added {formatDistanceToNow(new Date(client.createdAt), { addSuffix: true })}
                       </p>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
                 </button>
               ))}
             </div>

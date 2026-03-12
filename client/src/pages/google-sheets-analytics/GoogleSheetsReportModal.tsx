@@ -79,15 +79,15 @@ export function GoogleSheetsReportModal(props: any) {
               className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${
                 modalStep === "standard"
                   ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                  : "border-slate-200 dark:border-slate-700"
+                  : "border-border"
               }`}
               onClick={() => setModalStep("standard")}
             >
               <div className="flex items-start gap-3">
                 <FileText className="w-6 h-6 text-blue-600 mt-1" />
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Standard Templates</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  <h3 className="text-lg font-bold text-foreground">Standard Templates</h3>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
                     Pre-built professional report templates
                   </p>
                 </div>
@@ -98,7 +98,7 @@ export function GoogleSheetsReportModal(props: any) {
               className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${
                 modalStep === "custom"
                   ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                  : "border-slate-200 dark:border-slate-700"
+                  : "border-border"
               }`}
               onClick={() => {
                 setModalStep("custom");
@@ -112,8 +112,8 @@ export function GoogleSheetsReportModal(props: any) {
               <div className="flex items-start gap-3">
                 <Settings className="w-6 h-6 text-blue-600 mt-1" />
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Custom Report</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  <h3 className="text-lg font-bold text-foreground">Custom Report</h3>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
                     Build your own customized report
                   </p>
                 </div>
@@ -125,28 +125,28 @@ export function GoogleSheetsReportModal(props: any) {
           {modalStep === "standard" && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Choose Template</h3>
+                <h3 className="text-lg font-bold text-foreground mb-4">Choose Template</h3>
                 <div className="space-y-4">
                   {/* Overview Template */}
                   <div
                     className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
                       form.reportType === "overview"
                         ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-slate-200 dark:border-slate-700"
+                        : "border-border"
                     }`}
                     onClick={() => handleTypeSelect("overview")}
                   >
                     <div className="flex items-start gap-3">
-                      <BarChart3 className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                      <BarChart3 className="w-5 h-5 text-foreground mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900 dark:text-white">Overview</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h4 className="font-semibold text-foreground">Overview</h4>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Comprehensive overview of Google Sheets performance data
                         </p>
                         <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Summary</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Metrics</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Insights</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Summary</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Metrics</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Insights</span>
                         </div>
                       </div>
                     </div>
@@ -157,20 +157,20 @@ export function GoogleSheetsReportModal(props: any) {
                     className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
                       form.reportType === "kpis"
                         ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-slate-200 dark:border-slate-700"
+                        : "border-border"
                     }`}
                     onClick={() => handleTypeSelect("kpis")}
                   >
                     <div className="flex items-start gap-3">
-                      <Target className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                      <Target className="w-5 h-5 text-foreground mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900 dark:text-white">KPIs</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h4 className="font-semibold text-foreground">KPIs</h4>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Key performance indicators and progress tracking
                         </p>
                         <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Targets</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Progress</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Targets</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Progress</span>
                         </div>
                       </div>
                     </div>
@@ -181,20 +181,20 @@ export function GoogleSheetsReportModal(props: any) {
                     className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
                       form.reportType === "benchmarks"
                         ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-slate-200 dark:border-slate-700"
+                        : "border-border"
                     }`}
                     onClick={() => handleTypeSelect("benchmarks")}
                   >
                     <div className="flex items-start gap-3">
-                      <Trophy className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                      <Trophy className="w-5 h-5 text-foreground mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900 dark:text-white">Benchmarks</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h4 className="font-semibold text-foreground">Benchmarks</h4>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Performance benchmarks and comparisons
                         </p>
                         <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Custom</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Goals</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Custom</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Goals</span>
                         </div>
                       </div>
                     </div>
@@ -205,21 +205,21 @@ export function GoogleSheetsReportModal(props: any) {
                     className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
                       form.reportType === "insights"
                         ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-slate-200 dark:border-slate-700"
+                        : "border-border"
                     }`}
                     onClick={() => handleTypeSelect("insights")}
                   >
                     <div className="flex items-start gap-3">
-                      <Info className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                      <Info className="w-5 h-5 text-foreground mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900 dark:text-white">Insights</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h4 className="font-semibold text-foreground">Insights</h4>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Data quality, trends, anomalies, and recommendations
                         </p>
                         <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Trends</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Anomalies</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Actions</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Trends</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Anomalies</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Actions</span>
                         </div>
                       </div>
                     </div>
@@ -264,7 +264,7 @@ export function GoogleSheetsReportModal(props: any) {
                     </div>
 
                     {form.scheduleEnabled && (
-                      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 space-y-4 mt-4">
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-4 mt-4">
                         <div className="space-y-2">
                           <Label>Frequency</Label>
                           <Select value={form.scheduleFrequency} onValueChange={(v) => setForm({ ...form, scheduleFrequency: v })}>
@@ -321,7 +321,7 @@ export function GoogleSheetsReportModal(props: any) {
                                 {form.scheduleFrequency !== "quarterly" && (
                                   <>
                                     <div className="border-t my-1" />
-                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Specific Days</div>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground/70">Specific Days</div>
                                     {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
                                       <SelectItem key={day} value={day.toString()}>
                                         {day}{getOrdinalSuffix(day)}
@@ -344,7 +344,7 @@ export function GoogleSheetsReportModal(props: any) {
                               ))}
                             </SelectContent>
                           </Select>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                          <p className="text-sm text-muted-foreground/70">
                             All times are in your time zone: {getTimeZoneDisplay()}
                           </p>
                         </div>
@@ -365,7 +365,7 @@ export function GoogleSheetsReportModal(props: any) {
                           {formErrors.emailRecipients ? (
                             <p className="text-sm text-red-600 dark:text-red-400">{formErrors.emailRecipients}</p>
                           ) : (
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground/70">
                               Reports will be automatically generated and sent to these email addresses
                             </p>
                           )}
@@ -382,8 +382,8 @@ export function GoogleSheetsReportModal(props: any) {
           {modalStep === "custom" && (
             <div className="space-y-6">
               <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Select Metrics</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <h3 className="text-lg font-semibold text-foreground">Select Metrics</h3>
+                <p className="text-sm text-muted-foreground/70">
                   Choose which metrics from your Google Sheets data to include in the report.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
@@ -411,7 +411,7 @@ export function GoogleSheetsReportModal(props: any) {
               {/* KPIs */}
               {kpisData && Array.isArray(kpisData) && kpisData.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Include KPIs</h4>
+                  <h4 className="text-sm font-semibold text-foreground/80/60">Include KPIs</h4>
                   <div className="space-y-2">
                     {kpisData.map((kpi: any) => (
                       <div key={kpi.id} className="flex items-center space-x-2">
@@ -438,7 +438,7 @@ export function GoogleSheetsReportModal(props: any) {
               {/* Benchmarks */}
               {benchmarksData && Array.isArray(benchmarksData) && benchmarksData.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Include Benchmarks</h4>
+                  <h4 className="text-sm font-semibold text-foreground/80/60">Include Benchmarks</h4>
                   <div className="space-y-2">
                     {benchmarksData.map((bm: any) => (
                       <div key={bm.id} className="flex items-center space-x-2">
@@ -550,7 +550,7 @@ export function GoogleSheetsReportModal(props: any) {
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm text-muted-foreground/70">
                           All times are in your time zone: {getTimeZoneDisplay()}
                         </p>
                       </div>
@@ -571,7 +571,7 @@ export function GoogleSheetsReportModal(props: any) {
                         {formErrors.emailRecipients ? (
                           <p className="text-sm text-red-600 dark:text-red-400">{formErrors.emailRecipients}</p>
                         ) : (
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                          <p className="text-sm text-muted-foreground/70">
                             Reports will be sent to these email addresses on schedule
                           </p>
                         )}

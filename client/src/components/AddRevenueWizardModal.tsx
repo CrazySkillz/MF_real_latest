@@ -1077,7 +1077,7 @@ export function AddRevenueWizardModal(props: {
                             </AlertDialog>
                           </span>
                         ) : (
-                          <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
+                          <span className="ml-auto text-xs font-normal text-muted-foreground/70">Not connected</span>
                         )}
                       </CardTitle>
                       <CardDescription>{crmStatus.shopify ? "Attribute order revenue to this campaign." : "Connect Shopify to import order revenue."}</CardDescription>
@@ -1115,7 +1115,7 @@ export function AddRevenueWizardModal(props: {
                             </AlertDialog>
                           </span>
                         ) : (
-                          <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
+                          <span className="ml-auto text-xs font-normal text-muted-foreground/70">Not connected</span>
                         )}
                       </CardTitle>
                       <CardDescription>{crmStatus.hubspot ? "Attribute deal revenue to this campaign." : "Connect HubSpot to import deal revenue."}</CardDescription>
@@ -1153,7 +1153,7 @@ export function AddRevenueWizardModal(props: {
                             </AlertDialog>
                           </span>
                         ) : (
-                          <span className="ml-auto text-xs font-normal text-slate-400">Not connected</span>
+                          <span className="ml-auto text-xs font-normal text-muted-foreground/70">Not connected</span>
                         )}
                       </CardTitle>
                       <CardDescription>{crmStatus.salesforce ? "Attribute opportunity revenue to this campaign." : "Connect Salesforce to import opportunity revenue."}</CardDescription>
@@ -1272,7 +1272,7 @@ export function AddRevenueWizardModal(props: {
                                 <Label htmlFor="manual-mode-cv">Conversion value (per conversion)</Label>
                               </div>
                             </RadioGroup>
-                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               Enter <strong>one</strong> value only. This prevents ambiguous financial reporting.
                             </p>
                           </div>
@@ -1297,7 +1297,7 @@ export function AddRevenueWizardModal(props: {
                                 placeholder="0.00"
                                 inputMode="decimal"
                               />
-                              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                              <p className="text-xs text-muted-foreground/70 mt-1">
                                 Revenue metrics will be calculated as Conversions x Conversion Value.
                               </p>
                             </div>
@@ -1360,7 +1360,7 @@ export function AddRevenueWizardModal(props: {
                 <Card>
                   <CardContent className="space-y-3 pt-6">
                     {isEditing && (
-                      <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 text-sm text-slate-700 dark:text-slate-300">
+                      <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-foreground/80/60">
                         To update this revenue source, re-upload the CSV. We’ll reuse your previous column mapping when possible.
                       </div>
                     )}
@@ -1369,7 +1369,7 @@ export function AddRevenueWizardModal(props: {
                       {platformContext === 'linkedin' && (
                         <div className="rounded-md border p-3 space-y-2">
                           <div className="text-sm font-medium">What do you want to import?</div>
-                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                          <div className="text-xs text-muted-foreground/70">
                             Choose one source of truth. This keeps ROI/ROAS calculations unambiguous.
                           </div>
                           <div className="flex items-center gap-4 pt-1">
@@ -1470,7 +1470,7 @@ export function AddRevenueWizardModal(props: {
                 <Card>
                   <CardContent className="space-y-4 pt-6">
                     {!csvPreview ? (
-                      <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 text-sm text-slate-700 dark:text-slate-300">
+                      <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-foreground/80/60">
                         No preview loaded yet. Go back and click Next.
                       </div>
                     ) : (
@@ -1551,7 +1551,7 @@ export function AddRevenueWizardModal(props: {
                         </div>
 
                         {platformContext === 'linkedin' && (
-                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                          <div className="text-xs text-muted-foreground/70">
                             Mode: <span className="font-medium">{csvValueSource === 'conversion_value' ? 'Conversion Value' : 'Total Revenue'}</span>
                           </div>
                         )}
@@ -1560,7 +1560,7 @@ export function AddRevenueWizardModal(props: {
                           <div className="rounded-md border p-3 space-y-2">
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-sm font-medium">Campaign value(s)</div>
-                              <div className="text-xs text-slate-600 dark:text-slate-400">
+                              <div className="text-xs text-muted-foreground/70">
                                 Selected: <span className="font-medium">{csvCampaignValues.length}</span>
                               </div>
                             </div>
@@ -1588,25 +1588,25 @@ export function AddRevenueWizardModal(props: {
                                   );
                                 })}
                               {uniqueValuesFromPreview(csvPreview, csvCampaignCol).length === 0 && (
-                                <div className="text-sm text-slate-500 dark:text-slate-400">No campaign values found in sample rows.</div>
+                                <div className="text-sm text-muted-foreground/70">No campaign values found in sample rows.</div>
                               )}
                             </div>
                           </div>
                         ) : (
-                          <div className="text-sm text-slate-600 dark:text-slate-400">Select a campaign column to choose campaign values.</div>
+                          <div className="text-sm text-muted-foreground/70">Select a campaign column to choose campaign values.</div>
                         )}
 
                         {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">
-                          <div className="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/40 border-b">
+                          <div className="px-3 py-2 text-xs font-medium text-foreground/80/60 bg-muted/40 border-b">
                             Preview (first {Math.min(8, filteredCsvPreviewRows.length)} row{Math.min(8, filteredCsvPreviewRows.length) === 1 ? "" : "s"})
                           </div>
                           <div className="overflow-auto">
                             <table className="w-full text-sm table-fixed">
-                              <thead className="bg-white dark:bg-slate-950">
+                              <thead className="bg-card">
                                 <tr>
                                   {(csvPreview.headers || []).slice(0, 8).map((h) => (
-                                    <th key={h} className="text-left p-2 border-b text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
+                                    <th key={h} className="text-left p-2 border-b text-xs font-medium text-muted-foreground/70 truncate">
                                       {h}
                                     </th>
                                   ))}
@@ -1616,7 +1616,7 @@ export function AddRevenueWizardModal(props: {
                                 {(filteredCsvPreviewRows || []).slice(0, 8).map((row, idx) => (
                                   <tr key={idx} className="border-b last:border-b-0">
                                     {(csvPreview.headers || []).slice(0, 8).map((h) => (
-                                      <td key={h} className="p-2 text-xs text-slate-700 dark:text-slate-200 truncate">
+                                      <td key={h} className="p-2 text-xs text-foreground/80 dark:text-slate-200 truncate">
                                         {String((row as any)?.[h] ?? "")}
                                       </td>
                                     ))}
@@ -1624,7 +1624,7 @@ export function AddRevenueWizardModal(props: {
                                 ))}
                                 {(filteredCsvPreviewRows || []).length === 0 && (
                                   <tr>
-                                    <td className="p-3 text-sm text-slate-500 dark:text-slate-400" colSpan={8}>
+                                    <td className="p-3 text-sm text-muted-foreground/70" colSpan={8}>
                                       No rows match the current filter.
                                     </td>
                                   </tr>
@@ -1660,7 +1660,7 @@ export function AddRevenueWizardModal(props: {
                     {platformContext === 'linkedin' && (
                       <div className="rounded-md border p-3 space-y-2">
                         <div className="text-sm font-medium">What do you want to import?</div>
-                        <div className="text-xs text-slate-600 dark:text-slate-400">
+                        <div className="text-xs text-muted-foreground/70">
                           Choose one source of truth before connecting a sheet. This keeps ROI/ROAS calculations unambiguous.
                         </div>
                         <div className="flex items-center gap-4 pt-1">
@@ -1692,13 +1692,13 @@ export function AddRevenueWizardModal(props: {
                       </div>
                     )}
                     {sheetsConnectionsLoading ? (
-                      <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-4">
-                        <div className="text-sm text-slate-700 dark:text-slate-300">Loading your connected Google Sheets…</div>
+                      <div className="rounded-lg border border-border bg-muted/40 p-4">
+                        <div className="text-sm text-foreground/80/60">Loading your connected Google Sheets…</div>
                       </div>
                     ) : sheetsConnections.length === 0 ? (
                       <div className="space-y-3">
                         <div className="text-sm font-medium">Connect Google Sheets</div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground/70">
                           Connect a Google Sheet and select the tab that contains your revenue data.
                         </p>
                         <SimpleGoogleSheetsAuth
@@ -1726,7 +1726,7 @@ export function AddRevenueWizardModal(props: {
                     ) : showSheetsConnect ? (
                       <div className="space-y-3">
                         <div className="text-sm font-medium">Change sheet/tab</div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground/70">
                           Connect a different spreadsheet or tab (you can select multiple tabs).
                         </p>
                         <SimpleGoogleSheetsAuth
@@ -1817,7 +1817,7 @@ export function AddRevenueWizardModal(props: {
                 <Card>
                   <CardContent className="space-y-4">
                     {!sheetsPreview ? (
-                      <div className="rounded-md border p-3 text-sm text-slate-600 dark:text-slate-400">
+                      <div className="rounded-md border p-3 text-sm text-muted-foreground/70">
                         No preview loaded yet. Go back and select a Google Sheet tab.
                       </div>
                     ) : (
@@ -1845,7 +1845,7 @@ export function AddRevenueWizardModal(props: {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                            <p className="text-xs text-muted-foreground/70 mt-1">
                               If your sheet contains multiple campaigns, filter it to the campaign value(s) you want.
                             </p>
                           </div>
@@ -1897,7 +1897,7 @@ export function AddRevenueWizardModal(props: {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                              <p className="text-xs text-muted-foreground/70 mt-1">
                                 Optional: import value per conversion directly (used for ROI/ROAS when revenue is not available).
                               </p>
                             </div>
@@ -1905,7 +1905,7 @@ export function AddRevenueWizardModal(props: {
                         </div>
 
                         {platformContext === 'linkedin' && (
-                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                          <div className="text-xs text-muted-foreground/70">
                             Mode: <span className="font-medium">{sheetsValueSource === 'conversion_value' ? 'Conversion Value' : 'Total Revenue'}</span>
                           </div>
                         )}
@@ -1914,7 +1914,7 @@ export function AddRevenueWizardModal(props: {
                           <div className="rounded-md border p-3 space-y-2">
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-sm font-medium">Campaign value(s)</div>
-                              <div className="text-xs text-slate-600 dark:text-slate-400">
+                              <div className="text-xs text-muted-foreground/70">
                                 Selected: <span className="font-medium">{sheetsCampaignValues.length}</span>
                               </div>
                             </div>
@@ -1942,29 +1942,29 @@ export function AddRevenueWizardModal(props: {
                                   );
                                 })}
                               {uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol).length === 0 && (
-                                <div className="text-sm text-slate-500 dark:text-slate-400">No campaign values found in sample rows.</div>
+                                <div className="text-sm text-muted-foreground/70">No campaign values found in sample rows.</div>
                               )}
                             </div>
                           </div>
                         )}
 
                         <div className="flex items-center justify-between">
-                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                          <div className="text-xs text-muted-foreground/70">
                             Rows detected: <span className="font-medium">{sheetsPreview.rowCount.toLocaleString()}</span>
                           </div>
                         </div>
 
                         {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">
-                          <div className="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/40 border-b">
+                          <div className="px-3 py-2 text-xs font-medium text-foreground/80/60 bg-muted/40 border-b">
                             Preview (first {Math.min(8, filteredSheetsPreviewRows.length)} row{Math.min(8, filteredSheetsPreviewRows.length) === 1 ? "" : "s"})
                           </div>
                           <div className="overflow-auto">
                             <table className="w-full text-sm table-fixed">
-                              <thead className="bg-white dark:bg-slate-950">
+                              <thead className="bg-card">
                                 <tr>
                                   {(sheetsPreview.headers || []).slice(0, 8).map((h) => (
-                                    <th key={h} className="text-left p-2 border-b text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
+                                    <th key={h} className="text-left p-2 border-b text-xs font-medium text-muted-foreground/70 truncate">
                                       {h}
                                     </th>
                                   ))}
@@ -1974,7 +1974,7 @@ export function AddRevenueWizardModal(props: {
                                 {(filteredSheetsPreviewRows || []).slice(0, 8).map((row, idx) => (
                                   <tr key={idx} className="border-b last:border-b-0">
                                     {(sheetsPreview.headers || []).slice(0, 8).map((h) => (
-                                      <td key={h} className="p-2 text-xs text-slate-700 dark:text-slate-200 truncate">
+                                      <td key={h} className="p-2 text-xs text-foreground/80 dark:text-slate-200 truncate">
                                         {String((row as any)?.[h] ?? "")}
                                       </td>
                                     ))}
@@ -1982,7 +1982,7 @@ export function AddRevenueWizardModal(props: {
                                 ))}
                                 {(filteredSheetsPreviewRows || []).length === 0 && (
                                   <tr>
-                                    <td className="p-3 text-sm text-slate-500 dark:text-slate-400" colSpan={8}>
+                                    <td className="p-3 text-sm text-muted-foreground/70" colSpan={8}>
                                       No rows match the current filter.
                                     </td>
                                   </tr>

@@ -10,7 +10,7 @@ export default function ComingSoon() {
   const campaignId = params?.id;
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       <div className="flex">
         <Sidebar />
@@ -35,10 +35,10 @@ export default function ComingSoon() {
                   <div className="flex justify-center mb-4">
                     <div className="relative">
                       <TrendingUp className="w-20 h-20 text-blue-500" />
-                      <Clock className="w-8 h-8 text-amber-500 absolute -bottom-1 -right-1 bg-white dark:bg-slate-800 rounded-full p-1" />
+                      <Clock className="w-8 h-8 text-amber-500 absolute -bottom-1 -right-1 bg-card rounded-full p-1" />
                     </div>
                   </div>
-                  <CardTitle className="text-3xl font-bold text-slate-900 dark:text-white">
+                  <CardTitle className="text-3xl font-bold text-foreground">
                     Trend Analysis
                   </CardTitle>
                   <CardDescription className="text-lg mt-2">
@@ -46,7 +46,7 @@ export default function ComingSoon() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="text-center space-y-6">
-                  <p className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
+                  <p className="text-muted-foreground/70 text-base leading-relaxed">
                     We're working on bringing you powerful industry trend analysis and market intelligence. 
                     This feature will help you track keyword trends, compare against industry benchmarks, 
                     and gain valuable insights for strategic decision-making.

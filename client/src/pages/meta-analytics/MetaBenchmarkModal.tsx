@@ -597,7 +597,7 @@ export function MetaBenchmarkModal(props: any) {
               rows={3}
               data-testid="input-benchmark-description"
             />
-            <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+            <div className="text-xs text-muted-foreground/70 text-right">
               {benchmarkForm.description.length}/{BENCHMARK_DESC_MAX}
             </div>
           </div>
@@ -652,7 +652,7 @@ export function MetaBenchmarkModal(props: any) {
                   <SelectItem value="specific">Specific Campaign</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+              <p className="text-xs text-muted-foreground/70">
                 Choose whether this benchmark applies to all campaigns combined or a specific individual campaign
               </p>
             </div>
@@ -702,7 +702,7 @@ export function MetaBenchmarkModal(props: any) {
                   )}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+              <p className="text-xs text-muted-foreground/70">
                 Select the specific Meta campaign this benchmark applies to
               </p>
             </div>
@@ -802,7 +802,7 @@ export function MetaBenchmarkModal(props: any) {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Benchmark value will be auto-filled based on Meta Ads industry standards</p>
+              <p className="text-xs text-muted-foreground/70">Benchmark value will be auto-filled based on Meta Ads industry standards</p>
             </div>
           )}
 
@@ -837,7 +837,7 @@ export function MetaBenchmarkModal(props: any) {
                       }}
                       data-testid="input-benchmark-alert-threshold"
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
+                    <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="benchmark-alert-condition">Alert When</Label>
@@ -870,7 +870,7 @@ export function MetaBenchmarkModal(props: any) {
                         <SelectItem value="weekly">Weekly</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-muted-foreground/70">
                       Controls how often you're notified while the alert condition stays true.
                     </p>
                   </div>
@@ -898,7 +898,7 @@ export function MetaBenchmarkModal(props: any) {
                           onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
                           data-testid="input-benchmark-email-recipients"
                         />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Comma-separated email addresses for alerts.</p>
+                        <p className="text-xs text-muted-foreground/70">Comma-separated email addresses for alerts.</p>
                       </div>
                     )}
                   </div>

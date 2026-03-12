@@ -40,16 +40,16 @@ export default function ExecutiveSummary() {
 
   if (campaignLoading || summaryLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
+              <div className="h-8 bg-muted rounded w-1/3"></div>
               <div className="grid gap-4 md:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                  <div key={i} className="h-24 bg-muted rounded"></div>
                 ))}
               </div>
             </div>
@@ -61,16 +61,16 @@ export default function ExecutiveSummary() {
 
   if (campaignError || !campaign || summaryError || !executiveSummary) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="text-center py-8">
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+              <h1 className="text-xl font-semibold text-foreground mb-2">
                 {!campaign ? 'Campaign Not Found' : 'Unable to Load Executive Summary'}
               </h1>
-              <p className="text-slate-600 dark:text-slate-400">
+              <p className="text-muted-foreground/70">
                 {!campaign ? 'Unable to load campaign data for executive summary.' : 'Please ensure at least one platform (LinkedIn Ads, Meta/Facebook, Google Analytics, or Custom Integration) is connected to this campaign.'}
               </p>
             </div>
@@ -129,12 +129,12 @@ export default function ExecutiveSummary() {
       case 'trend':
         return <TrendingUp className="w-5 h-5 text-purple-600" />;
       default:
-        return <Eye className="w-5 h-5 text-slate-600" />;
+        return <Eye className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="flex">
@@ -152,8 +152,8 @@ export default function ExecutiveSummary() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Executive Summary</h1>
-                  <p className="text-slate-600 dark:text-slate-400 mt-1">{(campaign as any)?.name}</p>
+                  <h1 className="text-3xl font-bold text-foreground">Executive Summary</h1>
+                  <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
@@ -205,7 +205,7 @@ export default function ExecutiveSummary() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-6">
                       <div className="text-center">
-                        <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Campaign Grade</div>
+                        <div className="text-sm text-muted-foreground/70 mb-1">Campaign Grade</div>
                         <div className={`text-6xl font-bold ${
                           (executiveSummary as any).health.grade === 'A' ? 'text-green-600' :
                           (executiveSummary as any).health.grade === 'B' ? 'text-blue-600' :
@@ -216,30 +216,30 @@ export default function ExecutiveSummary() {
                           {(executiveSummary as any).health.grade}
                         </div>
                       </div>
-                      <div className="border-l border-slate-200 dark:border-slate-700 pl-6">
-                        <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">Health Score</div>
+                      <div className="border-l border-border pl-6">
+                        <div className="text-sm text-muted-foreground/70 mb-2">Health Score</div>
                         <div className="flex items-center space-x-3">
                           <Progress value={(executiveSummary as any).health.score} className="w-40" />
-                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                          <span className="text-2xl font-bold text-foreground">
                             {(executiveSummary as any).health.score}/100
                           </span>
                         </div>
                       </div>
                       {(executiveSummary as any).health.trajectory && (
-                        <div className="border-l border-slate-200 dark:border-slate-700 pl-6">
-                          <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Trajectory</div>
+                        <div className="border-l border-border pl-6">
+                          <div className="text-sm text-muted-foreground/70 mb-1">Trajectory</div>
                           <div className="flex items-center space-x-2">
                             {(executiveSummary as any).health.trajectory === 'accelerating' && <TrendingUp className="w-5 h-5 text-green-600" />}
                             {(executiveSummary as any).health.trajectory === 'declining' && <TrendingDown className="w-5 h-5 text-red-600" />}
                             {(executiveSummary as any).health.trajectory === 'stable' && <Activity className="w-5 h-5 text-blue-600" />}
-                            <span className="text-lg font-medium text-slate-900 dark:text-white capitalize">
+                            <span className="text-lg font-medium text-foreground capitalize">
                               {(executiveSummary as any).health.trajectory}
                             </span>
                           </div>
                         </div>
                       )}
-                      <div className="border-l border-slate-200 dark:border-slate-700 pl-6">
-                        <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Risk Level</div>
+                      <div className="border-l border-border pl-6">
+                        <div className="text-sm text-muted-foreground/70 mb-1">Risk Level</div>
                         <Badge className={
                           (executiveSummary as any).risk.level === 'low' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
                           (executiveSummary as any).risk.level === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
@@ -248,7 +248,7 @@ export default function ExecutiveSummary() {
                           {(executiveSummary as any).risk.level.toUpperCase()}
                         </Badge>
                         {(executiveSummary as any).risk.explanation && (
-                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 max-w-xs">
+                          <p className="text-xs text-muted-foreground/70 mt-2 max-w-xs">
                             {(executiveSummary as any).risk.explanation}
                           </p>
                         )}
@@ -257,12 +257,12 @@ export default function ExecutiveSummary() {
                   </div>
                   
                   {/* CEO Summary */}
-                  <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="mt-6 p-4 bg-muted rounded-lg border border-border">
                     <div className="flex items-start space-x-3">
-                      <Briefcase className="w-5 h-5 text-slate-600 dark:text-slate-400 mt-0.5" />
+                      <Briefcase className="w-5 h-5 text-muted-foreground/70 mt-0.5" />
                       <div>
-                        <div className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Executive Summary</div>
-                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                        <div className="text-sm font-semibold text-foreground mb-1">Executive Summary</div>
+                        <p className="text-sm text-foreground/80/60 leading-relaxed">
                           {(executiveSummary as any).ceoSummary}
                         </p>
                       </div>
@@ -304,7 +304,7 @@ export default function ExecutiveSummary() {
                         </div>
                       </div>
                       <div className="flex justify-center my-2">
-                        <ArrowDownRight className="w-8 h-8 text-slate-400" />
+                        <ArrowDownRight className="w-8 h-8 text-muted-foreground/70" />
                       </div>
                     </div>
 
@@ -349,7 +349,7 @@ export default function ExecutiveSummary() {
                         </div>
                       </div>
                       <div className="flex justify-center my-2">
-                        <ArrowDownRight className="w-8 h-8 text-slate-400" />
+                        <ArrowDownRight className="w-8 h-8 text-muted-foreground/70" />
                       </div>
                     </div>
 
@@ -371,7 +371,7 @@ export default function ExecutiveSummary() {
                               {formatNumber((executiveSummary as any).metrics.totalConversions)}
                             </div>
                           </div>
-                          <div className="text-center border-l border-r border-slate-300 dark:border-slate-600">
+                          <div className="text-center border-l border-r border-border dark:border-slate-600">
                             <div className="flex justify-center mb-2">
                               <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                                 <DollarSign className="w-5 h-5 text-white" />
@@ -394,8 +394,8 @@ export default function ExecutiveSummary() {
                             </div>
                           </div>
                         </div>
-                        <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 text-center">
-                          <div className="text-sm text-slate-600 dark:text-slate-400">Return on Investment</div>
+                        <div className="mt-4 pt-4 border-t border-border dark:border-slate-600 text-center">
+                          <div className="text-sm text-muted-foreground/70">Return on Investment</div>
                           <div className={`text-2xl font-bold ${(executiveSummary as any).metrics.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {(executiveSummary as any).metrics.roi.toFixed(1)}%
                           </div>
@@ -404,8 +404,8 @@ export default function ExecutiveSummary() {
                     </div>
 
                     {/* Funnel Summary */}
-                    <div className="text-center pt-4 border-t border-slate-200 dark:border-slate-700">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <div className="text-center pt-4 border-t border-border">
+                      <p className="text-sm text-muted-foreground/70 leading-relaxed">
                         <span className="font-semibold">Campaign Story:</span> We spent <span className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency((executiveSummary as any).metrics.totalSpend)}</span>, 
                         reached <span className="font-bold text-orange-600 dark:text-orange-400">{formatNumber((executiveSummary as any).metrics.totalImpressions)}</span> people, 
                         got <span className="font-bold text-indigo-600 dark:text-indigo-400">{formatNumber((executiveSummary as any).metrics.totalClicks)}</span> clicks, 
@@ -422,13 +422,13 @@ export default function ExecutiveSummary() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <Card className="border-l-4 border-green-500">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground/70">Total Revenue</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                    <div className="text-2xl font-bold text-foreground mb-1">
                       {formatCurrency((executiveSummary as any).metrics.totalRevenue)}
                     </div>
-                    <div className="flex items-center text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center text-muted-foreground/70">
                       <span className="text-sm font-medium">ROI: {(executiveSummary as any).metrics.roi.toFixed(1)}%</span>
                     </div>
                   </CardContent>
@@ -436,13 +436,13 @@ export default function ExecutiveSummary() {
 
                 <Card className="border-l-4 border-blue-500">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Return on Ad Spend</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground/70">Return on Ad Spend</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                    <div className="text-2xl font-bold text-foreground mb-1">
                       {(executiveSummary as any).metrics.roas.toFixed(1)}x
                     </div>
-                    <div className="flex items-center text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center text-muted-foreground/70">
                       <span className="text-sm font-medium">Spend: {formatCurrency((executiveSummary as any).metrics.totalSpend)}</span>
                     </div>
                   </CardContent>
@@ -450,13 +450,13 @@ export default function ExecutiveSummary() {
 
                 <Card className="border-l-4 border-purple-500">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Conversions</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground/70">Total Conversions</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                    <div className="text-2xl font-bold text-foreground mb-1">
                       {formatNumber((executiveSummary as any).metrics.totalConversions)}
                     </div>
-                    <div className="flex items-center text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center text-muted-foreground/70">
                       <span className="text-sm font-medium">CVR: {(executiveSummary as any).metrics.cvr.toFixed(2)}%</span>
                     </div>
                   </CardContent>
@@ -464,13 +464,13 @@ export default function ExecutiveSummary() {
 
                 <Card className="border-l-4 border-indigo-500">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Clicks</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground/70">Total Clicks</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                    <div className="text-2xl font-bold text-foreground mb-1">
                       {formatNumber((executiveSummary as any).metrics.totalClicks)}
                     </div>
-                    <div className="flex items-center text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center text-muted-foreground/70">
                       <span className="text-sm font-medium">CPC: {formatCurrency((executiveSummary as any).metrics.cpc, true)}</span>
                     </div>
                   </CardContent>
@@ -478,13 +478,13 @@ export default function ExecutiveSummary() {
 
                 <Card className="border-l-4 border-orange-500">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Audience Reach</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground/70">Audience Reach</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                    <div className="text-2xl font-bold text-foreground mb-1">
                       {formatNumber((executiveSummary as any).metrics.totalImpressions)}
                     </div>
-                    <div className="flex items-center text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center text-muted-foreground/70">
                       <span className="text-sm font-medium">CTR: {(executiveSummary as any).metrics.ctr.toFixed(2)}%</span>
                     </div>
                   </CardContent>
@@ -502,7 +502,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     {(executiveSummary as any).platforms.length === 0 ? (
-                      <div className="text-center py-8 text-slate-600 dark:text-slate-400">
+                      <div className="text-center py-8 text-muted-foreground/70">
                         No platform data available. Connect LinkedIn Ads or Custom Integration to see platform performance.
                       </div>
                     ) : (
@@ -522,9 +522,9 @@ export default function ExecutiveSummary() {
                           );
                           
                           return (
-                            <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                            <div key={index} className="border border-border rounded-lg p-4">
                               <div className="flex items-center justify-between mb-3">
-                                <h4 className="font-semibold text-slate-900 dark:text-white">{platform.name}</h4>
+                                <h4 className="font-semibold text-foreground">{platform.name}</h4>
                                 {!hasAdvertisingData && hasWebsiteAnalytics ? (
                                   <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                                     Website Analytics Only
@@ -541,7 +541,7 @@ export default function ExecutiveSummary() {
                                      platform.roas >= 1 ? 'Fair' : 'Needs Attention'}
                                   </Badge>
                                 ) : (
-                                  <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                  <Badge className="bg-muted text-foreground/80/60">
                                     No Data
                                   </Badge>
                                 )}
@@ -551,37 +551,37 @@ export default function ExecutiveSummary() {
                               {hasAdvertisingData && (
                                 <div className="grid grid-cols-5 gap-4 mb-4">
                                   <div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400">Spend</div>
-                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    <div className="text-xs text-muted-foreground/70">Spend</div>
+                                    <div className="text-sm font-semibold text-foreground">
                                       {formatCurrency(platform.spend)}
                                     </div>
                                     {platform.spend > 0 && (
-                                      <div className="text-xs text-slate-500">
+                                      <div className="text-xs text-muted-foreground">
                                         {platform.spendShare.toFixed(0)}% of total
                                       </div>
                                     )}
                                   </div>
                                   <div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400">Revenue</div>
-                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    <div className="text-xs text-muted-foreground/70">Revenue</div>
+                                    <div className="text-sm font-semibold text-foreground">
                                       {formatCurrency(platform.revenue)}
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400">Conversions</div>
-                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    <div className="text-xs text-muted-foreground/70">Conversions</div>
+                                    <div className="text-sm font-semibold text-foreground">
                                       {formatNumber(platform.conversions)}
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400">ROAS</div>
-                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    <div className="text-xs text-muted-foreground/70">ROAS</div>
+                                    <div className="text-sm font-semibold text-foreground">
                                       {platform.roas.toFixed(1)}x
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400">ROI</div>
-                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    <div className="text-xs text-muted-foreground/70">ROI</div>
+                                    <div className="text-sm font-semibold text-foreground">
                                       <span className={platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                                         {platform.roi >= 0 ? '+' : ''}{platform.roi.toFixed(1)}%
                                       </span>
@@ -592,41 +592,41 @@ export default function ExecutiveSummary() {
                               
                               {/* Website Analytics Metrics */}
                               {hasWebsiteAnalytics && (
-                                <div className={hasAdvertisingData ? 'pt-4 border-t border-slate-200 dark:border-slate-700' : ''}>
+                                <div className={hasAdvertisingData ? 'pt-4 border-t border-border' : ''}>
                                   <div className="flex items-center space-x-2 mb-3">
-                                    <Eye className="w-4 h-4 text-slate-500" />
-                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                                    <Eye className="w-4 h-4 text-muted-foreground" />
+                                    <span className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">
                                       Website Analytics
                                     </span>
                                   </div>
                                   <div className="grid grid-cols-5 gap-4">
                                     <div>
-                                      <div className="text-xs text-slate-600 dark:text-slate-400">Pageviews</div>
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      <div className="text-xs text-muted-foreground/70">Pageviews</div>
+                                      <div className="text-sm font-semibold text-foreground">
                                         {formatNumber(platform.websiteAnalytics.pageviews)}
                                       </div>
                                     </div>
                                     <div>
-                                      <div className="text-xs text-slate-600 dark:text-slate-400">Sessions</div>
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      <div className="text-xs text-muted-foreground/70">Sessions</div>
+                                      <div className="text-sm font-semibold text-foreground">
                                         {formatNumber(platform.websiteAnalytics.sessions)}
                                       </div>
                                     </div>
                                     <div>
-                                      <div className="text-xs text-slate-600 dark:text-slate-400">Users</div>
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      <div className="text-xs text-muted-foreground/70">Users</div>
+                                      <div className="text-sm font-semibold text-foreground">
                                         {formatNumber(platform.websiteAnalytics.users || 0)}
                                       </div>
                                     </div>
                                     <div>
-                                      <div className="text-xs text-slate-600 dark:text-slate-400">Bounce Rate</div>
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      <div className="text-xs text-muted-foreground/70">Bounce Rate</div>
+                                      <div className="text-sm font-semibold text-foreground">
                                         {platform.websiteAnalytics.bounceRate ? `${platform.websiteAnalytics.bounceRate.toFixed(1)}%` : 'N/A'}
                                       </div>
                                     </div>
                                     <div>
-                                      <div className="text-xs text-slate-600 dark:text-slate-400">Avg Duration</div>
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                      <div className="text-xs text-muted-foreground/70">Avg Duration</div>
+                                      <div className="text-sm font-semibold text-foreground">
                                         {platform.websiteAnalytics.avgSessionDuration 
                                           ? `${Math.floor(platform.websiteAnalytics.avgSessionDuration / 60)}m ${Math.floor(platform.websiteAnalytics.avgSessionDuration % 60)}s`
                                           : 'N/A'}
@@ -638,7 +638,7 @@ export default function ExecutiveSummary() {
                               
                               {/* No Data State */}
                               {!hasAdvertisingData && !hasWebsiteAnalytics && (
-                                <div className="text-center py-4 text-slate-400">
+                                <div className="text-center py-4 text-muted-foreground/70">
                                   No data available for this platform
                                 </div>
                               )}
@@ -672,17 +672,17 @@ export default function ExecutiveSummary() {
                           <div key={index} className="space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
-                                <span className="text-sm font-medium text-slate-900 dark:text-white">{kpi.name}</span>
+                                <span className="text-sm font-medium text-foreground">{kpi.name}</span>
                                 <Badge variant="outline" className={`text-xs ${
                                   kpi.priority === 'high' || kpi.priority === 'critical' ? 'border-red-300 text-red-600' :
                                   kpi.priority === 'medium' ? 'border-yellow-300 text-yellow-600' :
-                                  'border-slate-300 text-slate-600'
+                                  'border-border text-muted-foreground'
                                 }`}>
                                   {kpi.priority}
                                 </Badge>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <span className="text-sm text-slate-600 dark:text-slate-400">
+                                <span className="text-sm text-muted-foreground/70">
                                   {kpi.unit === '$' ? `$${kpi.current.toLocaleString()}` : kpi.unit === '%' ? `${kpi.current.toFixed(1)}%` : `${kpi.current}${kpi.unit}`}
                                   {' / '}
                                   {kpi.unit === '$' ? `$${kpi.target.toLocaleString()}` : kpi.unit === '%' ? `${kpi.target}%` : `${kpi.target}${kpi.unit}`}
@@ -713,24 +713,24 @@ export default function ExecutiveSummary() {
                   <CardContent>
                     <div className="space-y-3">
                       {(executiveSummary as any).benchmarkComparison.map((bm: any, index: number) => (
-                        <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-border">
                           <div className="flex items-center space-x-3">
                             <div className={`w-2 h-8 rounded-full ${bm.status === 'above' ? 'bg-green-500' : 'bg-red-500'}`} />
                             <div>
-                              <div className="text-sm font-medium text-slate-900 dark:text-white">{bm.metric}</div>
-                              {bm.category && <div className="text-xs text-slate-500">{bm.category}</div>}
+                              <div className="text-sm font-medium text-foreground">{bm.metric}</div>
+                              {bm.category && <div className="text-xs text-muted-foreground">{bm.category}</div>}
                             </div>
                           </div>
                           <div className="flex items-center space-x-6">
                             <div className="text-right">
-                              <div className="text-xs text-slate-500">Yours</div>
-                              <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                              <div className="text-xs text-muted-foreground">Yours</div>
+                              <div className="text-sm font-semibold text-foreground">
                                 {bm.unit === '$' ? `$${bm.yours.toFixed(2)}` : bm.unit === '%' ? `${bm.yours.toFixed(2)}%` : `${bm.yours.toFixed(2)}${bm.unit}`}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xs text-slate-500">Benchmark</div>
-                              <div className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+                              <div className="text-xs text-muted-foreground">Benchmark</div>
+                              <div className="text-sm font-semibold text-muted-foreground/70">
                                 {bm.unit === '$' ? `$${bm.benchmark.toFixed(2)}` : bm.unit === '%' ? `${bm.benchmark.toFixed(2)}%` : `${bm.benchmark.toFixed(2)}${bm.unit}`}
                               </div>
                             </div>
@@ -755,7 +755,7 @@ export default function ExecutiveSummary() {
                 </CardHeader>
                 <CardContent>
                   {(executiveSummary as any).risk.factors.length === 0 ? (
-                    <div className="text-center py-6 text-slate-600 dark:text-slate-400">
+                    <div className="text-center py-6 text-muted-foreground/70">
                       <CheckCircle className="w-12 h-12 mx-auto text-green-600 mb-2" />
                       <p className="font-medium">No significant risks identified</p>
                       <p className="text-sm">Campaign is operating within acceptable parameters</p>
@@ -775,8 +775,8 @@ export default function ExecutiveSummary() {
                               'text-orange-600'
                             }`} />
                             <div>
-                              <div className="font-medium text-slate-900 dark:text-white capitalize mb-1">{risk.type} Risk</div>
-                              <p className="text-sm text-slate-700 dark:text-slate-300">{risk.message}</p>
+                              <div className="font-medium text-foreground capitalize mb-1">{risk.type} Risk</div>
+                              <p className="text-sm text-foreground/80/60">{risk.message}</p>
                             </div>
                           </div>
                         </div>
@@ -792,11 +792,11 @@ export default function ExecutiveSummary() {
             <TabsContent value="recommendations" className="space-y-6">
               {/* Data Accuracy Notice */}
               {(executiveSummary as any).metadata?.dataAccuracy?.platformsExcludedFromRecommendations?.length > 0 && (
-                <Card className="border-slate-200 bg-slate-50 dark:bg-slate-800 dark:border-slate-700">
+                <Card className="border-border bg-muted">
                   <CardContent className="p-4">
                     <div className="flex items-start space-x-3">
-                      <Info className="w-5 h-5 text-slate-600 dark:text-slate-400 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-slate-700 dark:text-slate-300">
+                      <Info className="w-5 h-5 text-muted-foreground/70 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-foreground/80/60">
                         <strong>Note:</strong> {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.join(', ')} {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'has' : 'have'} no advertising data (spend, conversions, or revenue) and {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'is' : 'are'} excluded from strategic recommendations and risk assessment. Upload advertising performance data to receive platform-specific recommendations.
                       </div>
                     </div>
@@ -841,11 +841,11 @@ export default function ExecutiveSummary() {
 
               {(executiveSummary as any).recommendations.length === 0 ? (
                 <Card>
-                  <CardContent className="p-8 text-center text-slate-600 dark:text-slate-400">
+                  <CardContent className="p-8 text-center text-muted-foreground/70">
                     <div className="mb-4">
-                      <Zap className="w-12 h-12 mx-auto text-slate-400" />
+                      <Zap className="w-12 h-12 mx-auto text-muted-foreground/70" />
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
                       No Recommendations Available
                     </h3>
                     <p>Campaign is performing well. Continue monitoring for optimization opportunities.</p>
@@ -865,13 +865,13 @@ export default function ExecutiveSummary() {
                                 <Badge variant="outline" className={
                                   rec.confidence === 'high' ? 'border-green-300 text-green-700 dark:border-green-700 dark:text-green-300' :
                                   rec.confidence === 'medium' ? 'border-yellow-300 text-yellow-700 dark:border-yellow-700 dark:text-yellow-300' :
-                                  'border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300'
+                                  'border-border text-foreground/80/60'
                                 }>
                                   {rec.confidence} confidence
                                 </Badge>
                               )}
                             </div>
-                            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{rec.category}</div>
+                            <div className="text-sm text-muted-foreground/70 mt-1">{rec.category}</div>
                           </div>
                         </div>
                       </CardHeader>
@@ -897,19 +897,19 @@ export default function ExecutiveSummary() {
                           {/* Scenario Planning */}
                           {rec.scenarios && (
                             <div className="border-t pt-4">
-                              <div className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Projected Scenarios</div>
+                              <div className="text-sm font-semibold text-foreground mb-3">Projected Scenarios</div>
                               <div className="grid gap-3 md:grid-cols-3">
-                                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
-                                  <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Best Case</div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{formatRecommendationText(rec.scenarios.bestCase)}</div>
+                                <div className="p-3 bg-muted rounded border border-border">
+                                  <div className="text-xs font-medium text-muted-foreground/70 mb-1">Best Case</div>
+                                  <div className="text-sm font-semibold text-foreground">{formatRecommendationText(rec.scenarios.bestCase)}</div>
                                 </div>
                                 <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
                                   <div className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Expected</div>
                                   <div className="text-sm font-semibold text-blue-900 dark:text-blue-100">{formatRecommendationText(rec.scenarios.expected)}</div>
                                 </div>
-                                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
-                                  <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Worst Case</div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{formatRecommendationText(rec.scenarios.worstCase)}</div>
+                                <div className="p-3 bg-muted rounded border border-border">
+                                  <div className="text-xs font-medium text-muted-foreground/70 mb-1">Worst Case</div>
+                                  <div className="text-sm font-semibold text-foreground">{formatRecommendationText(rec.scenarios.worstCase)}</div>
                                 </div>
                               </div>
                             </div>
@@ -918,10 +918,10 @@ export default function ExecutiveSummary() {
                           {/* Assumptions */}
                           {rec.assumptions && rec.assumptions.length > 0 && (
                             <div className="border-t pt-4">
-                              <div className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Key Assumptions</div>
+                              <div className="text-sm font-semibold text-foreground mb-2">Key Assumptions</div>
                               <ul className="space-y-1">
                                 {rec.assumptions.map((assumption: string, idx: number) => (
-                                  <li key={idx} className="text-sm text-slate-600 dark:text-slate-400 flex items-start">
+                                  <li key={idx} className="text-sm text-muted-foreground/70 flex items-start">
                                     <span className="mr-2">•</span>
                                     <span>{assumption}</span>
                                   </li>
@@ -933,7 +933,7 @@ export default function ExecutiveSummary() {
                           {/* Recommendation-specific disclaimer */}
                           {rec.disclaimer && (
                             <div className="border-t pt-4">
-                              <div className="text-xs italic text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-3 rounded">
+                              <div className="text-xs italic text-muted-foreground/70 bg-muted p-3 rounded">
                                 {rec.disclaimer}
                               </div>
                             </div>

@@ -44,11 +44,11 @@ export default function PerformanceChart() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Performance Over Time</CardTitle>
-            <div className="w-32 h-8 bg-slate-200 rounded animate-pulse"></div>
+            <div className="w-32 h-8 bg-muted rounded animate-pulse"></div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="h-64 bg-slate-100 rounded animate-pulse"></div>
+          <div className="h-64 bg-muted rounded animate-pulse"></div>
         </CardContent>
       </Card>
     );
@@ -58,7 +58,7 @@ export default function PerformanceChart() {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-slate-900">Performance Over Time</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Performance Over Time</CardTitle>
           <Select value={selectedMetric} onValueChange={setSelectedMetric}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -74,7 +74,7 @@ export default function PerformanceChart() {
       <CardContent>
         <div className="h-64">
           {performanceData.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-slate-500">
+            <div className="h-full flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <div className="text-lg font-medium mb-2">No performance data available</div>
                 <div className="text-sm">Connect your marketing platforms to see performance metrics</div>

@@ -127,7 +127,7 @@ export function GoogleSheetsBenchmarkModal(props: any) {
               onChange={(e) => setForm({ ...form, description: e.target.value.slice(0, DESC_MAX) })}
               rows={3}
             />
-            <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+            <div className="text-xs text-muted-foreground/70 text-right">
               {form.description.length}/{DESC_MAX}
             </div>
           </div>
@@ -192,7 +192,7 @@ export function GoogleSheetsBenchmarkModal(props: any) {
                       value={form.alertThreshold}
                       onChange={(e) => setForm({ ...form, alertThreshold: formatNumberAsYouType(e.target.value) })}
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
+                    <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="gs-bm-alert-condition">Alert When</Label>
@@ -248,7 +248,7 @@ export function GoogleSheetsBenchmarkModal(props: any) {
                           value={form.emailRecipients}
                           onChange={(e) => setForm({ ...form, emailRecipients: e.target.value })}
                         />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Comma-separated email addresses</p>
+                        <p className="text-xs text-muted-foreground/70">Comma-separated email addresses</p>
                       </div>
                     )}
                   </div>

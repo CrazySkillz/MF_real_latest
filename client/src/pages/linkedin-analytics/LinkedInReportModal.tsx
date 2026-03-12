@@ -101,7 +101,7 @@ export function LinkedInReportModal(props: Props) {
             <div
               className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${reportModalStep === "standard"
                   ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                  : "border-slate-200 dark:border-slate-700"
+                  : "border-border"
                 }`}
               onClick={() => setReportModalStep("standard")}
               data-testid="section-standard-templates"
@@ -109,8 +109,8 @@ export function LinkedInReportModal(props: Props) {
               <div className="flex items-start gap-3">
                 <FileText className="w-6 h-6 text-blue-600 mt-1" />
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Standard Templates</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  <h3 className="text-lg font-bold text-foreground">Standard Templates</h3>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
                     Pre-built professional report templates
                   </p>
                 </div>
@@ -121,7 +121,7 @@ export function LinkedInReportModal(props: Props) {
             <div
               className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${reportModalStep === "custom"
                   ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                  : "border-slate-200 dark:border-slate-700"
+                  : "border-border"
                 }`}
               onClick={() => {
                 setReportModalStep("custom");
@@ -137,8 +137,8 @@ export function LinkedInReportModal(props: Props) {
               <div className="flex items-start gap-3">
                 <Settings className="w-6 h-6 text-blue-600 mt-1" />
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Custom Report</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  <h3 className="text-lg font-bold text-foreground">Custom Report</h3>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
                     Build your own customized report
                   </p>
                 </div>
@@ -150,29 +150,29 @@ export function LinkedInReportModal(props: Props) {
           {reportModalStep === "standard" && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Choose Template</h3>
+                <h3 className="text-lg font-bold text-foreground mb-4">Choose Template</h3>
 
                 <div className="space-y-4">
                   {/* Overview Template */}
                   <div
                     className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${reportForm.reportType === "overview"
                         ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-slate-200 dark:border-slate-700"
+                        : "border-border"
                       }`}
                     onClick={() => handleReportTypeSelect("overview")}
                     data-testid="template-overview"
                   >
                     <div className="flex items-start gap-3">
-                      <BarChart3 className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                      <BarChart3 className="w-5 h-5 text-foreground mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900 dark:text-white">Overview</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h4 className="font-semibold text-foreground">Overview</h4>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Comprehensive overview of campaign performance metrics
                         </p>
                         <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Overview</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Metrics</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Insights</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Overview</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Metrics</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Insights</span>
                         </div>
                       </div>
                     </div>
@@ -182,22 +182,22 @@ export function LinkedInReportModal(props: Props) {
                   <div
                     className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${reportForm.reportType === "kpis"
                         ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-slate-200 dark:border-slate-700"
+                        : "border-border"
                       }`}
                     onClick={() => handleReportTypeSelect("kpis")}
                     data-testid="template-kpis"
                   >
                     <div className="flex items-start gap-3">
-                      <Target className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                      <Target className="w-5 h-5 text-foreground mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900 dark:text-white">KPIs</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h4 className="font-semibold text-foreground">KPIs</h4>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Key performance indicators and progress tracking
                         </p>
                         <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Metrics</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Targets</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Progress</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Metrics</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Targets</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Progress</span>
                         </div>
                       </div>
                     </div>
@@ -207,22 +207,22 @@ export function LinkedInReportModal(props: Props) {
                   <div
                     className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${reportForm.reportType === "benchmarks"
                         ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-slate-200 dark:border-slate-700"
+                        : "border-border"
                       }`}
                     onClick={() => handleReportTypeSelect("benchmarks")}
                     data-testid="template-benchmarks"
                   >
                     <div className="flex items-start gap-3">
-                      <Trophy className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                      <Trophy className="w-5 h-5 text-foreground mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900 dark:text-white">Benchmarks</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h4 className="font-semibold text-foreground">Benchmarks</h4>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Performance benchmarks and comparisons
                         </p>
                         <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Industry</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Historical</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Goals</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Industry</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Historical</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Goals</span>
                         </div>
                       </div>
                     </div>
@@ -232,22 +232,22 @@ export function LinkedInReportModal(props: Props) {
                   <div
                     className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${reportForm.reportType === "ads"
                         ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-slate-200 dark:border-slate-700"
+                        : "border-border"
                       }`}
                     onClick={() => handleReportTypeSelect("ads")}
                     data-testid="template-ad-comparison"
                   >
                     <div className="flex items-start gap-3">
-                      <Activity className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                      <Activity className="w-5 h-5 text-foreground mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900 dark:text-white">Ad Comparison</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h4 className="font-semibold text-foreground">Ad Comparison</h4>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Detailed ad-level performance analysis
                         </p>
                         <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Performance</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Ranking</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Insights</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Performance</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Ranking</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Insights</span>
                         </div>
                       </div>
                     </div>
@@ -257,22 +257,22 @@ export function LinkedInReportModal(props: Props) {
                   <div
                     className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${reportForm.reportType === "insights"
                         ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-slate-200 dark:border-slate-700"
+                        : "border-border"
                       }`}
                     onClick={() => handleReportTypeSelect("insights")}
                     data-testid="template-insights"
                   >
                     <div className="flex items-start gap-3">
-                      <Info className="w-5 h-5 text-slate-900 dark:text-white mt-0.5" />
+                      <Info className="w-5 h-5 text-foreground mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900 dark:text-white">Insights</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h4 className="font-semibold text-foreground">Insights</h4>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Executive financials, trends, and â€œwhat changed / what to do nextâ€
                         </p>
                         <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Executive</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Trends</span>
-                          <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">Actions</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Executive</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Trends</span>
+                          <span className="text-xs px-2 py-1 bg-muted rounded">Actions</span>
                         </div>
                       </div>
                     </div>
@@ -323,7 +323,7 @@ export function LinkedInReportModal(props: Props) {
                     </div>
 
                     {reportForm.scheduleEnabled && (
-                      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 space-y-4 mt-4">
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-4 mt-4">
                         {/* Frequency */}
                         <div className="space-y-2">
                           <Label htmlFor="schedule-frequency">Frequency</Label>
@@ -383,7 +383,7 @@ export function LinkedInReportModal(props: Props) {
                                 <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
                               </SelectContent>
                             </Select>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               Choose whether to run reports at the start or end of each quarter
                             </p>
                           </div>
@@ -415,7 +415,7 @@ export function LinkedInReportModal(props: Props) {
                                       <SelectItem value="15">15th (Mid-month)</SelectItem>
 
                                       <div className="border-t my-1"></div>
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground/70">
                                         Specific Days
                                       </div>
 
@@ -437,7 +437,7 @@ export function LinkedInReportModal(props: Props) {
                                   )}
                                 </SelectContent>
                               </Select>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                              <p className="text-xs text-muted-foreground/70">
                                 {reportForm.scheduleFrequency === "quarterly"
                                   ? "Quarterly reports typically run at the start, end, or middle of the quarter month"
                                   : "For months with fewer days, the report will run on the last available day"}
@@ -472,7 +472,7 @@ export function LinkedInReportModal(props: Props) {
                             </SelectContent>
                           </Select>
                           {userTimeZone && (
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground/70">
                               All times are in your time zone: {getTimeZoneDisplay()}
                             </p>
                           )}
@@ -502,7 +502,7 @@ export function LinkedInReportModal(props: Props) {
                           {reportFormErrors.emailRecipients ? (
                             <p className="text-sm text-red-600 dark:text-red-400">{reportFormErrors.emailRecipients}</p>
                           ) : (
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground/70">
                               Reports will be automatically generated and sent to these email addresses
                             </p>
                           )}
@@ -522,12 +522,12 @@ export function LinkedInReportModal(props: Props) {
             <div className="space-y-6">
               {/* Metrics Selection */}
               <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Select Metrics</h3>
+                <h3 className="text-lg font-semibold text-foreground">Select Metrics</h3>
 
                 <Accordion type="multiple" className="w-full">
                   {/* LinkedIn Core Metrics */}
                   <AccordionItem value="linkedin-core-metrics">
-                    <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                       LinkedIn Core Metrics
                     </AccordionTrigger>
                     <AccordionContent>
@@ -586,7 +586,7 @@ export function LinkedInReportModal(props: Props) {
 
                   {/* LinkedIn Derived Metrics */}
                   <AccordionItem value="linkedin-derived-metrics">
-                    <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                       LinkedIn Derived Metrics
                     </AccordionTrigger>
                     <AccordionContent>
@@ -634,7 +634,7 @@ export function LinkedInReportModal(props: Props) {
                   {/* LinkedIn Revenue Metrics - Only shown if conversion value is set */}
                   {aggregated?.hasRevenueTracking === 1 && (
                     <AccordionItem value="linkedin-revenue-metrics">
-                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                         LinkedIn Revenue Metrics
                       </AccordionTrigger>
                       <AccordionContent>
@@ -681,7 +681,7 @@ export function LinkedInReportModal(props: Props) {
 
                   {/* Campaign Breakdown (per-campaign) */}
                   <AccordionItem value="campaign-breakdown">
-                    <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                       Campaign Breakdown
                     </AccordionTrigger>
                     <AccordionContent>
@@ -697,7 +697,7 @@ export function LinkedInReportModal(props: Props) {
                           ).filter((c: any) => !!c.urn);
 
                           if (campaigns.length === 0) {
-                            return <p className="text-sm text-slate-500">No campaigns available.</p>;
+                            return <p className="text-sm text-muted-foreground">No campaigns available.</p>;
                           }
 
                           const selected = Array.isArray((customReportConfig as any).campaignBreakdownCampaigns)
@@ -736,7 +736,7 @@ export function LinkedInReportModal(props: Props) {
                           );
                         })()}
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                      <p className="text-xs text-muted-foreground/70 mt-2">
                         Select which campaigns to include in the Campaign Breakdown section of the PDF.
                       </p>
                     </AccordionContent>
@@ -744,7 +744,7 @@ export function LinkedInReportModal(props: Props) {
 
                   {/* KPIs */}
                   <AccordionItem value="kpis">
-                    <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                       KPIs
                     </AccordionTrigger>
                     <AccordionContent>
@@ -777,14 +777,14 @@ export function LinkedInReportModal(props: Props) {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-slate-500 pt-2">No KPIs created yet</p>
+                        <p className="text-sm text-muted-foreground pt-2">No KPIs created yet</p>
                       )}
                     </AccordionContent>
                   </AccordionItem>
 
                   {/* Benchmarks */}
                   <AccordionItem value="benchmarks">
-                    <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                       Benchmarks
                     </AccordionTrigger>
                     <AccordionContent>
@@ -817,14 +817,14 @@ export function LinkedInReportModal(props: Props) {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-slate-500 pt-2">No benchmarks created yet</p>
+                        <p className="text-sm text-muted-foreground pt-2">No benchmarks created yet</p>
                       )}
                     </AccordionContent>
                   </AccordionItem>
 
                   {/* Insights */}
                   <AccordionItem value="insights">
-                    <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                       Insights
                     </AccordionTrigger>
                     <AccordionContent>
@@ -848,7 +848,7 @@ export function LinkedInReportModal(props: Props) {
 
                         return (
                           <div className="space-y-3 pt-2">
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               Choose which Insights sections to include in the PDF.
                             </p>
                             <div className="space-y-2">
@@ -874,7 +874,7 @@ export function LinkedInReportModal(props: Props) {
 
                   {/* Ad Comparison */}
                   <AccordionItem value="ad-comparison">
-                    <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                       Ad Comparison
                     </AccordionTrigger>
                     <AccordionContent>
@@ -923,7 +923,7 @@ export function LinkedInReportModal(props: Props) {
 
                         return (
                           <div className="space-y-3 pt-2">
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               Select which ad metrics to include. If none are selected, Ad Comparison will be excluded
                               from the PDF.
                             </p>
@@ -947,7 +947,7 @@ export function LinkedInReportModal(props: Props) {
                             </div>
 
                             {!hasAdLevelRevenue ? (
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                              <p className="text-xs text-muted-foreground/70">
                                 Revenue metrics are hidden until a conversion value is connected.
                               </p>
                             ) : null}
@@ -1067,7 +1067,7 @@ export function LinkedInReportModal(props: Props) {
                                 <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
                               </SelectContent>
                             </Select>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground/70">
                               Choose whether to run reports at the start or end of each quarter
                             </p>
                           </div>
@@ -1099,7 +1099,7 @@ export function LinkedInReportModal(props: Props) {
                                       <SelectItem value="15">15th (Mid-month)</SelectItem>
 
                                       <div className="border-t my-1"></div>
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground/70">
                                         Specific Days
                                       </div>
 
@@ -1121,7 +1121,7 @@ export function LinkedInReportModal(props: Props) {
                                   )}
                                 </SelectContent>
                               </Select>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                              <p className="text-xs text-muted-foreground/70">
                                 {reportForm.scheduleFrequency === "quarterly"
                                   ? "Quarterly reports typically run at the start, end, or middle of the quarter month"
                                   : "For months with fewer days, the report will run on the last available day"}
@@ -1156,7 +1156,7 @@ export function LinkedInReportModal(props: Props) {
                             </SelectContent>
                           </Select>
                           {userTimeZone && (
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground/70">
                               All times are in your time zone: {getTimeZoneDisplay()}
                             </p>
                           )}
@@ -1186,7 +1186,7 @@ export function LinkedInReportModal(props: Props) {
                           {reportFormErrors.emailRecipients ? (
                             <p className="text-sm text-red-600 dark:text-red-400">{reportFormErrors.emailRecipients}</p>
                           ) : (
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground/70">
                               Reports will be automatically generated and sent to these email addresses
                             </p>
                           )}

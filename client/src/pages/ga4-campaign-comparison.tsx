@@ -111,7 +111,7 @@ export default function GA4CampaignComparison({
     return (
       <div className="space-y-6">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+          <div key={i} className="h-32 bg-muted rounded animate-pulse" />
         ))}
       </div>
     );
@@ -121,7 +121,7 @@ export default function GA4CampaignComparison({
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <p className="text-slate-600 dark:text-slate-400">
+          <p className="text-muted-foreground/70">
             No campaign data available. Ensure your GA4 property has UTM campaign tracking configured.
           </p>
         </CardContent>
@@ -134,8 +134,8 @@ export default function GA4CampaignComparison({
       {/* Header with metric selector */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Ad Comparison</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Compare performance across your GA4 campaigns</p>
+          <h3 className="text-lg font-semibold text-foreground">Ad Comparison</h3>
+          <p className="text-sm text-muted-foreground/70">Compare performance across your GA4 campaigns</p>
         </div>
         <div className="min-w-[220px]">
           <Select value={selectedMetric} onValueChange={onMetricChange}>
@@ -159,10 +159,10 @@ export default function GA4CampaignComparison({
                   <Trophy className="w-5 h-5 text-emerald-600" />
                   <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Best Performing</span>
                 </div>
-                <div className="font-semibold text-slate-900 dark:text-white truncate" title={bestPerforming.name}>
+                <div className="font-semibold text-foreground truncate" title={bestPerforming.name}>
                   {bestPerforming.name}
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                <div className="text-sm text-muted-foreground/70 mt-1">
                   {fmtMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric} &middot; {bestPerforming.conversionRate.toFixed(2)}% CR
                 </div>
               </CardContent>
@@ -175,10 +175,10 @@ export default function GA4CampaignComparison({
                   <Zap className="w-5 h-5 text-blue-600" />
                   <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Most Efficient</span>
                 </div>
-                <div className="font-semibold text-slate-900 dark:text-white truncate" title={mostEfficient.name}>
+                <div className="font-semibold text-foreground truncate" title={mostEfficient.name}>
                   {mostEfficient.name}
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                <div className="text-sm text-muted-foreground/70 mt-1">
                   {mostEfficient.conversionRate.toFixed(2)}% CR &middot; {formatMoney(mostEfficient.revenue)} revenue
                 </div>
               </CardContent>
@@ -191,10 +191,10 @@ export default function GA4CampaignComparison({
                   <AlertTriangle className="w-5 h-5 text-amber-600" />
                   <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Needs Attention</span>
                 </div>
-                <div className="font-semibold text-slate-900 dark:text-white truncate" title={needsAttention.name}>
+                <div className="font-semibold text-foreground truncate" title={needsAttention.name}>
                   {needsAttention.name}
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                <div className="text-sm text-muted-foreground/70 mt-1">
                   {needsAttention.conversionRate.toFixed(2)}% CR &middot; {formatNumber(needsAttention.sessions)} sessions
                 </div>
               </CardContent>
@@ -231,30 +231,30 @@ export default function GA4CampaignComparison({
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">
+            <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/70">
               Total {METRIC_LABELS[selectedMetric] || selectedMetric}
               {selectedMetric === "users" && (
                 <UITooltip>
                   <TooltipTrigger asChild>
                     <Info className="w-3.5 h-3.5 text-amber-500 cursor-help" />
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                  <TooltipContent className="max-w-xs bg-card text-white border-border">
                     <p className="text-xs">User counts are approximate. GA4 users are non-additive — the same user visiting across multiple days, devices, or traffic sources is counted in each breakdown row. Per-campaign and total user counts may be higher than actual unique users.</p>
                   </TooltipContent>
                 </UITooltip>
               )}
             </div>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+            <div className="text-2xl font-bold text-foreground mt-1">
               {fmtMetricValue(selectedMetric, totalMetric)}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across all campaigns</div>
+            <div className="text-xs text-muted-foreground/70 mt-1">Across all campaigns</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Campaigns Compared</div>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{campaignBreakdownAgg.length}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">From GA4 acquisition breakdown</div>
+            <div className="text-sm font-medium text-muted-foreground/70">Campaigns Compared</div>
+            <div className="text-2xl font-bold text-foreground mt-1">{campaignBreakdownAgg.length}</div>
+            <div className="text-xs text-muted-foreground/70 mt-1">From GA4 acquisition breakdown</div>
           </CardContent>
         </Card>
       </div>
@@ -269,7 +269,7 @@ export default function GA4CampaignComparison({
           <div className="overflow-hidden border rounded-md">
             <div className="max-h-[480px] overflow-y-auto">
               <table className="w-full text-sm table-fixed">
-                <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
+                <thead className="sticky top-0 z-10 bg-muted border-b">
                   <tr>
                     <th className="text-left font-medium px-2 py-2 w-[40px]">#</th>
                     <th className="text-left font-medium px-2 py-2">Campaign</th>
@@ -281,7 +281,7 @@ export default function GA4CampaignComparison({
                           <TooltipTrigger asChild>
                             <Info className="w-3 h-3 text-amber-500 cursor-help" />
                           </TooltipTrigger>
-                          <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                          <TooltipContent className="max-w-xs bg-card text-white border-border">
                             <p className="text-xs">Approximate — users are non-additive across breakdown dimensions (dates, devices, sources). Actual unique users may be lower.</p>
                           </TooltipContent>
                         </UITooltip>
@@ -301,8 +301,8 @@ export default function GA4CampaignComparison({
                         key={c.name || idx}
                         className={`border-b last:border-b-0 ${isTop ? "bg-emerald-50 dark:bg-emerald-900/10" : isBottom ? "bg-red-50 dark:bg-red-900/10" : ""}`}
                       >
-                        <td className="px-2 py-2 text-slate-500 tabular-nums">{idx + 1}</td>
-                        <td className="px-2 py-2 truncate font-medium text-slate-900 dark:text-white" title={c.name}>{c.name}</td>
+                        <td className="px-2 py-2 text-muted-foreground tabular-nums">{idx + 1}</td>
+                        <td className="px-2 py-2 truncate font-medium text-foreground" title={c.name}>{c.name}</td>
                         <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.sessions)}</td>
                         <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.users)}</td>
                         <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.conversions)}</td>

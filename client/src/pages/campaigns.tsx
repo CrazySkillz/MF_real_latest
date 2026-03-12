@@ -122,7 +122,7 @@ const platforms = [
     id: "twitter",
     name: "X (Twitter) Ads",
     icon: SiX,
-    color: "text-slate-900 dark:text-white",
+    color: "text-foreground",
     description: "Connect your X (Twitter) Ads account",
     type: "credentials"
   }
@@ -404,7 +404,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
       <div className="space-y-4">
         <div className="text-center mb-6">
           <h3 className="text-lg font-semibold mb-2">Connect Your Marketing Platforms</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+          <p className="text-sm text-muted-foreground/70">
             Connect your marketing platforms to pull real-time metrics and performance data for this campaign.
           </p>
         </div>
@@ -420,7 +420,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
             <div key={platform.id} className="border rounded-lg overflow-hidden">
               {/* Platform Header - Always Visible */}
               <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors"
                 onClick={() => handlePlatformClick(platform.id)}
               >
                 <div className="flex items-center space-x-3">
@@ -430,7 +430,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                       {platform.name}
                       {isConnected && <CheckCircle className="w-4 h-4 text-green-500" />}
                     </div>
-                    <div className="text-sm text-slate-500">{platform.description}</div>
+                    <div className="text-sm text-muted-foreground">{platform.description}</div>
                   </div>
                 </div>
 
@@ -438,9 +438,9 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   {!isConnected && (
                     <div className="flex items-center gap-2">
                       {isExpanded && platformConnecting && (
-                        <span className="text-sm text-slate-500">Connecting...</span>
+                        <span className="text-sm text-muted-foreground">Connecting...</span>
                       )}
-                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground/70 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
                   )}
                 </div>
@@ -448,7 +448,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
 
               {/* Credential Input Section - Only show when expanded and not connected */}
               {isExpanded && !isConnected && (
-                <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-4">
+                <div className="border-t bg-muted/50 p-4">
                   {platform.id === 'google-analytics' && (
                     <IntegratedGA4Auth
                       campaignId={campaignId}
@@ -552,7 +552,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
 
                   {!['google-analytics', 'google-sheets', 'linkedin', 'facebook'].includes(platform.id) && (
                     <div className="text-center py-6">
-                      <div className="text-slate-600 dark:text-slate-400 mb-3">
+                      <div className="text-muted-foreground/70 mb-3">
                         {platform.name} integration coming soon
                       </div>
                       <Button
@@ -577,7 +577,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
 
         {/* Custom Integration Link */}
         <div
-          className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
+          className="border border-dashed border-border dark:border-slate-600 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-all"
           onClick={() => setShowCustomIntegrationModal(true)}
           data-testid="button-custom-integration"
         >
@@ -587,8 +587,8 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 <Plus className="w-5 h-5 text-white" />
               </div>
               <div>
-                <div className="font-medium text-slate-900 dark:text-white">Custom Integration</div>
-                <div className="text-sm text-slate-500">Connect your own data source or API</div>
+                <div className="font-medium text-foreground">Custom Integration</div>
+                <div className="text-sm text-muted-foreground">Connect your own data source or API</div>
               </div>
             </div>
             {connectedPlatforms.includes('custom-integration') && (
@@ -675,21 +675,21 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   };
                   input.click();
                 }}
-                className="w-full bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors text-left group"
+                className="w-full bg-card rounded-lg p-4 border-2 border-border hover:border-blue-500 dark:hover:border-blue-500 transition-colors text-left group"
               >
                 <div className="flex items-start gap-3">
                   <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold flex-shrink-0 group-hover:bg-blue-700 transition-colors">
                     1
                   </span>
                   <div className="flex-1">
-                    <h5 className="font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h5 className="font-semibold text-foreground mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       Manual Upload
                     </h5>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                    <p className="text-sm text-muted-foreground/70">
                       Upload a PDF report now. Metrics will be extracted and ready to use immediately. Takes 30 seconds.
                     </p>
                   </div>
-                  <Upload className="w-5 h-5 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-shrink-0" />
+                  <Upload className="w-5 h-5 text-muted-foreground/70 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-shrink-0" />
                 </div>
               </button>
 
@@ -735,28 +735,28 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                   }
                 }}
                 disabled={isConnecting['custom-integration']}
-                className="w-full bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-card rounded-lg p-4 border-2 border-border hover:border-blue-500 dark:hover:border-blue-500 transition-colors text-left group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-start gap-3">
                   <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold flex-shrink-0 group-hover:bg-blue-700 transition-colors">
                     2
                   </span>
                   <div className="flex-1">
-                    <h5 className="font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h5 className="font-semibold text-foreground mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       Email Forwarding
                     </h5>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                    <p className="text-sm text-muted-foreground/70">
                       Get a unique email address. Forward PDFs and they're automatically imported.
                     </p>
                   </div>
-                  <Mail className="w-5 h-5 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-shrink-0" />
+                  <Mail className="w-5 h-5 text-muted-foreground/70 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-shrink-0" />
                 </div>
               </button>
             </div>
 
             {/* Email whitelist section - only show for email forwarding option */}
-            <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-              <label className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="space-y-2 pt-2 border-t border-border">
+              <label className="text-sm font-medium text-foreground flex items-center gap-2">
                 <Shield className="w-4 h-4" />
                 Email Whitelist (Optional - For Email Forwarding Only)
               </label>
@@ -764,10 +764,10 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 placeholder="Leave empty to accept from any email&#10;&#10;Or enter allowed sender addresses:&#10;reports@provider.com&#10;analytics@company.com"
                 value={allowedEmailAddresses}
                 onChange={(e) => setAllowedEmailAddresses(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] text-sm"
+                className="w-full px-3 py-2 border border-border dark:border-slate-600 rounded-md bg-card text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] text-sm"
                 data-testid="input-email-whitelist"
               />
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-muted-foreground/70">
                 Restricts which email addresses can send reports to your webhook. Only applies to email forwarding option.
               </p>
             </div>
@@ -809,7 +809,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                 Forward PDF reports to:
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 bg-white dark:bg-slate-900 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 text-blue-900 dark:text-blue-100 font-mono text-sm break-all">
+                <code className="flex-1 bg-card px-3 py-2 rounded border border-blue-200 dark:border-blue-700 text-blue-900 dark:text-blue-100 font-mono text-sm break-all">
                   {customIntegrationEmail}
                 </code>
                 <Button
@@ -830,11 +830,11 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
 
             {/* How it Works */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <h4 className="font-semibold text-foreground flex items-center gap-2">
                 <Mail className="w-4 h-4" />
                 How it works:
               </h4>
-              <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
+              <ul className="text-sm text-muted-foreground/70 space-y-2">
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
                   <span>Forward any email with PDF attachments to this address</span>
@@ -949,7 +949,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
 
             <div className="space-y-4">
               {isGA4CampaignLoading ? (
-                <p className="text-sm text-slate-600 dark:text-slate-400">Loading GA4 campaigns…</p>
+                <p className="text-sm text-muted-foreground/70">Loading GA4 campaigns…</p>
               ) : ga4CampaignValues.length > 0 ? (
                 <div className="space-y-2">
                   <Label>GA4 campaignName(s)</Label>
@@ -968,7 +968,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                     >
                       Clear
                     </Button>
-                    <span className="text-xs text-slate-500 ml-auto">
+                    <span className="text-xs text-muted-foreground ml-auto">
                       {selectedGA4CampaignValues.length} of {ga4CampaignValues.length} selected
                     </span>
                   </div>
@@ -978,7 +978,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                       return (
                         <label
                           key={c.name}
-                          className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                          className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
                         >
                           <Checkbox
                             checked={checked}
@@ -991,7 +991,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                             }}
                           />
                           <span className="text-sm flex-1">{c.name}</span>
-                          <span className="text-xs text-slate-500">{c.users.toLocaleString()} users</span>
+                          <span className="text-xs text-muted-foreground">{c.users.toLocaleString()} users</span>
                         </label>
                       );
                     })}
@@ -1006,7 +1006,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
                     onChange={(e) => setSelectedGA4CampaignValues(e.target.value ? [e.target.value] : [])}
                     placeholder="e.g., brand_awareness"
                   />
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                  <p className="text-xs text-muted-foreground/70">
                     If GA4 reporting is delayed, the list may be empty—enter the expected UTM campaign value.
                   </p>
                 </div>
@@ -1450,7 +1450,7 @@ export default function Campaigns() {
       case "twitter":
         return "fab fa-twitter text-blue-400";
       default:
-        return "fas fa-ad text-slate-500";
+        return "fas fa-ad text-muted-foreground";
     }
   };
 
@@ -1461,7 +1461,7 @@ export default function Campaigns() {
       case "paused":
         return <Badge className="bg-warning/10 text-warning border-warning/20">Paused</Badge>;
       case "completed":
-        return <Badge className="bg-slate-100 text-slate-600 border-slate-200">Completed</Badge>;
+        return <Badge className="bg-muted text-muted-foreground border-border">Completed</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -1489,7 +1489,7 @@ export default function Campaigns() {
   };
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
 
       <Navigation />
 
@@ -1500,8 +1500,8 @@ export default function Campaigns() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Campaign Management</h1>
-                <p className="text-slate-600 dark:text-slate-400 mt-1">Create, manage, and optimize your marketing campaigns</p>
+                <h1 className="text-3xl font-bold text-foreground">Campaign Management</h1>
+                <p className="text-muted-foreground/70 mt-1">Create, manage, and optimize your marketing campaigns</p>
               </div>
 
               <Button onClick={() => setIsCreateModalOpen(true)}>
@@ -1529,8 +1529,8 @@ export default function Campaigns() {
                         <div className="flex items-center gap-2">
                           <Label htmlFor="name">Campaign Name *</Label>
                           <div className="group relative">
-                            <Info className="w-4 h-4 text-slate-400 cursor-help" />
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-2 bg-slate-900 text-white text-xs rounded shadow-lg">
+                            <Info className="w-4 h-4 text-muted-foreground/70 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-2 bg-card text-white text-xs rounded shadow-lg">
                               <p className="font-medium mb-1">Campaign Name Tip</p>
                               <p>Using the same campaign name across all data sources (Google Sheets, LinkedIn, etc.) improves automatic conversion value calculation accuracy.</p>
                             </div>
@@ -1619,7 +1619,7 @@ export default function Campaigns() {
                           {form.formState.errors.budget && (
                             <p className="text-sm text-destructive">{form.formState.errors.budget.message}</p>
                           )}
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                          <p className="text-xs text-muted-foreground/70">
                             Add your total campaign budget to enable spend tracking and pacing alerts in Insights.
                           </p>
                         </div>
@@ -1775,8 +1775,8 @@ export default function Campaigns() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">All Campaigns</h2>
-                <p className="text-slate-600 dark:text-slate-400">Manage and monitor your marketing campaigns</p>
+                <h2 className="text-lg font-semibold text-foreground">All Campaigns</h2>
+                <p className="text-muted-foreground/70">Manage and monitor your marketing campaigns</p>
               </div>
               <Button
                 variant="outline"
@@ -1797,14 +1797,14 @@ export default function Campaigns() {
             {isLoading ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {[...Array(6)].map((_, i) => (
-                  <div key={i} className="h-32 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+                  <div key={i} className="h-32 bg-muted rounded-lg animate-pulse"></div>
                 ))}
               </div>
             ) : campaigns.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-12">
-                  <div className="text-lg font-medium text-slate-900 dark:text-white mb-2">No campaigns found</div>
-                  <p className="text-slate-500 dark:text-slate-400 mb-4">Get started by creating your first marketing campaign</p>
+                  <div className="text-lg font-medium text-foreground mb-2">No campaigns found</div>
+                  <p className="text-muted-foreground/70 mb-4">Get started by creating your first marketing campaign</p>
                   <Button onClick={() => setIsCreateModalOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Create Campaign
@@ -1824,11 +1824,11 @@ export default function Campaigns() {
                     >
                       <CardContent className="p-6">
                         <div className="mb-4">
-                          <h3 className="font-semibold text-slate-900 dark:text-white">{campaign.name}</h3>
+                          <h3 className="font-semibold text-foreground">{campaign.name}</h3>
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <div className="text-sm text-slate-500 dark:text-slate-400">
+                          <div className="text-sm text-muted-foreground/70">
                             Budget: {formatCurrency(campaign.budget, campaign.currency)}
                           </div>
                           <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
@@ -2038,10 +2038,10 @@ export default function Campaigns() {
                           id="edit-conversionValue"
                           disabled
                           placeholder="Multiple platforms - see status above"
-                          className="bg-slate-100 dark:bg-slate-800"
+                          className="bg-muted"
                           data-testid="input-edit-conversion-value"
                         />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground/70">
                           This field is disabled when multiple platforms are connected. Each platform has its own conversion value.
                         </p>
                       </div>
@@ -2091,7 +2091,7 @@ export default function Campaigns() {
                     />
                   );
                 })()}
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-muted-foreground/70">
                   Average revenue per conversion for ROI calculations
                 </p>
               </div>

@@ -784,31 +784,31 @@ export function SalesforceRevenueWizard(props: {
               <div className="flex flex-col items-center flex-1">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isDisabled
-                      ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
+                      ? "bg-muted border-border text-muted-foreground/70"
                       : isActive
                         ? "bg-blue-600 border-blue-600 text-white"
                         : isCompleted
                           ? "bg-green-600 border-green-600 text-white"
-                          : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400"
+                          : "bg-muted border-border dark:border-slate-600 text-muted-foreground/70"
                     }`}
                 >
                   {!isDisabled && isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
                 </div>
                 <p
                   className={`text-xs mt-2 text-center whitespace-nowrap ${isDisabled
-                      ? "text-slate-400"
+                      ? "text-muted-foreground/70"
                       : isActive
                         ? "text-blue-600 font-medium"
                         : isCompleted
                           ? "text-green-600"
-                          : "text-slate-400"
+                          : "text-muted-foreground/70"
                     }`}
                 >
                   {s.label}
                 </p>
               </div>
               {index < steps.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-2 ${isConnectorCompleted ? "bg-green-600" : "bg-slate-200 dark:bg-slate-700"}`} />
+                <div className={`flex-1 h-0.5 mx-2 ${isConnectorCompleted ? "bg-green-600" : "bg-muted"}`} />
               )}
             </div>
           );
@@ -877,7 +877,7 @@ export function SalesforceRevenueWizard(props: {
           </div>
           <CardDescription>
             {/* Reserve space for connection label to avoid layout shift when async status arrives */}
-            <div className="text-xs text-slate-500 mb-1 min-h-[16px] flex items-center gap-1">
+            <div className="text-xs text-muted-foreground mb-1 min-h-[16px] flex items-center gap-1">
               {!statusLoading && isConnected && connectedLabel ? (
                 <>
                   <span className="whitespace-nowrap">Connected to:</span>
@@ -915,9 +915,9 @@ export function SalesforceRevenueWizard(props: {
 
         <CardContent className="space-y-4">
           {step === "value-source" && isLinkedIn && (
-            <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-2">
+            <div className="rounded-lg border bg-card p-4 space-y-2">
               <div className="text-sm font-medium">What do you want MetricMind to pull from Salesforce?</div>
-              <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+              <div className="text-xs text-muted-foreground/70 mb-2">
                 <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.
               </div>
               <RadioGroup
@@ -940,7 +940,7 @@ export function SalesforceRevenueWizard(props: {
                   <RadioGroupItem id="sf-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
                   <label htmlFor="sf-mode-revenue-pipeline" className="cursor-pointer">
                     <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
-                    <div className="text-xs text-slate-500 leading-snug">
+                    <div className="text-xs text-muted-foreground leading-snug">
                       Total Revenue comes from mapped Opportunity Amounts (to date). Adds a Pipeline (Proxy) card using a stage like Proposal as an early signal.
                     </div>
                   </label>
@@ -949,13 +949,13 @@ export function SalesforceRevenueWizard(props: {
                   <RadioGroupItem id="sf-mode-revenue-only" value="revenue_only" className="mt-0.5" />
                   <label htmlFor="sf-mode-revenue-only" className="cursor-pointer">
                     <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
-                    <div className="text-xs text-slate-500 leading-snug">
+                    <div className="text-xs text-muted-foreground leading-snug">
                       Imports revenue-to-date from mapped Opportunity Amounts. No Pipeline (Proxy) section in Overview.
                     </div>
                   </label>
                 </div>
               </RadioGroup>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-muted-foreground">
                 {salesforceSourceMode === "revenue_plus_pipeline"
                   ? "Next, you’ll choose which Opportunity stage should count as “pipeline created”."
                   : "Next, you’ll map Salesforce Opportunities to this campaign."}
@@ -1004,11 +1004,11 @@ export function SalesforceRevenueWizard(props: {
                   </SelectContent>
                 </Select>
 
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted-foreground">
                   Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}
                   <strong>Opportunity Name</strong> can work only if your opportunity naming convention contains the campaign value you want to map.
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted-foreground">
                   Note: this mapping step uses <strong>Closed Won</strong> opportunities (<code>IsWon = true</code>) to calculate{" "}
                   <strong>Total Revenue</strong>. If you enabled <strong>Pipeline (Proxy)</strong>, deals currently in stages like{" "}
                   <strong>Proposal</strong> will appear later under the <strong>Pipeline</strong> step and the Overview “Pipeline (Proxy)” card.
@@ -1037,11 +1037,11 @@ export function SalesforceRevenueWizard(props: {
 
           {step === "crosswalk" && (
             <div className="space-y-3">
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-muted-foreground">
                 Values shown are <strong>Closed Won</strong> only - they contribute to <strong>Total Revenue</strong> (confirmed). On the next step, <strong>Pipeline (Proxy)</strong> lets you add anticipated revenue from open opportunities.
               </div>
               <div className="flex items-center justify-between gap-2">
-                <div className="text-sm text-slate-600">
+                <div className="text-sm text-muted-foreground">
                   {isLinkedIn && linkedinCampaigns.length > 0
                     ? <>Mapped: <strong>{campaignMappings.length}</strong> of {uniqueValues.length} values</>
                     : <>Selected: <strong>{selectedValues.length}</strong></>}
@@ -1052,7 +1052,7 @@ export function SalesforceRevenueWizard(props: {
               </div>
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (
-                  <div className="text-sm text-slate-500">Loading values…</div>
+                  <div className="text-sm text-muted-foreground">Loading values…</div>
                 ) : valuesError ? (
                   <div className="text-sm text-red-600">
                     {valuesError}{" "}
@@ -1061,23 +1061,23 @@ export function SalesforceRevenueWizard(props: {
                     </button>
                   </div>
                 ) : uniqueValues.length === 0 ? (
-                  <div className="text-sm text-slate-500">
+                  <div className="text-sm text-muted-foreground">
                     No values found. Try increasing the lookback window, or confirm you're connected to the correct Salesforce org/user.
                   </div>
                 ) : isLinkedIn && linkedinCampaigns.length > 0 ? (
                   /* LinkedIn campaign mapping mode */
                   <div className="space-y-3">
-                    <div className="text-xs text-slate-500 mb-2">
+                    <div className="text-xs text-muted-foreground mb-2">
                       Map each Salesforce value to a LinkedIn campaign. Unmapped values will be skipped.
                     </div>
                     {uniqueValues.map((v) => {
                       const value = String(v.value);
                       const existing = campaignMappings.find(m => m.crmValue === value);
                       return (
-                        <div key={value} className="flex items-center gap-3 p-2 rounded border border-slate-100 dark:border-slate-800">
+                        <div key={value} className="flex items-center gap-3 p-2 rounded border border-slate-100">
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{value}</div>
-                            <div className="text-xs text-slate-500">{v.count} opportunity(ies)</div>
+                            <div className="text-xs text-muted-foreground">{v.count} opportunity(ies)</div>
                           </div>
                           <Select
                             value={existing?.linkedinCampaignUrn || "__none__"}
@@ -1132,7 +1132,7 @@ export function SalesforceRevenueWizard(props: {
                           />
                           <div className="flex-1">
                             <div className="text-sm">{value}</div>
-                            <div className="text-xs text-slate-500">{v.count} opportunity(ies)</div>
+                            <div className="text-xs text-muted-foreground">{v.count} opportunity(ies)</div>
                           </div>
                         </div>
                       );
@@ -1145,9 +1145,9 @@ export function SalesforceRevenueWizard(props: {
 
           {step === "pipeline" && isLinkedIn && (
             <div className="space-y-4">
-              <div className="rounded-lg border bg-white dark:bg-slate-950 p-4 space-y-3">
+              <div className="rounded-lg border bg-card p-4 space-y-3">
                 <div className="text-sm font-medium">Pipeline stage total (daily signal)</div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted-foreground">
                   Pipeline (Proxy) is <span className="font-medium">not</span> Closed Won revenue. It’s an early indicator (Opportunities currently in a stage like Proposal/Negotiation).
                 </div>
                 <div className="space-y-2">
@@ -1172,7 +1172,7 @@ export function SalesforceRevenueWizard(props: {
                       ))}
                     </SelectContent>
                   </Select>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-muted-foreground">
                     MetricMind will sum Opportunity Amounts for Opportunities currently in this stage (stage subset).
                   </div>
                 </div>
@@ -1204,12 +1204,12 @@ export function SalesforceRevenueWizard(props: {
                       ))}
                   </SelectContent>
                 </Select>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted-foreground">
                   {isLinkedIn && valueSource === "conversion_value" ? "Choose a numeric field representing value per conversion." : "Default: Amount."}
                 </div>
               </div>
 
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-muted-foreground">
                 Currency default: one currency per campaign. If mixed currencies are detected, you’ll be asked to filter to one.
               </div>
             </div>
@@ -1219,7 +1219,7 @@ export function SalesforceRevenueWizard(props: {
 
           {step === "review" && (
             <div className="space-y-3">
-              <div className="text-sm text-slate-700">
+              <div className="text-sm text-foreground/80">
                 Preview the Opportunities that will be used to compute <strong>Total Revenue</strong> for this campaign (<strong>Closed Won</strong> only).
                 {isLinkedIn && pipelineEnabled ? (
                   <>
@@ -1230,7 +1230,7 @@ export function SalesforceRevenueWizard(props: {
               </div>
 
               {previewCampaignCurrency && (
-                <div className={`text-xs ${previewCurrencyMismatch ? "text-amber-700" : "text-slate-500"}`}>
+                <div className={`text-xs ${previewCurrencyMismatch ? "text-amber-700" : "text-muted-foreground"}`}>
                   Currency: campaign <strong>{previewCampaignCurrency}</strong>
                   {effectiveSalesforceCurrency ? (
                     <>
@@ -1251,7 +1251,7 @@ export function SalesforceRevenueWizard(props: {
 
               {/* When currency is unknown, show immediate diagnostics (no DevTools required). */}
               {!effectiveSalesforceCurrency && (
-                <div className="text-xs text-slate-500 space-y-1">
+                <div className="text-xs text-muted-foreground space-y-1">
                   <div>
                     We couldn’t read Salesforce currency via API. Click <strong>Reconnect</strong> and try again.
                     {previewBuild ? (
@@ -1263,7 +1263,7 @@ export function SalesforceRevenueWizard(props: {
                   {Array.isArray(previewCurrencyDebugSteps) && previewCurrencyDebugSteps.length > 0 && (
                     <details className="mt-1">
                       <summary className="cursor-pointer underline">Why is it unknown?</summary>
-                      <pre className="mt-2 max-h-[220px] overflow-auto rounded border bg-slate-50 p-2 text-[11px] leading-snug">
+                      <pre className="mt-2 max-h-[220px] overflow-auto rounded border bg-muted p-2 text-[11px] leading-snug">
                         {JSON.stringify(previewCurrencyDebugSteps, null, 2)}
                       </pre>
                     </details>
@@ -1272,14 +1272,14 @@ export function SalesforceRevenueWizard(props: {
               )}
 
               <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted-foreground">
                   Matching on <strong>{campaignFieldDisplay}</strong> · Revenue field <strong>{revenueFieldLabel}</strong> · Selected values{" "}
                   <strong>{selectedValues.length}</strong>
                 </div>
               </div>
 
               {isLinkedIn && pipelineEnabled && pipelineStageLabel && (
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted-foreground">
                   Pipeline proxy: <strong>{pipelineStageLabel}</strong>
                 </div>
               )}
@@ -1306,7 +1306,7 @@ export function SalesforceRevenueWizard(props: {
                         <TableRow>
                           <TableCell
                             colSpan={previewHeaders.filter((h) => String(h).toLowerCase() !== "id").length}
-                            className="text-sm text-slate-500"
+                            className="text-sm text-muted-foreground"
                           >
                             No matching Opportunities found for the current filters.
                           </TableCell>
@@ -1332,7 +1332,7 @@ export function SalesforceRevenueWizard(props: {
               {/* Pipeline (Proxy) preview: stage subset (not Closed Won) */}
               {isLinkedIn && pipelineEnabled && (
                 <div className="space-y-2 pt-2">
-                  <div className="text-sm text-slate-700">
+                  <div className="text-sm text-foreground/80">
                     Preview for <strong>Pipeline (Proxy — stage subset)</strong> (Opportunities currently in{" "}
                     <strong>{pipelineStageLabel || pipelineStageName || "selected stage"}</strong>).
                   </div>
@@ -1356,7 +1356,7 @@ export function SalesforceRevenueWizard(props: {
                             <TableRow>
                               <TableCell
                                 colSpan={pipelinePreviewHeaders.filter((h) => String(h).toLowerCase() !== "id").length}
-                                className="text-sm text-slate-500"
+                                className="text-sm text-muted-foreground"
                               >
                                 No matching Opportunities found for the pipeline stage subset.
                               </TableCell>
@@ -1385,10 +1385,10 @@ export function SalesforceRevenueWizard(props: {
 
           {step === "complete" && (
             <div className="space-y-3">
-              <div className="text-sm text-slate-700">
+              <div className="text-sm text-foreground/80">
                 Saved conversion value: <strong>${String(lastSaveResult?.conversionValue ?? "0")}</strong> per conversion.
               </div>
-              <div className="text-sm text-slate-700">
+              <div className="text-sm text-foreground/80">
                 Revenue metrics have been processed and are now available in the <strong>Overview</strong> tab.
               </div>
               <div className="flex items-center gap-2">

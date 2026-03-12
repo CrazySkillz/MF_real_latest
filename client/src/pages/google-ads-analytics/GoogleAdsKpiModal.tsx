@@ -271,7 +271,7 @@ export function GoogleAdsKpiModal(props: any) {
               rows={3}
               data-testid="input-kpi-description"
             />
-            <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+            <div className="text-xs text-muted-foreground/70 text-right">
               {(kpiForm.description || "").length}/{KPI_DESC_MAX}
             </div>
           </div>
@@ -347,7 +347,7 @@ export function GoogleAdsKpiModal(props: any) {
                   Enable alerts for this KPI
                 </Label>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 pl-6">
+              <p className="text-sm text-muted-foreground/70 pl-6">
                 Receive notifications for KPI performance alerts on the bell icon &amp; in your Notifications center
               </p>
             </div>
@@ -369,7 +369,7 @@ export function GoogleAdsKpiModal(props: any) {
                       }}
                       data-testid="input-kpi-alert-threshold"
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Value at which to trigger the alert</p>
+                    <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="kpi-alert-condition">Alert When</Label>
@@ -402,7 +402,7 @@ export function GoogleAdsKpiModal(props: any) {
                         <SelectItem value="weekly">Weekly</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-muted-foreground/70">
                       Controls how often you're notified while the alert condition stays true.
                     </p>
                   </div>
@@ -430,7 +430,7 @@ export function GoogleAdsKpiModal(props: any) {
                           onChange={(e) => setKpiForm({ ...kpiForm, emailRecipients: e.target.value })}
                           data-testid="input-kpi-email-recipients"
                         />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground/70">
                           Comma-separated. Best for execs who want alerts outside the app.
                         </p>
                       </div>

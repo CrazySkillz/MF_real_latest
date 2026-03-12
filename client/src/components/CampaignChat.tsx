@@ -169,10 +169,10 @@ export function CampaignChat({ campaign }: { campaign: any }) {
                 <Bot className="w-8 h-8 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                <h3 className="text-lg font-semibold text-foreground mb-2">
                   Campaign Analytics Assistant
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
+                <p className="text-sm text-muted-foreground/70 max-w-md">
                   I have access to your campaign data including spend, revenue, KPIs, and benchmarks. Ask me anything about your campaign performance.
                 </p>
               </div>
@@ -181,7 +181,7 @@ export function CampaignChat({ campaign }: { campaign: any }) {
                   <button
                     key={q}
                     onClick={() => sendMessage(q)}
-                    className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="px-3 py-2 text-sm rounded-lg border border-border text-foreground/80/60 hover:bg-muted transition-colors"
                   >
                     {q}
                   </button>
@@ -208,13 +208,13 @@ export function CampaignChat({ campaign }: { campaign: any }) {
                     className={`max-w-[75%] rounded-xl px-4 py-3 ${
                       msg.role === "user"
                         ? "bg-blue-600 text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                        : "bg-muted text-foreground dark:text-slate-100"
                     }`}
                   >
                     <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
                     <div
                       className={`text-xs mt-1 ${
-                        msg.role === "user" ? "text-blue-200" : "text-slate-400 dark:text-slate-500"
+                        msg.role === "user" ? "text-blue-200" : "text-muted-foreground/70"
                       }`}
                     >
                       {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -227,8 +227,8 @@ export function CampaignChat({ campaign }: { campaign: any }) {
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
                     <Bot className="w-4 h-4" />
                   </div>
-                  <div className="bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <div className="bg-muted rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Analyzing your campaign data...
                     </div>
@@ -240,7 +240,7 @@ export function CampaignChat({ campaign }: { campaign: any }) {
         </div>
 
         {/* Input area */}
-        <div className="flex-shrink-0 border-t border-slate-200 dark:border-slate-700 p-4">
+        <div className="flex-shrink-0 border-t border-border p-4">
           <div className="flex items-end gap-2">
             <Textarea
               ref={inputRef}
@@ -261,7 +261,7 @@ export function CampaignChat({ campaign }: { campaign: any }) {
               <Send className="w-4 h-4" />
             </Button>
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+          <p className="text-xs text-muted-foreground/70 mt-2">
             Press Enter to send, Shift+Enter for new line
           </p>
         </div>

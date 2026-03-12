@@ -220,7 +220,7 @@ export default function WorldMapSVG({
       {/* Tooltip */}
       {tooltip.visible && (
         <div
-          className="fixed z-50 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg shadow-lg pointer-events-none"
+          className="fixed z-50 px-3 py-2 bg-card text-white text-sm rounded-lg shadow-lg pointer-events-none"
           style={{
             left: tooltip.x + 10,
             top: tooltip.y - 40,
@@ -235,19 +235,19 @@ export default function WorldMapSVG({
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-1">
             <div className="w-4 h-3 bg-gray-300 border border-gray-300"></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">No data</span>
+            <span className="text-xs text-muted-foreground/70">No data</span>
           </div>
           <div className="flex items-center space-x-1">
             <div className="w-4 h-3 bg-blue-200 border border-gray-300"></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">Low</span>
+            <span className="text-xs text-muted-foreground/70">Low</span>
           </div>
           <div className="flex items-center space-x-1">
             <div className="w-4 h-3 bg-blue-400 border border-gray-300"></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">Medium</span>
+            <span className="text-xs text-muted-foreground/70">Medium</span>
           </div>
           <div className="flex items-center space-x-1">
             <div className="w-4 h-3 bg-blue-600 border border-gray-300"></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">High</span>
+            <span className="text-xs text-muted-foreground/70">High</span>
           </div>
         </div>
       </div>

@@ -69,14 +69,14 @@ export function GA4AuthModal({ isOpen, onClose, onSubmit, isLoading }: GA4AuthMo
                 <div>
                   <p>In Step 1, look for "Google Analytics Data API v1" OR manually enter this scope:</p>
                   <div className="mt-1 flex items-center gap-2">
-                    <code className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs">
+                    <code className="bg-muted px-2 py-1 rounded text-xs">
                       https://www.googleapis.com/auth/analytics.readonly
                     </code>
                     <Button variant="ghost" size="sm" onClick={copyScope}>
                       <Copy className="w-3 h-3" />
                     </Button>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Then click "Authorize APIs"</p>
+                  <p className="text-xs text-muted-foreground mt-1">Then click "Authorize APIs"</p>
                 </div>
               </div>
               

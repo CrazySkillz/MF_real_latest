@@ -1855,7 +1855,7 @@ export default function CustomIntegrationAnalytics() {
   const hasMetrics = hasBasicMetrics || hasAudienceMetrics || hasTrafficSources || hasEmailMetrics;
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="flex h-screen bg-muted">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navigation />
@@ -1878,7 +1878,7 @@ export default function CustomIntegrationAnalytics() {
                   <Plus className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                  <h1 className="text-3xl font-bold text-foreground">
                     Custom Integration Analytics
                   </h1>
                 </div>
@@ -1887,7 +1887,7 @@ export default function CustomIntegrationAnalytics() {
 
             {/* Tabs */}
             <Tabs defaultValue="overview" className="space-y-6">
-              <TabsList className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <TabsList className="bg-card border border-border">
                 <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
                 <TabsTrigger value="kpis" data-testid="tab-kpis">KPIs</TabsTrigger>
                 <TabsTrigger value="benchmarks" data-testid="tab-benchmarks">Benchmarks</TabsTrigger>
@@ -1917,21 +1917,21 @@ export default function CustomIntegrationAnalytics() {
 
                         {/* Heading */}
                         <div>
-                          <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                          <h3 className="text-xl font-semibold text-foreground mb-2">
                             Awaiting First Data Import
                           </h3>
-                          <p className="text-slate-600 dark:text-slate-400">
+                          <p className="text-muted-foreground/70">
                             Your campaign is ready to receive data!
                           </p>
                         </div>
 
                         {/* Email Address */}
-                        <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                        <div className="bg-card rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                          <p className="text-sm font-medium text-foreground/80/60 mb-3">
                             📧 Forward PDF reports to:
                           </p>
                           <div className="flex items-center gap-2">
-                            <code className="flex-1 bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded border border-slate-300 dark:border-slate-700 text-blue-900 dark:text-blue-100 font-mono text-sm break-all">
+                            <code className="flex-1 bg-muted px-4 py-3 rounded border border-border text-blue-900 dark:text-blue-100 font-mono text-sm break-all">
                               {customIntegration.email}
                             </code>
                             <Button
@@ -1951,11 +1951,11 @@ export default function CustomIntegrationAnalytics() {
                         </div>
 
                         {/* Instructions */}
-                        <div className="text-left bg-white dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-                          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+                        <div className="text-left bg-card rounded-lg p-4 border border-border">
+                          <h4 className="font-semibold text-foreground mb-3">
                             How to import your first report:
                           </h4>
-                          <ol className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                          <ol className="space-y-2 text-sm text-muted-foreground/70">
                             <li className="flex items-start gap-2">
                               <span className="font-semibold text-blue-600 dark:text-blue-400 mt-0.5">1.</span>
                               <span>Receive a PDF report via email from your data provider</span>
@@ -1980,8 +1980,8 @@ export default function CustomIntegrationAnalytics() {
                         </div>
 
                         {/* Manual Upload Option */}
-                        <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                        <div className="pt-4 border-t border-border">
+                          <p className="text-sm text-muted-foreground/70 mb-3">
                             Don't want to wait? Upload a PDF now:
                           </p>
                           <input
@@ -2048,7 +2048,7 @@ export default function CustomIntegrationAnalytics() {
                         </div>
 
                         {/* Status Footer */}
-                        <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                        <div className="pt-4 border-t border-border flex items-center justify-center gap-2 text-sm text-muted-foreground/70">
                           <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
                           <span>Status: Waiting for data</span>
                         </div>
@@ -2065,7 +2065,7 @@ export default function CustomIntegrationAnalytics() {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
                           <Users className="w-5 h-5 text-blue-600" />
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                          <h3 className="text-lg font-semibold text-foreground">
                             Audience & Traffic
                           </h3>
                         </div>
@@ -2074,14 +2074,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-users">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Users (unique)
                                   </CardTitle>
-                                  <Users className="w-4 h-4 text-slate-400" />
+                                  <Users className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-users">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-users">
                                   {formatNumber(metrics.users)}
                                 </div>
                               </CardContent>
@@ -2092,14 +2092,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-sessions">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Sessions
                                   </CardTitle>
-                                  <Activity className="w-4 h-4 text-slate-400" />
+                                  <Activity className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-sessions">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-sessions">
                                   {formatNumber(metrics.sessions)}
                                 </div>
                               </CardContent>
@@ -2110,14 +2110,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-pageviews">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Pageviews
                                   </CardTitle>
-                                  <FileSpreadsheet className="w-4 h-4 text-slate-400" />
+                                  <FileSpreadsheet className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-pageviews">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-pageviews">
                                   {formatNumber(metrics.pageviews)}
                                 </div>
                               </CardContent>
@@ -2128,14 +2128,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-avg-session-duration">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Avg. Session Duration
                                   </CardTitle>
-                                  <Clock className="w-4 h-4 text-slate-400" />
+                                  <Clock className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-avg-session-duration">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-avg-session-duration">
                                   {metrics.avgSessionDuration}
                                 </div>
                               </CardContent>
@@ -2146,14 +2146,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-pages-per-session">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Pages / Session
                                   </CardTitle>
-                                  <FileSpreadsheet className="w-4 h-4 text-slate-400" />
+                                  <FileSpreadsheet className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-pages-per-session">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-pages-per-session">
                                   {typeof metrics.pagesPerSession === 'string' ? parseFloat(metrics.pagesPerSession).toFixed(2) : metrics.pagesPerSession.toFixed(2)}
                                 </div>
                               </CardContent>
@@ -2164,14 +2164,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-bounce-rate">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Bounce Rate
                                   </CardTitle>
-                                  <TrendingDown className="w-4 h-4 text-slate-400" />
+                                  <TrendingDown className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-bounce-rate">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-bounce-rate">
                                   {formatPercent(metrics.bounceRate)}
                                 </div>
                               </CardContent>
@@ -2186,7 +2186,7 @@ export default function CustomIntegrationAnalytics() {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
                           <BarChart3 className="w-5 h-5 text-green-600" />
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                          <h3 className="text-lg font-semibold text-foreground">
                             Traffic Sources
                           </h3>
                         </div>
@@ -2194,12 +2194,12 @@ export default function CustomIntegrationAnalytics() {
                           {metrics.organicSearchShare && (
                             <Card data-testid="card-metric-organic-search">
                               <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                   Organic Search
                                 </CardTitle>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-organic-search">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-organic-search">
                                   {formatPercent(metrics.organicSearchShare)}
                                 </div>
                               </CardContent>
@@ -2209,12 +2209,12 @@ export default function CustomIntegrationAnalytics() {
                           {metrics.directBrandedShare && (
                             <Card data-testid="card-metric-direct-branded">
                               <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                   Direct / Branded
                                 </CardTitle>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-direct-branded">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-direct-branded">
                                   {formatPercent(metrics.directBrandedShare)}
                                 </div>
                               </CardContent>
@@ -2224,12 +2224,12 @@ export default function CustomIntegrationAnalytics() {
                           {metrics.emailShare && (
                             <Card data-testid="card-metric-email-source">
                               <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                   Email (Newsletters)
                                 </CardTitle>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-email-source">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-email-source">
                                   {formatPercent(metrics.emailShare)}
                                 </div>
                               </CardContent>
@@ -2239,12 +2239,12 @@ export default function CustomIntegrationAnalytics() {
                           {metrics.referralShare && (
                             <Card data-testid="card-metric-referral">
                               <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                   Referral / Partners
                                 </CardTitle>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-referral">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-referral">
                                   {formatPercent(metrics.referralShare)}
                                 </div>
                               </CardContent>
@@ -2254,12 +2254,12 @@ export default function CustomIntegrationAnalytics() {
                           {metrics.paidShare && (
                             <Card data-testid="card-metric-paid">
                               <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                   Paid (Display/Search)
                                 </CardTitle>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-paid">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-paid">
                                   {formatPercent(metrics.paidShare)}
                                 </div>
                               </CardContent>
@@ -2269,12 +2269,12 @@ export default function CustomIntegrationAnalytics() {
                           {metrics.socialShare && (
                             <Card data-testid="card-metric-social">
                               <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                   Social
                                 </CardTitle>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-social">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-social">
                                   {formatPercent(metrics.socialShare)}
                                 </div>
                               </CardContent>
@@ -2289,7 +2289,7 @@ export default function CustomIntegrationAnalytics() {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
                           <Mail className="w-5 h-5 text-purple-600" />
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                          <h3 className="text-lg font-semibold text-foreground">
                             Email & Newsletter Performance
                           </h3>
                         </div>
@@ -2298,14 +2298,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-emails-delivered">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Emails Delivered
                                   </CardTitle>
-                                  <Mail className="w-4 h-4 text-slate-400" />
+                                  <Mail className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-emails-delivered">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-emails-delivered">
                                   {formatNumber(metrics.emailsDelivered)}
                                 </div>
                               </CardContent>
@@ -2316,14 +2316,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-open-rate">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Open Rate
                                   </CardTitle>
-                                  <Eye className="w-4 h-4 text-slate-400" />
+                                  <Eye className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-open-rate">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-open-rate">
                                   {formatPercent(metrics.openRate)}
                                 </div>
                               </CardContent>
@@ -2334,14 +2334,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-click-through-rate">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Click-Through Rate
                                   </CardTitle>
-                                  <MousePointerClick className="w-4 h-4 text-slate-400" />
+                                  <MousePointerClick className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-click-through-rate">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-click-through-rate">
                                   {formatPercent(metrics.clickThroughRate)}
                                 </div>
                               </CardContent>
@@ -2352,14 +2352,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-click-to-open-rate">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Click-to-Open
                                   </CardTitle>
-                                  <Target className="w-4 h-4 text-slate-400" />
+                                  <Target className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-click-to-open-rate">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-click-to-open-rate">
                                   {formatPercent(metrics.clickToOpenRate)}
                                 </div>
                               </CardContent>
@@ -2370,14 +2370,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-hard-bounces">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Hard Bounces
                                   </CardTitle>
-                                  <TrendingDown className="w-4 h-4 text-slate-400" />
+                                  <TrendingDown className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-hard-bounces">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-hard-bounces">
                                   {formatPercent(metrics.hardBounces)}
                                 </div>
                               </CardContent>
@@ -2388,14 +2388,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-spam-complaints">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     Spam Complaints
                                   </CardTitle>
-                                  <TrendingDown className="w-4 h-4 text-slate-400" />
+                                  <TrendingDown className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-spam-complaints">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-spam-complaints">
                                   {formatPercent(metrics.spamComplaints)}
                                 </div>
                               </CardContent>
@@ -2406,14 +2406,14 @@ export default function CustomIntegrationAnalytics() {
                             <Card data-testid="card-metric-list-growth">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
                                     List Growth (Net)
                                   </CardTitle>
-                                  <TrendingUp className="w-4 h-4 text-slate-400" />
+                                  <TrendingUp className="w-4 h-4 text-muted-foreground/70" />
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="value-list-growth">
+                                <div className="text-2xl font-bold text-foreground" data-testid="value-list-growth">
                                   +{formatNumber(metrics.listGrowth)}
                                 </div>
                               </CardContent>
@@ -2439,16 +2439,16 @@ export default function CustomIntegrationAnalytics() {
               <TabsContent value="kpis" className="space-y-6" data-testid="content-kpis">
                 {kpisLoading ? (
                   <div className="animate-pulse space-y-4">
-                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                    <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-32 bg-muted rounded"></div>
+                    <div className="h-64 bg-muted rounded"></div>
                   </div>
                 ) : kpisData && (kpisData as any[]).length > 0 ? (
                   <>
                     {/* Header with Create Button */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h2 className="text-2xl font-bold text-foreground">Key Performance Indicators</h2>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Track and monitor your Custom Integration KPIs
                         </p>
                       </div>
@@ -2471,7 +2471,7 @@ export default function CustomIntegrationAnalytics() {
                             });
                             setIsReportModalOpen(true);
                           }}
-                          className="border-slate-300 dark:border-slate-700"
+                          className="border-border"
                           data-testid="button-export-kpi-report"
                         >
                           <FileText className="w-4 h-4 mr-2" />
@@ -2512,8 +2512,8 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              <p className="text-sm text-muted-foreground/70">Total KPIs</p>
+                              <p className="text-2xl font-bold text-foreground">
                                 {(kpisData as any[]).length}
                               </p>
                             </div>
@@ -2526,7 +2526,7 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Exceeding Target</p>
+                              <p className="text-sm text-muted-foreground/70">Exceeding Target</p>
                               <p className="text-2xl font-bold text-green-600">
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
@@ -2544,7 +2544,7 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Meeting Target</p>
+                              <p className="text-sm text-muted-foreground/70">Meeting Target</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
@@ -2562,7 +2562,7 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
+                              <p className="text-sm text-muted-foreground/70">Below Target</p>
                               <p className="text-2xl font-bold text-red-600">
                                 {(kpisData as any[]).filter((k: any) => {
                                   const current = parseFloat(k.currentValue || '0');
@@ -2603,7 +2603,7 @@ export default function CustomIntegrationAnalytics() {
                             case 'Underperforming':
                               return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
                             default:
-                              return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+                              return 'bg-muted text-foreground/60';
                           }
                         };
                         
@@ -2616,7 +2616,7 @@ export default function CustomIntegrationAnalytics() {
                             case 'low':
                               return 'text-green-600 bg-green-100 dark:bg-green-900 dark:text-green-300';
                             default:
-                              return 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300';
+                              return 'text-muted-foreground bg-muted/60';
                           }
                         };
                         
@@ -2649,7 +2649,7 @@ export default function CustomIntegrationAnalytics() {
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
-                                  className="h-8 w-8 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
+                                  className="h-8 w-8 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
                                   onClick={() => setEditingKPI(kpi)}
                                   data-testid={`button-edit-kpi-${kpi.id}`}
                                 >
@@ -2660,7 +2660,7 @@ export default function CustomIntegrationAnalytics() {
                                     <Button 
                                       variant="ghost" 
                                       size="icon"
-                                      className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                      className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
                                       data-testid={`button-delete-kpi-${kpi.id}`}
                                     >
                                       <Trash2 className="h-4 w-4" />
@@ -2689,19 +2689,19 @@ export default function CustomIntegrationAnalytics() {
                           </CardHeader>
                           <CardContent className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                              <div className="p-3 bg-muted rounded-lg">
+                                <div className="text-sm font-medium text-muted-foreground/70 mb-1">
                                   Current
                                 </div>
-                                <div className="text-xl font-bold text-slate-900 dark:text-white">
+                                <div className="text-xl font-bold text-foreground">
                                   {formatNumber(kpi.currentValue)}{kpi.unit || ''}
                                 </div>
                               </div>
-                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                              <div className="p-3 bg-muted rounded-lg">
+                                <div className="text-sm font-medium text-muted-foreground/70 mb-1">
                                   Target
                                 </div>
-                                <div className="text-xl font-bold text-slate-900 dark:text-white">
+                                <div className="text-xl font-bold text-foreground">
                                   {formatNumber(kpi.targetValue)}{kpi.unit || ''}
                                 </div>
                               </div>
@@ -2719,15 +2719,15 @@ export default function CustomIntegrationAnalytics() {
                                   <div className="space-y-2">
                                     <div className="flex items-center justify-between text-sm">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-slate-600 dark:text-slate-400">Progress to Target</span>
+                                        <span className="text-muted-foreground/70">Progress to Target</span>
                                         {isOutperforming && <TrendingUp className="w-4 h-4 text-green-600" />}
                                         {!isOutperforming && actualProgress > 0 && <Activity className="w-4 h-4 text-blue-600" />}
                                       </div>
-                                      <span className="font-semibold text-slate-900 dark:text-white">
+                                      <span className="font-semibold text-foreground">
                                         {Math.round(actualProgress)}%
                                       </span>
                                     </div>
-                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                    <div className="w-full bg-muted rounded-full h-2.5">
                                       <div 
                                         className={`h-2.5 rounded-full transition-all ${
                                           isOutperforming ? 'bg-green-500' : 'bg-blue-500'
@@ -2738,7 +2738,7 @@ export default function CustomIntegrationAnalytics() {
                                   </div>
 
                                   {/* Timeframe Indicator */}
-                                  <div className="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1">
+                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
                                     <span className="capitalize">
                                       {kpi.timeframe || 'Monthly'}
@@ -2758,8 +2758,8 @@ export default function CustomIntegrationAnalytics() {
                     {/* Header with Create Button */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <h2 className="text-2xl font-bold text-foreground">Key Performance Indicators</h2>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           Track and monitor your Custom Integration KPIs
                         </p>
                       </div>
@@ -2782,7 +2782,7 @@ export default function CustomIntegrationAnalytics() {
                             });
                             setIsReportModalOpen(true);
                           }}
-                          className="border-slate-300 dark:border-slate-700"
+                          className="border-border"
                           data-testid="button-export-kpi-report"
                         >
                           <FileText className="w-4 h-4 mr-2" />
@@ -2820,7 +2820,7 @@ export default function CustomIntegrationAnalytics() {
                     <Card>
                       <CardContent>
                         <div className="text-center py-12">
-                          <p className="text-slate-600 dark:text-slate-400 mb-4">
+                          <p className="text-muted-foreground/70 mb-4">
                             No KPIs have been created yet.
                           </p>
                           <Button 
@@ -2861,8 +2861,8 @@ export default function CustomIntegrationAnalytics() {
                 {/* Header with Create Button */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Benchmarks</h2>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    <h2 className="text-2xl font-bold text-foreground">Benchmarks</h2>
+                    <p className="text-sm text-muted-foreground/70 mt-1">
                       Compare your performance against industry benchmarks
                     </p>
                   </div>
@@ -2885,7 +2885,7 @@ export default function CustomIntegrationAnalytics() {
                         });
                         setIsReportModalOpen(true);
                       }}
-                      className="border-slate-300 dark:border-slate-700"
+                      className="border-border"
                       data-testid="button-export-benchmarks-report"
                     >
                       <FileText className="w-4 h-4 mr-2" />
@@ -2927,8 +2927,8 @@ export default function CustomIntegrationAnalytics() {
 
                 {benchmarksLoading ? (
                   <div className="animate-pulse space-y-4">
-                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                    <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-32 bg-muted rounded"></div>
+                    <div className="h-64 bg-muted rounded"></div>
                   </div>
                 ) : benchmarksData && (benchmarksData as any[]).length > 0 ? (
                   <>
@@ -2938,8 +2938,8 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
-                              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                              <p className="text-sm text-muted-foreground/70">Total Benchmarks</p>
+                              <p className="text-2xl font-bold text-foreground">
                                 {(benchmarksData as any[]).length}
                               </p>
                             </div>
@@ -2952,7 +2952,7 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Exceeding Target</p>
+                              <p className="text-sm text-muted-foreground/70">Exceeding Target</p>
                               <p className="text-2xl font-bold text-green-600">
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
@@ -2970,7 +2970,7 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Meeting Target</p>
+                              <p className="text-sm text-muted-foreground/70">Meeting Target</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
@@ -2988,7 +2988,7 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">Below Target</p>
+                              <p className="text-sm text-muted-foreground/70">Below Target</p>
                               <p className="text-2xl font-bold text-red-600">
                                 {(benchmarksData as any[]).filter((b: any) => {
                                   const current = parseFloat(b.currentValue || '0');
@@ -3011,7 +3011,7 @@ export default function CustomIntegrationAnalytics() {
                             <div className="flex items-start justify-between mb-4">
                               <div>
                                 <div className="flex items-center gap-2 mb-1">
-                                  <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
+                                  <h3 className="font-semibold text-foreground text-lg">
                                     {benchmark.name}
                                   </h3>
                                   {benchmark.metric && (
@@ -3020,10 +3020,10 @@ export default function CustomIntegrationAnalytics() {
                                     </Badge>
                                   )}
                                 </div>
-                                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                <p className="text-sm text-muted-foreground/70 mt-1">
                                   {benchmark.description || 'No description provided'}
                                 </p>
-                                <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                                   {benchmark.benchmarkType && <span>Type: {benchmark.benchmarkType}</span>}
                                   {benchmark.industry && (
                                     <>
@@ -3111,29 +3111,29 @@ export default function CustomIntegrationAnalytics() {
                             </div>
 
                             <div className="grid gap-4 md:grid-cols-3">
-                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                              <div className="p-3 bg-muted rounded-lg">
+                                <div className="text-sm font-medium text-muted-foreground/70 mb-1">
                                   Your Performance
                                 </div>
-                                <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                <div className="text-lg font-bold text-foreground">
                                   {formatNumber(benchmark.currentValue)}{benchmark.unit || ''}
                                 </div>
                               </div>
 
-                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                              <div className="p-3 bg-muted rounded-lg">
+                                <div className="text-sm font-medium text-muted-foreground/70 mb-1">
                                   Benchmark Value
                                 </div>
-                                <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                <div className="text-lg font-bold text-foreground">
                                   {formatNumber(benchmark.benchmarkValue || benchmark.targetValue)}{benchmark.unit || ''}
                                 </div>
                               </div>
 
-                              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                              <div className="p-3 bg-muted rounded-lg">
+                                <div className="text-sm font-medium text-muted-foreground/70 mb-1">
                                   Source
                                 </div>
-                                <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                <div className="text-lg font-bold text-foreground">
                                   {benchmark.source || 'Custom Integration'}
                                 </div>
                               </div>
@@ -3168,15 +3168,15 @@ export default function CustomIntegrationAnalytics() {
                                   <div className="space-y-2">
                                     <div className="flex items-center justify-between text-sm">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-slate-600 dark:text-slate-400">Progress to Benchmark</span>
+                                        <span className="text-muted-foreground/70">Progress to Benchmark</span>
                                         {(isExceeding || isMeetingBenchmark) && <TrendingUp className="w-4 h-4 text-green-600" />}
                                         {isBelowBenchmark && <TrendingDown className="w-4 h-4 text-red-600" />}
                                       </div>
-                                      <span className="font-semibold text-slate-900 dark:text-white">
+                                      <span className="font-semibold text-foreground">
                                         {displayProgress}%
                                       </span>
                                     </div>
-                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                    <div className="w-full bg-muted rounded-full h-2.5">
                                       <div 
                                         className={`h-2.5 rounded-full transition-all ${
                                           isExceeding
@@ -3249,7 +3249,7 @@ export default function CustomIntegrationAnalytics() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-center py-8">
-                        <p className="text-slate-600 dark:text-slate-400 mb-4">
+                        <p className="text-muted-foreground/70 mb-4">
                           No benchmarks have been created yet.
                         </p>
                         <Button 
@@ -3271,8 +3271,8 @@ export default function CustomIntegrationAnalytics() {
                 {/* Header with Create Button */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Reports</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    <h2 className="text-lg font-semibold text-foreground">Reports</h2>
+                    <p className="text-sm text-muted-foreground/70 mt-1">
                       Create, schedule, and manage analytics reports for Custom Integration
                     </p>
                   </div>
@@ -3311,8 +3311,8 @@ export default function CustomIntegrationAnalytics() {
                 {/* Reports List */}
                 {reportsLoading ? (
                   <div className="animate-pulse space-y-4">
-                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                    <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    <div className="h-32 bg-muted rounded"></div>
+                    <div className="h-32 bg-muted rounded"></div>
                   </div>
                 ) : reportsData && Array.isArray(reportsData) && reportsData.length > 0 ? (
                   <div className="grid grid-cols-1 gap-4">
@@ -3321,11 +3321,11 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+                              <h3 className="font-semibold text-foreground mb-1">
                                 {report.name}
                               </h3>
                               {report.description && (
-                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                                <p className="text-sm text-muted-foreground/70 mb-3">
                                   {report.description}
                                 </p>
                               )}
@@ -3334,12 +3334,12 @@ export default function CustomIntegrationAnalytics() {
                                   {report.reportType}
                                 </Badge>
                                 {report.scheduleFrequency && (
-                                  <span className="text-slate-500 flex items-center gap-1">
+                                  <span className="text-muted-foreground flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
                                     {report.scheduleFrequency}
                                   </span>
                                 )}
-                                <span className="text-slate-400">
+                                <span className="text-muted-foreground/70">
                                   Created {new Date(report.createdAt).toLocaleDateString()}
                                 </span>
                               </div>
@@ -3404,10 +3404,10 @@ export default function CustomIntegrationAnalytics() {
                   <Card className="border-purple-200 dark:border-purple-900">
                     <CardContent className="py-12 text-center">
                       <Target className="w-12 h-12 mx-auto text-purple-400 mb-4" />
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
                         No Reports Created
                       </h3>
-                      <p className="text-slate-600 dark:text-slate-400 mb-4">
+                      <p className="text-muted-foreground/70 mb-4">
                         Create automated reports to track your custom integration performance
                       </p>
                       <Button 
@@ -3645,7 +3645,7 @@ export default function CustomIntegrationAnalytics() {
                     <SelectItem value="yearly">Yearly (365 days)</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-muted-foreground/70">
                   How often to measure progress toward your target
                 </p>
               </div>
@@ -3683,7 +3683,7 @@ export default function CustomIntegrationAnalytics() {
                         }}
                         data-testid="input-kpi-alert-threshold"
                       />
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-muted-foreground/70">
                         Value at which to trigger the alert
                       </p>
                     </div>
@@ -3715,7 +3715,7 @@ export default function CustomIntegrationAnalytics() {
                       onChange={(e) => setKpiForm({ ...kpiForm, emailRecipients: e.target.value })}
                       data-testid="input-kpi-email-recipients"
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-muted-foreground/70">
                       Comma-separated email addresses for alert notifications
                     </p>
                   </div>
@@ -4026,7 +4026,7 @@ export default function CustomIntegrationAnalytics() {
                         }}
                         data-testid="input-benchmark-alert-threshold"
                       />
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-muted-foreground/70">
                         Value at which to trigger the alert
                       </p>
                     </div>
@@ -4058,7 +4058,7 @@ export default function CustomIntegrationAnalytics() {
                       onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
                       data-testid="input-benchmark-email-recipients"
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-muted-foreground/70">
                       Comma-separated email addresses for alert notifications
                     </p>
                   </div>
@@ -4136,7 +4136,7 @@ export default function CustomIntegrationAnalytics() {
               <div className="space-y-6">
                 {/* Report Type Selection */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Report Type</h3>
+                  <h3 className="text-sm font-semibold text-foreground/80/60">Report Type</h3>
                   <div className="grid grid-cols-2 gap-3">
                     <Card 
                       className={`cursor-pointer transition-all ${reportForm.reportType === 'overview' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
@@ -4145,7 +4145,7 @@ export default function CustomIntegrationAnalytics() {
                     >
                       <CardContent className="pt-6">
                         <h4 className="font-semibold mb-2">Overview Report</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-muted-foreground/70">
                           Comprehensive snapshot of all Custom Integration metrics
                         </p>
                       </CardContent>
@@ -4158,7 +4158,7 @@ export default function CustomIntegrationAnalytics() {
                     >
                       <CardContent className="pt-6">
                         <h4 className="font-semibold mb-2">KPIs Report</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-muted-foreground/70">
                           Focus on key performance indicators and targets
                         </p>
                       </CardContent>
@@ -4171,7 +4171,7 @@ export default function CustomIntegrationAnalytics() {
                     >
                       <CardContent className="pt-6">
                         <h4 className="font-semibold mb-2">Benchmarks Report</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-muted-foreground/70">
                           Compare performance against industry standards
                         </p>
                       </CardContent>
@@ -4187,7 +4187,7 @@ export default function CustomIntegrationAnalytics() {
                     >
                       <CardContent className="pt-6">
                         <h4 className="font-semibold mb-2">Custom Report</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-muted-foreground/70">
                           Build your own report with selected metrics
                         </p>
                       </CardContent>
@@ -4312,7 +4312,7 @@ export default function CustomIntegrationAnalytics() {
                               </SelectContent>
                             </Select>
                             {userTimeZone && (
-                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                              <p className="text-sm text-muted-foreground/70">
                                 All times are in your time zone: {getTimeZoneDisplay()}
                               </p>
                             )}
@@ -4328,7 +4328,7 @@ export default function CustomIntegrationAnalytics() {
                               placeholder="Enter email addresses (comma-separated)"
                               data-testid="input-email-recipients"
                             />
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground/70">
                               Reports will be automatically generated and sent to these email addresses
                             </p>
                           </div>
@@ -4371,12 +4371,12 @@ export default function CustomIntegrationAnalytics() {
 
                 {/* Metrics Selection */}
                 <div className="space-y-4 pt-4 border-t">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Select Metrics</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Select Metrics</h3>
                   
                   <Accordion type="multiple" className="w-full">
                     {/* Audience & Traffic Metrics */}
                     <AccordionItem value="audience-traffic">
-                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                         Audience & Traffic Metrics
                       </AccordionTrigger>
                       <AccordionContent>
@@ -4422,7 +4422,7 @@ export default function CustomIntegrationAnalytics() {
 
                     {/* Traffic Sources */}
                     <AccordionItem value="traffic-sources">
-                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                         Traffic Sources
                       </AccordionTrigger>
                       <AccordionContent>
@@ -4468,7 +4468,7 @@ export default function CustomIntegrationAnalytics() {
 
                     {/* Email Performance Metrics */}
                     <AccordionItem value="email-performance">
-                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                         Email Performance Metrics
                       </AccordionTrigger>
                       <AccordionContent>
@@ -4520,7 +4520,7 @@ export default function CustomIntegrationAnalytics() {
                   <Accordion type="multiple" className="w-full">
                     {/* KPIs */}
                     <AccordionItem value="kpis">
-                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                         KPIs
                       </AccordionTrigger>
                       <AccordionContent>
@@ -4553,14 +4553,14 @@ export default function CustomIntegrationAnalytics() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-sm text-slate-500 pt-2">No KPIs created yet</p>
+                          <p className="text-sm text-muted-foreground pt-2">No KPIs created yet</p>
                         )}
                       </AccordionContent>
                     </AccordionItem>
 
                     {/* Benchmarks */}
                     <AccordionItem value="benchmarks">
-                      <AccordionTrigger className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
                         Benchmarks
                       </AccordionTrigger>
                       <AccordionContent>
@@ -4593,7 +4593,7 @@ export default function CustomIntegrationAnalytics() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-sm text-slate-500 pt-2">No benchmarks created yet</p>
+                          <p className="text-sm text-muted-foreground pt-2">No benchmarks created yet</p>
                         )}
                       </AccordionContent>
                     </AccordionItem>
@@ -4667,7 +4667,7 @@ export default function CustomIntegrationAnalytics() {
                           </SelectContent>
                         </Select>
                         {userTimeZone && (
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                          <p className="text-sm text-muted-foreground/70">
                             All times are in your time zone: {getTimeZoneDisplay()}
                           </p>
                         )}

@@ -493,7 +493,7 @@ export default function MetaAnalytics() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
@@ -501,7 +501,7 @@ export default function MetaAnalytics() {
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-slate-600 dark:text-slate-400">Loading Meta analytics...</p>
+                <p className="text-muted-foreground/70">Loading Meta analytics...</p>
               </div>
             </div>
           </main>
@@ -512,13 +512,13 @@ export default function MetaAnalytics() {
 
   if (!analyticsData) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="text-center py-12">
-              <p className="text-slate-600 dark:text-slate-400">No Meta analytics data available</p>
+              <p className="text-muted-foreground/70">No Meta analytics data available</p>
             </div>
           </main>
         </div>
@@ -742,7 +742,7 @@ export default function MetaAnalytics() {
   const getTimeZoneDisplay = () => userTimeZone.replace(/_/g, ' ');
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       <div className="flex">
         <Sidebar />
@@ -757,8 +757,8 @@ export default function MetaAnalytics() {
             </Link>
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Meta/Facebook Ads Analytics</h1>
-                <p className="text-slate-600 dark:text-slate-400 mt-1">
+                <h1 className="text-3xl font-bold text-foreground">Meta/Facebook Ads Analytics</h1>
+                <p className="text-muted-foreground/70 mt-1">
                   Ad Account: {analyticsData.adAccountName}
                 </p>
               </div>
@@ -889,37 +889,37 @@ export default function MetaAnalytics() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Revenue</p>
+                    <p className="text-sm text-muted-foreground/70 mb-1">Total Revenue</p>
                     <p className="text-3xl font-bold text-green-700 dark:text-green-300">
                       ${revenueSummary.totalRevenue.toLocaleString()}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Conversion Value</p>
+                    <p className="text-sm text-muted-foreground/70 mb-1">Conversion Value</p>
                     <p className="text-3xl font-bold">${revenueSummary.conversionValue.toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">ROAS</p>
+                    <p className="text-sm text-muted-foreground/70 mb-1">ROAS</p>
                     <p className="text-3xl font-bold">
                       {summary.totalSpend > 0 ? (revenueSummary.totalRevenue / summary.totalSpend).toFixed(2) : '0.00'}x
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">ROI</p>
+                    <p className="text-sm text-muted-foreground/70 mb-1">ROI</p>
                     <p className="text-3xl font-bold">
                       {summary.totalSpend > 0 ? (((revenueSummary.totalRevenue - summary.totalSpend) / summary.totalSpend) * 100).toFixed(1) : '0.0'}%
                     </p>
                   </div>
                 </div>
                 {revenueSummary.webhookEventCount && revenueSummary.webhookEventCount > 0 && (
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-4">
+                  <p className="text-xs text-muted-foreground/70 mt-4">
                     Using {revenueSummary.webhookEventCount} webhook conversion event(s) for highest accuracy
                   </p>
                 )}
               </CardContent>
             </Card>
           ) : (
-            <Card className="mb-8 border-slate-200 dark:border-slate-700">
+            <Card className="mb-8 border-border">
               <CardHeader>
                 <CardTitle className="text-lg">Revenue Tracking Not Configured</CardTitle>
                 <CardDescription>
@@ -927,10 +927,10 @@ export default function MetaAnalytics() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                <p className="text-sm text-muted-foreground/70 mb-4">
                   To enable revenue tracking for Meta campaigns, you can:
                 </p>
-                <ul className="list-disc list-inside space-y-2 text-sm text-slate-600 dark:text-slate-400 mb-4">
+                <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground/70 mb-4">
                   <li>Manually enter revenue data for each campaign</li>
                   <li>Upload a CSV file with campaign revenue data (crosswalk matching)</li>
                   <li>Set up webhook integration for real-time conversion tracking</li>
@@ -950,43 +950,43 @@ export default function MetaAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                   <Activity className="h-5 w-5 text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground font-medium">CTR</p>
                   <p className="text-xl font-bold">{summary.avgCTR.toFixed(2)}%</p>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                   <DollarSign className="h-5 w-5 text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground font-medium">CPC</p>
                   <p className="text-xl font-bold">${summary.avgCPC.toFixed(2)}</p>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                   <Eye className="h-5 w-5 text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground font-medium">CPM</p>
                   <p className="text-xl font-bold">${summary.avgCPM.toFixed(2)}</p>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                   <Users className="h-5 w-5 text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground font-medium">CPP</p>
                   <p className="text-xl font-bold">${summary.avgCPP.toFixed(2)}</p>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                   <TrendingUp className="h-5 w-5 text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground font-medium">Frequency</p>
                   <p className="text-xl font-bold">{summary.avgFrequency.toFixed(2)}</p>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                   <Target className="h-5 w-5 text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground font-medium">Cost/Conv</p>
                   <p className="text-xl font-bold">${summary.costPerConversion.toFixed(2)}</p>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                   <Activity className="h-5 w-5 text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground font-medium">Conv Rate</p>
                   <p className="text-xl font-bold">{summary.conversionRate.toFixed(2)}%</p>
@@ -1054,73 +1054,73 @@ export default function MetaAnalytics() {
                   const formatPct = (v: number) => `${v.toFixed(2)}%`;
 
                   return (
-                    <div key={campaign.id} className="border rounded-lg p-4 bg-white dark:bg-slate-900">
+                    <div key={campaign.id} className="border rounded-lg p-4 bg-card">
                       {/* Campaign header */}
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-slate-900 dark:text-white">{campaign.name}</h4>
-                          <span className="text-xs text-slate-500">{campaign.objective}</span>
+                          <h4 className="font-semibold text-foreground">{campaign.name}</h4>
+                          <span className="text-xs text-muted-foreground">{campaign.objective}</span>
                         </div>
-                        <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totals.spend || 0)}</span>
+                        <span className="text-lg font-bold text-foreground">{formatCurrency(totals.spend || 0)}</span>
                       </div>
 
                       {/* Core metrics — prominent */}
                       <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-3">
                         <div>
-                          <p className="text-xs text-slate-500 font-medium">Impressions</p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.impressions)}</p>
+                          <p className="text-xs text-muted-foreground font-medium">Impressions</p>
+                          <p className="text-base font-bold text-foreground">{formatNum(totals.impressions)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500 font-medium">Reach</p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.reach)}</p>
+                          <p className="text-xs text-muted-foreground font-medium">Reach</p>
+                          <p className="text-base font-bold text-foreground">{formatNum(totals.reach)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500 font-medium">Clicks</p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.clicks)}</p>
+                          <p className="text-xs text-muted-foreground font-medium">Clicks</p>
+                          <p className="text-base font-bold text-foreground">{formatNum(totals.clicks)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500 font-medium">CTR</p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatPct(totals.ctr)}</p>
+                          <p className="text-xs text-muted-foreground font-medium">CTR</p>
+                          <p className="text-base font-bold text-foreground">{formatPct(totals.ctr)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500 font-medium">Conversions</p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.conversions)}</p>
+                          <p className="text-xs text-muted-foreground font-medium">Conversions</p>
+                          <p className="text-base font-bold text-foreground">{formatNum(totals.conversions)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500 font-medium">Video Views</p>
-                          <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.videoViews)}</p>
+                          <p className="text-xs text-muted-foreground font-medium">Video Views</p>
+                          <p className="text-base font-bold text-foreground">{formatNum(totals.videoViews)}</p>
                         </div>
                       </div>
 
                       {/* Secondary metrics — smaller */}
-                      <div className="grid grid-cols-4 md:grid-cols-7 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                      <div className="grid grid-cols-4 md:grid-cols-7 gap-3 pt-3 border-t border-slate-100">
                         <div>
-                          <p className="text-[10px] text-slate-400 font-medium">CPC</p>
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.cpc)}</p>
+                          <p className="text-[10px] text-muted-foreground/70 font-medium">CPC</p>
+                          <p className="text-sm font-semibold text-foreground/80/60">{formatCurrency(totals.cpc)}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-slate-400 font-medium">CPM</p>
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.cpm)}</p>
+                          <p className="text-[10px] text-muted-foreground/70 font-medium">CPM</p>
+                          <p className="text-sm font-semibold text-foreground/80/60">{formatCurrency(totals.cpm)}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-slate-400 font-medium">CPP</p>
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.cpp)}</p>
+                          <p className="text-[10px] text-muted-foreground/70 font-medium">CPP</p>
+                          <p className="text-sm font-semibold text-foreground/80/60">{formatCurrency(totals.cpp)}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-slate-400 font-medium">Frequency</p>
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{totals.frequency.toFixed(2)}</p>
+                          <p className="text-[10px] text-muted-foreground/70 font-medium">Frequency</p>
+                          <p className="text-sm font-semibold text-foreground/80/60">{totals.frequency.toFixed(2)}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-slate-400 font-medium">Cost/Conv</p>
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.costPerConversion)}</p>
+                          <p className="text-[10px] text-muted-foreground/70 font-medium">Cost/Conv</p>
+                          <p className="text-sm font-semibold text-foreground/80/60">{formatCurrency(totals.costPerConversion)}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-slate-400 font-medium">Conv Rate</p>
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatPct(totals.conversionRate)}</p>
+                          <p className="text-[10px] text-muted-foreground/70 font-medium">Conv Rate</p>
+                          <p className="text-sm font-semibold text-foreground/80/60">{formatPct(totals.conversionRate)}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-slate-400 font-medium">Total Spend</p>
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.spend)}</p>
+                          <p className="text-[10px] text-muted-foreground/70 font-medium">Total Spend</p>
+                          <p className="text-sm font-semibold text-foreground/80/60">{formatCurrency(totals.spend)}</p>
                         </div>
                       </div>
 
@@ -1256,8 +1256,8 @@ export default function MetaAnalytics() {
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Key Performance Indicators</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  <h2 className="text-2xl font-bold text-foreground">Key Performance Indicators</h2>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
                     Track your Meta campaign KPIs and targets
                   </p>
                 </div>
@@ -1275,7 +1275,7 @@ export default function MetaAnalytics() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="border-slate-300 dark:border-slate-700"
+                  className="border-border"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add KPI
@@ -1283,16 +1283,16 @@ export default function MetaAnalytics() {
               </div>
 
               {/* Meta info bar */}
-              <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">
+              <div className="rounded-md border border-border p-3 text-xs text-muted-foreground/70">
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   <div>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">KPIs:</span> {kpiTracker.total}
+                    <span className="font-medium text-foreground/80/60">KPIs:</span> {kpiTracker.total}
                   </div>
                   <div>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">Campaigns:</span> {summary.totalCampaigns}
+                    <span className="font-medium text-foreground/80/60">Campaigns:</span> {summary.totalCampaigns}
                   </div>
                   <div>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">Data source:</span> Meta Graph API
+                    <span className="font-medium text-foreground/80/60">Data source:</span> Meta Graph API
                   </div>
                 </div>
               </div>
@@ -1303,8 +1303,8 @@ export default function MetaAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpiTracker.total}</p>
+                        <p className="text-sm text-muted-foreground/70">Total KPIs</p>
+                        <p className="text-2xl font-bold text-foreground">{kpiTracker.total}</p>
                       </div>
                       <Target className="w-8 h-8 text-purple-500" />
                     </div>
@@ -1314,9 +1314,9 @@ export default function MetaAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                        <p className="text-sm text-muted-foreground/70">On Track</p>
                         <p className="text-2xl font-bold text-green-600">{kpiTracker.onTrack}</p>
-                        <p className="text-xs text-slate-500">meeting or exceeding target</p>
+                        <p className="text-xs text-muted-foreground">meeting or exceeding target</p>
                       </div>
                       <CheckCircle2 className="w-8 h-8 text-green-500" />
                     </div>
@@ -1326,9 +1326,9 @@ export default function MetaAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
+                        <p className="text-sm text-muted-foreground/70">Needs Attention</p>
                         <p className="text-2xl font-bold text-amber-600">{kpiTracker.needsAttention}</p>
-                        <p className="text-xs text-slate-500">within 70–90% of target</p>
+                        <p className="text-xs text-muted-foreground">within 70–90% of target</p>
                       </div>
                       <AlertCircle className="w-8 h-8 text-amber-500" />
                     </div>
@@ -1338,9 +1338,9 @@ export default function MetaAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Behind</p>
+                        <p className="text-sm text-muted-foreground/70">Behind</p>
                         <p className="text-2xl font-bold text-red-600">{kpiTracker.behind}</p>
-                        <p className="text-xs text-slate-500">below 70% of target</p>
+                        <p className="text-xs text-muted-foreground">below 70% of target</p>
                       </div>
                       <AlertTriangle className="w-8 h-8 text-red-500" />
                     </div>
@@ -1350,8 +1350,8 @@ export default function MetaAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{kpiTracker.avgPct.toFixed(1)}%</p>
+                        <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
+                        <p className="text-2xl font-bold text-foreground">{kpiTracker.avgPct.toFixed(1)}%</p>
                       </div>
                       <TrendingUp className="w-8 h-8 text-violet-600" />
                     </div>
@@ -1362,8 +1362,8 @@ export default function MetaAnalytics() {
               {/* KPI Cards */}
               {kpisLoading ? (
                 <div className="animate-pulse space-y-4">
-                  <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                  <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  <div className="h-32 bg-muted rounded"></div>
+                  <div className="h-32 bg-muted rounded"></div>
                 </div>
               ) : Array.isArray(kpisData) && kpisData.length > 0 ? (
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -1385,7 +1385,7 @@ export default function MetaAnalytics() {
                               <div className="flex items-center gap-2 flex-wrap mb-1">
                                 <CardTitle className="text-lg">{kpi.name}</CardTitle>
                                 {metricKey && (
-                                  <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">
+                                  <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono">
                                     {metricKey.toUpperCase()}
                                   </Badge>
                                 )}
@@ -1394,7 +1394,7 @@ export default function MetaAnalytics() {
                                 {kpi.description || `Track ${metricDef.label} performance against target`}
                               </CardDescription>
                               <div className="mt-2">
-                                <Badge variant="outline" className="bg-slate-50 text-slate-700 dark:bg-slate-900/20 dark:text-slate-300 border-slate-200 dark:border-slate-800">
+                                <Badge variant="outline" className="bg-muted text-foreground/80/20/60 border-border">
                                   All Campaigns
                                 </Badge>
                               </div>
@@ -1403,7 +1403,7 @@ export default function MetaAnalytics() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
+                                className="h-8 w-8 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
                                 onClick={() => {
                                   setEditingKPI(kpi);
                                   setKpiForm({
@@ -1419,7 +1419,7 @@ export default function MetaAnalytics() {
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </AlertDialogTrigger>
@@ -1443,15 +1443,15 @@ export default function MetaAnalytics() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current</div>
-                              <div className="text-xl font-bold text-slate-900 dark:text-white">
+                            <div className="p-3 bg-muted rounded-lg">
+                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
+                              <div className="text-xl font-bold text-foreground">
                                 {formatMetaMetricValue(metricKey, currentVal)}
                               </div>
                             </div>
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Target</div>
-                              <div className="text-xl font-bold text-slate-900 dark:text-white">
+                            <div className="p-3 bg-muted rounded-lg">
+                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">Target</div>
+                              <div className="text-xl font-bold text-foreground">
                                 {formatMetaMetricValue(metricKey, targetVal)}
                               </div>
                             </div>
@@ -1459,7 +1459,7 @@ export default function MetaAnalytics() {
 
                           {targetVal > 0 && (
                             <div className="space-y-2">
-                              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                              <div className="flex items-center justify-between text-xs text-muted-foreground/70">
                                 <span>Progress</span>
                                 <span>{Math.round(progress.pct)}%</span>
                               </div>
@@ -1468,7 +1468,7 @@ export default function MetaAnalytics() {
                           )}
 
                           {targetVal > 0 && (
-                            <div className="text-xs text-slate-600 dark:text-slate-400">
+                            <div className="text-xs text-muted-foreground/70">
                               {Math.abs(deltaPct) < 0.01 ? 'At target' :
                                 deltaPct > 0 ? `${Math.round(Math.abs(deltaPct))}% above target (+${deltaPct.toFixed(1)}%)` :
                                 `${Math.round(Math.abs(deltaPct))}% below target (${deltaPct.toFixed(1)}%)`}
@@ -1480,7 +1480,7 @@ export default function MetaAnalytics() {
                   })}
                 </div>
               ) : (
-                <div className="text-sm text-slate-600 dark:text-slate-400">
+                <div className="text-sm text-muted-foreground/70">
                   No KPIs have been created yet. Click "Add KPI" to track your first Meta performance indicator.
                 </div>
               )}
@@ -1490,8 +1490,8 @@ export default function MetaAnalytics() {
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Benchmarks</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  <h2 className="text-2xl font-bold text-foreground">Benchmarks</h2>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
                     Compare your Meta campaign performance against industry benchmarks
                   </p>
                 </div>
@@ -1509,7 +1509,7 @@ export default function MetaAnalytics() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="border-slate-300 dark:border-slate-700"
+                  className="border-border"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Benchmark
@@ -1517,16 +1517,16 @@ export default function MetaAnalytics() {
               </div>
 
               {/* Meta info bar */}
-              <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 text-xs text-slate-600 dark:text-slate-400">
+              <div className="rounded-md border border-border p-3 text-xs text-muted-foreground/70">
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   <div>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">Benchmarks:</span> {benchmarkTracker.total}
+                    <span className="font-medium text-foreground/80/60">Benchmarks:</span> {benchmarkTracker.total}
                   </div>
                   <div>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">Campaigns:</span> {summary.totalCampaigns}
+                    <span className="font-medium text-foreground/80/60">Campaigns:</span> {summary.totalCampaigns}
                   </div>
                   <div>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">Data source:</span> Meta Graph API
+                    <span className="font-medium text-foreground/80/60">Data source:</span> Meta Graph API
                   </div>
                 </div>
               </div>
@@ -1537,8 +1537,8 @@ export default function MetaAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.total}</p>
+                        <p className="text-sm text-muted-foreground/70">Total Benchmarks</p>
+                        <p className="text-2xl font-bold text-foreground">{benchmarkTracker.total}</p>
                       </div>
                       <Target className="w-8 h-8 text-purple-500" />
                     </div>
@@ -1548,9 +1548,9 @@ export default function MetaAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                        <p className="text-sm text-muted-foreground/70">On Track</p>
                         <p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p>
-                        <p className="text-xs text-slate-500">meeting or exceeding benchmark</p>
+                        <p className="text-xs text-muted-foreground">meeting or exceeding benchmark</p>
                       </div>
                       <CheckCircle2 className="w-8 h-8 text-green-500" />
                     </div>
@@ -1560,9 +1560,9 @@ export default function MetaAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
+                        <p className="text-sm text-muted-foreground/70">Needs Attention</p>
                         <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
-                        <p className="text-xs text-slate-500">within 70–90% of benchmark</p>
+                        <p className="text-xs text-muted-foreground">within 70–90% of benchmark</p>
                       </div>
                       <AlertCircle className="w-8 h-8 text-amber-500" />
                     </div>
@@ -1572,9 +1572,9 @@ export default function MetaAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Behind</p>
+                        <p className="text-sm text-muted-foreground/70">Behind</p>
                         <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
-                        <p className="text-xs text-slate-500">below 70% of benchmark</p>
+                        <p className="text-xs text-muted-foreground">below 70% of benchmark</p>
                       </div>
                       <AlertTriangle className="w-8 h-8 text-red-500" />
                     </div>
@@ -1584,8 +1584,8 @@ export default function MetaAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{benchmarkTracker.avgPct.toFixed(1)}%</p>
+                        <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
+                        <p className="text-2xl font-bold text-foreground">{benchmarkTracker.avgPct.toFixed(1)}%</p>
                       </div>
                       <TrendingUp className="w-8 h-8 text-violet-600" />
                     </div>
@@ -1596,8 +1596,8 @@ export default function MetaAnalytics() {
               {/* Benchmark Cards */}
               {benchmarksLoading ? (
                 <div className="animate-pulse space-y-4">
-                  <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                  <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  <div className="h-32 bg-muted rounded"></div>
+                  <div className="h-32 bg-muted rounded"></div>
                 </div>
               ) : Array.isArray(benchmarksData) && benchmarksData.length > 0 ? (
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -1616,11 +1616,11 @@ export default function MetaAnalytics() {
                           <div className="flex items-start justify-between mb-4">
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
+                                <h3 className="font-semibold text-foreground text-lg">
                                   {benchmark.name}
                                 </h3>
                                 {metricKey && (
-                                  <Badge variant="outline" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">
+                                  <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono">
                                     {metricKey.toUpperCase()}
                                   </Badge>
                                 )}
@@ -1628,10 +1628,10 @@ export default function MetaAnalytics() {
                                   All Campaigns
                                 </Badge>
                               </div>
-                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                              <p className="text-sm text-muted-foreground/70 mt-1">
                                 {benchmark.description || `Compare ${metricDef.label} against benchmark`}
                               </p>
-                              <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                                 {benchmark.industry && <span>{benchmark.industry}</span>}
                               </div>
                             </div>
@@ -1679,21 +1679,21 @@ export default function MetaAnalytics() {
                           </div>
 
                           <div className="grid gap-4 md:grid-cols-3">
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current Value</div>
-                              <div className="text-lg font-bold text-slate-900 dark:text-white">
+                            <div className="p-3 bg-muted rounded-lg">
+                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current Value</div>
+                              <div className="text-lg font-bold text-foreground">
                                 {formatMetaMetricValue(metricKey, currentVal)}
                               </div>
                             </div>
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Benchmark Value</div>
-                              <div className="text-lg font-bold text-slate-900 dark:text-white">
+                            <div className="p-3 bg-muted rounded-lg">
+                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">Benchmark Value</div>
+                              <div className="text-lg font-bold text-foreground">
                                 {formatMetaMetricValue(metricKey, benchVal)}
                               </div>
                             </div>
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Source</div>
-                              <div className="text-lg font-bold text-slate-900 dark:text-white">
+                            <div className="p-3 bg-muted rounded-lg">
+                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">Source</div>
+                              <div className="text-lg font-bold text-foreground">
                                 {benchmark.industry ? `Industry (${benchmark.industry})` : 'Custom'}
                               </div>
                             </div>
@@ -1701,7 +1701,7 @@ export default function MetaAnalytics() {
 
                           {benchVal > 0 && (
                             <div className="mt-4">
-                              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                              <div className="flex items-center justify-between text-xs text-muted-foreground/70">
                                 <span>Progress</span>
                                 <span>{Math.round(progress.pct)}%</span>
                               </div>
@@ -1714,7 +1714,7 @@ export default function MetaAnalytics() {
                   })}
                 </div>
               ) : (
-                <div className="text-sm text-slate-600 dark:text-slate-400">
+                <div className="text-sm text-muted-foreground/70">
                   No benchmarks have been created yet. Click "Add Benchmark" to compare your Meta performance against industry standards.
                 </div>
               )}
@@ -1723,8 +1723,8 @@ export default function MetaAnalytics() {
             <TabsContent value="ad-comparison" className="space-y-6 fade-in">
               {/* Header */}
               <div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Campaign Comparison</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                <h2 className="text-2xl font-bold text-foreground">Campaign Comparison</h2>
+                <p className="text-sm text-muted-foreground/70 mt-1">
                   Compare performance across all Meta campaigns
                 </p>
               </div>
@@ -1742,7 +1742,7 @@ export default function MetaAnalytics() {
                     <div className="space-y-2">
                       <div>
                         <p className="font-semibold text-green-600">Product Launch - Holiday Sale</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">ROAS: 6.2x • CTR: 2.8%</p>
+                        <p className="text-xs text-muted-foreground/70">ROAS: 6.2x • CTR: 2.8%</p>
                       </div>
                     </div>
                   </CardContent>
@@ -1759,7 +1759,7 @@ export default function MetaAnalytics() {
                     <div className="space-y-2">
                       <div>
                         <p className="font-semibold text-blue-600">Retargeting Campaign</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">CPC: $0.72 • CPM: $11.20</p>
+                        <p className="text-xs text-muted-foreground/70">CPC: $0.72 • CPM: $11.20</p>
                       </div>
                     </div>
                   </CardContent>
@@ -1776,7 +1776,7 @@ export default function MetaAnalytics() {
                     <div className="space-y-2">
                       <div>
                         <p className="font-semibold text-orange-600">Video Views Campaign</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">CTR: 0.8% • Conv Rate: 1.2%</p>
+                        <p className="text-xs text-muted-foreground/70">CTR: 0.8% • Conv Rate: 1.2%</p>
                       </div>
                     </div>
                   </CardContent>
@@ -1851,11 +1851,11 @@ export default function MetaAnalytics() {
                       const performance = performanceScore > 20 ? 'excellent' : performanceScore > 15 ? 'good' : performanceScore > 10 ? 'average' : 'poor';
 
                       return (
-                        <div key={campaign.id} className="border rounded-lg p-4 bg-white dark:bg-slate-900">
+                        <div key={campaign.id} className="border rounded-lg p-4 bg-card">
                           {/* Campaign header with performance badge */}
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                              <h4 className="font-semibold text-slate-900 dark:text-white">{campaign.name}</h4>
+                              <h4 className="font-semibold text-foreground">{campaign.name}</h4>
                               <Badge variant={campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-xs">
                                 {campaign.status}
                               </Badge>
@@ -1864,73 +1864,73 @@ export default function MetaAnalytics() {
                               {performance === 'average' && <Badge variant="secondary" className="text-xs">Average</Badge>}
                               {performance === 'poor' && <Badge variant="destructive" className="text-xs">Poor</Badge>}
                             </div>
-                            <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totals.spend || 0)}</span>
+                            <span className="text-lg font-bold text-foreground">{formatCurrency(totals.spend || 0)}</span>
                           </div>
-                          <p className="text-xs text-slate-500 mb-3">{campaign.objective}</p>
+                          <p className="text-xs text-muted-foreground mb-3">{campaign.objective}</p>
 
                           {/* Core metrics — prominent */}
                           <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-3">
                             <div>
-                              <p className="text-xs text-slate-500 font-medium">Impressions</p>
-                              <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.impressions)}</p>
+                              <p className="text-xs text-muted-foreground font-medium">Impressions</p>
+                              <p className="text-base font-bold text-foreground">{formatNum(totals.impressions)}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-slate-500 font-medium">Reach</p>
-                              <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.reach)}</p>
+                              <p className="text-xs text-muted-foreground font-medium">Reach</p>
+                              <p className="text-base font-bold text-foreground">{formatNum(totals.reach)}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-slate-500 font-medium">Clicks</p>
-                              <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.clicks)}</p>
+                              <p className="text-xs text-muted-foreground font-medium">Clicks</p>
+                              <p className="text-base font-bold text-foreground">{formatNum(totals.clicks)}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-slate-500 font-medium">CTR</p>
-                              <p className={`text-base font-bold ${totals.ctr > 1.5 ? 'text-green-600' : totals.ctr < 1.0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}`}>
+                              <p className="text-xs text-muted-foreground font-medium">CTR</p>
+                              <p className={`text-base font-bold ${totals.ctr > 1.5 ? 'text-green-600' : totals.ctr < 1.0 ? 'text-red-600' : 'text-foreground'}`}>
                                 {formatPct(totals.ctr)}
                               </p>
                             </div>
                             <div>
-                              <p className="text-xs text-slate-500 font-medium">Conversions</p>
-                              <p className="text-base font-bold text-slate-900 dark:text-white">{formatNum(totals.conversions)}</p>
+                              <p className="text-xs text-muted-foreground font-medium">Conversions</p>
+                              <p className="text-base font-bold text-foreground">{formatNum(totals.conversions)}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-slate-500 font-medium">Conv Rate</p>
-                              <p className={`text-base font-bold ${totals.conversionRate > 3.0 ? 'text-green-600' : totals.conversionRate < 2.0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}`}>
+                              <p className="text-xs text-muted-foreground font-medium">Conv Rate</p>
+                              <p className={`text-base font-bold ${totals.conversionRate > 3.0 ? 'text-green-600' : totals.conversionRate < 2.0 ? 'text-red-600' : 'text-foreground'}`}>
                                 {formatPct(totals.conversionRate)}
                               </p>
                             </div>
                           </div>
 
                           {/* Secondary metrics — smaller */}
-                          <div className="grid grid-cols-3 md:grid-cols-6 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                          <div className="grid grid-cols-3 md:grid-cols-6 gap-3 pt-3 border-t border-slate-100">
                             <div>
-                              <p className="text-[10px] text-slate-400 font-medium">CPC</p>
-                              <p className={`text-sm font-semibold ${totals.cpc < 1.0 ? 'text-green-600' : totals.cpc > 1.5 ? 'text-red-600' : 'text-slate-700 dark:text-slate-300'}`}>
+                              <p className="text-[10px] text-muted-foreground/70 font-medium">CPC</p>
+                              <p className={`text-sm font-semibold ${totals.cpc < 1.0 ? 'text-green-600' : totals.cpc > 1.5 ? 'text-red-600' : 'text-foreground/80/60'}`}>
                                 {formatCurrency(totals.cpc)}
                               </p>
                             </div>
                             <div>
-                              <p className="text-[10px] text-slate-400 font-medium">CPM</p>
-                              <p className={`text-sm font-semibold ${totals.cpm < 12 ? 'text-green-600' : totals.cpm > 18 ? 'text-red-600' : 'text-slate-700 dark:text-slate-300'}`}>
+                              <p className="text-[10px] text-muted-foreground/70 font-medium">CPM</p>
+                              <p className={`text-sm font-semibold ${totals.cpm < 12 ? 'text-green-600' : totals.cpm > 18 ? 'text-red-600' : 'text-foreground/80/60'}`}>
                                 {formatCurrency(totals.cpm)}
                               </p>
                             </div>
                             <div>
-                              <p className="text-[10px] text-slate-400 font-medium">CPP</p>
-                              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.cpp)}</p>
+                              <p className="text-[10px] text-muted-foreground/70 font-medium">CPP</p>
+                              <p className="text-sm font-semibold text-foreground/80/60">{formatCurrency(totals.cpp)}</p>
                             </div>
                             <div>
-                              <p className="text-[10px] text-slate-400 font-medium">Frequency</p>
-                              <p className={`text-sm font-semibold ${totals.frequency > 3.0 ? 'text-orange-600' : 'text-slate-700 dark:text-slate-300'}`}>
+                              <p className="text-[10px] text-muted-foreground/70 font-medium">Frequency</p>
+                              <p className={`text-sm font-semibold ${totals.frequency > 3.0 ? 'text-orange-600' : 'text-foreground/80/60'}`}>
                                 {totals.frequency.toFixed(2)}
                               </p>
                             </div>
                             <div>
-                              <p className="text-[10px] text-slate-400 font-medium">Cost/Conv</p>
-                              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(totals.costPerConversion)}</p>
+                              <p className="text-[10px] text-muted-foreground/70 font-medium">Cost/Conv</p>
+                              <p className="text-sm font-semibold text-foreground/80/60">{formatCurrency(totals.costPerConversion)}</p>
                             </div>
                             <div>
-                              <p className="text-[10px] text-slate-400 font-medium">Video Views</p>
-                              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatNum(totals.videoViews)}</p>
+                              <p className="text-[10px] text-muted-foreground/70 font-medium">Video Views</p>
+                              <p className="text-sm font-semibold text-foreground/80/60">{formatNum(totals.videoViews)}</p>
                             </div>
                           </div>
                         </div>
@@ -1990,7 +1990,7 @@ export default function MetaAnalytics() {
                     <div className="overflow-hidden border rounded-md">
                       <div className="max-h-[480px] overflow-y-auto">
                         <table className="w-full text-sm table-fixed">
-                          <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b">
+                          <thead className="sticky top-0 z-10 bg-muted border-b">
                             <tr>
                               <th className="text-left font-medium px-2 py-2 w-[40px]">#</th>
                               <th className="text-left font-medium px-2 py-2">Campaign</th>
@@ -2008,14 +2008,14 @@ export default function MetaAnalytics() {
                               const fmtN = (v: number) => v.toLocaleString();
                               return (
                                 <tr key={c.name || idx} className="border-b last:border-b-0">
-                                  <td className="px-2 py-2 text-slate-500 tabular-nums">{idx + 1}</td>
-                                  <td className="px-2 py-2 truncate font-medium text-slate-900 dark:text-white" title={c.name}>{c.name}</td>
+                                  <td className="px-2 py-2 text-muted-foreground tabular-nums">{idx + 1}</td>
+                                  <td className="px-2 py-2 truncate font-medium text-foreground" title={c.name}>{c.name}</td>
                                   <td className="px-2 py-2 text-right tabular-nums">{fmtN(c.impressions)}</td>
                                   <td className="px-2 py-2 text-right tabular-nums">{fmtN(c.clicks)}</td>
                                   <td className="px-2 py-2 text-right tabular-nums">{fmtC(c.spend)}</td>
                                   <td className="px-2 py-2 text-right tabular-nums">{fmtN(Math.round(c.conversions))}</td>
-                                  <td className="px-2 py-2 text-right tabular-nums">{c.ga4Roas !== null ? fmtC(c.ga4Revenue) : <span className="text-slate-400">—</span>}</td>
-                                  <td className={`px-2 py-2 text-right tabular-nums font-medium ${c.ga4Roas === null ? "text-slate-400" : c.ga4Roas >= 1 ? "text-emerald-600" : "text-red-600"}`}>
+                                  <td className="px-2 py-2 text-right tabular-nums">{c.ga4Roas !== null ? fmtC(c.ga4Revenue) : <span className="text-muted-foreground/70">—</span>}</td>
+                                  <td className={`px-2 py-2 text-right tabular-nums font-medium ${c.ga4Roas === null ? "text-muted-foreground/70" : c.ga4Roas >= 1 ? "text-emerald-600" : "text-red-600"}`}>
                                     {c.ga4Roas !== null ? `${c.ga4Roas.toFixed(2)}x` : "—"}
                                   </td>
                                 </tr>
@@ -2033,14 +2033,14 @@ export default function MetaAnalytics() {
             <TabsContent value="insights" className="space-y-6 fade-in">
               <div className="space-y-6 fade-in">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Insights</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  <h2 className="text-2xl font-bold text-foreground">Insights</h2>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
                     Actionable insights from financial metrics plus KPI + Benchmark performance.
                   </p>
                 </div>
 
                 {/* Executive Financials */}
-                <Card className="border-slate-200 dark:border-slate-700">
+                <Card className="border-border">
                   <CardHeader>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
@@ -2055,50 +2055,50 @@ export default function MetaAnalytics() {
                     <div className="grid gap-4 md:grid-cols-4">
                       <Card>
                         <CardContent className="p-5">
-                          <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Spend</div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                          <div className="text-sm font-medium text-muted-foreground/70">Spend</div>
+                          <div className="text-2xl font-bold text-foreground">
                             ${summary.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Source: Meta Ads</div>
+                          <div className="text-xs text-muted-foreground/70 mt-1">Source: Meta Ads</div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="p-5">
-                          <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                          <div className="text-sm font-medium text-muted-foreground/70">Total Revenue</div>
+                          <div className="text-2xl font-bold text-foreground">
                             ${(revenueSummary?.hasRevenueTracking ? revenueSummary.totalRevenue : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          <div className="text-xs text-muted-foreground/70 mt-1">
                             {revenueSummary?.hasRevenueTracking ? "From connected revenue source" : "Not connected"}
                           </div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="p-5">
-                          <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROAS</div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                          <div className="text-sm font-medium text-muted-foreground/70">ROAS</div>
+                          <div className="text-2xl font-bold text-foreground">
                             {revenueSummary?.hasRevenueTracking && summary.totalSpend > 0
                               ? (revenueSummary.totalRevenue / summary.totalSpend).toFixed(2)
                               : '0.00'}x
                           </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Revenue ÷ Spend</div>
+                          <div className="text-xs text-muted-foreground/70 mt-1">Revenue ÷ Spend</div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="p-5">
-                          <div className="text-sm font-medium text-slate-600 dark:text-slate-400">ROI</div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                          <div className="text-sm font-medium text-muted-foreground/70">ROI</div>
+                          <div className="text-2xl font-bold text-foreground">
                             {revenueSummary?.hasRevenueTracking && summary.totalSpend > 0
                               ? (((revenueSummary.totalRevenue - summary.totalSpend) / summary.totalSpend) * 100).toFixed(1)
                               : '0.0'}%
                           </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">(Revenue - Spend) ÷ Spend</div>
+                          <div className="text-xs text-muted-foreground/70 mt-1">(Revenue - Spend) ÷ Spend</div>
                         </CardContent>
                       </Card>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
-                      <div className="font-medium text-slate-700 dark:text-slate-300 mb-1">Sources used</div>
+                    <div className="mt-4 pt-3 border-t border-border text-xs text-muted-foreground/70">
+                      <div className="font-medium text-foreground/80/60 mb-1">Sources used</div>
                       <div className="grid gap-1">
                         <div>
                           <span className="font-medium">Spend</span>: Meta Graph API
@@ -2117,7 +2117,7 @@ export default function MetaAnalytics() {
                 </Card>
 
                 {/* Trends - Daily/7d/30d */}
-                <Card className="border-slate-200 dark:border-slate-700">
+                <Card className="border-border">
                   <CardHeader>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                       <div>
@@ -2159,7 +2159,7 @@ export default function MetaAnalytics() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {metaDailyLoading ? (
-                      <div className="text-sm text-slate-600 dark:text-slate-400">Loading daily history...</div>
+                      <div className="text-sm text-muted-foreground/70">Loading daily history...</div>
                     ) : (
                       <>
                         {(() => {
@@ -2170,14 +2170,14 @@ export default function MetaAnalytics() {
 
                           if (available <= 0) {
                             return (
-                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                              <div className="text-sm text-muted-foreground/70">
                                 No Meta daily history is available yet. Connect your Meta account and wait for daily data to populate.
                               </div>
                             );
                           }
                           if (available < minRequired) {
                             return (
-                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                              <div className="text-sm text-muted-foreground/70">
                                 Need at least {minRequired} days of Meta daily history for this view. Available days: {available}.
                               </div>
                             );
@@ -2217,7 +2217,7 @@ export default function MetaAnalytics() {
                           {insightsTrendMode === 'daily' ? (
                             <div>
                               <table className="w-full text-sm table-fixed">
-                                <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                                <thead className="bg-muted border-b">
                                   <tr>
                                     <th className="text-left p-3 w-[38%]">Date</th>
                                     <th className="text-right p-3 w-[31%]">
@@ -2236,7 +2236,7 @@ export default function MetaAnalytics() {
                                     const rows = daily.slice(-visibleDays);
                                     if (rows.length === 0) {
                                       return (
-                                        <tr><td colSpan={3} className="p-4 text-sm text-slate-600 dark:text-slate-400">No daily records available yet.</td></tr>
+                                        <tr><td colSpan={3} className="p-4 text-sm text-muted-foreground/70">No daily records available yet.</td></tr>
                                       );
                                     }
                                     return rows.map((r: any, idx: number, arr: any[]) => {
@@ -2257,13 +2257,13 @@ export default function MetaAnalytics() {
                                       return (
                                         <tr key={r.date} className="border-b">
                                           <td className="p-3">
-                                            <div className="font-medium text-slate-900 dark:text-white">{formatShortDate(String(r.date || ''))}</div>
+                                            <div className="font-medium text-foreground">{formatShortDate(String(r.date || ''))}</div>
                                           </td>
                                           <td className="p-3 text-right">
-                                            <div className="font-medium text-slate-900 dark:text-white">{formatValue(metricKey, curVal)}</div>
+                                            <div className="font-medium text-foreground">{formatValue(metricKey, curVal)}</div>
                                           </td>
                                           <td className="p-3 text-right">
-                                            <div className={`text-xs ${showDelta ? (deltaPct >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300') : 'text-slate-400'}`}>
+                                            <div className={`text-xs ${showDelta ? (deltaPct >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300') : 'text-muted-foreground/70'}`}>
                                               {showDelta ? `${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%` : '—'}
                                             </div>
                                           </td>
@@ -2274,7 +2274,7 @@ export default function MetaAnalytics() {
                                 </tbody>
                               </table>
                               {metaDailySeries.daily.length > 7 && (
-                                <div className="flex justify-end px-3 py-2 bg-white dark:bg-slate-950">
+                                <div className="flex justify-end px-3 py-2 bg-card">
                                   <Button type="button" variant="ghost" size="sm" onClick={() => setInsightsDailyShowMore((v) => !v)} className="h-8 text-xs">
                                     {insightsDailyShowMore ? 'View less' : 'View more'}
                                   </Button>
@@ -2283,7 +2283,7 @@ export default function MetaAnalytics() {
                             </div>
                           ) : (
                             <table className="w-full text-sm table-fixed">
-                              <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+                              <thead className="bg-muted border-b">
                                 <tr>
                                   <th className="text-left p-3 w-[38%]">Period</th>
                                   <th className="text-right p-3 w-[31%]">
@@ -2302,7 +2302,7 @@ export default function MetaAnalytics() {
                                   const minRequired = is7 ? 14 : 60;
                                   if (available < minRequired) {
                                     return (
-                                      <tr><td colSpan={3} className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                                      <tr><td colSpan={3} className="p-4 text-sm text-muted-foreground/70">
                                         {available <= 0 ? 'No records available yet.' : `Need at least ${minRequired} days for this view. Available: ${available}.`}
                                       </td></tr>
                                     );
@@ -2327,13 +2327,13 @@ export default function MetaAnalytics() {
                                   return (
                                     <tr key={row.key} className="border-b">
                                       <td className="p-3">
-                                        <div className="font-medium text-slate-900 dark:text-white">{row.cur.endDate}</div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                        <div className="font-medium text-foreground">{row.cur.endDate}</div>
+                                        <div className="text-xs text-muted-foreground/70 mt-0.5">
                                           {row.cur.startDate} → {row.cur.endDate} ({row.label})
                                         </div>
                                       </td>
                                       <td className="p-3 text-right">
-                                        <div className="font-medium text-slate-900 dark:text-white">{valueFor(row.cur)}</div>
+                                        <div className="font-medium text-foreground">{valueFor(row.cur)}</div>
                                       </td>
                                       <td className="p-3 text-right">
                                         <div className={`text-xs ${deltaColor}`}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}%</div>
@@ -2452,10 +2452,10 @@ export default function MetaAnalytics() {
                           <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total insights</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-white">{allInsights.length}</p>
+                                <p className="text-sm font-medium text-muted-foreground/70">Total insights</p>
+                                <p className="text-2xl font-bold text-foreground">{allInsights.length}</p>
                               </div>
-                              <Activity className="w-7 h-7 text-slate-600" />
+                              <Activity className="w-7 h-7 text-muted-foreground" />
                             </div>
                           </CardContent>
                         </Card>
@@ -2463,7 +2463,7 @@ export default function MetaAnalytics() {
                           <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">High priority</p>
+                                <p className="text-sm font-medium text-muted-foreground/70">High priority</p>
                                 <p className="text-2xl font-bold text-red-600">{highPriority.length}</p>
                               </div>
                               <AlertTriangle className="w-7 h-7 text-red-600" />
@@ -2474,7 +2474,7 @@ export default function MetaAnalytics() {
                           <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Needs attention</p>
+                                <p className="text-sm font-medium text-muted-foreground/70">Needs attention</p>
                                 <p className="text-2xl font-bold text-amber-600">{medPriority.length}</p>
                               </div>
                               <TrendingDown className="w-7 h-7 text-amber-600" />
@@ -2484,7 +2484,7 @@ export default function MetaAnalytics() {
                       </div>
 
                       {/* What changed, what to do next */}
-                      <Card className="border-slate-200 dark:border-slate-700">
+                      <Card className="border-border">
                         <CardHeader>
                           <CardTitle>What changed, what to do next</CardTitle>
                           <CardDescription>
@@ -2494,15 +2494,15 @@ export default function MetaAnalytics() {
                         <CardContent className="space-y-3">
                           {/* Goal impact panel */}
                           {(kpiTracker.behind > 0 || benchmarkTracker.behind > 0) && (
-                            <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3">
-                              <div className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
+                            <div className="rounded-md border border-border p-3">
+                              <div className="text-sm font-semibold text-foreground mb-3">
                                 Goal impact (KPIs & Benchmarks)
                               </div>
                               <div className="grid gap-3 md:grid-cols-2">
                                 {kpiTracker.behind > 0 && (
-                                  <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3">
+                                  <div className="rounded-md border border-border p-3">
                                     <div className="flex items-center justify-between">
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">Top KPI gaps</div>
+                                      <div className="text-sm font-semibold text-foreground">Top KPI gaps</div>
                                       <Badge variant="outline" className="text-xs">{kpiTracker.behind}</Badge>
                                     </div>
                                     <div className="mt-3 space-y-2">
@@ -2517,8 +2517,8 @@ export default function MetaAnalytics() {
                                         return (
                                           <div key={kpi.id} className="flex items-center justify-between gap-2">
                                             <div className="min-w-0">
-                                              <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{kpi.name}</div>
-                                              <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                              <div className="text-sm font-medium text-foreground truncate">{kpi.name}</div>
+                                              <div className="text-xs text-muted-foreground/70 truncate">
                                                 {def.label}: {def.format(current)} / {def.format(target)}
                                               </div>
                                             </div>
@@ -2532,9 +2532,9 @@ export default function MetaAnalytics() {
                                   </div>
                                 )}
                                 {benchmarkTracker.behind > 0 && (
-                                  <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3">
+                                  <div className="rounded-md border border-border p-3">
                                     <div className="flex items-center justify-between">
-                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">Top Benchmark gaps</div>
+                                      <div className="text-sm font-semibold text-foreground">Top Benchmark gaps</div>
                                       <Badge variant="outline" className="text-xs">{benchmarkTracker.behind}</Badge>
                                     </div>
                                     <div className="mt-3 space-y-2">
@@ -2549,8 +2549,8 @@ export default function MetaAnalytics() {
                                         return (
                                           <div key={b.id} className="flex items-center justify-between gap-2">
                                             <div className="min-w-0">
-                                              <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{b.name}</div>
-                                              <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                              <div className="text-sm font-medium text-foreground truncate">{b.name}</div>
+                                              <div className="text-xs text-muted-foreground/70 truncate">
                                                 {def.label}: {def.format(current)} / {def.format(benchVal)}
                                               </div>
                                             </div>
@@ -2571,7 +2571,7 @@ export default function MetaAnalytics() {
                           {(kpiTracker.onTrack > 0 || benchmarkTracker.onTrack > 0) && (
                             <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20">
                               <CardHeader>
-                                <div className="text-sm font-semibold text-slate-900 dark:text-white">Success stories</div>
+                                <div className="text-sm font-semibold text-foreground">Success stories</div>
                                 <CardDescription className="text-emerald-700 dark:text-emerald-300 mt-1">
                                   KPIs and Benchmarks currently meeting or exceeding targets
                                 </CardDescription>
@@ -2579,9 +2579,9 @@ export default function MetaAnalytics() {
                               <CardContent>
                                 <div className="grid gap-3 md:grid-cols-2">
                                   {kpiTracker.onTrack > 0 && (
-                                    <div className="rounded-md border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-950 p-3">
+                                    <div className="rounded-md border border-emerald-200 dark:border-emerald-800 bg-card p-3">
                                       <div className="flex items-center justify-between">
-                                        <div className="text-sm font-semibold text-slate-900 dark:text-white">On-track KPIs</div>
+                                        <div className="text-sm font-semibold text-foreground">On-track KPIs</div>
                                         <Badge variant="outline" className="text-xs text-emerald-700 border-emerald-300 dark:text-emerald-300 dark:border-emerald-700">
                                           {kpiTracker.onTrack}
                                         </Badge>
@@ -2597,8 +2597,8 @@ export default function MetaAnalytics() {
                                           return (
                                             <div key={kpi.id} className="flex items-center justify-between gap-2">
                                               <div className="min-w-0">
-                                                <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{kpi.name}</div>
-                                                <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                                <div className="text-sm font-medium text-foreground truncate">{kpi.name}</div>
+                                                <div className="text-xs text-muted-foreground/70 truncate">
                                                   {def.label}: {def.format(current)}
                                                 </div>
                                               </div>
@@ -2612,9 +2612,9 @@ export default function MetaAnalytics() {
                                     </div>
                                   )}
                                   {benchmarkTracker.onTrack > 0 && (
-                                    <div className="rounded-md border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-950 p-3">
+                                    <div className="rounded-md border border-emerald-200 dark:border-emerald-800 bg-card p-3">
                                       <div className="flex items-center justify-between">
-                                        <div className="text-sm font-semibold text-slate-900 dark:text-white">On-track Benchmarks</div>
+                                        <div className="text-sm font-semibold text-foreground">On-track Benchmarks</div>
                                         <Badge variant="outline" className="text-xs text-emerald-700 border-emerald-300 dark:text-emerald-300 dark:border-emerald-700">
                                           {benchmarkTracker.onTrack}
                                         </Badge>
@@ -2630,8 +2630,8 @@ export default function MetaAnalytics() {
                                           return (
                                             <div key={b.id} className="flex items-center justify-between gap-2">
                                               <div className="min-w-0">
-                                                <div className="text-sm font-medium text-slate-900 dark:text-white truncate">{b.name}</div>
-                                                <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                                <div className="text-sm font-medium text-foreground truncate">{b.name}</div>
+                                                <div className="text-xs text-muted-foreground/70 truncate">
                                                   {def.label}: {def.format(current)}
                                                 </div>
                                               </div>
@@ -2651,7 +2651,7 @@ export default function MetaAnalytics() {
 
                           {/* Insight cards */}
                           {allInsights.length === 0 ? (
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                            <div className="text-sm text-muted-foreground/70">
                               No insights available yet. Create KPIs and Benchmarks to unlock performance insights.
                             </div>
                           ) : (
@@ -2659,26 +2659,26 @@ export default function MetaAnalytics() {
                               {allInsights.filter(i => i.group === 'integrity').length > 0 && (
                                 <div className="space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Data integrity & configuration</div>
+                                    <div className="text-sm font-semibold text-foreground/80/60">Data integrity & configuration</div>
                                     <Badge variant="outline" className="text-xs">{allInsights.filter(i => i.group === 'integrity').length}</Badge>
                                   </div>
                                   {allInsights.filter(i => i.group === 'integrity').map(i => (
-                                    <div key={i.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                    <div key={i.id} className="rounded-lg border border-border p-4">
                                       <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
                                           <div className="flex items-center gap-2 flex-wrap">
-                                            <div className="font-semibold text-slate-900 dark:text-white">{i.title}</div>
+                                            <div className="font-semibold text-foreground">{i.title}</div>
                                             <Badge className={`text-xs border ${
                                               i.severity === 'high' ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
                                               : i.severity === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
-                                              : 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
+                                              : 'bg-muted text-foreground border-border dark:text-slate-200'
                                             }`}>
                                               {i.severity === 'high' ? 'High' : i.severity === 'medium' ? 'Medium' : 'Low'}
                                             </Badge>
                                           </div>
-                                          <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{i.description}</div>
+                                          <div className="text-sm text-muted-foreground/70 mt-1">{i.description}</div>
                                           {i.recommendation && (
-                                            <div className="text-sm text-slate-700 dark:text-slate-300 mt-2">
+                                            <div className="text-sm text-foreground/80/60 mt-2">
                                               <span className="font-medium">Next step:</span> {i.recommendation}
                                             </div>
                                           )}
@@ -2692,26 +2692,26 @@ export default function MetaAnalytics() {
                               {allInsights.filter(i => i.group === 'performance').length > 0 && (
                                 <div className="space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">Performance & KPI/Benchmark gaps</div>
+                                    <div className="text-sm font-semibold text-foreground/80/60">Performance & KPI/Benchmark gaps</div>
                                     <Badge variant="outline" className="text-xs">{allInsights.filter(i => i.group === 'performance').length}</Badge>
                                   </div>
                                   {allInsights.filter(i => i.group === 'performance').map(i => (
-                                    <div key={i.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+                                    <div key={i.id} className="rounded-lg border border-border p-4">
                                       <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
                                           <div className="flex items-center gap-2 flex-wrap">
-                                            <div className="font-semibold text-slate-900 dark:text-white">{i.title}</div>
+                                            <div className="font-semibold text-foreground">{i.title}</div>
                                             <Badge className={`text-xs border ${
                                               i.severity === 'high' ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
                                               : i.severity === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
-                                              : 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
+                                              : 'bg-muted text-foreground border-border dark:text-slate-200'
                                             }`}>
                                               {i.severity === 'high' ? 'High' : i.severity === 'medium' ? 'Medium' : 'Low'}
                                             </Badge>
                                           </div>
-                                          <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{i.description}</div>
+                                          <div className="text-sm text-muted-foreground/70 mt-1">{i.description}</div>
                                           {i.recommendation && (
-                                            <div className="text-sm text-slate-700 dark:text-slate-300 mt-2">
+                                            <div className="text-sm text-foreground/80/60 mt-2">
                                               <span className="font-medium">Next step:</span> {i.recommendation}
                                             </div>
                                           )}
@@ -2735,8 +2735,8 @@ export default function MetaAnalytics() {
               {/* Header with Create Button */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Reports</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  <h2 className="text-2xl font-bold text-foreground">Reports</h2>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
                     Create, schedule, and manage Meta analytics reports
                   </p>
                 </div>
@@ -2768,8 +2768,8 @@ export default function MetaAnalytics() {
               {/* Reports List */}
               {reportsLoading ? (
                 <div className="animate-pulse space-y-4">
-                  <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-                  <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                  <div className="h-32 bg-muted rounded"></div>
+                  <div className="h-32 bg-muted rounded"></div>
                 </div>
               ) : reportsData && Array.isArray(reportsData) && reportsData.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
@@ -2778,27 +2778,27 @@ export default function MetaAnalytics() {
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+                            <h3 className="font-semibold text-foreground mb-1">
                               {report.name}
                             </h3>
                             {report.description && (
-                              <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                              <p className="text-sm text-muted-foreground/70 mb-3">
                                 {report.description}
                               </p>
                             )}
                             <div className="flex items-center gap-4 text-sm">
                               <Badge variant="outline">{report.reportType || 'performance_summary'}</Badge>
                               {report.scheduleEnabled && report.scheduleFrequency && (
-                                <span className="text-slate-500 flex items-center gap-1">
+                                <span className="text-muted-foreground flex items-center gap-1">
                                   {report.scheduleFrequency}{report.scheduleTime ? ` at ${report.scheduleTime}` : ''}
                                 </span>
                               )}
                               {report.lastSentAt && (
-                                <span className="text-slate-500">
+                                <span className="text-muted-foreground">
                                   Last sent {new Date(report.lastSentAt).toLocaleDateString()}
                                 </span>
                               )}
-                              <span className="text-slate-400">
+                              <span className="text-muted-foreground/70">
                                 Created {new Date(report.createdAt).toLocaleDateString()}
                               </span>
                             </div>
@@ -2861,9 +2861,9 @@ export default function MetaAnalytics() {
                 <Card>
                   <CardContent>
                     <div className="text-center py-12">
-                      <Activity className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-                      <p className="text-slate-500 dark:text-slate-400">No reports created yet</p>
-                      <p className="text-sm text-slate-400 dark:text-slate-500 mt-2">
+                      <Activity className="w-12 h-12 text-muted-foreground/60/80 mx-auto mb-4" />
+                      <p className="text-muted-foreground/70">No reports created yet</p>
+                      <p className="text-sm text-muted-foreground/70 mt-2">
                         Create your first report to get started
                       </p>
                     </div>

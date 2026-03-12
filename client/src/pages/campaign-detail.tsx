@@ -1087,7 +1087,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       case 'Behind':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       default:
-        return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+        return 'bg-muted text-foreground/60';
     }
   };
 
@@ -1100,7 +1100,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       case 'Low':
         return 'text-green-600 bg-green-100 dark:bg-green-900 dark:text-green-300';
       default:
-        return 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300';
+        return 'text-muted-foreground bg-muted/60';
     }
   };
 
@@ -1113,7 +1113,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       case 'stable':
         return <Target className="w-4 h-4 text-blue-600" />;
       default:
-        return <Clock className="w-4 h-4 text-slate-600" />;
+        return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
@@ -1130,7 +1130,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       case 'Brand':
         return <Award className="w-5 h-5 text-orange-500" />;
       default:
-        return <Target className="w-5 h-5 text-slate-500" />;
+        return <Target className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
@@ -1139,8 +1139,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Campaign KPIs</h2>
-          <p className="text-slate-600 dark:text-slate-400">
+          <h2 className="text-2xl font-bold text-foreground">Campaign KPIs</h2>
+          <p className="text-muted-foreground/70">
             Track key performance indicators and monitor campaign success metrics
           </p>
         </div>
@@ -1167,9 +1167,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">{s.label}</p>
-                      <p className={`text-2xl font-bold ${s.color || 'text-slate-900 dark:text-white'}`}>{s.value}</p>
-                      {s.desc && <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{s.desc}</p>}
+                      <p className="text-sm text-muted-foreground/70">{s.label}</p>
+                      <p className={`text-2xl font-bold ${s.color || 'text-foreground'}`}>{s.value}</p>
+                      {s.desc && <p className="text-xs text-muted-foreground mt-1">{s.desc}</p>}
                     </div>
                     {s.icon}
                   </div>
@@ -1186,8 +1186,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Total KPIs</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-total-kpis">
+                    <p className="text-sm text-muted-foreground/70">Total KPIs</p>
+                    <p className="text-2xl font-bold text-foreground" data-testid="text-total-kpis">
                       {kpis.length}
                     </p>
                   </div>
@@ -1200,7 +1200,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                    <p className="text-sm text-muted-foreground/70">On Track</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-kpis-above-target">
                       {kpis.filter(k => {
                         const current = getKpiCurrentNumber(k);
@@ -1212,7 +1212,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         return pct >= 90;
                       }).length}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">meeting or exceeding target</p>
+                    <p className="text-xs text-muted-foreground mt-1">meeting or exceeding target</p>
                   </div>
                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                 </div>
@@ -1223,7 +1223,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
+                    <p className="text-sm text-muted-foreground/70">Needs Attention</p>
                     <p className="text-2xl font-bold text-amber-600" data-testid="text-kpis-below-target">
                       {kpis.filter(k => {
                         const current = getKpiCurrentNumber(k);
@@ -1235,7 +1235,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         return pct >= 70 && pct < 90;
                       }).length}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">within 70–90% of target</p>
+                    <p className="text-xs text-muted-foreground mt-1">within 70–90% of target</p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-amber-500" />
                 </div>
@@ -1246,7 +1246,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Behind</p>
+                    <p className="text-sm text-muted-foreground/70">Behind</p>
                     <p className="text-2xl font-bold text-red-600" data-testid="text-kpis-behind">
                       {kpis.filter(k => {
                         const current = getKpiCurrentNumber(k);
@@ -1258,7 +1258,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         return pct < 70;
                       }).length}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">below 70% of target</p>
+                    <p className="text-xs text-muted-foreground mt-1">below 70% of target</p>
                   </div>
                   <TrendingDown className="w-8 h-8 text-red-500" />
                 </div>
@@ -1269,8 +1269,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Progress</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-avg-progress">
+                    <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
+                    <p className="text-2xl font-bold text-foreground" data-testid="text-avg-progress">
                       {kpis.length > 0
                         ? (
                             kpis.reduce((sum, k) => {
@@ -1284,7 +1284,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                           ).toFixed(1)
                         : '0.0'}%
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">across all KPIs</p>
+                    <p className="text-xs text-muted-foreground mt-1">across all KPIs</p>
                   </div>
                   <TrendingUp className="w-8 h-8 text-purple-500" />
                 </div>
@@ -1314,7 +1314,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                  <div className="p-2 bg-muted rounded-lg">
                     {getCategoryIcon(kpi.category)}
                   </div>
                   <div className="flex-1">
@@ -1323,7 +1323,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       {kpi.description}
                     </CardDescription>
                     {shouldShowSources && (
-                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-400" data-testid={`text-kpi-sources-${kpi.id}`}>
+                      <div className="mt-1 text-xs text-muted-foreground/70" data-testid={`text-kpi-sources-${kpi.id}`}>
                         <span className="font-medium">Sources selected:</span> {sourcesSelected}
                       </div>
                     )}
@@ -1405,15 +1405,15 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             <CardContent className="space-y-4">
               {/* Current vs Target Values */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Current</div>
-                  <div className="text-xl font-bold text-slate-900 dark:text-white">
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
+                  <div className="text-xl font-bold text-foreground">
                     {liveDisplay}
                   </div>
                 </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Target</div>
-                  <div className="text-xl font-bold text-slate-900 dark:text-white">
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-sm font-medium text-muted-foreground/70 mb-1">Target</div>
+                  <div className="text-xl font-bold text-foreground">
                     {targetDisplay}
                   </div>
                 </div>
@@ -1422,10 +1422,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               {/* Progress Bar */}
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">Progress</span>
+                  <span className="text-muted-foreground/70">Progress</span>
                   <span className="font-medium">{progressPercentLabel}%</span>
                 </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div
                     className={`h-2 rounded-full transition-all ${
                       progressPercentRaw >= 100 ? 'bg-green-600' :
@@ -1484,10 +1484,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </DialogHeader>
           <div className="space-y-4">
             {/* KPI Template Selection (tiles) */}
-            <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+            <div className="space-y-3 p-4 bg-muted rounded-lg">
               <div>
-                <h4 className="font-medium text-slate-900 dark:text-white">Choose a KPI</h4>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
+                <h4 className="font-medium text-foreground">Choose a KPI</h4>
+                <p className="text-sm text-muted-foreground/70">
                   No defaults: you control which connected sources are used to calculate Current Value.
                 </p>
               </div>
@@ -1517,7 +1517,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       } ${
                         isSelected
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                          : "border-slate-200 dark:border-slate-700 hover:border-blue-300"
+                          : "border-border hover:border-blue-300"
                       }`}
                       onClick={() => {
                         if (disabled) return;
@@ -1537,9 +1537,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       data-testid={`campaign-kpi-template-${template.metric}`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="font-medium text-sm text-slate-900 dark:text-white">{template.name}</div>
+                        <div className="font-medium text-sm text-foreground">{template.name}</div>
                       </div>
-                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                      <div className="text-xs text-muted-foreground/70 mt-1">
                         {disabled ? reason : template.description}
                       </div>
                     </div>
@@ -1553,8 +1553,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <div className="space-y-3 p-4 border rounded-lg">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <div className="font-medium text-slate-900 dark:text-white">Sources used for Current Value</div>
-                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                    <div className="font-medium text-foreground">Sources used for Current Value</div>
+                    <div className="text-sm text-muted-foreground/70">
                       Select the sources you want included. Current Value will update once required inputs are selected.
                     </div>
                   </div>
@@ -1591,10 +1591,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <div className="text-xs text-slate-600 dark:text-slate-400">Current Value (preview)</div>
-                          <div className="text-lg font-semibold text-slate-900 dark:text-white">{preview}</div>
+                          <div className="text-xs text-muted-foreground/70">Current Value (preview)</div>
+                          <div className="text-lg font-semibold text-foreground">{preview}</div>
                         </div>
-                        <div className="text-xs text-slate-500 self-end">
+                        <div className="text-xs text-muted-foreground self-end">
                           Required inputs must be selected before you can create this KPI.
                         </div>
                       </div>
@@ -1604,7 +1604,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         const options = getInputOptions(key);
                         return (
                           <div key={key} className="space-y-2">
-                            <div className="text-sm font-medium text-slate-900 dark:text-white">
+                            <div className="text-sm font-medium text-foreground">
                               {key === 'revenue'
                                 ? 'Revenue sources'
                                 : key === 'spend'
@@ -1642,8 +1642,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                                       }}
                                     />
                                     <div className="flex-1">
-                                      <div className="text-sm font-medium text-slate-900 dark:text-white">{opt.label}</div>
-                                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                                      <div className="text-sm font-medium text-foreground">{opt.label}</div>
+                                      <div className="text-xs text-muted-foreground/70">
                                         {isDisabled ? opt.reason || 'Not available' : (opt.value !== undefined ? `Value: ${formatNumber(opt.value)}` : 'Available')}
                                       </div>
                                     </div>
@@ -1928,8 +1928,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             {isTileMetric(kpiForm.metric) && (
               <div className="space-y-3 p-4 border rounded-lg">
                 <div>
-                  <div className="font-medium text-slate-900 dark:text-white">Sources used for Current Value</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400">
+                  <div className="font-medium text-foreground">Sources used for Current Value</div>
+                  <div className="text-sm text-muted-foreground/70">
                     Update the sources included in this KPI. Current Value will update when required inputs are selected.
                   </div>
                 </div>
@@ -1964,7 +1964,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                         const options = getInputOptions(key);
                         return (
                           <div key={key} className="space-y-2">
-                            <div className="text-sm font-medium text-slate-900 dark:text-white">
+                            <div className="text-sm font-medium text-foreground">
                               {key === 'revenue'
                                 ? 'Revenue sources'
                                 : key === 'spend'
@@ -2002,8 +2002,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                                       }}
                                     />
                                     <div className="flex-1">
-                                      <div className="text-sm font-medium text-slate-900 dark:text-white">{opt.label}</div>
-                                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                                      <div className="text-sm font-medium text-foreground">{opt.label}</div>
+                                      <div className="text-xs text-muted-foreground/70">
                                         {isDisabled ? opt.reason || 'Not available' : (opt.value !== undefined ? `Value: ${formatNumber(opt.value)}` : 'Available')}
                                       </div>
                                     </div>
@@ -2185,7 +2185,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                     exportMode === 'download' 
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      : 'border-border hover:bg-muted'
                   }`}
                   onClick={() => setExportMode('download')}
                   data-testid="option-download-report"
@@ -2199,7 +2199,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       <Download className="w-4 h-4" />
                       <span className="font-medium">Download Report Now</span>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground/70 mt-1">
                       Generate and download PDF report immediately
                     </p>
                   </div>
@@ -2209,7 +2209,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                     exportMode === 'schedule' 
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      : 'border-border hover:bg-muted'
                   }`}
                   onClick={() => setExportMode('schedule')}
                   data-testid="option-schedule-report"
@@ -2223,7 +2223,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       <Calendar className="w-4 h-4" />
                       <span className="font-medium">Schedule Automated Reports</span>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground/70 mt-1">
                       Set up recurring email delivery
                     </p>
                   </div>
@@ -2317,7 +2317,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     onChange={(e) => setScheduleForm({ ...scheduleForm, recipients: e.target.value })}
                     data-testid="input-schedule-recipients"
                   />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-muted-foreground/70">
                     Separate multiple emails with commas
                   </p>
                 </div>
@@ -3190,7 +3190,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       case 'meeting':
         return <Target className="w-5 h-5 text-blue-600" />;
       default:
-        return <Clock className="w-5 h-5 text-slate-600" />;
+        return <Clock className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
@@ -3203,7 +3203,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       case 'meeting':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
       default:
-        return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+        return 'bg-muted text-foreground/60';
     }
   };
 
@@ -3306,7 +3306,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-400">Loading benchmarks...</p>
+          <p className="text-muted-foreground/70">Loading benchmarks...</p>
         </div>
       </div>
     );
@@ -3317,8 +3317,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Campaign Benchmarks</h2>
-          <p className="text-slate-600 dark:text-slate-400">
+          <h2 className="text-2xl font-bold text-foreground">Campaign Benchmarks</h2>
+          <p className="text-muted-foreground/70">
             Track and compare your campaign performance against industry standards
           </p>
         </div>
@@ -3346,8 +3346,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Total Benchmarks</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-total-benchmarks">
+                    <p className="text-sm text-muted-foreground/70">Total Benchmarks</p>
+                    <p className="text-2xl font-bold text-foreground" data-testid="text-total-benchmarks">
                       {benchmarks.length}
                     </p>
                   </div>
@@ -3360,11 +3360,11 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">On Track</p>
+                    <p className="text-sm text-muted-foreground/70">On Track</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-above-target">
                       {onTrackCount}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">meeting or exceeding benchmark</p>
+                    <p className="text-xs text-muted-foreground mt-1">meeting or exceeding benchmark</p>
                   </div>
                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                 </div>
@@ -3375,11 +3375,11 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Needs Attention</p>
+                    <p className="text-sm text-muted-foreground/70">Needs Attention</p>
                     <p className="text-2xl font-bold text-yellow-600" data-testid="text-below-target">
                       {needsAttentionCount}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">within 70–90% of benchmark</p>
+                    <p className="text-xs text-muted-foreground mt-1">within 70–90% of benchmark</p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-yellow-500" />
                 </div>
@@ -3390,11 +3390,11 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Behind</p>
+                    <p className="text-sm text-muted-foreground/70">Behind</p>
                     <p className="text-2xl font-bold text-red-600" data-testid="text-avg-improvement">
                       {behindCount}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">below 70% of benchmark</p>
+                    <p className="text-xs text-muted-foreground mt-1">below 70% of benchmark</p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-red-500" />
                 </div>
@@ -3405,11 +3405,11 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Improvement</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-avg-improvement-percent">
+                    <p className="text-sm text-muted-foreground/70">Avg. Improvement</p>
+                    <p className="text-2xl font-bold text-foreground" data-testid="text-avg-improvement-percent">
                       {avgImprovement.toFixed(1)}%
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">across all benchmarks</p>
+                    <p className="text-xs text-muted-foreground mt-1">across all benchmarks</p>
                   </div>
                   <TrendingUp className="w-8 h-8 text-purple-500" />
                 </div>
@@ -3424,16 +3424,16 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="font-semibold text-slate-900 dark:text-white text-lg mb-1">
+                  <h3 className="font-semibold text-foreground text-lg mb-1">
                     {benchmark.name}
                   </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  <p className="text-sm text-muted-foreground/70 mt-1">
                     {benchmark.description || 'No description provided'}
                   </p>
                   {(() => {
                     const sourcesSelected = formatBenchmarkSourcesSelected(benchmark.calculationConfig);
                     return (
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                      <div className="text-xs text-muted-foreground/70 mt-2">
                         <span className="font-medium">Sources selected:</span> {sourcesSelected || '—'}
                       </div>
                     );
@@ -3443,7 +3443,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       {benchmark.metric && (
                         <Badge
                           variant="outline"
-                          className="text-xs font-normal bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                          className="text-xs font-normal bg-muted text-foreground/80/60 border-border"
                           data-testid={`badge-benchmark-metric-${benchmark.id}`}
                         >
                           {benchmark.metric.toUpperCase()}
@@ -3454,7 +3454,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       </Badge>
                     </div>
                   )}
-                  <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                     {benchmark.benchmarkType && <span>Type: {benchmark.benchmarkType}</span>}
                     {benchmark.industry && (
                       <>
@@ -3519,29 +3519,29 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-sm font-medium text-muted-foreground/70 mb-1">
                     Your Performance
                   </div>
-                  <div className="text-lg font-bold text-slate-900 dark:text-white" data-testid={`text-current-${benchmark.id}`}>
+                  <div className="text-lg font-bold text-foreground" data-testid={`text-current-${benchmark.id}`}>
                     {formatNumber(benchmark.currentValue)}{benchmark.unit || ''}
                   </div>
                 </div>
 
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-sm font-medium text-muted-foreground/70 mb-1">
                     Benchmark Value
                   </div>
-                  <div className="text-lg font-bold text-slate-900 dark:text-white" data-testid={`text-benchmark-${benchmark.id}`}>
+                  <div className="text-lg font-bold text-foreground" data-testid={`text-benchmark-${benchmark.id}`}>
                     {formatNumber(benchmark.benchmarkValue)}{benchmark.unit || ''}
                   </div>
                 </div>
 
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-sm font-medium text-muted-foreground/70 mb-1">
                     Source
                   </div>
-                  <div className="text-lg font-bold text-slate-900 dark:text-white">
+                  <div className="text-lg font-bold text-foreground">
                     {benchmark.source || 'Market Data'}
                   </div>
                 </div>
@@ -3567,16 +3567,16 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-600 dark:text-slate-400">Progress to Benchmark</span>
+                          <span className="text-muted-foreground/70">Progress to Benchmark</span>
                           {isOnTrack && <TrendingUp className="w-4 h-4 text-green-600" />}
                           {isNeedsAttention && <TrendingDown className="w-4 h-4 text-yellow-600" />}
                           {isBehind && <TrendingDown className="w-4 h-4 text-red-600" />}
                         </div>
-                        <span className="font-semibold text-slate-900 dark:text-white">
+                        <span className="font-semibold text-foreground">
                           {progressTowardBenchmark.toFixed(2)}%
                         </span>
                       </div>
-                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                      <div className="w-full bg-muted rounded-full h-2.5">
                         <div
                           className={`h-2.5 rounded-full transition-all ${
                             isOnTrack ? 'bg-green-500' : isNeedsAttention ? 'bg-yellow-500' : 'bg-red-500'
@@ -3624,9 +3624,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">{s.label}</p>
-                      <p className={`text-2xl font-bold ${s.color || 'text-slate-900 dark:text-white'}`}>{s.value}</p>
-                      {s.desc && <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{s.desc}</p>}
+                      <p className="text-sm text-muted-foreground/70">{s.label}</p>
+                      <p className={`text-2xl font-bold ${s.color || 'text-foreground'}`}>{s.value}</p>
+                      {s.desc && <p className="text-xs text-muted-foreground mt-1">{s.desc}</p>}
                     </div>
                     {s.icon}
                   </div>
@@ -3657,10 +3657,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
           
           <div className="space-y-4">
             {/* Select Benchmark Template */}
-            <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+            <div className="space-y-3 p-4 bg-muted rounded-lg">
               <div>
-                <div className="font-medium text-slate-900 dark:text-white">Select Benchmark Template</div>
-                <div className="text-sm text-slate-600 dark:text-slate-400">
+                <div className="font-medium text-foreground">Select Benchmark Template</div>
+                <div className="text-sm text-muted-foreground/70">
                   Pick a metric to benchmark, then choose which connected sources to use for the Current Value (no defaults).
                 </div>
               </div>
@@ -3675,7 +3675,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       className={`p-3 border-2 rounded-lg transition-all ${
                         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                       } ${
-                        selected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
+                        selected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-border hover:border-blue-300'
                       }`}
                       onClick={async () => {
                         if (disabled) return;
@@ -3722,8 +3722,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       }}
                       data-testid={`tile-benchmark-${template.metric}`}
                     >
-                      <div className="font-medium text-sm text-slate-900 dark:text-white">{template.name}</div>
-                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                      <div className="font-medium text-sm text-foreground">{template.name}</div>
+                      <div className="text-xs text-muted-foreground/70 mt-1">
                         {disabled ? (availability.reason || 'Not available') : template.description}
                       </div>
                     </div>
@@ -3734,10 +3734,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
             {/* Sources used for Current Value (no defaults) */}
             {isTemplateMetric(String(benchmarkForm.metric || '')) && (
-              <div className="space-y-3 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+              <div className="space-y-3 p-4 border border-border rounded-lg">
                 <div>
-                  <div className="font-medium text-slate-900 dark:text-white">Sources used for Current Value</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400">
+                  <div className="font-medium text-foreground">Sources used for Current Value</div>
+                  <div className="text-sm text-muted-foreground/70">
                     Select the sources you want included. Current Value will update once the required inputs are selected.
                   </div>
                 </div>
@@ -3765,7 +3765,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
                   return (
                     <div key={key} className="space-y-2">
-                      <div className="text-sm font-medium text-slate-900 dark:text-white">{label} sources</div>
+                      <div className="text-sm font-medium text-foreground">{label} sources</div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {options.map((opt) => {
                           const checked = selectedIds.includes(opt.id);
@@ -3775,8 +3775,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                               key={opt.id}
                               className={`flex items-start gap-3 p-3 rounded-md border ${
                                 disabled
-                                  ? 'opacity-50 cursor-not-allowed border-slate-200 dark:border-slate-700'
-                                  : 'cursor-pointer border-slate-200 dark:border-slate-700 hover:border-blue-300'
+                                  ? 'opacity-50 cursor-not-allowed border-border'
+                                  : 'cursor-pointer border-border hover:border-blue-300'
                               }`}
                             >
                               <Checkbox
@@ -3786,13 +3786,13 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                               />
                               <div className="flex-1">
                                 <div className="flex items-center justify-between gap-2">
-                                  <div className="text-sm font-medium text-slate-900 dark:text-white">{opt.label}</div>
-                                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                                  <div className="text-sm font-medium text-foreground">{opt.label}</div>
+                                  <div className="text-xs text-muted-foreground/70">
                                     {typeof opt.value === 'number' ? formatNumber(opt.value) : ''}
                                   </div>
                                 </div>
                                 {disabled && opt.reason && (
-                                  <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">{opt.reason}</div>
+                                  <div className="text-xs text-muted-foreground mt-1">{opt.reason}</div>
                                 )}
                               </div>
                             </label>
@@ -3803,9 +3803,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   );
                 })}
 
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                  <div className="text-xs text-slate-600 dark:text-slate-400">Current Value (preview)</div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                <div className="pt-2 border-t border-border">
+                  <div className="text-xs text-muted-foreground/70">Current Value (preview)</div>
+                  <div className="text-sm font-semibold text-foreground">
                     {(() => {
                       const computed = computeCurrentFromBenchConfig(benchmarkCalculationConfig);
                       if (computed.value === null) return '—';
@@ -3973,7 +3973,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-muted-foreground/70">
                     Selecting an industry will auto-fill the Benchmark Value for the chosen metric.
                   </p>
                 </div>
@@ -4098,7 +4098,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                     exportMode === 'download' 
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      : 'border-border hover:bg-muted'
                   }`}
                   onClick={() => setExportMode('download')}
                   data-testid="option-download-benchmark-report"
@@ -4112,7 +4112,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       <Download className="w-4 h-4" />
                       <span className="font-medium">Download Report Now</span>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground/70 mt-1">
                       Generate and download PDF report immediately
                     </p>
                   </div>
@@ -4122,7 +4122,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                     exportMode === 'schedule' 
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      : 'border-border hover:bg-muted'
                   }`}
                   onClick={() => setExportMode('schedule')}
                   data-testid="option-schedule-benchmark-report"
@@ -4136,7 +4136,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       <Calendar className="w-4 h-4" />
                       <span className="font-medium">Schedule Automated Reports</span>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground/70 mt-1">
                       Set up recurring email delivery
                     </p>
                   </div>
@@ -4230,7 +4230,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     onChange={(e) => setScheduleForm({ ...scheduleForm, recipients: e.target.value })}
                     data-testid="input-benchmark-schedule-recipients"
                   />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-muted-foreground/70">
                     Separate multiple emails with commas
                   </p>
                 </div>
@@ -4740,7 +4740,7 @@ export default function CampaignDetail() {
           </div>
         );
       default:
-        return <BarChart3 className="w-5 h-5 text-slate-500" />;
+        return <BarChart3 className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
@@ -4751,7 +4751,7 @@ export default function CampaignDetail() {
       case "paused":
         return <Badge className="bg-warning/10 text-warning border-warning/20">Paused</Badge>;
       case "completed":
-        return <Badge className="bg-slate-100 text-slate-600 border-slate-200">Completed</Badge>;
+        return <Badge className="bg-muted text-muted-foreground border-border">Completed</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -4850,17 +4850,17 @@ export default function CampaignDetail() {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="space-y-6 fade-in">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-              <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              <div className="h-8 bg-muted rounded animate-pulse"></div>
+              <div className="h-32 bg-muted rounded animate-pulse"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                  <div key={i} className="h-24 bg-muted rounded animate-pulse"></div>
                 ))}
               </div>
             </div>
@@ -4872,13 +4872,13 @@ export default function CampaignDetail() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Campaign not found</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">Campaign not found</h2>
               <Link href="/campaigns">
                 <Button>
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -5044,13 +5044,13 @@ export default function CampaignDetail() {
               <div className="flex items-center space-x-3">
                 <HealthIcon className={`w-8 h-8 ${healthStatus.color}`} />
                 <div>
-                  <div className="text-sm font-medium text-slate-600 dark:text-slate-400">Campaign Health</div>
+                  <div className="text-sm font-medium text-muted-foreground/70">Campaign Health</div>
                   <div className={`text-2xl font-bold ${healthStatus.color}`}>{healthStatus.status}</div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm text-slate-600 dark:text-slate-400">KPIs on Track</div>
-                <div className="text-xl font-bold text-slate-900 dark:text-white">
+                <div className="text-sm text-muted-foreground/70">KPIs on Track</div>
+                <div className="text-xl font-bold text-foreground">
                   {kpis.filter(k => (parseFloat(k.currentValue) / parseFloat(k.targetValue)) >= 1).length} / {kpis.length}
                 </div>
               </div>
@@ -5062,72 +5062,72 @@ export default function CampaignDetail() {
             
             {/* Performance Snapshot */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-slate-900 dark:text-white flex items-center space-x-2">
+              <h4 className="font-semibold text-foreground flex items-center space-x-2">
                 <BarChart3 className="w-4 h-4" />
                 <span>Performance Snapshot</span>
               </h4>
-              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-2 text-sm">
+              <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">Impressions:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">{totalImpressions.toLocaleString()}</span>
+                  <span className="text-muted-foreground/70">Impressions:</span>
+                  <span className="font-semibold text-foreground">{totalImpressions.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">Engagements:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">{totalEngagements.toLocaleString()}</span>
+                  <span className="text-muted-foreground/70">Engagements:</span>
+                  <span className="font-semibold text-foreground">{totalEngagements.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">Conversions:</span>
+                  <span className="text-muted-foreground/70">Conversions:</span>
                   <span className="font-semibold text-green-600">{totalConversions.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between border-t pt-2">
-                  <span className="text-slate-600 dark:text-slate-400">Total Spend:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">${totalSpend.toLocaleString()}</span>
+                  <span className="text-muted-foreground/70">Total Spend:</span>
+                  <span className="font-semibold text-foreground">${totalSpend.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">Cost/Conv:</span>
+                  <span className="text-muted-foreground/70">Cost/Conv:</span>
                   <span className="font-semibold text-blue-600">${costPerConversion}</span>
                 </div>
               </div>
-              <p className="text-xs text-slate-500 italic">All sources combined (LinkedIn + Custom Integration)</p>
+              <p className="text-xs text-muted-foreground italic">All sources combined (LinkedIn + Custom Integration)</p>
             </div>
 
             {/* What's Changed */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-slate-900 dark:text-white flex items-center space-x-2">
+              <h4 className="font-semibold text-foreground flex items-center space-x-2">
                 <TrendingUp className="w-4 h-4" />
                 <span>What's Changed</span>
               </h4>
-              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-3">
+              <div className="p-4 bg-muted rounded-lg space-y-3">
                 <div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Since last check ({changes.timeSinceCheck})</div>
+                  <div className="text-xs text-muted-foreground/70 mb-1">Since last check ({changes.timeSinceCheck})</div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">Conversions:</span>
-                      <span className={`text-sm font-semibold ${changes.conversionsChange > 0 ? 'text-green-600' : changes.conversionsChange < 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                      <span className="text-sm text-muted-foreground/70">Conversions:</span>
+                      <span className={`text-sm font-semibold ${changes.conversionsChange > 0 ? 'text-green-600' : changes.conversionsChange < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
                         {changes.conversionsChange > 0 ? '+' : ''}{changes.conversionsChange}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">CTR Change:</span>
-                      <span className={`text-sm font-semibold ${changes.ctrChange > 0 ? 'text-green-600' : changes.ctrChange < 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                      <span className="text-sm text-muted-foreground/70">CTR Change:</span>
+                      <span className={`text-sm font-semibold ${changes.ctrChange > 0 ? 'text-green-600' : changes.ctrChange < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
                         {changes.ctrChange > 0 ? '+' : ''}{changes.ctrChange.toFixed(2)}%
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="pt-2 border-t">
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Alerts</div>
+                  <div className="text-xs text-muted-foreground/70 mb-1">Alerts</div>
                   <div className="text-sm">
                     <span className="text-red-600 font-semibold">
                       {kpis.filter(k => (parseFloat(k.currentValue) / parseFloat(k.targetValue)) < 1).length}
                     </span>
-                    <span className="text-slate-600 dark:text-slate-400"> KPIs below target</span>
+                    <span className="text-muted-foreground/70"> KPIs below target</span>
                   </div>
                   <div className="text-sm">
                     <span className="text-green-600 font-semibold">
                       {benchmarks.filter(b => parseFloat(b.currentValue) >= parseFloat(b.benchmarkValue)).length}
                     </span>
-                    <span className="text-slate-600 dark:text-slate-400"> benchmarks exceeded</span>
+                    <span className="text-muted-foreground/70"> benchmarks exceeded</span>
                   </div>
                 </div>
               </div>
@@ -5148,10 +5148,10 @@ export default function CampaignDetail() {
                 {priorityAction.type === 'warning' && <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />}
                 {priorityAction.type === 'attention' && <Clock className="w-5 h-5 text-yellow-600 mt-0.5" />}
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400 mb-1">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/70 mb-1">
                     Top Priority Action
                   </div>
-                  <div className="text-sm font-medium text-slate-900 dark:text-white">
+                  <div className="text-sm font-medium text-foreground">
                     {priorityAction.message}
                   </div>
                 </div>
@@ -5159,36 +5159,36 @@ export default function CampaignDetail() {
             </div>
 
             {/* Data Sources Status */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400 mb-3">
+            <div className="p-4 bg-muted rounded-lg">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/70 mb-3">
                 Data Sources
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-slate-900 dark:text-white">LinkedIn Ads</span>
+                    <span className="text-foreground">LinkedIn Ads</span>
                   </span>
-                  <span className="text-xs text-slate-500">Connected</span>
+                  <span className="text-xs text-muted-foreground">Connected</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-slate-900 dark:text-white">Custom Integration</span>
+                    <span className="text-foreground">Custom Integration</span>
                   </span>
-                  <span className="text-xs text-slate-500">Connected</span>
+                  <span className="text-xs text-muted-foreground">Connected</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></div>
-                    <span className="text-slate-500">Google Analytics</span>
+                    <span className="text-muted-foreground">Google Analytics</span>
                   </span>
                   <Button variant="ghost" size="sm" className="h-6 text-xs">Connect</Button>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></div>
-                    <span className="text-slate-500">Shopify</span>
+                    <span className="text-muted-foreground">Shopify</span>
                   </span>
                   <Button variant="ghost" size="sm" className="h-6 text-xs">Connect</Button>
                 </div>
@@ -5202,7 +5202,7 @@ export default function CampaignDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="flex">
@@ -5220,14 +5220,14 @@ export default function CampaignDetail() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{campaign.name}</h1>
+                  <h1 className="text-3xl font-bold text-foreground">{campaign.name}</h1>
                   <div className="flex items-center space-x-3 mt-2">
                     {getStatusBadge(campaign.status)}
                     {campaign.label && (
                       <Badge variant="outline">{campaign.label}</Badge>
                     )}
                     {campaign.budget && (
-                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                      <span className="text-sm text-muted-foreground/70">
                         Budget: {formatCurrency(campaign.budget)}
                       </span>
                     )}
@@ -5348,22 +5348,22 @@ export default function CampaignDetail() {
               {/* Connected Platforms */}
               <div className="space-y-6 fade-in">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Connected Platforms</h2>
-                  <p className="text-slate-600 dark:text-slate-400">Platform performance and connection status</p>
+                  <h2 className="text-xl font-semibold text-foreground mb-2">Connected Platforms</h2>
+                  <p className="text-muted-foreground/70">Platform performance and connection status</p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 items-start">
               {platformMetrics.map((platform, index) => (
                 <Card 
                   key={platform.platform} 
-                  className={`${platform.connected ? "border-green-200 dark:border-green-800" : "border-slate-200 dark:border-slate-700"} ${
+                  className={`${platform.connected ? "border-green-200 dark:border-green-800" : "border-border"} ${
                     // Position Facebook Ads with minimal single-line gap under Google Analytics
                     platform.platform === "Facebook Ads" ? "md:-mt-3" : ""
                   }`}
                 >
                   {/* Platform Header - Always Visible */}
                   <div
-                    className={`flex items-center justify-between p-3 ${(!platform.connected || platform.needsSetup || platform.requiresImport) ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors' : ''}`}
+                    className={`flex items-center justify-between p-3 ${(!platform.connected || platform.needsSetup || platform.requiresImport) ? 'cursor-pointer hover:bg-muted transition-colors' : ''}`}
                     onClick={() => {
                       console.log(`[Platform Click] ${platform.platform}: connected=${platform.connected}, needsSetup=${platform.needsSetup}, requiresImport=${platform.requiresImport}, expandedPlatform=${expandedPlatform}`);
                       if (!platform.connected || platform.needsSetup || platform.requiresImport) {
@@ -5374,8 +5374,8 @@ export default function CampaignDetail() {
                     <div className="flex items-center space-x-3">
                       {getPlatformIcon(platform.platform)}
                       <div>
-                        <h3 className="font-semibold text-slate-900 dark:text-white">{platform.platform}</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <h3 className="font-semibold text-foreground">{platform.platform}</h3>
+                        <p className="text-sm text-muted-foreground/70">
                           {platform.needsSetup ? "Not connected" : platform.requiresImport ? "Connected — import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
                         </p>
                       </div>
@@ -5395,7 +5395,7 @@ export default function CampaignDetail() {
                         </Badge>
                       )}
                       {(!platform.connected || platform.needsSetup || platform.requiresImport) && (
-                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground/70 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />
                       )}
                       {platform.connected && !platform.needsSetup && !platform.requiresImport && (
                         <Button
@@ -5509,7 +5509,7 @@ export default function CampaignDetail() {
                       ? true
                       : (!platform.connected || platform.needsSetup || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets))
                   ) && (
-                    <div className="border-t bg-slate-50 dark:bg-slate-800/50 p-3">
+                    <div className="border-t bg-muted/50 p-3">
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow
                           campaignId={campaign.id}
@@ -5600,7 +5600,7 @@ export default function CampaignDetail() {
                         />
                       ) : platform.platform === "Custom Integration" ? (
                         <div className="space-y-4">
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                          <p className="text-sm text-muted-foreground/70">
                             Import metrics from PDF reports via manual upload or email forwarding.
                           </p>
                           <div className="space-y-3">
@@ -5638,12 +5638,12 @@ export default function CampaignDetail() {
                                 };
                                 input.click();
                               }}
-                              className="w-full bg-white dark:bg-slate-800 rounded-lg p-3 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-colors text-left"
+                              className="w-full bg-card rounded-lg p-3 border-2 border-border hover:border-blue-500 transition-colors text-left"
                             >
-                              <div className="font-medium text-slate-900 dark:text-white mb-1">
+                              <div className="font-medium text-foreground mb-1">
                                 Manual Upload
                               </div>
-                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                              <div className="text-sm text-muted-foreground/70">
                                 Upload a PDF report to extract metrics
                               </div>
                             </button>
@@ -5671,12 +5671,12 @@ export default function CampaignDetail() {
                                   toastHook({ title: "Connection Failed", description: error?.message || "Failed to set up email forwarding", variant: "destructive" });
                                 }
                               }}
-                              className="w-full bg-white dark:bg-slate-800 rounded-lg p-3 border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-colors text-left"
+                              className="w-full bg-card rounded-lg p-3 border-2 border-border hover:border-blue-500 transition-colors text-left"
                             >
-                              <div className="font-medium text-slate-900 dark:text-white mb-1">
+                              <div className="font-medium text-foreground mb-1">
                                 Email Forwarding
                               </div>
-                              <div className="text-sm text-slate-600 dark:text-slate-400">
+                              <div className="text-sm text-muted-foreground/70">
                                 Get a unique email address for automatic imports
                               </div>
                             </button>
@@ -5684,7 +5684,7 @@ export default function CampaignDetail() {
                         </div>
                       ) : (
                         <div className="text-center py-6">
-                          <div className="text-slate-600 dark:text-slate-400 mb-3">
+                          <div className="text-muted-foreground/70 mb-3">
                             {platform.platform} integration coming soon
                           </div>
                           <Button variant="outline" size="sm" disabled>
@@ -5703,8 +5703,8 @@ export default function CampaignDetail() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Revenue & Spend Sources</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Import revenue and spend data from CRMs, e-commerce, spreadsheets, and custom sources</p>
+                    <h2 className="text-lg font-semibold text-foreground">Revenue & Spend Sources</h2>
+                    <p className="text-sm text-muted-foreground/70">Import revenue and spend data from CRMs, e-commerce, spreadsheets, and custom sources</p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setAddRevenueWizardOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
@@ -5740,15 +5740,15 @@ export default function CampaignDetail() {
                       <DropdownMenu key={crm.key}>
                         <div className="relative">
                         <DropdownMenuTrigger asChild>
-                          <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                          <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-border'}`}>
                             <CardContent className="p-4">
                               <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? crm.connColor : 'bg-slate-100 dark:bg-slate-800'}`}>
-                                  <crm.Icon className={`w-5 h-5 ${isConnected ? crm.iconColor : 'text-slate-400'}`} />
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? crm.connColor : 'bg-muted'}`}>
+                                  <crm.Icon className={`w-5 h-5 ${isConnected ? crm.iconColor : 'text-muted-foreground/70'}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-slate-900 dark:text-white">{crm.label}</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  <p className="text-sm font-medium text-foreground">{crm.label}</p>
+                                  <p className="text-xs text-muted-foreground/70">
                                     {isConnected ? 'Connected' : crm.desc}
                                     {revenueEntry?.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(revenueEntry.lastRevenue))}` : ''}
                                   </p>
@@ -5756,7 +5756,7 @@ export default function CampaignDetail() {
                                 {isConnected ? (
                                   <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                                  <Badge variant="outline" className="text-xs text-muted-foreground">Not connected</Badge>
                                 )}
                                 {/* Spacer for trash button positioned outside trigger */}
                                 {isConnected && <div className="w-6 shrink-0" />}
@@ -5819,15 +5819,15 @@ export default function CampaignDetail() {
                     return (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                        <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                        <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-border'}`}>
                           <CardContent className="p-4">
                             <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
-                                <FileSpreadsheet className={`w-5 h-5 ${isConnected ? 'text-green-600' : 'text-slate-400'}`} />
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'}`}>
+                                <FileSpreadsheet className={`w-5 h-5 ${isConnected ? 'text-green-600' : 'text-muted-foreground/70'}`} />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-slate-900 dark:text-white">Google Sheets</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                <p className="text-sm font-medium text-foreground">Google Sheets</p>
+                                <p className="text-xs text-muted-foreground/70">
                                   {isConnected
                                     ? `${gsRevenue.length > 0 ? 'Revenue' : ''}${gsRevenue.length > 0 && gsSpend.length > 0 ? ' & ' : ''}${gsSpend.length > 0 ? 'Spend' : ''} connected`
                                     : 'Import revenue & spend data'}
@@ -5837,7 +5837,7 @@ export default function CampaignDetail() {
                               {isConnected ? (
                                 <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
                               ) : (
-                                <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                                <Badge variant="outline" className="text-xs text-muted-foreground">Not connected</Badge>
                               )}
                             </div>
                           </CardContent>
@@ -5868,24 +5868,24 @@ export default function CampaignDetail() {
                     const isConnected = platformStatusMap.get("custom-integration")?.connected === true;
                     return (
                       <Link href={`/campaigns/${campaign?.id}/custom-integration-analytics`} className="block">
-                      <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}>
+                      <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isConnected ? 'border-green-200 dark:border-green-800' : 'border-border'}`}>
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isConnected ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-muted'}`}>
                               <div className={`w-5 h-5 rounded bg-gradient-to-br ${isConnected ? 'from-purple-500 to-blue-500' : 'from-slate-400 to-slate-500'} flex items-center justify-center`}>
                                 <Plus className="w-3 h-3 text-white" />
                               </div>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">Custom Integration</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                              <p className="text-sm font-medium text-foreground">Custom Integration</p>
+                              <p className="text-xs text-muted-foreground/70">
                                 {isConnected ? 'Connected' : 'API-based revenue & spend data'}
                               </p>
                             </div>
                             {isConnected ? (
                               <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Connected</Badge>
                             ) : (
-                              <Badge variant="outline" className="text-xs text-slate-500">Not connected</Badge>
+                              <Badge variant="outline" className="text-xs text-muted-foreground">Not connected</Badge>
                             )}
                           </div>
                         </CardContent>
@@ -5906,7 +5906,7 @@ export default function CampaignDetail() {
                     const count = manualRevenue.length + manualSpend.length;
                     return (
                       <Card
-                        className={`cursor-pointer hover:shadow-md transition-shadow ${isActive ? 'border-green-200 dark:border-green-800' : 'border-slate-200 dark:border-slate-700'}`}
+                        className={`cursor-pointer hover:shadow-md transition-shadow ${isActive ? 'border-green-200 dark:border-green-800' : 'border-border'}`}
                         onClick={() => {
                           setRevenueWizardInitialStep('manual');
                           setAddRevenueWizardOpen(true);
@@ -5914,19 +5914,19 @@ export default function CampaignDetail() {
                       >
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isActive ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
-                              <DollarSign className={`w-5 h-5 ${isActive ? 'text-green-600' : 'text-slate-400'}`} />
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isActive ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'}`}>
+                              <DollarSign className={`w-5 h-5 ${isActive ? 'text-green-600' : 'text-muted-foreground/70'}`} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">Manual Entry</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                              <p className="text-sm font-medium text-foreground">Manual Entry</p>
+                              <p className="text-xs text-muted-foreground/70">
                                 {isActive ? `${count} source${count !== 1 ? 's' : ''} active` : 'Add revenue or spend manually'}
                               </p>
                             </div>
                             {isActive ? (
                               <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-xs">Active</Badge>
                             ) : (
-                              <Badge variant="outline" className="text-xs text-slate-500">Not set up</Badge>
+                              <Badge variant="outline" className="text-xs text-muted-foreground">Not set up</Badge>
                             )}
                           </div>
                         </CardContent>
@@ -5947,16 +5947,16 @@ export default function CampaignDetail() {
                   return (
                     <div className="space-y-2">
                       {manualCsvRevenue.map((source: any) => (
-                        <div key={source.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div key={source.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                               {source.sourceType === 'csv' ? <FileText className="w-4 h-4 text-blue-500" /> : <DollarSign className="w-4 h-4 text-green-600" />}
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">
+                              <p className="text-sm font-medium text-foreground">
                                 {source.sourceType === 'manual' ? 'Manual Entry' : 'CSV Upload'}
                               </p>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-muted-foreground">
                                 Revenue source
                                 {source.lastRevenue ? ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(source.lastRevenue))}` : ''}
                               </p>
@@ -5981,16 +5981,16 @@ export default function CampaignDetail() {
                         </div>
                       ))}
                       {manualCsvSpend.map((source: any) => (
-                        <div key={source.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div key={source.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                               {source.sourceType === 'csv' ? <FileText className="w-4 h-4 text-blue-500" /> : <DollarSign className="w-4 h-4 text-blue-600" />}
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">
+                              <p className="text-sm font-medium text-foreground">
                                 {source.sourceType === 'manual' ? 'Manual Spend' : 'CSV Spend Upload'}
                               </p>
-                              <p className="text-xs text-slate-500">Spend source</p>
+                              <p className="text-xs text-muted-foreground">Spend source</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">

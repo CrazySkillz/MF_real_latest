@@ -301,7 +301,7 @@ export default function InteractiveWorldMap({
       {/* Tooltip */}
       {tooltipContent && (
         <div
-          className="fixed z-50 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg shadow-lg pointer-events-none"
+          className="fixed z-50 px-3 py-2 bg-card text-white text-sm rounded-lg shadow-lg pointer-events-none"
           style={{
             left: tooltipPosition.x + 10,
             top: tooltipPosition.y - 40,
@@ -309,11 +309,11 @@ export default function InteractiveWorldMap({
           }}
         >
           <div className="font-semibold">{tooltipContent.country}</div>
-          <div className="text-slate-300">
+          <div className="text-muted-foreground/60">
             {metric === 'users' ? 'Users' : 'Sessions'}: {tooltipContent[metric].toLocaleString()}
           </div>
           {metric === 'users' && (
-            <div className="text-slate-400 text-xs">
+            <div className="text-muted-foreground/70 text-xs">
               Sessions: {tooltipContent.sessions.toLocaleString()}
             </div>
           )}
@@ -325,28 +325,28 @@ export default function InteractiveWorldMap({
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-1">
             <div className="w-4 h-3 bg-gray-100 border border-gray-300"></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">No data</span>
+            <span className="text-xs text-muted-foreground/70">No data</span>
           </div>
           <div className="flex items-center space-x-1">
             <div 
               className="w-4 h-3 border border-gray-300"
               style={{ backgroundColor: colorScale(maxValue * 0.2) }}
             ></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">Low</span>
+            <span className="text-xs text-muted-foreground/70">Low</span>
           </div>
           <div className="flex items-center space-x-1">
             <div 
               className="w-4 h-3 border border-gray-300"
               style={{ backgroundColor: colorScale(maxValue * 0.6) }}
             ></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">Medium</span>
+            <span className="text-xs text-muted-foreground/70">Medium</span>
           </div>
           <div className="flex items-center space-x-1">
             <div 
               className="w-4 h-3 border border-gray-300"
               style={{ backgroundColor: colorScale(maxValue) }}
             ></div>
-            <span className="text-xs text-slate-600 dark:text-slate-400">High</span>
+            <span className="text-xs text-muted-foreground/70">High</span>
           </div>
         </div>
       </div>

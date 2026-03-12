@@ -75,7 +75,7 @@ export default function GoogleAuthCallback() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+      <div className="max-w-md w-full bg-card rounded-lg shadow-lg p-8 text-center">
         <div className="mb-4">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-500" />
         </div>

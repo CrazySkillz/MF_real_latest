@@ -88,7 +88,7 @@ export function SalesforceDataViewerModal(props: {
           <div className="border rounded-lg p-3 flex flex-col min-h-0">
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-medium">Columns</div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-muted-foreground">
                 Selected: <span className="font-medium">{columns.length}</span>
               </div>
             </div>
@@ -131,9 +131,9 @@ export function SalesforceDataViewerModal(props: {
             ) : (
               <ScrollArea className="mt-3 border rounded p-2 min-h-0 flex-1">
                 {fieldsLoading ? (
-                  <div className="text-sm text-slate-500">Loading fields…</div>
+                  <div className="text-sm text-muted-foreground">Loading fields…</div>
                 ) : filteredFields.length === 0 ? (
-                  <div className="text-sm text-slate-500">No fields match your search.</div>
+                  <div className="text-sm text-muted-foreground">No fields match your search.</div>
                 ) : (
                   <div className="space-y-2">
                     {filteredFields.map((f) => {
@@ -153,7 +153,7 @@ export function SalesforceDataViewerModal(props: {
                           />
                           <span className="flex-1">
                             <span className="font-medium">{f.label || f.name}</span>
-                            <span className="text-slate-400"> ({f.name})</span>
+                            <span className="text-muted-foreground/70"> ({f.name})</span>
                           </span>
                         </label>
                       );
@@ -169,7 +169,7 @@ export function SalesforceDataViewerModal(props: {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-medium">Preview</div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted-foreground">
                   No horizontal scrolling: each row is shown as a vertical record with your selected fields.
                 </div>
               </div>
@@ -191,18 +191,18 @@ export function SalesforceDataViewerModal(props: {
                   </Badge>
                 ))}
                 {selectedLabels.length > 12 && (
-                  <span className="text-xs text-slate-500 self-center">+{selectedLabels.length - 12} more</span>
+                  <span className="text-xs text-muted-foreground self-center">+{selectedLabels.length - 12} more</span>
                 )}
               </div>
             )}
 
             <ScrollArea className="mt-3 min-h-0 flex-1">
               {previewLoading ? (
-                <div className="py-10 text-center text-slate-500">Loading preview…</div>
+                <div className="py-10 text-center text-muted-foreground">Loading preview…</div>
               ) : previewError ? (
                 <div className="py-10 text-center text-red-600">{(previewError as any)?.message || "Failed to load preview."}</div>
               ) : rows.length === 0 ? (
-                <div className="py-10 text-center text-slate-500">No preview rows found.</div>
+                <div className="py-10 text-center text-muted-foreground">No preview rows found.</div>
               ) : (
                 <div className="space-y-3 pr-2">
                   {rows.map((row, idx) => {
@@ -210,14 +210,14 @@ export function SalesforceDataViewerModal(props: {
                     headers.forEach((h, i) => (record[h] = (row || [])[i]));
                     const name = record["Name"] ?? record["Opportunity Name"] ?? record["Id"] ?? `Row ${idx + 1}`;
                     return (
-                      <div key={idx} className="border rounded-lg p-3 bg-white/50 dark:bg-slate-950/20">
+                      <div key={idx} className="border rounded-lg p-3 bg-card/50/20">
                         <div className="font-medium text-sm mb-2 truncate">{String(name)}</div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
                           {headers
                             .filter((h) => h !== "Name")
                             .map((h) => (
                               <div key={h} className="min-w-0">
-                                <div className="text-[11px] text-slate-500 truncate">{h}</div>
+                                <div className="text-[11px] text-muted-foreground truncate">{h}</div>
                                 <div className="text-sm break-words">{String(record[h] ?? "")}</div>
                               </div>
                             ))}
@@ -232,7 +232,7 @@ export function SalesforceDataViewerModal(props: {
         </div>
 
         <DialogFooter className="flex items-center justify-between sm:justify-between">
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-muted-foreground">
             Tip: you can reopen this anytime from <span className="font-medium">Connected Data Sources → Salesforce → View Raw Data</span>.
           </div>
           <div className="flex items-center gap-2">

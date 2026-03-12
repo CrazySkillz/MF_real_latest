@@ -330,8 +330,8 @@ export function ColumnMappingInterface({
   if (columnsLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-        <span className="ml-2 text-slate-600">Detecting columns...</span>
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/70" />
+        <span className="ml-2 text-muted-foreground">Detecting columns...</span>
       </div>
     );
   }
@@ -362,10 +362,10 @@ export function ColumnMappingInterface({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-foreground">
           Map Columns to Platform Fields
         </h3>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+        <p className="text-sm text-muted-foreground/70 mt-1">
           Map your Google Sheets columns to the required fields for {platform}
         </p>
       </div>
@@ -391,7 +391,7 @@ export function ColumnMappingInterface({
                 <>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-slate-700 dark:text-slate-300">
+                    <span className="text-sm text-foreground/80/60">
                       <strong>Conversions:</strong> Available from LinkedIn API
                     </span>
                   </div>
@@ -399,7 +399,7 @@ export function ColumnMappingInterface({
                     {revenueMapping ? (
                       <>
                         <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                        <span className="text-sm text-foreground/80/60">
                           <strong>Revenue:</strong> Mapped from "{revenueMapping.sourceColumnName}"
                         </span>
                       </>
@@ -419,7 +419,7 @@ export function ColumnMappingInterface({
                     {conversionsMapping ? (
                       <>
                         <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                        <span className="text-sm text-foreground/80/60">
                           <strong>Conversions:</strong> Mapped from "{conversionsMapping.sourceColumnName}"
                         </span>
                       </>
@@ -436,7 +436,7 @@ export function ColumnMappingInterface({
                     {revenueMapping ? (
                       <>
                         <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">
+                        <span className="text-sm text-foreground/80/60">
                           <strong>Revenue:</strong> Mapped from "{revenueMapping.sourceColumnName}"
                         </span>
                       </>
@@ -521,7 +521,7 @@ export function ColumnMappingInterface({
               const error = mappedField ? validationErrors.get(mappedField.id) : null;
               
               // Determine background color based on state
-              let bgColor = "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700";
+              let bgColor = "bg-muted/50 border-border";
               if (error) {
                 bgColor = "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800";
               } else if (mapping && mappedField) {
@@ -547,7 +547,7 @@ export function ColumnMappingInterface({
                     <div className="flex-1 min-w-0">
                       {/* Column Name */}
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="font-semibold text-slate-900 dark:text-white text-base">
+                        <span className="font-semibold text-foreground text-base">
                           {column.originalName}
                         </span>
                         <Badge variant="secondary" className="text-xs">
@@ -576,7 +576,7 @@ export function ColumnMappingInterface({
                       
                       {/* Description from mapped field */}
                       {mapping && mappedField && mappedField.description && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                        <p className="text-sm text-muted-foreground/70 mb-2">
                           {mappedField.description}
                         </p>
                       )}
@@ -587,7 +587,7 @@ export function ColumnMappingInterface({
                           <CheckCircle2 className="w-4 h-4" />
                           <span>Mapped to: <strong>{mappedField.name}</strong></span>
                           {mapping.confidence < 1.0 && (
-                            <span className="text-xs ml-2 text-slate-500">
+                            <span className="text-xs ml-2 text-muted-foreground">
                               ({Math.round(mapping.confidence * 100)}% confidence)
                             </span>
                           )}
@@ -620,7 +620,7 @@ export function ColumnMappingInterface({
                           )}
                           {mappedField.id === 'campaign_name' && (
                             <div className="mt-2 space-y-2">
-                              <div className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-2 rounded">
+                              <div className="flex items-start gap-2 text-xs text-muted-foreground/70 bg-muted/50 p-2 rounded">
                                 <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
                                 <span>
                                   Used to match rows from Google Sheets with campaigns imported from LinkedIn API.
@@ -647,7 +647,7 @@ export function ColumnMappingInterface({
                       
                       {/* Sample values (only if not mapped or for debugging) */}
                       {!mapping && column.sampleValues.length > 0 && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                        <p className="text-xs text-muted-foreground/70 mt-2">
                           Sample values: {column.sampleValues.slice(0, 3).join(', ')}
                           {column.sampleValues.length > 3 && '...'}
                         </p>

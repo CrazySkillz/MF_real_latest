@@ -184,7 +184,7 @@ export default function ProfessionalGA4Auth({ campaignId, onSuccess, onError }: 
       </CardHeader>
       
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Badge variant="secondary" className="bg-green-100 text-green-700">
             Professional Integration
           </Badge>
@@ -194,7 +194,7 @@ export default function ProfessionalGA4Auth({ campaignId, onSuccess, onError }: 
           <span>Secure OAuth 2.0</span>
         </div>
 
-        <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
+        <div className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
           <strong>What you'll get:</strong>
           <ul className="mt-2 ml-4 list-disc space-y-1">
             <li>Sessions, pageviews, and user metrics</li>
@@ -204,7 +204,7 @@ export default function ProfessionalGA4Auth({ campaignId, onSuccess, onError }: 
           </ul>
         </div>
 
-        <div className="text-xs text-slate-500 bg-blue-50 p-3 rounded-lg">
+        <div className="text-xs text-muted-foreground bg-blue-50 p-3 rounded-lg">
           <div className="flex items-start gap-2">
             <ExternalLink className="w-4 h-4 mt-0.5 text-blue-500" />
             <div>

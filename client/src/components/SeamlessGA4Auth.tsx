@@ -101,7 +101,7 @@ export function SeamlessGA4Auth({ campaignId, propertyId, onSuccess, onError }: 
             <p><strong>Production-Ready Authentication</strong></p>
             <p>This method uses OAuth 2.0 with refresh tokens for seamless, long-term access to your Google Analytics data. No need to re-authenticate every hour!</p>
             
-            <div className="text-sm text-slate-600 dark:text-slate-400">
+            <div className="text-sm text-muted-foreground/70">
               <p><strong>Benefits:</strong></p>
               <ul className="list-disc list-inside space-y-1 ml-2">
                 <li>Automatic token refresh - never expires</li>
@@ -131,7 +131,7 @@ export function SeamlessGA4Auth({ campaignId, propertyId, onSuccess, onError }: 
         )}
       </Button>
       
-      <div className="text-xs text-slate-500 text-center">
+      <div className="text-xs text-muted-foreground text-center">
         You'll be redirected to Google to authorize access, then automatically returned here
       </div>
     </div>

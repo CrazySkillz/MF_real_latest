@@ -636,7 +636,7 @@ export function UploadAdditionalDataModal({
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Upload className="w-5 h-5 text-slate-600" />
+                  <Upload className="w-5 h-5 text-muted-foreground" />
                   Upload CSV
                 </CardTitle>
                 <CardDescription>
@@ -666,7 +666,7 @@ export function UploadAdditionalDataModal({
             )}
 
             {showGoogleSheetsUseCaseStep && (!showGuidedMapping || !newConnectionInfo) && (
-              <Card className="border-slate-200 dark:border-slate-700">
+              <Card className="border-border">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">How will you use this Google Sheet?</CardTitle>
                   <CardDescription>
@@ -685,7 +685,7 @@ export function UploadAdditionalDataModal({
                         <Label htmlFor="gs-usecase-enhance" className="font-medium">
                           Use it to enhance LinkedIn revenue metrics
                         </Label>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-muted-foreground/70">
                           Connect tabs, then launch the guided mapping wizard.
                         </p>
                       </div>
@@ -697,7 +697,7 @@ export function UploadAdditionalDataModal({
                         <Label htmlFor="gs-usecase-view" className="font-medium">
                           Just connect for viewing / later use
                         </Label>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-muted-foreground/70">
                           Connect tabs now. You can map columns later from the dataset card.
                         </p>
                       </div>
@@ -942,7 +942,7 @@ export function UploadAdditionalDataModal({
             ) : (
               (
                 <div className="space-y-4">
-                  <Card className="border-slate-200 dark:border-slate-700">
+                  <Card className="border-border">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base">How will you use Salesforce?</CardTitle>
                       <CardDescription>
@@ -967,7 +967,7 @@ export function UploadAdditionalDataModal({
                             <Label htmlFor="sf-usecase-view" className="font-medium">
                               View Salesforce data (read-only)
                             </Label>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground/70">
                               Connect Salesforce and view Opportunities in MetricMind.
                             </p>
                           </div>
@@ -979,7 +979,7 @@ export function UploadAdditionalDataModal({
                             <Label htmlFor="sf-usecase-revenue" className="font-medium">
                               Use for revenue metrics
                             </Label>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground/70">
                               Map Opportunity fields and calculate conversion value to unlock ROI/ROAS.
                             </p>
                           </div>
@@ -1053,7 +1053,7 @@ export function UploadAdditionalDataModal({
               </div>
             ) : (
               <div className="space-y-4">
-                <Card className="border-slate-200 dark:border-slate-700">
+                <Card className="border-border">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">How will you use Shopify?</CardTitle>
                     <CardDescription>
@@ -1072,7 +1072,7 @@ export function UploadAdditionalDataModal({
                           <Label htmlFor="shopify-usecase-view" className="font-medium">
                             View Shopify data (read-only)
                           </Label>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                          <p className="text-sm text-muted-foreground/70">
                             Connect Shopify and browse Orders in MetricMind.
                           </p>
                         </div>
@@ -1084,7 +1084,7 @@ export function UploadAdditionalDataModal({
                           <Label htmlFor="shopify-usecase-revenue" className="font-medium">
                             Use for revenue metrics
                           </Label>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                          <p className="text-sm text-muted-foreground/70">
                             Map order attribution fields and process revenue metrics to unlock ROI/ROAS.
                           </p>
                         </div>
@@ -1146,7 +1146,7 @@ export function UploadAdditionalDataModal({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
+                <p className="text-sm text-muted-foreground/70">
                   Navigate to the campaign detail page to set up custom integrations via webhooks or API connections.
                 </p>
                 <Button

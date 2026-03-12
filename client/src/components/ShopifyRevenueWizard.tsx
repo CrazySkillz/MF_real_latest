@@ -425,21 +425,21 @@ export function ShopifyRevenueWizard(props: {
                       ? "bg-blue-600 border-blue-600 text-white"
                       : isCompleted
                       ? "bg-green-600 border-green-600 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400"
+                      : "bg-muted border-border dark:border-slate-600 text-muted-foreground/70"
                   }`}
                 >
                   {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
                 </div>
                 <p
                   className={`text-xs mt-2 text-center ${
-                    isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-slate-400"
+                    isActive ? "text-blue-600 font-medium" : isCompleted ? "text-green-600" : "text-muted-foreground/70"
                   }`}
                 >
                   {s.label}
                 </p>
               </div>
               {index < steps.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-2 ${isCompleted ? "bg-green-600" : "bg-slate-200 dark:bg-slate-700"}`} />
+                <div className={`flex-1 h-0.5 mx-2 ${isCompleted ? "bg-green-600" : "bg-muted"}`} />
               )}
             </div>
           );
@@ -495,10 +495,10 @@ export function ShopifyRevenueWizard(props: {
           {step === "campaign-field" && (
             <div className="space-y-2">
               {/* Keep this block layout-stable to prevent "jumpy" transitions */}
-              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2 relative">
+              <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2 relative">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium">Shopify store</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[16px] transition-opacity duration-200">
+                  <div className="text-xs text-muted-foreground/70 min-h-[16px] transition-opacity duration-200">
                     <span className={statusLoading ? "opacity-0" : "opacity-100"}>
                       {connected ? "Connected" : "Not connected"}
                     </span>
@@ -506,7 +506,7 @@ export function ShopifyRevenueWizard(props: {
                 </div>
 
                 {/* Fixed-height helper text to avoid reflow on connected state */}
-                <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[40px]">
+                <div className="text-xs text-muted-foreground/70 min-h-[40px]">
                   <div>
                     Connect your Shopify store to import orders and map revenue to this campaign.
                   </div>
@@ -566,13 +566,13 @@ export function ShopifyRevenueWizard(props: {
                       autoCapitalize="none"
                       autoCorrect="off"
                     />
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-muted-foreground">
                       Create this in Shopify Admin → Apps → Develop apps → your app → Admin API access token. Keep it secret.
                     </div>
                   </div>
                 )}
                 {/* Reserve space to avoid layout shift when connected/shopName arrives */}
-                <div className="text-xs text-slate-600 dark:text-slate-400 min-h-[16px] transition-opacity duration-200">
+                <div className="text-xs text-muted-foreground/70 min-h-[16px] transition-opacity duration-200">
                   <span className={statusLoading ? "opacity-0" : "opacity-100"}>
                     {connected && shopName ? (
                       <>
@@ -586,7 +586,7 @@ export function ShopifyRevenueWizard(props: {
 
                 {/* Non-shifting loading indicator (no text) */}
                 {statusLoading && (
-                  <div className="absolute top-3 right-3 text-slate-400">
+                  <div className="absolute top-3 right-3 text-muted-foreground/70">
                     <Loader2 className="w-4 h-4 animate-spin" aria-label="Loading" />
                   </div>
                 )}
@@ -604,7 +604,7 @@ export function ShopifyRevenueWizard(props: {
                   <SelectItem value="discount_code">Discount code</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-muted-foreground">
                 Shopify doesn’t store LinkedIn campaign ids directly by default—UTMs and discount codes are the most common attribution keys.
               </div>
             </div>
@@ -613,7 +613,7 @@ export function ShopifyRevenueWizard(props: {
           {step === "crosswalk" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <div className="text-sm text-slate-600">
+                <div className="text-sm text-muted-foreground">
                   {isLinkedIn && linkedinCampaigns.length > 0
                     ? <>Mapped: <strong>{campaignMappings.length}</strong> of {uniqueValues.length} values</>
                     : <>Selected: <strong>{selectedValues.length}</strong></>}
@@ -624,23 +624,23 @@ export function ShopifyRevenueWizard(props: {
               </div>
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (
-                  <div className="text-sm text-slate-500">Loading values…</div>
+                  <div className="text-sm text-muted-foreground">Loading values…</div>
                 ) : uniqueValues.length === 0 ? (
-                  <div className="text-sm text-slate-500">No values found for the selected attribution key.</div>
+                  <div className="text-sm text-muted-foreground">No values found for the selected attribution key.</div>
                 ) : isLinkedIn && linkedinCampaigns.length > 0 ? (
                   /* LinkedIn campaign mapping mode */
                   <div className="space-y-3">
-                    <div className="text-xs text-slate-500 mb-2">
+                    <div className="text-xs text-muted-foreground mb-2">
                       Map each Shopify value to a LinkedIn campaign. Unmapped values will be skipped.
                     </div>
                     {uniqueValues.map((v) => {
                       const value = String(v.value);
                       const existing = campaignMappings.find(m => m.crmValue === value);
                       return (
-                        <div key={value} className="flex items-center gap-3 p-2 rounded border border-slate-100 dark:border-slate-800">
+                        <div key={value} className="flex items-center gap-3 p-2 rounded border border-slate-100">
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{value}</div>
-                            <div className="text-xs text-slate-500">{v.count} order(s)</div>
+                            <div className="text-xs text-muted-foreground">{v.count} order(s)</div>
                           </div>
                           <Select
                             value={existing?.linkedinCampaignUrn || "__none__"}
@@ -695,7 +695,7 @@ export function ShopifyRevenueWizard(props: {
                           />
                           <div className="flex-1">
                             <div className="text-sm">{value}</div>
-                            <div className="text-xs text-slate-500">{v.count} order(s)</div>
+                            <div className="text-xs text-muted-foreground">{v.count} order(s)</div>
                           </div>
                         </div>
                       );
@@ -724,7 +724,7 @@ export function ShopifyRevenueWizard(props: {
           )}
 
           {step === "review" && (
-            <div className="space-y-3 text-sm text-slate-700">
+            <div className="space-y-3 text-sm text-foreground/80">
               <div>
                 <strong>Attribution key:</strong> {campaignField}
               </div>
@@ -735,7 +735,7 @@ export function ShopifyRevenueWizard(props: {
               <div>
                 <strong>Revenue metric:</strong> {revenueMetric}
               </div>
-              <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3">
+              <div className="rounded-md border border-border bg-muted/40 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="font-medium">Preview</div>
                   <Button variant="outline" size="sm" onClick={() => void fetchPreview()} disabled={previewLoading || isSaving}>
@@ -744,7 +744,7 @@ export function ShopifyRevenueWizard(props: {
                 </div>
                 <div className="mt-2 text-sm">
                   {previewLoading ? (
-                    <div className="text-slate-500">Computing…</div>
+                    <div className="text-muted-foreground">Computing…</div>
                   ) : (
                     <>
                       <div>
@@ -774,8 +774,8 @@ export function ShopifyRevenueWizard(props: {
                           // ignore
                         }
                         return (
-                          <div className="mt-1 text-xs text-slate-500">
-                            Customer currency (presentment): <span className="font-medium text-slate-700 dark:text-slate-200">{formatted}</span>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Customer currency (presentment): <span className="font-medium text-foreground/80 dark:text-slate-200">{formatted}</span>
                           </div>
                         );
                       })()}
@@ -788,7 +788,7 @@ export function ShopifyRevenueWizard(props: {
 
           {step === "complete" && (
             <div className="space-y-3">
-              <div className="text-sm text-slate-700">Revenue metrics processed. ROI/ROAS should now be available in Overview.</div>
+              <div className="text-sm text-foreground/80">Revenue metrics processed. ROI/ROAS should now be available in Overview.</div>
               <div className="flex items-center gap-2">
                 <Button onClick={() => onClose?.()}>Done</Button>
               </div>

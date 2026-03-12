@@ -109,16 +109,16 @@ export default function CampaignPerformanceSummary() {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="space-y-6">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              <div className="h-8 bg-muted rounded animate-pulse"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                  <div key={i} className="h-24 bg-muted rounded animate-pulse"></div>
                 ))}
               </div>
             </div>
@@ -130,13 +130,13 @@ export default function CampaignPerformanceSummary() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-background dark:bg-slate-900">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
             <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Campaign not found</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">Campaign not found</h2>
               <Link href="/campaigns">
                 <Button>
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -366,7 +366,7 @@ export default function CampaignPerformanceSummary() {
   ];
 
   return (
-    <div className="min-h-screen bg-background dark:bg-slate-900">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="flex">
@@ -384,10 +384,10 @@ export default function CampaignPerformanceSummary() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                  <h1 className="text-3xl font-bold text-foreground">
                     Performance Summary
                   </h1>
-                  <p className="text-slate-600 dark:text-slate-400 mt-1">
+                  <p className="text-muted-foreground/70 mt-1">
                     {campaign.name} - Comprehensive overview & insights
                   </p>
                 </div>
@@ -436,7 +436,7 @@ export default function CampaignPerformanceSummary() {
                 <CardContent>
                   {totalMetrics === 0 ? (
                     <div className="text-center py-4">
-                      <p className="text-slate-600 dark:text-slate-400">Set up KPIs and Benchmarks to see your campaign health score.</p>
+                      <p className="text-muted-foreground/70">Set up KPIs and Benchmarks to see your campaign health score.</p>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-4">
@@ -444,11 +444,11 @@ export default function CampaignPerformanceSummary() {
                         {healthScore}%
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{healthStatus.label}</div>
-                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                        <div className="text-2xl font-bold text-foreground">{healthStatus.label}</div>
+                        <div className="text-sm text-muted-foreground/70">
                           {totalAboveTarget} of {totalMetrics} metrics above target
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           {kpisAboveTarget}/{effectiveKpis.length} KPIs • {benchmarksAboveTarget}/{effectiveBenchmarks.length} Benchmarks
                         </div>
                       </div>
@@ -478,21 +478,21 @@ export default function CampaignPerformanceSummary() {
                                 KPI Below Target
                               </Badge>
                             </div>
-                            <div className="text-xl font-bold text-slate-900 dark:text-white">
+                            <div className="text-xl font-bold text-foreground">
                               {priority.name}
                             </div>
-                            <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            <div className="text-sm text-muted-foreground/70 mt-1">
                               KPI: {priority.metric}
                             </div>
                           </div>
                           <div className="flex items-center space-x-6">
                             <div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Current</div>
+                              <div className="text-xs text-muted-foreground/70 uppercase tracking-wide mb-1">Current</div>
                               <div className="text-xl font-bold text-red-600 dark:text-red-400">{priority.currentValue}</div>
                             </div>
-                            <div className="text-2xl text-slate-300 dark:text-slate-600">→</div>
+                            <div className="text-2xl text-muted-foreground/60">→</div>
                             <div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Target</div>
+                              <div className="text-xs text-muted-foreground/70 uppercase tracking-wide mb-1">Target</div>
                               <div className="text-xl font-bold text-green-600 dark:text-green-400">{priority.targetValue}</div>
                             </div>
                           </div>
@@ -504,7 +504,7 @@ export default function CampaignPerformanceSummary() {
                           <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
                             Benchmark
                           </Badge>
-                          <p className="text-slate-900 dark:text-white font-medium">
+                          <p className="text-foreground font-medium">
                             {priority.action} "{priority.name}" - {priority.message}
                           </p>
                         </div>
@@ -584,9 +584,9 @@ export default function CampaignPerformanceSummary() {
                 <CardContent>
                   {totalMetrics === 0 ? (
                     <div className="text-center py-6">
-                      <AlertTriangle className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-                      <p className="text-slate-600 dark:text-slate-400 font-medium">No KPIs or Benchmarks configured</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
+                      <AlertTriangle className="w-8 h-8 text-muted-foreground/70 mx-auto mb-3" />
+                      <p className="text-muted-foreground/70 font-medium">No KPIs or Benchmarks configured</p>
+                      <p className="text-sm text-muted-foreground mt-1">
                         Set up KPIs and Benchmarks on the campaign page to see health tracking here.
                       </p>
                     </div>
@@ -595,12 +595,12 @@ export default function CampaignPerformanceSummary() {
                       <div className="border-l-4 pl-4 py-2" style={{ borderColor: healthScore >= 70 ? '#22c55e' : healthScore >= 50 ? '#eab308' : '#ef4444' }}>
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center space-x-3">
-                            <span className="font-semibold text-slate-900 dark:text-white">Overall Health Score</span>
+                            <span className="font-semibold text-foreground">Overall Health Score</span>
                             <Badge variant={healthScore >= 70 ? "default" : "destructive"}>
                               {healthStatus.label}
                             </Badge>
                           </div>
-                          <span className="text-2xl font-bold text-slate-900 dark:text-white">{healthScore}%</span>
+                          <span className="text-2xl font-bold text-foreground">{healthScore}%</span>
                         </div>
                       </div>
 
@@ -608,12 +608,12 @@ export default function CampaignPerformanceSummary() {
                         <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpisAboveTarget >= effectiveKpis.length / 2 ? '#22c55e' : '#ef4444' }}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-3">
-                              <span className="font-semibold text-slate-900 dark:text-white">KPIs Above Target</span>
+                              <span className="font-semibold text-foreground">KPIs Above Target</span>
                               <Badge variant={kpisAboveTarget >= effectiveKpis.length / 2 ? "default" : "destructive"}>
                                 {kpisAboveTarget >= effectiveKpis.length / 2 ? "Majority On Track" : "Needs Attention"}
                               </Badge>
                             </div>
-                            <span className="text-sm text-slate-500 dark:text-slate-400">{kpisAboveTarget} of {effectiveKpis.length}</span>
+                            <span className="text-sm text-muted-foreground/70">{kpisAboveTarget} of {effectiveKpis.length}</span>
                           </div>
                         </div>
                       )}
@@ -622,12 +622,12 @@ export default function CampaignPerformanceSummary() {
                         <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? '#22c55e' : '#ef4444' }}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-3">
-                              <span className="font-semibold text-slate-900 dark:text-white">Benchmarks Above Industry Average</span>
+                              <span className="font-semibold text-foreground">Benchmarks Above Industry Average</span>
                               <Badge variant={benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? "default" : "destructive"}>
                                 {benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? "Above Average" : "Below Average"}
                               </Badge>
                             </div>
-                            <span className="text-sm text-slate-500 dark:text-slate-400">{benchmarksAboveTarget} of {effectiveBenchmarks.length}</span>
+                            <span className="text-sm text-muted-foreground/70">{benchmarksAboveTarget} of {effectiveBenchmarks.length}</span>
                           </div>
                         </div>
                       )}
@@ -655,23 +655,23 @@ export default function CampaignPerformanceSummary() {
                           <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: isAboveTarget ? '#22c55e' : '#ef4444' }}>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-3">
-                                <span className="font-semibold text-slate-900 dark:text-white">{kpi.name}</span>
+                                <span className="font-semibold text-foreground">{kpi.name}</span>
                                 <Badge variant={isAboveTarget ? "default" : "destructive"}>
                                   {isAboveTarget ? "On Track" : "Below Target"}
                                 </Badge>
                               </div>
-                              <span className="text-sm text-slate-500 dark:text-slate-400">{percentage}% of target</span>
+                              <span className="text-sm text-muted-foreground/70">{percentage}% of target</span>
                             </div>
                             <div className="flex items-center space-x-6 text-sm">
                               <div>
-                                <span className="text-slate-500 dark:text-slate-400">Current: </span>
-                                <span className="font-semibold text-slate-900 dark:text-white">
+                                <span className="text-muted-foreground/70">Current: </span>
+                                <span className="font-semibold text-foreground">
                                   {kpi.unit === '$' ? `$${current.toFixed(2)}` : kpi.unit === '%' ? `${current.toFixed(2)}%` : `${kpi.currentValue}${kpi.unit}`}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-slate-500 dark:text-slate-400">Target: </span>
-                                <span className="font-semibold text-slate-900 dark:text-white">
+                                <span className="text-muted-foreground/70">Target: </span>
+                                <span className="font-semibold text-foreground">
                                   {kpi.unit === '$' ? `$${target.toFixed(2)}` : kpi.unit === '%' ? `${target.toFixed(2)}%` : `${kpi.targetValue}${kpi.unit}`}
                                 </span>
                               </div>
@@ -703,23 +703,23 @@ export default function CampaignPerformanceSummary() {
                           <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: isAboveTarget ? '#22c55e' : '#ef4444' }}>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-3">
-                                <span className="font-semibold text-slate-900 dark:text-white">{benchmark.name}</span>
+                                <span className="font-semibold text-foreground">{benchmark.name}</span>
                                 <Badge variant={isAboveTarget ? "default" : "destructive"}>
                                   {isAboveTarget ? "Above Benchmark" : "Below Benchmark"}
                                 </Badge>
                               </div>
-                              <span className="text-sm text-slate-500 dark:text-slate-400">{percentage}% of target</span>
+                              <span className="text-sm text-muted-foreground/70">{percentage}% of target</span>
                             </div>
                             <div className="flex items-center space-x-6 text-sm">
                               <div>
-                                <span className="text-slate-500 dark:text-slate-400">Current: </span>
-                                <span className="font-semibold text-slate-900 dark:text-white">
+                                <span className="text-muted-foreground/70">Current: </span>
+                                <span className="font-semibold text-foreground">
                                   {benchmark.unit === '$' ? `$${current.toFixed(2)}` : benchmark.unit === '%' ? `${current.toFixed(2)}%` : `${benchmark.currentValue}${benchmark.unit}`}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-slate-500 dark:text-slate-400">Target: </span>
-                                <span className="font-semibold text-slate-900 dark:text-white">
+                                <span className="text-muted-foreground/70">Target: </span>
+                                <span className="font-semibold text-foreground">
                                   {benchmark.unit === '$' ? `$${target.toFixed(2)}` : benchmark.unit === '%' ? `${target.toFixed(2)}%` : `${benchmark.benchmarkValue}${benchmark.unit}`}
                                 </span>
                               </div>
@@ -744,8 +744,8 @@ export default function CampaignPerformanceSummary() {
                       const Icon = source.icon;
                       return (
                         <div key={source.name} className="flex items-center space-x-3">
-                          <Icon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">{source.name}</span>
+                          <Icon className="w-5 h-5 text-muted-foreground/70" />
+                          <span className="text-sm text-foreground/80/60">{source.name}</span>
                           <Badge variant={source.connected ? "default" : "secondary"}>
                             {source.connected ? "Connected" : "Not Connected"}
                           </Badge>
@@ -787,9 +787,9 @@ export default function CampaignPerformanceSummary() {
                 <CardContent>
                   {changeData.changes.length === 0 ? (
                     <div className="text-center py-8">
-                      <Clock className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-                      <p className="text-slate-600 dark:text-slate-400 font-medium">No historical data available yet</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
+                      <Clock className="w-8 h-8 text-muted-foreground/70 mx-auto mb-3" />
+                      <p className="text-muted-foreground/70 font-medium">No historical data available yet</p>
+                      <p className="text-sm text-muted-foreground mt-1">
                         Data is recorded automatically as your connected platforms sync.
                         Changes will appear here once enough data has been collected to compare.
                       </p>
@@ -797,7 +797,7 @@ export default function CampaignPerformanceSummary() {
                   ) : (
                     <div className="space-y-4">
                       {changeData.baselineTimestamp && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground/70">
                           Current values compared to {new Date(changeData.baselineTimestamp).toLocaleDateString()}
                         </p>
                       )}
@@ -814,11 +814,11 @@ export default function CampaignPerformanceSummary() {
                             <div key={idx} className={`p-4 rounded-lg border transition-all duration-300 ease-in-out ${
                               isPositive ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' :
                               isNegative ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20' :
-                              'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
+                              'border-border bg-muted'
                             }`}>
-                              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">{item.metric}</div>
+                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">{item.metric}</div>
                               <div className="flex items-baseline space-x-2">
-                                <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                                <span className="text-2xl font-bold text-foreground">
                                   {item.isCurrency ? `$${item.current.toLocaleString()}` : item.current.toLocaleString()}
                                 </span>
                               </div>
@@ -828,14 +828,14 @@ export default function CampaignPerformanceSummary() {
                                 <span className={`text-sm font-semibold ${
                                   isPositive ? 'text-green-700 dark:text-green-400' :
                                   isNegative ? 'text-red-700 dark:text-red-400' :
-                                  'text-slate-600 dark:text-slate-400'
+                                  'text-muted-foreground/70'
                                 }`}>
                                   {isFlat ? 'No change' :
                                     `${isUp ? '+' : ''}${item.isCurrency ? '$' + item.change.toLocaleString() : item.change.toLocaleString()} (${isUp ? '+' : ''}${item.pctChange.toFixed(1)}%)`
                                   }
                                 </span>
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                              <div className="text-xs text-muted-foreground mt-1">
                                 Previous: {item.isCurrency ? `$${item.previous.toLocaleString()}` : item.previous.toLocaleString()}
                               </div>
                             </div>
@@ -882,7 +882,7 @@ export default function CampaignPerformanceSummary() {
                         <div className="space-y-6">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Impressions</h4>
+                              <h4 className="text-sm font-semibold text-foreground/80/60 mb-3">Impressions</h4>
                               <ResponsiveContainer width="100%" height={220}>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
@@ -894,7 +894,7 @@ export default function CampaignPerformanceSummary() {
                               </ResponsiveContainer>
                             </div>
                             <div>
-                              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Clicks</h4>
+                              <h4 className="text-sm font-semibold text-foreground/80/60 mb-3">Clicks</h4>
                               <ResponsiveContainer width="100%" height={220}>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
@@ -908,7 +908,7 @@ export default function CampaignPerformanceSummary() {
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Conversions</h4>
+                              <h4 className="text-sm font-semibold text-foreground/80/60 mb-3">Conversions</h4>
                               <ResponsiveContainer width="100%" height={220}>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
@@ -920,7 +920,7 @@ export default function CampaignPerformanceSummary() {
                               </ResponsiveContainer>
                             </div>
                             <div>
-                              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Spend</h4>
+                              <h4 className="text-sm font-semibold text-foreground/80/60 mb-3">Spend</h4>
                               <ResponsiveContainer width="100%" height={220}>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
@@ -1167,17 +1167,17 @@ export default function CampaignPerformanceSummary() {
                         const bgColors: Record<string, string> = {
                           success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
                           warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
-                          info: 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                          info: 'bg-muted border-border'
                         };
                         const textColors: Record<string, string> = {
                           success: 'text-green-900 dark:text-green-100',
                           warning: 'text-yellow-900 dark:text-yellow-100',
-                          info: 'text-slate-900 dark:text-slate-100'
+                          info: 'text-foreground dark:text-slate-100'
                         };
                         const bodyColors: Record<string, string> = {
                           success: 'text-green-800 dark:text-green-200',
                           warning: 'text-yellow-800 dark:text-yellow-200',
-                          info: 'text-slate-700 dark:text-slate-300'
+                          info: 'text-foreground/80/60'
                         };
                         
                         return (

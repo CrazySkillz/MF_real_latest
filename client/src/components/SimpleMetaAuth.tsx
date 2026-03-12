@@ -124,7 +124,7 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
     };
 
     return (
-      <Card className="w-full border border-slate-200">
+      <Card className="w-full border border-border">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center gap-2 justify-center">
             <SiFacebook className="w-5 h-5 text-blue-600" />
@@ -136,11 +136,11 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
         </CardHeader>
         <CardContent>
           {loadingCampaigns ? (
-            <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
+            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading campaigns...
             </div>
           ) : metaCampaigns.length === 0 ? (
-            <div className="text-sm text-slate-500 py-4">
+            <div className="text-sm text-muted-foreground py-4">
               <p>No campaigns found yet. Data will be available after the first import.</p>
               <Button className="mt-3" onClick={() => { toast({ title: 'Meta Connected!' }); onSuccess(); }}>
                 Continue
@@ -157,7 +157,7 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
               </div>
               <div className="max-h-60 overflow-y-auto space-y-1 border rounded-md p-2">
                 {metaCampaigns.map((c) => (
-                  <div key={c.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-slate-50 dark:hover:bg-slate-800 rounded">
+                  <div key={c.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-muted rounded">
                     <Checkbox
                       checked={c.selected}
                       onCheckedChange={(checked) => setMetaCampaigns(metaCampaigns.map(x => x.id === c.id ? { ...x, selected: !!checked } : x))}
@@ -166,7 +166,7 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
                       <p className="text-sm truncate">{c.name}</p>
                     </div>
                     {c.status && (
-                      <span className="text-xs text-slate-500 shrink-0">{c.status}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{c.status}</span>
                     )}
                   </div>
                 ))}
@@ -190,7 +190,7 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
   // Show ad account selection if we have accounts
   if (adAccounts.length > 0) {
     return (
-      <Card className="w-full border border-slate-200">
+      <Card className="w-full border border-border">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center gap-2 justify-center">
             <Briefcase className="w-5 h-5 text-blue-600" />
@@ -238,7 +238,7 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
 
   // Initial connection screen
   return (
-    <Card className="w-full border border-slate-200">
+    <Card className="w-full border border-border">
       <CardHeader className="text-center">
         <CardTitle className="flex items-center gap-2 justify-center">
           <SiFacebook className="w-5 h-5 text-blue-600" />
@@ -280,14 +280,14 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
           </Button>
 
           {isConnecting && (
-            <p className="text-xs text-slate-500 text-center">
+            <p className="text-xs text-muted-foreground text-center">
               Loading test ad accounts with realistic metrics...
             </p>
           )}
           
           <div className="pt-4 border-t">
-            <p className="text-xs text-slate-500 text-center">
-              <strong>Production Setup:</strong> To connect a real Meta Ads account, add <code className="bg-slate-100 px-1 py-0.5 rounded">META_APP_ID</code> and <code className="bg-slate-100 px-1 py-0.5 rounded">META_APP_SECRET</code> to your environment variables.
+            <p className="text-xs text-muted-foreground text-center">
+              <strong>Production Setup:</strong> To connect a real Meta Ads account, add <code className="bg-muted px-1 py-0.5 rounded">META_APP_ID</code> and <code className="bg-muted px-1 py-0.5 rounded">META_APP_SECRET</code> to your environment variables.
             </p>
           </div>
         </div>

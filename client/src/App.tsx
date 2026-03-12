@@ -76,7 +76,7 @@ function WelcomeGate({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -144,7 +144,7 @@ function App() {
             <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
               <div className="text-center">
                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-slate-600">Loading...</p>
+                <p className="text-muted-foreground">Loading...</p>
               </div>
             </div>
           </ClerkLoading>

@@ -33,7 +33,7 @@ const toRecordedAtUtc = (yyyyMmDd: string) => new Date(`${yyyyMmDd}T23:59:59.000
 
 const round2 = (n: number) => Number((Number.isFinite(n) ? n : 0).toFixed(2));
 
-function computeKpiValue(metricOrName: string, inputs: {
+export function computeKpiValue(metricOrName: string, inputs: {
   users: number;
   sessions: number;
   pageviews: number;
@@ -83,7 +83,7 @@ function computeTrendDirection(prevValue: number | null, nextValue: number) {
   return "neutral";
 }
 
-function computeBenchmarkVariance(metricKey: string, current: number, benchmark: number) {
+export function computeBenchmarkVariance(metricKey: string, current: number, benchmark: number) {
   const m = String(metricKey || "").toLowerCase();
   const lowerIsBetter = m === "cpa" || m.includes("cpa");
   if (!(benchmark > 0)) return 0;
@@ -91,7 +91,7 @@ function computeBenchmarkVariance(metricKey: string, current: number, benchmark:
   return round2(((current - benchmark) / benchmark) * 100);
 }
 
-function computeBenchmarkRating(variancePct: number) {
+export function computeBenchmarkRating(variancePct: number) {
   if (variancePct >= 20) return "excellent";
   if (variancePct >= 5) return "good";
   if (variancePct >= -5) return "average";

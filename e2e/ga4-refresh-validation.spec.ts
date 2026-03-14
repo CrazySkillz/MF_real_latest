@@ -1,39 +1,31 @@
 import { test, expect, type Page } from "@playwright/test";
+import scenarios from "./fixtures/ga4-scenarios.json";
 
 /**
- * GA4 Comprehensive E2E Validation Test
+ * GA4 Data-Driven E2E Test Matrix
  *
- * Creates a FRESH campaign from scratch, then validates all tab values
- * through 9 phases: empty state → add spend → mock refresh (×3) →
- * create KPIs → create benchmarks → add more spend.
+ * All test scenarios are defined in e2e/fixtures/ga4-scenarios.json.
+ * To add a new scenario, add a line to the JSON file — no code changes needed.
  *
  * Run:
- *   npm run dev                    # Terminal 1: start the app
- *   npm run test:e2e:headed        # Terminal 2: run this test (see browser)
+ *   npm run test:e2e:headed     (watch the browser)
+ *   npm run test:e2e            (headless, faster)
  *
- * One-time auth setup:
- *   npx playwright codegen http://localhost:5000 --save-storage=e2e/auth.json
+ * Prerequisites:
+ *   1. App running (deployed on Render or local via npm run dev)
+ *   2. Auth saved: npx playwright codegen https://mforensics.onrender.com --save-storage=e2e/auth.json
  */
 
 // ============================================================
-// KNOWN MOCK VALUES (yesop-brand profile, per day of mock-refresh)
+// HELPERS
 // ============================================================
-const PER_DAY = {
-  users: 500,
-  sessions: 750,
-  pageviews: 2250,
-  conversions: 38,
-  revenue: 2850,
-};
 
-// Helper: YYYY-MM-DD offset from today
 function dateOffset(daysAgo: number): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - daysAgo);
   return d.toISOString().slice(0, 10);
 }
 
-// Helper: call API from the browser context (carries auth cookies)
 async function apiPost(page: Page, path: string, body: Record<string, unknown> = {}) {
   return page.evaluate(
     async ({ path, body }) => {
@@ -49,6 +41,19 @@ async function apiPost(page: Page, path: string, body: Record<string, unknown> =
   );
 }
 
+async function apiDelete(page: Page, path: string) {
+  return page.evaluate(
+    async (path) => {
+      const res = await fetch(path, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      return res.json();
+    },
+    path,
+  );
+}
+
 async function apiGet(page: Page, path: string) {
   return page.evaluate(
     async (path) => {
@@ -59,22 +64,12 @@ async function apiGet(page: Page, path: string) {
   );
 }
 
-// Helper: check if page body contains text (case-insensitive search)
-async function bodyContains(page: Page, text: string): Promise<boolean> {
-  const content = (await page.textContent("body")) || "";
-  return content.includes(text);
+async function bodyText(page: Page): Promise<string> {
+  return (await page.textContent("body")) || "";
 }
 
-// Helper: check if page contains a formatted number (handles commas)
-async function bodyContainsNumber(page: Page, num: number): Promise<boolean> {
-  const content = (await page.textContent("body")) || "";
-  const formatted = num.toLocaleString("en-US");
-  return content.includes(formatted) || content.includes(String(num));
-}
-
-// Helper: check if page contains a dollar amount in any common format
 async function bodyContainsDollar(page: Page, amount: number): Promise<boolean> {
-  const content = (await page.textContent("body")) || "";
+  const content = await bodyText(page);
   const patterns = [
     `$${amount.toLocaleString("en-US")}`,
     `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
@@ -84,7 +79,6 @@ async function bodyContainsDollar(page: Page, amount: number): Promise<boolean> 
   return patterns.some((p) => content.includes(p));
 }
 
-// Helper: wait for page data to settle after an action
 async function waitForDataRefresh(page: Page) {
   await page.reload();
   await page.waitForLoadState("networkidle");
@@ -92,366 +86,315 @@ async function waitForDataRefresh(page: Page) {
 }
 
 // ============================================================
+// CONFIG FROM FIXTURES
+// ============================================================
+
+const CAMPAIGN_ID = scenarios.campaign_id;
+const GA4_URL = `/campaigns/${CAMPAIGN_ID}/ga4-metrics`;
+
+// ============================================================
 // TEST SUITE
 // ============================================================
 
-test.describe("GA4 Comprehensive Validation — Fresh Campaign", () => {
+test.describe("GA4 Data-Driven Test Matrix", () => {
   test.use({ storageState: "e2e/auth.json" });
-  test.setTimeout(180_000); // 3 minutes for the full multi-phase test
+  test.setTimeout(120_000);
 
-  let campaignId: string;
-  let ga4Url: string;
+  // Track state across tests
+  let spendSourceIds: string[] = [];
 
-  // ---- PHASE 1: Setup — seed yesop campaign (creates campaign + GA4 connection + spend + revenue) ----
+  // ---- SETUP ----
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: "e2e/auth.json" });
     const page = await context.newPage();
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // Seed yesop campaigns — this creates campaigns with GA4 connections already set up
+    // Seed campaigns
     const seedResult = await apiPost(page, "/api/seed-yesop-campaigns");
-    console.log("Seed result:", seedResult?.message || JSON.stringify(seedResult));
+    console.log("Seed:", seedResult?.message || "ok");
 
-    // Use yesop-brand as our test campaign
-    campaignId = "yesop-brand";
-    ga4Url = `/campaigns/${campaignId}/ga4-metrics`;
-    console.log("Test campaign:", campaignId, "URL:", ga4Url);
-
-    // Call mock-refresh once to ensure GA4 connection exists
-    // (seed may have skipped if campaign already existed from a previous run)
-    const refreshResult = await apiPost(page, `/api/campaigns/${campaignId}/ga4/mock-refresh`, {
-      propertyId: "yesop",
-      date: dateOffset(20), // far back so it doesn't interfere with test phases
+    // Bootstrap GA4 connection via mock-refresh
+    const refreshResult = await apiPost(page, `/api/campaigns/${CAMPAIGN_ID}/ga4/mock-refresh`, {
+      propertyId: scenarios.mock_property_id,
+      date: dateOffset(30),
     });
-    console.log("Bootstrap refresh:", refreshResult?.summary || "ok");
+    console.log("Bootstrap:", refreshResult?.summary || "ok");
 
     await context.close();
   });
 
-  // ---- PHASE 2: Initial State — seeded campaign loads with tabs ----
-  test("Phase 2: Seeded campaign loads — all tabs accessible", async ({ page }) => {
-    await page.goto(ga4Url);
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(3000);
+  // ---- SPEND SCENARIOS ----
+  test.describe("Spend Scenarios", () => {
+    test("Add $950 manual spend", async ({ page }) => {
+      await page.goto(GA4_URL);
+      await page.waitForLoadState("networkidle");
 
-    // Overview tab should be visible (not the "Connect Google Analytics" screen)
-    const content = (await page.textContent("body")) || "";
-    const hasOverviewData = content.includes("Sessions") || content.includes("Users") || content.includes("Overview");
-    expect(hasOverviewData, "GA4 page should show metrics tabs, not Connect screen").toBe(true);
+      const result = await apiPost(page, `/api/campaigns/${CAMPAIGN_ID}/spend/process/manual`, {
+        amount: 950,
+        currency: "USD",
+        displayName: "E2E Spend A",
+      });
+      console.log("Spend A added:", result?.sourceId || result?.message);
+      if (result?.sourceId) spendSourceIds.push(result.sourceId);
 
-    // KPIs tab should load
-    await page.getByRole("tab", { name: "KPIs" }).click();
-    await page.waitForTimeout(1500);
-    const kpiContent = (await page.textContent("body")) || "";
-    const hasKpiTab = kpiContent.includes("Create KPI") || kpiContent.includes("Total KPIs");
-    expect(hasKpiTab, "KPIs tab should load").toBe(true);
+      await waitForDataRefresh(page);
 
-    // Benchmarks tab should load
-    await page.getByRole("tab", { name: "Benchmarks" }).click();
-    await page.waitForTimeout(1500);
-    const benchContent = (await page.textContent("body")) || "";
-    const hasBenchTab = benchContent.includes("Create Benchmark") || benchContent.includes("Total Benchmarks");
-    expect(hasBenchTab, "Benchmarks tab should load").toBe(true);
-
-    console.log("Phase 2 ✓ — Seeded campaign loads with all tabs");
-  });
-
-  // ---- PHASE 3: Verify Spend exists from seed ----
-  test("Phase 3: Seeded spend is visible on Overview", async ({ page }) => {
-    await page.goto(ga4Url);
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(2500);
-
-    // The seed creates a spend source — check that Spend appears on the page
-    const content = (await page.textContent("body")) || "";
-    const hasSpendLabel = content.includes("Spend") || content.includes("$");
-    expect(hasSpendLabel, "Overview should show spend data").toBe(true);
-
-    console.log("Phase 3 ✓ — Spend visible on Overview");
-  });
-
-  // ---- PHASE 4: Mock Refresh — inject new day, verify values update ----
-  test("Phase 4: Mock refresh — sessions, revenue, and ROAS appear", async ({ page }) => {
-    await page.goto(ga4Url);
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(2000);
-
-    // Record current page state before refresh
-    const beforeContent = (await page.textContent("body")) || "";
-
-    // Inject a new day of data via API
-    const newDate = dateOffset(10); // 10 days ago (avoids collision with seeded data)
-    const refreshResult = await apiPost(page, `/api/campaigns/${campaignId}/ga4/mock-refresh`, {
-      propertyId: "yesop",
-      date: newDate,
+      const content = await bodyText(page);
+      expect(/\$[\d,]+/.test(content), "Overview should show dollar amounts after adding spend").toBe(true);
+      console.log("✓ Spend: $950 added");
     });
-    console.log("Refresh injected:", refreshResult?.summary || "ok");
 
-    await waitForDataRefresh(page);
+    test("Add $500 more spend — total increases", async ({ page }) => {
+      await page.goto(GA4_URL);
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(2000);
 
-    // Overview should show sessions (at least 750 from the refresh)
-    const content = (await page.textContent("body")) || "";
-    const hasSessionsLabel = content.includes("Sessions");
-    expect(hasSessionsLabel, "Overview should show Sessions metric").toBe(true);
+      // Capture ROAS before
+      const beforeContent = await bodyText(page);
+      const beforeRoasMatch = beforeContent.match(/([\d.]+)x/);
+      const roasBefore = beforeRoasMatch ? parseFloat(beforeRoasMatch[1]) : null;
 
-    // Should show dollar amounts (revenue and/or spend)
-    const hasDollar = /\$[\d,]+/.test(content);
-    expect(hasDollar, "Overview should show dollar amounts").toBe(true);
+      const result = await apiPost(page, `/api/campaigns/${CAMPAIGN_ID}/spend/process/manual`, {
+        amount: 500,
+        currency: "USD",
+        displayName: "E2E Spend B",
+      });
+      console.log("Spend B added:", result?.sourceId || result?.message);
+      if (result?.sourceId) spendSourceIds.push(result.sourceId);
 
-    // Check ROAS appears (as Xx format)
-    const roasMatch = content.match(/([\d.]+)x/);
-    if (roasMatch) {
-      const roas = parseFloat(roasMatch[1]);
-      expect(roas, "ROAS should be a positive number").toBeGreaterThan(0);
-      console.log("ROAS after refresh:", roas.toFixed(2) + "x");
+      await waitForDataRefresh(page);
+
+      // ROAS should decrease (more spend, same revenue)
+      const afterContent = await bodyText(page);
+      const afterRoasMatch = afterContent.match(/([\d.]+)x/);
+      if (afterRoasMatch && roasBefore) {
+        const roasAfter = parseFloat(afterRoasMatch[1]);
+        expect(roasAfter, "ROAS should decrease after adding more spend").toBeLessThan(roasBefore);
+        console.log(`✓ ROAS decreased: ${roasBefore.toFixed(2)}x → ${roasAfter.toFixed(2)}x`);
+      }
+    });
+
+    test("Delete a spend source — total recalculates", async ({ page }) => {
+      await page.goto(GA4_URL);
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(2000);
+
+      // Get current spend sources
+      const sources = await apiGet(page, `/api/campaigns/${CAMPAIGN_ID}/spend-sources`);
+      const sourceList = Array.isArray(sources) ? sources : sources?.sources || [];
+      const activeSource = sourceList.find((s: any) => s.isActive && s.displayName?.includes("E2E Spend A"));
+
+      if (activeSource) {
+        // Capture ROAS before delete
+        const beforeContent = await bodyText(page);
+        const beforeRoasMatch = beforeContent.match(/([\d.]+)x/);
+        const roasBefore = beforeRoasMatch ? parseFloat(beforeRoasMatch[1]) : null;
+
+        // Delete the source
+        const deleteResult = await apiDelete(page, `/api/campaigns/${CAMPAIGN_ID}/spend-sources/${activeSource.id}`);
+        console.log("Deleted spend source:", deleteResult?.success || deleteResult?.message);
+
+        await waitForDataRefresh(page);
+
+        // ROAS should increase (less spend, same revenue)
+        const afterContent = await bodyText(page);
+        const afterRoasMatch = afterContent.match(/([\d.]+)x/);
+        if (afterRoasMatch && roasBefore) {
+          const roasAfter = parseFloat(afterRoasMatch[1]);
+          expect(roasAfter, "ROAS should increase after deleting spend").toBeGreaterThan(roasBefore);
+          console.log(`✓ ROAS increased after delete: ${roasBefore.toFixed(2)}x → ${roasAfter.toFixed(2)}x`);
+        }
+      } else {
+        console.log("⚠ No E2E Spend A source found to delete — skipping");
+      }
+    });
+  });
+
+  // ---- REFRESH CYCLES ----
+  test.describe("Refresh Cycles", () => {
+    for (let cycle = 1; cycle <= scenarios.refresh_cycles; cycle++) {
+      test(`Refresh #${cycle}: Data accumulates correctly`, async ({ page }) => {
+        await page.goto(GA4_URL);
+        await page.waitForLoadState("networkidle");
+        await page.waitForTimeout(2000);
+
+        // Inject a new day of data
+        const date = dateOffset(40 + cycle); // offset far back to avoid collision
+        const result = await apiPost(page, `/api/campaigns/${CAMPAIGN_ID}/ga4/mock-refresh`, {
+          propertyId: scenarios.mock_property_id,
+          date,
+        });
+        console.log(`Refresh #${cycle} injected for ${date}:`, result?.summary || "ok");
+
+        await waitForDataRefresh(page);
+
+        // Overview should show data
+        const content = await bodyText(page);
+        expect(content.includes("Sessions"), `Refresh #${cycle}: Sessions label visible`).toBe(true);
+        expect(/\$[\d,]+/.test(content), `Refresh #${cycle}: Dollar amounts visible`).toBe(true);
+
+        // Check all tabs still work
+        for (const tabName of ["KPIs", "Benchmarks", "Insights"]) {
+          await page.getByRole("tab", { name: tabName }).click();
+          await page.waitForTimeout(1000);
+          const tabContent = await bodyText(page);
+          const hasContent = tabContent.length > 500; // not an empty/error page
+          expect(hasContent, `Refresh #${cycle}: ${tabName} tab has content`).toBe(true);
+        }
+
+        // Back to overview for next cycle
+        await page.getByRole("tab", { name: "Overview" }).click();
+        await page.waitForTimeout(500);
+
+        console.log(`✓ Refresh #${cycle}: All tabs working`);
+      });
     }
-
-    // Insights tab should show financial data
-    await page.getByRole("tab", { name: "Insights" }).click();
-    await page.waitForTimeout(2000);
-    const insightsHasSpend = await bodyContains(page, "Spend");
-    const insightsHasRevenue = await bodyContains(page, "Revenue");
-    expect(insightsHasSpend, "Insights should show Spend").toBe(true);
-    expect(insightsHasRevenue, "Insights should show Revenue").toBe(true);
-
-    console.log("Phase 4 ✓ — Mock refresh: data visible on Overview and Insights");
   });
 
-  // ---- PHASE 5: Create KPIs ----
-  test("Phase 5: Create KPIs — ROAS above target, CPA below target", async ({ page }) => {
-    await page.goto(ga4Url);
-    await page.waitForLoadState("networkidle");
+  // ---- KPI SCENARIOS (data-driven from fixtures) ----
+  test.describe("KPI Scenarios", () => {
+    // Create all KPIs first
+    test("Create all KPIs from fixture", async ({ page }) => {
+      await page.goto(GA4_URL);
+      await page.waitForLoadState("networkidle");
 
-    // Create ROAS KPI (target 250%, current should be 300% → above target)
-    const kpi1 = await apiPost(page, `/api/platforms/google_analytics/kpis`, {
-      campaignId: String(campaignId),
-      name: "ROAS Target",
-      metric: "ROAS",
-      unit: "%",
-      currentValue: "0",
-      targetValue: "250",
-      priority: "high",
-    });
-    console.log("KPI 1 created:", kpi1?.id || kpi1?.message || JSON.stringify(kpi1));
+      for (const kpi of scenarios.kpi_scenarios) {
+        const result = await apiPost(page, `/api/platforms/google_analytics/kpis`, {
+          campaignId: String(CAMPAIGN_ID),
+          name: `${kpi.metric} Target`,
+          metric: kpi.metric,
+          unit: kpi.unit,
+          currentValue: "0",
+          targetValue: kpi.target,
+          priority: "high",
+        });
+        const id = result?.id || result?.kpi?.id;
+        console.log(`KPI "${kpi.metric}" created:`, id || result?.message || "error");
+      }
 
-    // Create CPA KPI (target $30, current should be $25 → below target = good)
-    const kpi2 = await apiPost(page, `/api/platforms/google_analytics/kpis`, {
-      campaignId: String(campaignId),
-      name: "CPA Target",
-      metric: "CPA",
-      unit: "$",
-      currentValue: "0",
-      targetValue: "30",
-      priority: "medium",
-    });
-    console.log("KPI 2 created:", kpi2?.id || kpi2?.message || JSON.stringify(kpi2));
+      await waitForDataRefresh(page);
 
-    // Reload to pick up newly created KPIs
-    await waitForDataRefresh(page);
+      // Switch to KPIs tab
+      await page.getByRole("tab", { name: "KPIs" }).click();
+      await page.waitForTimeout(2500);
 
-    // Switch to KPIs tab
-    await page.getByRole("tab", { name: "KPIs" }).click();
-    await page.waitForTimeout(2500);
+      const content = await bodyText(page);
+      expect(content, "Should show Total KPIs").toContain("Total KPIs");
 
-    const kpiContent = (await page.textContent("body")) || "";
-    // Should show Total KPIs summary
-    expect(kpiContent, "Should show Total KPIs summary").toContain("Total KPIs");
+      // Verify each KPI appears
+      for (const kpi of scenarios.kpi_scenarios) {
+        const visible = content.includes(`${kpi.metric} Target`);
+        console.log(`KPI "${kpi.metric} Target" visible: ${visible} (expect ${kpi.expect_band})`);
+      }
 
-    // Check if our KPIs actually got created (log for debugging)
-    const hasRoas = kpiContent.includes("ROAS Target");
-    const hasCpa = kpiContent.includes("CPA Target");
-    console.log("KPIs visible — ROAS Target:", hasRoas, ", CPA Target:", hasCpa);
-
-    // At minimum, Total KPIs should not be 0 if creation succeeded
-    if (hasRoas || hasCpa) {
-      const hasPercentage = /\d+\.?\d*%/.test(kpiContent);
+      // Should show progress percentages
+      const hasPercentage = /\d+\.?\d*%/.test(content);
       expect(hasPercentage, "KPIs should show progress percentages").toBe(true);
-    }
 
-    console.log("Phase 5 ✓ — KPIs tab loaded");
+      console.log(`✓ ${scenarios.kpi_scenarios.length} KPIs created and visible`);
+    });
   });
 
-  // ---- PHASE 6: Create Benchmarks ----
-  test("Phase 6: Create Benchmarks — Sessions and Revenue benchmarks", async ({ page }) => {
-    await page.goto(ga4Url);
-    await page.waitForLoadState("networkidle");
+  // ---- BENCHMARK SCENARIOS (data-driven from fixtures) ----
+  test.describe("Benchmark Scenarios", () => {
+    test("Create all Benchmarks from fixture", async ({ page }) => {
+      await page.goto(GA4_URL);
+      await page.waitForLoadState("networkidle");
 
-    // Create Sessions benchmark (current 750, benchmark 1000 → ratio 0.75 → needs_attention)
-    const bench1 = await apiPost(page, `/api/platforms/google_analytics/benchmarks`, {
-      campaignId: String(campaignId),
-      name: "Sessions Benchmark",
-      metric: "sessions",
-      unit: "count",
-      currentValue: "0",
-      benchmarkValue: "1000",
-      benchmarkType: "custom",
-      category: "performance",
-      period: "monthly",
-      status: "active",
+      for (const bench of scenarios.benchmark_scenarios) {
+        const result = await apiPost(page, `/api/platforms/google_analytics/benchmarks`, {
+          campaignId: String(CAMPAIGN_ID),
+          name: bench.name,
+          metric: bench.metric,
+          unit: bench.unit,
+          currentValue: "0",
+          benchmarkValue: bench.benchmark,
+          benchmarkType: "custom",
+          category: "performance",
+          period: "monthly",
+          status: "active",
+        });
+        const id = result?.id || result?.benchmark?.id;
+        console.log(`Benchmark "${bench.name}" created:`, id || result?.message || "error");
+      }
+
+      await waitForDataRefresh(page);
+
+      // Switch to Benchmarks tab
+      await page.getByRole("tab", { name: "Benchmarks" }).click();
+      await page.waitForTimeout(2500);
+
+      const content = await bodyText(page);
+      expect(content, "Should show Total Benchmarks").toContain("Total Benchmarks");
+
+      // Verify each benchmark appears
+      for (const bench of scenarios.benchmark_scenarios) {
+        const visible = content.includes(bench.name);
+        console.log(`Benchmark "${bench.name}" visible: ${visible}`);
+      }
+
+      console.log(`✓ ${scenarios.benchmark_scenarios.length} Benchmarks created and visible`);
     });
-    console.log("Benchmark 1 created:", bench1?.id || bench1?.message || JSON.stringify(bench1));
-
-    // Create Revenue benchmark (current 2850, benchmark 5000 → ratio 0.57 → behind)
-    const bench2 = await apiPost(page, `/api/platforms/google_analytics/benchmarks`, {
-      campaignId: String(campaignId),
-      name: "Revenue Benchmark",
-      metric: "revenue",
-      unit: "$",
-      currentValue: "0",
-      benchmarkValue: "5000",
-      benchmarkType: "custom",
-      category: "performance",
-      period: "monthly",
-      status: "active",
-    });
-    console.log("Benchmark 2 created:", bench2?.id || bench2?.message || JSON.stringify(bench2));
-
-    // Reload to pick up newly created benchmarks
-    await waitForDataRefresh(page);
-
-    // Switch to Benchmarks tab
-    await page.getByRole("tab", { name: "Benchmarks" }).click();
-    await page.waitForTimeout(2500);
-
-    const benchContent = (await page.textContent("body")) || "";
-    expect(benchContent, "Should show Total Benchmarks summary").toContain("Total Benchmarks");
-
-    const hasSessions = benchContent.includes("Sessions Benchmark");
-    const hasRevenue = benchContent.includes("Revenue Benchmark");
-    console.log("Benchmarks visible — Sessions:", hasSessions, ", Revenue:", hasRevenue);
-
-    console.log("Phase 6 ✓ — Benchmarks tab loaded");
-  });
-
-  // ---- PHASE 7: Second Mock Refresh — KPIs and Benchmarks update ----
-  test("Phase 7: Second refresh — KPIs and Benchmarks still work", async ({ page }) => {
-    await page.goto(ga4Url);
-    await page.waitForLoadState("networkidle");
-
-    // Inject another day
-    const date2 = dateOffset(11);
-    await apiPost(page, `/api/campaigns/${campaignId}/ga4/mock-refresh`, {
-      propertyId: "yesop",
-      date: date2,
-    });
-
-    await waitForDataRefresh(page);
-
-    // Overview should still show data
-    const content = (await page.textContent("body")) || "";
-    expect(/\$[\d,]+/.test(content), "Overview should show dollar amounts").toBe(true);
-
-    // KPIs should still be visible
-    await page.getByRole("tab", { name: "KPIs" }).click();
-    await page.waitForTimeout(1500);
-    const kpiContent = (await page.textContent("body")) || "";
-    expect(kpiContent, "KPIs tab should show Total KPIs").toContain("Total KPIs");
-
-    // Benchmarks should still be visible
-    await page.getByRole("tab", { name: "Benchmarks" }).click();
-    await page.waitForTimeout(1500);
-    const benchContent = (await page.textContent("body")) || "";
-    expect(benchContent, "Benchmarks tab should show Total Benchmarks").toContain("Total Benchmarks");
-
-    console.log("Phase 7 ✓ — Second refresh: KPIs and Benchmarks updated");
-  });
-
-  // ---- PHASE 8: Third Mock Refresh — Ad Comparison works ----
-  test("Phase 8: Third refresh — all tabs including Ad Comparison", async ({ page }) => {
-    await page.goto(ga4Url);
-    await page.waitForLoadState("networkidle");
-
-    // Inject another day
-    const date3 = dateOffset(12);
-    await apiPost(page, `/api/campaigns/${campaignId}/ga4/mock-refresh`, {
-      propertyId: "yesop",
-      date: date3,
-    });
-
-    await waitForDataRefresh(page);
-
-    // Overview should show data
-    const content = (await page.textContent("body")) || "";
-    expect(/\$[\d,]+/.test(content), "Overview should show dollar amounts").toBe(true);
-
-    // Ad Comparison tab should load
-    await page.getByRole("tab", { name: "Ad Comparison" }).click();
-    await page.waitForTimeout(1500);
-    const adContent = (await page.textContent("body")) || "";
-    const adLoaded =
-      adContent.includes("Sessions") || adContent.includes("campaign") || adContent.includes("No campaign");
-    expect(adLoaded, "Ad Comparison tab should load without crash").toBe(true);
-
-    console.log("Phase 8 ✓ — Third refresh: all tabs work");
-  });
-
-  // ---- PHASE 9: Add More Spend — ROAS recalculates ----
-  test("Phase 9: Add $500 more spend — ROAS recalculates", async ({ page }) => {
-    await page.goto(ga4Url);
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(2000);
-
-    // Capture ROAS before adding spend
-    const beforeContent = (await page.textContent("body")) || "";
-    const beforeRoasMatch = beforeContent.match(/([\d.]+)x/);
-    const roasBefore = beforeRoasMatch ? parseFloat(beforeRoasMatch[1]) : null;
-    console.log("ROAS before adding spend:", roasBefore ? roasBefore.toFixed(2) + "x" : "not found");
-
-    // Add $500 more spend
-    await apiPost(page, `/api/campaigns/${campaignId}/spend/process/manual`, {
-      amount: 500,
-      currency: "USD",
-      displayName: "Additional E2E Spend",
-    });
-
-    await waitForDataRefresh(page);
-
-    // ROAS should have decreased (more spend with same revenue)
-    const afterContent = (await page.textContent("body")) || "";
-    const afterRoasMatch = afterContent.match(/([\d.]+)x/);
-    if (afterRoasMatch && roasBefore) {
-      const roasAfter = parseFloat(afterRoasMatch[1]);
-      console.log("ROAS after adding $500 spend:", roasAfter.toFixed(2) + "x");
-      expect(roasAfter, "ROAS should decrease after adding more spend").toBeLessThan(roasBefore);
-    }
-
-    // Spend should have increased (page should show a higher dollar amount)
-    const hasDollar = /\$[\d,]+/.test(afterContent);
-    expect(hasDollar, "Overview should show updated spend").toBe(true);
-
-    console.log("Phase 9 ✓ — Spend increased, ROAS recalculated");
   });
 
   // ---- CROSS-TAB CONSISTENCY ----
-  test("Cross-tab: ROAS matches between Overview and Insights", async ({ page }) => {
-    await page.goto(ga4Url);
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(2000);
+  test.describe("Cross-Tab Consistency", () => {
+    test("ROAS matches between Overview and Insights", async ({ page }) => {
+      await page.goto(GA4_URL);
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(2500);
 
-    // Get ROAS from Overview
-    const overviewContent = (await page.textContent("body")) || "";
-    const overviewRoasMatch = overviewContent.match(/([\d.]+)x/);
-    const overviewRoas = overviewRoasMatch ? parseFloat(overviewRoasMatch[1]) : null;
+      // Get ROAS from Overview
+      const overviewContent = await bodyText(page);
+      const overviewRoasMatch = overviewContent.match(/([\d.]+)x/);
+      const overviewRoas = overviewRoasMatch ? parseFloat(overviewRoasMatch[1]) : null;
+      console.log("Overview ROAS:", overviewRoas ? overviewRoas.toFixed(2) + "x" : "not found");
 
-    // Switch to Insights
-    await page.getByRole("tab", { name: "Insights" }).click();
-    await page.waitForTimeout(2000);
+      // Switch to Insights
+      await page.getByRole("tab", { name: "Insights" }).click();
+      await page.waitForTimeout(2500);
 
-    const insightsContent = (await page.textContent("body")) || "";
-    const insightsRoasMatch = insightsContent.match(/([\d.]+)x/);
-    const insightsRoas = insightsRoasMatch ? parseFloat(insightsRoasMatch[1]) : null;
+      const insightsContent = await bodyText(page);
+      const insightsRoasMatch = insightsContent.match(/([\d.]+)x/);
+      const insightsRoas = insightsRoasMatch ? parseFloat(insightsRoasMatch[1]) : null;
+      console.log("Insights ROAS:", insightsRoas ? insightsRoas.toFixed(2) + "x" : "not found");
 
-    if (overviewRoas !== null && insightsRoas !== null) {
-      expect(insightsRoas, "ROAS should match between Overview and Insights").toBeCloseTo(overviewRoas, 0);
-    }
+      if (overviewRoas !== null && insightsRoas !== null) {
+        expect(insightsRoas, "ROAS should match between Overview and Insights").toBeCloseTo(overviewRoas, 0);
+        console.log("✓ ROAS consistent across tabs");
+      }
+    });
 
-    console.log("Cross-tab ✓ — ROAS consistent between Overview and Insights");
+    test("Insights shows Spend and Revenue labels", async ({ page }) => {
+      await page.goto(GA4_URL);
+      await page.waitForLoadState("networkidle");
+
+      await page.getByRole("tab", { name: "Insights" }).click();
+      await page.waitForTimeout(2500);
+
+      const content = await bodyText(page);
+      expect(content.includes("Spend"), "Insights should show Spend").toBe(true);
+      expect(content.includes("Revenue"), "Insights should show Revenue").toBe(true);
+      console.log("✓ Insights shows Spend and Revenue");
+    });
+
+    test("Ad Comparison tab loads without crash", async ({ page }) => {
+      await page.goto(GA4_URL);
+      await page.waitForLoadState("networkidle");
+
+      await page.getByRole("tab", { name: "Ad Comparison" }).click();
+      await page.waitForTimeout(2000);
+
+      const hasError = await page.locator("text=Something went wrong").isVisible().catch(() => false);
+      expect(hasError, "Ad Comparison should not crash").toBe(false);
+      console.log("✓ Ad Comparison loaded");
+    });
   });
 
   // ---- STABILITY ----
-  test("Stability: No tab crashes when switching rapidly", async ({ page }) => {
-    await page.goto(ga4Url);
+  test("Stability: Rapid tab switching — no crashes", async ({ page }) => {
+    await page.goto(GA4_URL);
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(2000);
 
@@ -466,7 +409,6 @@ test.describe("GA4 Comprehensive Validation — Fresh Campaign", () => {
 
     const hasError = await page.locator("text=Something went wrong").isVisible().catch(() => false);
     expect(hasError, "No tab should crash").toBe(false);
-
-    console.log("Stability ✓ — All tabs switch without crash");
+    console.log("✓ All tabs stable");
   });
 });

@@ -4741,6 +4741,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const days = Math.min(Math.max(parseInt(String(req.query.days || "30"), 10) || 30, 7), 365);
       const propertyId = req.query.propertyId as string; // optional
       const forceMock = String((req.query as any)?.mock || "").toLowerCase() === "1" || String((req.query as any)?.mock || "").toLowerCase() === "true";
@@ -4757,7 +4759,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDate = formatISODateUTC(yesterdayUtc);
 
       if (shouldSimulate) {
-        const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
         const simRange = days >= 90 ? "90days" : days >= 30 ? "30days" : "7days";
         const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: simRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
@@ -4775,7 +4776,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const campaign = await storage.getCampaign(campaignId);
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
 
@@ -4906,11 +4906,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const requestedPropertyId = String(req.query.propertyId || "").trim();
       if (!requestedPropertyId) return res.status(400).json({ success: false, error: "propertyId is required" });
-
-      const campaign = await storage.getCampaign(campaignId);
-      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
@@ -7819,10 +7818,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-landing-pages", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const dateRange = String(req.query.dateRange || '90days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
-      const campaign = await storage.getCampaign(campaignId);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
@@ -7918,10 +7918,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-conversion-events", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const dateRange = String(req.query.dateRange || '90days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
-      const campaign = await storage.getCampaign(campaignId);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
@@ -8007,11 +8008,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-breakdown", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const dateRange = String(req.query.dateRange || '30days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
       const debug = String(req.query.debug || '').toLowerCase() === '1' || String(req.query.debug || '').toLowerCase() === 'true';
-      const campaign = await storage.getCampaign(campaignId);
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';

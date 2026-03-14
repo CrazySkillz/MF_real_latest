@@ -4747,12 +4747,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestedPropertyId = propertyId ? String(propertyId) : "";
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
-      // Compute UTC start/end window for stored rows
+      // Compute UTC start/end window for stored rows — use yesterday to exclude partial intraday data
       const now = new Date();
-      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const yesterdayUtc = new Date(todayUtc.getTime() - 24 * 60 * 60 * 1000);
+      const start = new Date(yesterdayUtc);
       start.setUTCDate(start.getUTCDate() - (days - 1));
       const startDate = formatISODateUTC(start);
-      const endDate = formatISODateUTC(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())));
+      const endDate = formatISODateUTC(yesterdayUtc);
 
       if (shouldSimulate) {
         const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
@@ -5319,6 +5321,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-metrics", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const dateRange = req.query.dateRange as string || '30days';
       const propertyId = req.query.propertyId as string; // Optional - get specific property
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
@@ -5327,7 +5331,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
-        const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
         const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const pid = requestedPropertyId || 'yesop';
@@ -5347,7 +5350,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const campaign = await storage.getCampaign(campaignId);
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
       // Get all connections or a specific one
@@ -7450,6 +7452,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-connection-status", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
 
       // 1. Check in-memory realGA4Client first
       const isConnectedInMemory = realGA4Client.isConnected(campaignId);
@@ -8577,6 +8581,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/ga4/check-connection/:campaignId", async (req, res) => {
     try {
       const campaignId = req.params.campaignId;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
 
       console.log(`[GA4 Check] Checking connection for campaign: ${campaignId}`);
 
@@ -9295,6 +9301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-connections", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const connections = await storage.getGA4Connections(campaignId);
 
       res.json({
@@ -9321,6 +9329,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/campaigns/:id/ga4-connections/:connectionId/primary", async (req, res) => {
     try {
       const { id: campaignId, connectionId } = req.params;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const success = await storage.setPrimaryGA4Connection(campaignId, connectionId);
 
       if (success) {
@@ -9337,6 +9347,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // New route: Delete GA4 connection
   app.delete("/api/ga4-connections/:connectionId", async (req, res) => {
     try {
+      const actorId = getActorId(req as any);
+      if (!actorId) return res.status(401).json({ error: "Unauthorized" });
       const { connectionId } = req.params;
       const success = await storage.deleteGA4Connection(connectionId);
 
@@ -17926,6 +17938,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/google-ads/:campaignId/enrich-ga4-revenue", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const connection: any = await storage.getGoogleAdsConnection(campaignId);
       if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
 
@@ -18059,6 +18073,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/meta/:campaignId/enrich-ga4-revenue", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const connection: any = await storage.getMetaConnection(campaignId);
       if (!connection) return res.status(404).json({ error: 'No Meta connection found' });
 
@@ -18076,6 +18092,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/linkedin/:campaignId/enrich-ga4-revenue", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const connection: any = await storage.getLinkedInConnection(campaignId);
       if (!connection) return res.status(404).json({ error: 'No LinkedIn connection found' });
 
@@ -23282,82 +23300,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         error: 'Failed to set property'
-      });
-    }
-  });
-
-  // Check GA4 connection status for a campaign
-  app.get("/api/ga4/check-connection/:campaignId", async (req, res) => {
-    try {
-      const campaignId = req.params.campaignId;
-      console.log(`[GA4 Check] Checking connection for campaign ${campaignId}`);
-
-      const connections = await storage.getGA4Connections(campaignId);
-      console.log(`[GA4 Check] Found ${connections.length} connections in database`);
-
-      if (connections.length > 0) {
-        const primaryConnection = connections.find(c => c.isPrimary) || connections[0];
-        console.log(`[GA4 Check] Returning connected=true for ${campaignId}, primary connection: ${primaryConnection.id}`);
-
-        res.json({
-          connected: true,
-          totalConnections: connections.length,
-          primaryConnection: {
-            id: primaryConnection.id,
-            propertyId: primaryConnection.propertyId,
-            propertyName: primaryConnection.propertyName,
-            isPrimary: primaryConnection.isPrimary,
-            isActive: primaryConnection.isActive
-          },
-          connections: connections.map(c => ({
-            id: c.id,
-            propertyId: c.propertyId,
-            propertyName: c.propertyName,
-            isPrimary: c.isPrimary,
-            isActive: c.isActive
-          }))
-        });
-      } else {
-        console.log(`[GA4 Check] No connections found for ${campaignId}, returning connected=false`);
-        res.json({
-          connected: false,
-          totalConnections: 0,
-          connections: []
-        });
-      }
-    } catch (error) {
-      console.error('[GA4 Check] Error:', error);
-      res.status(500).json({
-        connected: false,
-        error: 'Failed to check connection status'
-      });
-    }
-  });
-
-  // Get GA4 connection status (used during setup flow)
-  app.get("/api/campaigns/:id/ga4-connection-status", async (req, res) => {
-    try {
-      const campaignId = req.params.id;
-      console.log(`[GA4 Status] Checking status for campaign ${campaignId}`);
-
-      const connection = realGA4Client.getConnection(campaignId);
-
-      if (connection && connection.availableProperties) {
-        console.log(`[GA4 Status] Found connection with ${connection.availableProperties.length} properties`);
-        res.json({
-          connected: true,
-          properties: connection.availableProperties,
-          email: connection.email
-        });
-      } else {
-        console.log(`[GA4 Status] No connection found for ${campaignId}`);
-        res.json({ connected: false, properties: [] });
-      }
-    } catch (error) {
-      console.error('[GA4 Status] Error:', error);
-      res.status(500).json({
-        connected: false,
-        error: 'Failed to get connection status'
       });
     }
   });

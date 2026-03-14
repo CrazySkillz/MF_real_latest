@@ -1,6 +1,6 @@
 import { storage } from "./storage";
 import { ga4Service } from "./analytics";
-import { computeCpa, computeConversionRatePercent, computeRoiPercent, computeRoasPercent } from "../shared/metric-math";
+import { computeCpa, computeConversionRatePercent, computeRoiPercent, computeRoasPercent, normalizeRateToPercent } from "../shared/metric-math";
 
 const isoDateUTC = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -28,12 +28,6 @@ const parseGA4CampaignFilter = (raw: any): string | string[] | undefined => {
   return s;
 };
 
-const normalizeRateToPercent = (v: number) => {
-  const n = Number(v || 0);
-  if (!Number.isFinite(n)) return 0;
-  // GA4 engagementRate is 0..1; some older flows might provide 0..100.
-  return n <= 1 ? n * 100 : n;
-};
 
 const toRecordedAtUtc = (yyyyMmDd: string) => new Date(`${yyyyMmDd}T23:59:59.000Z`);
 

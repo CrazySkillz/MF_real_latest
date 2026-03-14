@@ -63,4 +63,10 @@ export function computeCpa(spend: number, conversions: number): number {
   return c > 0 ? sp / c : 0;
 }
 
-
+// Normalize GA4 rate values: if ≤1 treat as decimal (multiply by 100), else pass through.
+// GA4 engagementRate is 0..1; some older flows provide 0..100.
+export function normalizeRateToPercent(v: number): number {
+  const n = Number(v || 0);
+  if (!Number.isFinite(n)) return 0;
+  return n <= 1 ? n * 100 : n;
+}

@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent } from "@shared/metric-math";
+import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent } from "@shared/metric-math";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBand, computeAttainmentPct, computeAttainmentFillPct } from "@shared/kpi-math";
 
 interface Campaign {
@@ -106,6 +106,40 @@ interface Benchmark {
   createdAt: string;
   updatedAt: string;
 }
+
+// --- Insights engine thresholds (extracted for readability and future tuning) ---
+// Anomaly detection: negative WoW deltas (drop thresholds)
+const ANOMALY_CR_DROP_PCT = -15;
+const ANOMALY_ENGAGEMENT_DROP_PCT = -20;
+const ANOMALY_SESSIONS_DROP_PCT = -20;
+const ANOMALY_REVENUE_DROP_PCT = -25;
+const ANOMALY_CONVERSIONS_DROP_PCT = -20;
+// Short-window (3d vs 3d) thresholds — higher to reduce false positives from smaller samples
+const ANOMALY_SHORT_CR_DROP_PCT = -25;
+const ANOMALY_SHORT_ENGAGEMENT_DROP_PCT = -30;
+const ANOMALY_SHORT_SESSIONS_DROP_PCT = -30;
+const ANOMALY_SHORT_REVENUE_DROP_PCT = -35;
+const ANOMALY_SHORT_CONVERSIONS_DROP_PCT = -30;
+// Positive signal thresholds
+const POSITIVE_SESSIONS_UP_PCT = 15;
+const POSITIVE_SESSIONS_MIN_PRIOR = 50;
+const POSITIVE_REVENUE_UP_PCT = 20;
+const POSITIVE_CONVERSIONS_UP_PCT = 15;
+const POSITIVE_CONVERSIONS_MIN_PRIOR = 5;
+const POSITIVE_ROAS_STRONG = 3;
+const POSITIVE_KPI_EXCEEDS_PCT = 110;
+// KPI underperformance bands
+const KPI_BEHIND_PCT = 70;
+const KPI_NEEDS_ATTENTION_PCT = 90;
+// Minimum daily history for anomaly detection
+const INSIGHTS_MIN_HISTORY_DAYS = 14;
+const INSIGHTS_SHORT_WINDOW_DAYS = 6;
+// Canonical metric sets for exact matching (avoids false positives from loose .includes())
+const CONVERSION_METRICS = new Set(["conversionrate", "conversion rate", "total conversions", "conversions"]);
+const REVENUE_METRICS = new Set(["revenue"]);
+const TRAFFIC_METRICS = new Set(["sessions", "total sessions", "users", "total users"]);
+const CPA_METRICS = new Set(["cpa"]);
+const ENGAGEMENT_METRICS = new Set(["engagementrate", "engagement rate"]);
 
 export default function GA4Metrics() {
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
@@ -358,9 +392,6 @@ export default function GA4Metrics() {
     kpiForm.reset({ ...kpiForm.getValues(), name: "", metric: "", description: "", unit: "%", currentValue: "", targetValue: "", priority: "medium" });
     setShowKPIDialog(true);
   };
-
-  // GA4 rates can come back as a ratio (0..1) or a percent (0..100). Normalize to percent.
-  const normalizeRateToPercent = (v: number) => (v <= 1 ? v * 100 : v);
 
   const getDefaultKpiDescription = (name: string): string | undefined => {
     const n = String(name || "").trim();
@@ -2686,6 +2717,8 @@ export default function GA4Metrics() {
       return { ...sums, cr, pvps, startDate, endDate, days: slice.length };
     };
 
+    const last3 = rollup(3, 0);
+    const prior3 = rollup(3, 3);
     const last7 = rollup(7, 0);
     const prior7 = rollup(7, 7);
     const last30 = rollup(30, 0);
@@ -2695,11 +2728,18 @@ export default function GA4Metrics() {
 
     return {
       availableDays: dates.length,
+      last3,
+      prior3,
       last7,
       prior7,
       last30,
       prior30,
       deltas: {
+        sessions3: deltaPct(last3.sessions, prior3.sessions),
+        conversions3: deltaPct(last3.conversions, prior3.conversions),
+        revenue3: deltaPct(last3.revenue, prior3.revenue),
+        cr3: prior3.cr > 0 ? ((last3.cr - prior3.cr) / prior3.cr) * 100 : 0,
+        pvps3: prior3.pvps > 0 ? ((last3.pvps - prior3.pvps) / prior3.pvps) * 100 : 0,
         sessions7: deltaPct(last7.sessions, prior7.sessions),
         conversions7: deltaPct(last7.conversions, prior7.conversions),
         revenue7: deltaPct(last7.revenue, prior7.revenue),
@@ -2942,9 +2982,9 @@ export default function GA4Metrics() {
       if (deps.missing.length > 0) continue; // blocked KPIs are handled in integrity checks above
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 100;
-      if (attPct >= 90) continue; // Only flag KPIs below 90% attainment
+      if (attPct >= KPI_NEEDS_ATTENTION_PCT) continue; // Only flag KPIs below attainment threshold
 
-      const sev: InsightItem["severity"] = attPct < 70 ? "high" : "medium";
+      const sev: InsightItem["severity"] = attPct < KPI_BEHIND_PCT ? "high" : "medium";
       const metric = String((k as any)?.metric || (k as any)?.name || "KPI");
       const effectiveTarget = (getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? "";
       const analytics = kpiAnalyticsById.get(String((k as any)?.id || "")) || null;
@@ -2978,7 +3018,7 @@ export default function GA4Metrics() {
       out.push({
         id: `kpi:${String((k as any)?.id || metric)}`,
         severity: sev,
-        title: `${metric} is ${attPct < 70 ? "Behind" : "Needs Attention"}`,
+        title: `${metric} is ${attPct < KPI_BEHIND_PCT ? "Behind" : "Needs Attention"}`,
         description: `Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String((k as any)?.unit || "%"))} vs target ${formatNumberByUnit(
           String(effectiveTarget),
           String((k as any)?.unit || "%")
@@ -2986,25 +3026,30 @@ export default function GA4Metrics() {
         recommendation: (() => {
           const m = metric.toLowerCase();
           const ch = channelAnalysis;
-          if (m.includes("conversion") || m === "conversionrate") {
+          const isCustom = !m || m === "__custom__";
+          const isConversion = CONVERSION_METRICS.has(m) || (!isCustom && m.includes("conversion"));
+          const isRevenue = REVENUE_METRICS.has(m);
+          const isTraffic = TRAFFIC_METRICS.has(m);
+          const isCpa = CPA_METRICS.has(m);
+          if (isConversion) {
             const base = "Check landing page changes, funnel breaks, and traffic mix shifts.";
             return ch?.lowestCRChannel
               ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${ch.lowestCRChannel.cr.toFixed(2)}%) among significant channels — audit targeting and landing pages for this source.`
               : base;
           }
-          if (m.includes("revenue")) {
+          if (isRevenue) {
             const base = "Check top channels for traffic or conversion drops; validate revenue tracking.";
             return ch?.topRevenueChannel
               ? `${base} "${ch.topRevenueChannel.label}" drives ${ch.topRevenueShare.toFixed(0)}% of revenue — prioritize investigation there.`
               : base;
           }
-          if (m === "sessions" || m === "users") {
+          if (isTraffic) {
             const base = "Review traffic sources and campaign spend allocation.";
             return ch?.topSessionChannel
               ? `${base} "${ch.topSessionChannel.label}" drives ${ch.topSessionShare.toFixed(0)}% of sessions — check if this source declined.`
               : base;
           }
-          if (m === "cpa") {
+          if (isCpa) {
             return "Audit conversion volume and spend allocation; verify conversion events are firing correctly.";
           }
           const base = "Review the primary drivers for this KPI and adjust budgets/creative/landing pages.";
@@ -3040,16 +3085,20 @@ export default function GA4Metrics() {
         recommendation: (() => {
           const m = metric.toLowerCase();
           const ch = channelAnalysis;
-          if (m.includes("conversion") || m === "conversionrate") {
+          const isCustom = !m || m === "__custom__";
+          const isConversion = CONVERSION_METRICS.has(m) || (!isCustom && m.includes("conversion"));
+          const isEngagement = ENGAGEMENT_METRICS.has(m) || (!isCustom && m.includes("engagement"));
+          const isRevenue = REVENUE_METRICS.has(m);
+          if (isConversion) {
             const base = "Focus on landing page UX and traffic quality; validate conversion tagging.";
             return ch?.lowestCRChannel
               ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${ch.lowestCRChannel.cr.toFixed(2)}%) — start there.`
               : base;
           }
-          if (m.includes("engagement")) {
+          if (isEngagement) {
             return "Review content relevance and landing page engagement; check mobile performance.";
           }
-          if (m.includes("revenue")) {
+          if (isRevenue) {
             const base = "Identify which channels are underperforming and iterate targeting/creative.";
             return ch?.topRevenueChannel
               ? `${base} "${ch.topRevenueChannel.label}" drives ${ch.topRevenueShare.toFixed(0)}% of revenue — investigate changes there first.`
@@ -3060,6 +3109,24 @@ export default function GA4Metrics() {
             ? `${base} Top traffic source: "${ch.topSessionChannel.label}" (${ch.topSessionShare.toFixed(0)}% of sessions).`
             : base;
         })(),
+      });
+    }
+
+    // 2b) Scheduler dependency: inform user when analytics history is missing
+    const hasKpis = Array.isArray(platformKPIs) && platformKPIs.length > 0;
+    const hasKpiAnalytics = kpiAnalyticsById.size > 0;
+    const hasBenchmarks = Array.isArray(benchmarks) && benchmarks.length > 0;
+    const hasBenchmarkAnalytics = benchmarkAnalyticsById.size > 0;
+    if ((hasKpis && !hasKpiAnalytics) || (hasBenchmarks && !hasBenchmarkAnalytics)) {
+      const missing: string[] = [];
+      if (hasKpis && !hasKpiAnalytics) missing.push("KPI");
+      if (hasBenchmarks && !hasBenchmarkAnalytics) missing.push("Benchmark");
+      out.push({
+        id: "info:scheduler_no_history",
+        severity: "low",
+        title: `${missing.join(" and ")} trend tracking will activate after the daily analytics job runs`,
+        description: `Streak and trend data for ${missing.join("/")} insights require at least one daily analytics snapshot. This data is recorded automatically by the background scheduler.`,
+        recommendation: "No action needed — trend data will appear within 24 hours of KPI/Benchmark creation.",
       });
     }
 
@@ -3078,7 +3145,7 @@ export default function GA4Metrics() {
     }
 
     const dates = Array.from(daily.keys()).sort();
-    if (dates.length >= 14) {
+    if (dates.length >= INSIGHTS_MIN_HISTORY_DAYS) {
       const last7 = new Set(dates.slice(-7));
       const prev7 = new Set(dates.slice(-14, -7));
 
@@ -3103,7 +3170,7 @@ export default function GA4Metrics() {
       const crB = b.sessions > 0 ? (b.conversions / b.sessions) * 100 : 0;
       const crDeltaPct = crB > 0 ? ((crA - crB) / crB) * 100 : 0;
 
-      if (crB > 0 && crDeltaPct <= -15) {
+      if (crB > 0 && crDeltaPct <= ANOMALY_CR_DROP_PCT) {
         out.push({
           id: "anomaly:cr:wow",
           severity: "high",
@@ -3118,7 +3185,7 @@ export default function GA4Metrics() {
       const pvpsA = a.sessions > 0 ? a.pageviews / a.sessions : 0;
       const pvpsB = b.sessions > 0 ? b.pageviews / b.sessions : 0;
       const pvpsDelta = pvpsB > 0 ? ((pvpsA - pvpsB) / pvpsB) * 100 : 0;
-      if (pvpsB > 0 && pvpsDelta <= -20) {
+      if (pvpsB > 0 && pvpsDelta <= ANOMALY_ENGAGEMENT_DROP_PCT) {
         out.push({
           id: "anomaly:pvps:wow",
           severity: "medium",
@@ -3134,7 +3201,7 @@ export default function GA4Metrics() {
       const convDelta7 = insightsRollups.deltas.conversions7;
       const ch = channelAnalysis;
 
-      if (sessionsDelta7 <= -20 && insightsRollups.prior7.sessions > 0) {
+      if (sessionsDelta7 <= ANOMALY_SESSIONS_DROP_PCT && insightsRollups.prior7.sessions > 0) {
         const channelNote = ch?.topSessionChannel
           ? ` Top source: "${ch.topSessionChannel.label}" (${ch.topSessionShare.toFixed(0)}% of sessions).`
           : "";
@@ -3147,7 +3214,7 @@ export default function GA4Metrics() {
         });
       }
 
-      if (revenueDelta7 <= -25 && insightsRollups.prior7.revenue > 0) {
+      if (revenueDelta7 <= ANOMALY_REVENUE_DROP_PCT && insightsRollups.prior7.revenue > 0) {
         const channelNote = ch?.topRevenueChannel
           ? ` Top revenue source: "${ch.topRevenueChannel.label}" (${ch.topRevenueShare.toFixed(0)}% of revenue).`
           : "";
@@ -3160,7 +3227,7 @@ export default function GA4Metrics() {
         });
       }
 
-      if (convDelta7 <= -20 && insightsRollups.prior7.conversions > 0) {
+      if (convDelta7 <= ANOMALY_CONVERSIONS_DROP_PCT && insightsRollups.prior7.conversions > 0) {
         out.push({
           id: "anomaly:conversions:wow",
           severity: "high",
@@ -3171,7 +3238,7 @@ export default function GA4Metrics() {
       }
 
       // 3c) Positive signals — what's working
-      if (sessionsDelta7 >= 15 && insightsRollups.prior7.sessions > 50) {
+      if (sessionsDelta7 >= POSITIVE_SESSIONS_UP_PCT && insightsRollups.prior7.sessions > POSITIVE_SESSIONS_MIN_PRIOR) {
         out.push({
           id: "positive:sessions:wow",
           severity: "low",
@@ -3181,7 +3248,7 @@ export default function GA4Metrics() {
         });
       }
 
-      if (revenueDelta7 >= 20 && insightsRollups.prior7.revenue > 0) {
+      if (revenueDelta7 >= POSITIVE_REVENUE_UP_PCT && insightsRollups.prior7.revenue > 0) {
         out.push({
           id: "positive:revenue:wow",
           severity: "low",
@@ -3191,7 +3258,7 @@ export default function GA4Metrics() {
         });
       }
 
-      if (convDelta7 >= 15 && insightsRollups.prior7.conversions > 5) {
+      if (convDelta7 >= POSITIVE_CONVERSIONS_UP_PCT && insightsRollups.prior7.conversions > POSITIVE_CONVERSIONS_MIN_PRIOR) {
         out.push({
           id: "positive:conversions:wow",
           severity: "low",
@@ -3199,17 +3266,96 @@ export default function GA4Metrics() {
           description: `Last 7d: ${formatNumber(insightsRollups.last7.conversions)} vs prior 7d: ${formatNumber(insightsRollups.prior7.conversions)}.`,
         });
       }
+    } else if (dates.length >= INSIGHTS_SHORT_WINDOW_DAYS) {
+      // Short-window fallback: 3d vs 3d with higher thresholds to reduce false positives
+      const crA3 = insightsRollups.last3.cr;
+      const crB3 = insightsRollups.prior3.cr;
+      const crDelta3 = crB3 > 0 ? ((crA3 - crB3) / crB3) * 100 : 0;
+
+      if (crB3 > 0 && crDelta3 <= ANOMALY_SHORT_CR_DROP_PCT) {
+        out.push({
+          id: "anomaly:cr:3d",
+          severity: "medium",
+          title: `Conversion rate dropped ${Math.abs(crDelta3).toFixed(1)}% (3-day comparison)`,
+          description: `Last 3d ${crA3.toFixed(2)}% vs prior 3d ${crB3.toFixed(2)}%. Short window — monitor for confirmation.`,
+          recommendation: "Check for recent landing page changes or traffic source shifts. Confirm trend with more data.",
+        });
+      }
+
+      const pvpsA3 = insightsRollups.last3.pvps;
+      const pvpsB3 = insightsRollups.prior3.pvps;
+      const pvpsDelta3 = pvpsB3 > 0 ? ((pvpsA3 - pvpsB3) / pvpsB3) * 100 : 0;
+      if (pvpsB3 > 0 && pvpsDelta3 <= ANOMALY_SHORT_ENGAGEMENT_DROP_PCT) {
+        out.push({
+          id: "anomaly:pvps:3d",
+          severity: "low",
+          title: `Engagement depth decreased ${Math.abs(pvpsDelta3).toFixed(1)}% (3-day comparison)`,
+          description: `Pageviews/session last 3d ${pvpsA3.toFixed(2)} vs prior 3d ${pvpsB3.toFixed(2)}. Short window — monitor for confirmation.`,
+          recommendation: "Review landing page relevance and mobile UX.",
+        });
+      }
+
+      const sessionsDelta3 = insightsRollups.deltas.sessions3;
+      const revenueDelta3 = insightsRollups.deltas.revenue3;
+      const convDelta3 = insightsRollups.deltas.conversions3;
+
+      if (sessionsDelta3 <= ANOMALY_SHORT_SESSIONS_DROP_PCT && insightsRollups.prior3.sessions > 0) {
+        out.push({
+          id: "anomaly:sessions:3d",
+          severity: "medium",
+          title: `Sessions dropped ${Math.abs(sessionsDelta3).toFixed(1)}% (3-day comparison)`,
+          description: `Last 3d: ${formatNumber(insightsRollups.last3.sessions)} vs prior 3d: ${formatNumber(insightsRollups.prior3.sessions)}. Short window — monitor for confirmation.`,
+          recommendation: "Check campaign budgets and traffic sources for recent changes.",
+        });
+      }
+
+      if (revenueDelta3 <= ANOMALY_SHORT_REVENUE_DROP_PCT && insightsRollups.prior3.revenue > 0) {
+        out.push({
+          id: "anomaly:revenue:3d",
+          severity: "medium",
+          title: `Revenue dropped ${Math.abs(revenueDelta3).toFixed(1)}% (3-day comparison)`,
+          description: `Last 3d: ${formatMoney(insightsRollups.last3.revenue)} vs prior 3d: ${formatMoney(insightsRollups.prior3.revenue)}. Short window — monitor for confirmation.`,
+          recommendation: "Investigate conversion rate and AOV changes.",
+        });
+      }
+
+      if (convDelta3 <= ANOMALY_SHORT_CONVERSIONS_DROP_PCT && insightsRollups.prior3.conversions > 0) {
+        out.push({
+          id: "anomaly:conversions:3d",
+          severity: "medium",
+          title: `Conversions dropped ${Math.abs(convDelta3).toFixed(1)}% (3-day comparison)`,
+          description: `Last 3d: ${formatNumber(insightsRollups.last3.conversions)} vs prior 3d: ${formatNumber(insightsRollups.prior3.conversions)}. Short window — monitor for confirmation.`,
+          recommendation: "Check conversion event configuration and traffic quality.",
+        });
+      }
+
+      // Positive signals (3d) — only sessions, with higher threshold
+      if (sessionsDelta3 >= 25 && insightsRollups.prior3.sessions > 20) {
+        out.push({
+          id: "positive:sessions:3d",
+          severity: "low",
+          title: `Sessions up ${sessionsDelta3.toFixed(1)}% (3-day comparison)`,
+          description: `Last 3d: ${formatNumber(insightsRollups.last3.sessions)} vs prior 3d: ${formatNumber(insightsRollups.prior3.sessions)}. Early signal — monitor for sustained trend.`,
+        });
+      }
+
+      out.push({
+        id: "info:short_window",
+        severity: "low",
+        title: "Using 3-day comparison window (limited history)",
+        description: `Only ${dates.length} days of data available. Full 7-day week-over-week analysis will activate after ${INSIGHTS_MIN_HISTORY_DAYS} days. Short-window anomalies use higher thresholds to reduce false positives.`,
+      });
     } else if (dates.length > 0) {
       out.push({
         id: "anomaly:not-enough-history",
         severity: "low",
         title: "Anomaly detection needs more history",
-        description: `Need at least 14 days of daily data to compute week-over-week deltas. Available days: ${dates.length}.`,
+        description: `Need at least ${INSIGHTS_SHORT_WINDOW_DAYS} days of daily data for anomaly detection. Available days: ${dates.length}.`,
       });
     }
 
     // 4) Positive signals that don't depend on daily history
-    if (Number(financialROAS || 0) >= 3) {
+    if (Number(financialROAS || 0) >= POSITIVE_ROAS_STRONG) {
       out.push({
         id: "positive:roas:lifetime",
         severity: "low",
@@ -3224,7 +3370,7 @@ export default function GA4Metrics() {
       if (deps.missing.length > 0) continue;
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 0;
-      if (attPct >= 110) {
+      if (attPct >= POSITIVE_KPI_EXCEEDS_PCT) {
         const metric = String((k as any)?.metric || (k as any)?.name || "KPI");
         out.push({
           id: `positive:kpi:${String((k as any)?.id || metric)}`,
@@ -3669,6 +3815,13 @@ export default function GA4Metrics() {
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
                 </TabsList>
+
+                {ga4Error && (
+                  <div className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>Failed to load GA4 data. Metrics shown may be stale or incomplete. Try refreshing the page.</span>
+                  </div>
+                )}
 
                 <TabsContent value="overview" className="fade-in">
                   <div className="space-y-8">

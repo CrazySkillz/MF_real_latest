@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 60_000,
   retries: 0,
   use: {
-    baseURL: "http://localhost:5000",
+    baseURL: process.env.BASE_URL || "https://mforensics.onrender.com",
     headless: true,
   },
   projects: [

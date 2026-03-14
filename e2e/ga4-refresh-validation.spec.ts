@@ -118,6 +118,14 @@ test.describe("GA4 Comprehensive Validation — Fresh Campaign", () => {
     ga4Url = `/campaigns/${campaignId}/ga4-metrics`;
     console.log("Test campaign:", campaignId, "URL:", ga4Url);
 
+    // Call mock-refresh once to ensure GA4 connection exists
+    // (seed may have skipped if campaign already existed from a previous run)
+    const refreshResult = await apiPost(page, `/api/campaigns/${campaignId}/ga4/mock-refresh`, {
+      propertyId: "yesop",
+      date: dateOffset(20), // far back so it doesn't interfere with test phases
+    });
+    console.log("Bootstrap refresh:", refreshResult?.summary || "ok");
+
     await context.close();
   });
 

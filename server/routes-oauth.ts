@@ -5081,6 +5081,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const mockDay = mockProfiles[campaignId] || { users: 500, sessions: 750, pageviews: 2250, conversions: 38, revenue: 2850.00, spend: 950.00 };
 
+      // 0) Ensure GA4 connection exists (so the page shows tabs, not "Connect" screen)
+      const existingConns = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
+      if (!existingConns || existingConns.length === 0) {
+        await storage.createGA4Connection({
+          campaignId,
+          propertyId: propertyId || "yesop",
+          method: "access_token",
+          accessToken: "mock-token-yesop",
+          propertyName: "Yesop Demo Property",
+          displayName: "Yesop (Mock GA4)",
+          isPrimary: true,
+          isActive: true,
+        } as any).catch((e: any) => console.error("[mock-refresh] Failed to create GA4 connection:", e?.message));
+      }
+
       // 1) Upsert GA4 daily metric row
       await storage.upsertGA4DailyMetrics([{
         campaignId,

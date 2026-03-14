@@ -5058,12 +5058,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
-      // Use yesterday UTC as the mock day (avoids partial-day issues)
-      const now = new Date();
-      const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-      const yesterday = new Date(todayUtc);
-      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-      const dateStr = formatISODateUTC(yesterday);
+      // Use yesterday UTC as default, or accept an explicit date for multi-day testing
+      const requestedDate = String(req.body?.date || "").trim();
+      let dateStr: string;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+        dateStr = requestedDate;
+      } else {
+        const now = new Date();
+        const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        const yesterday = new Date(todayUtc);
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+        dateStr = formatISODateUTC(yesterday);
+      }
 
       // Deterministic known values per campaign — easy to verify in the UI
       const mockProfiles: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; spend: number }> = {

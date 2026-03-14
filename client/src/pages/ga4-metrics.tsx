@@ -622,8 +622,13 @@ export default function GA4Metrics() {
       // Invalidate all GA4 queries so the UI picks up the new data
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-daily`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-breakdown`] });
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`] });
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`] });
       toast({
         title: "Mock Refresh Complete",
         description: data?.summary || "Daily mock data injected. Check cards for updated values.",
@@ -3815,6 +3820,26 @@ export default function GA4Metrics() {
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
                 </TabsList>
+
+                {/* Run Refresh button — visible for mock/yesop campaigns for testing */}
+                {selectedGA4PropertyId && (selectedGA4PropertyId.toLowerCase().includes("yesop") || selectedGA4PropertyId === "mock") && (
+                  <div className="flex justify-end -mt-2 mb-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      data-testid="run-refresh-btn"
+                      onClick={() => mockRefreshMutation.mutate()}
+                      disabled={mockRefreshMutation.isPending}
+                    >
+                      {mockRefreshMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      {mockRefreshMutation.isPending ? "Refreshing..." : "Run Refresh"}
+                    </Button>
+                  </div>
+                )}
 
                 {ga4Error && (
                   <div className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">

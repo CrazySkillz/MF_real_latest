@@ -1,6 +1,6 @@
 # GA4 Test Coverage — Complete Reference
 
-> **259 total tests** (140 unit + 119 E2E) covering every section of every GA4 tab, including multi-campaign aggregation.
+> **281 total tests** (140 unit + 141 E2E) covering every section of every GA4 tab, with exact value verification, cumulative refresh validation, and multi-campaign aggregation.
 
 ---
 

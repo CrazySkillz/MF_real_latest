@@ -518,6 +518,20 @@ Uses `yesop-brand` (campaign ID: `"yesop-brand"`) — a pre-seeded demo campaign
 
 Uses `yesop-brand` and `yesop-prospecting` (same GA4 property "yesop", different `ga4CampaignFilter` values). Verifies that sessions/revenue numbers differ between campaigns — proving filter scoping prevents cross-campaign data leakage.
 
+### Exact Value Verification (Phase P)
+
+Tests that verify EXACT computed values, not just text presence:
+- **Cumulative refresh**: 3 refreshes → sessions increase by exactly 2,250 (3×750), conversions by 114, revenue by $8,550
+- **Financial formulas**: ROAS = revenue/spend, ROI = (revenue-spend)/spend×100, CPA = spend/conversions — each verified against API
+- **KPI live values**: Each of 7 templates verified against its formula (ROAS as percentage, CPA as ratio, etc.)
+- **Benchmark thresholds**: ratio ≥0.9 → on_track, <0.7 → behind, CPA inverted for lower-is-better
+- **Multi-day accumulation**: 5 refreshes → exactly 3,750 sessions added
+- **Data source logic**: GA4 revenue preferred over imported; sessions use Math.max; users use ga4-to-date (deduplicated, not Math.max)
+
+### Multi-Campaign Aggregation (Phase O)
+
+Tests selecting 2+ campaigns from the picker. Verifies 9 sections aggregate (sessions/conversions/revenue summed, KPIs/Benchmarks use aggregated values, Ad Comparison shows both campaigns). Spend/revenue stay per-campaign (NOT affected by GA4 filter).
+
 ### Running Tests
 
 ```bash

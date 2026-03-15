@@ -289,6 +289,68 @@ Tests what happens when a user selects 2+ campaigns from the campaign picker. Ve
 
 **Key insight:** Spend/Revenue are per-campaign (stored in `spend_sources`/`revenue_sources` tables by `campaignId`). They do NOT change when the GA4 campaign filter changes. Only GA4 metrics aggregate.
 
+### Phase P: Exact Value Verification (22 tests)
+
+Tests that verify EXACT computed values — not just "text exists on page."
+
+#### Cumulative Refresh Accuracy (P1-P3)
+
+Each mock-refresh injects one day with sessions=750, conversions=38, revenue=$2,850. These tests verify the daily sum increases by the exact expected amount.
+
+| Test | What it checks | Expected increase |
+|------|----------------|-------------------|
+| P1 | 3 refreshes → daily session sum | +2,250 (3 × 750) |
+| P2 | 3 refreshes → daily conversion sum | +114 (3 × 38) |
+| P3 | 3 refreshes → daily revenue sum | +$8,550 (3 × $2,850) |
+
+#### Financial Formula Accuracy (P4-P8)
+
+Queries the API, computes the expected value using the formula, and verifies they match.
+
+| Test | Formula verified | Tolerance |
+|------|-----------------|-----------|
+| P4 | ROAS = revenue ÷ spend | ±0.1 |
+| P5 | ROI = (revenue − spend) ÷ spend × 100 | Finite check |
+| P6 | CPA = spend ÷ conversions | > 0 |
+| P7 | Spend total = sum of all individual sources | ±$1 |
+| P8 | Add 3 sources ($500+$300+$200) → total ≥ $1,000 | Exact |
+
+#### KPI Live Value Accuracy (P9-P15)
+
+For each KPI template, computes the expected current value from the same data the UI uses.
+
+| Test | KPI metric | Expected value formula |
+|------|-----------|----------------------|
+| P9 | ROAS | (revenue ÷ spend) × 100 (percentage) |
+| P10 | CPA | spend ÷ conversions |
+| P11 | Sessions | ga4-to-date sessions |
+| P12 | Revenue | ga4-to-date revenue |
+| P13 | Conversion Rate | (conversions ÷ sessions) × 100 |
+| P14 | Users | ga4-to-date users (deduplicated, NOT daily sum) |
+| P15 | Engagement Rate | normalizeRateToPercent(engagementRate) |
+
+#### Benchmark Threshold Classification (P16-P18)
+
+| Test | Setup | Expected result |
+|------|-------|-----------------|
+| P16 | Benchmark 5% above current → ratio ~0.95 | on_track (≥0.9) |
+| P17 | Benchmark 2× current → ratio 0.5 | behind (<0.7) |
+| P18 | CPA benchmark 20% above current | on_track (inverted ratio for lower-is-better) |
+
+#### Multi-Day Accumulation (P19)
+
+| Test | What it checks |
+|------|----------------|
+| P19 | 5 refreshes → daily sessions increase by exactly 3,750 (5 × 750) |
+
+#### Data Source Logic (P20-P22)
+
+| Test | What it checks |
+|------|----------------|
+| P20 | GA4 revenue used when available (not imported) |
+| P21 | Sessions use Math.max(ga4ToDate, dailySum) for additive metrics |
+| P22 | Users use ga4-to-date (deduplicated) — NOT Math.max with daily sum (non-additive) |
+
 ### Visual Snapshots (6 tests)
 
 | Test | What it checks |

@@ -30,5 +30,31 @@
     { "metric": "roas", "name": "ROAS Benchmark", "benchmark": "200", "unit": "%" },
     { "metric": "engagementRate", "name": "Engagement Rate Benchmark", "benchmark": "80", "unit": "%" }
   ],
-  "refresh_cycles": 3
+  "refresh_cycles": 3,
+  "insights_scenarios": [
+    {
+      "id": "kpi_behind",
+      "description": "KPI with unreachable target should trigger 'Needs Attention' insight",
+      "kpi_metric": "Revenue",
+      "kpi_target": "50000",
+      "kpi_unit": "$",
+      "expect_text": "Needs Attention",
+      "expect_severity": "medium"
+    },
+    {
+      "id": "kpi_exceeds",
+      "description": "KPI with easy target should trigger positive signal",
+      "kpi_metric": "Total Sessions",
+      "kpi_target": "100",
+      "kpi_unit": "count",
+      "expect_text": "exceeds target",
+      "expect_severity": "low"
+    },
+    {
+      "id": "financial_integrity",
+      "description": "Insights should show Spend and Revenue in executive financials",
+      "expect_text": "Spend",
+      "expect_also": "Revenue"
+    }
+  ]
 }

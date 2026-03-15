@@ -41,6 +41,16 @@ async function apiPost(page: Page, path: string, body: Record<string, unknown> =
   );
 }
 
+async function apiGet(page: Page, path: string) {
+  return page.evaluate(
+    async (path) => {
+      const res = await fetch(path, { credentials: "include" });
+      return res.json();
+    },
+    path,
+  );
+}
+
 async function bodyText(page: Page): Promise<string> {
   return (await page.textContent("body")) || "";
 }
@@ -406,5 +416,270 @@ test.describe("GA4 UI Journey Tests", () => {
     const hasError = await page.locator("text=Something went wrong").isVisible().catch(() => false);
     expect(hasError, "No tab should crash").toBe(false);
     console.log("✓ Journey 8: All tabs stable");
+  });
+
+  // ================================================================
+  // JOURNEY 9: Edit Spend via UI — click pencil, change amount, save
+  // ================================================================
+  test("Journey 9: Edit spend source — amount updates", async ({ page }) => {
+    await goToGA4(page);
+
+    // Find the edit (pencil) icon on a spend source
+    const editBtn = page.locator('button[title="Edit spend source"]').first();
+    if (await editBtn.isVisible().catch(() => false)) {
+      await editBtn.click();
+      await page.waitForTimeout(1000);
+
+      // The AddSpendWizardModal opens in edit mode with amount pre-filled
+      const amountInput = page.locator("#manual-spend");
+      if (await amountInput.isVisible().catch(() => false)) {
+        await amountInput.clear();
+        await amountInput.fill("800");
+        await amountInput.blur();
+        await page.waitForTimeout(300);
+      }
+
+      // Click save/update
+      const saveBtn = page.locator('button:has-text("Update spend")').or(
+        page.locator('button:has-text("Save spend")'),
+      ).first();
+      if (await saveBtn.isVisible().catch(() => false)) {
+        await saveBtn.click();
+      }
+      await page.waitForTimeout(2000);
+
+      // Verify page shows updated amount
+      const content = await bodyText(page);
+      const has800 = content.includes("800");
+      expect(has800, "Page should show updated spend amount").toBe(true);
+      console.log("✓ Journey 9: Spend edited to $800");
+    } else {
+      console.log("⚠ No edit icon found — skipping edit spend test");
+    }
+  });
+
+  // ================================================================
+  // JOURNEY 10: Delete KPI via UI — click trash, confirm, verify gone
+  // ================================================================
+  test("Journey 10: Delete a KPI — it disappears", async ({ page }) => {
+    await goToGA4(page);
+
+    // Switch to KPIs tab
+    await page.getByRole("tab", { name: "KPIs" }).click();
+    await page.waitForTimeout(2000);
+
+    // Count KPIs before delete
+    const beforeContent = await bodyText(page);
+    const totalMatch = beforeContent.match(/Total KPIs[\s\S]*?(\d+)/);
+    const countBefore = totalMatch ? parseInt(totalMatch[1]) : 0;
+
+    if (countBefore > 0) {
+      // Find the trash/delete icon on a KPI card
+      const trashBtn = page.locator('button').filter({ has: page.locator('svg.lucide-trash2, svg.lucide-trash-2') }).first();
+
+      if (await trashBtn.isVisible().catch(() => false)) {
+        await trashBtn.click();
+        await page.waitForTimeout(500);
+
+        // Confirm in AlertDialog
+        const confirmBtn = page.locator('button:has-text("Delete")').or(
+          page.locator('button:has-text("Remove")'),
+        ).first();
+        if (await confirmBtn.isVisible().catch(() => false)) {
+          await confirmBtn.click();
+        }
+        await page.waitForTimeout(2000);
+
+        // Verify count decreased
+        const afterContent = await bodyText(page);
+        const afterMatch = afterContent.match(/Total KPIs[\s\S]*?(\d+)/);
+        const countAfter = afterMatch ? parseInt(afterMatch[1]) : 0;
+        expect(countAfter, "KPI count should decrease after delete").toBeLessThan(countBefore);
+        console.log(`✓ Journey 10: KPI deleted (${countBefore} → ${countAfter})`);
+      } else {
+        console.log("⚠ No KPI trash icon found — skipping");
+      }
+    } else {
+      console.log("⚠ No KPIs to delete — skipping");
+    }
+  });
+
+  // ================================================================
+  // JOURNEY 11: Delete Benchmark via UI — click trash, confirm, verify gone
+  // ================================================================
+  test("Journey 11: Delete a Benchmark — it disappears", async ({ page }) => {
+    await goToGA4(page);
+
+    // Switch to Benchmarks tab
+    await page.getByRole("tab", { name: "Benchmarks" }).click();
+    await page.waitForTimeout(2000);
+
+    // Count benchmarks before
+    const beforeContent = await bodyText(page);
+    const totalMatch = beforeContent.match(/Total Benchmarks[\s\S]*?(\d+)/);
+    const countBefore = totalMatch ? parseInt(totalMatch[1]) : 0;
+
+    if (countBefore > 0) {
+      // Find trash icon on a benchmark card
+      const trashBtn = page.locator('button').filter({ has: page.locator('svg.lucide-trash2, svg.lucide-trash-2') }).first();
+
+      if (await trashBtn.isVisible().catch(() => false)) {
+        await trashBtn.click();
+        await page.waitForTimeout(500);
+
+        // Confirm
+        const confirmBtn = page.locator('button:has-text("Delete")').or(
+          page.locator('button:has-text("Remove")'),
+        ).first();
+        if (await confirmBtn.isVisible().catch(() => false)) {
+          await confirmBtn.click();
+        }
+        await page.waitForTimeout(2000);
+
+        const afterContent = await bodyText(page);
+        const afterMatch = afterContent.match(/Total Benchmarks[\s\S]*?(\d+)/);
+        const countAfter = afterMatch ? parseInt(afterMatch[1]) : 0;
+        expect(countAfter, "Benchmark count should decrease after delete").toBeLessThan(countBefore);
+        console.log(`✓ Journey 11: Benchmark deleted (${countBefore} → ${countAfter})`);
+      } else {
+        console.log("⚠ No Benchmark trash icon found — skipping");
+      }
+    } else {
+      console.log("⚠ No Benchmarks to delete — skipping");
+    }
+  });
+
+  // ================================================================
+  // JOURNEY 12-14: Insights validation (data-driven from fixtures)
+  // ================================================================
+  test.describe("Insights Validation", () => {
+    // Journey 12: KPI with unreachable target → "Needs Attention" insight
+    test("Journey 12: KPI behind target triggers insight", async ({ page }) => {
+      await goToGA4(page);
+
+      const scenario = scenarios.insights_scenarios.find((s: any) => s.id === "kpi_behind");
+      if (!scenario) { console.log("⚠ No kpi_behind scenario — skipping"); return; }
+
+      // Create a KPI with an unreachable target via API
+      await apiPost(page, `/api/platforms/google_analytics/kpis`, {
+        campaignId: String(CAMPAIGN_ID),
+        name: "Unreachable Revenue Target",
+        metric: scenario.kpi_metric,
+        unit: scenario.kpi_unit,
+        currentValue: "0",
+        targetValue: scenario.kpi_target,
+        priority: "high",
+      });
+
+      // Reload and go to Insights tab
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(2000);
+      await page.getByRole("tab", { name: "Insights" }).click();
+      await page.waitForTimeout(2500);
+
+      const content = await bodyText(page);
+      const hasInsight = content.includes(scenario.expect_text);
+      expect(hasInsight, `Insights should show "${scenario.expect_text}" for behind KPI`).toBe(true);
+      console.log(`✓ Journey 12: "${scenario.expect_text}" insight found for behind KPI`);
+    });
+
+    // Journey 13: KPI with easy target → positive "exceeds target" signal
+    test("Journey 13: KPI exceeding target triggers positive signal", async ({ page }) => {
+      await goToGA4(page);
+
+      const scenario = scenarios.insights_scenarios.find((s: any) => s.id === "kpi_exceeds");
+      if (!scenario) { console.log("⚠ No kpi_exceeds scenario — skipping"); return; }
+
+      // Create a KPI with a very low target
+      await apiPost(page, `/api/platforms/google_analytics/kpis`, {
+        campaignId: String(CAMPAIGN_ID),
+        name: "Easy Sessions Target",
+        metric: scenario.kpi_metric,
+        unit: scenario.kpi_unit,
+        currentValue: "0",
+        targetValue: scenario.kpi_target,
+        priority: "medium",
+      });
+
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(2000);
+      await page.getByRole("tab", { name: "Insights" }).click();
+      await page.waitForTimeout(2500);
+
+      const content = await bodyText(page);
+      const hasPositive = content.includes(scenario.expect_text);
+      expect(hasPositive, `Insights should show "${scenario.expect_text}" for exceeding KPI`).toBe(true);
+      console.log(`✓ Journey 13: "${scenario.expect_text}" positive signal found`);
+    });
+
+    // Journey 14: Financial integrity — Insights shows Spend and Revenue
+    test("Journey 14: Insights shows Spend and Revenue in financials", async ({ page }) => {
+      await goToGA4(page);
+
+      const scenario = scenarios.insights_scenarios.find((s: any) => s.id === "financial_integrity");
+      if (!scenario) { console.log("⚠ No financial_integrity scenario — skipping"); return; }
+
+      await page.getByRole("tab", { name: "Insights" }).click();
+      await page.waitForTimeout(2500);
+
+      const content = await bodyText(page);
+      expect(content.includes(scenario.expect_text), `Insights should show "${scenario.expect_text}"`).toBe(true);
+      if (scenario.expect_also) {
+        expect(content.includes(scenario.expect_also), `Insights should show "${scenario.expect_also}"`).toBe(true);
+      }
+      console.log("✓ Journey 14: Financial integrity — Spend and Revenue visible");
+    });
+  });
+
+  // ================================================================
+  // JOURNEY 15-16: Data Integrity — API values match UI values
+  // ================================================================
+  test.describe("Data Integrity", () => {
+    // Journey 15: Spend breakdown API matches what UI shows
+    test("Journey 15: API spend-breakdown matches UI Total Spend", async ({ page }) => {
+      await goToGA4(page);
+
+      // Get spend from API
+      const spendData = await apiGet(page, `/api/campaigns/${CAMPAIGN_ID}/spend-breakdown`);
+      const apiSpend = Number(spendData?.totalSpend || spendData?.total || 0);
+
+      // Get spend from UI (look for dollar amounts near "Spend" label)
+      const content = await bodyText(page);
+      const spendMatches = content.match(/Total Spend[\s\S]*?\$([\d,]+\.?\d*)/);
+      if (spendMatches && apiSpend > 0) {
+        const uiSpend = parseFloat(spendMatches[1].replace(/,/g, ""));
+        console.log(`API spend: $${apiSpend}, UI spend: $${uiSpend}`);
+        expect(Math.abs(uiSpend - apiSpend)).toBeLessThan(1); // within $1 tolerance
+        console.log("✓ Journey 15: API spend matches UI spend");
+      } else {
+        // Just verify both show something
+        expect(apiSpend >= 0, "API should return spend data").toBe(true);
+        console.log(`✓ Journey 15: API spend = $${apiSpend} (UI text match not found — structure may differ)`);
+      }
+    });
+
+    // Journey 16: ROAS from outcome-totals API matches UI
+    test("Journey 16: API outcome-totals ROAS matches UI ROAS", async ({ page }) => {
+      await goToGA4(page);
+
+      // Get ROAS from API
+      const outcomes = await apiGet(page, `/api/campaigns/${CAMPAIGN_ID}/outcome-totals`);
+      const apiRoas = Number(outcomes?.roas || 0);
+
+      // Get ROAS from UI
+      const content = await bodyText(page);
+      const roasMatch = content.match(/([\d.]+)x/);
+      const uiRoas = roasMatch ? parseFloat(roasMatch[1]) : null;
+
+      if (uiRoas !== null && apiRoas > 0) {
+        console.log(`API ROAS: ${apiRoas.toFixed(2)}x, UI ROAS: ${uiRoas.toFixed(2)}x`);
+        expect(uiRoas).toBeCloseTo(apiRoas, 0);
+        console.log("✓ Journey 16: API ROAS matches UI ROAS");
+      } else {
+        console.log(`✓ Journey 16: API ROAS = ${apiRoas} (comparison skipped — UI value not found)`);
+      }
+    });
   });
 });

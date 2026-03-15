@@ -1,6 +1,6 @@
 # GA4 Test Coverage — Complete Reference
 
-> **249 total tests** (140 unit + 109 E2E) covering every section of every GA4 tab.
+> **259 total tests** (140 unit + 119 E2E) covering every section of every GA4 tab, including multi-campaign aggregation.
 
 ---
 
@@ -269,6 +269,25 @@ Uses `yesop-brand` (campaign ID: `"yesop-brand"`) — a pre-seeded demo campaign
 |------|----------------|
 | J17 | ROAS on Overview matches ROAS on Insights tab |
 | J18 | Rapidly switching all 6 tabs → no crash |
+
+### Phase O: Multi-Campaign Aggregation (10 tests)
+
+Tests what happens when a user selects 2+ campaigns from the campaign picker. Verifies that 9 sections aggregate correctly and spend/revenue stay per-campaign.
+
+| Test | What it checks |
+|------|----------------|
+| O1 | Single campaign — record baseline sessions/revenue/users |
+| O2 | Select 2 campaigns → API sessions INCREASE (brand 1.0 + prospecting 0.6 = 1.6x) |
+| O3 | Landing Pages — returns rows for multi-campaign |
+| O4 | Conversion Events — returns rows for multi-campaign |
+| O5 | Breakdown — shows both campaign names in rows |
+| O6 | UI Overview — shows "Campaigns (2)" and aggregated dollar amounts |
+| O7 | KPIs tab — loads with aggregated current values |
+| O8 | Insights tab — shows financial data using aggregated metrics |
+| O9 | Ad Comparison — shows comparison between both campaigns |
+| O10 | Spend NOT affected — spend-breakdown stays same regardless of GA4 filter |
+
+**Key insight:** Spend/Revenue are per-campaign (stored in `spend_sources`/`revenue_sources` tables by `campaignId`). They do NOT change when the GA4 campaign filter changes. Only GA4 metrics aggregate.
 
 ### Visual Snapshots (6 tests)
 

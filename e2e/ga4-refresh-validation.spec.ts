@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import scenarios from "./fixtures/ga4-scenarios.json";
+import scenarios from "./fixtures/ga4-scenarios.json" with { type: "json" };
 
 /**
  * GA4 Complete E2E Test Suite — 53 tests

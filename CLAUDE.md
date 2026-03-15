@@ -496,7 +496,7 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 | Layer | Count | Command | What it tests |
 |-------|-------|---------|---------------|
 | **Unit tests** | 140 | `npm run test` | Math formulas, KPI/Benchmark progress, cross-tab consistency |
-| **E2E tests** | 53 | `npm run test:e2e:headed` | Real browser clicks through UI — spend/revenue/KPIs/benchmarks/insights |
+| **E2E tests** | 94 | `npm run test:e2e:headed` | Exact metric values, all tab sections, UI journeys, data integrity |
 | **CI/CD** | 140 | Auto on push | GitHub Actions runs unit tests on every git push |
 
 ### Key Test Files

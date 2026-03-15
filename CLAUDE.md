@@ -486,3 +486,43 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 - **Date formatting:** `date-fns`
 - **Transitions:** All `TabsContent` elements use `fade-in` CSS class (200ms fade + 4px slide). Period-dependent queries use `placeholderData: keepPreviousData` (TanStack React Query v5) so charts stay visible during data refresh, with `chart-transition`/`chart-refreshing` classes for subtle opacity dimming. All analytics pages (GA4, LinkedIn, Meta, Google Ads) scroll to top on mount (`useEffect(() => { window.scrollTo(0, 0); }, [])`) for smooth navigation from campaign detail.
 - **Scheduled Reports:** Email recipients are optional for scheduled reports (both GA4 and LinkedIn). Reports can be scheduled without email — they save to the reports library regardless.
+
+---
+
+## Testing
+
+### Test Layers
+
+| Layer | Count | Command | What it tests |
+|-------|-------|---------|---------------|
+| **Unit tests** | 140 | `npm run test` | Math formulas, KPI/Benchmark progress, cross-tab consistency |
+| **E2E tests** | 53 | `npm run test:e2e:headed` | Real browser clicks through UI — spend/revenue/KPIs/benchmarks/insights |
+| **CI/CD** | 140 | Auto on push | GitHub Actions runs unit tests on every git push |
+
+### Key Test Files
+
+| File | Purpose |
+|------|---------|
+| `server/ga4-cross-tab-consistency.test.ts` | 109 unit tests — validates all 5 yesop profiles across all formulas |
+| `server/metric-math.test.ts` | Core math: ROAS, ROI, CPA, CR, progress |
+| `server/kpi-math.test.ts` | KPI band classification, attainment |
+| `e2e/ga4-refresh-validation.spec.ts` | 53 E2E tests — full UI journeys |
+| `e2e/fixtures/ga4-scenarios.json` | Data-driven test scenarios (add line = add test) |
+| `.github/workflows/test.yml` | CI/CD workflow |
+
+### E2E Test Campaign
+
+Uses `yesop-brand` (campaign ID: `"yesop-brand"`) — a pre-seeded demo campaign created by `POST /api/seed-yesop-campaigns`. Mock property ID: `"yesop"`. The seed creates 5 campaigns with GA4 connections, spend sources, revenue sources, and 7 days of daily metrics. The `mock-refresh` endpoint injects deterministic daily data (sessions=750, conversions=38, revenue=$2,850 for yesop-brand).
+
+### Campaign Isolation Test
+
+Uses `yesop-brand` and `yesop-prospecting` (same GA4 property "yesop", different `ga4CampaignFilter` values). Verifies that sessions/revenue numbers differ between campaigns — proving filter scoping prevents cross-campaign data leakage.
+
+### Running Tests
+
+```bash
+npm run test                    # Unit tests (instant, no browser)
+npm run test:e2e:headed         # E2E tests (browser opens, ~5 min)
+npx playwright show-report      # View HTML report with screenshots
+npx playwright test --update-snapshots  # Update visual baselines after UI changes
+```

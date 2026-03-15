@@ -162,7 +162,7 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - `POST /api/campaigns/:id/spend/linkedin/process` — LinkedIn production mode (real API data).
 
 ### Revenue Cards
-- **GA4 page** (`ga4-metrics.tsx`): `financialRevenue` = GA4 native revenue only (falls back to imported if no GA4 revenue metric). This is platform-specific — do NOT add CRM revenue here. No add/edit icons on the GA4 Total Revenue card.
+- **GA4 page** (`ga4-metrics.tsx`): `financialRevenue` = GA4 native revenue (falls back to imported if no GA4 revenue metric). Shows "+" icon to add sources (Manual, CSV, Google Sheets, HubSpot, Salesforce, Shopify) via `AddRevenueWizardModal`. Per-source microcopy underneath with edit (pencil) and delete (trash) icons — same pattern as Total Spend card. `revenueDisplaySources` merges `revenue-breakdown` (per-source amounts) with `revenue-sources` (definitions). Delete uses `AlertDialog` → `DELETE /revenue-sources/:sourceId` → invalidates all revenue queries. Empty state shows "Add Revenue" button when `financialRevenue === 0` and no sources exist.
 - **Campaign Overview** (`campaign-detail.tsx`): Uses `outcome-totals` endpoint which returns unified cross-platform revenue (GA4 + CRM offsite sources). This is the right place for combined totals. Shows micro copy breakdown, "+" icon opens Add Revenue modal, edit icon opens existing source.
 
 ### Spend Cards (GA4 Overview)

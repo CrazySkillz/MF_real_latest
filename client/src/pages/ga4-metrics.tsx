@@ -167,7 +167,8 @@ export default function GA4Metrics() {
   const [showSpendDialog, setShowSpendDialog] = useState(false);
   // showDeleteSpendDialog removed — dead code, was never triggered
   const [showRevenueDialog, setShowRevenueDialog] = useState(false);
-  const [showDeleteRevenueDialog, setShowDeleteRevenueDialog] = useState(false);
+  const [editingRevenueSource, setEditingRevenueSource] = useState<any>(null);
+  const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
   const [editingSpendSource, setEditingSpendSource] = useState<any>(null);
   const [deletingSpendSourceId, setDeletingSpendSourceId] = useState<string | null>(null);
   const [deleteBenchmarkId, setDeleteBenchmarkId] = useState<string | null>(null);
@@ -1846,6 +1847,15 @@ export default function GA4Metrics() {
     return map[type] || type;
   };
 
+  const revenueSourceTypeLabel = (type: string) => {
+    const map: Record<string, string> = {
+      manual: "Manual", csv: "CSV", google_sheets: "Google Sheets",
+      hubspot: "HubSpot", salesforce: "Salesforce", shopify: "Shopify",
+      ga4: "GA4 Revenue", custom: "Custom",
+    };
+    return map[type] || type || "Revenue";
+  };
+
   // Merged spend sources for micro copy display: prefer breakdown (has amounts), fallback to source definitions
   const spendDisplaySources = useMemo(() => {
     const defs = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
@@ -1872,6 +1882,28 @@ export default function GA4Metrics() {
     const sources = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
     return sources?.[0] || null;
   }, [revenueSourcesResp]);
+
+  // Revenue display sources — merges breakdown (per-source amounts) with source definitions (fallback)
+  const revenueDisplaySources = useMemo(() => {
+    const defs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
+    const defsMap = new Map<string, any>();
+    for (const d of defs) if (d) defsMap.set(String(d.id), d);
+
+    const breakdownSources = Array.isArray((revenueBreakdownResp as any)?.sources) ? (revenueBreakdownResp as any).sources : [];
+    if (breakdownSources.length > 0) {
+      return breakdownSources.map((s: any) => ({
+        ...s,
+        mappingConfig: defsMap.get(String(s.sourceId))?.mappingConfig || null,
+      }));
+    }
+    return defs.filter((d: any) => d?.isActive !== false).map((d: any) => ({
+      sourceId: d.id,
+      sourceType: d.sourceType,
+      displayName: d.displayName,
+      revenue: null,
+      mappingConfig: d.mappingConfig,
+    }));
+  }, [revenueSourcesResp, revenueBreakdownResp]);
   // Availability flags for UI gating (KPI/Benchmark templates):
   // - Spend is "available" if a spend source exists (even if value is 0).
   // - Revenue is "available" if GA4 has a revenue metric configured OR an imported revenue source exists.
@@ -3908,13 +3940,74 @@ export default function GA4Metrics() {
                       </div>
                       {/* Revenue & Spend cards — always show when any financial data exists */}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
-                        {/* Total Revenue */}
+                        {/* Total Revenue — with "+" add, per-source microcopy, edit/trash (mirrors Spend pattern) */}
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatMoney(Number(financialRevenue || 0))}
-                            </p>
+                            {revenueDisplaySources.length > 0 ? (
+                              <>
+                                <div className="flex items-center justify-between">
+                                  <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
+                                  <button
+                                    onClick={() => { setEditingRevenueSource(null); setShowRevenueDialog(true); }}
+                                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
+                                    title="Add revenue source"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                <p className="text-2xl font-bold text-foreground mt-1">
+                                  {formatMoney(Number(financialRevenue || 0))}
+                                </p>
+                                {revenueDisplaySources.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+                                  {revenueDisplaySources.map((s: any) => (
+                                    <div key={s.sourceId} className="flex items-center justify-between text-xs group/rev">
+                                      <span className="text-muted-foreground/70 min-w-[60px] truncate">
+                                        {s.displayName || revenueSourceTypeLabel(s.sourceType)}
+                                      </span>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-foreground/80/60 font-medium tabular-nums">
+                                          {s.revenue != null ? formatMoney(s.revenue) : formatMoney(Number(financialRevenue || 0))}
+                                        </span>
+                                        <button
+                                          onClick={() => {
+                                            setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig });
+                                            setShowRevenueDialog(true);
+                                          }}
+                                          className="p-0.5 rounded hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground dark:hover:text-muted-foreground/60 opacity-0 group-hover/rev:opacity-100 transition-all"
+                                          title="Edit revenue source"
+                                        >
+                                          <Edit className="h-3 w-3" />
+                                        </button>
+                                        <button
+                                          onClick={() => setDeletingRevenueSourceId(s.sourceId)}
+                                          className="p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/60 hover:text-red-600 opacity-0 group-hover/rev:opacity-100 transition-all"
+                                          title="Remove revenue source"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
+                                <p className="text-2xl font-bold text-foreground mt-1">
+                                  {formatMoney(Number(financialRevenue || 0))}
+                                </p>
+                                {Number(financialRevenue || 0) === 0 && (
+                                  <div className="mt-2">
+                                    <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => { setEditingRevenueSource(null); setShowRevenueDialog(true); }}>
+                                      <Plus className="h-3.5 w-3.5 mr-1" />
+                                      Add Revenue
+                                    </Button>
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </CardContent>
                         </Card>
                         {/* Latest Day Revenue — most recent complete day (skips today's partial) */}
@@ -4245,7 +4338,7 @@ export default function GA4Metrics() {
                     onOpenChange={setShowRevenueDialog}
                     currency={(campaign as any)?.currency || "USD"}
                     dateRange={dateRange}
-                    initialSource={activeRevenueSource || undefined}
+                    initialSource={editingRevenueSource || undefined}
                     platformContext="ga4"
                     onSuccess={() => {
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
@@ -4296,12 +4389,12 @@ export default function GA4Metrics() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                  <AlertDialog open={showDeleteRevenueDialog} onOpenChange={setShowDeleteRevenueDialog}>
+                  <AlertDialog open={!!deletingRevenueSourceId} onOpenChange={(open) => { if (!open) setDeletingRevenueSourceId(null); }}>
                     <AlertDialogContent className="bg-card border-border">
                       <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">Remove revenue source?</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground/70">
-                          This will remove imported revenue for this campaign until you add a revenue source again.
+                          This will remove this revenue source. Total Revenue will be recalculated.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -4310,18 +4403,24 @@ export default function GA4Metrics() {
                           className="bg-red-600 hover:bg-red-700 text-white"
                           onClick={async () => {
                             try {
-                              const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources`, { method: "DELETE" });
+                              const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${deletingRevenueSourceId}`, { method: "DELETE" });
                               const json = await resp.json().catch(() => null);
                               if (!resp.ok || json?.success === false) {
                                 throw new Error(json?.error || "Failed to remove revenue source");
                               }
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
-                            } catch (e) {
+                              queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+                              toast({ title: "Revenue source removed", description: "Total Revenue has been recalculated." });
+                            } catch (e: any) {
                               console.error(e);
+                              toast({ title: "Delete failed", description: e?.message || "Please try again.", variant: "destructive" });
                             } finally {
-                              setShowDeleteRevenueDialog(false);
+                              setDeletingRevenueSourceId(null);
                             }
                           }}
                         >

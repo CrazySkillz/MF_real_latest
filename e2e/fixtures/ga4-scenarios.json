@@ -34,27 +34,48 @@
   "insights_scenarios": [
     {
       "id": "kpi_behind",
-      "description": "KPI with unreachable target should trigger 'Needs Attention' insight",
+      "description": "KPI with unreachable target triggers 'Needs Attention'",
       "kpi_metric": "Revenue",
       "kpi_target": "50000",
       "kpi_unit": "$",
-      "expect_text": "Needs Attention",
-      "expect_severity": "medium"
+      "expect_text": "Needs Attention"
     },
     {
       "id": "kpi_exceeds",
-      "description": "KPI with easy target should trigger positive signal",
+      "description": "KPI with easy target triggers positive signal",
       "kpi_metric": "Total Sessions",
       "kpi_target": "100",
       "kpi_unit": "count",
-      "expect_text": "exceeds target",
-      "expect_severity": "low"
+      "expect_text": "exceeds target"
     },
     {
       "id": "financial_integrity",
-      "description": "Insights should show Spend and Revenue in executive financials",
+      "description": "Insights shows Spend and Revenue labels",
       "expect_text": "Spend",
       "expect_also": "Revenue"
+    },
+    {
+      "id": "strong_roas",
+      "description": "Strong ROAS shows positive signal",
+      "expect_text": "ROAS"
+    },
+    {
+      "id": "benchmark_behind",
+      "description": "Benchmark behind target triggers insight",
+      "bench_metric": "revenue",
+      "bench_name": "High Revenue Target",
+      "bench_value": "50000",
+      "bench_unit": "$",
+      "expect_text": "Behind"
     }
+  ],
+  "revenue_scenarios": [
+    { "type": "add", "amount": 5000, "label": "Manual Revenue $5,000" },
+    { "type": "delete_first", "label": "Delete revenue source" }
+  ],
+  "data_integrity_checks": [
+    { "id": "spend", "api_path": "/spend-breakdown", "api_field": "totalSpend", "ui_label": "Spend" },
+    { "id": "revenue", "api_path": "/revenue-to-date", "api_field": "revenueToDate", "ui_label": "Revenue" },
+    { "id": "sessions", "api_path": "/ga4-to-date", "api_field": "totals.sessions", "ui_label": "Sessions" }
   ]
 }

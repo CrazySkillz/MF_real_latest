@@ -696,6 +696,12 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS sub_campaign_urn TEXT;
           `);
 
+          // Migration 11b: Add sub_campaign_urn to revenue_records (missed in migration 11)
+          await db.execute(sql`
+            ALTER TABLE revenue_records
+            ADD COLUMN IF NOT EXISTS sub_campaign_urn TEXT;
+          `);
+
           // Migration 12: Campaign selection for Google Ads and Meta
           await db.execute(sql`
             ALTER TABLE google_ads_connections

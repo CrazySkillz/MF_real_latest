@@ -4759,10 +4759,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDate = formatISODateUTC(yesterdayUtc);
 
       if (shouldSimulate) {
+        const pid = requestedPropertyId || "yesop";
+        // Prefer real DB rows (from mock-refresh) over hardcoded simulation
+        const storedRows = await storage.getGA4DailyMetrics(campaignId, pid, startDate, endDate).catch(() => [] as any[]);
+        if (storedRows && storedRows.length > 0) {
+          return res.json({
+            success: true,
+            propertyId: pid,
+            startDate,
+            endDate,
+            days,
+            data: storedRows,
+            lastUpdated: new Date().toISOString(),
+          });
+        }
+        // No DB rows — fall back to simulation
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
         const simRange = days >= 90 ? "90days" : days >= 30 ? "30days" : "7days";
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: simRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
-        const pid = requestedPropertyId || "yesop";
+        const sim = simulateGA4({ campaignId, propertyId: pid, dateRange: simRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         return res.json({
           success: true,
           propertyId: pid,
@@ -4935,9 +4949,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toDateRange = String(req.query.dateRange || "30days").trim();
       const pidNormalized = normalizePropertyIdForMock(requestedPropertyId);
       if (mock || isYesopMockProperty(pidNormalized)) {
-        // Use the requested dateRange (default 30days) so totals match the user's selected period.
+        const pid = requestedPropertyId || "yesop";
+        // Prefer real DB rows (from mock-refresh) over hardcoded simulation
+        const storedRows = await storage.getGA4DailyMetrics(campaignId, pid, startDateUsed, endDateUsed).catch(() => [] as any[]);
+        if (storedRows && storedRows.length > 0) {
+          // Sum daily rows to produce cumulative totals
+          let sessions = 0, users = 0, conversions = 0, revenue = 0, pageviews = 0;
+          let engagedSessions = 0, totalEngRate = 0, totalBounce = 0, totalDuration = 0;
+          for (const r of storedRows) {
+            sessions += Number(r?.sessions || 0);
+            users += Number(r?.users || 0);
+            conversions += Number(r?.conversions || 0);
+            revenue += Number(r?.revenue || 0);
+            pageviews += Number(r?.pageviews || 0);
+            const er = Number(r?.engagementRate || 0);
+            totalEngRate += er;
+            totalBounce += (1 - er);
+            totalDuration += Number(r?.avgSessionDuration || 0);
+          }
+          const n = storedRows.length;
+          const totals = {
+            sessions, users, conversions, revenue, pageviews,
+            engagementRate: n > 0 ? totalEngRate / n : 0,
+            engagedSessions: Math.round(sessions * (n > 0 ? totalEngRate / n : 0)),
+            eventCount: 0,
+            eventsPerSession: 0,
+            bounceRate: n > 0 ? totalBounce / n : 0,
+            avgSessionDuration: n > 0 ? totalDuration / n : 0,
+          };
+          return res.json({
+            success: true,
+            propertyId: pid,
+            startDate: startDateUsed,
+            endDate: endDateUsed,
+            revenueMetric: "totalRevenue",
+            totals,
+          });
+        }
+        // No DB rows — fall back to simulation
         const simDateRange = ["7days", "30days", "90days"].includes(toDateRange) ? toDateRange : "30days";
-        const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || "yesop", dateRange: simDateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        const sim = simulateGA4({ campaignId, propertyId: pid, dateRange: simDateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const totals = {
           sessions: Number(sim?.totals?.sessions || 0),
           users: Number(sim?.totals?.users || 0),
@@ -4953,7 +5004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         return res.json({
           success: true,
-          propertyId: requestedPropertyId,
+          propertyId: pid,
           startDate: startDateUsed,
           endDate: endDateUsed,
           revenueMetric: "totalRevenue",

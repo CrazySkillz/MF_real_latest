@@ -74,13 +74,13 @@ async function bodyText(page: Page): Promise<string> {
 async function goToGA4(page: Page) {
   await page.goto(GA4_URL);
   await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(1000);
 }
 
 async function waitForRefresh(page: Page) {
   await page.reload();
   await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(1000);
 }
 
 // ============================================================
@@ -345,7 +345,7 @@ test.describe("GA4 Complete Test Suite", () => {
       // Verify all tabs still work after multiple refreshes
       for (const tab of ["KPIs", "Benchmarks", "Insights", "Ad Comparison"]) {
         await page.getByRole("tab", { name: tab }).click();
-        await page.waitForTimeout(800);
+        await page.waitForTimeout(500);
         expect((await bodyText(page)).length, `${tab} should have content`).toBeGreaterThan(500);
       }
       await page.getByRole("tab", { name: "Overview" }).click();
@@ -384,7 +384,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("F1: Ad Comparison tab shows campaign breakdown", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Ad Comparison" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       // Should show Sessions and campaign data
@@ -527,7 +527,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("I1: KPI summary cards show counts that add up", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "KPIs" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       const totalMatch = content.match(/Total KPIs[\s\S]*?(\d+)/);
@@ -552,7 +552,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("I2: KPI progress bars have color classes", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "KPIs" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const html = await page.content();
       const hasProgressBar = html.includes("bg-green-") || html.includes("bg-amber-") || html.includes("bg-red-") || html.includes("bg-yellow-");
@@ -574,7 +574,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("I3: KPI current values are numeric", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "KPIs" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       const hasNumbers = /\d+\.?\d*%/.test(content) || /\$[\d,]+/.test(content);
@@ -589,7 +589,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("I4: Avg Progress shows percentage", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "KPIs" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       const hasAvg = content.includes("Avg. Progress") || content.includes("Avg Progress");
@@ -605,7 +605,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("J_B1: Benchmark summary cards show counts", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Benchmarks" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       expect(content).toContain("Total Benchmarks");
@@ -620,7 +620,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("J_B2: Edit benchmark via pencil icon", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Benchmarks" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       const totalMatch = content.match(/Total Benchmarks[\s\S]*?(\d+)/);
@@ -655,7 +655,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("K1: Ranking cards appear", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Ad Comparison" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       const hasRanking = content.includes("Best Performing") || content.includes("Most Efficient") || content.includes("Needs Attention");
@@ -672,7 +672,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("K2: Table rows show numeric values", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Ad Comparison" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       // Should show Sessions or numeric values in the comparison
@@ -684,7 +684,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("K3: Metric selector exists", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Ad Comparison" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       // The metric selector should show "Sessions" or other metric options
@@ -701,7 +701,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("L1: Executive Financials shows 5 metrics", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Insights" }).click();
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(1000);
 
       const content = await bodyText(page);
       const hasSpend = content.includes("Spend");
@@ -716,7 +716,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("L2: Insights summary cards show counts", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Insights" }).click();
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(1000);
 
       const content = await bodyText(page);
       // Should show insight counts or "No issues detected"
@@ -728,7 +728,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("L3: At least one insight has recommendation text", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Insights" }).click();
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(1000);
 
       const content = await bodyText(page);
       const hasRec = content.includes("Next step") || content.includes("recommendation") ||
@@ -741,7 +741,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("L4: Severity badges present", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Insights" }).click();
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(1000);
 
       const content = await bodyText(page);
       const hasBadge = content.includes("High") || content.includes("Medium") ||
@@ -758,7 +758,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("M1: Report templates are visible", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Reports" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       // Should show report-related text
@@ -770,7 +770,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("M2: Reports tab has substantial content", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Reports" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       expect(content.length, "Reports tab should have content").toBeGreaterThan(500);
@@ -1266,7 +1266,7 @@ test.describe("GA4 Complete Test Suite", () => {
 
       await goToGA4(page);
       await page.getByRole("tab", { name: "KPIs" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       const hasKpiData = content.includes("Total KPIs") || content.includes("Create KPI");
@@ -1285,7 +1285,7 @@ test.describe("GA4 Complete Test Suite", () => {
 
       await goToGA4(page);
       await page.getByRole("tab", { name: "Insights" }).click();
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(1000);
 
       const content = await bodyText(page);
       expect(content.includes("Spend") || content.includes("Revenue"), "Insights should show financial data (aggregated)").toBe(true);
@@ -1303,7 +1303,7 @@ test.describe("GA4 Complete Test Suite", () => {
 
       await goToGA4(page);
       await page.getByRole("tab", { name: "Ad Comparison" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       // Ad Comparison should show campaign data — ranking cards appear when 2+ campaigns
@@ -1345,7 +1345,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("N1: KPI delete via UI trash icon click", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "KPIs" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       if (content.includes("Total KPIs") && !content.match(/Total KPIs[\s\S]*?0\b/)) {
@@ -1376,7 +1376,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("N2: Benchmark delete via UI trash icon click", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Benchmarks" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       if (content.includes("Total Benchmarks") && !content.match(/Total Benchmarks[\s\S]*?0\b/)) {
@@ -1401,7 +1401,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("N3: Ad Comparison — switch metric dropdown", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Ad Comparison" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       // Look for a select/dropdown for metric
       const select = page.locator('select, [role="combobox"], button:has-text("Sessions")').first();
@@ -1427,7 +1427,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("N4: Ad Comparison — Users non-additivity warning", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Ad Comparison" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const content = await bodyText(page);
       const html = await page.content();
@@ -1453,7 +1453,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("N6: Insights Trends — toggle exists", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Insights" }).click();
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(1000);
 
       const content = await bodyText(page);
       // Trends section should have mode selectors
@@ -1527,7 +1527,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("N11: Ad Comparison — bar chart container exists", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Ad Comparison" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const html = await page.content();
       const hasChart = html.includes("recharts") || html.includes("<svg") || html.includes("BarChart");
@@ -1543,7 +1543,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("N12: Insights — recommendation includes 'Next step' or action text", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Insights" }).click();
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(1000);
 
       const content = await bodyText(page);
       const hasAction = content.includes("Next step") || content.includes("Check") ||
@@ -1607,7 +1607,7 @@ test.describe("GA4 Complete Test Suite", () => {
 
       const saveBtn = page.locator('button:has-text("Save spend")').or(page.locator('button:has-text("Save")')).first();
       if (await saveBtn.isVisible().catch(() => false)) await saveBtn.click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       expect(await bodyText(page)).toContain("950");
       console.log("✓ J1: Manual spend $950 added");
@@ -1615,7 +1615,7 @@ test.describe("GA4 Complete Test Suite", () => {
 
     test("J2: Add $500 more spend — ROAS decreases", async ({ page }) => {
       await goToGA4(page);
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
       const before = (await bodyText(page)).match(/([\d.]+)x/);
       const roasBefore = before ? parseFloat(before[1]) : null;
 
@@ -1645,7 +1645,7 @@ test.describe("GA4 Complete Test Suite", () => {
         }
         const saveBtn = page.locator('button:has-text("Update spend")').or(page.locator('button:has-text("Save")')).first();
         if (await saveBtn.isVisible().catch(() => false)) await saveBtn.click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1200);
         expect(await bodyText(page)).toContain("800");
         console.log("✓ J3: Spend edited to $800");
       } else {
@@ -1662,7 +1662,7 @@ test.describe("GA4 Complete Test Suite", () => {
         await page.waitForTimeout(500);
         const confirm = page.locator('button:has-text("Remove")').first();
         if (await confirm.isVisible().catch(() => false)) await confirm.click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1200);
         await waitForRefresh(page);
         const after = (await bodyText(page)).match(/([\d.]+)x/);
         if (before && after) {
@@ -1688,7 +1688,7 @@ test.describe("GA4 Complete Test Suite", () => {
       } else if (await plusBtn.isVisible().catch(() => false)) {
         await plusBtn.click();
       }
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(1000);
 
       // The AddRevenueWizardModal should be open
       const content = await bodyText(page);
@@ -1705,7 +1705,7 @@ test.describe("GA4 Complete Test Suite", () => {
         await page.waitForTimeout(500);
         const confirm = page.locator('button:has-text("Remove")').first();
         if (await confirm.isVisible().catch(() => false)) await confirm.click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1200);
         console.log("✓ J6: Revenue source deleted");
       } else {
         console.log("⚠ J6: No revenue trash icon — skipping");
@@ -1723,14 +1723,14 @@ test.describe("GA4 Complete Test Suite", () => {
         const btn = page.locator('[data-testid="run-refresh-btn"]').or(page.locator('button:has-text("Run Refresh")')).first();
         if (await btn.isVisible().catch(() => false)) {
           await btn.click();
-          await page.waitForTimeout(4000);
+          await page.waitForTimeout(2000);
         }
         await waitForRefresh(page);
 
         expect(await bodyText(page)).toContain("Sessions");
         for (const tab of ["KPIs", "Benchmarks", "Insights"]) {
           await page.getByRole("tab", { name: tab }).click();
-          await page.waitForTimeout(800);
+          await page.waitForTimeout(500);
           expect((await bodyText(page)).length).toBeGreaterThan(500);
         }
         await page.getByRole("tab", { name: "Overview" }).click();
@@ -1747,7 +1747,7 @@ test.describe("GA4 Complete Test Suite", () => {
       test(`J8: Create KPI "${kpi.metric}" via modal`, async ({ page }) => {
         await goToGA4(page);
         await page.getByRole("tab", { name: "KPIs" }).click();
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(1000);
         await page.locator('button:has-text("Create KPI")').first().click();
         await page.waitForTimeout(1000);
 
@@ -1762,7 +1762,7 @@ test.describe("GA4 Complete Test Suite", () => {
         }
 
         await page.locator('button:has-text("Create KPI")').last().click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1200);
 
         const content = await bodyText(page);
         expect(content.includes(kpi.metric) || content.includes("Total KPIs")).toBe(true);
@@ -1773,7 +1773,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("J9: Edit KPI — change target", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "KPIs" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const editBtn = page.locator('button').filter({ has: page.locator('svg') }).locator('text=').first();
       // Try clicking pencil icon on first KPI
@@ -1790,7 +1790,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("J10: Delete KPI — count decreases", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "KPIs" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const beforeContent = await bodyText(page);
       const beforeMatch = beforeContent.match(/Total KPIs[\s\S]*?(\d+)/);
@@ -1804,7 +1804,7 @@ test.describe("GA4 Complete Test Suite", () => {
           await apiDelete(page, `/api/campaigns/${CAMPAIGN_ID}/kpis/${kpiList[0].id}`);
           await waitForRefresh(page);
           await page.getByRole("tab", { name: "KPIs" }).click();
-          await page.waitForTimeout(1500);
+          await page.waitForTimeout(1000);
           const afterContent = await bodyText(page);
           const afterMatch = afterContent.match(/Total KPIs[\s\S]*?(\d+)/);
           const countAfter = afterMatch ? parseInt(afterMatch[1]) : 0;
@@ -1830,7 +1830,7 @@ test.describe("GA4 Complete Test Suite", () => {
       test(`J11: Create Benchmark "${bench.name}" via modal`, async ({ page }) => {
         await goToGA4(page);
         await page.getByRole("tab", { name: "Benchmarks" }).click();
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(1000);
         await page.locator('button:has-text("Create Benchmark")').first().click();
         await page.waitForTimeout(1000);
 
@@ -1846,7 +1846,7 @@ test.describe("GA4 Complete Test Suite", () => {
         }
 
         await page.locator('button:has-text("Create Benchmark")').last().click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1200);
 
         expect((await bodyText(page)).includes(bench.name) || (await bodyText(page)).includes("Total Benchmarks")).toBe(true);
         console.log(`✓ J11: Benchmark "${bench.name}" created`);
@@ -1856,7 +1856,7 @@ test.describe("GA4 Complete Test Suite", () => {
     test("J12: Delete Benchmark — count decreases", async ({ page }) => {
       await goToGA4(page);
       await page.getByRole("tab", { name: "Benchmarks" }).click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1200);
 
       const beforeContent = await bodyText(page);
       const beforeMatch = beforeContent.match(/Total Benchmarks[\s\S]*?(\d+)/);
@@ -1869,7 +1869,7 @@ test.describe("GA4 Complete Test Suite", () => {
           await apiDelete(page, `/api/campaigns/${CAMPAIGN_ID}/benchmarks/${benchList[0].id}`);
           await waitForRefresh(page);
           await page.getByRole("tab", { name: "Benchmarks" }).click();
-          await page.waitForTimeout(1500);
+          await page.waitForTimeout(1000);
           const afterContent = await bodyText(page);
           const afterMatch = afterContent.match(/Total Benchmarks[\s\S]*?(\d+)/);
           const countAfter = afterMatch ? parseInt(afterMatch[1]) : 0;
@@ -1909,7 +1909,7 @@ test.describe("GA4 Complete Test Suite", () => {
 
         await waitForRefresh(page);
         await page.getByRole("tab", { name: "Insights" }).click();
-        await page.waitForTimeout(2500);
+        await page.waitForTimeout(1000);
 
         const content = await bodyText(page);
         expect(content.includes(scenario.expect_text), `Insights should contain "${scenario.expect_text}"`).toBe(true);
@@ -1966,7 +1966,7 @@ test.describe("GA4 Complete Test Suite", () => {
     await goToGA4(page);
     const overview = (await bodyText(page)).match(/([\d.]+)x/);
     await page.getByRole("tab", { name: "Insights" }).click();
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(1000);
     const insights = (await bodyText(page)).match(/([\d.]+)x/);
     if (overview && insights) {
       expect(parseFloat(insights[1])).toBeCloseTo(parseFloat(overview[1]), 0);
@@ -2061,7 +2061,7 @@ test.describe("GA4 Complete Test Suite", () => {
       test(`J21: Snapshot — ${tab} tab`, async ({ page }) => {
         await goToGA4(page);
         await page.getByRole("tab", { name: tab }).click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1200);
         await expect(page).toHaveScreenshot(`ga4-${tab.toLowerCase().replace(/ /g, "-")}.png`, {
           maxDiffPixelRatio: 0.1,
           fullPage: false,

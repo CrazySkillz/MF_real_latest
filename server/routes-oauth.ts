@@ -5122,15 +5122,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateStr = formatISODateUTC(yesterday);
       }
 
-      // Deterministic known values per campaign — easy to verify in the UI
-      const mockProfiles: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; spend: number }> = {
-        "yesop-brand": { users: 500, sessions: 750, pageviews: 2250, conversions: 38, revenue: 2850.00, spend: 950.00 },
-        "yesop-prospecting": { users: 300, sessions: 420, pageviews: 1260, conversions: 18, revenue: 1350.00, spend: 680.00 },
-        "yesop-retargeting": { users: 175, sessions: 260, pageviews: 780, conversions: 22, revenue: 1650.00, spend: 410.00 },
-        "yesop-email": { users: 125, sessions: 180, pageviews: 540, conversions: 12, revenue: 900.00, spend: 150.00 },
-        "yesop-social": { users: 250, sessions: 375, pageviews: 1125, conversions: 15, revenue: 1125.00, spend: 750.00 },
+      // Deterministic known values per UTM campaign name — easy to verify in the UI
+      const mockProfilesByUtm: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; spend: number }> = {
+        "yesop_brand_search": { users: 500, sessions: 750, pageviews: 2250, conversions: 38, revenue: 2850.00, spend: 950.00 },
+        "yesop_prospecting": { users: 300, sessions: 420, pageviews: 1260, conversions: 18, revenue: 1350.00, spend: 680.00 },
+        "yesop_retargeting": { users: 175, sessions: 260, pageviews: 780, conversions: 22, revenue: 1650.00, spend: 410.00 },
+        "yesop_email_nurture": { users: 125, sessions: 180, pageviews: 540, conversions: 12, revenue: 900.00, spend: 150.00 },
+        "yesop_paid_social": { users: 250, sessions: 375, pageviews: 1125, conversions: 15, revenue: 1125.00, spend: 750.00 },
       };
-      const mockDay = mockProfiles[campaignId] || { users: 500, sessions: 750, pageviews: 2250, conversions: 38, revenue: 2850.00, spend: 950.00 };
+      // Legacy lookup by campaign ID (for yesop-brand, yesop-prospecting, etc.)
+      const mockProfilesById: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; spend: number }> = {
+        "yesop-brand": mockProfilesByUtm["yesop_brand_search"],
+        "yesop-prospecting": mockProfilesByUtm["yesop_prospecting"],
+        "yesop-retargeting": mockProfilesByUtm["yesop_retargeting"],
+        "yesop-email": mockProfilesByUtm["yesop_email_nurture"],
+        "yesop-social": mockProfilesByUtm["yesop_paid_social"],
+      };
+
+      // Resolve which UTM campaigns are selected in the filter
+      const filterRaw = (campaign as any)?.ga4CampaignFilter;
+      let selectedUtmCampaigns: string[] = [];
+      if (filterRaw) {
+        try {
+          const parsed = JSON.parse(String(filterRaw));
+          if (Array.isArray(parsed)) selectedUtmCampaigns = parsed.map((s: any) => String(s).trim()).filter(Boolean);
+          else selectedUtmCampaigns = [String(filterRaw).trim()].filter(Boolean);
+        } catch {
+          selectedUtmCampaigns = [String(filterRaw).trim()].filter(Boolean);
+        }
+      }
+
+      // Sum mock data across all selected campaigns (or default to yesop-brand)
+      const profilesToSum = selectedUtmCampaigns.length > 0
+        ? selectedUtmCampaigns.map(utm => mockProfilesByUtm[utm]).filter(Boolean)
+        : [mockProfilesById[campaignId] || mockProfilesByUtm["yesop_brand_search"]];
+
+      const mockDay = profilesToSum.reduce(
+        (acc, p) => ({
+          users: acc.users + p.users,
+          sessions: acc.sessions + p.sessions,
+          pageviews: acc.pageviews + p.pageviews,
+          conversions: acc.conversions + p.conversions,
+          revenue: acc.revenue + p.revenue,
+          spend: acc.spend + p.spend,
+        }),
+        { users: 0, sessions: 0, pageviews: 0, conversions: 0, revenue: 0, spend: 0 }
+      );
 
       // 0) Ensure GA4 connection exists (so the page shows tabs, not "Connect" screen)
       const existingConns = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
@@ -5147,7 +5184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } as any).catch((e: any) => console.error("[mock-refresh] Failed to create GA4 connection:", e?.message));
       }
 
-      // 1) Upsert GA4 daily metric row
+      // 1) Upsert GA4 daily metric row (aggregated across selected campaigns)
       await storage.upsertGA4DailyMetrics([{
         campaignId,
         propertyId,

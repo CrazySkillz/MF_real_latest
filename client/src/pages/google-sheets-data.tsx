@@ -23,7 +23,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { GoogleSheetsKpiModal } from "@/pages/google-sheets-analytics/GoogleSheetsKpiModal";
 import { GoogleSheetsBenchmarkModal } from "@/pages/google-sheets-analytics/GoogleSheetsBenchmarkModal";
 import { GoogleSheetsReportModal } from "@/pages/google-sheets-analytics/GoogleSheetsReportModal";
-import { Edit2, BarChart3, Clock, Mail, Download } from "lucide-react";
+import { Edit2, Clock, Mail, Download } from "lucide-react";
 
 interface Campaign {
   id: string;

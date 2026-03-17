@@ -5902,8 +5902,8 @@ export default function GA4Metrics() {
                           // Build chart data depending on mode
                           let chartData: any[] = [];
                           if (insightsTrendMode === "daily") {
-                            // Show last 30 days for a readable daily chart, skip zero-value rows
-                            const dailyChartRows = sorted.slice(-30).filter((r: any) => Number(r[metric] || 0) > 0);
+                            // Show last 30 days for a readable daily chart
+                            const dailyChartRows = sorted.slice(-30);
                             chartData = dailyChartRows.map((r: any) => ({
                               date: String(r.date || "").slice(5), // MM-DD
                               value: isRate ? Number((Number(r[metric] || 0) * 100).toFixed(2)) : Number(r[metric] || 0),
@@ -5951,7 +5951,7 @@ export default function GA4Metrics() {
                                   <LineChart data={chartData}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                                     <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickMargin={6} />
-                                    <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} />
+                                    <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} domain={["auto", "auto"]} />
                                     <Tooltip formatter={(value: any) => [fmtValue(value), trendMetricLabels[metric] || metric]} labelFormatter={(l) => `Date: ${l}`} />
                                     <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls name={trendMetricLabels[metric] || metric} />
                                   </LineChart>

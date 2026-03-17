@@ -5948,9 +5948,9 @@ export default function GA4Metrics() {
                             <>
                               <div className="h-64">
                                 <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart data={chartData}>
+                                  <LineChart data={chartData} margin={{ left: 0, right: 10, top: 5, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                    <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickMargin={6} />
+                                    <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickMargin={6} padding={{ left: 0, right: 0 }} />
                                     <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} domain={["auto", "auto"]} />
                                     <Tooltip formatter={(value: any) => [fmtValue(value), trendMetricLabels[metric] || metric]} labelFormatter={(l) => `Date: ${l}`} />
                                     <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls name={trendMetricLabels[metric] || metric} />

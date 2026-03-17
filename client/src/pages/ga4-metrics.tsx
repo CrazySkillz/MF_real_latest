@@ -5899,8 +5899,12 @@ export default function GA4Metrics() {
                             }));
                           } else {
                             const windowDays = insightsTrendMode === "7d" ? 7 : 30;
-                            for (let i = windowDays - 1; i < sorted.length; i++) {
-                              const slice = sorted.slice(i - windowDays + 1, i + 1);
+                            // Limit chart to relevant range: show 2× window (current + prior) for context
+                            const chartWindowDays = windowDays * 2;
+                            const chartStartIdx = Math.max(0, sorted.length - chartWindowDays);
+                            const chartRows = sorted.slice(chartStartIdx);
+                            for (let i = windowDays - 1; i < chartRows.length; i++) {
+                              const slice = chartRows.slice(i - windowDays + 1, i + 1);
                               let val = 0;
                               if (isRate) {
                                 const totalSessions = slice.reduce((s: number, r: any) => s + Number(r.sessions || 0), 0);
@@ -5909,7 +5913,7 @@ export default function GA4Metrics() {
                               } else {
                                 val = slice.reduce((s: number, r: any) => s + Number(r[metric] || 0), 0);
                               }
-                              chartData.push({ date: String(sorted[i].date || "").slice(5), value: Number(val.toFixed(2)) });
+                              chartData.push({ date: String(chartRows[i].date || "").slice(5), value: Number(val.toFixed(2)) });
                             }
                           }
 
@@ -5946,12 +5950,15 @@ export default function GA4Metrics() {
                               {/* Comparison table */}
                               {insightsTrendMode === "daily" ? (
                                 <div className="overflow-hidden border rounded-md">
-                                  <table className="w-full text-sm">
+                                  <table className="w-full text-sm table-fixed">
                                     <thead className="bg-muted border-b">
                                       <tr>
-                                        <th className="text-left p-3">Date</th>
-                                        <th className="text-right p-3">{trendMetricLabels[metric] || metric}</th>
-                                        <th className="text-right p-3">vs prior day</th>
+                                        <th className="text-left p-3 w-[20%]">Date</th>
+                                        <th className="text-right p-3">Sessions</th>
+                                        <th className="text-right p-3">Conversions</th>
+                                        <th className="text-right p-3">CR</th>
+                                        <th className="text-right p-3">Revenue</th>
+                                        <th className="text-right p-3">PV/Session</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -5959,16 +5966,45 @@ export default function GA4Metrics() {
                                         const showCount = insightsDailyShowMore ? 14 : 7;
                                         const recentRows = sorted.slice(-showCount).reverse();
                                         return recentRows.map((r: any, idx: number) => {
-                                          const curVal = isRate ? Number(r[metric] || 0) * 100 : Number(r[metric] || 0);
+                                          const sessions = Number(r?.sessions || 0);
+                                          const conversions = Number(r?.conversions || 0);
+                                          const revenue = Number(r?.revenue || 0);
+                                          const pageviews = Number(r?.pageviews || 0);
+                                          const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
+                                          const pvps = sessions > 0 ? pageviews / sessions : 0;
                                           const prevRow = sorted[sorted.indexOf(r) - 1];
-                                          const prevVal = prevRow ? (isRate ? Number(prevRow[metric] || 0) * 100 : Number(prevRow[metric] || 0)) : 0;
-                                          const delta = prevRow ? deltaPct(curVal, prevVal) : 0;
+                                          const prevSessions = prevRow ? Number(prevRow?.sessions || 0) : 0;
+                                          const prevConversions = prevRow ? Number(prevRow?.conversions || 0) : 0;
+                                          const prevCr = prevSessions > 0 ? (prevConversions / prevSessions) * 100 : 0;
+                                          const prevRevenue = prevRow ? Number(prevRow?.revenue || 0) : 0;
+                                          const prevPvps = prevSessions > 0 ? Number(prevRow?.pageviews || 0) / prevSessions : 0;
+                                          const dSess = prevRow ? deltaPct(sessions, prevSessions) : 0;
+                                          const dConv = prevRow ? deltaPct(conversions, prevConversions) : 0;
+                                          const dCr = prevRow ? deltaPct(cr, prevCr) : 0;
+                                          const dRev = prevRow ? deltaPct(revenue, prevRevenue) : 0;
+                                          const dPvps = prevRow ? deltaPct(pvps, prevPvps) : 0;
                                           return (
                                             <tr key={r.date || idx} className="border-b last:border-b-0">
                                               <td className="p-3 text-foreground">{r.date}</td>
-                                              <td className="p-3 text-right font-medium tabular-nums text-foreground">{fmtValue(curVal)}</td>
                                               <td className="p-3 text-right">
-                                                {prevRow ? <span className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</span> : <span className="text-xs text-muted-foreground/70">—</span>}
+                                                <div className="font-medium tabular-nums text-foreground">{formatNumber(sessions)}</div>
+                                                {prevRow && <div className={`text-xs ${deltaColor(dSess)}`}>{fmtDelta(dSess)}</div>}
+                                              </td>
+                                              <td className="p-3 text-right">
+                                                <div className="font-medium tabular-nums text-foreground">{formatNumber(conversions)}</div>
+                                                {prevRow && <div className={`text-xs ${deltaColor(dConv)}`}>{fmtDelta(dConv)}</div>}
+                                              </td>
+                                              <td className="p-3 text-right">
+                                                <div className="font-medium tabular-nums text-foreground">{cr.toFixed(2)}%</div>
+                                                {prevRow && <div className={`text-xs ${deltaColor(dCr)}`}>{fmtDelta(dCr)}</div>}
+                                              </td>
+                                              <td className="p-3 text-right">
+                                                <div className="font-medium tabular-nums text-foreground">{formatMoney(revenue)}</div>
+                                                {prevRow && <div className={`text-xs ${deltaColor(dRev)}`}>{fmtDelta(dRev)}</div>}
+                                              </td>
+                                              <td className="p-3 text-right">
+                                                <div className="font-medium tabular-nums text-foreground">{pvps.toFixed(2)}</div>
+                                                {prevRow && <div className={`text-xs ${deltaColor(dPvps)}`}>{fmtDelta(dPvps)}</div>}
                                               </td>
                                             </tr>
                                           );

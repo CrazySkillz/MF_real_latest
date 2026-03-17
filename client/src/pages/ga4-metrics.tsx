@@ -5902,8 +5902,8 @@ export default function GA4Metrics() {
                           // Build chart data depending on mode
                           let chartData: any[] = [];
                           if (insightsTrendMode === "daily") {
-                            // Show last 30 days for a readable daily chart
-                            const dailyChartRows = sorted.slice(-30);
+                            // Show last 30 days for a readable daily chart, skip zero-value rows
+                            const dailyChartRows = sorted.slice(-30).filter((r: any) => Number(r[metric] || 0) > 0);
                             chartData = dailyChartRows.map((r: any) => ({
                               date: String(r.date || "").slice(5), // MM-DD
                               value: isRate ? Number((Number(r[metric] || 0) * 100).toFixed(2)) : Number(r[metric] || 0),

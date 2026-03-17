@@ -493,50 +493,43 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 
 ### Test Layers
 
-| Layer | Count | Command | What it tests |
+| Layer | Count | Command | What it proves |
 |-------|-------|---------|---------------|
-| **Unit tests** | 140 | `npm run test` | Math formulas, KPI/Benchmark progress, cross-tab consistency |
-| **E2E tests** | 141 | `npm run test:e2e:headed` | Exact value verification, cumulative refresh validation, all tab sections, UI interactions, multi-campaign aggregation, data integrity, visual snapshots |
-| **CI/CD** | 140 | Auto on push | GitHub Actions runs unit tests on every git push |
+| **Unit tests** | 140 | `npm run test` | All math formulas are correct (ROAS/ROI/CPA/KPI bands/benchmark thresholds) |
+| **E2E tests** | 131 | `npm run test:e2e:headed` | App doesn't crash, tabs load, buttons work, modals open |
 
 ### Key Test Files
 
 | File | Purpose |
 |------|---------|
-| `server/ga4-cross-tab-consistency.test.ts` | 109 unit tests — validates all 5 yesop profiles across all formulas |
+| `server/ga4-cross-tab-consistency.test.ts` | 109 unit tests — all 5 yesop profiles × all formulas |
 | `server/metric-math.test.ts` | Core math: ROAS, ROI, CPA, CR, progress |
 | `server/kpi-math.test.ts` | KPI band classification, attainment |
-| `e2e/ga4-refresh-validation.spec.ts` | 53 E2E tests — full UI journeys |
-| `e2e/fixtures/ga4-scenarios.json` | Data-driven test scenarios (add line = add test) |
-| `.github/workflows/test.yml` | CI/CD workflow |
+| `e2e/ga4-refresh-validation.spec.ts` | 131 E2E tests — UI journeys |
+| `e2e/fixtures/ga4-scenarios.json` | Data-driven test scenarios |
 
-### E2E Test Campaign
+### Mock System (Yesop) — For Testing & Demos
 
-Uses `yesop-brand` (campaign ID: `"yesop-brand"`) — a pre-seeded demo campaign created by `POST /api/seed-yesop-campaigns`. Mock property ID: `"yesop"`. The seed creates 5 campaigns with GA4 connections, spend sources, revenue sources, and 7 days of daily metrics. The `mock-refresh` endpoint injects deterministic daily data (sessions=750, conversions=38, revenue=$2,850 for yesop-brand).
+5 UTM campaign profiles with deterministic values per day:
 
-### Campaign Isolation Test
+| Campaign | Sessions | Conversions | Revenue | Spend |
+|----------|----------|-------------|---------|-------|
+| yesop_brand_search | 750 | 38 | $2,850 | $950 |
+| yesop_prospecting | 420 | 18 | $1,350 | $680 |
+| yesop_retargeting | 260 | 22 | $1,650 | $410 |
+| yesop_email_nurture | 180 | 12 | $900 | $150 |
+| yesop_paid_social | 375 | 15 | $1,125 | $750 |
 
-Uses `yesop-brand` and `yesop-prospecting` (same GA4 property "yesop", different `ga4CampaignFilter` values). Verifies that sessions/revenue numbers differ between campaigns — proving filter scoping prevents cross-campaign data leakage.
-
-### Exact Value Verification (Phase P)
-
-Tests that verify EXACT computed values, not just text presence:
-- **Cumulative refresh**: 3 refreshes → sessions increase by exactly 2,250 (3×750), conversions by 114, revenue by $8,550
-- **Financial formulas**: ROAS = revenue/spend, ROI = (revenue-spend)/spend×100, CPA = spend/conversions — each verified against API
-- **KPI live values**: Each of 7 templates verified against its formula (ROAS as percentage, CPA as ratio, etc.)
-- **Benchmark thresholds**: ratio ≥0.9 → on_track, <0.7 → behind, CPA inverted for lower-is-better
-- **Multi-day accumulation**: 5 refreshes → exactly 3,750 sessions added
-- **Data source logic**: GA4 revenue preferred over imported; sessions use Math.max; users use ga4-to-date (deduplicated, not Math.max)
-
-### Multi-Campaign Aggregation (Phase O)
-
-Tests selecting 2+ campaigns from the picker. Verifies 9 sections aggregate (sessions/conversions/revenue summed, KPIs/Benchmarks use aggregated values, Ad Comparison shows both campaigns). Spend/revenue stay per-campaign (NOT affected by GA4 filter).
+- **Run Refresh** writes aggregated daily data to DB for ALL selected campaigns. Each click adds one day.
+- `ga4-to-date` and `ga4-daily` prefer real DB rows over `simulateGA4()` hardcoded data.
+- **Run Refresh button** only visible for yesop/mock properties. Production users never see it.
+- Select 2 campaigns → Run Refresh → both campaigns' data aggregated (e.g., brand + prospecting = 1,170 sessions/day).
 
 ### Running Tests
 
 ```bash
 npm run test                    # Unit tests (instant, no browser)
-npm run test:e2e:headed         # E2E tests (browser opens, ~5 min)
+npm run test:e2e:headed         # E2E tests (browser opens, ~30 min)
 npx playwright show-report      # View HTML report with screenshots
 npx playwright test --update-snapshots  # Update visual baselines after UI changes
 ```

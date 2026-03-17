@@ -80,9 +80,9 @@ async function seedDashboardData() {
 
   // 3. Integrations (platform connections)
   const integrationsData = [
-    { platform: "facebook", name: "Facebook Ads", connected: true },
+    { platform: "facebook", name: "Facebook Ads", connected: false },
     { platform: "google-analytics", name: "Google Analytics", connected: true },
-    { platform: "linkedin", name: "LinkedIn Ads", connected: true },
+    { platform: "linkedin", name: "LinkedIn Ads", connected: false },
     { platform: "google-ads", name: "Google Ads", connected: false },
     { platform: "twitter", name: "Twitter Ads", connected: false },
   ];
@@ -741,6 +741,11 @@ process.on('uncaughtException', (error: Error) => {
           await db.execute(sql`ALTER TABLE linkedin_connections ADD COLUMN IF NOT EXISTS spend_only BOOLEAN DEFAULT FALSE;`);
           await db.execute(sql`ALTER TABLE meta_connections ADD COLUMN IF NOT EXISTS spend_only BOOLEAN DEFAULT FALSE;`);
           await db.execute(sql`ALTER TABLE google_ads_connections ADD COLUMN IF NOT EXISTS spend_only BOOLEAN DEFAULT FALSE;`);
+
+          // Migration 16: Fix seed integrations — only Google Analytics should be connected by default
+          await db.execute(sql`
+            UPDATE integrations SET connected = false WHERE platform IN ('facebook', 'linkedin') AND connected = true;
+          `).catch(() => null);
 
           log('✅ Database migrations completed successfully');
         } catch (error) {

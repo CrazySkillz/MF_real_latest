@@ -5893,7 +5893,9 @@ export default function GA4Metrics() {
                           // Build chart data depending on mode
                           let chartData: any[] = [];
                           if (insightsTrendMode === "daily") {
-                            chartData = sorted.map((r: any) => ({
+                            // Show last 30 days for a readable daily chart
+                            const dailyChartRows = sorted.slice(-30);
+                            chartData = dailyChartRows.map((r: any) => ({
                               date: String(r.date || "").slice(5), // MM-DD
                               value: isRate ? Number((Number(r[metric] || 0) * 100).toFixed(2)) : Number(r[metric] || 0),
                             }));
@@ -5953,7 +5955,7 @@ export default function GA4Metrics() {
                                   <table className="w-full text-sm table-fixed">
                                     <thead className="bg-muted border-b">
                                       <tr>
-                                        <th className="text-left p-3 w-[20%]">Date</th>
+                                        <th className="text-left p-3 w-[16%]">Date</th>
                                         <th className="text-right p-3">Sessions</th>
                                         <th className="text-right p-3">Conversions</th>
                                         <th className="text-right p-3">CR</th>

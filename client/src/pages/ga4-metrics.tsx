@@ -2743,15 +2743,20 @@ export default function GA4Metrics() {
           acc.conversions += r.conversions;
           acc.revenue += r.revenue;
           acc.pageviews += r.pageviews;
+          acc.users += Number(r.users || 0);
+          // Engagement rate: weight by sessions for proper average
+          const er = Number(r.engagementRate || 0);
+          acc.engagedSessions += r.sessions * (er <= 1 ? er : er / 100);
           return acc;
         },
-        { sessions: 0, conversions: 0, revenue: 0, pageviews: 0 }
+        { sessions: 0, conversions: 0, revenue: 0, pageviews: 0, users: 0, engagedSessions: 0 }
       );
       const cr = sums.sessions > 0 ? (sums.conversions / sums.sessions) * 100 : 0;
       const pvps = sums.sessions > 0 ? sums.pageviews / sums.sessions : 0;
+      const engagementRate = sums.sessions > 0 ? (sums.engagedSessions / sums.sessions) * 100 : 0;
       const startDate = slice[0]?.date || null;
       const endDate = slice[slice.length - 1]?.date || null;
-      return { ...sums, cr, pvps, startDate, endDate, days: slice.length };
+      return { ...sums, cr, pvps, engagementRate, startDate, endDate, days: slice.length };
     };
 
     const last3 = rollup(3, 0);
@@ -2782,11 +2787,15 @@ export default function GA4Metrics() {
         revenue7: deltaPct(last7.revenue, prior7.revenue),
         cr7: prior7.cr > 0 ? ((last7.cr - prior7.cr) / prior7.cr) * 100 : 0,
         pvps7: prior7.pvps > 0 ? ((last7.pvps - prior7.pvps) / prior7.pvps) * 100 : 0,
+        users7: deltaPct(last7.users, prior7.users),
+        engRate7: prior7.engagementRate > 0 ? ((last7.engagementRate - prior7.engagementRate) / prior7.engagementRate) * 100 : 0,
         sessions30: deltaPct(last30.sessions, prior30.sessions),
         conversions30: deltaPct(last30.conversions, prior30.conversions),
         revenue30: deltaPct(last30.revenue, prior30.revenue),
         cr30: prior30.cr > 0 ? ((last30.cr - prior30.cr) / prior30.cr) * 100 : 0,
         pvps30: prior30.pvps > 0 ? ((last30.pvps - prior30.pvps) / prior30.pvps) * 100 : 0,
+        users30: deltaPct(last30.users, prior30.users),
+        engRate30: prior30.engagementRate > 0 ? ((last30.engagementRate - prior30.engagementRate) / prior30.engagementRate) * 100 : 0,
       },
     };
   }, [ga4TimeSeries]);
@@ -5944,7 +5953,7 @@ export default function GA4Metrics() {
                                     <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickMargin={6} />
                                     <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} />
                                     <Tooltip formatter={(value: any) => [fmtValue(value), trendMetricLabels[metric] || metric]} labelFormatter={(l) => `Date: ${l}`} />
-                                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} name={trendMetricLabels[metric] || metric} />
+                                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls name={trendMetricLabels[metric] || metric} />
                                   </LineChart>
                                 </ResponsiveContainer>
                               </div>
@@ -5955,9 +5964,9 @@ export default function GA4Metrics() {
                                   <table className="w-full text-sm">
                                     <thead className="bg-muted border-b">
                                       <tr>
-                                        <th className="text-left p-3">Date</th>
+                                        <th className="text-left p-3">Date / Window</th>
                                         <th className="text-right p-3">{trendMetricLabels[metric] || metric}</th>
-                                        <th className="text-right p-3">vs prior day</th>
+                                        <th className="text-right p-3">vs prior</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -5995,9 +6004,9 @@ export default function GA4Metrics() {
                                   <table className="w-full text-sm">
                                     <thead className="bg-muted border-b">
                                       <tr>
-                                        <th className="text-left p-3">Window</th>
+                                        <th className="text-left p-3">Date / Window</th>
                                         <th className="text-right p-3">{trendMetricLabels[metric] || metric}</th>
-                                        <th className="text-right p-3">vs prior window</th>
+                                        <th className="text-right p-3">vs prior</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -6009,11 +6018,11 @@ export default function GA4Metrics() {
                                         // Get the value and delta for the selected metric
                                         const metricMap: Record<string, { cur: number; delta: number }> = {
                                           sessions: { cur: row.cur.sessions, delta: row.key === "7d" ? row.d.sessions7 : row.d.sessions30 },
-                                          users: { cur: row.cur.sessions * 0.78, delta: row.key === "7d" ? row.d.sessions7 : row.d.sessions30 }, // approximate
+                                          users: { cur: row.cur.users, delta: row.key === "7d" ? (row.d as any).users7 || 0 : (row.d as any).users30 || 0 },
                                           conversions: { cur: row.cur.conversions, delta: row.key === "7d" ? row.d.conversions7 : row.d.conversions30 },
                                           revenue: { cur: row.cur.revenue, delta: row.key === "7d" ? row.d.revenue7 : row.d.revenue30 },
-                                          pageviews: { cur: row.cur.pageviews, delta: row.key === "7d" ? row.d.sessions7 : row.d.sessions30 }, // approximate via pvps
-                                          engagementRate: { cur: row.cur.cr, delta: row.key === "7d" ? row.d.cr7 : row.d.cr30 }, // uses CR as proxy
+                                          pageviews: { cur: row.cur.pageviews, delta: row.key === "7d" ? row.d.pvps7 : row.d.pvps30 },
+                                          engagementRate: { cur: row.cur.engagementRate, delta: row.key === "7d" ? (row.d as any).engRate7 || 0 : (row.d as any).engRate30 || 0 },
                                         };
                                         const m = metricMap[metric] || metricMap.sessions;
                                         return (

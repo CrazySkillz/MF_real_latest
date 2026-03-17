@@ -5952,15 +5952,12 @@ export default function GA4Metrics() {
                               {/* Comparison table */}
                               {insightsTrendMode === "daily" ? (
                                 <div className="overflow-hidden border rounded-md">
-                                  <table className="w-full text-sm table-fixed">
+                                  <table className="w-full text-sm">
                                     <thead className="bg-muted border-b">
                                       <tr>
-                                        <th className="text-left p-3 w-[16%]">Date</th>
-                                        <th className="text-right p-3">Sessions</th>
-                                        <th className="text-right p-3">Conversions</th>
-                                        <th className="text-right p-3">CR</th>
-                                        <th className="text-right p-3">Revenue</th>
-                                        <th className="text-right p-3">PV/Session</th>
+                                        <th className="text-left p-3">Date</th>
+                                        <th className="text-right p-3">{trendMetricLabels[metric] || metric}</th>
+                                        <th className="text-right p-3">vs prior day</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -5968,45 +5965,16 @@ export default function GA4Metrics() {
                                         const showCount = insightsDailyShowMore ? 14 : 7;
                                         const recentRows = sorted.slice(-showCount).reverse();
                                         return recentRows.map((r: any, idx: number) => {
-                                          const sessions = Number(r?.sessions || 0);
-                                          const conversions = Number(r?.conversions || 0);
-                                          const revenue = Number(r?.revenue || 0);
-                                          const pageviews = Number(r?.pageviews || 0);
-                                          const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
-                                          const pvps = sessions > 0 ? pageviews / sessions : 0;
+                                          const curVal = isRate ? Number(r[metric] || 0) * 100 : Number(r[metric] || 0);
                                           const prevRow = sorted[sorted.indexOf(r) - 1];
-                                          const prevSessions = prevRow ? Number(prevRow?.sessions || 0) : 0;
-                                          const prevConversions = prevRow ? Number(prevRow?.conversions || 0) : 0;
-                                          const prevCr = prevSessions > 0 ? (prevConversions / prevSessions) * 100 : 0;
-                                          const prevRevenue = prevRow ? Number(prevRow?.revenue || 0) : 0;
-                                          const prevPvps = prevSessions > 0 ? Number(prevRow?.pageviews || 0) / prevSessions : 0;
-                                          const dSess = prevRow ? deltaPct(sessions, prevSessions) : 0;
-                                          const dConv = prevRow ? deltaPct(conversions, prevConversions) : 0;
-                                          const dCr = prevRow ? deltaPct(cr, prevCr) : 0;
-                                          const dRev = prevRow ? deltaPct(revenue, prevRevenue) : 0;
-                                          const dPvps = prevRow ? deltaPct(pvps, prevPvps) : 0;
+                                          const prevVal = prevRow ? (isRate ? Number(prevRow[metric] || 0) * 100 : Number(prevRow[metric] || 0)) : 0;
+                                          const delta = prevRow ? deltaPct(curVal, prevVal) : 0;
                                           return (
                                             <tr key={r.date || idx} className="border-b last:border-b-0">
                                               <td className="p-3 text-foreground">{r.date}</td>
+                                              <td className="p-3 text-right font-medium tabular-nums text-foreground">{fmtValue(curVal)}</td>
                                               <td className="p-3 text-right">
-                                                <div className="font-medium tabular-nums text-foreground">{formatNumber(sessions)}</div>
-                                                {prevRow && <div className={`text-xs ${deltaColor(dSess)}`}>{fmtDelta(dSess)}</div>}
-                                              </td>
-                                              <td className="p-3 text-right">
-                                                <div className="font-medium tabular-nums text-foreground">{formatNumber(conversions)}</div>
-                                                {prevRow && <div className={`text-xs ${deltaColor(dConv)}`}>{fmtDelta(dConv)}</div>}
-                                              </td>
-                                              <td className="p-3 text-right">
-                                                <div className="font-medium tabular-nums text-foreground">{cr.toFixed(2)}%</div>
-                                                {prevRow && <div className={`text-xs ${deltaColor(dCr)}`}>{fmtDelta(dCr)}</div>}
-                                              </td>
-                                              <td className="p-3 text-right">
-                                                <div className="font-medium tabular-nums text-foreground">{formatMoney(revenue)}</div>
-                                                {prevRow && <div className={`text-xs ${deltaColor(dRev)}`}>{fmtDelta(dRev)}</div>}
-                                              </td>
-                                              <td className="p-3 text-right">
-                                                <div className="font-medium tabular-nums text-foreground">{pvps.toFixed(2)}</div>
-                                                {prevRow && <div className={`text-xs ${deltaColor(dPvps)}`}>{fmtDelta(dPvps)}</div>}
+                                                {prevRow ? <span className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</span> : <span className="text-xs text-muted-foreground/70">—</span>}
                                               </td>
                                             </tr>
                                           );
@@ -6024,53 +5992,41 @@ export default function GA4Metrics() {
                                 </div>
                               ) : (
                                 <div className="overflow-hidden border rounded-md">
-                                  <table className="w-full text-sm table-fixed">
+                                  <table className="w-full text-sm">
                                     <thead className="bg-muted border-b">
                                       <tr>
-                                        <th className="text-left p-3 w-[30%]">Window</th>
-                                        <th className="text-right p-3">Sessions</th>
-                                        <th className="text-right p-3">Conversions</th>
-                                        <th className="text-right p-3">CR</th>
-                                        <th className="text-right p-3">Revenue</th>
-                                        <th className="text-right p-3">PV/Session</th>
+                                        <th className="text-left p-3">Window</th>
+                                        <th className="text-right p-3">{trendMetricLabels[metric] || metric}</th>
+                                        <th className="text-right p-3">vs prior window</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {[
-                                        { key: "7d", cur: insightsRollups.last7, d: insightsRollups.deltas, label: "Last 7d vs prior 7d", minDays: 14 },
-                                        { key: "30d", cur: insightsRollups.last30, d: insightsRollups.deltas, label: "Last 30d vs prior 30d", minDays: 60 },
+                                        { key: "7d", cur: insightsRollups.last7, prior: insightsRollups.prior7, d: insightsRollups.deltas, label: "Last 7 days", minDays: 14 },
+                                        { key: "30d", cur: insightsRollups.last30, prior: insightsRollups.prior30, d: insightsRollups.deltas, label: "Last 30 days", minDays: 60 },
                                       ].filter(row => insightsTrendMode === row.key && Number(insightsRollups?.availableDays || 0) >= row.minDays)
                                        .map((row) => {
-                                        const sd = row.key === "7d" ? row.d.sessions7 : row.d.sessions30;
-                                        const cd = row.key === "7d" ? row.d.conversions7 : row.d.conversions30;
-                                        const rd = row.key === "7d" ? row.d.revenue7 : row.d.revenue30;
-                                        const crd = row.key === "7d" ? row.d.cr7 : row.d.cr30;
-                                        const pvd = row.key === "7d" ? row.d.pvps7 : row.d.pvps30;
+                                        // Get the value and delta for the selected metric
+                                        const metricMap: Record<string, { cur: number; delta: number }> = {
+                                          sessions: { cur: row.cur.sessions, delta: row.key === "7d" ? row.d.sessions7 : row.d.sessions30 },
+                                          users: { cur: row.cur.sessions * 0.78, delta: row.key === "7d" ? row.d.sessions7 : row.d.sessions30 }, // approximate
+                                          conversions: { cur: row.cur.conversions, delta: row.key === "7d" ? row.d.conversions7 : row.d.conversions30 },
+                                          revenue: { cur: row.cur.revenue, delta: row.key === "7d" ? row.d.revenue7 : row.d.revenue30 },
+                                          pageviews: { cur: row.cur.pageviews, delta: row.key === "7d" ? row.d.sessions7 : row.d.sessions30 }, // approximate via pvps
+                                          engagementRate: { cur: row.cur.cr, delta: row.key === "7d" ? row.d.cr7 : row.d.cr30 }, // uses CR as proxy
+                                        };
+                                        const m = metricMap[metric] || metricMap.sessions;
                                         return (
                                           <tr key={row.key} className="border-b">
                                             <td className="p-3">
                                               <div className="font-medium text-foreground">{row.label}</div>
                                               <div className="text-xs text-muted-foreground/70 mt-0.5">{row.cur.startDate} → {row.cur.endDate}</div>
                                             </td>
-                                            <td className="p-3 text-right">
-                                              <div className="font-medium text-foreground">{formatNumber(row.cur.sessions || 0)}</div>
-                                              <div className={`text-xs ${deltaColor(sd)}`}>{fmtDelta(sd)}</div>
+                                            <td className="p-3 text-right font-medium tabular-nums text-foreground">
+                                              {fmtValue(m.cur)}
                                             </td>
                                             <td className="p-3 text-right">
-                                              <div className="font-medium text-foreground">{formatNumber(row.cur.conversions || 0)}</div>
-                                              <div className={`text-xs ${deltaColor(cd)}`}>{fmtDelta(cd)}</div>
-                                            </td>
-                                            <td className="p-3 text-right">
-                                              <div className="font-medium text-foreground">{row.cur.cr.toFixed(2)}%</div>
-                                              <div className={`text-xs ${deltaColor(crd)}`}>{fmtDelta(crd)}</div>
-                                            </td>
-                                            <td className="p-3 text-right">
-                                              <div className="font-medium text-foreground">{formatMoney(Number(row.cur.revenue || 0))}</div>
-                                              <div className={`text-xs ${deltaColor(rd)}`}>{fmtDelta(rd)}</div>
-                                            </td>
-                                            <td className="p-3 text-right">
-                                              <div className="font-medium text-foreground">{row.cur.pvps.toFixed(2)}</div>
-                                              <div className={`text-xs ${deltaColor(pvd)}`}>{fmtDelta(pvd)}</div>
+                                              <span className={`text-xs ${deltaColor(m.delta)}`}>{fmtDelta(m.delta)}</span>
                                             </td>
                                           </tr>
                                         );

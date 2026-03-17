@@ -5903,7 +5903,12 @@ export default function GA4Metrics() {
                           let chartData: any[] = [];
                           if (insightsTrendMode === "daily") {
                             // Show last 30 days for a readable daily chart
-                            const dailyChartRows = sorted.slice(-30);
+                            let dailyChartRows = sorted.slice(-30);
+                            // Trim leading zero-value rows to avoid a gap at the start of the chart
+                            // (keeps zeros in the middle — those are legitimate dips)
+                            while (dailyChartRows.length > 0 && Number(dailyChartRows[0]?.[metric] || 0) === 0) {
+                              dailyChartRows = dailyChartRows.slice(1);
+                            }
                             chartData = dailyChartRows.map((r: any) => ({
                               date: String(r.date || "").slice(5), // MM-DD
                               value: isRate ? Number((Number(r[metric] || 0) * 100).toFixed(2)) : Number(r[metric] || 0),

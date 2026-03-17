@@ -5824,13 +5824,10 @@ export default function GA4Metrics() {
                             <div>
                               <span className="font-medium">Revenue</span>:{" "}
                               {ga4HasRevenueMetric
-                                ? `GA4 revenue metric (${ga4RevenueMetricName || "totalRevenue"})`
+                                ? "GA4 native revenue"
                                 : activeRevenueSource
                                   ? `Imported (${String((activeRevenueSource as any)?.displayName || (activeRevenueSource as any)?.sourceType || "revenue source")})`
                                   : "Not connected"}
-                            </div>
-                            <div>
-                              <span className="font-medium">Policy</span>: Use GA4 revenue when a GA4 revenue metric is available; otherwise fall back to imported revenue-to-date to avoid double counting.
                             </div>
                           </div>
                         </div>

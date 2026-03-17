@@ -257,7 +257,7 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 ### GA4 Insights Tab (inline in `ga4-metrics.tsx`)
 
-4 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with provenance), Trends (daily/7d/30d rolling window chart + tables), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
+4 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with sources used — shows "GA4 native revenue" or "Imported" for revenue, spend source labels for spend), Trends (daily/7d/30d rolling window chart + tables), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
 
 **Insights engine** (`insights` useMemo) generates 5 categories:
 - Financial integrity checks (blocked KPIs, mismatched sources, negative ROI, low ROAS)

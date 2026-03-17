@@ -5900,18 +5900,18 @@ export default function GA4Metrics() {
                           const isMoney = metric === "revenue";
 
                           // Build chart data depending on mode
-                          let chartData: any[] = [];
+                          let chartData: { date: string; value: number; idx: number }[] = [];
                           if (insightsTrendMode === "daily") {
                             // Show last 30 days for a readable daily chart
                             let dailyChartRows = sorted.slice(-30);
-                            // Trim leading zero-value rows to avoid a gap at the start of the chart
-                            // (keeps zeros in the middle — those are legitimate dips)
+                            // Trim leading zero-value rows so the chart starts at real data
                             while (dailyChartRows.length > 0 && Number(dailyChartRows[0]?.[metric] || 0) === 0) {
                               dailyChartRows = dailyChartRows.slice(1);
                             }
-                            chartData = dailyChartRows.map((r: any) => ({
+                            chartData = dailyChartRows.map((r: any, i: number) => ({
                               date: String(r.date || "").slice(5), // MM-DD
                               value: isRate ? Number((Number(r[metric] || 0) * 100).toFixed(2)) : Number(r[metric] || 0),
+                              idx: i,
                             }));
                           } else {
                             const windowDays = insightsTrendMode === "7d" ? 7 : 30;
@@ -5929,7 +5929,7 @@ export default function GA4Metrics() {
                               } else {
                                 val = slice.reduce((s: number, r: any) => s + Number(r[metric] || 0), 0);
                               }
-                              chartData.push({ date: String(chartRows[i].date || "").slice(5), value: Number(val.toFixed(2)) });
+                              chartData.push({ date: String(chartRows[i].date || "").slice(5), value: Number(val.toFixed(2)), idx: chartData.length });
                             }
                           }
 
@@ -5955,9 +5955,18 @@ export default function GA4Metrics() {
                                 <ResponsiveContainer width="100%" height="100%">
                                   <LineChart data={chartData} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                    <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickMargin={6} scale="point" padding={{ left: 0, right: 0 }} />
+                                    <XAxis
+                                      dataKey="idx"
+                                      type="number"
+                                      domain={[0, Math.max(1, chartData.length - 1)]}
+                                      tickFormatter={(idx: number) => chartData[Math.round(idx)]?.date || ""}
+                                      allowDecimals={false}
+                                      stroke="#64748b"
+                                      fontSize={11}
+                                      tickMargin={6}
+                                    />
                                     <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} width={45} />
-                                    <Tooltip formatter={(value: any) => [fmtValue(value), trendMetricLabels[metric] || metric]} labelFormatter={(l) => `Date: ${l}`} />
+                                    <Tooltip formatter={(value: any) => [fmtValue(value), trendMetricLabels[metric] || metric]} labelFormatter={(idx: any) => `Date: ${chartData[Math.round(Number(idx))]?.date || idx}`} />
                                     <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls name={trendMetricLabels[metric] || metric} />
                                   </LineChart>
                                 </ResponsiveContainer>

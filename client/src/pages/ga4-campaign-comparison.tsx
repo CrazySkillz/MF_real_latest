@@ -130,6 +130,7 @@ export default function GA4CampaignComparison({
   }
 
   return (
+    <TooltipProvider>
     <div className="space-y-6">
       {/* Header with metric selector */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -318,5 +319,6 @@ export default function GA4CampaignComparison({
         </CardContent>
       </Card>
     </div>
+    </TooltipProvider>
   );
 }

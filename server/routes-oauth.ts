@@ -4986,21 +4986,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totals,
           });
         }
-        // No DB rows — fall back to simulation
+        // No DB rows — fall back to simulation, but SUM the daily timeSeries
+        // (not sim.totals which is a separate calculation and doesn't match daily rows)
         const simDateRange = ["7days", "30days", "90days"].includes(toDateRange) ? toDateRange : "30days";
         const sim = simulateGA4({ campaignId, propertyId: pid, dateRange: simDateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        const dailyRows = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
+        let sessions = 0, users = 0, conversions = 0, revenue = 0, pageviews = 0;
+        let totalEngRate = 0, totalBounce = 0, totalDuration = 0;
+        for (const r of dailyRows) {
+          sessions += Number(r?.sessions || 0);
+          users += Number(r?.users || 0);
+          conversions += Number(r?.conversions || 0);
+          revenue += Number(r?.revenue || 0);
+          pageviews += Number(r?.pageviews || 0);
+          totalEngRate += Number(r?.engagementRate || 0);
+          totalBounce += Number(r?.bounceRate || 0);
+          totalDuration += Number(r?.avgSessionDuration || 0);
+        }
+        const n = dailyRows.length || 1;
         const totals = {
-          sessions: Number(sim?.totals?.sessions || 0),
-          users: Number(sim?.totals?.users || 0),
-          conversions: Number(sim?.totals?.conversions || 0),
-          revenue: Number(sim?.totals?.revenue || 0),
-          pageviews: Number(sim?.totals?.pageviews || 0),
-          engagementRate: Number(sim?.metrics?.engagementRate || 0),
-          engagedSessions: Number(sim?.metrics?.engagedSessions || 0),
-          eventCount: Number(sim?.metrics?.eventCount || 0),
-          eventsPerSession: Number(sim?.metrics?.eventsPerSession || 0),
-          bounceRate: Number(sim?.metrics?.bounceRate || 0),
-          avgSessionDuration: Number(sim?.metrics?.averageSessionDuration || 0),
+          sessions, users, conversions, revenue, pageviews,
+          engagementRate: totalEngRate / n,
+          engagedSessions: Math.round(sessions * (totalEngRate / n)),
+          eventCount: 0,
+          eventsPerSession: 0,
+          bounceRate: totalBounce / n,
+          avgSessionDuration: totalDuration / n,
         };
         return res.json({
           success: true,

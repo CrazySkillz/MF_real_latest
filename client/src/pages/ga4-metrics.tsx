@@ -5850,7 +5850,7 @@ export default function GA4Metrics() {
                           <div>
                             <CardTitle>Trends</CardTitle>
                             <CardDescription>
-                              Daily shows day-by-day values. 7d/30d show rolling-window summaries vs the prior window.
+                              Daily shows day-by-day values. 7d/30d show rolling daily averages vs the prior window.
                             </CardDescription>
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -5929,6 +5929,11 @@ export default function GA4Metrics() {
                               } else {
                                 val = slice.reduce((s: number, r: any) => s + Number(r[metric] || 0), 0);
                               }
+                              // Convert rolling sum to daily average so values are comparable across modes
+                              // (engagementRate is already a weighted average — don't divide)
+                              if (!isRate) {
+                                val = val / windowDays;
+                              }
                               chartData.push({ date: String(chartRows[i].date || "").slice(5), value: Number(val.toFixed(2)), idx: chartData.length });
                             }
                           }
@@ -5966,11 +5971,25 @@ export default function GA4Metrics() {
                                       tickMargin={6}
                                     />
                                     <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} width={45} />
-                                    <Tooltip formatter={(value: any) => [fmtValue(value), trendMetricLabels[metric] || metric]} labelFormatter={(idx: any) => `Date: ${chartData[Math.round(Number(idx))]?.date || idx}`} />
+                                    <Tooltip
+                                      formatter={(value: any) => [fmtValue(value), insightsTrendMode === "daily" ? (trendMetricLabels[metric] || metric) : `${trendMetricLabels[metric] || metric} (${insightsTrendMode} avg)`]}
+                                      labelFormatter={(idx: any) => {
+                                        const dateLabel = chartData[Math.round(Number(idx))]?.date || idx;
+                                        return insightsTrendMode === "daily" ? `Date: ${dateLabel}` : `${insightsTrendMode} avg ending: ${dateLabel}`;
+                                      }}
+                                    />
                                     <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls name={trendMetricLabels[metric] || metric} />
                                   </LineChart>
                                 </ResponsiveContainer>
                               </div>
+
+                              {/* Users non-additivity warning for rolling windows */}
+                              {metric === "users" && insightsTrendMode !== "daily" && (
+                                <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 px-1">
+                                  <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span>User counts in rolling windows are approximate — GA4 users are non-additive across dates. Actual unique users may be lower.</span>
+                                </div>
+                              )}
 
                               {/* Comparison table */}
                               {insightsTrendMode === "daily" ? (
@@ -5979,17 +5998,33 @@ export default function GA4Metrics() {
                                     <thead className="bg-muted border-b">
                                       <tr>
                                         <th className="text-left p-3">Date / Window</th>
-                                        <th className="text-right p-3">{trendMetricLabels[metric] || metric}</th>
+                                        <th className="text-right p-3">
+                                          <div className="flex items-center justify-end gap-1">
+                                            {trendMetricLabels[metric] || metric}
+                                            {metric === "users" && (
+                                              <UITooltip>
+                                                <TooltipTrigger asChild>
+                                                  <Info className="w-3 h-3 text-amber-500 cursor-help" />
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                                  <p className="text-xs">GA4 users are non-additive across dates. Day-over-day comparisons are accurate, but summing across days overcounts.</p>
+                                                </TooltipContent>
+                                              </UITooltip>
+                                            )}
+                                          </div>
+                                        </th>
                                         <th className="text-right p-3">vs prior</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {(() => {
-                                        const showCount = insightsDailyShowMore ? 14 : 7;
+                                        const showCount = insightsDailyShowMore ? 30 : 14;
                                         const recentRows = sorted.slice(-showCount).reverse();
                                         return recentRows.map((r: any, idx: number) => {
                                           const curVal = isRate ? Number(r[metric] || 0) * 100 : Number(r[metric] || 0);
-                                          const prevRow = sorted[sorted.indexOf(r) - 1];
+                                          // Use index math instead of fragile indexOf reference scan
+                                          const sortedIdx = sorted.length - 1 - idx;
+                                          const prevRow = sortedIdx > 0 ? sorted[sortedIdx - 1] : null;
                                           const prevVal = prevRow ? (isRate ? Number(prevRow[metric] || 0) * 100 : Number(prevRow[metric] || 0)) : 0;
                                           const delta = prevRow ? deltaPct(curVal, prevVal) : 0;
                                           return (
@@ -6005,10 +6040,10 @@ export default function GA4Metrics() {
                                       })()}
                                     </tbody>
                                   </table>
-                                  {sorted.length > 7 && (
+                                  {sorted.length > 14 && (
                                     <div className="px-3 py-2 border-t bg-muted">
                                       <Button variant="ghost" size="sm" onClick={() => setInsightsDailyShowMore(!insightsDailyShowMore)}>
-                                        {insightsDailyShowMore ? "Show less" : "View more"}
+                                        {insightsDailyShowMore ? "Show recent 14 days" : "View all 30 days"}
                                       </Button>
                                     </div>
                                   )}
@@ -6019,41 +6054,62 @@ export default function GA4Metrics() {
                                     <thead className="bg-muted border-b">
                                       <tr>
                                         <th className="text-left p-3">Date / Window</th>
-                                        <th className="text-right p-3">{trendMetricLabels[metric] || metric}</th>
+                                        <th className="text-right p-3">
+                                          <div className="flex items-center justify-end gap-1">
+                                            {trendMetricLabels[metric] || metric}
+                                            {metric === "users" && (
+                                              <UITooltip>
+                                                <TooltipTrigger asChild>
+                                                  <Info className="w-3 h-3 text-amber-500 cursor-help" />
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                                  <p className="text-xs">GA4 users are non-additive across dates. Rolling totals overcount due to user overlap between days.</p>
+                                                </TooltipContent>
+                                              </UITooltip>
+                                            )}
+                                          </div>
+                                        </th>
                                         <th className="text-right p-3">vs prior</th>
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {[
-                                        { key: "7d", cur: insightsRollups.last7, prior: insightsRollups.prior7, d: insightsRollups.deltas, label: "Last 7 days", minDays: 14 },
-                                        { key: "30d", cur: insightsRollups.last30, prior: insightsRollups.prior30, d: insightsRollups.deltas, label: "Last 30 days", minDays: 60 },
-                                      ].filter(row => insightsTrendMode === row.key && Number(insightsRollups?.availableDays || 0) >= row.minDays)
-                                       .map((row) => {
-                                        // Get the value and delta for the selected metric
-                                        const metricMap: Record<string, { cur: number; delta: number }> = {
-                                          sessions: { cur: row.cur.sessions, delta: row.key === "7d" ? row.d.sessions7 : row.d.sessions30 },
-                                          users: { cur: row.cur.users, delta: row.key === "7d" ? (row.d as any).users7 || 0 : (row.d as any).users30 || 0 },
-                                          conversions: { cur: row.cur.conversions, delta: row.key === "7d" ? row.d.conversions7 : row.d.conversions30 },
-                                          revenue: { cur: row.cur.revenue, delta: row.key === "7d" ? row.d.revenue7 : row.d.revenue30 },
-                                          pageviews: { cur: row.cur.pageviews, delta: row.key === "7d" ? row.d.pvps7 : row.d.pvps30 },
-                                          engagementRate: { cur: row.cur.engagementRate, delta: row.key === "7d" ? (row.d as any).engRate7 || 0 : (row.d as any).engRate30 || 0 },
+                                      {(() => {
+                                        const windowDays = insightsTrendMode === "7d" ? 7 : 30;
+                                        const minDays = windowDays * 2;
+                                        if (Number(insightsRollups?.availableDays || 0) < minDays) return null;
+
+                                        const cur = insightsTrendMode === "7d" ? insightsRollups.last7 : insightsRollups.last30;
+                                        const prior = insightsTrendMode === "7d" ? insightsRollups.prior7 : insightsRollups.prior30;
+
+                                        const getVal = (rollup: typeof cur) => {
+                                          if (metric === "engagementRate") return rollup.engagementRate;
+                                          return (rollup as any)[metric] || 0;
                                         };
-                                        const m = metricMap[metric] || metricMap.sessions;
-                                        return (
-                                          <tr key={row.key} className="border-b">
+
+                                        const curVal = getVal(cur);
+                                        const priorVal = getVal(prior);
+                                        const delta = deltaPct(curVal, priorVal);
+
+                                        return [
+                                          { label: `Last ${windowDays} days`, dateRange: `${cur.startDate} → ${cur.endDate}`, value: curVal, delta, hasDelta: true },
+                                          { label: `Prior ${windowDays} days`, dateRange: `${prior.startDate} → ${prior.endDate}`, value: priorVal, delta: 0, hasDelta: false },
+                                        ].map((row, i) => (
+                                          <tr key={i} className="border-b last:border-b-0">
                                             <td className="p-3">
                                               <div className="font-medium text-foreground">{row.label}</div>
-                                              <div className="text-xs text-muted-foreground/70 mt-0.5">{row.cur.startDate} → {row.cur.endDate}</div>
+                                              <div className="text-xs text-muted-foreground/70 mt-0.5">{row.dateRange}</div>
                                             </td>
                                             <td className="p-3 text-right font-medium tabular-nums text-foreground">
-                                              {fmtValue(m.cur)}
+                                              {fmtValue(row.value)}
                                             </td>
                                             <td className="p-3 text-right">
-                                              <span className={`text-xs ${deltaColor(m.delta)}`}>{fmtDelta(m.delta)}</span>
+                                              {row.hasDelta
+                                                ? <span className={`text-xs ${deltaColor(row.delta)}`}>{fmtDelta(row.delta)}</span>
+                                                : <span className="text-xs text-muted-foreground/70">baseline</span>}
                                             </td>
                                           </tr>
-                                        );
-                                      })}
+                                        ));
+                                      })()}
                                     </tbody>
                                   </table>
                                   {Number(insightsRollups?.availableDays || 0) < (insightsTrendMode === "7d" ? 14 : 60) && (

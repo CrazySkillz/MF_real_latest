@@ -2725,9 +2725,12 @@ export default function GA4Metrics() {
       .map((r: any) => ({
         date: String(r?.date || "").trim(),
         sessions: Number(r?.sessions || 0) || 0,
+        users: Number(r?.users || 0) || 0,
         conversions: Number(r?.conversions || 0) || 0,
         revenue: Number(r?.revenue || 0) || 0,
         pageviews: Number(r?.pageviews || 0) || 0,
+        engagementRate: Number(r?.engagementRate || 0) || 0,
+        engagedSessions: Number(r?.engagedSessions || 0) || 0,
       }))
       .filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(r.date))
       .sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));

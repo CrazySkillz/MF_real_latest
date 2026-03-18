@@ -6056,14 +6056,14 @@ export default function GA4Metrics() {
                                         <th className="text-left p-3">Date / Window</th>
                                         <th className="text-right p-3">
                                           <div className="flex items-center justify-end gap-1">
-                                            {trendMetricLabels[metric] || metric}
+                                            {trendMetricLabels[metric] || metric} <span className="text-muted-foreground font-normal">(daily avg)</span>
                                             {metric === "users" && (
                                               <UITooltip>
                                                 <TooltipTrigger asChild>
                                                   <Info className="w-3 h-3 text-amber-500 cursor-help" />
                                                 </TooltipTrigger>
                                                 <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                                  <p className="text-xs">GA4 users are non-additive across dates. Rolling totals overcount due to user overlap between days.</p>
+                                                  <p className="text-xs">GA4 users are non-additive across dates. Rolling averages overcount due to user overlap between days.</p>
                                                 </TooltipContent>
                                               </UITooltip>
                                             )}
@@ -6074,6 +6074,7 @@ export default function GA4Metrics() {
                                     </thead>
                                     <tbody>
                                       {(() => {
+                                        const windowLabel = insightsTrendMode === "7d" ? "7d" : "30d";
                                         const windowDays = insightsTrendMode === "7d" ? 7 : 30;
                                         const minDays = windowDays * 2;
                                         if (Number(insightsRollups?.availableDays || 0) < minDays) return null;
@@ -6082,8 +6083,10 @@ export default function GA4Metrics() {
                                         const prior = insightsTrendMode === "7d" ? insightsRollups.prior7 : insightsRollups.prior30;
 
                                         const getVal = (rollup: typeof cur) => {
+                                          // engagementRate is already a weighted average — don't divide
                                           if (metric === "engagementRate") return rollup.engagementRate;
-                                          return (rollup as any)[metric] || 0;
+                                          // Convert totals to daily averages to match the chart
+                                          return ((rollup as any)[metric] || 0) / windowDays;
                                         };
 
                                         const curVal = getVal(cur);

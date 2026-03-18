@@ -6043,7 +6043,7 @@ export default function GA4Metrics() {
                                   {sorted.length > 14 && (
                                     <div className="px-3 py-2 border-t bg-muted">
                                       <Button variant="ghost" size="sm" onClick={() => setInsightsDailyShowMore(!insightsDailyShowMore)}>
-                                        {insightsDailyShowMore ? "Show recent 14 days" : "View all 30 days"}
+                                        {insightsDailyShowMore ? "Show less" : "Show all"}
                                       </Button>
                                     </div>
                                   )}

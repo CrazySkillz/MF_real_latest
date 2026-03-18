@@ -5863,18 +5863,26 @@ export default function GA4Metrics() {
                                   key={mode}
                                   variant={insightsTrendMode === mode ? "default" : "outline"}
                                   size="sm"
-                                  onClick={() => { setInsightsDailyShowMore(false); setInsightsTrendMode(mode); }}
+                                  onClick={() => {
+                                    setInsightsDailyShowMore(false);
+                                    setInsightsTrendMode(mode);
+                                    // Users is non-additive — only accurate in daily mode
+                                    if (mode !== "daily" && insightsTrendMetric === "users") setInsightsTrendMetric("sessions");
+                                  }}
                                 >
                                   {mode === "daily" ? "Daily" : mode}
                                 </Button>
                               ))}
                             </div>
                             <div className="min-w-[200px]">
-                              <Select value={insightsTrendMetric} onValueChange={setInsightsTrendMetric}>
+                              <Select
+                                value={insightsTrendMetric}
+                                onValueChange={setInsightsTrendMetric}
+                              >
                                 <SelectTrigger className="h-9"><SelectValue placeholder="Metric" /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="sessions">Sessions</SelectItem>
-                                  <SelectItem value="users">Users</SelectItem>
+                                  {insightsTrendMode === "daily" && <SelectItem value="users">Users</SelectItem>}
                                   <SelectItem value="conversions">Conversions</SelectItem>
                                   <SelectItem value="revenue">Revenue</SelectItem>
                                   <SelectItem value="pageviews">Page Views</SelectItem>
@@ -5986,14 +5994,6 @@ export default function GA4Metrics() {
                                 </ResponsiveContainer>
                               </div>
 
-                              {/* Users non-additivity warning for rolling windows */}
-                              {metric === "users" && insightsTrendMode !== "daily" && (
-                                <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 px-1">
-                                  <Info className="w-3.5 h-3.5 flex-shrink-0" />
-                                  <span>User counts in rolling windows are approximate — GA4 users are non-additive across dates. Actual unique users may be lower.</span>
-                                </div>
-                              )}
-
                               {/* Comparison table */}
                               {insightsTrendMode === "daily" ? (
                                 <div className="overflow-hidden border rounded-md">
@@ -6001,21 +6001,7 @@ export default function GA4Metrics() {
                                     <thead className="bg-muted border-b">
                                       <tr>
                                         <th className="text-left p-3">Date / Window</th>
-                                        <th className="text-right p-3">
-                                          <div className="flex items-center justify-end gap-1">
-                                            {trendMetricLabels[metric] || metric}
-                                            {metric === "users" && (
-                                              <UITooltip>
-                                                <TooltipTrigger asChild>
-                                                  <Info className="w-3 h-3 text-amber-500 cursor-help" />
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                                  <p className="text-xs">GA4 users are non-additive across dates. Day-over-day comparisons are accurate, but summing across days overcounts.</p>
-                                                </TooltipContent>
-                                              </UITooltip>
-                                            )}
-                                          </div>
-                                        </th>
+                                        <th className="text-right p-3">{trendMetricLabels[metric] || metric}</th>
                                         <th className="text-right p-3">vs prior</th>
                                       </tr>
                                     </thead>
@@ -6058,19 +6044,7 @@ export default function GA4Metrics() {
                                       <tr>
                                         <th className="text-left p-3">Date / Window</th>
                                         <th className="text-right p-3">
-                                          <div className="flex items-center justify-end gap-1">
-                                            {trendMetricLabels[metric] || metric} <span className="text-muted-foreground font-normal">(daily avg)</span>
-                                            {metric === "users" && (
-                                              <UITooltip>
-                                                <TooltipTrigger asChild>
-                                                  <Info className="w-3 h-3 text-amber-500 cursor-help" />
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                                  <p className="text-xs">GA4 users are non-additive across dates. Rolling averages overcount due to user overlap between days.</p>
-                                                </TooltipContent>
-                                              </UITooltip>
-                                            )}
-                                          </div>
+                                          {trendMetricLabels[metric] || metric} <span className="text-muted-foreground font-normal">(daily avg)</span>
                                         </th>
                                         <th className="text-right p-3">vs prior</th>
                                       </tr>

@@ -6051,7 +6051,6 @@ export default function GA4Metrics() {
                                     </thead>
                                     <tbody>
                                       {(() => {
-                                        const windowLabel = insightsTrendMode === "7d" ? "7d" : "30d";
                                         const windowDays = insightsTrendMode === "7d" ? 7 : 30;
                                         const minDays = windowDays * 2;
                                         if (Number(insightsRollups?.availableDays || 0) < minDays) return null;

@@ -5268,6 +5268,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 4) Run KPI / benchmark jobs for completeness
       const insightsResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date: dateStr }).catch(() => null);
 
+      // 5) Check alerts so breached thresholds create notifications immediately
+      await checkPerformanceAlerts().catch((e) => console.warn("[mock-refresh] Alert check failed:", (e as any)?.message || e));
+      try {
+        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
+        await checkBenchmarkPerformanceAlerts();
+      } catch (e: any) { console.warn("[mock-refresh] Benchmark alert check failed:", (e as any)?.message || e); }
+
       const roas = mockDay.spend > 0 ? (mockDay.revenue / mockDay.spend).toFixed(2) : "N/A";
       const roi = mockDay.spend > 0 ? (((mockDay.revenue - mockDay.spend) / mockDay.spend) * 100).toFixed(1) : "N/A";
 
@@ -19547,6 +19554,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedKPI = insertKPISchema.parse(requestData);
 
       const kpi = await storage.createKPI(validatedKPI);
+
+      // Check alerts immediately so breached thresholds create notifications right away
+      checkPerformanceAlerts().catch((e) => console.warn("[KPI Create] Alert check failed:", (e as any)?.message || e));
+
       res.json(kpi);
     } catch (error) {
       console.error('Platform KPI creation error:', error);
@@ -19599,6 +19610,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updatedKPI) {
         return res.status(404).json({ message: "KPI not found" });
       }
+
+      // Re-check alerts after update (threshold or value may have changed)
+      checkPerformanceAlerts().catch((e) => console.warn("[KPI Update] Alert check failed:", (e as any)?.message || e));
+
       res.json(updatedKPI);
     } catch (error) {
       console.error('Platform KPI update error:', error);
@@ -20782,6 +20797,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const benchmark = await storage.createBenchmark(validatedData);
+
+      // Check alerts immediately so breached thresholds create notifications right away
+      try {
+        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
+        await checkBenchmarkPerformanceAlerts();
+      } catch (e: any) { console.warn("[Benchmark Create] Alert check failed:", (e as any)?.message || e); }
+
       res.status(201).json(benchmark);
     } catch (error) {
       console.error('Benchmark creation error:', error);

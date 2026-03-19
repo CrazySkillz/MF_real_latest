@@ -287,9 +287,11 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 **Insight badge colors**: High = red, Medium = amber, Positive (`positive:*` id prefix) = green, Info (`info:*` id prefix) = blue, Low = gray. Badge text matches: "High", "Medium", "Positive", "Info", "Low".
 
+**Insight title grammar**: KPI/Benchmark insight titles must NOT use "X is Needs Attention" pattern. Correct: "X Needs Attention", "X Behind Target". Drop the verb "is" before the status.
+
 **Supporting memos** (defined before `insights` for dependency ordering):
 - `insightsRollups`: Last 7d vs Prior 7d, Last 30d vs Prior 30d with pre-computed deltas. CR and engagement rate as proper aggregates.
-- `channelAnalysis`: Aggregates `ga4Breakdown.rows` by source/medium. Produces top channel by sessions/revenue, lowest-CR significant channel (≥5% of total sessions).
+- `channelAnalysis`: Aggregates `ga4Breakdown.rows` by source/medium. Produces top channel by sessions/revenue, lowest-CR significant channel (≥5% of total sessions). Data comes from `ga4-breakdown` endpoint (90-day window, acquisition dimensions). Channel labels are GA4 source/medium values (e.g., "google / cpc", "facebook / paid_social").
 
 **Data sources**: `ga4-daily` (persisted daily facts), `ga4-to-date` (lifetime totals), `ga4-breakdown` (acquisition channels), financial APIs (spend/revenue). All client-side computation, no dedicated insights endpoint.
 

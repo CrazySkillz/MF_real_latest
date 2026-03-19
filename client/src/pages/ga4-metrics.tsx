@@ -496,6 +496,7 @@ export default function GA4Metrics() {
       const response = await fetch(`/api/platforms/google_analytics/kpis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           ...data,
           campaignId, // Scope KPI to this MetricMind campaign
@@ -534,6 +535,7 @@ export default function GA4Metrics() {
       const resp = await fetch(`/api/platforms/google_analytics/kpis/${encodeURIComponent(payload.kpiId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           ...payload.data,
           campaignId,
@@ -566,6 +568,7 @@ export default function GA4Metrics() {
     mutationFn: async (kpiId: string) => {
       const response = await fetch(`/api/platforms/google_analytics/kpis/${kpiId}`, {
         method: "DELETE",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -611,6 +614,7 @@ export default function GA4Metrics() {
       const res = await fetch(`/api/campaigns/${campaignId}/ga4/mock-refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ propertyId: selectedGA4PropertyId }),
       });
       if (!res.ok) {
@@ -659,6 +663,7 @@ export default function GA4Metrics() {
       const resp = await fetch(`/api/platforms/google_analytics/reports`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
       const json = await resp.json().catch(() => null);
@@ -681,6 +686,7 @@ export default function GA4Metrics() {
       const resp = await fetch(`/api/platforms/google_analytics/reports/${encodeURIComponent(reportId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
       const json = await resp.json().catch(() => null);
@@ -700,7 +706,7 @@ export default function GA4Metrics() {
 
   const deleteGA4ReportMutation = useMutation({
     mutationFn: async (reportId: string) => {
-      const resp = await fetch(`/api/platforms/google_analytics/reports/${encodeURIComponent(reportId)}`, { method: "DELETE" });
+      const resp = await fetch(`/api/platforms/google_analytics/reports/${encodeURIComponent(reportId)}`, { method: "DELETE", credentials: "include" });
       const json = await resp.json().catch(() => null);
       if (!resp.ok) throw new Error(json?.message || json?.error || "Failed to delete report");
       return json;
@@ -770,6 +776,7 @@ export default function GA4Metrics() {
       const response = await fetch("/api/benchmarks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           ...benchmarkData,
           // Enterprise-grade: benchmarks are campaign-scoped by default.
@@ -814,6 +821,7 @@ export default function GA4Metrics() {
       const response = await fetch(`/api/benchmarks/${benchmarkId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           ...data,
           campaignId: String(campaignId || ""),
@@ -854,6 +862,7 @@ export default function GA4Metrics() {
     mutationFn: async (benchmarkId: string) => {
       const response = await fetch(`/api/benchmarks/${benchmarkId}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to delete benchmark");
       return response.json();
@@ -3876,7 +3885,8 @@ export default function GA4Metrics() {
                                   if (confirm('Are you sure you want to remove this GA4 property?')) {
                                     try {
                                       const response = await fetch(`/api/ga4-connections/${connection.id}`, {
-                                        method: 'DELETE'
+                                        method: 'DELETE',
+                                        credentials: 'include',
                                       });
                                       if (response.ok) {
                                         queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
@@ -4435,7 +4445,7 @@ export default function GA4Metrics() {
                           className="bg-red-600 hover:bg-red-700 text-white"
                           onClick={async () => {
                             try {
-                              const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources/${deletingSpendSourceId}`, { method: "DELETE" });
+                              const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources/${deletingSpendSourceId}`, { method: "DELETE", credentials: "include" });
                               const json = await resp.json().catch(() => null);
                               if (!resp.ok || json?.success === false) {
                                 throw new Error(json?.error || "Failed to remove spend source");
@@ -4475,7 +4485,7 @@ export default function GA4Metrics() {
                           className="bg-red-600 hover:bg-red-700 text-white"
                           onClick={async () => {
                             try {
-                              const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${deletingRevenueSourceId}`, { method: "DELETE" });
+                              const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${deletingRevenueSourceId}`, { method: "DELETE", credentials: "include" });
                               const json = await resp.json().catch(() => null);
                               if (!resp.ok || json?.success === false) {
                                 throw new Error(json?.error || "Failed to remove revenue source");
@@ -7591,6 +7601,7 @@ export default function GA4Metrics() {
                       const resp = await fetch(`/api/campaigns/${campaignId}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
+                        credentials: "include",
                         body: JSON.stringify({ ga4CampaignFilter: payload }),
                       });
                       const json = await resp.json().catch(() => null);

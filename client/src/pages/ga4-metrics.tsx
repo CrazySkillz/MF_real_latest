@@ -3066,18 +3066,19 @@ export default function GA4Metrics() {
         return n;
       })();
 
-      const trendNote =
-        analytics?.trendAnalysis
-          ? ` Trend ${String(analytics.trendAnalysis.direction || "neutral")} (${Number(analytics.trendAnalysis.percentage || 0).toFixed(1)}% over ${String(
-            analytics.trendAnalysis.period || "30d"
-          )}).`
-          : "";
+      const trendNote = (() => {
+        if (!analytics?.trendAnalysis) return "";
+        const pct = Number(analytics.trendAnalysis.percentage || 0);
+        if (Math.abs(pct) < 0.1) return " Stable over recent period.";
+        const dir = pct > 0 ? "up" : "down";
+        return ` Trending ${dir} ${Math.abs(pct).toFixed(1)}% over ${String(analytics.trendAnalysis.period || "30d")}.`;
+      })();
       const streakNote = streak > 1 ? ` Streak: ${streak} days.` : "";
 
       out.push({
         id: `kpi:${String((k as any)?.id || metric)}`,
         severity: sev,
-        title: `${metric} is ${attPct < KPI_BEHIND_PCT ? "Behind" : "Needs Attention"}`,
+        title: `${metric} ${attPct < KPI_BEHIND_PCT ? "Behind Target" : "Needs Attention"}`,
         description: `Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String((k as any)?.unit || "%"))} vs target ${formatNumberByUnit(
           String(effectiveTarget),
           String((k as any)?.unit || "%")
@@ -3136,7 +3137,7 @@ export default function GA4Metrics() {
       out.push({
         id: `bench:${String((b as any)?.id || metric)}`,
         severity: sev,
-        title: `${String((b as any)?.name || metric)} is ${status === "behind" ? "Behind benchmark" : "Below benchmark"}`,
+        title: `${String((b as any)?.name || metric)} ${status === "behind" ? "Behind Benchmark" : "Below Benchmark"}`,
         description: `Current ${formatBenchmarkValue(getBenchmarkDisplayCurrentValue(b), String((b as any)?.unit || "%"))} vs benchmark ${formatBenchmarkValue(
           String((b as any)?.benchmarkValue || "0"),
           String((b as any)?.unit || "%")
@@ -4663,8 +4664,8 @@ export default function GA4Metrics() {
                                                         <AlertTriangle className="w-4 h-4 text-yellow-500" />
                                                       </div>
                                                     </TooltipTrigger>
-                                                    <TooltipContent className="bg-card text-white border-border">
-                                                      <p className="text-sm">Alerts enabled</p>
+                                                    <TooltipContent className="bg-slate-900 text-white border-slate-700">
+                                                      <p className="text-sm">Alerts enabled — threshold: {kpi.alertThreshold ? `${kpi.alertThreshold} (${kpi.alertCondition || "below"})` : "not set"}</p>
                                                     </TooltipContent>
                                                   </UITooltip>
                                                 )}
@@ -4689,13 +4690,12 @@ export default function GA4Metrics() {
                                                           <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping" />
                                                         </div>
                                                       </TooltipTrigger>
-                                                      <TooltipContent className="max-w-xs bg-card text-white border-border">
+                                                      <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
                                                         <div className="space-y-2">
                                                           <p className="font-semibold text-red-400">Alert Threshold Breached</p>
                                                           <div className="text-xs space-y-1">
-                                                            <p><span className="text-muted-foreground/70">Current:</span> {formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}</p>
-                                                            <p><span className="text-muted-foreground/70">Alert Threshold:</span> {alertThresh}{kpi.unit}</p>
-                                                            <p><span className="text-muted-foreground/70">Condition:</span> {alertCond}</p>
+                                                            <p><span className="text-slate-400">Current:</span> {formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}</p>
+                                                            <p><span className="text-slate-400">Threshold:</span> {formatValue(String(alertThresh), kpi.unit)} ({alertCond})</p>
                                                           </div>
                                                         </div>
                                                       </TooltipContent>
@@ -5433,8 +5433,8 @@ export default function GA4Metrics() {
                                                   <AlertTriangle className="w-4 h-4 text-yellow-500" />
                                                 </div>
                                               </TooltipTrigger>
-                                              <TooltipContent className="bg-card text-white border-border">
-                                                <p className="text-sm">Alerts enabled</p>
+                                              <TooltipContent className="bg-slate-900 text-white border-slate-700">
+                                                <p className="text-sm">Alerts enabled — threshold: {(benchmark as any).alertThreshold ? `${(benchmark as any).alertThreshold} (${(benchmark as any).alertCondition || "below"})` : "not set"}</p>
                                               </TooltipContent>
                                             </UITooltip>
                                           )}
@@ -5459,13 +5459,12 @@ export default function GA4Metrics() {
                                                     <div className="absolute w-2 h-2 bg-red-500 rounded-full animate-ping" />
                                                   </div>
                                                 </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs bg-card text-white border-border">
+                                                <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
                                                   <div className="space-y-2">
                                                     <p className="font-semibold text-red-400">Alert Threshold Breached</p>
                                                     <div className="text-xs space-y-1">
-                                                      <p><span className="text-muted-foreground/70">Current:</span> {formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}</p>
-                                                      <p><span className="text-muted-foreground/70">Alert Threshold:</span> {alertThresh}{benchmark.unit}</p>
-                                                      <p><span className="text-muted-foreground/70">Condition:</span> {alertCond}</p>
+                                                      <p><span className="text-slate-400">Current:</span> {formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}</p>
+                                                      <p><span className="text-slate-400">Threshold:</span> {formatBenchmarkValue(String(alertThresh), benchmark.unit)} ({alertCond})</p>
                                                     </div>
                                                   </div>
                                                 </TooltipContent>

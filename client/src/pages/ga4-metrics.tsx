@@ -4795,11 +4795,11 @@ export default function GA4Metrics() {
                                           <div className="mt-2 text-xs text-muted-foreground/70">
                                             {(() => {
                                               if (Math.abs(p.effectiveDeltaPct) < 0.0001) return "At target";
-                                              const signed = `${p.effectiveDeltaPct >= 0 ? "+" : ""}${p.effectiveDeltaPct.toFixed(1)}%`;
-                                              const absRounded = `${Math.round(Math.abs(p.effectiveDeltaPct))}%`;
+                                              const abs = Math.abs(p.effectiveDeltaPct);
+                                              const absStr = abs < 1 ? abs.toFixed(1) : String(Math.round(abs));
                                               return p.effectiveDeltaPct > 0
-                                                ? `${absRounded} above target (${signed})`
-                                                : `${absRounded} below target (${signed})`;
+                                                ? `${absStr}% above target`
+                                                : `${absStr}% below target`;
                                             })()}
                                           </div>
                                         )}

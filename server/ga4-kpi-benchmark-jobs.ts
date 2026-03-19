@@ -287,6 +287,11 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           notes: `auto:ga4_daily:${date}`,
         } as any);
 
+        // Update KPI currentValue so alert checker uses fresh value
+        try {
+          await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);
+        } catch (_) { /* best-effort */ }
+
         kpisRecorded += 1;
       }
 
@@ -317,6 +322,11 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           recordedAt,
           notes: `auto:ga4_daily:${date}`,
         } as any);
+
+        // Update benchmark currentValue so alert checker uses fresh value
+        try {
+          await storage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
+        } catch (_) { /* best-effort */ }
 
         benchmarksRecorded += 1;
       }

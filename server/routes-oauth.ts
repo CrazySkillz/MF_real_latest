@@ -409,22 +409,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       // Build breakdown using filter names when available (simulates GA4 dimension filter)
-      const channelTemplates = [
-        { channel: "Paid Search", source: "google", medium: "cpc" },
-        { channel: "Paid Social", source: "facebook", medium: "paid_social" },
-        { channel: "Email", source: "newsletter", medium: "email" },
-        { channel: "Organic Search", source: "google", medium: "organic" },
-      ];
+      // Map each yesop campaign to its realistic source/medium so the breakdown accurately
+      // reflects what GA4 would report for each UTM campaign name.
+      const campaignChannelMap: Record<string, { channel: string; source: string; medium: string }> = {
+        "yesop_brand_search": { channel: "Paid Search", source: "google", medium: "cpc" },
+        "yesop_prospecting": { channel: "Paid Search", source: "google", medium: "cpc" },
+        "yesop_retargeting": { channel: "Display", source: "google", medium: "display" },
+        "yesop_email_nurture": { channel: "Email", source: "newsletter", medium: "email" },
+        "yesop_paid_social": { channel: "Paid Social", source: "facebook", medium: "paid_social" },
+      };
+      const defaultChannelTemplate = { channel: "Paid Search", source: "google", medium: "cpc" };
       const channels = filterNames.length > 0
         ? (() => {
             // Use each campaign's profile scale for proportional splitting
             // crMultiplier adjusts conversions independently so each campaign has a distinct conversion rate
-            const items = filterNames.map((fn, i) => {
+            const items = filterNames.map((fn) => {
               const profileId = utmToProfile[fn];
               const profile = profileId ? campaignProfiles[profileId] : null;
               const scale = profile?.scale || 1.0;
               const crMultiplier = profile?.crMultiplier || 1.0;
-              return { ...channelTemplates[i % channelTemplates.length], campaign: fn, scale, crMultiplier };
+              const chMap = campaignChannelMap[fn] || defaultChannelTemplate;
+              return { ...chMap, campaign: fn, scale, crMultiplier };
             });
             const scaleSum = items.reduce((s, it) => s + it.scale, 0) || 1;
             // Conversion share = scale * crMultiplier (separate from session share)

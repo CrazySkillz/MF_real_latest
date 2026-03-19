@@ -8462,7 +8462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         geographicData = await ga4Service.getGeographicMetrics(
           primaryConnection.propertyId,
           primaryConnection.accessToken,
-          dateRange as string,
+          toGa4StartDate(dateRange as string),
           campaignFilter
         );
       } catch (authError: any) {
@@ -8489,7 +8489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             geographicData = await ga4Service.getGeographicMetrics(
               primaryConnection.propertyId,
               tokenData.access_token,
-              dateRange as string,
+              toGa4StartDate(dateRange as string),
               campaignFilter
             );
           } catch (refreshError) {

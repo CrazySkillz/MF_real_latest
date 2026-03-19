@@ -200,7 +200,7 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - `computeAttainmentFillPct()` — capped 0-100% for progress bar fill
 - Progress bar colors: green ≥100%, amber ≥90%, red <90%
 
-**KPI card rendering**: Current/Target values in 2-col grid, progress bar with uncapped attainment %, delta text below ("X% above/below target"). No status label text — delta text replaces it. Alert indicators next to KPI name: yellow `AlertTriangle` icon (tooltip "Alerts enabled") when `alertsEnabled`, red pulsing dot (`animate-pulse` + `animate-ping`) when threshold actively breached (tooltip shows current/threshold/condition). Alert threshold input formats on blur (e.g. `500` → `500.00`).
+**KPI card rendering**: Current/Target values in 2-col grid, progress bar with uncapped attainment %, delta text below ("X% above/below target"). No status label text — delta text replaces it. Alert indicators next to KPI name: yellow `AlertTriangle` icon (tooltip shows threshold value + condition, `bg-slate-900` dark background) when `alertsEnabled`, red pulsing dot (`animate-pulse` + `animate-ping`) when threshold actively breached (tooltip shows "Alert Threshold Breached" + current value + threshold + condition, same dark background). Alert threshold input formats on blur (e.g. `500` → `500.00`). All alert tooltips use `bg-slate-900 text-white` — NOT `bg-card text-white` which is invisible on light theme.
 
 **Create KPI modal layout** (LinkedIn is the reference pattern):
 - Template/metric selection (platform-specific tiles or dropdown)
@@ -310,7 +310,8 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 - **Blocked KPIs**: KPIs missing required data (spend/revenue) show "Blocked" status with explanation link. Excluded from scoring.
 - **No timeframe scaling**: `timeframe`, `trackingPeriod`, and `rollingAverage` fields were removed from the form. All KPIs evaluate on cumulative values. Targets are absolute goals.
 - **ROAS unit**: GA4 ROAS is stored/displayed as percentage (300 = 3x). LinkedIn ROAS is stored as ratio (3.0). These are separate KPI systems on separate pages — no cross-platform display.
-- **Scheduler**: `ga4-kpi-benchmark-jobs.ts` records daily `kpiProgress` rows. Uses `getSpendTotalForRange()` (NOT `campaign.spend`) for accurate financial KPIs.
+- **Scheduler**: `ga4-kpi-benchmark-jobs.ts` records daily `kpiProgress` rows. Uses `getSpendTotalForRange()` (NOT `campaign.spend`) for accurate financial KPIs. After recording progress, updates `kpi.currentValue` so alert checkers use fresh values (not stale stored values).
+- **Alert → Notification pipeline**: `checkPerformanceAlerts()` (KPIs) and `checkBenchmarkPerformanceAlerts()` (benchmarks) evaluate thresholds and call `storage.createNotification()`. Triggered by: (1) daily scheduler, (2) KPI create/update endpoints, (3) benchmark create endpoint, (4) mock-refresh. Deduplicates per calendar day. Notifications appear in nav bell + `/notifications` page.
 - **Auth**: All KPI CRUD endpoints require `ensureCampaignAccess` or `ensureKpiAccess`. `test-alerts` endpoint requires authenticated user.
 - **Cascade delete**: Deleting a KPI also deletes its `kpiProgress` and `kpiAlerts` rows.
 
@@ -551,7 +552,7 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 
 - **Run Refresh** writes aggregated daily data to DB for ALL selected campaigns. Each click adds one day.
 - `ga4-to-date` and `ga4-daily` prefer real DB rows over `simulateGA4()` hardcoded data.
-- **Run Refresh button** only visible for yesop/mock properties. Production users never see it.
+- **Run Refresh button** currently visible for any connected GA4 property (staging/testing). Will be hidden behind env var (`SHOW_MOCK_REFRESH`) when deploying to production clients. Each click simulates one day: writes daily metrics, updates spend/revenue, runs KPI/benchmark progress, and triggers alert checking.
 - Select 2 campaigns → Run Refresh → both campaigns' data aggregated (e.g., brand + prospecting = 1,170 sessions/day).
 
 ### Running Tests

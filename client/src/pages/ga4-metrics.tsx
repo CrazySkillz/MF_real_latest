@@ -725,6 +725,7 @@ export default function GA4Metrics() {
       ...data,
       currentValue: stripNumberFormatting(data.currentValue),
       targetValue: stripNumberFormatting(data.targetValue),
+      alertThreshold: data.alertThreshold ? stripNumberFormatting(String(data.alertThreshold)) : data.alertThreshold,
     };
 
     // For custom KPIs, require an explicit unit selection.

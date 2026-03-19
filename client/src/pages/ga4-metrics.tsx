@@ -6412,6 +6412,7 @@ export default function GA4Metrics() {
                           <div className="space-y-3">
                             {insights.slice(0, 12).map((i) => {
                               const isPositive = i.id.startsWith("positive:");
+                              const isInfo = i.id.startsWith("info:");
                               const badgeClass =
                                 i.severity === "high"
                                   ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
@@ -6419,8 +6420,10 @@ export default function GA4Metrics() {
                                     ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
                                     : isPositive
                                       ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-900"
-                                      : "bg-muted text-foreground border-border dark:text-slate-200";
-                              const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : isPositive ? "Positive" : "Low";
+                                      : isInfo
+                                        ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900"
+                                        : "bg-muted text-foreground border-border dark:text-slate-200";
+                              const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : isPositive ? "Positive" : isInfo ? "Info" : "Low";
                               return (
                                 <div key={i.id} className="rounded-lg border border-border p-4">
                                   <div className="flex items-start justify-between gap-3">

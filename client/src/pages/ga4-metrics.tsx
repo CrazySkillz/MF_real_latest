@@ -2875,6 +2875,7 @@ export default function GA4Metrics() {
       topRevenueShare,
       lowestCRChannel,
       channelCount: channels.length,
+      channels: bySessionsDesc,
     };
   }, [ga4Breakdown]);
 
@@ -6360,6 +6361,42 @@ export default function GA4Metrics() {
                                   <p className="text-xl font-bold text-foreground mt-1">{formatMoney(financialSpend / breakdownTotals.conversions)}</p>
                                 </div>
                               )}
+                            </div>
+                          )}
+                          {channelAnalysis && channelAnalysis.channels && channelAnalysis.channels.length >= 2 && (
+                            <div className="mt-4 pt-4 border-t">
+                              <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide mb-2">Channel Breakdown</p>
+                              <div className="overflow-hidden border rounded-md">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-muted border-b">
+                                    <tr>
+                                      <th className="text-left p-2 pl-3">Channel</th>
+                                      <th className="text-right p-2">Sessions</th>
+                                      <th className="text-right p-2">Share</th>
+                                      <th className="text-right p-2">Conv.</th>
+                                      <th className="text-right p-2 pr-3">CR</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {channelAnalysis.channels.map((ch: any) => {
+                                      const share = channelAnalysis.totalSessions > 0 ? (ch.sessions / channelAnalysis.totalSessions * 100) : 0;
+                                      const cr = ch.sessions > 0 ? (ch.conversions / ch.sessions * 100) : 0;
+                                      const isLowestCR = channelAnalysis.lowestCRChannel?.label === ch.label;
+                                      return (
+                                        <tr key={ch.label} className="border-b last:border-b-0">
+                                          <td className="p-2 pl-3 text-foreground font-medium truncate max-w-[200px]" title={ch.label}>{ch.label}</td>
+                                          <td className="p-2 text-right tabular-nums text-foreground">{formatNumber(ch.sessions)}</td>
+                                          <td className="p-2 text-right tabular-nums text-muted-foreground/70">{share.toFixed(0)}%</td>
+                                          <td className="p-2 text-right tabular-nums text-foreground">{formatNumber(ch.conversions)}</td>
+                                          <td className={`p-2 pr-3 text-right tabular-nums ${isLowestCR ? "text-red-600 font-medium" : "text-foreground"}`}>
+                                            {cr.toFixed(2)}%
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
                           )}
                         </CardContent>

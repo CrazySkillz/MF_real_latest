@@ -1,7 +1,7 @@
 # MimoSaaS (MF_real_latest) — Architecture Reference
 
-> **Enterprise-grade platform.** Marketing executives rely on MimoSaaS for business-critical decisions. All metrics, computations, and visualizations must be accurate. Specific rules:
-> - **GA4 Users are non-additive** — never sum users across dimensions (dates, devices, sources, campaigns) without a tooltip warning. Per-campaign user counts from breakdown reports are approximate (overcounted).
+> **Enterprise-grade platform.** Marketing executives rely on MimoSaaS for business-critical decisions. Every number, chart, and table must be accurate and consistent — executives make budget and strategy decisions based on these metrics. When in doubt, don't show inaccurate data; hide the metric or show a clear caveat. Specific rules:
+> - **GA4 Users are non-additive** — never sum or average users across dates, dimensions, or campaigns. In rolling windows (7d/30d), hide Users from the metric selector entirely rather than showing overcounted values. Per-campaign user counts from breakdown reports are approximate.
 > - **Exclude partial intraday data** — GA4 endpoints should use `endDate: "yesterday"` (not `"today"`) to report only complete UTC days. Partial data makes metrics look artificially low.
 > - **Date range consistency** — document when different tabs use different date windows (e.g., 90-day breakdown vs campaign lifetime totals) so executives understand why numbers may differ.
 > - **Financial metrics must match** — spend/revenue totals should be consistent across tabs. Use `recalcCampaignSpend` as single source of truth.
@@ -257,7 +257,22 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 ### GA4 Insights Tab (inline in `ga4-metrics.tsx`)
 
-4 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with sources used — shows "GA4 native revenue" or "Imported" for revenue, spend source labels for spend), Trends (daily/7d/30d rolling window chart + tables), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
+4 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with sources used — shows "GA4 native revenue" or "Imported" for revenue, spend source labels for spend), Trends (daily/7d/30d chart + tables — see below), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
+
+**Trends section** — 3 modes (Daily / 7d / 30d), metric selector (Sessions, Users, Conversions, Revenue, Page Views, Engagement Rate). All data from `ga4DailyRows` (persisted daily facts via `ga4-daily` endpoint, 90-day lookback).
+
+| Mode | Chart | Table |
+|------|-------|-------|
+| **Daily** | Last 30 days, 1 point per day = that day's raw value | Last 14 days (expandable to 30), each row = 1 day with day-over-day % delta |
+| **7d** | 8 data points over 14 days, each = 7-day rolling daily average | 2 rows: "Last 7 days" daily avg vs "Prior 7 days" daily avg |
+| **30d** | Up to 31 points over 60 days, each = 30-day rolling daily average | 2 rows: "Last 30 days" daily avg vs "Prior 30 days" daily avg |
+
+- **Chart XAxis**: Numeric (`type="number"`, `dataKey="idx"`) to eliminate Recharts categorical axis padding. `tickFormatter` converts index back to "MM-DD" date labels.
+- **Rolling averages**: 7d/30d chart divides rolling sums by window size so values are comparable across modes. Engagement rate is a weighted average (engagedSessions/totalSessions) — NOT divided.
+- **Table column header**: 7d/30d shows "(daily avg)" to clarify values are averages not totals.
+- **Users non-additive**: Users metric is **hidden from the dropdown in 7d/30d modes** — GA4 users can't be accurately summed/averaged across dates. Auto-switches to Sessions if Users was selected when entering rolling mode. Users remains available in Daily mode where per-day counts are accurate.
+- **`insightsRollups` memo**: Computes last3/prior3, last7/prior7, last30/prior30 from `ga4TimeSeries`. `byDate` map includes: date, sessions, users, conversions, revenue, pageviews, engagementRate, engagedSessions. Engagement rate computed as weighted average (engagedSessions/totalSessions × 100).
+- **Daily table index math**: Uses `sortedIdx = sorted.length - 1 - idx` for O(1) previous-row lookup (not `indexOf` reference scan).
 
 **Insights engine** (`insights` useMemo) generates 5 categories:
 - Financial integrity checks (blocked KPIs, mismatched sources, negative ROI, low ROAS)

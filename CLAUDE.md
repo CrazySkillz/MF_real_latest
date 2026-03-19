@@ -393,6 +393,12 @@ Each page renders `<Navigation />` + `<Sidebar />` directly — there is no shar
 ### API Auth
 Use `getActorId(req)` for Clerk user ID in route handlers.
 
+### Fetch Credentials
+All `fetch()` calls to mutation endpoints (POST/PATCH/PUT/DELETE) MUST include `credentials: "include"` so Clerk session cookies are sent. The `apiRequest()` helper in `queryClient.ts` does this automatically, but raw `fetch()` calls do not. Missing credentials causes `ensureCampaignAccess` to fail with 401/500.
+
+### Numeric Input Formatting
+Values displayed with comma formatting (e.g., "2,300") MUST be stripped via `stripNumberFormatting()` before sending to the backend. PostgreSQL decimal columns reject comma-formatted strings. Apply to: `currentValue`, `targetValue`, `alertThreshold`, `benchmarkValue`.
+
 ### Campaign Ownership
 `ownerId` field on campaigns; campaigns without it get claimed on first access via `ensureCampaignAccess()`.
 

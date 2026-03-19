@@ -259,18 +259,19 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 4 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with sources used — shows "GA4 native revenue" or "Imported" for revenue, spend source labels for spend), Trends (daily/7d/30d chart + tables — see below), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
 
-**Trends section** — 3 modes (Daily / 7d / 30d), metric selector (Sessions, Users, Conversions, Revenue, Page Views, Engagement Rate). All data from `ga4DailyRows` (persisted daily facts via `ga4-daily` endpoint, 90-day lookback).
+**Trends section** — 4 modes (Daily / 7d / 30d / Monthly), metric selector (Sessions, Users, Conversions, Revenue, Page Views, Engagement Rate). All data from `ga4DailyRows` (persisted daily facts via `ga4-daily` endpoint, 90-day lookback).
 
 | Mode | Chart | Table |
 |------|-------|-------|
 | **Daily** | Last 30 days, 1 point per day = that day's raw value | Last 14 days (expandable to 30), each row = 1 day with day-over-day % delta |
 | **7d** | 8 data points over 14 days, each = 7-day rolling daily average | 2 rows: "Last 7 days" daily avg vs "Prior 7 days" daily avg |
 | **30d** | Up to 31 points over 60 days, each = 30-day rolling daily average | 2 rows: "Last 30 days" daily avg vs "Prior 30 days" daily avg |
+| **Monthly** | BarChart with 1 bar per calendar month = monthly total (weighted avg for rates). Current month bar at 50% opacity. | 1 row per month (most recent first), month-over-month % delta. Current month marked "(partial, N days)". |
 
-- **Chart XAxis**: Numeric (`type="number"`, `dataKey="idx"`) to eliminate Recharts categorical axis padding. `tickFormatter` converts index back to "MM-DD" date labels.
+- **Chart XAxis**: Daily/7d/30d use numeric (`type="number"`, `dataKey="idx"`) to eliminate Recharts categorical axis padding. Monthly uses categorical `dataKey="date"` on BarChart.
 - **Rolling averages**: 7d/30d chart divides rolling sums by window size so values are comparable across modes. Engagement rate is a weighted average (engagedSessions/totalSessions) — NOT divided.
 - **Table column header**: 7d/30d shows "(daily avg)" to clarify values are averages not totals.
-- **Users non-additive**: Users metric is **hidden from the dropdown in 7d/30d modes** — GA4 users can't be accurately summed/averaged across dates. Auto-switches to Sessions if Users was selected when entering rolling mode. Users remains available in Daily mode where per-day counts are accurate.
+- **Users non-additive**: Users metric is **hidden from the dropdown in 7d/30d/Monthly modes** — GA4 users can't be accurately summed/averaged across dates. Auto-switches to Sessions if Users was selected when entering non-daily mode. Users remains available in Daily mode where per-day counts are accurate.
 - **`insightsRollups` memo**: Computes last3/prior3, last7/prior7, last30/prior30 from `ga4TimeSeries`. `byDate` map includes: date, sessions, users, conversions, revenue, pageviews, engagementRate, engagedSessions. Engagement rate computed as weighted average (engagedSessions/totalSessions × 100).
 - **Daily table index math**: Uses `sortedIdx = sorted.length - 1 - idx` for O(1) previous-row lookup (not `indexOf` reference scan).
 

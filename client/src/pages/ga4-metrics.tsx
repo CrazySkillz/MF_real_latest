@@ -186,7 +186,7 @@ export default function GA4Metrics() {
   // Campaign Comparison tab state
   const [campaignComparisonMetric, setCampaignComparisonMetric] = useState<string>("sessions");
   // Insights Trends state
-  const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d">("daily");
+  const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d" | "monthly">("daily");
   const [insightsTrendMetric, setInsightsTrendMetric] = useState<string>("sessions");
   const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
   const [ga4ReportForm, setGa4ReportForm] = useState({
@@ -5853,12 +5853,12 @@ export default function GA4Metrics() {
                           <div>
                             <CardTitle>Trends</CardTitle>
                             <CardDescription>
-                              Daily shows day-by-day values. 7d/30d show rolling daily averages vs the prior window.
+                              Daily shows day-by-day values. 7d/30d show rolling daily averages. Monthly compares calendar months.
                             </CardDescription>
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                             <div className="flex items-center gap-1">
-                              {(["daily", "7d", "30d"] as const).map((mode) => (
+                              {(["daily", "7d", "30d", "monthly"] as const).map((mode) => (
                                 <Button
                                   key={mode}
                                   variant={insightsTrendMode === mode ? "default" : "outline"}
@@ -5870,7 +5870,7 @@ export default function GA4Metrics() {
                                     if (mode !== "daily" && insightsTrendMetric === "users") setInsightsTrendMetric("sessions");
                                   }}
                                 >
-                                  {mode === "daily" ? "Daily" : mode}
+                                  {mode === "daily" ? "Daily" : mode === "monthly" ? "Monthly" : mode}
                                 </Button>
                               ))}
                             </div>
@@ -5924,6 +5924,31 @@ export default function GA4Metrics() {
                               value: isRate ? Number((Number(r[metric] || 0) * 100).toFixed(2)) : Number(r[metric] || 0),
                               idx: i,
                             }));
+                          } else if (insightsTrendMode === "monthly") {
+                            // Group by calendar month
+                            const monthMap = new Map<string, any[]>();
+                            for (const r of sorted) {
+                              const ym = String(r.date).slice(0, 7); // "YYYY-MM"
+                              if (!monthMap.has(ym)) monthMap.set(ym, []);
+                              monthMap.get(ym)!.push(r);
+                            }
+                            const monthKeys = [...monthMap.keys()].sort();
+                            const todayYM = new Date().toISOString().slice(0, 7);
+
+                            chartData = monthKeys.map((ym, i) => {
+                              const rows = monthMap.get(ym)!;
+                              let val = 0;
+                              if (isRate) {
+                                const totalSessions = rows.reduce((s: number, r: any) => s + Number(r.sessions || 0), 0);
+                                const totalEngaged = rows.reduce((s: number, r: any) => s + Number(r.engagedSessions || r.sessions * Number(r.engagementRate || 0) || 0), 0);
+                                val = totalSessions > 0 ? (totalEngaged / totalSessions) * 100 : 0;
+                              } else {
+                                val = rows.reduce((s: number, r: any) => s + Number(r[metric] || 0), 0);
+                              }
+                              const [y, m] = ym.split("-");
+                              const monthLabel = new Date(Number(y), Number(m) - 1).toLocaleString("en-US", { month: "short" }) + " '" + y.slice(2);
+                              return { date: monthLabel, value: Number(val.toFixed(2)), idx: i, partial: ym === todayYM };
+                            });
                           } else {
                             const windowDays = insightsTrendMode === "7d" ? 7 : 30;
                             // Limit chart to relevant range: show 2× window (current + prior) for context
@@ -5969,28 +5994,47 @@ export default function GA4Metrics() {
                             <>
                               <div className="h-64">
                                 <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart data={chartData} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                    <XAxis
-                                      dataKey="idx"
-                                      type="number"
-                                      domain={[0, Math.max(1, chartData.length - 1)]}
-                                      tickFormatter={(idx: number) => chartData[Math.round(idx)]?.date || ""}
-                                      allowDecimals={false}
-                                      stroke="#64748b"
-                                      fontSize={11}
-                                      tickMargin={6}
-                                    />
-                                    <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} width={45} />
-                                    <Tooltip
-                                      formatter={(value: any) => [fmtValue(value), insightsTrendMode === "daily" ? (trendMetricLabels[metric] || metric) : `${trendMetricLabels[metric] || metric} (${insightsTrendMode} avg)`]}
-                                      labelFormatter={(idx: any) => {
-                                        const dateLabel = chartData[Math.round(Number(idx))]?.date || idx;
-                                        return insightsTrendMode === "daily" ? `Date: ${dateLabel}` : `${insightsTrendMode} avg ending: ${dateLabel}`;
-                                      }}
-                                    />
-                                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls name={trendMetricLabels[metric] || metric} />
-                                  </LineChart>
+                                  {insightsTrendMode === "monthly" ? (
+                                    <BarChart data={chartData} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
+                                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                      <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickMargin={6} />
+                                      <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} width={45} />
+                                      <Tooltip
+                                        formatter={(value: any) => [fmtValue(value), `${trendMetricLabels[metric] || metric} (${isRate ? "weighted avg" : "monthly total"})`]}
+                                        labelFormatter={(label: any) => String(label)}
+                                      />
+                                      <Bar dataKey="value" name={trendMetricLabels[metric] || metric} fill="#3b82f6" radius={[4, 4, 0, 0]}
+                                        // @ts-ignore — Recharts Cell children for per-bar styling
+                                      >
+                                        {chartData.map((entry: any, i: number) => (
+                                          <Cell key={i} fillOpacity={entry.partial ? 0.5 : 1} />
+                                        ))}
+                                      </Bar>
+                                    </BarChart>
+                                  ) : (
+                                    <LineChart data={chartData} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
+                                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                      <XAxis
+                                        dataKey="idx"
+                                        type="number"
+                                        domain={[0, Math.max(1, chartData.length - 1)]}
+                                        tickFormatter={(idx: number) => chartData[Math.round(idx)]?.date || ""}
+                                        allowDecimals={false}
+                                        stroke="#64748b"
+                                        fontSize={11}
+                                        tickMargin={6}
+                                      />
+                                      <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} width={45} />
+                                      <Tooltip
+                                        formatter={(value: any) => [fmtValue(value), insightsTrendMode === "daily" ? (trendMetricLabels[metric] || metric) : `${trendMetricLabels[metric] || metric} (${insightsTrendMode} avg)`]}
+                                        labelFormatter={(idx: any) => {
+                                          const dateLabel = chartData[Math.round(Number(idx))]?.date || idx;
+                                          return insightsTrendMode === "daily" ? `Date: ${dateLabel}` : `${insightsTrendMode} avg ending: ${dateLabel}`;
+                                        }}
+                                      />
+                                      <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls name={trendMetricLabels[metric] || metric} />
+                                    </LineChart>
+                                  )}
                                 </ResponsiveContainer>
                               </div>
 
@@ -6036,6 +6080,78 @@ export default function GA4Metrics() {
                                       </Button>
                                     </div>
                                   )}
+                                </div>
+                              ) : insightsTrendMode === "monthly" ? (
+                                <div className="overflow-hidden border rounded-md">
+                                  <table className="w-full text-sm">
+                                    <thead className="bg-muted border-b">
+                                      <tr>
+                                        <th className="text-left p-3">Month</th>
+                                        <th className="text-right p-3">
+                                          {trendMetricLabels[metric] || metric} {isRate && <span className="text-muted-foreground font-normal">(weighted avg)</span>}
+                                        </th>
+                                        <th className="text-right p-3">vs prior month</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {(() => {
+                                        // Group by calendar month (same logic as chart)
+                                        const monthMap = new Map<string, any[]>();
+                                        for (const r of sorted) {
+                                          const ym = String(r.date).slice(0, 7);
+                                          if (!monthMap.has(ym)) monthMap.set(ym, []);
+                                          monthMap.get(ym)!.push(r);
+                                        }
+                                        const monthKeys = [...monthMap.keys()].sort().reverse(); // most recent first
+                                        const todayYM = new Date().toISOString().slice(0, 7);
+
+                                        if (monthKeys.length < 2) {
+                                          return (
+                                            <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">
+                                              Need at least 2 months of data for comparison. Available: {monthKeys.length} month(s).
+                                            </td></tr>
+                                          );
+                                        }
+
+                                        const monthValues = monthKeys.map(ym => {
+                                          const rows = monthMap.get(ym)!;
+                                          let val = 0;
+                                          if (isRate) {
+                                            const totalSessions = rows.reduce((s: number, r: any) => s + Number(r.sessions || 0), 0);
+                                            const totalEngaged = rows.reduce((s: number, r: any) => s + Number(r.engagedSessions || r.sessions * Number(r.engagementRate || 0) || 0), 0);
+                                            val = totalSessions > 0 ? (totalEngaged / totalSessions) * 100 : 0;
+                                          } else {
+                                            val = rows.reduce((s: number, r: any) => s + Number(r[metric] || 0), 0);
+                                          }
+                                          const [y, m] = ym.split("-");
+                                          const label = new Date(Number(y), Number(m) - 1).toLocaleString("en-US", { month: "long", year: "numeric" });
+                                          const isPartial = ym === todayYM;
+                                          return { ym, label, value: val, days: rows.length, isPartial };
+                                        });
+
+                                        return monthValues.map((row, i) => {
+                                          const prev = i < monthValues.length - 1 ? monthValues[i + 1] : null;
+                                          const delta = prev ? deltaPct(row.value, prev.value) : 0;
+                                          return (
+                                            <tr key={row.ym} className="border-b last:border-b-0">
+                                              <td className="p-3">
+                                                <div className="font-medium text-foreground">{row.label}</div>
+                                                <div className="text-xs text-muted-foreground/70 mt-0.5">
+                                                  {row.isPartial ? `partial, ${row.days} days` : `${row.days} days`}
+                                                </div>
+                                              </td>
+                                              <td className="p-3 text-right font-medium tabular-nums text-foreground">{fmtValue(row.value)}</td>
+                                              <td className="p-3 text-right">
+                                                {prev
+                                                  ? <span className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</span>
+                                                  : <span className="text-xs text-muted-foreground/70">—</span>}
+                                              </td>
+                                            </tr>
+                                          );
+                                        });
+                                      })()}
+                                    </tbody>
+                                  </table>
                                 </div>
                               ) : (
                                 <div className="overflow-hidden border rounded-md">

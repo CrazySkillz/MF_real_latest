@@ -257,7 +257,7 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 ### GA4 Insights Tab (inline in `ga4-metrics.tsx`)
 
-4 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with sources used — shows "GA4 native revenue" or "Imported" for revenue, spend source labels for spend), Trends (daily/7d/30d chart + tables — see below), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
+5 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with sources used — shows "GA4 native revenue" or "Imported" for revenue, spend source labels for spend), Trends (daily/7d/30d/monthly chart + tables — see below), Data Summary (always-visible campaign stats), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
 
 **Trends section** — 4 modes (Daily / 7d / 30d / Monthly), metric selector (Sessions, Users, Conversions, Revenue, Page Views, Engagement Rate). All data from `ga4DailyRows` (persisted daily facts via `ga4-daily` endpoint, 90-day lookback).
 
@@ -275,12 +275,15 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 - **`insightsRollups` memo**: Computes last3/prior3, last7/prior7, last30/prior30 from `ga4TimeSeries`. `byDate` map includes: date, sessions, users, conversions, revenue, pageviews, engagementRate, engagedSessions. Engagement rate computed as weighted average (engagedSessions/totalSessions × 100).
 - **Daily table index math**: Uses `sortedIdx = sorted.length - 1 - idx` for O(1) previous-row lookup (not `indexOf` reference scan).
 
-**Insights engine** (`insights` useMemo) generates 5 categories:
+**Data Summary section** — Always visible when `breakdownTotals.sessions > 0` or `breakdownTotals.revenue > 0`. Shows: Sessions (+ daily avg), Conversions (+ CR%), Revenue (+ daily avg), Top Channel (+ share % + channel count). Financial row (when spend exists): Total Spend, ROAS (green/red), CPA. Uses `breakdownTotals`, `insightsRollups.availableDays`, `channelAnalysis`, `financialSpend`, `financialROAS`.
+
+**Insights engine** (`insights` useMemo) generates 6 categories:
 - Financial integrity checks (blocked KPIs, mismatched sources, negative ROI, low ROAS)
 - KPI performance — channel-enriched recommendations using `channelAnalysis` (lowest-CR channel for conversion KPIs, top revenue/session channels for others)
 - Benchmark performance — channel-enriched recommendations (same pattern as KPIs)
 - Anomaly detection — WoW deltas: CR drop ≥15% (high), engagement depth drop ≥20% (medium), sessions drop ≥20% (high), revenue drop ≥25% (high), conversions drop ≥20% (high). Requires ≥14 days history. Volume anomalies use `insightsRollups.deltas` and include top channel context.
 - Positive signals — sessions/revenue/conversions up WoW, strong ROAS (≥3x), KPIs exceeding target (≥110%). Green "Positive" badge. Minimum volume thresholds to prevent noise.
+- Informational insights — always fire with ≥7 days of data, no KPIs required: avg daily sessions (+ CR + conversions/day), engagement rate (with qualitative assessment), top channel (with concentration warning + lowest-CR channel), revenue summary (with ROAS if spend exists). Ensures Insights tab is never empty when data exists.
 
 **Supporting memos** (defined before `insights` for dependency ordering):
 - `insightsRollups`: Last 7d vs Prior 7d, Last 30d vs Prior 30d with pre-computed deltas. CR and engagement rate as proper aggregates.

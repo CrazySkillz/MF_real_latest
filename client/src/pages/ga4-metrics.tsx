@@ -3434,6 +3434,66 @@ export default function GA4Metrics() {
       }
     }
 
+    // 5) Informational insights — always fire when data exists, even without KPIs/Benchmarks
+    const availDays = insightsRollups?.availableDays || 0;
+    if (availDays >= 7) {
+      const r7 = insightsRollups.last7;
+      const avgDailySessions = r7.sessions > 0 ? Math.round(r7.sessions / Math.min(r7.days, 7)) : 0;
+      const avgDailyConversions = r7.conversions > 0 ? Math.round((r7.conversions / Math.min(r7.days, 7)) * 10) / 10 : 0;
+      const cr7 = r7.sessions > 0 ? ((r7.conversions / r7.sessions) * 100).toFixed(2) : "0";
+      const engRate7 = r7.engagementRate > 0 ? r7.engagementRate.toFixed(1) : null;
+
+      if (avgDailySessions > 0) {
+        out.push({
+          id: "info:avg_sessions",
+          severity: "low",
+          title: `Average daily sessions: ${formatNumber(avgDailySessions)}`,
+          description: `Over the last 7 days, your campaign averaged ${formatNumber(avgDailySessions)} sessions per day with a ${cr7}% conversion rate.`,
+          recommendation: avgDailyConversions > 0
+            ? `${avgDailyConversions} conversions/day average. Create KPIs to track whether this meets your goals.`
+            : "Set up conversion tracking and KPIs to measure campaign effectiveness.",
+        });
+      }
+
+      if (engRate7 && Number(engRate7) > 0) {
+        out.push({
+          id: "info:engagement_rate",
+          severity: "low",
+          title: `Engagement rate: ${engRate7}%`,
+          description: `${engRate7}% of sessions in the last 7 days were engaged (active interaction beyond bounce). ${Number(engRate7) >= 60 ? "This is a healthy engagement level." : Number(engRate7) >= 40 ? "Moderate engagement — room for improvement." : "Low engagement — consider reviewing landing page relevance."}`,
+        });
+      }
+
+      // Top channel insight (from channelAnalysis)
+      if (channelAnalysis && channelAnalysis.topSessionChannel && channelAnalysis.channelCount >= 2) {
+        const ch = channelAnalysis.topSessionChannel;
+        const share = channelAnalysis.topSessionShare;
+        out.push({
+          id: "info:top_channel",
+          severity: "low",
+          title: `Top channel: ${ch.label} (${share.toFixed(0)}% of sessions)`,
+          description: `Your leading traffic source is ${ch.label} with ${formatNumber(ch.sessions)} sessions across ${channelAnalysis.channelCount} channels. ${share > 70 ? "High concentration — consider diversifying traffic sources." : "Healthy channel mix."}`,
+          recommendation: channelAnalysis.lowestCRChannel
+            ? `Lowest-converting channel: ${channelAnalysis.lowestCRChannel.label} at ${channelAnalysis.lowestCRChannel.cr.toFixed(2)}% CR. Investigate landing page alignment.`
+            : undefined,
+        });
+      }
+    }
+
+    // Revenue summary (fires when revenue exists, regardless of KPIs)
+    if (Number(financialRevenue || 0) > 0 && availDays >= 7) {
+      const avgDailyRev = Number(financialRevenue) / Math.max(availDays, 1);
+      out.push({
+        id: "info:revenue_summary",
+        severity: "low",
+        title: `Revenue: ${formatMoney(Number(financialRevenue))} to date`,
+        description: `Averaging ~${formatMoney(avgDailyRev)}/day over ${availDays} days.${Number(financialSpend) > 0 ? ` ROAS: ${Number(financialROAS).toFixed(2)}x.` : ""}`,
+        recommendation: Number(financialSpend) > 0 && Number(financialROAS) < 1
+          ? "ROAS is below break-even. Review spend allocation and conversion paths."
+          : !Number(financialSpend) ? "Add spend data to calculate ROAS and ROI." : undefined,
+      });
+    }
+
     // Stable ordering: high -> medium -> low
     const order = { high: 0, medium: 1, low: 2 } as const;
     out.sort((a, b) => order[a.severity] - order[b.severity]);
@@ -6220,6 +6280,82 @@ export default function GA4Metrics() {
                       </CardContent>
                     </Card>
 
+                    {/* Data Summary — always visible when data exists */}
+                    {(breakdownTotals.sessions > 0 || breakdownTotals.revenue > 0) && (
+                      <Card className="border-border">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">Data Summary</CardTitle>
+                          <CardDescription>
+                            Campaign performance at a glance ({insightsRollups?.availableDays || 0} days of data)
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {breakdownTotals.sessions > 0 && (
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Sessions</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{formatNumber(breakdownTotals.sessions)}</p>
+                                <p className="text-xs text-muted-foreground/70 mt-0.5">
+                                  ~{formatNumber(Math.round(breakdownTotals.sessions / Math.max(insightsRollups?.availableDays || 1, 1)))}/day avg
+                                </p>
+                              </div>
+                            )}
+                            {breakdownTotals.conversions > 0 && (
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Conversions</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{formatNumber(breakdownTotals.conversions)}</p>
+                                <p className="text-xs text-muted-foreground/70 mt-0.5">
+                                  {breakdownTotals.sessions > 0 ? `${((breakdownTotals.conversions / breakdownTotals.sessions) * 100).toFixed(2)}% conversion rate` : ""}
+                                </p>
+                              </div>
+                            )}
+                            {breakdownTotals.revenue > 0 && (
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Revenue</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{formatMoney(breakdownTotals.revenue)}</p>
+                                <p className="text-xs text-muted-foreground/70 mt-0.5">
+                                  ~{formatMoney(breakdownTotals.revenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg
+                                </p>
+                              </div>
+                            )}
+                            {channelAnalysis && channelAnalysis.topSessionChannel && (
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Top Channel</p>
+                                <p className="text-base font-bold text-foreground mt-1 truncate" title={channelAnalysis.topSessionChannel.label}>
+                                  {channelAnalysis.topSessionChannel.label}
+                                </p>
+                                <p className="text-xs text-muted-foreground/70 mt-0.5">
+                                  {channelAnalysis.topSessionShare.toFixed(0)}% of sessions · {channelAnalysis.channelCount} channels
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          {financialSpend > 0 && (
+                            <div className="grid gap-4 sm:grid-cols-3 mt-4 pt-4 border-t">
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Total Spend</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{formatMoney(financialSpend)}</p>
+                              </div>
+                              {financialROAS > 0 && (
+                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">ROAS</p>
+                                  <p className={`text-xl font-bold mt-1 ${financialROAS >= 1 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
+                                    {financialROAS.toFixed(2)}x
+                                  </p>
+                                </div>
+                              )}
+                              {financialSpend > 0 && breakdownTotals.conversions > 0 && (
+                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">CPA</p>
+                                  <p className="text-xl font-bold text-foreground mt-1">{formatMoney(financialSpend / breakdownTotals.conversions)}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
                     <div className="grid gap-4 md:grid-cols-3">
                       <Card>
                         <CardContent className="p-5">
@@ -6270,7 +6406,7 @@ export default function GA4Metrics() {
                       <CardContent className="space-y-3">
                         {insights.length === 0 ? (
                           <div className="text-sm text-muted-foreground/70">
-                            No issues detected for the selected range. Create KPIs/Benchmarks to unlock more insights.
+                            No issues detected for the selected range. Create KPIs and Benchmarks to unlock performance tracking insights.
                           </div>
                         ) : (
                           <div className="space-y-3">

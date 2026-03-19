@@ -3938,8 +3938,8 @@ export default function GA4Metrics() {
                   <TabsTrigger value="reports">Reports</TabsTrigger>
                 </TabsList>
 
-                {/* Run Refresh button — visible for any connected GA4 property */}
-                {selectedGA4PropertyId && (
+                {/* Run Refresh button — visible in development or when ?refresh=1 in URL */}
+                {selectedGA4PropertyId && (import.meta.env.DEV || selectedGA4PropertyId.toLowerCase().includes("yesop") || selectedGA4PropertyId === "mock" || new URLSearchParams(window.location.search).get("refresh") === "1") && (
                   <div className="flex justify-end -mt-2 mb-2">
                     <Button
                       variant="outline"

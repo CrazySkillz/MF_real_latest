@@ -275,7 +275,7 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 - **`insightsRollups` memo**: Computes last3/prior3, last7/prior7, last30/prior30 from `ga4TimeSeries`. `byDate` map includes: date, sessions, users, conversions, revenue, pageviews, engagementRate, engagedSessions. Engagement rate computed as weighted average (engagedSessions/totalSessions × 100).
 - **Daily table index math**: Uses `sortedIdx = sorted.length - 1 - idx` for O(1) previous-row lookup (not `indexOf` reference scan).
 
-**Data Summary section** — Always visible when `breakdownTotals.sessions > 0` or `breakdownTotals.revenue > 0`. Shows: Sessions (+ daily avg), Conversions (+ CR%), Revenue (+ daily avg), Top Channel (+ share % + channel count). Financial row (when spend exists): Total Spend, ROAS (green/red), CPA. Uses `breakdownTotals`, `insightsRollups.availableDays`, `channelAnalysis`, `financialSpend`, `financialROAS`.
+**Data Summary section** — Always visible when `breakdownTotals.sessions > 0` or `breakdownTotals.revenue > 0`. Shows: Sessions (+ daily avg), Conversions (+ CR%), Revenue (+ daily avg), Top Channel (+ share % + channel count). Financial row (when spend exists): Total Spend, ROAS (green/red), CPA. Channel Breakdown table showing all traffic sources with sessions, share %, conversions, and CR (lowest-CR channel highlighted red). Uses `breakdownTotals`, `insightsRollups.availableDays`, `channelAnalysis` (exposes `channels` array sorted by sessions desc), `financialSpend`, `financialROAS`.
 
 **Insights engine** (`insights` useMemo) generates 6 categories:
 - Financial integrity checks (blocked KPIs, mismatched sources, negative ROI, low ROAS)
@@ -541,13 +541,13 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 
 5 UTM campaign profiles with deterministic values per day:
 
-| Campaign | Sessions | Conversions | Revenue | Spend |
-|----------|----------|-------------|---------|-------|
-| yesop_brand_search | 750 | 38 | $2,850 | $950 |
-| yesop_prospecting | 420 | 18 | $1,350 | $680 |
-| yesop_retargeting | 260 | 22 | $1,650 | $410 |
-| yesop_email_nurture | 180 | 12 | $900 | $150 |
-| yesop_paid_social | 375 | 15 | $1,125 | $750 |
+| Campaign | Sessions | Conversions | Revenue | Spend | Source / Medium |
+|----------|----------|-------------|---------|-------|-----------------|
+| yesop_brand_search | 750 | 38 | $2,850 | $950 | google / cpc |
+| yesop_prospecting | 420 | 18 | $1,350 | $680 | google / cpc |
+| yesop_retargeting | 260 | 22 | $1,650 | $410 | google / display |
+| yesop_email_nurture | 180 | 12 | $900 | $150 | newsletter / email |
+| yesop_paid_social | 375 | 15 | $1,125 | $750 | facebook / paid_social |
 
 - **Run Refresh** writes aggregated daily data to DB for ALL selected campaigns. Each click adds one day.
 - `ga4-to-date` and `ga4-daily` prefer real DB rows over `simulateGA4()` hardcoded data.

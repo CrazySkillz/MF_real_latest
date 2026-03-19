@@ -283,7 +283,9 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 - Benchmark performance — channel-enriched recommendations (same pattern as KPIs)
 - Anomaly detection — WoW deltas: CR drop ≥15% (high), engagement depth drop ≥20% (medium), sessions drop ≥20% (high), revenue drop ≥25% (high), conversions drop ≥20% (high). Requires ≥14 days history. Volume anomalies use `insightsRollups.deltas` and include top channel context.
 - Positive signals — sessions/revenue/conversions up WoW, strong ROAS (≥3x), KPIs exceeding target (≥110%). Green "Positive" badge. Minimum volume thresholds to prevent noise.
-- Informational insights — always fire with ≥7 days of data, no KPIs required: avg daily sessions (+ CR + conversions/day), engagement rate (with qualitative assessment), top channel (with concentration warning + lowest-CR channel), revenue summary (with ROAS if spend exists). Ensures Insights tab is never empty when data exists.
+- Informational insights — always fire with ≥7 days of data, no KPIs required: avg daily sessions (+ CR + conversions/day), engagement rate (with qualitative assessment), top channel (with concentration warning + lowest-CR channel), revenue summary (with ROAS if spend exists). Blue "Info" badge. Ensures Insights tab is never empty when data exists.
+
+**Insight badge colors**: High = red, Medium = amber, Positive (`positive:*` id prefix) = green, Info (`info:*` id prefix) = blue, Low = gray. Badge text matches: "High", "Medium", "Positive", "Info", "Low".
 
 **Supporting memos** (defined before `insights` for dependency ordering):
 - `insightsRollups`: Last 7d vs Prior 7d, Last 30d vs Prior 30d with pre-computed deltas. CR and engagement rate as proper aggregates.

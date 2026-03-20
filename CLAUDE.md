@@ -428,6 +428,13 @@ Include filter params (e.g., `dateRange`, `platformContext`, `clientId`) for cor
 ### HubSpot Pipeline (Proxy)
 Available for all platform contexts. Lets users select a HubSpot deal stage (e.g., SQL) as an early pipeline signal for long sales cycles. Optional — default is Revenue-only.
 
+### CRM Date Field Selection
+HubSpot revenue wizard includes a date field selector (in Advanced section) controlling which date revenue is reported under:
+- **Close Date** (default) — when the deal was won. Recommended for financial reporting.
+- **Last Modified Date** — when the deal record was last updated. Useful for LinkedIn exec flows.
+- **Created Date** — when the deal was first entered.
+Stored in `mappingConfig.dateField`. Backend uses it for HubSpot search query filter. Old configs without `dateField` fall back to platform-specific defaults (GA4=closedate, LinkedIn=hs_lastmodifieddate). Salesforce currently hardcoded to CloseDate (TODO: add same selector).
+
 ### Disconnect CRM Sources
 Trash icon + AlertDialog confirmation on CRM cards in Add Revenue modal. Deletes revenue source + OAuth connection. LinkedIn/Meta queries wrapped in try-catch to handle missing `campaign_utm_map` column.
 

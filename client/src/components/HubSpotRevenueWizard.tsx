@@ -84,6 +84,10 @@ export function HubSpotRevenueWizard(props: {
   // Revenue is treated as revenue-to-date (campaign lifetime). Use a large lookback to avoid
   // forcing users to reason about windowing/date ranges in this flow.
   const [days] = useState<number>(3650);
+  // Which HubSpot date field to use for revenue dating (close date vs last modified vs created)
+  const [dateField, setDateField] = useState<string>(
+    (initialMappingConfig as any)?.dateField || (isLinkedIn ? "hs_lastmodifieddate" : "closedate")
+  );
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
@@ -129,6 +133,7 @@ export function HubSpotRevenueWizard(props: {
     setPipelineEnabled(nextPipelineEnabled);
     setPipelineStageId(nextPipelineStageId);
     setPipelineStageLabel(nextPipelineStageLabel);
+    if (cfg.dateField) setDateField(String(cfg.dateField));
     if (nextRevenueClassification === "onsite_in_ga4" || nextRevenueClassification === "offsite_not_in_ga4") {
       setRevenueClassification(nextRevenueClassification);
     }
@@ -353,6 +358,7 @@ export function HubSpotRevenueWizard(props: {
       const resp = await fetch(`/api/campaigns/${campaignId}/hubspot/save-mappings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           campaignProperty,
           selectedValues,
@@ -361,6 +367,7 @@ export function HubSpotRevenueWizard(props: {
           valueSource: "revenue",
           revenueClassification,
           days,
+          dateField,
           pipelineEnabled,
           pipelineStageId: pipelineEnabled ? pipelineStageId : null,
           pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
@@ -925,6 +932,23 @@ export function HubSpotRevenueWizard(props: {
 
                 <div className="text-xs text-muted-foreground">
                   Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Date field</Label>
+                  <Select value={dateField} onValueChange={setDateField}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[10000]">
+                      <SelectItem value="closedate">Close Date — when the deal was won</SelectItem>
+                      <SelectItem value="hs_lastmodifieddate">Last Modified Date — when the deal was last updated</SelectItem>
+                      <SelectItem value="createdate">Created Date — when the deal was first entered</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-muted-foreground">
+                    Controls which date revenue is reported under. Close Date is recommended for financial reporting.
+                  </div>
                 </div>
 
                 {showAdvanced && (

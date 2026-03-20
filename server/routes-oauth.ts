@@ -12872,6 +12872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineEnabled: z.boolean().optional(),
           pipelineStageId: z.string().trim().optional().nullable(),
           pipelineStageLabel: z.string().trim().optional().nullable(),
+          dateField: z.enum(["closedate", "hs_lastmodifieddate", "createdate"]).optional(),
           platformContext: zPlatformContext.optional(),
           campaignMappings: z.array(z.object({
             crmValue: z.string(),
@@ -12900,6 +12901,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
       const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
+      // User-selected date field; fall back to platform-specific defaults for backward compatibility
+      const dateFieldChoice = body.data.dateField || (platformCtx === "linkedin" ? "hs_lastmodifieddate" : "closedate");
       const effectiveValueSource: 'revenue' | 'conversion_value' = (platformCtx === 'linkedin' ? parsedValueSource : 'revenue');
 
       // Determine default stage ids unless caller provides an explicit list:
@@ -12940,8 +12943,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               filters: [
                 { propertyName: campaignProp, operator: 'IN', values: selected },
                 { propertyName: 'dealstage', operator: 'IN', values: effectiveStageIds },
-                // GA4 uses close date; LinkedIn exec flow uses last-modified so edited deals are reflected daily.
-                { propertyName: platformCtx === "linkedin" ? 'hs_lastmodifieddate' : 'closedate', operator: 'GTE', value: String(startMs) },
+                // Use the user-selected date field (defaults: GA4=closedate, LinkedIn=hs_lastmodifieddate)
+                { propertyName: dateFieldChoice, operator: 'GTE', value: String(startMs) },
               ],
             },
           ],
@@ -12953,6 +12956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'dealstage',
             'closedate',
             'hs_lastmodifieddate',
+            'createdate',
             ...(convValueProp ? [convValueProp] : []),
           ])),
           limit: 100,
@@ -13035,6 +13039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineEnabled: pipelineEnabled,
           pipelineStageId: pipelineEnabled && pipelineStageId ? pipelineStageId : null,
           pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
+          dateField: dateFieldChoice,
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         };
 

@@ -4079,7 +4079,16 @@ export default function GA4Metrics() {
                               </>
                             ) : (
                               <>
-                                <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
+                                <div className="flex items-center justify-between">
+                                  <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
+                                  <button
+                                    onClick={() => { setEditingRevenueSource(null); setShowRevenueDialog(true); }}
+                                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
+                                    title="Add revenue source"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                                 <p className="text-2xl font-bold text-foreground mt-1">
                                   {formatMoney(Number(financialRevenue || 0))}
                                 </p>

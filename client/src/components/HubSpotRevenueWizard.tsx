@@ -934,25 +934,24 @@ export function HubSpotRevenueWizard(props: {
                   Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Date field</Label>
-                  <Select value={dateField} onValueChange={setDateField}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[10000]">
-                      <SelectItem value="closedate">Close Date — when the deal was won</SelectItem>
-                      <SelectItem value="hs_lastmodifieddate">Last Modified Date — when the deal was last updated</SelectItem>
-                      <SelectItem value="createdate">Created Date — when the deal was first entered</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="text-xs text-muted-foreground">
-                    Controls which date revenue is reported under. Close Date is recommended for financial reporting.
-                  </div>
-                </div>
-
                 {showAdvanced && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-3">
+                    <div className="space-y-2">
+                      <Label>Date field</Label>
+                      <Select value={dateField} onValueChange={setDateField}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[10000]">
+                          <SelectItem value="closedate">Close Date — when the deal was won</SelectItem>
+                          <SelectItem value="hs_lastmodifieddate">Last Modified Date — when the deal was last updated</SelectItem>
+                          <SelectItem value="createdate">Created Date — when the deal was first entered</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="text-xs text-muted-foreground">
+                        Controls which date revenue is reported under. Default: Close Date.
+                      </div>
+                    </div>
                     <div className="space-y-2">
                       <Label>Revenue classification</Label>
                       <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>

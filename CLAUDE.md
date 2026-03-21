@@ -259,7 +259,7 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 5 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with sources used — shows "GA4 native revenue" or "Imported" for revenue, spend source labels for spend), Trends (daily/7d/30d/monthly chart + tables — see below), Data Summary (always-visible campaign stats), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
 
-**Trends section** — 4 modes (Daily / 7d / 30d / Monthly), metric selector (Sessions, Users, Conversions, Revenue, Page Views, Engagement Rate). All data from `ga4DailyRows` (persisted daily facts via `ga4-daily` endpoint, 90-day lookback).
+**Trends section** — 4 modes (Daily / 7d / 30d / Monthly), metric selector (Sessions, Users, Conversions, Revenue, Page Views, Engagement Rate), optional date range picker (From/To inputs with Clear button). All data from `ga4DailyRows` (persisted daily facts via `ga4-daily` endpoint, 90-day lookback). Date range filter (`trendDateFrom`/`trendDateTo` state) applies to `sorted` array before chart/table logic — when set, only rows within the selected range are included.
 
 | Mode | Chart | Table |
 |------|-------|-------|

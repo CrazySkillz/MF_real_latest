@@ -189,6 +189,8 @@ export default function GA4Metrics() {
   const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d" | "monthly">("daily");
   const [insightsTrendMetric, setInsightsTrendMetric] = useState<string>("sessions");
   const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
+  const [trendDateFrom, setTrendDateFrom] = useState<string>("");
+  const [trendDateTo, setTrendDateTo] = useState<string>("");
   const [ga4ReportForm, setGa4ReportForm] = useState({
     name: "",
     description: "",
@@ -5978,6 +5980,31 @@ export default function GA4Metrics() {
                               </Select>
                             </div>
                           </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-muted-foreground/70">From</span>
+                            <input
+                              type="date"
+                              value={trendDateFrom}
+                              onChange={(e) => setTrendDateFrom(e.target.value)}
+                              className="h-8 px-2 rounded border border-input bg-background text-foreground text-xs"
+                            />
+                            <span className="text-muted-foreground/70">To</span>
+                            <input
+                              type="date"
+                              value={trendDateTo}
+                              onChange={(e) => setTrendDateTo(e.target.value)}
+                              className="h-8 px-2 rounded border border-input bg-background text-foreground text-xs"
+                            />
+                            {(trendDateFrom || trendDateTo) && (
+                              <button
+                                onClick={() => { setTrendDateFrom(""); setTrendDateTo(""); }}
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                                title="Clear date range"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -5992,7 +6019,10 @@ export default function GA4Metrics() {
                             );
                           }
 
-                          const sorted = [...dailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+                          let sorted = [...dailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+                          // Apply optional date range filter
+                          if (trendDateFrom) sorted = sorted.filter((r: any) => String(r.date) >= trendDateFrom);
+                          if (trendDateTo) sorted = sorted.filter((r: any) => String(r.date) <= trendDateTo);
                           const metric = insightsTrendMetric;
                           const isRate = metric === "engagementRate";
                           const isMoney = metric === "revenue";

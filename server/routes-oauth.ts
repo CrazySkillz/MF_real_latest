@@ -11778,6 +11778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           days: zNumberLike.optional(),
           revenueClassification: z.string().trim().optional(),
           platformContext: zPlatformContext.optional(),
+          dateField: z.enum(["CloseDate", "CreatedDate", "LastModifiedDate"]).optional(),
           salesforceCurrencyOverride: z.string().trim().optional(),
           pipelineEnabled: z.boolean().optional(),
           pipelineStageName: z.string().trim().optional().nullable(),
@@ -11805,6 +11806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineStageName = String(body.data.pipelineStageName || "").trim();
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
+      const dateFieldChoice = body.data.dateField || "CloseDate";
 
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
@@ -11841,10 +11843,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // We'll try with CurrencyIsoCode first, then fall back without it if Salesforce reports INVALID_FIELD.
       const buildSoql = (includeCurrency: boolean) =>
         // Salesforce does not allow aliasing non-aggregate expressions in SOQL.
-        `SELECT Id, CloseDate, ${revenue}${effectiveValueSource === 'conversion_value' ? `, ${convValueField}` : ''}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
+        `SELECT Id, ${dateFieldChoice}, ${revenue}${effectiveValueSource === 'conversion_value' ? `, ${convValueField}` : ''}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
         `FROM Opportunity ` +
         // Use IsWon instead of StageName. Stage labels vary per org.
-        `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
+        `WHERE IsWon = true AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
         `LIMIT 2000`;
 
       const fetchOppRecords = async (includeCurrency: boolean): Promise<{ records: any[]; includeCurrency: boolean }> => {
@@ -11966,7 +11968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const rRaw = readField(rec, revenue);
         const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
         if (Number.isFinite(r)) totalRevenue += r;
-        const closeDate = rec?.CloseDate ? String(rec.CloseDate).slice(0, 10) : '';
+        const closeDate = rec?.[dateFieldChoice] ? String(rec[dateFieldChoice]).slice(0, 10) : '';
         if (closeDate && Number.isFinite(r)) {
           revenueByDate.set(closeDate, (revenueByDate.get(closeDate) || 0) + r);
 
@@ -12061,6 +12063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             conversionValueField: convValueField,
             valueSource: 'conversion_value',
             days: rangeDays,
+            dateField: dateFieldChoice,
             currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
             revenueClassification: rc,
             lastTotalRevenue: Number(totalRevenue.toFixed(2)),

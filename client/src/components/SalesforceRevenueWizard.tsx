@@ -107,6 +107,10 @@ export function SalesforceRevenueWizard(props: {
   );
   // Fixed lookback to match HubSpot (no UI); new campaigns have limited records.
   const [days, setDays] = useState<number>(3650);
+  // Which Salesforce date field to use for revenue dating
+  const [dateField, setDateField] = useState<string>(
+    (initialMappingConfig as any)?.dateField || "CloseDate"
+  );
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
@@ -226,6 +230,7 @@ export function SalesforceRevenueWizard(props: {
     setSelectedValues(nextSelectedValues);
     setUniqueValues([]);
     setDays(nextDays); // persisted value when editing; no setter exposed in UI
+    if ((cfg as any).dateField) setDateField(String((cfg as any).dateField));
     setLastSaveResult(null);
   }, [campaignId, mode, initialMappingConfig]);
 
@@ -609,6 +614,7 @@ export function SalesforceRevenueWizard(props: {
       const resp = await fetch(`/api/campaigns/${campaignId}/salesforce/save-mappings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           campaignField,
           selectedValues,
@@ -617,6 +623,7 @@ export function SalesforceRevenueWizard(props: {
           valueSource: isLinkedIn ? valueSource : "revenue",
           revenueClassification,
           days,
+          dateField,
           pipelineEnabled: isLinkedIn ? pipelineEnabled : false,
           pipelineStageName: isLinkedIn && pipelineEnabled ? (pipelineStageName || null) : null,
           pipelineStageLabel: isLinkedIn && pipelineEnabled ? (pipelineStageLabel || null) : null,
@@ -1211,6 +1218,23 @@ export function SalesforceRevenueWizard(props: {
 
               <div className="text-xs text-muted-foreground">
                 Currency default: one currency per campaign. If mixed currencies are detected, you’ll be asked to filter to one.
+              </div>
+
+              <div className="space-y-2 border-t pt-3">
+                <Label className="text-muted-foreground">Date field <span className="text-xs font-normal">(advanced)</span></Label>
+                <Select value={dateField} onValueChange={setDateField}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10000]">
+                    <SelectItem value="CloseDate">Close Date — when the deal was won</SelectItem>
+                    <SelectItem value="CreatedDate">Created Date — when the opportunity was created</SelectItem>
+                    <SelectItem value="LastModifiedDate">Last Modified Date — when the record was last updated</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-muted-foreground">
+                  Controls which date revenue is reported under. Default: Close Date.
+                </div>
               </div>
             </div>
           )}

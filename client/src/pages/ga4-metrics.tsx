@@ -4045,10 +4045,16 @@ export default function GA4Metrics() {
                                 </p>
                                 {revenueDisplaySources.length > 0 && (
                                 <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
-                                  {revenueDisplaySources.map((s: any) => (
+                                  {revenueDisplaySources.map((s: any) => {
+                                    const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
+                                    const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
+                                    const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
+                                      ? ` · ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
+                                      : "";
+                                    return (
                                     <div key={s.sourceId} className="flex items-center justify-between text-xs group/rev">
-                                      <span className="text-muted-foreground/70 min-w-[60px] truncate">
-                                        {s.displayName || revenueSourceTypeLabel(s.sourceType)}
+                                      <span className="text-muted-foreground/70 min-w-[60px] truncate" title={dateLabel ? `Revenue dated by: ${dateLabel.slice(3)}` : ""}>
+                                        {s.displayName || revenueSourceTypeLabel(s.sourceType)}{dateLabel}
                                       </span>
                                       <div className="flex items-center gap-1">
                                         <span className="text-foreground/80/60 font-medium tabular-nums">
@@ -4073,7 +4079,8 @@ export default function GA4Metrics() {
                                         </button>
                                       </div>
                                     </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                                 )}
                               </>

@@ -1517,11 +1517,35 @@ export default function Campaigns() {
                     </DialogTitle>
                     <DialogDescription>
                       {showConnectorsStep
-                        ? "Select social media platforms and enter your credentials to connect your data sources."
+                        ? "Connect your marketing platforms to start importing data."
                         : "Set up a new marketing campaign with your preferred settings."
                       }
                     </DialogDescription>
                   </DialogHeader>
+
+                  {/* Wizard progress indicator */}
+                  <div className="flex items-center gap-2 pb-2">
+                    {[
+                      { step: 1, label: "Campaign Details" },
+                      { step: 2, label: "Connect Platforms" },
+                    ].map(({ step, label }, i) => {
+                      const isActive = step === 1 ? !showConnectorsStep : showConnectorsStep;
+                      const isComplete = step === 1 && showConnectorsStep;
+                      return (
+                        <div key={step} className="flex items-center gap-2 flex-1">
+                          <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-medium shrink-0 ${
+                            isComplete ? "bg-green-500 text-white" :
+                            isActive ? "bg-primary text-primary-foreground" :
+                            "bg-muted text-muted-foreground"
+                          }`}>
+                            {isComplete ? "✓" : step}
+                          </div>
+                          <span className={`text-xs truncate ${isActive ? "font-medium text-foreground" : "text-muted-foreground"}`}>{label}</span>
+                          {i < 1 && <div className={`flex-1 h-px ${isComplete ? "bg-green-500" : "bg-border"}`} />}
+                        </div>
+                      );
+                    })}
+                  </div>
 
                   {!showConnectorsStep ? (
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">

@@ -106,7 +106,7 @@ The campaign detail page has these main sections/tabs:
 
 | Platform | Connection Table | Daily Metrics Table | Key Fields |
 |----------|-----------------|-------------------|------------|
-| GA4 | `ga4Connections` | `ga4DailyMetrics` | `propertyId`, `ga4CampaignFilter`, OAuth/service account |
+| GA4 | `ga4Connections` | `ga4DailyMetrics` | `propertyId`, `ga4CampaignFilter`, `lookbackDays` (30/60/90, default 90), OAuth/service account |
 | LinkedIn | `linkedinConnections` | `linkedinDailyMetrics` | `adAccountId`, `conversionValue`, `campaignUtmMap` |
 | Meta | `metaConnections` | `metaDailyMetrics` | `adAccountId`, `selectedCampaignIds`, `campaignUtmMap` |
 | Google Ads | `googleAdsConnections` | `googleAdsDailyMetrics` | `customerId`, `developerToken`, `campaignUtmMap` |
@@ -259,7 +259,7 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 5 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with sources used — shows "GA4 native revenue" or "Imported" for revenue, spend source labels for spend), Trends (daily/7d/30d/monthly chart + tables — see below), Data Summary (always-visible campaign stats), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
 
-**Trends section** — 4 modes (Daily / 7d / 30d / Monthly), metric selector (Sessions, Users, Conversions, Revenue, Page Views, Engagement Rate), optional date range picker (From/To inputs with Clear button). All data from `ga4DailyRows` (persisted daily facts via `ga4-daily` endpoint, 90-day lookback). Date range filter (`trendDateFrom`/`trendDateTo` state) applies to `sorted` array before chart/table logic — when set, only rows within the selected range are included.
+**Trends section** — 4 modes (Daily / 7d / 30d / Monthly), metric selector (Sessions, Users, Conversions, Revenue, Page Views, Engagement Rate), optional date range picker (From/To inputs with Clear button). All data from `ga4DailyRows` (persisted daily facts via `ga4-daily` endpoint, lookback window set during GA4 connection — 30/60/90 days, default 90). Date range filter (`trendDateFrom`/`trendDateTo` state) applies to `sorted` array before chart/table logic — when set, only rows within the selected range are included.
 
 | Mode | Chart | Table |
 |------|-------|-------|

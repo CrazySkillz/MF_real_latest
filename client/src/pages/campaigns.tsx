@@ -1030,7 +1030,6 @@ export default function Campaigns() {
   const [, setLocation] = useLocation();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showConnectorsStep, setShowConnectorsStep] = useState(false);
-  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [campaignData, setCampaignData] = useState<CampaignFormData | null>(null);
   const [draftCampaignId, setDraftCampaignId] = useState<string | null>(null);
   const [draftFinalized, setDraftFinalized] = useState(false);
@@ -1353,7 +1352,6 @@ export default function Campaigns() {
 
   const handleBackToForm = () => {
     setShowConnectorsStep(false);
-    setWizardStep(2);
     setLinkedInImportComplete(false);
   };
 
@@ -1471,7 +1469,6 @@ export default function Campaigns() {
 
   const resetCreateModalState = () => {
     setShowConnectorsStep(false);
-    setWizardStep(1);
     setLinkedInImportComplete(false);
     setConnectedPlatformsInDialog([]);
     setCampaignData(null);
@@ -1516,123 +1513,63 @@ export default function Campaigns() {
                 <DialogContent className={`${showConnectorsStep ? "sm:max-w-4xl" : "sm:max-w-md"} max-h-[90vh] overflow-y-auto pr-12`}>
                   <DialogHeader className="sticky top-0 bg-background z-10 pb-4 pr-8">
                     <DialogTitle>
-                      {showConnectorsStep ? "Connect Data Sources" : wizardStep === 1 ? "Create New Campaign" : wizardStep === 2 ? "Budget & Schedule" : "Create New Campaign"}
+                      {showConnectorsStep ? "Connect Data Sources" : "Create New Campaign"}
                     </DialogTitle>
                     <DialogDescription>
                       {showConnectorsStep
                         ? "Select social media platforms and enter your credentials to connect your data sources."
-                        : wizardStep === 1
-                          ? "Enter your campaign details to get started."
-                          : "Set your budget and campaign dates (all optional — you can add these later)."
+                        : "Set up a new marketing campaign with your preferred settings."
                       }
                     </DialogDescription>
                   </DialogHeader>
 
                   {!showConnectorsStep ? (
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                      {/* Wizard progress indicator */}
-                      <div className="flex items-center gap-2 mb-2">
-                        {[
-                          { step: 1, label: "Details" },
-                          { step: 2, label: "Budget & Dates" },
-                          { step: 3, label: "Connect" },
-                        ].map(({ step, label }, i) => (
-                          <div key={step} className="flex items-center gap-2 flex-1">
-                            <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-medium shrink-0 ${
-                              wizardStep === step ? "bg-primary text-primary-foreground" :
-                              wizardStep > step ? "bg-green-500 text-white" :
-                              "bg-muted text-muted-foreground"
-                            }`}>
-                              {wizardStep > step ? "✓" : step}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="name">Campaign Name *</Label>
+                          <div className="group relative">
+                            <Info className="w-4 h-4 text-muted-foreground/70 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-2 bg-card text-white text-xs rounded shadow-lg">
+                              <p className="font-medium mb-1">Campaign Name Tip</p>
+                              <p>Using the same campaign name across all data sources (Google Sheets, LinkedIn, etc.) improves automatic conversion value calculation accuracy.</p>
                             </div>
-                            <span className={`text-xs truncate ${wizardStep === step ? "font-medium text-foreground" : "text-muted-foreground"}`}>{label}</span>
-                            {i < 2 && <div className={`flex-1 h-px ${wizardStep > step ? "bg-green-500" : "bg-border"}`} />}
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Step 1: Campaign Details */}
-                      {wizardStep === 1 && (
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Label htmlFor="name">Campaign Name *</Label>
-                              <div className="group relative">
-                                <Info className="w-4 h-4 text-muted-foreground/70 cursor-help" />
-                                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-2 bg-slate-900 text-white text-xs rounded shadow-lg">
-                                  <p className="font-medium mb-1">Campaign Name Tip</p>
-                                  <p>Using the same campaign name across all data sources (Google Sheets, LinkedIn, etc.) improves automatic conversion value calculation accuracy.</p>
-                                </div>
-                              </div>
-                            </div>
-                            <Input
-                              id="name"
-                              placeholder="Enter campaign name"
-                              {...form.register("name")}
-                            />
-                            {form.formState.errors.name && (
-                              <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
-                            )}
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="clientWebsite">Client's Website (optional)</Label>
-                            <Input
-                              id="clientWebsite"
-                              type="url"
-                              placeholder="https://example.com"
-                              {...form.register("clientWebsite")}
-                            />
-                            {form.formState.errors.clientWebsite && (
-                              <p className="text-sm text-destructive">{form.formState.errors.clientWebsite.message}</p>
-                            )}
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="label">Label (optional)</Label>
-                            <Input
-                              id="label"
-                              placeholder="Add a label or tag"
-                              {...form.register("label")}
-                            />
-                            {form.formState.errors.label && (
-                              <p className="text-sm text-destructive">{form.formState.errors.label.message}</p>
-                            )}
-                          </div>
-
-                          <div className="flex items-center space-x-3 pt-4">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="flex-1"
-                              onClick={() => {
-                                setIsCreateModalOpen(false);
-                                setWizardStep(1);
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              type="button"
-                              className="flex-1"
-                              onClick={() => {
-                                const name = form.getValues("name");
-                                if (!name || !name.trim()) {
-                                  form.setError("name", { message: "Campaign name is required" });
-                                  return;
-                                }
-                                setWizardStep(2);
-                              }}
-                            >
-                              Next
-                            </Button>
                           </div>
                         </div>
-                      )}
+                        <Input
+                          id="name"
+                          placeholder="Enter campaign name"
+                          {...form.register("name")}
+                        />
+                        {form.formState.errors.name && (
+                          <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+                        )}
+                      </div>
 
-                      {/* Step 2: Budget & Dates */}
-                      {wizardStep === 2 && (
-                        <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="clientWebsite">Client's Website (optional)</Label>
+                        <Input
+                          id="clientWebsite"
+                          type="url"
+                          placeholder="https://example.com"
+                          {...form.register("clientWebsite")}
+                        />
+                        {form.formState.errors.clientWebsite && (
+                          <p className="text-sm text-destructive">{form.formState.errors.clientWebsite.message}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="label">Label (optional)</Label>
+                        <Input
+                          id="label"
+                          placeholder="Add a label or tag"
+                          {...form.register("label")}
+                        />
+                        {form.formState.errors.label && (
+                          <p className="text-sm text-destructive">{form.formState.errors.label.message}</p>
+                        )}
+                      </div>
 
                       <div className="grid grid-cols-3 gap-3">
                         <div className="col-span-2 space-y-2">
@@ -1741,24 +1678,28 @@ export default function Campaigns() {
                         </div>
                       </div>
 
-                          <div className="flex items-center space-x-3 pt-4">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="flex-1"
-                              onClick={() => setWizardStep(1)}
-                            >
-                              Back
-                            </Button>
-                            <Button
-                              type="submit"
-                              className="flex-1"
-                            >
-                              Next — Connect Platforms
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+                      <div className="flex items-center space-x-3 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            setIsCreateModalOpen(false);
+                            setConnectedPlatformsInDialog([]);
+                            setShowConnectorsStep(false);
+                            setCampaignData(null);
+                            setLinkedInImportComplete(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="flex-1"
+                        >
+                          Next
+                        </Button>
+                      </div>
                     </form>
                   ) : (
                     <div className="space-y-4">

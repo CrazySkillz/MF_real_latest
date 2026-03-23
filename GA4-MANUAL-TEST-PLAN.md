@@ -353,9 +353,10 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 - [ ] **Sum = Total Revenue card**
 - [ ] Delete one → total decreases
 
-### Step 8: Revenue Classification
-- [ ] HubSpot default: "offsite_not_in_ga4" → added on top of GA4 native (no double-count)
-- [ ] If set to "onsite_in_ga4" → NOT added on top (prevents double-counting)
+### Step 8: Double-Count Prevention Warning
+- [ ] HubSpot wizard Revenue step: amber warning banner visible: "Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions"
+- [ ] Salesforce wizard Revenue step: same amber warning visible
+- [ ] No "Revenue classification" dropdown (removed — hardcoded to offsite)
 
 ---
 

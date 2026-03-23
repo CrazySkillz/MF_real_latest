@@ -107,7 +107,7 @@ export function HubSpotRevenueWizard(props: {
       .catch(() => setLinkedinCampaigns([]));
   }, [isLinkedIn, campaignId]);
   // Advanced options intentionally hidden for exec flow simplicity.
-  const [showAdvanced] = useState(false);
+  // Revenue classification hardcoded to offsite — users should not add HubSpot revenue that's already in GA4
 
   // Edit mode: prefill from the saved mappingConfig and always start at Source (LinkedIn) for consistency.
   useEffect(() => {
@@ -934,41 +934,28 @@ export function HubSpotRevenueWizard(props: {
                   Currency default: one currency per campaign. If mixed currencies are detected, we’ll ask you to filter in HubSpot.
                 </div>
 
-                {showAdvanced && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded p-3">
-                    <div className="space-y-2">
-                      <Label>Date field</Label>
-                      <Select value={dateField} onValueChange={setDateField}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-[10000]">
-                          <SelectItem value="closedate">Close Date — when the deal was won</SelectItem>
-                          <SelectItem value="hs_lastmodifieddate">Last Modified Date — when the deal was last updated</SelectItem>
-                          <SelectItem value="createdate">Created Date — when the deal was first entered</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="text-xs text-muted-foreground">
-                        Controls which date revenue is reported under. Default: Close Date.
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Revenue classification</Label>
-                      <Select value={revenueClassification} onValueChange={(v: any) => setRevenueClassification(v)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-[10000]">
-                          <SelectItem value="offsite_not_in_ga4">Offsite (NOT tracked in GA4)</SelectItem>
-                          <SelectItem value="onsite_in_ga4">Onsite (also tracked in GA4)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="text-xs text-muted-foreground">
-                        Default is Offsite. Change only if this HubSpot revenue is already included in GA4 to avoid double counting in campaign totals.
-                      </div>
-                    </div>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800 p-3">
+                  <p className="text-xs text-amber-800 dark:text-amber-200">
+                    Only add HubSpot revenue if these deals are <strong>NOT</strong> already tracked as GA4 ecommerce transactions. Adding the same revenue from both sources will double-count your total.
+                  </p>
+                </div>
+
+                <div className="space-y-2 border-t pt-3">
+                  <Label className="text-muted-foreground">Date field</Label>
+                  <Select value={dateField} onValueChange={setDateField}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[10000]">
+                      <SelectItem value="closedate">Close Date — when the deal was won</SelectItem>
+                      <SelectItem value="hs_lastmodifieddate">Last Modified Date — when the deal was last updated</SelectItem>
+                      <SelectItem value="createdate">Created Date — when the deal was first entered</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-muted-foreground">
+                    Controls which date revenue is reported under. Default: Close Date.
                   </div>
-                )}
+                </div>
               </div>
             )}
 

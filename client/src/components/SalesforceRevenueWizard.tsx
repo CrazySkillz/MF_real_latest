@@ -100,11 +100,8 @@ export function SalesforceRevenueWizard(props: {
   const [pipelineStageLabel, setPipelineStageLabel] = useState<string>("");
   const [stages, setStages] = useState<Array<{ value: string; label: string }>>([]);
   const [stagesLoading, setStagesLoading] = useState(false);
-  // Internal flag used to avoid double-counting GA4 revenue in campaign totals.
-  // We no longer expose this choice in the Salesforce wizard UI; default based on context.
-  const [revenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">(
-    platformContext === "ga4" ? "onsite_in_ga4" : "offsite_not_in_ga4"
-  );
+  // Revenue classification hardcoded to offsite — users should not add Salesforce revenue that's already in GA4
+  const [revenueClassification] = useState<"offsite_not_in_ga4">("offsite_not_in_ga4");
   // Fixed lookback to match HubSpot (no UI); new campaigns have limited records.
   const [days, setDays] = useState<number>(3650);
   // Which Salesforce date field to use for revenue dating
@@ -1218,6 +1215,12 @@ export function SalesforceRevenueWizard(props: {
 
               <div className="text-xs text-muted-foreground">
                 Currency default: one currency per campaign. If mixed currencies are detected, you’ll be asked to filter to one.
+              </div>
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800 p-3">
+                <p className="text-xs text-amber-800 dark:text-amber-200">
+                  Only add Salesforce revenue if these opportunities are <strong>NOT</strong> already tracked as GA4 ecommerce transactions. Adding the same revenue from both sources will double-count your total.
+                </p>
               </div>
 
               <div className="space-y-2 border-t pt-3">

@@ -38,6 +38,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [properties, setProperties] = useState<GA4Property[]>([]);
   const [selectedProperty, setSelectedProperty] = useState('');
 
+  // Lookback window — how many days of historical data to import
+  const [lookbackDays, setLookbackDays] = useState<number>(90);
+
   // Campaign filter state (kept from original)
   const [ga4CampaignFilter, setGa4CampaignFilter] = useState<string[]>([]);
   const [isSavingFilter, setIsSavingFilter] = useState(false);
@@ -309,7 +312,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const response = await fetch('/api/ga4/select-property', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaignId, propertyId: selectedProperty }),
+        credentials: 'include',
+        body: JSON.stringify({ campaignId, propertyId: selectedProperty, lookbackDays }),
       });
       const data = await response.json();
       console.log('[GA4Flow] select-property response:', JSON.stringify(data));
@@ -516,6 +520,22 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   ))}
                 </SelectContent>
               </Select>
+              <div className="space-y-1">
+                <Label className="text-sm">Import historical data</Label>
+                <div className="flex gap-2">
+                  {[30, 60, 90].map((days) => (
+                    <Button
+                      key={days}
+                      variant={lookbackDays === days ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setLookbackDays(days)}
+                    >
+                      {days} days
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">How far back to fetch GA4 data. Default: 90 days.</p>
+              </div>
               <div className="flex gap-2">
                 <Button
                   onClick={handlePropertySelection}

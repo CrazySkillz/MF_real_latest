@@ -9500,9 +9500,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Select GA4 property for campaign
   app.post("/api/ga4/select-property", async (req, res) => {
     try {
-      const { campaignId, propertyId } = req.body;
+      const { campaignId, propertyId, lookbackDays: rawLookback } = req.body;
+      const lookbackDays = [30, 60, 90].includes(Number(rawLookback)) ? Number(rawLookback) : 90;
 
-      console.log('[GA4 Select Property] Request:', { campaignId, propertyId });
+      console.log('[GA4 Select Property] Request:', { campaignId, propertyId, lookbackDays });
 
       if (!campaignId || !propertyId) {
         return res.status(400).json({ error: 'Campaign ID and Property ID are required' });
@@ -9522,8 +9523,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update the existing DB connection with the selected property — use connection.id, NOT campaignId
         await storage.updateGA4Connection(dbConnection.id, {
           propertyId,
-          propertyName
-        });
+          propertyName,
+          lookbackDays,
+        } as any);
         console.log('[GA4 Select Property] Updated DB connection:', { connectionId: dbConnection.id, propertyId, propertyName });
       } else {
         // No existing connection — create one (fallback if OAuth callback didn't persist)
@@ -9538,9 +9540,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           method: 'access_token',
           clientId: process.env.GOOGLE_CLIENT_ID || '',
           clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+          lookbackDays,
           expiresAt: oauthData?.expiresAt ? new Date(oauthData.expiresAt) : new Date(Date.now() + 3600000),
-        });
-        console.log('[GA4 Select Property] Created new DB connection:', { campaignId, propertyId, propertyName });
+        } as any);
+        console.log('[GA4 Select Property] Created new DB connection:', { campaignId, propertyId, propertyName, lookbackDays });
       }
 
       // Update in-memory OAuth data

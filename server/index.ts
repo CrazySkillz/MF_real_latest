@@ -747,6 +747,11 @@ process.on('uncaughtException', (error: Error) => {
             UPDATE integrations SET connected = false WHERE platform IN ('facebook', 'linkedin') AND connected = true;
           `).catch(() => null);
 
+          // Migration 17: Add lookback_days column to ga4_connections
+          await db.execute(sql`
+            ALTER TABLE ga4_connections ADD COLUMN IF NOT EXISTS lookback_days INTEGER NOT NULL DEFAULT 90;
+          `).catch(() => null);
+
           log('✅ Database migrations completed successfully');
         } catch (error) {
           console.error('⚠️  Migration warning (may already exist):', error.message);

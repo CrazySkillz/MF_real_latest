@@ -90,6 +90,7 @@ export const ga4Connections = pgTable("ga4_connections", {
   clientSecret: text("client_secret"), // OAuth client secret for automatic refresh  
   // Encrypted tokens/secrets at rest (preferred). Plaintext columns above are legacy/backward compatible.
   encryptedTokens: jsonb("encrypted_tokens"),
+  lookbackDays: integer("lookback_days").notNull().default(90), // How many days of historical data to import (30, 60, or 90)
   expiresAt: timestamp("expires_at"), // Token expiration time
   connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),

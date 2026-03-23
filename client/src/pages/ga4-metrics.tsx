@@ -153,7 +153,7 @@ export default function GA4Metrics() {
   // Need at least 60 days to compute "last 30 vs prior 30" and 14 days for WoW anomaly detection.
   // Use 90 to be safe (and to keep mock simulation consistent with existing mock logic).
   // dateRange MUST match the daily lookback so Summary totals equal the sum of daily rows.
-  const GA4_DAILY_LOOKBACK_DAYS = 90;
+  // GA4_DAILY_LOOKBACK_DAYS is computed after allGA4Connections query loads (see below)
   const dateRange = "90days";
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
@@ -1313,6 +1313,13 @@ export default function GA4Metrics() {
     Array.isArray((allGA4Connections as any)?.connections) ? (allGA4Connections as any).connections : [];
   const availableGA4Properties: Array<{ propertyId: string; displayName?: string; propertyName?: string; isPrimary?: boolean }> =
     ga4PropsFromCheck.length > 0 ? ga4PropsFromCheck : ga4PropsFromAll;
+
+  // Read lookbackDays from the active GA4 connection (default 90 for backward compatibility)
+  const GA4_DAILY_LOOKBACK_DAYS = (() => {
+    const conns = ga4PropsFromAll.length > 0 ? ga4PropsFromAll : ga4PropsFromCheck;
+    const active = conns.find((c: any) => String(c.propertyId) === String(selectedGA4PropertyId)) || conns[0];
+    return Number((active as any)?.lookbackDays) || 90;
+  })();
 
   // Always scope GA4 metrics to a single selected property (default: primary).
   useEffect(() => {

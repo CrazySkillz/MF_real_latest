@@ -126,7 +126,7 @@ export default function Sidebar() {
                             ? location === "/dashboard"
                             : location.startsWith(item.path);
                           return (
-                            <Link key={item.path} href={item.path}>
+                            <Link key={item.path} href={item.path} onClick={() => setSelectedClientId(client.id)}>
                               <div
                                 className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm transition-all duration-200 ${
                                   isActive

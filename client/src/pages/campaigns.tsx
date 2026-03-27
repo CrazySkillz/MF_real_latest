@@ -1636,7 +1636,7 @@ export default function Campaigns() {
                     </DialogDescription>
                   </DialogHeader>
 
-                  <div className="overflow-y-auto flex-1 min-h-0">
+                  <div className="overflow-y-auto flex-1 min-h-0 scrollbar-hide">
                   {/* 5-step wizard progress indicator */}
                   <div className="flex items-center gap-1 pb-2">
                     {[

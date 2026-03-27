@@ -470,6 +470,25 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 | Attribution | `components/AttributionDashboard.tsx` | Attribution model visualization |
 | Campaign Chat | `components/CampaignChat.tsx` | AI chat for campaign analysis (OpenRouter) |
 | Trend Analysis | `pages/trend-analysis.tsx` | 5-tab executive analytics (Overview, Efficiency, Funnel, Platform, Market) |
+| Campaign Creation Wizard | `pages/campaigns.tsx` | 5-step Funnel.io-style wizard (see below) |
+
+### Campaign Creation Wizard (`campaigns.tsx`)
+
+5-step Funnel.io-style wizard (refactor in progress):
+
+| Step | Title | Content |
+|------|-------|---------|
+| **1** | Campaign Details | Existing form: name, website, label, budget, currency, start/end dates. Creates draft campaign on "Next". |
+| **2** | Select Platform | Clean tile grid of platforms (GA4, Sheets, LinkedIn, Meta, Google Ads, X). Click one → advance. "Skip — connect later" link → jump to Step 5. |
+| **3** | Authenticate | Per-platform OAuth component (IntegratedGA4Auth, SimpleGoogleSheetsAuth, LinkedInConnectionFlow, SimpleMetaAuth). On success → advance. |
+| **4** | Configure | Platform-specific setup: GA4 = property selector + campaign filter. LinkedIn = account selection. Sheets/Meta = auto-advance (no config). |
+| **5** | Confirm & Create | Summary of campaign details + connected platform. "Create Campaign" finalizes draft → active. "Add another platform" → back to Step 2. |
+
+**Key design**: One platform per wizard pass. Additional platforms connected later from Campaign Detail → Connected Platforms.
+
+**State**: `wizardStep` (1-5), `selectedWizardPlatform` (platform ID or null), `wizardPlatformConnected` (boolean). Draft campaign created at end of Step 1 (`draftCampaignId`). Finalized at Step 5 (`handleConnectorsComplete` patches draft → active).
+
+**Auth components reused**: `IntegratedGA4Auth`, `SimpleGoogleSheetsAuth`, `LinkedInConnectionFlow`, `SimpleMetaAuth` — rendered inline per step, not as modals.
 
 ---
 

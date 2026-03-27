@@ -7689,7 +7689,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/ga4-property", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const { propertyId } = req.body;
+      const { propertyId, lookbackDays: rawLookback } = req.body;
+      const lookbackDays = [30, 60, 90].includes(Number(rawLookback)) ? Number(rawLookback) : 90;
 
       if (!propertyId) {
         return res.status(400).json({ message: "Property ID is required" });
@@ -7722,6 +7723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateGA4Connection(existingConnection.id, {
           propertyId,
           propertyName,
+          lookbackDays,
           isPrimary: true,
           isActive: true
         });
@@ -7745,6 +7747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           refreshToken,
           method: 'access_token',
           propertyName,
+          lookbackDays,
           isPrimary: true,
           isActive: true,
           clientId: process.env.GOOGLE_CLIENT_ID || undefined,

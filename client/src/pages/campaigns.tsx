@@ -1050,6 +1050,7 @@ export default function Campaigns() {
   const [selectedGA4CampaignValues, setSelectedGA4CampaignValues] = useState<string[]>([]);
   const [isGA4CampaignLoading, setIsGA4CampaignLoading] = useState(false);
   const [ga4ConfigSubStep, setGa4ConfigSubStep] = useState<'property' | 'campaigns'>('property');
+  const [wizardLookbackDays, setWizardLookbackDays] = useState<number>(90);
   const { toast } = useToast();
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
@@ -1490,6 +1491,7 @@ export default function Campaigns() {
     setGA4CampaignValues([]);
     setSelectedGA4CampaignValues([]);
     setGa4ConfigSubStep('property');
+    setWizardLookbackDays(90);
     form.reset();
   };
 
@@ -1541,7 +1543,7 @@ export default function Campaigns() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ propertyId: selectedGA4Property })
+        body: JSON.stringify({ propertyId: selectedGA4Property, lookbackDays: wizardLookbackDays })
       });
       const data = await response.json();
       if (response.ok && data.success) {
@@ -1995,6 +1997,23 @@ export default function Campaigns() {
                                 ))}
                               </SelectContent>
                             </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Import historical data</Label>
+                            <div className="flex gap-2">
+                              {[30, 60, 90].map((days) => (
+                                <Button
+                                  key={days}
+                                  type="button"
+                                  variant={wizardLookbackDays === days ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setWizardLookbackDays(days)}
+                                >
+                                  {days} days
+                                </Button>
+                              ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">How far back to fetch GA4 data. Default: 90 days.</p>
                           </div>
                           <div className="flex gap-2 pt-2">
                             <Button type="button" variant="outline" className="flex-1" onClick={() => setWizardStep(3)}>

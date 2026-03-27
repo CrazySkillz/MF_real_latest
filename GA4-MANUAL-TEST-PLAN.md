@@ -45,32 +45,48 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 
 ## Journey 1: Create Campaign + Connect GA4
 
-### Step 1: Create a fresh campaign
+### Step 1: Create a fresh campaign + connect GA4
 - [ ] Open MimoSaaS in your browser
 - [ ] In the left sidebar, find your client name (e.g., "Tally" or your test client)
 - [ ] If no client exists: click the "+" button next to "Clients" header in sidebar → enter a client name → Save
 - [ ] Click the client name in sidebar → you're taken to the Dashboard
 - [ ] In sidebar, click "Campaigns" under your client (or navigate to `/campaigns`)
-- [ ] Click "Create Campaign" button
-- [ ] Enter campaign name: **"GA4 Test"**
-- [ ] Fill required fields → Save
-- [ ] You should now see the campaign in your campaigns list
+- [ ] Click **"New Campaign"** button
 
-### Step 2: Navigate to GA4 Metrics
+### Step 2: Wizard Step 1 — Campaign Details
+- [ ] Enter campaign name: **"GA4 Test"**
+- [ ] Leave other fields at defaults (or fill as desired)
+- [ ] Click **Next** → draft campaign created, advances to Step 2
+
+### Step 3: Wizard Step 2 — Select Platform
+- [ ] You see a 2-column tile grid of platforms
+- [ ] Click **"Google Analytics"** tile → advances to Step 3
+
+### Step 4: Wizard Step 3 — Authenticate
+- [ ] The IntegratedGA4Auth component appears
+- [ ] Complete the mock OAuth flow (click Connect)
+- [ ] On success → automatically advances to Step 4
+
+### Step 5: Wizard Step 4 — Configure GA4
+- [ ] **Select GA4 property**: choose the mock property from dropdown
+- [ ] **Select lookback window**: choose **90 days** (default) — three toggle buttons: 30 / 60 / 90 days
+- [ ] Click **Connect Property**
+- [ ] Property connects → campaign filter selection appears
+- [ ] **Select mock campaigns**: check both **yesop_brand_search** AND **yesop_prospecting**
+- [ ] Click **Save & Continue** → advances to Step 5
+
+### Step 6: Wizard Step 5 — Confirm & Create
+- [ ] Review summary: campaign name "GA4 Test", Google Analytics connected
+- [ ] Click **Create Campaign**
+- [ ] Redirected to campaigns list, "GA4 Test" appears
+
+### Step 7: Navigate to GA4 Metrics
 - [ ] Click on "GA4 Test" campaign → opens Campaign Detail page
 - [ ] In the Campaign Detail page, find "Google Analytics" in the Connected Platforms section
 - [ ] Click "View Detailed Analytics" (or the GA4 link in sidebar under the campaign)
-- [ ] **You should see**: "Connect Google Analytics" screen — no tabs visible
+- [ ] **6 tabs now visible**: Overview, KPIs, Benchmarks, Reports, Campaigns, Insights
 
-### Step 3: Connect mock GA4 property
-- [ ] Click "Connect Google Analytics" button
-- [ ] In the connection dialog, enter/select a mock property (yesop or any property ID)
-- [ ] **Select lookback window**: choose **90 days** (default) — this controls how far back to import data
-- [ ] **Select mock campaigns**: check both **yesop_brand_search** AND **yesop_prospecting**
-- [ ] Click Connect/Save
-- [ ] Page refreshes → **6 tabs now visible**: Overview, KPIs, Benchmarks, Reports, Campaigns, Insights
-
-### Step 4: Verify Overview tab — initial simulation data
+### Step 8: Verify Overview tab — initial simulation data
 - [ ] Click the **Overview** tab (should be selected by default)
 - [ ] **Sessions ≈ 65,600** (from simulation, not Run Refresh)
 - [ ] **Users ≈ 50,880**
@@ -82,7 +98,7 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 - [ ] **CPA = N/A** (cannot calculate without spend)
 - [ ] **ROI = N/A** (cannot calculate without spend)
 
-### Step 5: Verify KPI template gates
+### Step 9: Verify KPI template gates
 - [ ] Click the **KPIs** tab
 - [ ] Click the **Create KPI** button (orange button)
 - [ ] Look at the template tiles:
@@ -91,13 +107,13 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 - [ ] Try clicking a disabled template → nothing happens
 - [ ] Close the dialog (click Cancel or X)
 
-### Step 6: Verify Benchmark template gates
+### Step 10: Verify Benchmark template gates
 - [ ] Click the **Benchmarks** tab
 - [ ] Click **Create Benchmark** button
 - [ ] Same pattern: Revenue ENABLED, ROAS/ROI/CPA DISABLED
 - [ ] Close the dialog
 
-### Step 7: Verify Insights tab
+### Step 11: Verify Insights tab
 - [ ] Click the **Insights** tab
 - [ ] Scroll to **Executive Financials** section: Revenue ≈ $240,352, Spend = $0
 - [ ] Scroll to **Data Summary** section: Sessions/Conversions/CR/Revenue cards populated
@@ -106,7 +122,7 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
   - Informational insights with blue **"Info"** badge (not "Low")
   - **"Spend missing"** integrity insight should appear (revenue exists but no spend)
 
-### Step 8: Verify Ad Comparison tab
+### Step 12: Verify Ad Comparison tab
 - [ ] Click the **Campaigns** tab (this is the Ad Comparison view)
 - [ ] Campaign breakdown table visible with data from simulation
 

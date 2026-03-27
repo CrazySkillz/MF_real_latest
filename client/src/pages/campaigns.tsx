@@ -1618,8 +1618,8 @@ export default function Campaigns() {
               </Button>
 
               <Dialog open={isCreateModalOpen} onOpenChange={handleCreateModalChange}>
-                <DialogContent className={`${wizardStep === 1 ? "sm:max-w-md" : "sm:max-w-2xl"} max-h-[90vh] overflow-y-auto`}>
-                  <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
+                <DialogContent className={`${wizardStep === 1 ? "sm:max-w-md" : "sm:max-w-2xl"} max-h-[90vh] overflow-hidden flex flex-col`}>
+                  <DialogHeader className="pb-4 shrink-0">
                     <DialogTitle>
                       {wizardStep === 1 ? "Create New Campaign" :
                        wizardStep === 2 ? "Select Platform" :
@@ -1636,6 +1636,7 @@ export default function Campaigns() {
                     </DialogDescription>
                   </DialogHeader>
 
+                  <div className="overflow-y-auto flex-1 min-h-0">
                   {/* 5-step wizard progress indicator */}
                   <div className="flex items-center gap-1 pb-2">
                     {[
@@ -2131,6 +2132,7 @@ export default function Campaigns() {
                       </div>
                     </div>
                   ) : null}
+                  </div>
                 </DialogContent>
               </Dialog>
             </div>

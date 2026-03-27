@@ -63,12 +63,13 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 - [ ] Click **"Google Analytics"** tile → advances to Step 3
 
 ### Step 4: Wizard Step 3 — Authenticate
-- [ ] The IntegratedGA4Auth component appears
-- [ ] Complete the mock OAuth flow (click Connect)
-- [ ] On success → automatically advances to Step 4
+- [ ] The IntegratedGA4Auth component appears (for real Google OAuth)
+- [ ] Click **"Use test data instead"** link at the bottom
+- [ ] Test mode UI appears with a **"Connect Test Property"** button
+- [ ] Click **Connect Test Property** → automatically advances to Step 4 with mock "Yesop" property pre-selected
 
 ### Step 5: Wizard Step 4 — Configure GA4
-- [ ] **Select GA4 property**: choose the mock property from dropdown
+- [ ] **GA4 property**: "Yesop Mock Property" is pre-selected from test mode
 - [ ] **Select lookback window**: choose **90 days** (default) — three toggle buttons: 30 / 60 / 90 days
 - [ ] Click **Connect Property**
 - [ ] Property connects → campaign filter selection appears

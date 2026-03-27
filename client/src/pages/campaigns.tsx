@@ -1051,6 +1051,7 @@ export default function Campaigns() {
   const [isGA4CampaignLoading, setIsGA4CampaignLoading] = useState(false);
   const [ga4ConfigSubStep, setGa4ConfigSubStep] = useState<'property' | 'campaigns'>('property');
   const [wizardLookbackDays, setWizardLookbackDays] = useState<number>(90);
+  const [wizardGA4TestMode, setWizardGA4TestMode] = useState(false);
   const { toast } = useToast();
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
@@ -1492,6 +1493,7 @@ export default function Campaigns() {
     setSelectedGA4CampaignValues([]);
     setGa4ConfigSubStep('property');
     setWizardLookbackDays(90);
+    setWizardGA4TestMode(false);
     form.reset();
   };
 
@@ -1908,15 +1910,56 @@ export default function Campaigns() {
                     <div className="space-y-4">
                       <div className="border rounded-lg p-4 bg-muted/30">
                         {selectedWizardPlatform === 'google-analytics' && (
-                          <IntegratedGA4Auth
-                            campaignId={draftCampaignId || ""}
-                            onSuccess={() => {
-                              void loadWizardGA4Properties();
-                            }}
-                            onError={(error) => {
-                              toast({ title: "Connection Failed", description: error || "Unable to complete Google Analytics connection.", variant: "destructive" });
-                            }}
-                          />
+                          <div className="space-y-4">
+                            {!wizardGA4TestMode ? (
+                              <>
+                                <IntegratedGA4Auth
+                                  campaignId={draftCampaignId || ""}
+                                  onSuccess={() => {
+                                    void loadWizardGA4Properties();
+                                  }}
+                                  onError={(error) => {
+                                    toast({ title: "Connection Failed", description: error || "Unable to complete Google Analytics connection.", variant: "destructive" });
+                                  }}
+                                />
+                                <div className="border-t pt-3">
+                                  <button
+                                    type="button"
+                                    className="text-xs text-muted-foreground hover:text-foreground underline"
+                                    onClick={() => setWizardGA4TestMode(true)}
+                                  >
+                                    Use test data instead
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="space-y-3">
+                                <p className="text-sm font-medium">Test Mode</p>
+                                <p className="text-sm text-muted-foreground">Connect a mock GA4 property with simulated data for testing.</p>
+                                <Button
+                                  type="button"
+                                  onClick={() => {
+                                    setGA4Properties([
+                                      { id: 'yesop', name: 'Yesop Mock Property', account: 'Mock Account' },
+                                    ]);
+                                    setSelectedGA4Property('yesop');
+                                    setGa4ConfigSubStep('property');
+                                    setWizardStep(4);
+                                    toast({ title: "Test Mode", description: "Select a mock property to continue." });
+                                  }}
+                                >
+                                  Connect Test Property
+                                </Button>
+                                <button
+                                  type="button"
+                                  className="block text-xs text-muted-foreground hover:text-foreground underline"
+                                  onClick={() => setWizardGA4TestMode(false)}
+                                >
+                                  Use real Google account instead
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         )}
                         {selectedWizardPlatform === 'google-sheets' && (
                           <SimpleGoogleSheetsAuth

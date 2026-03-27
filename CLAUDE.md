@@ -474,21 +474,23 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 
 ### Campaign Creation Wizard (`campaigns.tsx`)
 
-5-step Funnel.io-style wizard (refactor in progress):
+5-step Funnel.io-style modal wizard:
 
 | Step | Title | Content |
 |------|-------|---------|
 | **1** | Campaign Details | Existing form: name, website, label, budget, currency, start/end dates. Creates draft campaign on "Next". |
 | **2** | Select Platform | Clean tile grid of platforms (GA4, Sheets, LinkedIn, Meta, Google Ads, X). Click one → advance. "Skip — connect later" link → jump to Step 5. |
-| **3** | Authenticate | Per-platform OAuth component (IntegratedGA4Auth, SimpleGoogleSheetsAuth, LinkedInConnectionFlow, SimpleMetaAuth). On success → advance. |
+| **3** | Authenticate | Per-platform OAuth component (IntegratedGA4Auth, SimpleGoogleSheetsAuth, LinkedInConnectionFlow, SimpleMetaAuth). On success → advance. GA4 has a "Use test data instead" toggle that bypasses OAuth and loads mock Yesop property for testing. |
 | **4** | Configure | Platform-specific setup: GA4 = property selector + lookback window (30/60/90 days) + campaign filter. LinkedIn = account selection. Sheets/Meta = auto-advance (no config). |
 | **5** | Confirm & Create | Summary of campaign details + connected platform. "Create Campaign" finalizes draft → active. "Add another platform" → back to Step 2. |
 
 **Key design**: One platform per wizard pass. Additional platforms connected later from Campaign Detail → Connected Platforms.
 
-**State**: `wizardStep` (1-5), `selectedWizardPlatform` (platform ID or null), `wizardPlatformConnected` (boolean). Draft campaign created at end of Step 1 (`draftCampaignId`). Finalized at Step 5 (`handleConnectorsComplete` patches draft → active).
+**State**: `wizardStep` (1-5), `selectedWizardPlatform` (platform ID or null), `wizardPlatformConnected` (boolean), `wizardLookbackDays` (30/60/90, default 90), `wizardGA4TestMode` (boolean). Draft campaign created at end of Step 1 (`draftCampaignId`). Finalized at Step 5 (`handleConnectorsComplete` patches draft → active). Draft cleaned up if modal closed mid-wizard.
 
 **Auth components reused**: `IntegratedGA4Auth`, `SimpleGoogleSheetsAuth`, `LinkedInConnectionFlow`, `SimpleMetaAuth` — rendered inline per step, not as modals.
+
+**GA4 Test Mode**: Step 3 shows "Use test data instead" link below the OAuth component. Clicking it reveals a "Connect Test Property" button that loads the Yesop mock property (`id: "yesop"`) and advances to Step 4 without requiring Google credentials. The backend recognizes `yesop` via `isYesopMockProperty()` and returns simulated data. Toggle back with "Use real Google account instead".
 
 ---
 

@@ -481,7 +481,7 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 | **1** | Campaign Details | Existing form: name, website, label, budget, currency, start/end dates. Creates draft campaign on "Next". |
 | **2** | Select Platform | Clean tile grid of platforms (GA4, Sheets, LinkedIn, Meta, Google Ads, X). Click one → advance. "Skip — connect later" link → jump to Step 5. |
 | **3** | Authenticate | Per-platform OAuth component (IntegratedGA4Auth, SimpleGoogleSheetsAuth, LinkedInConnectionFlow, SimpleMetaAuth). On success → advance. |
-| **4** | Configure | Platform-specific setup: GA4 = property selector + campaign filter. LinkedIn = account selection. Sheets/Meta = auto-advance (no config). |
+| **4** | Configure | Platform-specific setup: GA4 = property selector + lookback window (30/60/90 days) + campaign filter. LinkedIn = account selection. Sheets/Meta = auto-advance (no config). |
 | **5** | Confirm & Create | Summary of campaign details + connected platform. "Create Campaign" finalizes draft → active. "Add another platform" → back to Step 2. |
 
 **Key design**: One platform per wizard pass. Additional platforms connected later from Campaign Detail → Connected Platforms.
@@ -577,6 +577,7 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 | yesop_email_nurture | 180 | 12 | $900 | $150 | newsletter / email |
 | yesop_paid_social | 375 | 15 | $1,125 | $750 | facebook / paid_social |
 
+- **Simulation configs**: `simulateGA4()` has distinct configs for 7/30/60/90-day ranges. Lookback window selection (30/60/90 days) controls which config is used, producing proportionally different totals (e.g., 60-day ≈ 2× 30-day values).
 - **Run Refresh** writes aggregated daily data to DB for ALL selected campaigns. Each click adds one day.
 - `ga4-to-date` and `ga4-daily` prefer real DB rows over `simulateGA4()` hardcoded data.
 - **Run Refresh button** currently visible for any connected GA4 property (staging/testing). Will be hidden behind env var (`SHOW_MOCK_REFRESH`) when deploying to production clients. Each click simulates one day: writes daily metrics, updates spend/revenue, runs KPI/benchmark progress, and triggers alert checking.

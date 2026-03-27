@@ -15,7 +15,7 @@ When you connect a mock GA4 property with yesop_brand_search + yesop_prospecting
   - Conversions = 1,620 × 1.6 = **2,592**
   - Users = 31,800 × 1.6 = **50,880**
 - For **30 days**: Sessions ≈ 22,520, Revenue ≈ $87,489, Conversions ≈ 885, Users ≈ 17,280
-- For **60 days**: values between 30 and 90 day ranges
+- For **60 days**: same totals as 30 days in mock (no distinct 60-day config); in production, 60 days fetches proportionally more real data
 - **Spend = $0** (GA4 never imports spend — spend comes from ad platforms or manual entry)
 
 **2. Run Refresh (manual button, adds 1 day per click)**
@@ -88,15 +88,25 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 
 ### Step 8: Verify Overview tab — initial simulation data
 - [ ] Click the **Overview** tab (should be selected by default)
-- [ ] **Sessions ≈ 65,600** (from simulation, not Run Refresh)
-- [ ] **Users ≈ 50,880**
-- [ ] **Conversions ≈ 2,592**
-- [ ] **Revenue ≈ $240,352** (simulation includes revenue — GA4 tracks revenue)
+- [ ] Values depend on the **lookback window** selected in Step 5:
+
+| Metric | 30 days | 60 days | 90 days (default) |
+|--------|---------|---------|-------------------|
+| Sessions | ≈ 22,520 | ≈ 22,520 | ≈ 65,600 |
+| Users | ≈ 17,280 | ≈ 17,280 | ≈ 50,880 |
+| Conversions | ≈ 885 | ≈ 885 | ≈ 2,592 |
+| Revenue | ≈ $87,489 | ≈ $87,489 | ≈ $240,352 |
+
+> **Note**: 60-day mock simulation currently uses the same base totals as 30-day (the mock system only has distinct configs for 7/30/90 day ranges). In production, 60-day lookback fetches 60 days of real GA4 data and would return proportionally more data than 30 days.
+
+- [ ] **If you chose 90 days**: Sessions ≈ 65,600, Users ≈ 50,880, Conversions ≈ 2,592, Revenue ≈ $240,352
 - [ ] **Spend = $0.00** — "Add Spend" button visible (GA4 does NOT track spend)
 - [ ] **"+" icon** visible on both Spend and Revenue cards
 - [ ] **ROAS = N/A or $0** (cannot calculate without spend)
 - [ ] **CPA = N/A** (cannot calculate without spend)
 - [ ] **ROI = N/A** (cannot calculate without spend)
+
+> **Production note**: In production, the lookback window controls how many days of real GA4 data the scheduler fetches on first sync. A 30-day window fetches less history than 90 days. The values above are mock simulation values — real production values depend on actual GA4 traffic.
 
 ### Step 9: Verify KPI template gates
 - [ ] Click the **KPIs** tab

@@ -15,7 +15,7 @@ When you connect a mock GA4 property with yesop_brand_search + yesop_prospecting
   - Conversions = 1,620 × 1.6 = **2,592**
   - Users = 31,800 × 1.6 = **50,880**
 - For **30 days**: Sessions ≈ 22,520, Revenue ≈ $87,489, Conversions ≈ 885, Users ≈ 17,280
-- For **60 days**: same totals as 30 days in mock (no distinct 60-day config); in production, 60 days fetches proportionally more real data
+- For **60 days**: Sessions ≈ 45,040, Revenue ≈ $174,979, Conversions ≈ 1,770, Users ≈ 34,560
 - **Spend = $0** (GA4 never imports spend — spend comes from ad platforms or manual entry)
 
 **2. Run Refresh (manual button, adds 1 day per click)**
@@ -92,12 +92,10 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 
 | Metric | 30 days | 60 days | 90 days (default) |
 |--------|---------|---------|-------------------|
-| Sessions | ≈ 22,520 | ≈ 22,520 | ≈ 65,600 |
-| Users | ≈ 17,280 | ≈ 17,280 | ≈ 50,880 |
-| Conversions | ≈ 885 | ≈ 885 | ≈ 2,592 |
-| Revenue | ≈ $87,489 | ≈ $87,489 | ≈ $240,352 |
-
-> **Note**: 60-day mock simulation currently uses the same base totals as 30-day (the mock system only has distinct configs for 7/30/90 day ranges). In production, 60-day lookback fetches 60 days of real GA4 data and would return proportionally more data than 30 days.
+| Sessions | ≈ 22,520 | ≈ 45,040 | ≈ 65,600 |
+| Users | ≈ 17,280 | ≈ 34,560 | ≈ 50,880 |
+| Conversions | ≈ 885 | ≈ 1,770 | ≈ 2,592 |
+| Revenue | ≈ $87,489 | ≈ $174,979 | ≈ $240,352 |
 
 - [ ] **If you chose 90 days**: Sessions ≈ 65,600, Users ≈ 50,880, Conversions ≈ 2,592, Revenue ≈ $240,352
 - [ ] **Spend = $0.00** — "Add Spend" button visible (GA4 does NOT track spend)

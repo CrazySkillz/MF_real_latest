@@ -1618,8 +1618,8 @@ export default function Campaigns() {
               </Button>
 
               <Dialog open={isCreateModalOpen} onOpenChange={handleCreateModalChange}>
-                <DialogContent className={`${wizardStep === 1 ? "sm:max-w-md" : "sm:max-w-2xl"} max-h-[90vh] overflow-y-auto pr-12`}>
-                  <DialogHeader className="sticky top-0 bg-background z-10 pb-4 pr-8">
+                <DialogContent className={`${wizardStep === 1 ? "sm:max-w-md" : "sm:max-w-2xl"} max-h-[90vh] overflow-y-auto`}>
+                  <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
                     <DialogTitle>
                       {wizardStep === 1 ? "Create New Campaign" :
                        wizardStep === 2 ? "Select Platform" :

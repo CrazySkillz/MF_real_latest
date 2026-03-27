@@ -15,6 +15,7 @@ import {
 import { ClientProvider, useClient } from "@/lib/clientContext";
 import Dashboard from "@/pages/dashboard";
 import Campaigns from "@/pages/campaigns";
+import CampaignCreationWizard from "@/pages/campaign-creation-wizard";
 import CampaignDetail from "@/pages/campaign-detail";
 import CampaignPerformance from "@/pages/campaign-performance";
 import PlatformComparison from "@/pages/platform-comparison";
@@ -105,6 +106,7 @@ function ProtectedRouter() {
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/clients" component={ClientsPage} />
           <Route path="/campaigns" component={Campaigns} />
+          <Route path="/campaigns/new" component={CampaignCreationWizard} />
           <Route path="/campaigns/:id" component={CampaignDetail} />
           <Route path="/campaigns/:id/performance" component={CampaignPerformance} />
           <Route path="/campaigns/:id/platform-comparison" component={PlatformComparison} />

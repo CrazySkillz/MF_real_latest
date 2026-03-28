@@ -5125,7 +5125,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
-      // Use yesterday UTC as default, or accept an explicit date for multi-day testing
+      // Each click writes to a NEW date so data accumulates. Count existing mock rows
+      // and offset backwards from yesterday so each click = 1 new day.
       const requestedDate = String(req.body?.date || "").trim();
       let dateStr: string;
       if (/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
@@ -5133,9 +5134,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         const now = new Date();
         const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-        const yesterday = new Date(todayUtc);
-        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-        dateStr = formatISODateUTC(yesterday);
+        // Count existing mock rows to determine next date
+        const existingRows = await storage.getGA4DailyMetrics(campaignId, propertyId, "2000-01-01", formatISODateUTC(todayUtc)).catch(() => [] as any[]);
+        const offset = (existingRows?.length || 0) + 1; // +1 because yesterday = offset 1
+        const targetDate = new Date(todayUtc);
+        targetDate.setUTCDate(targetDate.getUTCDate() - offset);
+        dateStr = formatISODateUTC(targetDate);
       }
 
       // Deterministic known values per UTM campaign name — easy to verify in the UI

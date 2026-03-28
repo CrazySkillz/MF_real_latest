@@ -630,17 +630,23 @@ export default function GA4Metrics() {
       }
       return res.json();
     },
-    onSuccess: (data) => {
-      // Invalidate all GA4 queries so the UI picks up the new data
+    onSuccess: async (data) => {
+      // Force refetch all GA4 + financial queries so the UI picks up the new data immediately
+      const prefix = `/api/campaigns/${campaignId}`;
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: [`${prefix}/ga4-to-date`], type: "active" }),
+        queryClient.refetchQueries({ queryKey: [`${prefix}/ga4-daily`], type: "active" }),
+        queryClient.refetchQueries({ queryKey: [`${prefix}/ga4-breakdown`], type: "active" }),
+        queryClient.refetchQueries({ queryKey: [`${prefix}/spend-to-date`], type: "active" }),
+        queryClient.refetchQueries({ queryKey: [`${prefix}/spend-breakdown`], type: "active" }),
+        queryClient.refetchQueries({ queryKey: [`${prefix}/revenue-to-date`], type: "active" }),
+        queryClient.refetchQueries({ queryKey: [`${prefix}/revenue-breakdown`], type: "active" }),
+        queryClient.refetchQueries({ queryKey: [`${prefix}/outcome-totals`], type: "active" }),
+        queryClient.refetchQueries({ queryKey: [`${prefix}/ga4-landing-pages`], type: "active" }),
+        queryClient.refetchQueries({ queryKey: [`${prefix}/ga4-conversion-events`], type: "active" }),
+      ]);
+      // Also invalidate campaign-level queries
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-daily`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-breakdown`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-to-date`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-breakdown`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`] });
       toast({
         title: "Mock Refresh Complete",
         description: data?.summary || "Daily mock data injected. Check cards for updated values.",

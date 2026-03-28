@@ -4977,9 +4977,6 @@ export default function GA4Metrics() {
                                     Choose a metric to benchmark, then fill in the benchmark details below.
                                   </p>
                                 </div>
-                                <Button type="button" variant="outline" size="sm" onClick={resetBenchmarkDraft}>
-                                  Reset
-                                </Button>
                               </div>
 
                               <div className="grid grid-cols-2 gap-3">

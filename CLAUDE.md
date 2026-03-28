@@ -260,23 +260,22 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 5 sections: Executive Financials (Spend/Revenue/Profit/ROAS/ROI with sources used — shows "GA4 native revenue" or "Imported" for revenue, spend source labels for spend), Trends (daily/7d/30d/monthly chart + tables — see below), Data Summary (always-visible campaign stats), Insights Summary (total/high/medium counts), Insights List (max 12, severity-sorted).
 
-**Trends section** — 4 modes (Daily / 7d / 30d / Monthly), metric selector (Sessions, Users, Conversions, Revenue, Page Views, Engagement Rate), optional date range picker (From/To inputs with Clear button). All data from `ga4DailyRows` (persisted daily facts via `ga4-daily` endpoint, lookback window set during GA4 connection — 30/60/90 days, default 90). Date range filter (`trendDateFrom`/`trendDateTo` state) applies to `sorted` array before chart/table logic — when set, only rows within the selected range are included.
+**Trends section** — 4 modes (Daily / 7d / 30d / Monthly), metric selector (Sessions, Users, Conversions, Revenue, Page Views, Engagement Rate). No date range picker. All data from `ga4DailyRows` (persisted daily facts via `ga4-daily` endpoint, lookback window set during GA4 connection — 30/60/90 days, default 90).
 
 | Mode | Chart | Table |
 |------|-------|-------|
 | **Daily** | Last 30 days, 1 point per day = that day's raw value | Last 14 days (expandable to 30), each row = 1 day with day-over-day % delta |
-| **7d** | 8 data points over 14 days, each = 7-day rolling daily average | 2 rows: "Last 7 days" daily avg vs "Prior 7 days" daily avg |
-| **30d** | Up to 31 points over 60 days, each = 30-day rolling daily average | 2 rows: "Last 30 days" daily avg vs "Prior 30 days" daily avg |
+| **7d** | 8 data points over 14 days, each = 7-day rolling window total | 2 rows: "Last 7 days" total vs "Prior 7 days" total |
+| **30d** | Up to 31 points over 60 days, each = 30-day rolling window total | 2 rows: "Last 30 days" total vs "Prior 30 days" total |
 | **Monthly** | BarChart with 1 bar per calendar month = monthly total (weighted avg for rates). Current month bar at 50% opacity. | 1 row per month (most recent first), month-over-month % delta. Current month marked "(partial, N days)". |
 
 - **Chart XAxis**: Daily/7d/30d use numeric (`type="number"`, `dataKey="idx"`) to eliminate Recharts categorical axis padding. Monthly uses categorical `dataKey="date"` on BarChart.
-- **Rolling averages**: 7d/30d chart divides rolling sums by window size so values are comparable across modes. Engagement rate is a weighted average (engagedSessions/totalSessions) — NOT divided.
-- **Table column header**: 7d/30d shows "(daily avg)" to clarify values are averages not totals.
+- **Rolling totals**: 7d/30d chart shows rolling window totals (sum of last N days). Engagement rate is a weighted average (engagedSessions/totalSessions) — the only metric that isn't summed. Tooltips: "7-day period ending: MM/DD".
 - **Users non-additive**: Users metric is **hidden from the dropdown in 7d/30d/Monthly modes** — GA4 users can't be accurately summed/averaged across dates. Auto-switches to Sessions if Users was selected when entering non-daily mode. Users remains available in Daily mode where per-day counts are accurate.
 - **`insightsRollups` memo**: Computes last3/prior3, last7/prior7, last30/prior30 from `ga4TimeSeries`. `byDate` map includes: date, sessions, users, conversions, revenue, pageviews, engagementRate, engagedSessions. Engagement rate computed as weighted average (engagedSessions/totalSessions × 100).
 - **Daily table index math**: Uses `sortedIdx = sorted.length - 1 - idx` for O(1) previous-row lookup (not `indexOf` reference scan).
 
-**Data Summary section** — Always visible when `breakdownTotals.sessions > 0` or `breakdownTotals.revenue > 0`. Shows: Sessions (+ daily avg), Conversions (+ CR%), Revenue (+ daily avg), Top Channel (+ share % + channel count). Financial row (when spend exists): Total Spend, ROAS (green/red), CPA. Channel Breakdown table showing all traffic sources with sessions, share %, conversions, and CR (lowest-CR channel highlighted red). Uses `breakdownTotals`, `insightsRollups.availableDays`, `channelAnalysis` (exposes `channels` array sorted by sessions desc), `financialSpend`, `financialROAS`.
+**Data Summary section** — Always visible when `breakdownTotals.sessions > 0` or `breakdownTotals.revenue > 0`. Shows: Sessions (+ daily avg), Conversions (+ CR%), Revenue (+ daily avg), Top Channel (+ share % + channel count). Financial row (when spend exists): Total Spend, ROAS (green/red), CPA. Channel Breakdown table (visible when `channels.length >= 1`) showing all traffic sources with sessions, share %, conversions, and CR (lowest-CR channel highlighted red). Uses `breakdownTotals`, `insightsRollups.availableDays`, `channelAnalysis` (exposes `channels` array sorted by sessions desc), `financialSpend`, `financialROAS`.
 
 **Insights engine** (`insights` useMemo) generates 6 categories:
 - Financial integrity checks (blocked KPIs, mismatched sources, negative ROI, low ROAS)
@@ -402,6 +401,9 @@ All `fetch()` calls to mutation endpoints (POST/PATCH/PUT/DELETE) MUST include `
 
 ### Numeric Input Formatting
 Values displayed with comma formatting (e.g., "2,300") MUST be stripped via `stripNumberFormatting()` before sending to the backend. PostgreSQL decimal columns reject comma-formatted strings. Apply to: `currentValue`, `targetValue`, `alertThreshold`, `benchmarkValue`.
+
+### Percentage Formatting
+Use `formatPct()` from `shared/metric-math.ts` for all percentage displays. Shows whole numbers when possible (54%), 1 decimal when meaningful (59.3%). Never use `.toFixed(2)` + `%`. For KPI/Benchmark form fields, `formatNumberByUnit()` in `ga4-metrics.tsx` uses smart formatting: % and ratio units get whole/1-decimal, currency gets 2 decimals, count gets 0 decimals.
 
 ### Campaign Ownership
 `ownerId` field on campaigns; campaigns without it get claimed on first access via `ensureCampaignAccess()`.

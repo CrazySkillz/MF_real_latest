@@ -1,5 +1,12 @@
 export type ProgressStatus = "on_track" | "needs_attention" | "behind";
 
+/** Format a percentage: whole numbers when possible (54%), 1 decimal when needed (59.3%). */
+export function formatPct(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  if (rounded === Math.floor(rounded)) return `${Math.round(rounded)}%`;
+  return `${rounded.toFixed(1)}%`;
+}
+
 export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }

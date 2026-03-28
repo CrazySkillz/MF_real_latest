@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent } from "@shared/metric-math";
+import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBand, computeAttainmentPct, computeAttainmentFillPct } from "@shared/kpi-math";
 
 interface Campaign {
@@ -1142,7 +1142,7 @@ export default function GA4Metrics() {
     const numValue = parseFloat(value);
     switch (unit) {
       case "%":
-        return `${numValue.toFixed(2)}%`;
+        return formatPct(numValue);
       case "$": {
         // Legacy stored KPIs may use "$" as the unit; render using the campaign's configured currency.
         return formatMoney(numValue);
@@ -2194,7 +2194,7 @@ export default function GA4Metrics() {
     // --- Formatters ---
     const cur = String((campaign as any)?.currency || "USD");
     const fC = (n: number) => `${cur} ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const fP = (n: number) => `${Number(n || 0).toFixed(2)}%`;
+    const fP = (n: number) => formatPct(Number(n || 0));
     const fN = (n: number) => `${Math.round(Number(n || 0)).toLocaleString()}`;
 
     const reportName = String(opts.reportName || ga4ReportForm.name || "GA4 Report").trim() || "GA4 Report";
@@ -3106,7 +3106,7 @@ export default function GA4Metrics() {
           if (isConversion) {
             const base = "Check landing page changes, funnel breaks, and traffic mix shifts.";
             return ch?.lowestCRChannel
-              ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${ch.lowestCRChannel.cr.toFixed(2)}%) among significant channels — audit targeting and landing pages for this source.`
+              ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${formatPct(ch.lowestCRChannel.cr)}) among significant channels — audit targeting and landing pages for this source.`
               : base;
           }
           if (isRevenue) {
@@ -3164,7 +3164,7 @@ export default function GA4Metrics() {
           if (isConversion) {
             const base = "Focus on landing page UX and traffic quality; validate conversion tagging.";
             return ch?.lowestCRChannel
-              ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${ch.lowestCRChannel.cr.toFixed(2)}%) — start there.`
+              ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${formatPct(ch.lowestCRChannel.cr)}) — start there.`
               : base;
           }
           if (isEngagement) {
@@ -3247,7 +3247,7 @@ export default function GA4Metrics() {
           id: "anomaly:cr:wow",
           severity: "high",
           title: `Conversion rate dropped ${Math.abs(crDeltaPct).toFixed(1)}% week-over-week`,
-          description: `Last 7d ${crA.toFixed(2)}% vs prior 7d ${crB.toFixed(2)}% (GA4 sessions/conversions).`,
+          description: `Last 7d ${formatPct(crA)} vs prior 7d ${formatPct(crB)} (GA4 sessions/conversions).`,
           recommendation:
             "Check landing page changes, conversion event configuration, and traffic mix by source/medium. If paid traffic is involved, validate targeting/creative changes.",
         });
@@ -3349,7 +3349,7 @@ export default function GA4Metrics() {
           id: "anomaly:cr:3d",
           severity: "medium",
           title: `Conversion rate dropped ${Math.abs(crDelta3).toFixed(1)}% (3-day comparison)`,
-          description: `Last 3d ${crA3.toFixed(2)}% vs prior 3d ${crB3.toFixed(2)}%. Short window — monitor for confirmation.`,
+          description: `Last 3d ${formatPct(crA3)} vs prior 3d ${formatPct(crB3)}. Short window — monitor for confirmation.`,
           recommendation: "Check for recent landing page changes or traffic source shifts. Confirm trend with more data.",
         });
       }
@@ -3497,7 +3497,7 @@ export default function GA4Metrics() {
           title: `Top channel: ${ch.label} (${share.toFixed(0)}% of sessions)`,
           description: `Your leading traffic source is ${ch.label} with ${formatNumber(ch.sessions)} sessions across ${channelAnalysis.channelCount} channels. ${share > 70 ? "High concentration — consider diversifying traffic sources." : "Healthy channel mix."}`,
           recommendation: channelAnalysis.lowestCRChannel
-            ? `Lowest-converting channel: ${channelAnalysis.lowestCRChannel.label} at ${channelAnalysis.lowestCRChannel.cr.toFixed(2)}% CR. Investigate landing page alignment.`
+            ? `Lowest-converting channel: ${channelAnalysis.lowestCRChannel.label} at ${formatPct(channelAnalysis.lowestCRChannel.cr)} CR. Investigate landing page alignment.`
             : undefined,
         });
       }
@@ -4298,7 +4298,7 @@ export default function GA4Metrics() {
                                         <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.sessions)}</td>
                                         <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.users)}</td>
                                         <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.conversions)}</td>
-                                        <td className="px-2 py-2 text-right tabular-nums">{c.conversionRate.toFixed(2)}%</td>
+                                        <td className="px-2 py-2 text-right tabular-nums">{formatPct(c.conversionRate)}</td>
                                         <td className="px-2 py-2 text-right tabular-nums">{formatMoney(c.revenue)}</td>
                                       </tr>
                                     ))}
@@ -6072,7 +6072,7 @@ export default function GA4Metrics() {
                           const fmtValue = (v: any) => {
                             const n = Number(v || 0);
                             if (isMoney) return formatMoney(n);
-                            if (isRate) return `${n.toFixed(2)}%`;
+                            if (isRate) return formatPct(n);
                             return formatNumber(n);
                           };
 
@@ -6340,7 +6340,7 @@ export default function GA4Metrics() {
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Conversions</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{formatNumber(breakdownTotals.conversions)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  {breakdownTotals.sessions > 0 ? `${((breakdownTotals.conversions / breakdownTotals.sessions) * 100).toFixed(2)}% conversion rate` : ""}
+                                  {breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""}
                                 </p>
                               </div>
                             )}
@@ -6413,7 +6413,7 @@ export default function GA4Metrics() {
                                           <td className="p-2 text-right tabular-nums text-muted-foreground/70">{share.toFixed(0)}%</td>
                                           <td className="p-2 text-right tabular-nums text-foreground">{formatNumber(ch.conversions)}</td>
                                           <td className={`p-2 pr-3 text-right tabular-nums ${isLowestCR ? "text-red-600 font-medium" : "text-foreground"}`}>
-                                            {cr.toFixed(2)}%
+                                            {formatPct(cr)}
                                           </td>
                                         </tr>
                                       );

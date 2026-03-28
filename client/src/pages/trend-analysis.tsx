@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { formatPct } from "@shared/metric-math";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, BarChart, Bar, ComposedChart, PieChart, Pie, Cell,
@@ -513,7 +514,7 @@ export default function TrendAnalysis() {
                         { label: 'ROAS', value: `${crossPlatformData.current.roas.toFixed(1)}x`, change: crossPlatformData.comparison.roas },
                         { label: 'Conversions', value: fmtNum(crossPlatformData.current.conversions), change: crossPlatformData.comparison.conversions },
                         { label: 'CPA', value: fmtCur(crossPlatformData.current.cpa), change: crossPlatformData.comparison.cpa, invertColor: true },
-                        { label: 'Avg CTR', value: `${crossPlatformData.current.ctr.toFixed(2)}%`, change: crossPlatformData.comparison.ctr },
+                        { label: 'Avg CTR', value: `${formatPct(crossPlatformData.current.ctr)}`, change: crossPlatformData.comparison.ctr },
                       ].map((card, i) => {
                         const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
                         return (
@@ -724,7 +725,7 @@ export default function TrendAnalysis() {
                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                             <XAxis dataKey="label" className="text-xs" />
                             <YAxis className="text-xs" />
-                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [`${Number(v).toFixed(2)}%`, name]} />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [`${formatPct(Number(v))}`, name]} />
                             <Line type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR %" />
                             <Line type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={false} name="Engagement Rate %" />
                           </LineChart>
@@ -766,8 +767,8 @@ export default function TrendAnalysis() {
                   <div className="grid gap-4 md:grid-cols-4">
                     {[
                       { label: 'Total Impressions', value: fmtNum(crossPlatformData.current.impressions) },
-                      { label: 'Click-Through Rate', value: `${crossPlatformData.current.ctr.toFixed(2)}%` },
-                      { label: 'Conversion Rate', value: `${(crossPlatformData.current.clicks > 0 ? (crossPlatformData.current.conversions / crossPlatformData.current.clicks) * 100 : 0).toFixed(2)}%` },
+                      { label: 'Click-Through Rate', value: `${formatPct(crossPlatformData.current.ctr)}` },
+                      { label: 'Conversion Rate', value: formatPct(crossPlatformData.current.clicks > 0 ? (crossPlatformData.current.conversions / crossPlatformData.current.clicks) * 100 : 0) },
                       { label: 'Cost per Conversion', value: fmtCur(crossPlatformData.current.cpa) },
                     ].map((c, i) => (
                       <Card key={i}><CardContent className="p-4"><div className="text-xs text-muted-foreground mb-1">{c.label}</div><div className="text-xl font-bold text-foreground">{c.value}</div></CardContent></Card>
@@ -784,7 +785,7 @@ export default function TrendAnalysis() {
                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                             <XAxis dataKey="label" className="text-xs" />
                             <YAxis className="text-xs" />
-                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [`${Number(v).toFixed(2)}%`, name]} />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [`${formatPct(Number(v))}`, name]} />
                             <Line type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR (Impressions → Clicks)" />
                             <Line type="monotone" dataKey="convRate" stroke="#8b5cf6" strokeWidth={2} dot={false} name="Conv Rate (Clicks → Conversions)" />
                           </LineChart>
@@ -882,7 +883,7 @@ export default function TrendAnalysis() {
                                   <td className="text-right py-3 px-2">{fmtCur(p.spend)}</td>
                                   <td className="text-right py-3 px-2">{fmtNum(p.impressions)}</td>
                                   <td className="text-right py-3 px-2">{fmtNum(p.clicks)}</td>
-                                  <td className="text-right py-3 px-2">{p.ctr.toFixed(2)}%</td>
+                                  <td className="text-right py-3 px-2">{formatPct(p.ctr)}</td>
                                   <td className="text-right py-3 px-2">{fmtNum(p.conversions)}</td>
                                   <td className={`text-right py-3 px-2 ${p.cpa > 0 && p.cpa === bestCpa ? 'text-green-600 font-semibold' : ''}`}>{p.cpa > 0 ? fmtCur(p.cpa) : '—'}</td>
                                   <td className={`text-right py-3 px-2 ${p.cpc > 0 && p.cpc === bestCpc ? 'text-green-600 font-semibold' : ''}`}>{p.cpc > 0 ? fmtCur(p.cpc) : '—'}</td>

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { useState, useMemo, useEffect } from "react";
+import { formatPct } from "@shared/metric-math";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,12 +31,12 @@ const META_METRICS = [
   { key: 'clicks', label: 'Clicks', unit: '', format: (v: number) => v.toLocaleString() },
   { key: 'conversions', label: 'Conversions', unit: '', format: (v: number) => v.toLocaleString() },
   { key: 'spend', label: 'Spend', unit: '$', format: (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
-  { key: 'ctr', label: 'CTR', unit: '%', format: (v: number) => `${v.toFixed(2)}%` },
+  { key: 'ctr', label: 'CTR', unit: '%', format: (v: number) => `${formatPct(v)}` },
   { key: 'cpc', label: 'CPC', unit: '$', format: (v: number) => `$${v.toFixed(2)}` },
   { key: 'cpm', label: 'CPM', unit: '$', format: (v: number) => `$${v.toFixed(2)}` },
   { key: 'cpp', label: 'CPP', unit: '$', format: (v: number) => `$${v.toFixed(2)}` },
   { key: 'frequency', label: 'Frequency', unit: '', format: (v: number) => v.toFixed(2) },
-  { key: 'conversionRate', label: 'Conversion Rate', unit: '%', format: (v: number) => `${v.toFixed(2)}%` },
+  { key: 'conversionRate', label: 'Conversion Rate', unit: '%', format: (v: number) => `${formatPct(v)}` },
   { key: 'costPerConversion', label: 'Cost per Conversion', unit: '$', format: (v: number) => `$${v.toFixed(2)}` },
   { key: 'videoViews', label: 'Video Views', unit: '', format: (v: number) => v.toLocaleString() },
 ];
@@ -835,7 +836,7 @@ export default function MetaAnalytics() {
               <CardContent>
                 <div className="text-2xl font-bold">{summary.totalClicks.toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {summary.avgCTR.toFixed(2)}% CTR
+                  {formatPct(summary.avgCTR)} CTR
                 </p>
               </CardContent>
             </Card>
@@ -953,7 +954,7 @@ export default function MetaAnalytics() {
                 <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                   <Activity className="h-5 w-5 text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground font-medium">CTR</p>
-                  <p className="text-xl font-bold">{summary.avgCTR.toFixed(2)}%</p>
+                  <p className="text-xl font-bold">{formatPct(summary.avgCTR)}</p>
                 </div>
 
                 <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
@@ -989,7 +990,7 @@ export default function MetaAnalytics() {
                 <div className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg">
                   <Activity className="h-5 w-5 text-muted-foreground mb-2" />
                   <p className="text-xs text-muted-foreground font-medium">Conv Rate</p>
-                  <p className="text-xl font-bold">{summary.conversionRate.toFixed(2)}%</p>
+                  <p className="text-xl font-bold">{formatPct(summary.conversionRate)}</p>
                 </div>
               </div>
             </CardContent>
@@ -1051,7 +1052,7 @@ export default function MetaAnalytics() {
                   const { campaign, totals } = campaignData;
                   const formatCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                   const formatNum = (v: number) => v.toLocaleString();
-                  const formatPct = (v: number) => `${v.toFixed(2)}%`;
+                  // formatPct imported from @shared/metric-math
 
                   return (
                     <div key={campaign.id} className="border rounded-lg p-4 bg-card">
@@ -1846,7 +1847,7 @@ export default function MetaAnalytics() {
                       const { campaign, totals } = campaignData;
                       const formatCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                       const formatNum = (v: number) => v.toLocaleString();
-                      const formatPct = (v: number) => `${v.toFixed(2)}%`;
+                      // formatPct imported from @shared/metric-math
                       const performanceScore = (totals.ctr * 10 + totals.conversionRate * 5) / 2;
                       const performance = performanceScore > 20 ? 'excellent' : performanceScore > 15 ? 'good' : performanceScore > 10 ? 'average' : 'poor';
 
@@ -2186,7 +2187,7 @@ export default function MetaAnalytics() {
                           const formatChartValue = (v: any) => {
                             const n = Number(v || 0) || 0;
                             if (insightsTrendMetric === 'spend' || insightsTrendMetric === 'revenue') return `$${n.toFixed(2)}`;
-                            if (insightsTrendMetric === 'ctr' || insightsTrendMetric === 'conversionRate') return `${n.toFixed(2)}%`;
+                            if (insightsTrendMetric === 'ctr' || insightsTrendMetric === 'conversionRate') return `${formatPct(n)}`;
                             if (insightsTrendMetric === 'cpc' || insightsTrendMetric === 'cpm') return `$${n.toFixed(2)}`;
                             if (insightsTrendMetric === 'roas') return `${n.toFixed(2)}x`;
                             return n.toLocaleString();
@@ -2249,7 +2250,7 @@ export default function MetaAnalytics() {
 
                                       const formatValue = (key: string, v: number) => {
                                         if (key === 'spend' || key === 'revenue' || key === 'cpc' || key === 'cpm') return `$${v.toFixed(2)}`;
-                                        if (key === 'ctr' || key === 'conversionRate') return `${v.toFixed(2)}%`;
+                                        if (key === 'ctr' || key === 'conversionRate') return `${formatPct(v)}`;
                                         if (key === 'roas') return `${v.toFixed(2)}x`;
                                         return v.toLocaleString();
                                       };
@@ -2315,7 +2316,7 @@ export default function MetaAnalytics() {
                                   const valueFor = (obj: any) => {
                                     const v = Number(obj?.[metricKey] ?? 0) || 0;
                                     if (metricKey === 'spend' || metricKey === 'revenue' || metricKey === 'cpc' || metricKey === 'cpm') return `$${v.toFixed(2)}`;
-                                    if (metricKey === 'ctr' || metricKey === 'conversionRate') return `${v.toFixed(2)}%`;
+                                    if (metricKey === 'ctr' || metricKey === 'conversionRate') return `${formatPct(v)}`;
                                     if (metricKey === 'roas') return `${v.toFixed(2)}x`;
                                     return v.toLocaleString();
                                   };
@@ -2425,7 +2426,7 @@ export default function MetaAnalytics() {
                     allInsights.push({
                       id: 'ctr-low',
                       title: 'Low CTR Across Campaigns',
-                      description: `Average CTR is ${summary.avgCTR.toFixed(2)}%, which is below the typical 0.5% threshold.`,
+                      description: `Average CTR is ${formatPct(summary.avgCTR)}, which is below the typical 0.5% threshold.`,
                       severity: 'medium',
                       recommendation: 'Review ad creative and targeting. Test new ad formats or audience segments.',
                       group: 'performance',

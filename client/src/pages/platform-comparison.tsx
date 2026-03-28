@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { formatPct } from "@shared/metric-math";
 
 export default function PlatformComparison() {
   const { id: campaignId } = useParams();
@@ -473,7 +474,7 @@ export default function PlatformComparison() {
                               <td className="text-right py-3 px-4">{platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</td>
                               <td className="text-right py-3 px-4">{platform.impressions > 0 ? formatNumber(platform.impressions) : '—'}</td>
                               <td className="text-right py-3 px-4">{platform.clicks > 0 ? formatNumber(platform.clicks) : '—'}</td>
-                              <td className="text-right py-3 px-4">{platform.ctr > 0 ? `${platform.ctr.toFixed(2)}%` : '—'}</td>
+                              <td className="text-right py-3 px-4">{platform.ctr > 0 ? `${formatPct(platform.ctr)}` : '—'}</td>
                               <td className="text-right py-3 px-4">{platform.conversions > 0 ? formatNumber(platform.conversions) : '—'}</td>
                               <td className="text-right py-3 px-4">
                                 {platform.revenue > 0 ? (
@@ -499,7 +500,7 @@ export default function PlatformComparison() {
                                 <td className="text-right py-3 px-4">{formatCurrency(totSpend)}</td>
                                 <td className="text-right py-3 px-4">{formatNumber(totImpressions)}</td>
                                 <td className="text-right py-3 px-4">{formatNumber(totClicks)}</td>
-                                <td className="text-right py-3 px-4">{weightedCtr > 0 ? `${weightedCtr.toFixed(2)}%` : '—'}</td>
+                                <td className="text-right py-3 px-4">{weightedCtr > 0 ? `${formatPct(weightedCtr)}` : '—'}</td>
                                 <td className="text-right py-3 px-4">{formatNumber(totConversions)}</td>
                                 <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">{formatCurrency(totRevenue)}</td>
                                 <td className="text-right py-3 px-4">{weightedRoas > 0 ? `${weightedRoas.toFixed(2)}x` : '—'}</td>
@@ -610,7 +611,7 @@ export default function PlatformComparison() {
                               <div className="grid grid-cols-4 gap-2 text-xs">
                                 <div>
                                   <span className="block text-muted-foreground font-medium">CTR</span>
-                                  <span className="text-foreground font-semibold">{platform.ctr > 0 ? `${platform.ctr.toFixed(2)}%` : '—'}</span>
+                                  <span className="text-foreground font-semibold">{platform.ctr > 0 ? `${formatPct(platform.ctr)}` : '—'}</span>
                                 </div>
                                 <div>
                                   <span className="block text-muted-foreground font-medium">CPC</span>
@@ -618,7 +619,7 @@ export default function PlatformComparison() {
                                 </div>
                                 <div>
                                   <span className="block text-muted-foreground font-medium">Conv. Rate</span>
-                                  <span className="text-foreground font-semibold">{platform.conversionRate > 0 ? `${platform.conversionRate.toFixed(2)}%` : '—'}</span>
+                                  <span className="text-foreground font-semibold">{platform.conversionRate > 0 ? `${formatPct(platform.conversionRate)}` : '—'}</span>
                                 </div>
                                 <div>
                                   <span className="block text-muted-foreground font-medium">ROI</span>
@@ -1032,9 +1033,9 @@ export default function PlatformComparison() {
                               <div>
                                 <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-1">Highest Engagement: {bestCTR.platform}</h4>
                                 <p className="text-sm text-purple-700 dark:text-purple-300">
-                                  {bestCTR.platform} has the best CTR at {bestCTR.ctr.toFixed(2)}%, indicating strong ad relevance and audience targeting. 
+                                  {bestCTR.platform} has the best CTR at {formatPct(bestCTR.ctr)}, indicating strong ad relevance and audience targeting. 
                                   {bestCTR.conversionRate >= 2 
-                                    ? ` Combined with ${bestCTR.conversionRate.toFixed(2)}% conversion rate, this channel shows excellent quality traffic.`
+                                    ? ` Combined with ${formatPct(bestCTR.conversionRate)} conversion rate, this channel shows excellent quality traffic.`
                                     : ` Optimize landing pages to convert this engaged traffic more effectively.`}
                                 </p>
                               </div>
@@ -1060,7 +1061,7 @@ export default function PlatformComparison() {
                                   <p className="text-sm text-orange-700 dark:text-orange-300">
                                     {weakest.platform} ROAS of {weakest.roas.toFixed(2)}x is {roasGap.toFixed(0)}% below top performer. 
                                     {weakest.ctr < 1 
-                                      ? ` Low CTR (${weakest.ctr.toFixed(2)}%) suggests creative refresh or audience refinement needed.`
+                                      ? ` Low CTR (${formatPct(weakest.ctr)}) suggests creative refresh or audience refinement needed.`
                                       : weakest.conversionRate < 2
                                         ? ` Decent engagement but poor conversion suggests landing page optimization required.`
                                         : ` Review targeting and bidding strategy to improve efficiency.`}
@@ -1138,9 +1139,9 @@ export default function PlatformComparison() {
                                   let recommendation = '';
                                   
                                   if (platform.ctr < 1) {
-                                    recommendation = `${platform.platform}: Improve CTR (${platform.ctr.toFixed(2)}%) through creative refresh and A/B testing`;
+                                    recommendation = `${platform.platform}: Improve CTR (${formatPct(platform.ctr)}) through creative refresh and A/B testing`;
                                   } else if (platform.conversionRate < 2) {
-                                    recommendation = `${platform.platform}: Optimize landing pages to improve ${platform.conversionRate.toFixed(2)}% conversion rate`;
+                                    recommendation = `${platform.platform}: Optimize landing pages to improve ${formatPct(platform.conversionRate)} conversion rate`;
                                   } else if (platform.cpc > 5) {
                                     recommendation = `${platform.platform}: Reduce CPC (${formatCurrency(platform.cpc)}) through bid optimization and quality score improvements`;
                                   } else if (platform.roas >= 4) {

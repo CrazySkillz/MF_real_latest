@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatPct } from "@shared/metric-math";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
 } from "recharts";
@@ -94,7 +95,7 @@ export default function GA4CampaignComparison({
 
   const fmtMetricValue = (metric: string, value: number) => {
     if (metric === "revenue") return formatMoney(value);
-    if (metric === "conversionRate") return `${value.toFixed(2)}%`;
+    if (metric === "conversionRate") return `${formatPct(value)}`;
     return formatNumber(value);
   };
 
@@ -164,7 +165,7 @@ export default function GA4CampaignComparison({
                   {bestPerforming.name}
                 </div>
                 <div className="text-sm text-muted-foreground/70 mt-1">
-                  {fmtMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric} &middot; {bestPerforming.conversionRate.toFixed(2)}% CR
+                  {fmtMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric} &middot; {formatPct(bestPerforming.conversionRate)} CR
                 </div>
               </CardContent>
             </Card>
@@ -180,7 +181,7 @@ export default function GA4CampaignComparison({
                   {mostEfficient.name}
                 </div>
                 <div className="text-sm text-muted-foreground/70 mt-1">
-                  {mostEfficient.conversionRate.toFixed(2)}% CR &middot; {formatMoney(mostEfficient.revenue)} revenue
+                  {formatPct(mostEfficient.conversionRate)} CR &middot; {formatMoney(mostEfficient.revenue)} revenue
                 </div>
               </CardContent>
             </Card>
@@ -196,7 +197,7 @@ export default function GA4CampaignComparison({
                   {needsAttention.name}
                 </div>
                 <div className="text-sm text-muted-foreground/70 mt-1">
-                  {needsAttention.conversionRate.toFixed(2)}% CR &middot; {formatNumber(needsAttention.sessions)} sessions
+                  {formatPct(needsAttention.conversionRate)} CR &middot; {formatNumber(needsAttention.sessions)} sessions
                 </div>
               </CardContent>
             </Card>
@@ -307,7 +308,7 @@ export default function GA4CampaignComparison({
                         <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.sessions)}</td>
                         <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.users)}</td>
                         <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.conversions)}</td>
-                        <td className="px-2 py-2 text-right tabular-nums">{c.conversionRate.toFixed(2)}%</td>
+                        <td className="px-2 py-2 text-right tabular-nums">{formatPct(c.conversionRate)}</td>
                         <td className="px-2 py-2 text-right tabular-nums">{formatMoney(c.revenue)}</td>
                       </tr>
                     );

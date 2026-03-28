@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus } from "lucide-react";
 import { Campaign } from "@shared/schema";
 import { useClient } from "@/lib/clientContext";
+import { formatPct } from "@shared/metric-math";
 
 export default function CampaignTable() {
   const { selectedClientId } = useClient();

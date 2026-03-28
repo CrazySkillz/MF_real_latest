@@ -34,6 +34,7 @@ import { GoogleAdsConnectionFlow } from "@/components/GoogleAdsConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { CampaignChat } from "@/components/CampaignChat";
 import { WebhookTester } from "@/components/WebhookTester";
+import { formatPct } from "@shared/metric-math";
 interface Campaign {
   id: string;
   name: string;
@@ -3573,7 +3574,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                           {isBehind && <TrendingDown className="w-4 h-4 text-red-600" />}
                         </div>
                         <span className="font-semibold text-foreground">
-                          {progressTowardBenchmark.toFixed(2)}%
+                          {formatPct(progressTowardBenchmark)}
                         </span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2.5">
@@ -4646,7 +4647,7 @@ export default function CampaignDetail() {
       clicks: ga4Metrics?.clicks || 0,
       conversions: ga4Metrics?.conversions || 0,
       spend: "0.00", // GA4 doesn't track spend directly
-      ctr: ga4Metrics?.impressions && ga4Metrics.impressions > 0 ? `${((ga4Metrics.clicks / ga4Metrics.impressions) * 100).toFixed(2)}%` : "0.00%",
+      ctr: ga4Metrics?.impressions && ga4Metrics.impressions > 0 ? formatPct((ga4Metrics.clicks / ga4Metrics.impressions) * 100) : "0%",
       cpc: "$0.00", // GA4 doesn't track cost per click
       analyticsPath: isGA4Connected ? (gaPlatformStatus?.analyticsPath || `/campaigns/${campaign?.id}/ga4-metrics`) : undefined
     },
@@ -4657,7 +4658,7 @@ export default function CampaignDetail() {
       clicks: sheetsData?.summary?.totalClicks || 0,
       conversions: 0, // Conversions not in summary, would need to be calculated separately
       spend: sheetsData?.summary?.totalSpend?.toString() || "0.00",
-      ctr: sheetsData?.summary?.averageCTR ? `${sheetsData.summary.averageCTR.toFixed(2)}%` : "0.00%",
+      ctr: sheetsData?.summary?.averageCTR ? `${formatPct(sheetsData.summary.averageCTR)}` : "0.00%",
       cpc: sheetsData?.summary?.totalClicks && sheetsData.summary.totalClicks > 0 && sheetsData.summary.totalSpend ? `$${(sheetsData.summary.totalSpend / sheetsData.summary.totalClicks).toFixed(2)}` : "$0.00",
       analyticsPath: platformStatusMap.get("google-sheets")?.analyticsPath || `/campaigns/${campaign?.id}/google-sheets-data`
     },
@@ -5110,7 +5111,7 @@ export default function CampaignDetail() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground/70">CTR Change:</span>
                       <span className={`text-sm font-semibold ${changes.ctrChange > 0 ? 'text-green-600' : changes.ctrChange < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-                        {changes.ctrChange > 0 ? '+' : ''}{changes.ctrChange.toFixed(2)}%
+                        {changes.ctrChange > 0 ? '+' : ''}{formatPct(changes.ctrChange)}
                       </span>
                     </div>
                   </div>

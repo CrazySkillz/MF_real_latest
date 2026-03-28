@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatPct } from "@shared/metric-math";
 
 interface Campaign {
   id: string;
@@ -125,7 +126,7 @@ export default function FinancialAnalysis() {
   };
 
   const formatPercentage = (value: number) => {
-    return `${value.toFixed(2)}%`;
+    return `${formatPct(value)}`;
   };
 
   if (campaignLoading) {
@@ -1313,7 +1314,7 @@ export default function FinancialAnalysis() {
                                       </p>
                                     )}
                                     {topPerformer.cvr > 0 && (
-                                      <p>Conversion rate: {topPerformer.cvr.toFixed(2)}% | CPC: {formatCurrency(topPerformer.cpc)}</p>
+                                      <p>Conversion rate: {formatPct(topPerformer.cvr)} | CPC: {formatCurrency(topPerformer.cpc)}</p>
                                     )}
                                   </div>
                                 </div>

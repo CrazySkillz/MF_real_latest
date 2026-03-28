@@ -3,6 +3,7 @@
  * NOTE: Extracted from `pages/linkedin-analytics.tsx` to reduce editor memory pressure (Cursor OOM).
  * These helpers are intentionally loosely typed while the LinkedIn analytics page refactor is in progress.
  */
+import { formatPct } from "@shared/metric-math";
 
 export function getLinkedInPdfGenerators(ctx: any) {
   const {
@@ -294,11 +295,11 @@ export function getLinkedInPdfGenerators(ctx: any) {
       doc.text(formatNumber(clicks), 130, y);
       doc.text(formatNumber(conversions), 147, y);
       doc.text(formatNumber(leads), 160, y);
-      doc.text(`${ctr.toFixed(2)}%`, 175, y);
+      doc.text(`${formatPct(ctr)}`, 175, y);
 
       doc.setTextColor(110, 110, 110);
       doc.setFontSize(7);
-      const baseLine = `CPC ${formatCurrency(cpc)}  CPA ${formatCurrency(cpa)}  CVR ${cvr.toFixed(2)}%`;
+      const baseLine = `CPC ${formatCurrency(cpc)}  CPA ${formatCurrency(cpa)}  CVR ${formatPct(cvr)}`;
       const revLine = hasRevenue ? `  Rev ${formatCurrency(revenue)}  ROAS ${roas.toFixed(2)}x  ROI ${roi.toFixed(1)}%` : "";
       doc.text(`${baseLine}${revLine}`, 22, y + 4);
       doc.setTextColor(50, 50, 50);
@@ -725,7 +726,7 @@ export function getLinkedInPdfGenerators(ctx: any) {
       ];
 
       if (percentageMetrics.includes(key.toLowerCase())) {
-        return `${parseFloat(value).toFixed(2)}%`;
+        return `${formatPct(parseFloat(value))}`;
       } else if (currencyMetrics.includes(key.toLowerCase())) {
         return `$${parseFloat(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       } else if (key.toLowerCase() === "roas") {

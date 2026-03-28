@@ -13,6 +13,7 @@ import { SiLinkedin } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { formatPct } from "@shared/metric-math";
 
 interface Campaign {
   id: string;
@@ -281,7 +282,7 @@ export default function CampaignPerformanceSummary() {
       const topKPI = underperformingKPIs[0];
       const formatValue = (value: any, unit: string) => {
         if (unit === '$') return `$${parseNum(value).toFixed(2)}`;
-        if (unit === '%') return `${parseNum(value).toFixed(2)}%`;
+        if (unit === '%') return `${formatPct(parseNum(value))}`;
         return `${value}${unit}`;
       };
       
@@ -666,13 +667,13 @@ export default function CampaignPerformanceSummary() {
                               <div>
                                 <span className="text-muted-foreground/70">Current: </span>
                                 <span className="font-semibold text-foreground">
-                                  {kpi.unit === '$' ? `$${current.toFixed(2)}` : kpi.unit === '%' ? `${current.toFixed(2)}%` : `${kpi.currentValue}${kpi.unit}`}
+                                  {kpi.unit === '$' ? `$${current.toFixed(2)}` : kpi.unit === '%' ? `${formatPct(current)}` : `${kpi.currentValue}${kpi.unit}`}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground/70">Target: </span>
                                 <span className="font-semibold text-foreground">
-                                  {kpi.unit === '$' ? `$${target.toFixed(2)}` : kpi.unit === '%' ? `${target.toFixed(2)}%` : `${kpi.targetValue}${kpi.unit}`}
+                                  {kpi.unit === '$' ? `$${target.toFixed(2)}` : kpi.unit === '%' ? `${formatPct(target)}` : `${kpi.targetValue}${kpi.unit}`}
                                 </span>
                               </div>
                             </div>
@@ -714,13 +715,13 @@ export default function CampaignPerformanceSummary() {
                               <div>
                                 <span className="text-muted-foreground/70">Current: </span>
                                 <span className="font-semibold text-foreground">
-                                  {benchmark.unit === '$' ? `$${current.toFixed(2)}` : benchmark.unit === '%' ? `${current.toFixed(2)}%` : `${benchmark.currentValue}${benchmark.unit}`}
+                                  {benchmark.unit === '$' ? `$${current.toFixed(2)}` : benchmark.unit === '%' ? `${formatPct(current)}` : `${benchmark.currentValue}${benchmark.unit}`}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground/70">Target: </span>
                                 <span className="font-semibold text-foreground">
-                                  {benchmark.unit === '$' ? `$${target.toFixed(2)}` : benchmark.unit === '%' ? `${target.toFixed(2)}%` : `${benchmark.benchmarkValue}${benchmark.unit}`}
+                                  {benchmark.unit === '$' ? `$${target.toFixed(2)}` : benchmark.unit === '%' ? `${formatPct(target)}` : `${benchmark.benchmarkValue}${benchmark.unit}`}
                                 </span>
                               </div>
                             </div>
@@ -1017,20 +1018,20 @@ export default function CampaignPerformanceSummary() {
                           insights.push({
                             type: 'success',
                             title: 'LinkedIn Outperforming',
-                            message: `LinkedIn: ${linkedinCVR.toFixed(2)}% CVR, $${linkedinCPA.toFixed(2)} CPA vs Custom Integration: ${ciCVR.toFixed(2)}% CVR, $${ciCPA > 0 ? ciCPA.toFixed(2) : '0.00'} CPA. LinkedIn showing superior efficiency.`
+                            message: `LinkedIn: ${formatPct(linkedinCVR)} CVR, $${linkedinCPA.toFixed(2)} CPA vs Custom Integration: ${formatPct(ciCVR)} CVR, $${ciCPA > 0 ? ciCPA.toFixed(2) : '0.00'} CPA. LinkedIn showing superior efficiency.`
                           });
                         } else if (ciCVR > linkedinCVR * 1.5 && ciCVR > 0) {
                           insights.push({
                             type: 'success',
                             title: 'Custom Integration Outperforming',
-                            message: `Custom Integration: ${ciCVR.toFixed(2)}% CVR, $${ciCPA.toFixed(2)} CPA vs LinkedIn: ${linkedinCVR.toFixed(2)}% CVR, $${linkedinCPA > 0 ? linkedinCPA.toFixed(2) : '0.00'} CPA. Custom channels driving superior results.`
+                            message: `Custom Integration: ${formatPct(ciCVR)} CVR, $${ciCPA.toFixed(2)} CPA vs LinkedIn: ${formatPct(linkedinCVR)} CVR, $${linkedinCPA > 0 ? linkedinCPA.toFixed(2) : '0.00'} CPA. Custom channels driving superior results.`
                           });
                         } else {
                           // Similar performance
                           insights.push({
                             type: 'info',
                             title: 'Balanced Platform Performance',
-                            message: `LinkedIn: ${linkedinCVR.toFixed(2)}% CVR from ${linkedinClicks.toLocaleString()} clicks. Custom Integration: ${ciCVR.toFixed(2)}% CVR from ${ciClicks.toLocaleString()} clicks. Both platforms contributing effectively.`
+                            message: `LinkedIn: ${formatPct(linkedinCVR)} CVR from ${linkedinClicks.toLocaleString()} clicks. Custom Integration: ${formatPct(ciCVR)} CVR from ${ciClicks.toLocaleString()} clicks. Both platforms contributing effectively.`
                           });
                         }
                       } 
@@ -1039,7 +1040,7 @@ export default function CampaignPerformanceSummary() {
                         insights.push({
                           type: 'info',
                           title: 'LinkedIn Performance',
-                          message: `LinkedIn driving ${linkedinConversions.toLocaleString()} conversions from ${linkedinClicks.toLocaleString()} clicks (${linkedinCVR.toFixed(2)}% CVR). $${linkedinSpend.toLocaleString()} spent${linkedinCPA > 0 ? ` at $${linkedinCPA.toFixed(2)} CPA` : ''}.`
+                          message: `LinkedIn driving ${linkedinConversions.toLocaleString()} conversions from ${linkedinClicks.toLocaleString()} clicks (${formatPct(linkedinCVR)} CVR). $${linkedinSpend.toLocaleString()} spent${linkedinCPA > 0 ? ` at $${linkedinCPA.toFixed(2)} CPA` : ''}.`
                         });
                       }
                       // Only Custom Integration active
@@ -1047,7 +1048,7 @@ export default function CampaignPerformanceSummary() {
                         insights.push({
                           type: 'info',
                           title: 'Custom Integration Performance',
-                          message: `Custom Integration driving ${ciConversions.toLocaleString()} conversions from ${ciClicks.toLocaleString()} clicks (${ciCVR.toFixed(2)}% CVR). $${ciSpend.toLocaleString()} spent${ciCPA > 0 ? ` at $${ciCPA.toFixed(2)} CPA` : ''}.`
+                          message: `Custom Integration driving ${ciConversions.toLocaleString()} conversions from ${ciClicks.toLocaleString()} clicks (${formatPct(ciCVR)} CVR). $${ciSpend.toLocaleString()} spent${ciCPA > 0 ? ` at $${ciCPA.toFixed(2)} CPA` : ''}.`
                         });
                       }
                       
@@ -1057,13 +1058,13 @@ export default function CampaignPerformanceSummary() {
                           insights.push({
                             type: 'warning',
                             title: 'Low Click-Through Rate',
-                            message: `Current CTR is ${ctr.toFixed(2)}%. Consider testing new ad creative, headlines, or targeting to improve engagement. Industry benchmarks typically range from 1-3%.`
+                            message: `Current CTR is ${formatPct(ctr)}. Consider testing new ad creative, headlines, or targeting to improve engagement. Industry benchmarks typically range from 1-3%.`
                           });
                         } else if (ctr >= 2) {
                           insights.push({
                             type: 'success',
                             title: 'Strong Click-Through Rate',
-                            message: `Achieving ${ctr.toFixed(2)}% CTR from ${advertisingImpressions.toLocaleString()} impressions. Your ads are resonating well with the target audience.`
+                            message: `Achieving ${formatPct(ctr)} CTR from ${advertisingImpressions.toLocaleString()} impressions. Your ads are resonating well with the target audience.`
                           });
                         }
                       }
@@ -1074,13 +1075,13 @@ export default function CampaignPerformanceSummary() {
                           insights.push({
                             type: 'success',
                             title: 'Excellent Conversion Rate',
-                            message: `${cvr.toFixed(2)}% of clicks convert. This indicates strong ad-to-landing page alignment and quality traffic from ${totalClicks.toLocaleString()} total clicks.`
+                            message: `${formatPct(cvr)} of clicks convert. This indicates strong ad-to-landing page alignment and quality traffic from ${totalClicks.toLocaleString()} total clicks.`
                           });
                         } else if (cvr < 2) {
                           insights.push({
                             type: 'warning',
                             title: 'Conversion Rate Opportunity',
-                            message: `${cvr.toFixed(2)}% conversion rate suggests landing page optimization needed. Review user journey from ${totalClicks.toLocaleString()} clicks to improve ${totalConversions.toLocaleString()} conversions.`
+                            message: `${formatPct(cvr)} conversion rate suggests landing page optimization needed. Review user journey from ${totalClicks.toLocaleString()} clicks to improve ${totalConversions.toLocaleString()} conversions.`
                           });
                         }
                       }

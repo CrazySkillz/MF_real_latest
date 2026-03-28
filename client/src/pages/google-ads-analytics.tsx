@@ -18,6 +18,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { GoogleAdsKpiModal } from "./google-ads-analytics/GoogleAdsKpiModal";
 import { GoogleAdsBenchmarkModal } from "./google-ads-analytics/GoogleAdsBenchmarkModal";
 import { GoogleAdsReportModal } from "./google-ads-analytics/GoogleAdsReportModal";
+import { formatPct } from "@shared/metric-math";
 
 // Google Ads metric definitions for KPIs and Benchmarks
 const GOOGLE_ADS_METRICS = [
@@ -26,12 +27,12 @@ const GOOGLE_ADS_METRICS = [
   { key: 'conversions', label: 'Conversions', unit: '', format: (v: number) => v.toLocaleString() },
   { key: 'spend', label: 'Spend', unit: '$', format: (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
   { key: 'videoViews', label: 'Video Views', unit: '', format: (v: number) => v.toLocaleString() },
-  { key: 'ctr', label: 'CTR', unit: '%', format: (v: number) => `${v.toFixed(2)}%` },
+  { key: 'ctr', label: 'CTR', unit: '%', format: (v: number) => `${formatPct(v)}` },
   { key: 'cpc', label: 'CPC', unit: '$', format: (v: number) => `$${v.toFixed(2)}` },
   { key: 'cpm', label: 'CPM', unit: '$', format: (v: number) => `$${v.toFixed(2)}` },
-  { key: 'conversionRate', label: 'Conversion Rate', unit: '%', format: (v: number) => `${v.toFixed(2)}%` },
+  { key: 'conversionRate', label: 'Conversion Rate', unit: '%', format: (v: number) => `${formatPct(v)}` },
   { key: 'costPerConversion', label: 'Cost per Conversion', unit: '$', format: (v: number) => `$${v.toFixed(2)}` },
-  { key: 'searchImpressionShare', label: 'Search Imp. Share', unit: '%', format: (v: number) => `${v.toFixed(2)}%` },
+  { key: 'searchImpressionShare', label: 'Search Imp. Share', unit: '%', format: (v: number) => `${formatPct(v)}` },
   { key: 'roas', label: 'ROAS', unit: 'x', format: (v: number) => `${v.toFixed(2)}x` },
 ];
 
@@ -62,12 +63,12 @@ const METRIC_OPTIONS = [
   { key: "impressions", label: "Impressions", format: (v: number) => v.toLocaleString(), color: "#3b82f6" },
   { key: "clicks", label: "Clicks", format: (v: number) => v.toLocaleString(), color: "#10b981" },
   { key: "conversions", label: "Conversions", format: (v: number) => v.toLocaleString(), color: "#f59e0b" },
-  { key: "ctr", label: "CTR (%)", format: (v: number) => `${v.toFixed(2)}%`, color: "#ef4444" },
+  { key: "ctr", label: "CTR (%)", format: (v: number) => `${formatPct(v)}`, color: "#ef4444" },
   { key: "cpc", label: "CPC", format: (v: number) => `$${v.toFixed(2)}`, color: "#ec4899" },
   { key: "cpm", label: "CPM", format: (v: number) => `$${v.toFixed(2)}`, color: "#6366f1" },
   { key: "videoViews", label: "Video Views", format: (v: number) => v.toLocaleString(), color: "#14b8a6" },
-  { key: "conversionRate", label: "Conversion Rate (%)", format: (v: number) => `${v.toFixed(2)}%`, color: "#f97316" },
-  { key: "searchImpressionShare", label: "Search Imp. Share (%)", format: (v: number) => `${v.toFixed(2)}%`, color: "#a855f7" },
+  { key: "conversionRate", label: "Conversion Rate (%)", format: (v: number) => `${formatPct(v)}`, color: "#f97316" },
+  { key: "searchImpressionShare", label: "Search Imp. Share (%)", format: (v: number) => `${formatPct(v)}`, color: "#a855f7" },
   { key: "roas", label: "ROAS", format: (v: number) => `${v.toFixed(2)}x`, color: "#059669" },
 ];
 
@@ -588,7 +589,7 @@ export default function GoogleAdsAnalytics() {
 
   const fmt = (v: number) => v.toLocaleString();
   const fmtCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const fmtPct = (v: number) => `${v.toFixed(2)}%`;
+  const fmtPct = formatPct;
 
   // Loading state
   if (isLoading) {
@@ -1813,7 +1814,7 @@ export default function GoogleAdsAnalytics() {
                     const formatChartValue = (v: any) => {
                       const n = Number(v || 0) || 0;
                       if (['spend', 'cpc', 'cpm', 'costPerConversion'].includes(insightsTrendMetric)) return `$${n.toFixed(2)}`;
-                      if (['ctr', 'conversionRate'].includes(insightsTrendMetric)) return `${n.toFixed(2)}%`;
+                      if (['ctr', 'conversionRate'].includes(insightsTrendMetric)) return `${formatPct(n)}`;
                       if (insightsTrendMetric === 'roas') return `${n.toFixed(2)}x`;
                       return n.toLocaleString();
                     };

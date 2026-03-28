@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar } from "recharts";
 import { format } from "date-fns";
+import { formatPct } from "@shared/metric-math";
 
 export default function ExecutiveSummary() {
   const { id: campaignId } = useParams();
@@ -300,7 +301,7 @@ export default function ExecutiveSummary() {
                         </div>
                         <div className="text-right">
                           <div className="text-sm text-orange-700 dark:text-orange-400">Click-Through Rate</div>
-                          <div className="text-3xl font-bold text-orange-900 dark:text-orange-100">{(executiveSummary as any).metrics.ctr.toFixed(2)}%</div>
+                          <div className="text-3xl font-bold text-orange-900 dark:text-orange-100">{formatPct((executiveSummary as any).metrics.ctr)}</div>
                         </div>
                       </div>
                       <div className="flex justify-center my-2">
@@ -332,7 +333,7 @@ export default function ExecutiveSummary() {
                                 Click-Through CVR
                               </div>
                               <div className="text-2xl font-bold text-indigo-900 dark:text-indigo-100">
-                                {(executiveSummary as any).metrics.clickThroughCvr.toFixed(2)}%
+                                {formatPct((executiveSummary as any).metrics.clickThroughCvr)}
                               </div>
                             </div>
                             {(executiveSummary as any).metrics.totalCvr > 100 && (
@@ -341,7 +342,7 @@ export default function ExecutiveSummary() {
                                   Total CVR (w/ view-through)
                                 </div>
                                 <div className="text-xl font-semibold text-indigo-700 dark:text-indigo-300">
-                                  {(executiveSummary as any).metrics.totalCvr.toFixed(2)}%
+                                  {formatPct((executiveSummary as any).metrics.totalCvr)}
                                 </div>
                               </div>
                             )}
@@ -457,7 +458,7 @@ export default function ExecutiveSummary() {
                       {formatNumber((executiveSummary as any).metrics.totalConversions)}
                     </div>
                     <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">CVR: {(executiveSummary as any).metrics.cvr.toFixed(2)}%</span>
+                      <span className="text-sm font-medium">CVR: {formatPct((executiveSummary as any).metrics.cvr)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -485,7 +486,7 @@ export default function ExecutiveSummary() {
                       {formatNumber((executiveSummary as any).metrics.totalImpressions)}
                     </div>
                     <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">CTR: {(executiveSummary as any).metrics.ctr.toFixed(2)}%</span>
+                      <span className="text-sm font-medium">CTR: {formatPct((executiveSummary as any).metrics.ctr)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -725,13 +726,13 @@ export default function ExecutiveSummary() {
                             <div className="text-right">
                               <div className="text-xs text-muted-foreground">Yours</div>
                               <div className="text-sm font-semibold text-foreground">
-                                {bm.unit === '$' ? `$${bm.yours.toFixed(2)}` : bm.unit === '%' ? `${bm.yours.toFixed(2)}%` : `${bm.yours.toFixed(2)}${bm.unit}`}
+                                {bm.unit === '$' ? `$${bm.yours.toFixed(2)}` : bm.unit === '%' ? `${formatPct(bm.yours)}` : `${bm.yours.toFixed(2)}${bm.unit}`}
                               </div>
                             </div>
                             <div className="text-right">
                               <div className="text-xs text-muted-foreground">Benchmark</div>
                               <div className="text-sm font-semibold text-muted-foreground/70">
-                                {bm.unit === '$' ? `$${bm.benchmark.toFixed(2)}` : bm.unit === '%' ? `${bm.benchmark.toFixed(2)}%` : `${bm.benchmark.toFixed(2)}${bm.unit}`}
+                                {bm.unit === '$' ? `$${bm.benchmark.toFixed(2)}` : bm.unit === '%' ? `${formatPct(bm.benchmark)}` : `${bm.benchmark.toFixed(2)}${bm.unit}`}
                               </div>
                             </div>
                             <Badge className={bm.status === 'above' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'}>

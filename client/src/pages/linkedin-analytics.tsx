@@ -41,6 +41,7 @@ import { LinkedInKpiModal } from "./linkedin-analytics/LinkedInKpiModal";
 import { LinkedInBenchmarkModal } from "./linkedin-analytics/LinkedInBenchmarkModal";
 import { LinkedInCampaignDetailsModal } from "./linkedin-analytics/LinkedInCampaignDetailsModal";
 import { LinkedInReportModal } from "./linkedin-analytics/LinkedInReportModal";
+import { formatPct } from "@shared/metric-math";
 
 // Helper: Derive category from metric
 const getCategoryFromMetric = (metric: string): string => {
@@ -2616,11 +2617,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       doc.text(formatNumber(clicks), 130, y);
       doc.text(formatNumber(conversions), 147, y);
       doc.text(formatNumber(leads), 160, y);
-      doc.text(`${ctr.toFixed(2)}%`, 175, y);
+      doc.text(`${formatPct(ctr)}`, 175, y);
 
       doc.setTextColor(110, 110, 110);
       doc.setFontSize(7);
-      const baseLine = `CPC ${formatCurrency(cpc)}  CPA ${formatCurrency(cpa)}  CVR ${cvr.toFixed(2)}%`;
+      const baseLine = `CPC ${formatCurrency(cpc)}  CPA ${formatCurrency(cpa)}  CVR ${formatPct(cvr)}`;
       const revLine = hasRevenue ? `  Rev ${formatCurrency(revenue)}  ROAS ${roas.toFixed(2)}x  ROI ${roi.toFixed(1)}%` : '';
       doc.text(`${baseLine}${revLine}`, 22, y + 4);
       doc.setTextColor(50, 50, 50);
@@ -3199,17 +3200,17 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
       // Derived Metrics Section
       // Derived metrics - Row 4
-      doc.text(`CTR: ${(parseFloat(ad.ctr || 0)).toFixed(2)}%`, 25, y + 36);
+      doc.text(`CTR: ${formatPct(parseFloat(ad.ctr || 0))}`, 25, y + 36);
       doc.text(`CPC: ${formatCurrency(parseFloat(ad.cpc || 0))}`, 85, y + 36);
       doc.text(`CPM: ${formatCurrency(parseFloat(ad.cpm || 0))}`, 135, y + 36);
 
       // Derived metrics - Row 5
-      doc.text(`CVR: ${(parseFloat(ad.cvr || 0)).toFixed(2)}%`, 25, y + 44);
+      doc.text(`CVR: ${formatPct(parseFloat(ad.cvr || 0))}`, 25, y + 44);
       doc.text(`CPA: ${formatCurrency(parseFloat(ad.cpa || 0))}`, 85, y + 44);
       doc.text(`CPL: ${formatCurrency(parseFloat(ad.cpl || 0))}`, 135, y + 44);
 
       // Derived metrics - Row 6
-      doc.text(`ER: ${(parseFloat(ad.er || 0)).toFixed(2)}%`, 25, y + 52);
+      doc.text(`ER: ${formatPct(parseFloat(ad.er || 0))}`, 25, y + 52);
 
       // Revenue Metrics Section (if available)
       if (showRevenueMetrics) {
@@ -3342,7 +3343,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       const currencyMetrics = ['spend', 'cpc', 'cpm', 'cpa', 'cpl', 'revenue', 'totalrevenue', 'profit', 'revenueperlead'];
 
       if (percentageMetrics.includes(key.toLowerCase())) {
-        return `${parseFloat(value).toFixed(2)}%`;
+        return `${formatPct(parseFloat(value))}`;
       } else if (currencyMetrics.includes(key.toLowerCase())) {
         return `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       } else if (key.toLowerCase() === 'roas') {
@@ -3694,7 +3695,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
         const meta = metricMeta[key] || { label: key, kind: 'number' as const };
         const n = Number(v || 0) || 0;
         if (meta.kind === 'currency') return formatCurrency(n);
-        if (meta.kind === 'percent') return `${n.toFixed(2)}%`;
+        if (meta.kind === 'percent') return `${formatPct(n)}`;
         if (meta.kind === 'x') return `${n.toFixed(2)}x`;
         return formatNumber(n);
       };
@@ -3925,7 +3926,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
   const formatPercentage = (num: number | string) => {
     const n = typeof num === 'string' ? parseFloat(num) : num;
-    return `${(isNaN(n) ? 0 : n).toFixed(2)}%`;
+    return formatPct(isNaN(n) ? 0 : n);
   };
 
   // Helper function to get metric icon and formatted value
@@ -5229,7 +5230,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                               </div>
                                               <div>
                                                 <p className="text-xs text-muted-foreground/70">CTR</p>
-                                                <p className="text-base font-semibold text-foreground">{ctr.toFixed(2)}%</p>
+                                                <p className="text-base font-semibold text-foreground">{formatPct(ctr)}</p>
                                               </div>
                                               <div>
                                                 <p className="text-xs text-muted-foreground/70">CPC</p>
@@ -5537,7 +5538,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         <YAxis tick={{ fontSize: 12 }} />
                                         <Tooltip
                                           formatter={(value: any) => [
-                                            typeof value === 'number' ? `${value.toFixed(2)}%` : value,
+                                            typeof value === 'number' ? `${formatPct(value)}` : value,
                                           ]}
                                         />
                                         <Legend />
@@ -5716,7 +5717,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   const formatChartValue = (v: any) => {
                                     const n = Number(v || 0) || 0;
                                     if (insightsTrendMetric === "spend" || insightsTrendMetric === "revenue") return formatCurrency(n);
-                                    if (insightsTrendMetric === "ctr" || insightsTrendMetric === "cvr") return `${n.toFixed(2)}%`;
+                                    if (insightsTrendMetric === "ctr" || insightsTrendMetric === "cvr") return `${formatPct(n)}`;
                                     if (insightsTrendMetric === "roas") return `${n.toFixed(2)}x`;
                                     return formatNumber(n, insightsTrendMetric);
                                   };
@@ -5811,7 +5812,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
                                               const formatValue = (key: string, v: number) => {
                                                 if (key === "spend" || key === "revenue") return formatCurrency(v);
-                                                if (key === "ctr" || key === "cvr") return `${v.toFixed(2)}%`;
+                                                if (key === "ctr" || key === "cvr") return `${formatPct(v)}`;
                                                 if (key === "roas") return `${v.toFixed(2)}x`;
                                                 return formatNumber(v, key);
                                               };
@@ -5905,7 +5906,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                           const valueFor = (obj: any) => {
                                             const v = Number(obj?.[metricKey] ?? 0) || 0;
                                             if (metricKey === "spend" || metricKey === "revenue") return formatCurrency(v);
-                                            if (metricKey === "ctr" || metricKey === "cvr") return `${v.toFixed(2)}%`;
+                                            if (metricKey === "ctr" || metricKey === "cvr") return `${formatPct(v)}`;
                                             if (metricKey === "roas") return `${v.toFixed(2)}x`;
                                             return formatNumber(v, metricKey);
                                           };

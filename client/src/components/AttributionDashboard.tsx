@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Button } from "@/components/ui/button";
 import { DollarSign, MousePointer, Target, TrendingUp, Eye, Users, Activity, FlaskConical } from "lucide-react";
+import { formatPct } from "@shared/metric-math";
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
 
@@ -300,7 +301,7 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
                   {ctr > 0 && (
                     <div>
                       <p className="text-muted-foreground">CTR</p>
-                      <p className="font-semibold">{ctr.toFixed(2)}%</p>
+                      <p className="font-semibold">{formatPct(ctr)}</p>
                     </div>
                   )}
                   {cpa > 0 && (
@@ -425,7 +426,7 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
                       <td className="text-right py-3 px-4">{ch.spend > 0 ? fmt(ch.spend) : '—'}</td>
                       <td className="text-right py-3 px-4">{ch.impressions > 0 ? fmtN(ch.impressions) : '—'}</td>
                       <td className="text-right py-3 px-4">{ch.clicks > 0 ? fmtN(ch.clicks) : '—'}</td>
-                      <td className="text-right py-3 px-4">{ctr > 0 ? `${ctr.toFixed(2)}%` : '—'}</td>
+                      <td className="text-right py-3 px-4">{ctr > 0 ? `${formatPct(ctr)}` : '—'}</td>
                       <td className="text-right py-3 px-4">{ch.conversions > 0 ? fmtN(ch.conversions) : '—'}</td>
                       <td className="text-right py-3 px-4">{cpa > 0 ? fmt(cpa) : '—'}</td>
                       {hasRevenue && <td className="text-right py-3 px-4">{ch.revenue > 0 ? fmt(ch.revenue) : '—'}</td>}
@@ -440,7 +441,7 @@ export function AttributionDashboard({ campaignId }: { campaignId: string }) {
                   <td className="text-right py-3 px-4">{totalSpend > 0 ? fmt(totalSpend) : '—'}</td>
                   <td className="text-right py-3 px-4">{totalImpressions > 0 ? fmtN(totalImpressions) : '—'}</td>
                   <td className="text-right py-3 px-4">{totalClicks > 0 ? fmtN(totalClicks) : '—'}</td>
-                  <td className="text-right py-3 px-4">{totalImpressions > 0 ? `${((totalClicks / totalImpressions) * 100).toFixed(2)}%` : '—'}</td>
+                  <td className="text-right py-3 px-4">{totalImpressions > 0 ? formatPct((totalClicks / totalImpressions) * 100) : '—'}</td>
                   <td className="text-right py-3 px-4">{totalConversions > 0 ? fmtN(totalConversions) : '—'}</td>
                   <td className="text-right py-3 px-4">{overallCpa > 0 ? fmt(overallCpa) : '—'}</td>
                   {hasRevenue && <td className="text-right py-3 px-4">{totalRevenue > 0 ? fmt(totalRevenue) : '—'}</td>}

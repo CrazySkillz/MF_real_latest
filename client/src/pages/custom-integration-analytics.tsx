@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatTimeAgo } from "@/lib/utils";
+import { formatPct } from "@shared/metric-math";
 
 // Helper function to calculate expected progress based on timeframe
 function calculateExpectedProgress(timeframe: string): number {
@@ -901,10 +902,10 @@ export default function CustomIntegrationAnalytics() {
             
             if (isAbove) {
               doc.setTextColor(22, 163, 74); // Green
-              doc.text(`${percentDiff.toFixed(2)}% Above - Outperforming!`, 80, y);
+              doc.text(`${formatPct(percentDiff)} Above - Outperforming!`, 80, y);
             } else {
               doc.setTextColor(220, 38, 38); // Red
-              doc.text(`${Math.abs(percentDiff).toFixed(2)}% Below - Needs improvement`, 80, y);
+              doc.text(`${formatPct(Math.abs(percentDiff))} Below - Needs improvement`, 80, y);
             }
             doc.setTextColor(50, 50, 50); // Reset to dark
             y += 5;
@@ -1230,10 +1231,10 @@ export default function CustomIntegrationAnalytics() {
               
               if (isAbove) {
                 doc.setTextColor(22, 163, 74); // Green
-                doc.text(`${percentDiff.toFixed(2)}% Above - Outperforming!`, 80, y);
+                doc.text(`${formatPct(percentDiff)} Above - Outperforming!`, 80, y);
               } else {
                 doc.setTextColor(220, 38, 38); // Red
-                doc.text(`${Math.abs(percentDiff).toFixed(2)}% Below - Needs improvement`, 80, y);
+                doc.text(`${formatPct(Math.abs(percentDiff))} Below - Needs improvement`, 80, y);
               }
               doc.setTextColor(50, 50, 50); // Reset to dark
               y += 5;
@@ -3218,12 +3219,12 @@ export default function CustomIntegrationAnalytics() {
                                       {current >= benchmarkVal ? (
                                         <>
                                           <TrendingUp className="w-3 h-3 mr-1" />
-                                          {percentDiff.toFixed(2)}% Above Benchmark
+                                          {formatPct(percentDiff)} Above Benchmark
                                         </>
                                       ) : (
                                         <>
                                           <TrendingDown className="w-3 h-3 mr-1" />
-                                          {Math.abs(percentDiff).toFixed(2)}% Below Benchmark
+                                          {formatPct(Math.abs(percentDiff))} Below Benchmark
                                         </>
                                       )}
                                     </Badge>

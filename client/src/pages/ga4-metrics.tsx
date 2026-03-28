@@ -1133,15 +1133,14 @@ export default function GA4Metrics() {
   const formatMoney = (n: number) => {
     const num = Number(n || 0);
     try {
-      return new Intl.NumberFormat(undefined, {
+      return new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: campaignCurrency,
-        currencyDisplay: "narrowSymbol",
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(num);
     } catch {
-      return `${campaignCurrency} ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
   };
 
@@ -1159,7 +1158,7 @@ export default function GA4Metrics() {
       default:
         if (isIsoCurrencyCode(unit)) {
           try {
-            return new Intl.NumberFormat(undefined, { style: "currency", currency: unit, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numValue);
+            return new Intl.NumberFormat("en-US", { style: "currency", currency: unit, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numValue);
           } catch {
             return numValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
           }
@@ -1232,7 +1231,7 @@ export default function GA4Metrics() {
       default:
         if (isIsoCurrencyCode(unit)) {
           try {
-            return new Intl.NumberFormat(undefined, { style: "currency", currency: unit, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numValue);
+            return new Intl.NumberFormat("en-US", { style: "currency", currency: unit, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numValue);
           } catch {
             return numValue.toLocaleString();
           }

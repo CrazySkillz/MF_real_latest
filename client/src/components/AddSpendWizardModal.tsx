@@ -1895,9 +1895,21 @@ export function AddSpendWizardModal(props: {
                         type="text"
                         inputMode="decimal"
                         value={manualAmount}
-                        onChange={(e) => setManualAmount(e.target.value)}
+                        onChange={(e) => {
+                          // Strip everything except digits and decimal point
+                          let raw = e.target.value.replace(/[^0-9.]/g, '');
+                          // Only allow one decimal point
+                          const parts = raw.split('.');
+                          if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+                          // Limit to 2 decimal places
+                          if (parts[1]?.length > 2) raw = parts[0] + '.' + parts[1].slice(0, 2);
+                          // Auto-format with commas on the integer part
+                          const intPart = raw.split('.')[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                          const decPart = raw.includes('.') ? '.' + raw.split('.')[1] : '';
+                          setManualAmount(intPart + decPart);
+                        }}
                         onBlur={() => {
-                          const num = parseFloat(String(manualAmount || "").replace(/[$,]/g, "").trim());
+                          const num = parseFloat(String(manualAmount || "").replace(/,/g, "").trim());
                           if (Number.isFinite(num) && num > 0) {
                             setManualAmount(num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
                           }

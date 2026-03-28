@@ -189,8 +189,6 @@ export default function GA4Metrics() {
   const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d" | "monthly">("daily");
   const [insightsTrendMetric, setInsightsTrendMetric] = useState<string>("sessions");
   const [insightsDailyShowMore, setInsightsDailyShowMore] = useState(false);
-  const [trendDateFrom, setTrendDateFrom] = useState<string>("");
-  const [trendDateTo, setTrendDateTo] = useState<string>("");
   const [ga4ReportForm, setGa4ReportForm] = useState({
     name: "",
     description: "",
@@ -5991,31 +5989,6 @@ export default function GA4Metrics() {
                               </Select>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="text-muted-foreground/70">From</span>
-                            <input
-                              type="date"
-                              value={trendDateFrom}
-                              onChange={(e) => setTrendDateFrom(e.target.value)}
-                              className="h-8 px-2 rounded border border-input bg-background text-foreground text-xs"
-                            />
-                            <span className="text-muted-foreground/70">To</span>
-                            <input
-                              type="date"
-                              value={trendDateTo}
-                              onChange={(e) => setTrendDateTo(e.target.value)}
-                              className="h-8 px-2 rounded border border-input bg-background text-foreground text-xs"
-                            />
-                            {(trendDateFrom || trendDateTo) && (
-                              <button
-                                onClick={() => { setTrendDateFrom(""); setTrendDateTo(""); }}
-                                className="text-xs text-muted-foreground hover:text-foreground"
-                                title="Clear date range"
-                              >
-                                Clear
-                              </button>
-                            )}
-                          </div>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -6031,9 +6004,6 @@ export default function GA4Metrics() {
                           }
 
                           let sorted = [...dailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
-                          // Apply optional date range filter
-                          if (trendDateFrom) sorted = sorted.filter((r: any) => String(r.date) >= trendDateFrom);
-                          if (trendDateTo) sorted = sorted.filter((r: any) => String(r.date) <= trendDateTo);
                           const metric = insightsTrendMetric;
                           const isRate = metric === "engagementRate";
                           const isMoney = metric === "revenue";
@@ -6093,11 +6063,8 @@ export default function GA4Metrics() {
                               } else {
                                 val = slice.reduce((s: number, r: any) => s + Number(r[metric] || 0), 0);
                               }
-                              // Convert rolling sum to daily average so values are comparable across modes
-                              // (engagementRate is already a weighted average — don't divide)
-                              if (!isRate) {
-                                val = val / windowDays;
-                              }
+                              // engagementRate is already a weighted average — no further processing needed
+                              // Non-rate metrics show rolling window totals (sum of last N days)
                               chartData.push({ date: String(chartRows[i].date || "").slice(5), value: Number(val.toFixed(2)), idx: chartData.length });
                             }
                           }
@@ -6288,7 +6255,7 @@ export default function GA4Metrics() {
                                       <tr>
                                         <th className="text-left p-3">Date / Window</th>
                                         <th className="text-right p-3">
-                                          {trendMetricLabels[metric] || metric} <span className="text-muted-foreground font-normal">(daily avg)</span>
+                                          {trendMetricLabels[metric] || metric}
                                         </th>
                                         <th className="text-right p-3">vs prior</th>
                                       </tr>
@@ -6303,10 +6270,8 @@ export default function GA4Metrics() {
                                         const prior = insightsTrendMode === "7d" ? insightsRollups.prior7 : insightsRollups.prior30;
 
                                         const getVal = (rollup: typeof cur) => {
-                                          // engagementRate is already a weighted average — don't divide
                                           if (metric === "engagementRate") return rollup.engagementRate;
-                                          // Convert totals to daily averages to match the chart
-                                          return ((rollup as any)[metric] || 0) / windowDays;
+                                          return (rollup as any)[metric] || 0;
                                         };
 
                                         const curVal = getVal(cur);
@@ -6420,7 +6385,7 @@ export default function GA4Metrics() {
                               )}
                             </div>
                           )}
-                          {channelAnalysis && channelAnalysis.channels && channelAnalysis.channels.length >= 2 && (
+                          {channelAnalysis && channelAnalysis.channels && channelAnalysis.channels.length >= 1 && (
                             <div className="mt-4 pt-4 border-t">
                               <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide mb-2">Channel Breakdown</p>
                               <div className="overflow-hidden border rounded-md">

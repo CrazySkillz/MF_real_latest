@@ -4813,7 +4813,7 @@ export default function GA4Metrics() {
                                           <div className="mt-4 space-y-2">
                                             <div className="flex items-center justify-between text-xs text-muted-foreground/70">
                                               <span>Progress</span>
-                                              <span>{p.attainmentPct >= 99.5 && p.attainmentPct < 100 ? p.attainmentPct.toFixed(1) : Math.round(p.attainmentPct)}%</span>
+                                              <span>{formatPct(p.attainmentPct)}</span>
                                             </div>
                                             <div className="w-full bg-muted rounded-full h-2">
                                               <div

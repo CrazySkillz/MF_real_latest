@@ -460,8 +460,8 @@ export default function GA4Metrics() {
         case "Total Sessions":
           return String(Math.round(sessions));
         case "ROAS":
-          // Present ROAS as a percentage (Revenue ÷ Spend × 100) for consistency with modal units.
-          return spend > 0 ? ((revenue / spend) * 100).toFixed(2) : "0.00";
+          // ROAS as ratio (e.g., 48.91) to match Overview display
+          return spend > 0 ? (revenue / spend).toFixed(2) : "0.00";
         case "ROI":
           return spend > 0 ? (((revenue - spend) / spend) * 100).toFixed(2) : "0.00";
         case "CPA":
@@ -1447,8 +1447,8 @@ export default function GA4Metrics() {
 
     switch (m) {
       case "roas":
-        // Present ROAS as a percentage (Revenue ÷ Spend × 100) for consistency with modal units.
-        return Number(financialROAS || 0) * 100;
+        // ROAS as ratio (e.g., 48.91) to match Overview display
+        return Number(financialROAS || 0);
       case "roi":
         return Number(financialROI || 0);
       case "cpa":
@@ -2012,7 +2012,8 @@ export default function GA4Metrics() {
     if (name === "Total Users") return String(Math.round(Number(breakdownTotals.users || ga4Metrics?.users || 0)));
     if (name === "Total Sessions") return String(Math.round(Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0)));
     // Present ROAS as a percentage (Revenue ÷ Spend × 100) for consistency with modal units.
-    if (name === "ROAS") return computeRoasPercent(financialRevenue, financialSpend).toFixed(2);
+    // ROAS as ratio (48.91x) to match Overview display — NOT percentage (4,891%)
+    if (name === "ROAS") return (financialSpend > 0 ? financialRevenue / financialSpend : 0).toFixed(2);
     if (name === "ROI") return Number(financialROI || 0).toFixed(2);
     if (name === "CPA") return Number(financialCPA || 0).toFixed(2);
     // Fallback to stored value for any legacy/custom KPI.
@@ -4975,7 +4976,7 @@ export default function GA4Metrics() {
 
                               <div className="grid grid-cols-2 gap-3">
                                 {[
-                                  { name: "ROAS", metric: "roas", unit: "%", description: "Revenue ÷ Spend × 100" },
+                                  { name: "ROAS", metric: "roas", unit: "ratio", description: "Revenue ÷ Spend (e.g., 5.0 = 5x return)" },
                                   { name: "ROI", metric: "roi", unit: "%", description: "(Revenue − Spend) ÷ Spend × 100" },
                                   { name: "CPA", metric: "cpa", unit: "$", description: "Spend ÷ Conversions" },
                                   { name: "Revenue", metric: "revenue", unit: "$", description: "Total revenue in GA4 for the selected period" },

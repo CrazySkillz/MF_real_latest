@@ -245,8 +245,9 @@ Spend arrives when the user explicitly adds it:
 
 ### Step 1: ROAS KPI
 - [ ] Click the **KPIs** tab → **Create KPI** → select **"ROAS"** → ENABLED
-- [ ] Current auto-populates (revenue ÷ spend × 100)
-- [ ] Target = **500** (= 5.0x) → Save
+- [ ] Current auto-populates as ratio (e.g., **48.91** meaning 48.91x return) — matches Overview ROAS
+- [ ] Unit shows as **ratio** (displayed with "x" suffix)
+- [ ] Target = **5** (= 5.0x return) → Save
 
 ### Step 2: CPA KPI (lower-is-better)
 - [ ] Select **"CPA"** → ENABLED
@@ -260,7 +261,7 @@ Spend arrives when the user explicitly adds it:
 
 ### Step 4: ROAS Benchmark
 - [ ] Click the **Benchmarks** tab → **Create Benchmark**
-- [ ] Name = **"ROAS"**, Current auto-populates, Benchmark = **500** → Save
+- [ ] Name = **"ROAS"**, Current auto-populates (ratio, e.g., 48.91), Benchmark = **5** (= 5x) → Save
 
 ### Step 5: CPA Benchmark (lower-is-better)
 - [ ] Name = **"CPA"**, Current auto-populates, Benchmark = **$20.00**
@@ -537,7 +538,7 @@ Spend arrives when the user explicitly adds it:
 - [ ] Overview Spend = Insights Executive Financials Spend (exact)
 - [ ] Overview Revenue = Insights Executive Financials Revenue (exact)
 - [ ] Overview ROAS = Insights ROAS (exact)
-- [ ] KPI ROAS Current ÷ 100 = Overview ROAS ratio
+- [ ] KPI ROAS Current = Overview ROAS ratio (both show same value, e.g., 48.91x)
 - [ ] KPI CPA Current = Overview CPA
 - [ ] Same metric on KPI + Benchmark cards = identical Current Value
 - [ ] Daily chart latest point = Overview Latest Day value

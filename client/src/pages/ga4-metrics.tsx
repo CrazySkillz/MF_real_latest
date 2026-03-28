@@ -1225,13 +1225,13 @@ export default function GA4Metrics() {
 
     switch (unit) {
       case "%":
-        return `${numValue.toFixed(1)}%`;
+        return formatPct(numValue);
       case "$": {
         // Legacy stored Benchmarks may use "$" as the unit; render using the campaign's configured currency.
         return formatMoney(numValue);
       }
       case "ratio":
-        return `${numValue.toFixed(2)}:1`;
+        return `${numValue.toFixed(2)}x`;
       case "seconds":
         return `${numValue.toFixed(1)}s`;
       case "count":

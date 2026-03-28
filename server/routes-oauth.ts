@@ -5225,13 +5225,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const revSources = await storage.getRevenueSources(campaignId);
         for (const rs of (revSources as any[] || [])) {
           if (rs?.displayName === "GA4 Revenue" || (rs?.sourceType === "ga4" && rs?.displayName?.includes?.("GA4"))) {
-            await storage.deleteRevenueSource(campaignId, String(rs.id)).catch(() => {});
+            const sid = String(rs.id);
+            await storage.deleteRevenueRecordsBySource(sid).catch(() => {});
+            await storage.deleteRevenueSource(sid).catch(() => {});
           }
         }
         const spendSources = await storage.getSpendSources(campaignId);
         for (const ss of (spendSources as any[] || [])) {
           if (ss?.displayName === "Mock Spend") {
-            await storage.deleteSpendSource(campaignId, String(ss.id)).catch(() => {});
+            const sid = String(ss.id);
+            await storage.deleteSpendRecordsBySource(sid).catch(() => {});
+            await storage.deleteSpendSource(sid).catch(() => {});
           }
         }
       } catch { /* best-effort cleanup */ }

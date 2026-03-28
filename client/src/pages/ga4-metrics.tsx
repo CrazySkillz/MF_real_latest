@@ -1941,8 +1941,8 @@ export default function GA4Metrics() {
     // Revenue metric is only "available" if there's an actual revenue source with data,
     // OR GA4 reports a revenue metric AND has non-zero revenue. A simulation returning
     // revenueMetric="totalRevenue" with revenue=0 should NOT enable revenue-dependent KPIs.
-    return !!activeRevenueSource || (!!ga4RevenueMetric && ga4RevenueValue > 0);
-  }, [activeRevenueSource, ga4ToDateResp]);
+    return !!activeRevenueSource || (!!ga4RevenueMetric && ga4RevenueValue > 0) || financialRevenue > 0 || breakdownTotals.revenue > 0;
+  }, [activeRevenueSource, ga4ToDateResp, financialRevenue, breakdownTotals.revenue]);
 
   const getMissingDependenciesForMetric = (metricKey: string) => {
     const key = String(metricKey || "").trim();
@@ -6550,26 +6550,6 @@ export default function GA4Metrics() {
               <div className="space-y-4 p-4 bg-muted rounded-lg">
                 <div className="flex items-center justify-between gap-3">
                   <h4 className="font-medium text-foreground">Select KPI Template</h4>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedKPITemplate(null);
-                      kpiForm.reset({
-                        ...kpiForm.getValues(),
-                        name: "",
-                        metric: "",
-                        description: "",
-                        unit: SELECT_UNIT as any,
-                        currentValue: "",
-                        targetValue: "",
-                        priority: "medium",
-                      });
-                    }}
-                  >
-                    Reset
-                  </Button>
                 </div>
                 <p className="text-sm text-muted-foreground/70">
                   Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.

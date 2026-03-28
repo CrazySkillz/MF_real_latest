@@ -2993,7 +2993,7 @@ export default function GA4Metrics() {
         severity: "high",
         title: "Spend is not connected",
         description: "Spend is not configured for this campaign, so ROI/ROAS/CPA and spend-based KPIs/Benchmarks are blocked until a spend source is added.",
-        recommendation: "Import spend-to-date (CSV/Sheets/manual) to enable spend-based executive metrics.",
+        recommendation: "Import spend-to-date to enable spend-based executive metrics.",
       });
     }
 
@@ -3098,10 +3098,14 @@ export default function GA4Metrics() {
         id: `kpi:${String((k as any)?.id || metric)}`,
         severity: sev,
         title: `${metric} ${attPct < KPI_BEHIND_PCT ? "Behind Target" : "Needs Attention"}`,
-        description: `Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String((k as any)?.unit || "%"))} vs target ${formatNumberByUnit(
-          String(effectiveTarget),
-          String((k as any)?.unit || "%")
-        )} (${attPct.toFixed(1)}% progress).${streakNote}${trendNote}`,
+        description: (() => {
+          const unit = String((k as any)?.unit || "%");
+          const suffix = unit === "%" ? "%" : unit === "$" ? "" : "";
+          const prefix = unit === "$" ? "$" : "";
+          const curFmt = `${prefix}${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), unit)}${suffix}`;
+          const tgtFmt = `${prefix}${formatNumberByUnit(String(effectiveTarget), unit)}${suffix}`;
+          return `Current ${curFmt} vs target ${tgtFmt} (${formatPct(attPct)} progress).${streakNote}${trendNote}`;
+        })(),
         recommendation: (() => {
           const m = metric.toLowerCase();
           const ch = channelAnalysis;
@@ -3455,10 +3459,14 @@ export default function GA4Metrics() {
           id: `positive:kpi:${String((k as any)?.id || metric)}`,
           severity: "low",
           title: `${String((k as any)?.name || metric)} exceeds target by ${(attPct - 100).toFixed(0)}%`,
-          description: `Current ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String((k as any)?.unit || "%"))} vs target ${formatNumberByUnit(
-            String((getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? ""),
-            String((k as any)?.unit || "%")
-          )}.`,
+          description: (() => {
+            const unit = String((k as any)?.unit || "%");
+            const suffix = unit === "%" ? "%" : "";
+            const prefix = unit === "$" ? "$" : "";
+            const curFmt = `${prefix}${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), unit)}${suffix}`;
+            const tgtFmt = `${prefix}${formatNumberByUnit(String((getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? ""), unit)}${suffix}`;
+            return `Current ${curFmt} vs target ${tgtFmt}.`;
+          })(),
           recommendation: "This KPI is performing well. Consider raising the target or reallocating budget toward underperforming KPIs.",
         });
       }

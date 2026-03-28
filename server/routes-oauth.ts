@@ -5219,33 +5219,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isSimulated: true,
       }]);
 
-      // 2) Insert a revenue record for the day
-      // Note: Spend is NOT created here — in production, spend arrives when the user
-      // adds it via the Add Spend wizard or when ad platform schedulers run after connection.
-      // Run Refresh only simulates the GA4 scheduler (sessions, conversions, revenue).
-      let revSources = await storage.getRevenueSources(campaignId);
-      let revSource = (revSources as any[])?.[0];
-      if (!revSource) {
-        revSource = await storage.createRevenueSource({
-          campaignId,
-          sourceType: "ga4",
-          displayName: "GA4 Revenue",
-          isActive: true,
-          currency: "USD",
-        } as any);
-      }
-      if (revSource) {
-        await storage.createRevenueRecords([{
-          campaignId,
-          revenueSourceId: String((revSource as any).id),
-          date: dateStr,
-          revenue: String(mockDay.revenue.toFixed(2)),
-          currency: "USD",
-          sourceType: "ga4",
-        }]);
-      }
+      // Note: Neither spend NOR revenue records are created here.
+      // - Spend arrives via Add Spend wizard (manual, CSV, Sheets, ad platform connection)
+      // - GA4 revenue is already in ga4_daily_metrics (written above) and included in
+      //   ga4-to-date totals automatically. Revenue records are only for imported/manual
+      //   sources (HubSpot, Salesforce, CSV, manual entry).
 
-      // 4) Run KPI / benchmark jobs for completeness
+      // 2) Run KPI / benchmark jobs for completeness
       const insightsResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date: dateStr }).catch(() => null);
 
       // 5) Check alerts so breached thresholds create notifications immediately

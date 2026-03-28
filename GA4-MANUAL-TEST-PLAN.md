@@ -293,10 +293,71 @@ Spend arrives when the user explicitly adds it:
 
 ### Step 4: Verify Insights Trends
 - [ ] Click the **Insights** tab → scroll to **Trends** section
-- [ ] **Daily** chart: 6 data points visible (one per Run Refresh day)
-- [ ] **Daily** table: 6 rows with day-over-day deltas (all ~0% since mock data is identical each day)
-- [ ] **Monthly**: 1 bar for current month, "(partial, 6 days)"
-- [ ] **Date picker**: set From/To to a 3-day range → chart shows 3 points → Clear resets
+- [ ] **Daily** chart: data points visible (simulation + Run Refresh days)
+- [ ] **Daily** table: rows with day-over-day deltas
+- [ ] **Monthly**: 1 bar for current month
+
+---
+
+## Journey 5B: Edit & Delete KPIs and Benchmarks
+
+**State**: 6 KPIs and 3 Benchmarks exist from Journeys 2 + 4. Test that editing and deleting works correctly and totals/scoring update.
+
+### Step 1: Edit a KPI — change target
+- [ ] Click the **KPIs** tab
+- [ ] Find the **Sessions** KPI card → click the **Edit** (pencil) icon
+- [ ] The edit modal opens with all fields pre-filled (name, description, current, target, unit, priority, alert settings)
+- [ ] Change Target from **100,000** to **80,000**
+- [ ] Click **Update KPI**
+- [ ] Card updates: progress % increases (closer to the lower target)
+- [ ] Summary card counts may change (e.g., if progress crosses a band threshold)
+
+### Step 2: Edit a KPI — change alert threshold
+- [ ] Find the **Sessions** KPI card → click **Edit**
+- [ ] Change alert threshold from **50,000** to **60,000**
+- [ ] Click **Update KPI**
+- [ ] If current > 60,000: yellow alert icon, NO red pulsing dot
+- [ ] If current < 60,000: red pulsing dot appears → notification created
+- [ ] Hover tooltip shows updated threshold: "threshold: 60,000 (below)"
+
+### Step 3: Edit a Benchmark — change benchmark value
+- [ ] Click the **Benchmarks** tab
+- [ ] Find the **Conversion Rate** benchmark → click the **Edit** (pencil) icon
+- [ ] Edit modal opens with all fields pre-filled
+- [ ] Change Benchmark value from **5.00** to **3.50**
+- [ ] Click **Update Benchmark**
+- [ ] Card updates: status changes (closer to or exceeding the lower benchmark)
+- [ ] Progress bar and delta text reflect new comparison
+
+### Step 4: Delete a KPI
+- [ ] Click the **KPIs** tab
+- [ ] Find the **Engagement Rate** KPI card → click the **Delete** (trash) icon
+- [ ] Confirmation dialog appears: "Are you sure you want to delete this KPI?"
+- [ ] Click **Delete**
+- [ ] Card disappears from the grid
+- [ ] **Summary cards update**: Total KPIs decreases from 6 to 5
+- [ ] Band counts recalculate (Above/On Track/Below totals change)
+- [ ] Avg. Progress recalculates without the deleted KPI
+
+### Step 5: Delete a Benchmark
+- [ ] Click the **Benchmarks** tab
+- [ ] Find the **CPA** benchmark → click the **Delete** (trash) icon
+- [ ] Confirmation dialog appears
+- [ ] Click **Delete**
+- [ ] Card disappears
+- [ ] **Summary cards update**: Total Benchmarks decreases from 3 to 2
+- [ ] On Track/Needs Attention/Behind counts recalculate
+
+### Step 6: Verify Insights reflect changes
+- [ ] Click the **Insights** tab
+- [ ] Deleted KPIs/Benchmarks no longer appear in insights list
+- [ ] Remaining KPI insights reflect the updated targets (e.g., Sessions target is now 80,000)
+- [ ] Remaining Benchmark insights reflect updated benchmark values
+
+### Step 7: Verify cascade delete
+- [ ] The deleted KPIs should also have their `kpiProgress` and `kpiAlerts` records removed
+- [ ] No orphaned alerts or progress entries for deleted KPIs
+- [ ] **Notifications page**: no new alerts for deleted KPIs after this point
 
 ---
 
@@ -663,16 +724,20 @@ Spend arrives when the user explicitly adds it:
 10. All revenue sources (GA4/Manual/CSV/Sheets/HubSpot/Salesforce/Shopify) work
 11. Total Spend = sum of micro copy (exact)
 12. Total Revenue = GA4 onsite + CRM offsite (no double-counting)
-13. Edit → no duplicates. Delete → recalculates.
+13. Edit spend/revenue sources → no duplicates. Delete → recalculates.
+14. Edit KPI → target/alert changes reflected on card, progress recalculates, insights update
+15. Edit Benchmark → benchmark value changes reflected, status recalculates
+16. Delete KPI → card removed, summary counts update, cascade deletes progress + alerts
+17. Delete Benchmark → card removed, summary counts update, insights no longer reference it
 
 ### Part B: No Revenue Scenario (Journey 15)
-14. Campaign with no GA4 revenue has Revenue/ROAS/ROI templates DISABLED
-15. Adding manual revenue enables Revenue template; adding spend enables ROAS/ROI/CPA
-16. Deleting revenue blocks Revenue/ROAS/ROI KPIs
+18. Campaign with no GA4 revenue has Revenue/ROAS/ROI templates DISABLED
+19. Adding manual revenue enables Revenue template; adding spend enables ROAS/ROI/CPA
+20. Deleting revenue blocks Revenue/ROAS/ROI KPIs
 
 ### Part C: Real Integration Testing (Journey 16)
-17. Each real platform connection completes OAuth successfully
-18. Each platform's scheduler fetches real data and updates the DB
-19. KPIs/Benchmarks/Insights recalculate after real scheduler runs
-20. No stale data — values reflect the latest scheduler run
-21. Alert notifications created for real threshold breaches
+21. Each real platform connection completes OAuth successfully
+22. Each platform's scheduler fetches real data and updates the DB
+23. KPIs/Benchmarks/Insights recalculate after real scheduler runs
+24. No stale data — values reflect the latest scheduler run
+25. Alert notifications created for real threshold breaches

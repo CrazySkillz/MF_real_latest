@@ -188,7 +188,7 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 
 ## Journey 3: Run Refresh — Spend Arrives (Unlocks Financial Metrics)
 
-**Why**: GA4 doesn't track spend. In production, spend arrives when ad platform schedulers (LinkedIn, Meta, Google Ads) run daily. Run Refresh simulates all schedulers at once — each click = 1 day.
+**Why**: GA4 doesn't track spend. In production, spend initially arrives when the user adds it via the Add Spend wizard (manual entry, CSV, Google Sheets, or connecting an ad platform like LinkedIn/Meta/Google Ads). After an ad platform is connected, the daily scheduler updates spend automatically. Run Refresh simulates all schedulers at once — each click = 1 day.
 
 ### Step 1: First Run Refresh
 - [ ] Click the **Overview** tab

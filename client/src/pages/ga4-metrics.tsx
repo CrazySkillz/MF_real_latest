@@ -633,20 +633,15 @@ export default function GA4Metrics() {
     onSuccess: async (data) => {
       // Force refetch all GA4 + financial queries so the UI picks up the new data immediately
       const prefix = `/api/campaigns/${campaignId}`;
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: [`${prefix}/ga4-to-date`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/ga4-daily`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/ga4-breakdown`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/spend-to-date`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/spend-breakdown`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/spend-sources`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/revenue-to-date`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/revenue-breakdown`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/revenue-sources`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/outcome-totals`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/ga4-landing-pages`], type: "active" }),
-        queryClient.refetchQueries({ queryKey: [`${prefix}/ga4-conversion-events`], type: "active" }),
-      ]);
+      // Refetch ALL active queries for this campaign — covers all query key formats
+      // (some use ["/api/campaigns", id, "ga4-daily", ...] and others use ["/api/campaigns/id/ga4-daily"])
+      await queryClient.refetchQueries({
+        predicate: (query) => {
+          const key = query.queryKey;
+          return Array.isArray(key) && key.some((k) => typeof k === "string" && k.includes(campaignId));
+        },
+        type: "active",
+      });
       // Also invalidate campaign-level queries
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
       toast({

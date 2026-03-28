@@ -5219,11 +5219,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isSimulated: true,
       }]);
 
-      // Note: Neither spend NOR revenue records are created here.
-      // - Spend arrives via Add Spend wizard (manual, CSV, Sheets, ad platform connection)
-      // - GA4 revenue is already in ga4_daily_metrics (written above) and included in
-      //   ga4-to-date totals automatically. Revenue records are only for imported/manual
-      //   sources (HubSpot, Salesforce, CSV, manual entry).
+      // Clean up any stale "GA4 Revenue" or "Mock Spend" sources from older mock-refresh runs
+      // that incorrectly created them. GA4 revenue comes through ga4_daily_metrics, not revenue_records.
+      try {
+        const revSources = await storage.getRevenueSources(campaignId);
+        for (const rs of (revSources as any[] || [])) {
+          if (rs?.displayName === "GA4 Revenue" || (rs?.sourceType === "ga4" && rs?.displayName?.includes?.("GA4"))) {
+            await storage.deleteRevenueSource(campaignId, String(rs.id)).catch(() => {});
+          }
+        }
+        const spendSources = await storage.getSpendSources(campaignId);
+        for (const ss of (spendSources as any[] || [])) {
+          if (ss?.displayName === "Mock Spend") {
+            await storage.deleteSpendSource(campaignId, String(ss.id)).catch(() => {});
+          }
+        }
+      } catch { /* best-effort cleanup */ }
 
       // 2) Run KPI / benchmark jobs for completeness
       const insightsResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date: dateStr }).catch(() => null);

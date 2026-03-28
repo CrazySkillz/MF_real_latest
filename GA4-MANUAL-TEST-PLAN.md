@@ -247,24 +247,25 @@ Spend arrives when the user explicitly adds it:
 - [ ] Click the **KPIs** tab → **Create KPI** → select **"ROAS"** → ENABLED
 - [ ] Current auto-populates as ratio (e.g., **48.91** meaning 48.91x return) — matches Overview ROAS
 - [ ] Unit shows as **ratio** (displayed with "x" suffix)
-- [ ] Target = **5** (= 5.0x return) → Save
+- [ ] Target = **50** (= 50x return) → Save
+- [ ] Progress ≈ 97.8% (48.91 / 50), amber bar
 
 ### Step 2: CPA KPI (lower-is-better)
 - [ ] Select **"CPA"** → ENABLED
-- [ ] Current auto-populates (spend ÷ conversions)
-- [ ] Target = **$20.00** → Save
-- [ ] "Lower is better": if current > $20, progress reflects it's worse than target
+- [ ] Current auto-populates (spend ÷ conversions, e.g., ~$1.81 with $5K spend and ~2,760 conversions)
+- [ ] Target = **$5.00** → Save
+- [ ] "Lower is better": current < $5 → progress reflects it's better than target (green bar)
 
 ### Step 3: ROI KPI
 - [ ] Select **"ROI"** → ENABLED
-- [ ] Current auto-populates → Target = **200%** → Save
+- [ ] Current auto-populates (very high % since revenue >> spend) → Target = **5000%** → Save
 
 ### Step 4: ROAS Benchmark
 - [ ] Click the **Benchmarks** tab → **Create Benchmark**
-- [ ] Name = **"ROAS"**, Current auto-populates (ratio, e.g., 48.91), Benchmark = **5** (= 5x) → Save
+- [ ] Name = **"ROAS"**, Current auto-populates (ratio, e.g., 48.91), Benchmark = **50** (= 50x) → Save
 
 ### Step 5: CPA Benchmark (lower-is-better)
-- [ ] Name = **"CPA"**, Current auto-populates, Benchmark = **$20.00**
+- [ ] Name = **"CPA"**, Current auto-populates (e.g., ~$1.81), Benchmark = **$5.00**
 - [ ] Lower-is-better → ratio = benchmark ÷ current → Save
 
 ### Step 6: Summary

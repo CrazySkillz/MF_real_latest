@@ -238,7 +238,7 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - DialogFooter: Cancel | Create/Update Benchmark
 
 **Accuracy (pipeline-verified)**:
-- `getLiveBenchmarkCurrentValue()` uses the **same data sources** as `getLiveKpiValue()`: `financialSpend`, `financialRevenue`, `breakdownTotals`, `dailySummedTotals`. ROAS: `financialROAS * 100` = `computeRoasPercent(rev, spend)` — identical to KPIs.
+- `getLiveBenchmarkCurrentValue()` uses the **same data sources** as `getLiveKpiValue()`: `financialSpend`, `financialRevenue`, `breakdownTotals`, `dailySummedTotals`. ROAS: returns `financialROAS` directly (ratio, e.g., 48.91) — identical to KPIs and Overview.
 - Users: prefers deduplicated `ga4-to-date` count via `breakdownTotals.users` (same fix as KPIs).
 - CPA correctly identified as "lower is better" in both client (`computeBenchmarkProgress`) and scheduler (`computeBenchmarkVariance`).
 - Progress thresholds (0.9/0.7 ratio) are intentionally different from KPI bands (±5% delta) — benchmarks compare against a standard, KPIs track toward a target.
@@ -297,7 +297,7 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 **Accuracy (pipeline-verified)**:
 - Executive Financials uses the exact same `financialSpend`, `financialRevenue`, `financialROAS`, `financialROI` variables as the Overview tab. No divergence.
-- ROAS consistency: `financialROAS` is a ratio (e.g., 2.5). Display: `2.50x`. Insight check: `< 1` (below break-even). KPI/Benchmark ROAS: `* 100` for percentage. All correct within their contexts.
+- ROAS consistency: `financialROAS` is a ratio (e.g., 48.91). Display: `48.91x`. Insight check: `< 1` (below break-even). KPI/Benchmark ROAS also uses ratio (not percentage). All surfaces show the same value.
 - Anomaly detection uses `ga4DailyRows` (persisted daily facts, one row per date) — NOT the multi-dimensional breakdown. No Users non-additivity issue. Sessions/conversions/revenue/pageviews are additive across dates.
 - Rolling window CR: properly computed as `(summedConversions / summedSessions) * 100` per window, not averaged from daily CRs.
 - KPI/Benchmark insights use the same `getLiveKpiValue`/`computeKpiProgress`/`computeBenchmarkProgress` functions as the KPI and Benchmarks tabs. Thresholds match (0.9/0.7).
@@ -309,14 +309,14 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 - **Live values**: `getLiveKpiValue()` computes current values from live query data (NOT stored `currentValue`). Stored `currentValue` is only a fallback for custom/legacy KPIs.
 - **Blocked KPIs**: KPIs missing required data (spend/revenue) show "Blocked" status with explanation link. Excluded from scoring.
 - **No timeframe scaling**: `timeframe`, `trackingPeriod`, and `rollingAverage` fields were removed from the form. All KPIs evaluate on cumulative values. Targets are absolute goals.
-- **ROAS unit**: GA4 ROAS is stored/displayed as percentage (300 = 3x). LinkedIn ROAS is stored as ratio (3.0). These are separate KPI systems on separate pages — no cross-platform display.
+- **ROAS unit**: GA4 ROAS is stored/displayed as **ratio** (48.91 = 48.91x return). This matches the Overview display. KPI/Benchmark templates use `unit: "ratio"`. LinkedIn ROAS is also stored as ratio. Both are consistent.
 - **Scheduler**: `ga4-kpi-benchmark-jobs.ts` records daily `kpiProgress` rows. Uses `getSpendTotalForRange()` (NOT `campaign.spend`) for accurate financial KPIs. After recording progress, updates `kpi.currentValue` so alert checkers use fresh values (not stale stored values).
 - **Alert → Notification pipeline**: `checkPerformanceAlerts()` (KPIs) and `checkBenchmarkPerformanceAlerts()` (benchmarks) evaluate thresholds and call `storage.createNotification()`. Triggered by: (1) daily scheduler, (2) KPI create/update endpoints, (3) benchmark create endpoint, (4) mock-refresh. Deduplicates per calendar day. Notifications appear in nav bell + `/notifications` page.
 - **Auth**: All KPI CRUD endpoints require `ensureCampaignAccess` or `ensureKpiAccess`. `test-alerts` endpoint requires authenticated user.
 - **Cascade delete**: Deleting a KPI also deletes its `kpiProgress` and `kpiAlerts` rows.
 
 **Accuracy (pipeline-verified)**:
-- `getLiveKpiValue()` and scheduler `computeKpiValue()` use the **same shared formulas** from `metric-math.ts`: `computeRoasPercent`, `computeRoiPercent`, `computeCpa`, `computeConversionRatePercent`, `normalizeRateToPercent`. Both return ROAS/ROI as percentages, CPA as ratio.
+- `getLiveKpiValue()` and scheduler `computeKpiValue()` use the **same shared formulas** from `metric-math.ts`: `computeRoiPercent`, `computeCpa`, `computeConversionRatePercent`, `normalizeRateToPercent`. ROAS uses direct ratio (revenue/spend), ROI as percentage, CPA as ratio.
 - `breakdownTotals` uses `Math.max(ga4ToDate, dailySummed)` for sessions/conversions/revenue (additive metrics). For **users**, it prefers the deduplicated `ga4-to-date` count (dimension-free GA4 API query) and only falls back to daily sum (overcounted) when unavailable.
 - Scheduler prefers `getTotalsWithRevenue` API response for all metrics (deduplicated), falling back to summed daily rows only when API fails.
 - Engagement Rate: client uses cumulative weighted average (`engagedSessions / sessions` across all days), scheduler records daily snapshot. This is by design — different time scopes for different purposes.

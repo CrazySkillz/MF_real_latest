@@ -19,27 +19,34 @@ When you connect a mock GA4 property with yesop_brand_search + yesop_prospecting
 - **Spend = $0** (GA4 never imports spend — spend comes from ad platforms or manual entry)
 
 **2. Run Refresh (manual button, adds 1 day per click)**
-Simulates what happens in production when ALL daily schedulers run together:
-- **GA4 scheduler** fetches daily metrics from Google Analytics API
-- **Ad platform schedulers** (LinkedIn, Meta, Google Ads) fetch daily spend from each platform's API
-- **Revenue** is included in GA4 metrics (ecommerce/purchase events)
+Simulates what happens in production when the **GA4 daily scheduler** runs:
+- Fetches daily metrics from Google Analytics API (sessions, users, conversions, revenue)
+- Revenue is included because GA4 tracks ecommerce/purchase events
+- **Spend is NOT included** — in production, spend arrives when the user adds it via the Add Spend wizard (manual, CSV, Sheets, or connecting an ad platform). After an ad platform is connected, its scheduler updates spend daily.
 
 In the mock system, each click uses fixed daily values from the two selected campaigns:
 
-| Source | What it simulates | brand_search | prospecting | **Daily total** |
-|--------|-------------------|-------------|-------------|----------------|
-| GA4 scheduler | Sessions | 750 | 420 | **1,170** |
-| GA4 scheduler | Conversions | 38 | 18 | **56** |
-| GA4 scheduler | Revenue | $2,850 | $1,350 | **$4,200** |
-| Ad platform schedulers | Spend | $950 | $680 | **$1,630** |
+| Metric | brand_search | prospecting | **Daily total** |
+|--------|-------------|-------------|----------------|
+| Sessions | 750 | 420 | **1,170** |
+| Conversions | 38 | 18 | **56** |
+| Revenue | $2,850 | $1,350 | **$4,200** |
 
 So after each Run Refresh click:
 - Sessions increase by 1,170
 - Conversions increase by 56
 - Revenue increases by $4,200 (shows as "GA4 Revenue" source)
-- Spend increases by $1,630 (shows as "Mock Spend" source — simulates ad platform scheduler imports)
+- **Spend stays at $0** until the user adds it via Add Spend
 
 After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB rows over simulation. So the Overview totals will shift from simulation values to accumulated Run Refresh values.
+
+**3. Add Spend (user action via "+" button on Spend card)**
+Spend arrives when the user explicitly adds it:
+- **Manual entry**: type an amount directly
+- **CSV upload**: upload a CSV with spend data
+- **Google Sheets**: connect a spreadsheet with spend data
+- **Ad platforms (test mode)**: LinkedIn/Meta/Google Ads with mock campaign data
+- **Ad platforms (production)**: connect via OAuth, scheduler updates daily thereafter
 
 ---
 
@@ -188,37 +195,44 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 
 ## Journey 3: Run Refresh — Spend Arrives (Unlocks Financial Metrics)
 
-**Why**: GA4 doesn't track spend. In production, spend initially arrives when the user adds it via the Add Spend wizard (manual entry, CSV, Google Sheets, or connecting an ad platform like LinkedIn/Meta/Google Ads). After an ad platform is connected, the daily scheduler updates spend automatically. Run Refresh simulates all schedulers at once — each click = 1 day.
+**Why**: GA4 doesn't track spend. In production, spend arrives when the user adds it via the Add Spend wizard (manual entry, CSV, Google Sheets, or connecting an ad platform). Run Refresh only simulates the GA4 scheduler (sessions, conversions, revenue) — it does NOT bring in spend.
 
-### Step 1: First Run Refresh
+### Step 1: Run Refresh (GA4 data only, no spend)
 - [ ] Click the **Overview** tab
 - [ ] Find and click the **Run Refresh** button
-- [ ] Toast appears with date + summary (Sessions = 1,170, Revenue = $4,200, Spend = $1,630)
+- [ ] Toast appears with date + summary: sessions, conversions, revenue — **NO spend**
+- [ ] **Spend still = $0** — Run Refresh does not create spend
+- [ ] Revenue increased (GA4 Revenue source created)
+- [ ] Sessions/Conversions increased
+- [ ] Financial templates (ROAS/ROI/CPA) still DISABLED — need spend
 
-### Step 2: Verify Overview — spend now exists
-- [ ] **Total Spend = $1,630.00** (previously $0)
-- [ ] Micro copy: **"Mock Spend — $1,630.00"**
-  - This simulates what LinkedIn/Meta/Google Ads schedulers import from ad platform APIs
-  - $1,630 = brand_search daily ad spend ($950) + prospecting daily ad spend ($680)
-- [ ] **ROAS** now calculated (Revenue ÷ $1,630)
-- [ ] **CPA** now calculated ($1,630 ÷ conversions)
+### Step 2: Add spend via Add Spend wizard
+- [ ] On the Overview tab, click the **"+"** icon on the Total Spend card
+- [ ] Select **Manual** entry
+- [ ] Enter spend amount: **$5,000.00**
+- [ ] Click Save
+- [ ] **Total Spend = $5,000.00**
+- [ ] Micro copy: **"Manual — $5,000.00"**
+
+### Step 3: Verify financial metrics unlocked
+- [ ] **ROAS** now calculated (Revenue ÷ $5,000)
+- [ ] **CPA** now calculated ($5,000 ÷ conversions)
 - [ ] **ROI** now calculated
 
-### Step 3: Financial KPI templates now ENABLED
+### Step 4: Financial KPI templates now ENABLED
 - [ ] Click the **KPIs** tab → **Create KPI**
 - [ ] **ROAS, ROI** — NOW ENABLED (spend + revenue both exist)
 - [ ] **CPA** — NOW ENABLED (spend exists)
 - [ ] Close dialog
 
-### Step 4: "Spend missing" insight gone
+### Step 5: "Spend missing" insight gone
 - [ ] Click the **Insights** tab
 - [ ] "Spend missing" integrity insight is GONE
 
-### Step 5: Run Refresh ×2 more (3 days total)
+### Step 6: Run Refresh ×2 more (3 days total)
 - [ ] Click Run Refresh two more times
-- [ ] **Spend accumulates**: 3 × $1,630 = **$4,890**
-- [ ] Micro copy: "Mock Spend — $4,890.00"
-- [ ] Revenue, Sessions, Conversions all increase
+- [ ] **Spend stays at $5,000** — Run Refresh only adds GA4 data
+- [ ] Revenue, Sessions, Conversions increase with each click
 
 ---
 
@@ -493,7 +507,68 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 
 ---
 
-## Journey 15: Real Integration Tests (Requires Real Accounts)
+## Journey 15: No GA4 Revenue Scenario
+
+**Why**: Some GA4 properties don't track ecommerce revenue (e.g., lead-gen sites, content sites). This journey tests that the app handles $0 revenue correctly — Revenue/ROAS/ROI templates are disabled, insights don't reference revenue, and adding revenue manually later enables them.
+
+### Step 1: Create campaign with no-revenue filter
+- [ ] Click **New Campaign** → enter name: **"No Revenue Test"**
+- [ ] Click **Next** → select **Google Analytics** → use **test data**
+- [ ] In Step 4 (Configure): select the Yesop property, choose **90 days** lookback
+- [ ] In the campaign filter: instead of selecting yesop campaigns, **type** `no_revenue_test` in the text input
+- [ ] Click **Save & Continue** → **Create Campaign**
+
+### Step 2: Navigate to GA4 Metrics
+- [ ] Open the campaign → go to GA4 Metrics page
+- [ ] Overview tab loads with simulation data
+
+### Step 3: Verify Revenue = $0
+- [ ] **Revenue = $0.00** — the `no_revenue` keyword in the filter causes simulation to zero out revenue
+- [ ] **Sessions, Users, Conversions** — still populated (revenue flag doesn't affect these)
+- [ ] **Spend = $0** — no spend added yet
+- [ ] **ROAS, CPA, ROI = N/A** — cannot calculate without spend or revenue
+
+### Step 4: Verify template gates
+- [ ] Click **KPIs** tab → **Create KPI**
+- [ ] **ENABLED**: Sessions, Users, Conversions, Engagement Rate, CR
+- [ ] **DISABLED**: Revenue (no GA4 revenue), ROAS (needs spend + revenue), ROI (needs spend + revenue), CPA (needs spend)
+- [ ] Close dialog
+
+- [ ] Click **Benchmarks** tab → **Create Benchmark**
+- [ ] Same pattern: Revenue/ROAS/ROI/CPA DISABLED
+- [ ] Close dialog
+
+### Step 5: Verify Insights
+- [ ] Click **Insights** tab
+- [ ] Executive Financials: Revenue = $0, Spend = $0
+- [ ] **No revenue-related insights** should appear (no "Revenue Behind Target" etc.)
+- [ ] Informational insights about sessions/engagement should still appear
+
+### Step 6: Add manual revenue → templates unlock
+- [ ] Go to **Overview** tab → click **"+"** on Revenue card
+- [ ] Select **Manual** → enter **$10,000** → Save
+- [ ] Revenue card now shows **$10,000**
+- [ ] Click **KPIs** tab → **Create KPI**
+- [ ] **Revenue** template — NOW ENABLED
+- [ ] **ROAS/ROI** — still DISABLED (no spend yet)
+
+### Step 7: Add manual spend → all templates unlock
+- [ ] Go to **Overview** tab → click **"+"** on Spend card
+- [ ] Select **Manual** → enter **$3,000** → Save
+- [ ] Click **KPIs** tab → **Create KPI**
+- [ ] **ROAS, ROI, CPA** — ALL NOW ENABLED
+- [ ] Create a ROAS KPI to verify it calculates correctly
+
+### Step 8: Delete revenue → Revenue/ROAS/ROI become blocked
+- [ ] Go to **Overview** tab → delete the manual revenue source (trash icon)
+- [ ] Revenue = $0 again
+- [ ] Any Revenue/ROAS/ROI KPIs created in Step 7 → **"Blocked"** status
+- [ ] KPI templates for Revenue/ROAS/ROI → DISABLED again
+- [ ] CPA template → still ENABLED (only needs spend)
+
+---
+
+## Journey 16: Real Integration Tests (Requires Real Accounts)
 
 **Why this is needed:** Journeys 1-14 use mock data. They prove the UI works correctly but do NOT prove that real API connections work. This journey requires real accounts connected on your Render staging environment.
 
@@ -572,21 +647,27 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 
 ### Part A: Mock Testing (Journeys 1-14)
 1. Every number traces to a known source (simulation OR Run Refresh OR manual entry)
-2. Spend/revenue changes propagate to ROAS/ROI/CPA/KPIs/Benchmarks/Insights
-3. Run Refresh accumulates correctly + triggers KPI progress + alerts
-4. No cross-tab inconsistencies
-5. Templates DISABLED when required data missing; ENABLED when data exists
-6. Blocked KPIs excluded from scoring + show integrity insight
-7. Notifications created when thresholds breached
-8. All spend sources (Manual/CSV/Sheets/LinkedIn/Meta/Google Ads) work
-9. All revenue sources (GA4/Manual/CSV/Sheets/HubSpot/Salesforce/Shopify) work
-10. Total Spend = sum of micro copy (exact)
-11. Total Revenue = GA4 onsite + CRM offsite (no double-counting)
-12. Edit → no duplicates. Delete → recalculates.
+2. Run Refresh only adds GA4 data (sessions, conversions, revenue) — NOT spend
+3. Spend arrives via Add Spend wizard, not Run Refresh
+4. Spend/revenue changes propagate to ROAS/ROI/CPA/KPIs/Benchmarks/Insights
+5. No cross-tab inconsistencies
+6. Templates DISABLED when required data missing; ENABLED when data exists
+7. Blocked KPIs excluded from scoring + show integrity insight
+8. Notifications created when thresholds breached
+9. All spend sources (Manual/CSV/Sheets/LinkedIn/Meta/Google Ads) work
+10. All revenue sources (GA4/Manual/CSV/Sheets/HubSpot/Salesforce/Shopify) work
+11. Total Spend = sum of micro copy (exact)
+12. Total Revenue = GA4 onsite + CRM offsite (no double-counting)
+13. Edit → no duplicates. Delete → recalculates.
 
-### Part B: Real Integration Testing (Journey 15)
-13. Each real platform connection completes OAuth successfully
-14. Each platform's scheduler fetches real data and updates the DB
-15. KPIs/Benchmarks/Insights recalculate after real scheduler runs
-16. No stale data — values reflect the latest scheduler run
-17. Alert notifications created for real threshold breaches
+### Part B: No Revenue Scenario (Journey 15)
+14. Campaign with no GA4 revenue has Revenue/ROAS/ROI templates DISABLED
+15. Adding manual revenue enables Revenue template; adding spend enables ROAS/ROI/CPA
+16. Deleting revenue blocks Revenue/ROAS/ROI KPIs
+
+### Part C: Real Integration Testing (Journey 16)
+17. Each real platform connection completes OAuth successfully
+18. Each platform's scheduler fetches real data and updates the DB
+19. KPIs/Benchmarks/Insights recalculate after real scheduler runs
+20. No stale data — values reflect the latest scheduler run
+21. Alert notifications created for real threshold breaches

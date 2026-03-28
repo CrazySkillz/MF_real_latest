@@ -5216,34 +5216,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isSimulated: true,
       }]);
 
-      // 2) Ensure a spend source exists, then insert a spend record for the day
-      let sources = await storage.getSpendSources(campaignId);
-      let spendSource = (sources as any[])?.[0];
-      if (!spendSource) {
-        spendSource = await storage.createSpendSource({
-          campaignId,
-          sourceType: "manual",
-          displayName: "Mock Spend",
-          isActive: true,
-          currency: "USD",
-        } as any);
-      }
-      if (spendSource) {
-        await storage.createSpendRecords([{
-          campaignId,
-          spendSourceId: String((spendSource as any).id),
-          date: dateStr,
-          spend: String(mockDay.spend.toFixed(2)),
-          currency: "USD",
-          sourceType: "manual",
-        }]);
-        // Update campaign.spend (cumulative lifetime)
-        const currentSpend = parseNum((campaign as any)?.spend);
-        const newSpend = currentSpend + mockDay.spend;
-        await storage.updateCampaign(campaignId, { spend: newSpend.toFixed(2) as any } as any);
-      }
-
-      // 3) Insert a revenue record for the day
+      // 2) Insert a revenue record for the day
+      // Note: Spend is NOT created here — in production, spend arrives when the user
+      // adds it via the Add Spend wizard or when ad platform schedulers run after connection.
+      // Run Refresh only simulates the GA4 scheduler (sessions, conversions, revenue).
       let revSources = await storage.getRevenueSources(campaignId);
       let revSource = (revSources as any[])?.[0];
       if (!revSource) {
@@ -5276,14 +5252,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await checkBenchmarkPerformanceAlerts();
       } catch (e: any) { console.warn("[mock-refresh] Benchmark alert check failed:", (e as any)?.message || e); }
 
-      const roas = mockDay.spend > 0 ? (mockDay.revenue / mockDay.spend).toFixed(2) : "N/A";
-      const roi = mockDay.spend > 0 ? (((mockDay.revenue - mockDay.spend) / mockDay.spend) * 100).toFixed(1) : "N/A";
-
       res.json({
         success: true,
         date: dateStr,
-        injected: mockDay,
-        summary: `${dateStr}: Revenue $${mockDay.revenue.toFixed(2)}, Spend $${mockDay.spend.toFixed(2)}, ROAS ${roas}x, ROI ${roi}%, ${mockDay.conversions} conversions, ${mockDay.sessions} sessions`,
+        injected: {
+          users: mockDay.users,
+          sessions: mockDay.sessions,
+          pageviews: mockDay.pageviews,
+          conversions: mockDay.conversions,
+          revenue: mockDay.revenue,
+        },
+        summary: `${dateStr}: ${mockDay.sessions.toLocaleString()} sessions, ${mockDay.conversions} conversions, $${mockDay.revenue.toFixed(2)} revenue`,
         kpiJobResult: insightsResult,
       });
     } catch (e: any) {

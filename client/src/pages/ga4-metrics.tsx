@@ -349,8 +349,15 @@ export default function GA4Metrics() {
     if (!cleaned) return "";
     const n = Number(cleaned);
     if (!Number.isFinite(n)) return raw;
-    const decimals = unit === "count" ? 0 : 2;
-    return n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    if (unit === "count") return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    if (unit === "%" || unit === "ratio") {
+      // Smart formatting: whole numbers when possible, 1 decimal when needed
+      const rounded = Math.round(n * 10) / 10;
+      if (rounded === Math.floor(rounded)) return Math.round(rounded).toLocaleString();
+      return rounded.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    }
+    // Currency and other units: always 2 decimals
+    return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   // UX-friendly formatting that updates while typing (keeps decimals as typed; adds commas).

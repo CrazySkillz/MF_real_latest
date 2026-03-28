@@ -6121,10 +6121,12 @@ export default function GA4Metrics() {
                                       />
                                       <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => fmtValue(v)} width={45} />
                                       <Tooltip
-                                        formatter={(value: any) => [fmtValue(value), insightsTrendMode === "daily" ? (trendMetricLabels[metric] || metric) : `${trendMetricLabels[metric] || metric} (${insightsTrendMode} total)`]}
+                                        formatter={(value: any) => [fmtValue(value), trendMetricLabels[metric] || metric]}
                                         labelFormatter={(idx: any) => {
                                           const dateLabel = chartData[Math.round(Number(idx))]?.date || idx;
-                                          return insightsTrendMode === "daily" ? `Date: ${dateLabel}` : `${insightsTrendMode} window ending: ${dateLabel}`;
+                                          if (insightsTrendMode === "daily") return `Date: ${dateLabel}`;
+                                          const periodLabel = insightsTrendMode === "7d" ? "7-day" : "30-day";
+                                          return `${periodLabel} period ending: ${dateLabel}`;
                                         }}
                                       />
                                       <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls name={trendMetricLabels[metric] || metric} />

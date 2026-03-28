@@ -148,7 +148,7 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 - [ ] Set Target = **100,000**
 - [ ] Alert: threshold = **50,000**, condition = **below**, enable alerts
 - [ ] Click **Create KPI**
-- [ ] Card: Current ≈ 65,600, Target = 100,000, Progress ≈ 65.6%
+- [ ] Card: Current ≈ 65,600, Target = 100,000, Progress ≈ 66%
 - [ ] Progress bar AMBER (≥ 90% would be green)
 - [ ] Yellow alert icon (hover: "Alerts enabled — threshold: 50,000 (below)")
 - [ ] 65,600 > 50,000 → NO red pulsing dot

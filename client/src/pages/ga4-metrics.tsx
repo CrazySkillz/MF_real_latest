@@ -4693,7 +4693,7 @@ export default function GA4Metrics() {
                                                       </div>
                                                     </TooltipTrigger>
                                                     <TooltipContent className="bg-slate-900 text-white border-slate-700">
-                                                      <p className="text-sm">Alerts enabled — threshold: {kpi.alertThreshold ? `${kpi.alertThreshold} (${kpi.alertCondition || "below"})` : "not set"}</p>
+                                                      <p className="text-sm">Alerts enabled — threshold: {kpi.alertThreshold ? `${Number(kpi.alertThreshold).toLocaleString()} (${kpi.alertCondition || "below"})` : "not set"}</p>
                                                     </TooltipContent>
                                                   </UITooltip>
                                                 )}
@@ -5462,7 +5462,7 @@ export default function GA4Metrics() {
                                                 </div>
                                               </TooltipTrigger>
                                               <TooltipContent className="bg-slate-900 text-white border-slate-700">
-                                                <p className="text-sm">Alerts enabled — threshold: {(benchmark as any).alertThreshold ? `${(benchmark as any).alertThreshold} (${(benchmark as any).alertCondition || "below"})` : "not set"}</p>
+                                                <p className="text-sm">Alerts enabled — threshold: {(benchmark as any).alertThreshold ? `${Number((benchmark as any).alertThreshold).toLocaleString()} (${(benchmark as any).alertCondition || "below"})` : "not set"}</p>
                                               </TooltipContent>
                                             </UITooltip>
                                           )}

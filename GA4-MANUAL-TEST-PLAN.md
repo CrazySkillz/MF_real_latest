@@ -202,8 +202,10 @@ Spend arrives when the user explicitly adds it:
 - [ ] Find and click the **Run Refresh** button
 - [ ] Toast appears with date + summary: sessions, conversions, revenue — **NO spend**
 - [ ] **Spend still = $0** — Run Refresh does not create spend
-- [ ] Revenue increased (GA4 Revenue source created)
-- [ ] Sessions/Conversions increased
+- [ ] **Sessions ≈ 66,770** (simulation baseline 65,600 + 1 day of 1,170)
+- [ ] **Conversions ≈ 2,648** (simulation 2,592 + 1 day of 56)
+- [ ] **Revenue ≈ $244,552** (simulation $240,352 + 1 day of $4,200)
+- [ ] Values AGGREGATE — simulation baseline + Run Refresh increments, not replaced
 - [ ] Financial templates (ROAS/ROI/CPA) still DISABLED — need spend
 
 ### Step 2: Add spend via Add Spend wizard
@@ -232,7 +234,10 @@ Spend arrives when the user explicitly adds it:
 ### Step 6: Run Refresh ×2 more (3 days total)
 - [ ] Click Run Refresh two more times
 - [ ] **Spend stays at $5,000** — Run Refresh only adds GA4 data
-- [ ] Revenue, Sessions, Conversions increase with each click
+- [ ] After 3 total Run Refreshes:
+  - Sessions ≈ 65,600 + (3 × 1,170) = **69,110**
+  - Conversions ≈ 2,592 + (3 × 56) = **2,760**
+  - Revenue ≈ $240,352 + (3 × $4,200) = **$252,952**
 
 ---
 

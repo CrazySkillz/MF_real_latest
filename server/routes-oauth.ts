@@ -4766,32 +4766,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (shouldSimulate) {
         const pid = requestedPropertyId || "yesop";
-        // Prefer real DB rows (from mock-refresh) over hardcoded simulation
-        const storedRows = await storage.getGA4DailyMetrics(campaignId, pid, startDate, endDate).catch(() => [] as any[]);
-        if (storedRows && storedRows.length > 0) {
-          return res.json({
-            success: true,
-            propertyId: pid,
-            startDate,
-            endDate,
-            days,
-            data: storedRows,
-            lastUpdated: new Date().toISOString(),
-          });
-        }
-        // No DB rows — fall back to simulation
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const simRange = days >= 90 ? "90days" : days >= 30 ? "30days" : "7days";
+        const simRange = days >= 90 ? "90days" : days >= 60 ? "60days" : days >= 30 ? "30days" : "7days";
         const sim = simulateGA4({ campaignId, propertyId: pid, dateRange: simRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        const simData = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
+
+        // Merge: simulation is the baseline, DB rows (from Run Refresh) overlay on matching dates or append
+        const storedRows = await storage.getGA4DailyMetrics(campaignId, pid, startDate, endDate).catch(() => [] as any[]);
+        const dbByDate = new Map<string, any>();
+        for (const r of (storedRows || [])) {
+          if (r?.date) dbByDate.set(String(r.date), r);
+        }
+
+        // Build merged array: simulation rows + any DB rows for dates not in simulation
+        const simDates = new Set(simData.map((r: any) => String(r.date)));
+        const merged = simData.map((r: any) => {
+          const dbRow = dbByDate.get(String(r.date));
+          if (dbRow) {
+            // DB row exists for this date — add Run Refresh data on top of simulation
+            return {
+              ...r,
+              sessions: Number(r.sessions || 0) + Number(dbRow.sessions || 0),
+              users: Number(r.users || 0) + Number(dbRow.users || 0),
+              conversions: Number(r.conversions || 0) + Number(dbRow.conversions || 0),
+              revenue: Number(r.revenue || 0) + Number(dbRow.revenue || 0),
+              pageviews: Number(r.pageviews || 0) + Number(dbRow.pageviews || 0),
+            };
+          }
+          return r;
+        });
+        // Append any DB rows for dates NOT in simulation range
+        for (const [date, dbRow] of dbByDate) {
+          if (!simDates.has(date)) merged.push(dbRow);
+        }
+        // Sort by date
+        merged.sort((a: any, b: any) => String(a.date || "").localeCompare(String(b.date || "")));
+
         return res.json({
           success: true,
           propertyId: pid,
           startDate,
           endDate,
           days,
-          data: sim.timeSeries,
-          isSimulated: true,
-          simulationReason: "Simulated GA4 daily metrics for demo/testing (propertyId yesop or ?mock=1).",
+          data: merged,
           lastUpdated: new Date().toISOString(),
         });
       }
@@ -4956,50 +4973,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pidNormalized = normalizePropertyIdForMock(requestedPropertyId);
       if (mock || isYesopMockProperty(pidNormalized)) {
         const pid = requestedPropertyId || "yesop";
-        // Prefer real DB rows (from mock-refresh) over hardcoded simulation
-        const storedRows = await storage.getGA4DailyMetrics(campaignId, pid, startDateUsed, endDateUsed).catch(() => [] as any[]);
-        if (storedRows && storedRows.length > 0) {
-          // Sum daily rows to produce cumulative totals
-          let sessions = 0, users = 0, conversions = 0, revenue = 0, pageviews = 0;
-          let engagedSessions = 0, totalEngRate = 0, totalBounce = 0, totalDuration = 0;
-          for (const r of storedRows) {
-            sessions += Number(r?.sessions || 0);
-            users += Number(r?.users || 0);
-            conversions += Number(r?.conversions || 0);
-            revenue += Number(r?.revenue || 0);
-            pageviews += Number(r?.pageviews || 0);
-            const er = Number(r?.engagementRate || 0);
-            totalEngRate += er;
-            totalBounce += (1 - er);
-            totalDuration += Number(r?.avgSessionDuration || 0);
-          }
-          const n = storedRows.length;
-          const totals = {
-            sessions, users, conversions, revenue, pageviews,
-            engagementRate: n > 0 ? totalEngRate / n : 0,
-            engagedSessions: Math.round(sessions * (n > 0 ? totalEngRate / n : 0)),
-            eventCount: 0,
-            eventsPerSession: 0,
-            bounceRate: n > 0 ? totalBounce / n : 0,
-            avgSessionDuration: n > 0 ? totalDuration / n : 0,
-          };
-          return res.json({
-            success: true,
-            propertyId: pid,
-            startDate: startDateUsed,
-            endDate: endDateUsed,
-            revenueMetric: "totalRevenue",
-            totals,
-          });
-        }
-        // No DB rows — fall back to simulation, but SUM the daily timeSeries
-        // (not sim.totals which is a separate calculation and doesn't match daily rows)
-        const simDateRange = ["7days", "30days", "90days"].includes(toDateRange) ? toDateRange : "30days";
+
+        // 1) Always compute simulation baseline (represents the initial GA4 historical import)
+        const simDateRange = ["7days", "30days", "60days", "90days"].includes(toDateRange) ? toDateRange : "30days";
         const sim = simulateGA4({ campaignId, propertyId: pid, dateRange: simDateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
-        const dailyRows = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
+        const simRows = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
         let sessions = 0, users = 0, conversions = 0, revenue = 0, pageviews = 0;
         let totalEngRate = 0, totalBounce = 0, totalDuration = 0;
-        for (const r of dailyRows) {
+        for (const r of simRows) {
           sessions += Number(r?.sessions || 0);
           users += Number(r?.users || 0);
           conversions += Number(r?.conversions || 0);
@@ -5009,24 +4990,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalBounce += Number(r?.bounceRate || 0);
           totalDuration += Number(r?.avgSessionDuration || 0);
         }
-        const n = dailyRows.length || 1;
+
+        // 2) Add any DB rows from Run Refresh on top of the simulation baseline.
+        // Simulation = historical import baseline. DB rows = incremental daily data from Run Refresh.
+        const storedRows = await storage.getGA4DailyMetrics(campaignId, pid, startDateUsed, endDateUsed).catch(() => [] as any[]);
+        let dbEngRateSum = 0, dbCount = 0;
+        if (storedRows && storedRows.length > 0) {
+          for (const r of storedRows) {
+            sessions += Number(r?.sessions || 0);
+            users += Number(r?.users || 0);
+            conversions += Number(r?.conversions || 0);
+            revenue += Number(r?.revenue || 0);
+            pageviews += Number(r?.pageviews || 0);
+            dbEngRateSum += Number(r?.engagementRate || 0);
+            dbCount++;
+          }
+        }
+
+        const totalDays = (simRows.length || 1) + dbCount;
+        const combinedEngRate = (totalEngRate + dbEngRateSum) / totalDays;
         const totals = {
           sessions, users, conversions, revenue, pageviews,
-          engagementRate: totalEngRate / n,
-          engagedSessions: Math.round(sessions * (totalEngRate / n)),
+          engagementRate: combinedEngRate,
+          engagedSessions: Math.round(sessions * combinedEngRate),
           eventCount: 0,
           eventsPerSession: 0,
-          bounceRate: totalBounce / n,
-          avgSessionDuration: totalDuration / n,
+          bounceRate: (totalBounce + (dbCount > 0 ? dbCount * (1 - (dbEngRateSum / dbCount)) : 0)) / totalDays,
+          avgSessionDuration: (totalDuration + (storedRows || []).reduce((s: number, r: any) => s + Number(r?.avgSessionDuration || 0), 0)) / totalDays,
         };
         return res.json({
           success: true,
           propertyId: pid,
           startDate: startDateUsed,
           endDate: endDateUsed,
-          revenueMetric: "totalRevenue",
+          revenueMetric: noRevenue ? "" : "totalRevenue",
           totals,
-          ...(debug ? { meta: { isSimulated: true } } : {}),
+          ...(debug ? { meta: { isSimulated: true, simDays: simRows.length, dbDays: dbCount } } : {}),
         });
       }
 

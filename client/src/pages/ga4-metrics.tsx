@@ -1941,8 +1941,8 @@ export default function GA4Metrics() {
     // Revenue metric is only "available" if there's an actual revenue source with data,
     // OR GA4 reports a revenue metric AND has non-zero revenue. A simulation returning
     // revenueMetric="totalRevenue" with revenue=0 should NOT enable revenue-dependent KPIs.
-    return !!activeRevenueSource || (!!ga4RevenueMetric && ga4RevenueValue > 0) || financialRevenue > 0 || breakdownTotals.revenue > 0;
-  }, [activeRevenueSource, ga4ToDateResp, financialRevenue, breakdownTotals.revenue]);
+    return !!activeRevenueSource || (!!ga4RevenueMetric && ga4RevenueValue > 0) || breakdownTotals.revenue > 0;
+  }, [activeRevenueSource, ga4ToDateResp, breakdownTotals.revenue]);
 
   const getMissingDependenciesForMetric = (metricKey: string) => {
     const key = String(metricKey || "").trim();

@@ -4201,14 +4201,17 @@ export default function GA4Metrics() {
                               </>
                             ) : (
                               <>
-                                <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
-                                <p className="text-2xl font-bold text-muted-foreground/70 mt-1">$0.00</p>
-                                <div className="mt-2">
-                                  <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}>
-                                    <Plus className="h-3.5 w-3.5 mr-1" />
-                                    Add Spend
-                                  </Button>
+                                <div className="flex items-center justify-between">
+                                  <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
+                                  <button
+                                    onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}
+                                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
+                                    title="Add spend source"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </button>
                                 </div>
+                                <p className="text-2xl font-bold text-foreground mt-1">{formatMoney(0)}</p>
                               </>
                             )}
                           </CardContent>

@@ -150,14 +150,14 @@ After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB ro
 - [ ] Click **Create KPI**
 - [ ] Card: Current ≈ 65,600, Target = 100,000, Progress ≈ 65.6%
 - [ ] Progress bar AMBER (≥ 90% would be green)
-- [ ] Yellow alert icon (hover: "Alerts enabled — threshold: 50000 (below)")
+- [ ] Yellow alert icon (hover: "Alerts enabled — threshold: 50,000 (below)")
 - [ ] 65,600 > 50,000 → NO red pulsing dot
 
 ### Step 2: Create Engagement Rate KPI
 - [ ] Click **Create KPI** → select **"Engagement Rate"** → ENABLED
-- [ ] Current auto-populates (≈ 62%)
+- [ ] Current auto-populates (≈ 54%)
 - [ ] Target = **70%** → Save
-- [ ] Progress ≈ 88.6%, amber bar
+- [ ] Progress ≈ 77.1%, amber bar
 
 ### Step 3: Create Revenue KPI
 - [ ] Select **"Revenue"** → ENABLED (revenue exists from simulation)

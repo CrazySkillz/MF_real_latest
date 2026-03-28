@@ -6570,9 +6570,9 @@ export default function GA4Metrics() {
                   {[
                     {
                       name: "ROAS",
-                      formula: "Revenue ÷ Spend × 100",
-                      unit: "%",
-                      description: "Revenue generated per dollar of spend (as a %)",
+                      formula: "Revenue ÷ Spend",
+                      unit: "ratio",
+                      description: "Revenue generated per dollar of spend (e.g., 5.0 = 5x return)",
                     },
                     {
                       name: "ROI",

@@ -5456,13 +5456,13 @@ export default function GA4Metrics() {
                           ) : null}
 
                           {benchmarks && benchmarks.length > 0 ? (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="grid gap-4 md:grid-cols-2">
                               {benchmarks.map((benchmark) => {
                                 const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
                                 const isBlocked = deps.missing.length > 0;
                                 return (
-                                <Card key={benchmark.id} className="hover:shadow-lg transition-shadow">
-                                  <CardContent className="p-6">
+                                <Card key={benchmark.id} className="border-border">
+                                  <CardContent className="p-5">
                                     <div className="flex items-start justify-between mb-4">
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2 flex-wrap">

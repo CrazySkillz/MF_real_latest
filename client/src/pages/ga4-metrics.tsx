@@ -6409,7 +6409,12 @@ export default function GA4Metrics() {
                               )}
                             </div>
                           )}
-                          {channelAnalysis && channelAnalysis.channels && channelAnalysis.channels.length >= 1 && (
+                          {channelAnalysis && channelAnalysis.channels && channelAnalysis.channels.length >= 1 && (() => {
+                            // Scale channel values so they sum to breakdownTotals (which includes Run Refresh data)
+                            const sessScale = channelAnalysis.totalSessions > 0 ? breakdownTotals.sessions / channelAnalysis.totalSessions : 1;
+                            const convScale = (channelAnalysis.channels.reduce((s: number, c: any) => s + c.conversions, 0) || 1);
+                            const convScaleFactor = breakdownTotals.conversions > 0 ? breakdownTotals.conversions / convScale : 1;
+                            return (
                             <div className="mt-4 pt-4 border-t">
                               <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide mb-2">Channel Breakdown</p>
                               <div className="overflow-hidden border rounded-md">
@@ -6419,21 +6424,23 @@ export default function GA4Metrics() {
                                       <th className="text-left p-2 pl-3">Channel</th>
                                       <th className="text-right p-2">Sessions</th>
                                       <th className="text-right p-2">Share</th>
-                                      <th className="text-right p-2">Conv.</th>
-                                      <th className="text-right p-2 pr-3">CR</th>
+                                      <th className="text-right p-2">Conversions</th>
+                                      <th className="text-right p-2 pr-3">Conv. Rate</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {channelAnalysis.channels.map((ch: any) => {
-                                      const share = channelAnalysis.totalSessions > 0 ? (ch.sessions / channelAnalysis.totalSessions * 100) : 0;
-                                      const cr = ch.sessions > 0 ? (ch.conversions / ch.sessions * 100) : 0;
-                                      const isLowestCR = channelAnalysis.lowestCRChannel?.label === ch.label;
+                                      const scaledSessions = Math.round(ch.sessions * sessScale);
+                                      const scaledConversions = Math.round(ch.conversions * convScaleFactor);
+                                      const share = breakdownTotals.sessions > 0 ? (scaledSessions / breakdownTotals.sessions * 100) : 0;
+                                      const cr = scaledSessions > 0 ? (scaledConversions / scaledSessions * 100) : 0;
+                                      const isLowestCR = channelAnalysis.channels.length > 1 && channelAnalysis.lowestCRChannel?.label === ch.label;
                                       return (
                                         <tr key={ch.label} className="border-b last:border-b-0">
                                           <td className="p-2 pl-3 text-foreground font-medium truncate max-w-[200px]" title={ch.label}>{ch.label}</td>
-                                          <td className="p-2 text-right tabular-nums text-foreground">{formatNumber(ch.sessions)}</td>
+                                          <td className="p-2 text-right tabular-nums text-foreground">{formatNumber(scaledSessions)}</td>
                                           <td className="p-2 text-right tabular-nums text-muted-foreground/70">{share.toFixed(0)}%</td>
-                                          <td className="p-2 text-right tabular-nums text-foreground">{formatNumber(ch.conversions)}</td>
+                                          <td className="p-2 text-right tabular-nums text-foreground">{formatNumber(scaledConversions)}</td>
                                           <td className={`p-2 pr-3 text-right tabular-nums ${isLowestCR ? "text-red-600 font-medium" : "text-foreground"}`}>
                                             {formatPct(cr)}
                                           </td>
@@ -6444,7 +6451,8 @@ export default function GA4Metrics() {
                                 </table>
                               </div>
                             </div>
-                          )}
+                            );
+                          })()}
                         </CardContent>
                       </Card>
                     )}

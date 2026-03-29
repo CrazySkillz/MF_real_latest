@@ -257,7 +257,7 @@ Spend arrives when the user explicitly adds it:
 - [ ] "Lower is better": current < $5 → progress reflects it's better than target (green bar)
 
 ### Step 3: ROI KPI
-- [ ] Select **"ROI"** → ENABLED
+  [ ] Select **"ROI"** → ENABLED
 - [ ] Current auto-populates (very high % since revenue >> spend) → Target = **5000%** → Save
 
 ### Step 4: ROAS Benchmark
@@ -392,75 +392,135 @@ Spend arrives when the user explicitly adds it:
 
 ---
 
-## Journey 7: Add More Spend Sources
+## Journey 7: Add More Spend Sources + Verify Propagation
 
-**After EACH source, verify: Total Spend = sum of micro copy, ROAS/CPA KPIs update**
+**Purpose**: Test adding spend from different sources and verify that new spend values propagate correctly to ALL tabs — Overview financial metrics, KPIs, Benchmarks, and Insights.
 
-### Step 1: CSV Spend
-- [ ] "+" → CSV → upload file → preview → map Spend column → campaign filter → Import
+### Step 1: Note current values before adding spend
+- [ ] **Overview tab**: note Total Spend, ROAS, ROI, CPA, Profit values
+- [ ] **KPIs tab**: note ROAS KPI current value, CPA KPI current value
+- [ ] **Benchmarks tab**: note ROAS Benchmark current value, CPA Benchmark current value
+- [ ] **Insights tab**: note Data Summary financial row values (Spend, Profit, ROAS, CPA)
+
+### Step 2: Add CSV Spend
+- [ ] Overview tab → click "+" on Total Spend card → select **CSV**
+- [ ] Upload a CSV file with spend data → preview → map Spend column → Import
 - [ ] Toast: "Imported {N} row(s), total USD {amount}"
 - [ ] Micro copy: "filename.csv — $X,XXX"
-- [ ] Edit (pencil) → re-upload → update. Delete (trash) → recalculated
+- [ ] **Total Spend increased** by the CSV amount
 
-### Step 2: Google Sheets Spend
-- [ ] "+" → Sheets → authenticate → select sheet → map → Save
-- [ ] Micro copy: "Google Sheets — $X,XXX" (NOT spreadsheet name)
-- [ ] Edit/Delete same pattern
+### Step 3: Verify propagation after CSV spend
+- [ ] **Overview tab**: ROAS decreased (same revenue ÷ higher spend), CPA increased, ROI decreased, Profit decreased
+- [ ] **KPIs tab**: ROAS KPI current value decreased, CPA KPI current value increased, progress bars updated
+- [ ] **Benchmarks tab**: ROAS Benchmark current value decreased, CPA Benchmark current value increased
+- [ ] **Insights tab**: Data Summary financial row reflects new Spend, Profit, ROAS, CPA values
+- [ ] **Insights tab**: any spend-related insights updated (e.g., ROAS insight may change severity)
 
-### Step 3: LinkedIn Ads (Test Mode)
+### Step 4: Add LinkedIn Ads (Test Mode)
 - [ ] "+" → LinkedIn → Test mode ON → mock campaigns table → select 2 → Import
 - [ ] Toast: "Test spend imported — Saved USD {amount} from 2 mock campaign(s)"
 - [ ] Micro copy: "LinkedIn Ads — $X,XXX"
 - [ ] No extra UI elements not in production
+- [ ] **Total Spend = Manual + CSV + LinkedIn** (cumulative)
 
-### Step 4: Meta Ads (Test Mode)
+### Step 5: Add Meta Ads (Test Mode)
 - [ ] Same pattern → "Meta Ads — $X,XXX"
+- [ ] **Total Spend = Manual + CSV + LinkedIn + Meta**
 
-### Step 5: Google Ads (Test Mode)
+### Step 6: Add Google Ads (Test Mode)
 - [ ] Same pattern → "Google Ads — $X,XXX"
+- [ ] **Total Spend = Manual + CSV + LinkedIn + Meta + Google Ads**
 
-### Step 6: Multiple sources active
+### Step 7: Verify all sources active
 - [ ] All sources shown in micro copy with individual amounts
 - [ ] **Sum of ALL micro copy amounts = Total Spend card** (exact match, no rounding drift)
-- [ ] Delete one → total decreases by that amount
+- [ ] ROAS/CPA/ROI/Profit all reflect the cumulative total spend
+
+### Step 8: Edit a spend source
+- [ ] Click edit (pencil) on the CSV source → re-upload with different amount → Save
+- [ ] Total Spend recalculated (old CSV amount replaced, not duplicated)
+- [ ] ROAS/CPA updated accordingly
+- [ ] **No duplicate source created** — same source ID, updated amount
+
+### Step 9: Delete a spend source
+- [ ] Click delete (trash) on the LinkedIn source → confirm
+- [ ] Total Spend decreases by the LinkedIn amount
+- [ ] Micro copy: LinkedIn line disappears
+- [ ] ROAS/CPA/Profit recalculated
+- [ ] **KPIs tab**: ROAS/CPA KPIs reflect the reduced spend
+- [ ] **Benchmarks tab**: ROAS/CPA Benchmarks reflect the reduced spend
+- [ ] **Insights tab**: financial row updated
+
+### Step 10: Add Google Sheets Spend
+- [ ] "+" → Sheets → authenticate → select sheet → map → Save
+- [ ] Micro copy: "Google Sheets — $X,XXX" (NOT the spreadsheet name)
+- [ ] Edit/Delete same pattern as other sources
 
 ---
 
-## Journey 8: Add More Revenue Sources
+## Journey 8: Add More Revenue Sources + Verify Propagation
 
-**After EACH source, verify: Total Revenue = sum of micro copy, ROAS/Revenue KPIs update**
+**Purpose**: Test adding revenue from different sources and verify that new revenue values propagate correctly to ALL tabs — Overview financial metrics, KPIs, Benchmarks, and Insights.
 
-### Step 1: Manual Revenue
-- [ ] "+" → Manual → $5,000 → Save
-- [ ] Micro copy: "Manual revenue (to date) — $5,000"
-- [ ] Edit/Delete same pattern
+### Step 1: Note current values before adding revenue
+- [ ] **Overview tab**: note Total Revenue, ROAS, ROI, Profit values
+- [ ] **KPIs tab**: note Revenue KPI current value, ROAS KPI current value
+- [ ] **Benchmarks tab**: note ROAS Benchmark current value
+- [ ] **Insights tab**: note Executive Financials revenue, Data Summary revenue
 
-### Step 2: CSV Revenue
+### Step 2: Add Manual Revenue
+- [ ] Overview tab → click "+" on Total Revenue card → select **Manual**
+- [ ] Enter $10,000 → Save
+- [ ] Micro copy: "Manual — $10,000.00"
+- [ ] **Total Revenue increased** by $10,000
+
+### Step 3: Verify propagation after manual revenue
+- [ ] **Overview tab**: ROAS increased (higher revenue ÷ same spend), ROI increased, Profit increased
+- [ ] **KPIs tab**: Revenue KPI current value increased, ROAS KPI current value increased
+- [ ] **Benchmarks tab**: ROAS Benchmark current value increased
+- [ ] **Insights tab**: Executive Financials revenue updated, Data Summary revenue updated
+
+### Step 4: Add CSV Revenue
 - [ ] "+" → CSV → upload → map Revenue + Campaign columns → Import
-- [ ] Edit/Delete same
+- [ ] Micro copy shows CSV source with amount
+- [ ] **Total Revenue = GA4 native + Manual + CSV**
+- [ ] Edit (pencil) → re-upload → update. Delete (trash) → recalculated
 
-### Step 3: Google Sheets Revenue
+### Step 5: Add Google Sheets Revenue
 - [ ] "+" → Sheets → authenticate → select → map → Save
+- [ ] Micro copy: "Google Sheets — $X,XXX"
 
-### Step 4: HubSpot Revenue (if HubSpot connected)
-- [ ] "+" → HubSpot → OAuth → campaign field → crosswalk → pipeline (optional) → revenue property → date field (Close Date default, Advanced section) → review → Save
+### Step 6: Add HubSpot Revenue (if HubSpot connected)
+- [ ] "+" → HubSpot → OAuth → campaign field → crosswalk → pipeline (optional) → revenue property → date field (Close Date default) → review → Save
 - [ ] Micro copy: "HubSpot — $X,XXX"
 - [ ] Non-default date field: "HubSpot · Modified Date"
 - [ ] Edit: all settings prefilled. Delete: recalculated + connection cleared
 
-### Step 5: Salesforce Revenue (if Salesforce connected)
+### Step 7: Salesforce Revenue (if Salesforce connected)
 - [ ] Same pattern → date field selector (CloseDate default)
 - [ ] Micro copy: "Salesforce — $X,XXX"
 
-### Step 6: Shopify Revenue (if Shopify connected)
+### Step 8: Shopify Revenue (if Shopify connected)
 - [ ] "+" → Shopify → domain + token → campaign field → revenue metric → Save
 
-### Step 7: Multiple sources active
-- [ ] All shown in micro copy
-- [ ] **Sum = Total Revenue card**
-- [ ] Delete one → total decreases
+### Step 9: Verify all revenue sources active
+- [ ] All shown in micro copy with individual amounts
+- [ ] **Sum of ALL micro copy amounts = Total Revenue card** (exact match)
+- [ ] ROAS/ROI/Profit all reflect cumulative total revenue
 
-### Step 8: Double-Count Prevention Warning
+### Step 10: Edit a revenue source
+- [ ] Click edit (pencil) on Manual source → change amount → Save
+- [ ] Total Revenue recalculated (old amount replaced, not duplicated)
+- [ ] ROAS/Revenue KPIs updated accordingly
+
+### Step 11: Delete a revenue source
+- [ ] Click delete (trash) on one source → confirm
+- [ ] Total Revenue decreases by that amount
+- [ ] **KPIs tab**: Revenue/ROAS KPIs reflect reduced revenue
+- [ ] **Benchmarks tab**: ROAS Benchmark reflects reduced revenue
+- [ ] **Insights tab**: financial values updated
+
+### Step 12: Double-Count Prevention Warning
 - [ ] HubSpot wizard Revenue step: amber warning banner visible: "Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions"
 - [ ] Salesforce wizard Revenue step: same amber warning visible
 - [ ] No "Revenue classification" dropdown (removed — hardcoded to offsite)
@@ -470,7 +530,7 @@ Spend arrives when the user explicitly adds it:
 ## Journey 9: Delete Sources → KPIs Become Blocked
 
 ### Step 1: Delete ALL spend sources
-- [ ] Delete Manual entry + Mock Spend + any others
+- [ ] Delete Manual entry + any ad platform sources + CSV/Sheets sources
 - [ ] Spend = $0
 - [ ] **ROAS KPI → "Blocked"**
 - [ ] **ROI KPI → "Blocked"** (if created)

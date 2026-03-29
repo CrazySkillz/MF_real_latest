@@ -387,7 +387,6 @@ Spend arrives when the user explicitly adds it:
 - [ ] Daily: chart + table with deltas
 - [ ] 7d/30d: "Need at least X days" if insufficient data
 - [ ] Monthly: bar chart with partial month marker
-- [ ] Date picker: From/To filters, Clear resets
 - [ ] Users HIDDEN in 7d/30d/Monthly dropdown
 
 ---

@@ -4714,7 +4714,7 @@ export default function GA4Metrics() {
                                                       </div>
                                                     </TooltipTrigger>
                                                     <TooltipContent className="bg-slate-900 text-white border-slate-700">
-                                                      <p className="text-sm">Alerts enabled — threshold: {kpi.alertThreshold ? `${Number(kpi.alertThreshold).toLocaleString()} (${kpi.alertCondition || "below"})` : "not set"}</p>
+                                                      <p className="text-sm">Alerts enabled — threshold: {kpi.alertThreshold ? `${kpi.alertCondition || "below"} ${Number(kpi.alertThreshold).toLocaleString()}` : "not set"}</p>
                                                     </TooltipContent>
                                                   </UITooltip>
                                                 )}
@@ -4744,7 +4744,7 @@ export default function GA4Metrics() {
                                                           <p className="font-semibold text-red-400">Alert Threshold Breached</p>
                                                           <div className="text-xs space-y-1">
                                                             <p><span className="text-slate-400">Current:</span> {formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}</p>
-                                                            <p><span className="text-slate-400">Threshold:</span> {formatValue(String(alertThresh), kpi.unit)} ({alertCond})</p>
+                                                            <p><span className="text-slate-400">Threshold:</span> {alertCond} {formatValue(String(alertThresh), kpi.unit)}</p>
                                                           </div>
                                                         </div>
                                                       </TooltipContent>
@@ -5480,7 +5480,7 @@ export default function GA4Metrics() {
                                                 </div>
                                               </TooltipTrigger>
                                               <TooltipContent className="bg-slate-900 text-white border-slate-700">
-                                                <p className="text-sm">Alerts enabled — threshold: {(benchmark as any).alertThreshold ? `${Number((benchmark as any).alertThreshold).toLocaleString()} (${(benchmark as any).alertCondition || "below"})` : "not set"}</p>
+                                                <p className="text-sm">Alerts enabled — threshold: {(benchmark as any).alertThreshold ? `${(benchmark as any).alertCondition || "below"} ${Number((benchmark as any).alertThreshold).toLocaleString()}` : "not set"}</p>
                                               </TooltipContent>
                                             </UITooltip>
                                           )}
@@ -5510,7 +5510,7 @@ export default function GA4Metrics() {
                                                     <p className="font-semibold text-red-400">Alert Threshold Breached</p>
                                                     <div className="text-xs space-y-1">
                                                       <p><span className="text-slate-400">Current:</span> {formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}</p>
-                                                      <p><span className="text-slate-400">Threshold:</span> {formatBenchmarkValue(String(alertThresh), benchmark.unit)} ({alertCond})</p>
+                                                      <p><span className="text-slate-400">Threshold:</span> {alertCond} {formatBenchmarkValue(String(alertThresh), benchmark.unit)}</p>
                                                     </div>
                                                   </div>
                                                 </TooltipContent>

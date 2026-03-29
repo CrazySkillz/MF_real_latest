@@ -6390,11 +6390,19 @@ export default function GA4Metrics() {
                             )}
                           </div>
                           {financialSpend > 0 && (
-                            <div className="grid gap-4 sm:grid-cols-3 mt-4 pt-4 border-t">
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-4 pt-4 border-t">
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Total Spend</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{formatMoney(financialSpend)}</p>
                               </div>
+                              {financialRevenue > 0 && (
+                                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
+                                  <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Profit</p>
+                                  <p className={`text-xl font-bold mt-1 ${(financialRevenue - financialSpend) >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
+                                    {formatMoney(financialRevenue - financialSpend)}
+                                  </p>
+                                </div>
+                              )}
                               {financialROAS > 0 && (
                                 <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
                                   <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">ROAS</p>
@@ -6403,7 +6411,7 @@ export default function GA4Metrics() {
                                   </p>
                                 </div>
                               )}
-                              {financialSpend > 0 && breakdownTotals.conversions > 0 && (
+                              {breakdownTotals.conversions > 0 && (
                                 <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
                                   <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">CPA</p>
                                   <p className="text-xl font-bold text-foreground mt-1">{formatMoney(financialSpend / breakdownTotals.conversions)}</p>

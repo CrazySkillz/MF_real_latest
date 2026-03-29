@@ -4037,9 +4037,11 @@ export default function GA4Metrics() {
                         </Card>
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-muted-foreground/70">Bounce Rate</p>
+                            <p className="text-sm font-medium text-muted-foreground/70">Conv. Rate</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatPercentage(rateToPercent(dailySummedTotals.bounceRate || ga4Metrics?.bounceRate || 0))}
+                              {formatPct((breakdownTotals.sessions || 0) > 0
+                                ? ((breakdownTotals.conversions || 0) / (breakdownTotals.sessions || 1)) * 100
+                                : 0)}
                             </p>
                           </CardContent>
                         </Card>

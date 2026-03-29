@@ -871,7 +871,7 @@ export default function GA4Metrics() {
 
   const deleteBenchmarkMutation = useMutation({
     mutationFn: async (benchmarkId: string) => {
-      const response = await fetch(`/api/benchmarks/${benchmarkId}`, {
+      const response = await fetch(`/api/platforms/google_analytics/benchmarks/${benchmarkId}`, {
         method: "DELETE",
         credentials: "include",
       });

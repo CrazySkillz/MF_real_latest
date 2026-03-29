@@ -182,7 +182,7 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - **Delete endpoint** soft-deletes the source (`isActive = false`), then calls `recalcCampaignSpend` to update the total.
 
 ### GA4 Overview Data Scoping
-- **Summary cards** (`ga4-to-date`): Campaign lifetime (startDate → yesterday), current campaign's `ga4CampaignFilter` only. This is the source of truth for total Sessions, Users, Conversions, Revenue.
+- **Summary cards** (`ga4-to-date`): Campaign lifetime (startDate → yesterday), current campaign's `ga4CampaignFilter` only. This is the source of truth for total Sessions, Users, Conversions, Revenue. 6-card grid: Sessions, Users, Conversions, Engagement Rate, Conv. Rate (replaced Bounce Rate). Financial section: Profit, ROAS, ROI, CPA.
 - **Campaign Breakdown** (`ga4-breakdown`): Last 90 days (hardcoded `dateRange`), acquisition dimensions (source/medium/campaign). Drops "uninformative" rows where source/medium are `(not set)`, so its sum may be lower than Summary totals. Uses current campaign's filter only.
 - **Landing Pages** (`ga4-landing-pages`): Campaign lifetime, top 50 rows. Uses current campaign's `ga4CampaignFilter` only (NOT cross-client).
 - **Conversion Events** (`ga4-conversion-events`): Campaign lifetime, top 25 rows. Uses current campaign's `ga4CampaignFilter` only (NOT cross-client).
@@ -275,7 +275,7 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 - **`insightsRollups` memo**: Computes last3/prior3, last7/prior7, last30/prior30 from `ga4TimeSeries`. `byDate` map includes: date, sessions, users, conversions, revenue, pageviews, engagementRate, engagedSessions. Engagement rate computed as weighted average (engagedSessions/totalSessions × 100).
 - **Daily table index math**: Uses `sortedIdx = sorted.length - 1 - idx` for O(1) previous-row lookup (not `indexOf` reference scan).
 
-**Data Summary section** — Always visible when `breakdownTotals.sessions > 0` or `breakdownTotals.revenue > 0`. Shows: Sessions (+ daily avg), Conversions (+ CR%), Revenue (+ daily avg), Top Channel (+ share % + channel count). Financial row (when spend exists): Total Spend, ROAS (green/red), CPA. Channel Breakdown table (visible when `channels.length >= 1`) showing all traffic sources with sessions, share %, conversions, and CR (lowest-CR channel highlighted red). Uses `breakdownTotals`, `insightsRollups.availableDays`, `channelAnalysis` (exposes `channels` array sorted by sessions desc), `financialSpend`, `financialROAS`.
+**Data Summary section** — Always visible when `breakdownTotals.sessions > 0` or `breakdownTotals.revenue > 0`. Shows: Sessions (+ daily avg), Conversions (+ CR%), Revenue (+ daily avg), Top Channel (+ share % + channel count). Financial row (when spend exists): Total Spend, Profit (green/red), ROAS (green/red), CPA. Channel Breakdown table (visible when `channels.length >= 1`) showing all traffic sources with sessions, share %, conversions, and Conv. Rate (lowest-CR channel highlighted red only when 2+ channels exist). Channel values are scaled proportionally to match `breakdownTotals` (which includes Run Refresh data). Uses `breakdownTotals`, `insightsRollups.availableDays`, `channelAnalysis` (exposes `channels` array sorted by sessions desc), `financialSpend`, `financialROAS`.
 
 **Insights engine** (`insights` useMemo) generates 6 categories:
 - Financial integrity checks (blocked KPIs, mismatched sources, negative ROI, low ROAS)

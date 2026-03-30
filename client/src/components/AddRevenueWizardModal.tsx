@@ -1335,8 +1335,10 @@ export function AddRevenueWizardModal(props: {
                   <CardContent className="space-y-3 pt-6">
                     {isEditing && (
                       <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 p-3 text-sm text-amber-900 dark:text-amber-100">
-                        <p className="font-medium">Re-upload required</p>
-                        <p className="text-xs mt-1">CSV files aren’t stored — select the file again to update. Your previous column mapping will be reused automatically{initialSource?.displayName ? ` (original: ${initialSource.displayName})` : ""}.</p>
+                        {initialSource?.displayName && (
+                          <p className="font-medium mb-1">Previously uploaded: {initialSource.displayName}</p>
+                        )}
+                        <p className="text-xs">Select the file below to update. Your previous column mapping will be reused automatically.</p>
                       </div>
                     )}
 

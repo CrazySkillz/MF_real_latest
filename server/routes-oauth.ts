@@ -1637,27 +1637,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // - revenue_to_date (materialized revenue record), or
       // - conversion_value (persisted on LinkedIn connection; revenue metrics are derived from conversions)
       const mode = (platformContext === 'linkedin' && valueSource === 'conversion_value') ? 'conversion_value' : 'revenue_to_date';
-      const source = await storage.createRevenueSource({
-        campaignId,
-        sourceType: "manual",
-        platformContext,
-        displayName: platformContext === 'linkedin' && valueSource === 'conversion_value'
-          ? "Manual conversion value"
-          : "Manual revenue (to date)",
+      const existingSourceId = (parsedBody.data as any)?.sourceId ? String((parsedBody.data as any).sourceId) : null;
+      const displayName = platformContext === 'linkedin' && valueSource === 'conversion_value'
+        ? "Manual conversion value"
+        : "Manual revenue (to date)";
+      const mappingConfig = JSON.stringify({
+        amount: amountIsValid ? Number(amount.toFixed(2)) : null,
+        conversionValue: cvIsValid ? Number(conversionValueRaw.toFixed(2)) : null,
         currency: cur,
-        mappingConfig: JSON.stringify({
-          amount: amountIsValid ? Number(amount.toFixed(2)) : null,
-          conversionValue: cvIsValid ? Number(conversionValueRaw.toFixed(2)) : null,
+        mode,
+        valueSource: platformContext === 'linkedin' ? valueSource : 'revenue',
+      });
+
+      let source: any;
+      if (existingSourceId) {
+        // Edit mode: update existing source
+        source = await storage.updateRevenueSource(existingSourceId, {
+          sourceType: "manual",
+          displayName,
           currency: cur,
-          mode,
-          valueSource: platformContext === 'linkedin' ? valueSource : 'revenue',
-        }),
-        isActive: true,
-      } as any);
+          mappingConfig,
+          isActive: true,
+        } as any);
+        if (!source) source = { id: existingSourceId };
+        await storage.deleteRevenueRecordsBySource(existingSourceId);
+      } else {
+        source = await storage.createRevenueSource({
+          campaignId,
+          sourceType: "manual",
+          platformContext,
+          displayName,
+          currency: cur,
+          mappingConfig,
+          isActive: true,
+        } as any);
+        await storage.deleteRevenueRecordsBySource(source.id);
+      }
 
       // Store as a single revenue-to-date snapshot on "yesterday (UTC)"
       const endDate = yesterdayUTC();
-      await storage.deleteRevenueRecordsBySource(source.id);
 
       if (platformContext === 'linkedin') {
         if (valueSource === 'conversion_value' && cvIsValid) {
@@ -1846,19 +1864,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
         // Note: do NOT deactivate existing sources — revenue sources are additive.
-
+        const existingSourceId = mapping?.sourceId || null;
         const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: (platformContext === 'linkedin' && valueSource === 'conversion_value') ? 'conversion_value' : "revenue_to_date" };
-        const source = await storage.createRevenueSource({
-          campaignId,
-          sourceType: "csv",
-          platformContext,
-          displayName: mapping.displayName || file.originalname,
-          currency,
-          mappingConfig: JSON.stringify(normalizedMapping),
-          isActive: true,
-        } as any);
+        delete (normalizedMapping as any).sourceId; // don't persist sourceId in mappingConfig
 
-        await storage.deleteRevenueRecordsBySource(source.id);
+        let source: any;
+        if (existingSourceId) {
+          // Edit mode: update existing source, delete old records
+          source = await storage.updateRevenueSource(existingSourceId, {
+            sourceType: "csv",
+            displayName: mapping.displayName || file.originalname,
+            currency,
+            mappingConfig: JSON.stringify(normalizedMapping),
+            isActive: true,
+          } as any);
+          if (!source) source = { id: existingSourceId };
+          await storage.deleteRevenueRecordsBySource(existingSourceId);
+        } else {
+          // New source
+          source = await storage.createRevenueSource({
+            campaignId,
+            sourceType: "csv",
+            platformContext,
+            displayName: mapping.displayName || file.originalname,
+            currency,
+            mappingConfig: JSON.stringify(normalizedMapping),
+            isActive: true,
+          } as any);
+          await storage.deleteRevenueRecordsBySource(source.id);
+        }
 
         if (platformContext === 'linkedin' && valueSource === 'conversion_value') {
           const sorted = conversionValues.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);

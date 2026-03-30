@@ -710,6 +710,7 @@ export function AddRevenueWizardModal(props: {
             dateRange,
             platformContext: effectivePlatform,
             subCampaignUrn,
+            ...(isEditing && initialSource?.id ? { sourceId: String(initialSource.id) } : {}),
           }),
         });
         const json = await resp.json().catch(() => ({}));
@@ -841,6 +842,7 @@ export function AddRevenueWizardModal(props: {
         currency,
         displayName: csvFile.name,
         mode: "revenue_to_date",
+        ...(isEditing && initialSource?.id ? { sourceId: String(initialSource.id) } : {}),
       };
       const fd = new FormData();
       fd.append("file", csvFile);

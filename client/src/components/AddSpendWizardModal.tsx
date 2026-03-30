@@ -1944,14 +1944,17 @@ export function AddSpendWizardModal(props: {
             {(step === "csv_map" || step === "sheets_map") && (
               <div className="space-y-4">
                 {/* Loading indicator while sheet data is being fetched */}
-                {step === "sheets_map" && isSheetsLoading && (
-                  <div className="flex items-center justify-center py-12 gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+                {step === "sheets_map" && isSheetsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <div className="flex gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Loading spreadsheet data...</p>
                   </div>
-                )}
-                <Card>
+                ) : (
+                <Card className="fade-in">
                   <CardContent className="space-y-4 pt-6">
                     {step === "csv_map" && !csvPreview?.success ? (
                       <div className="space-y-4">
@@ -2145,6 +2148,7 @@ export function AddSpendWizardModal(props: {
                     </div>
                   </CardContent>
                 </Card>
+                )}
               </div>
             )}
 

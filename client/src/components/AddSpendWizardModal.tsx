@@ -1943,6 +1943,14 @@ export function AddSpendWizardModal(props: {
 
             {(step === "csv_map" || step === "sheets_map") && (
               <div className="space-y-4">
+                {/* Loading indicator while sheet data is being fetched */}
+                {step === "sheets_map" && (isSheetsLoading || (!headers.length && !previewRows.length)) && (
+                  <div className="flex items-center justify-center py-8 gap-1">
+                    <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                )}
                 <Card>
                   <CardContent className="space-y-4 pt-6">
                     {step === "csv_map" && !csvPreview?.success ? (

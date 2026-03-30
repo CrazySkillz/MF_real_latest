@@ -1752,16 +1752,7 @@ export function AddSpendWizardModal(props: {
                         <div className="flex items-center justify-between gap-2">
                           <Label>Choose Google Sheet</Label>
                           <div className="flex items-center gap-2">
-                            <Button type="button" variant="outline" size="sm" onClick={async () => {
-                              // If already connected, just refresh the list instead of re-authenticating
-                              try {
-                                await refreshSheetsConnections();
-                                toast({ title: "Sheets refreshed", description: "Select a different sheet from the dropdown." });
-                              } catch {
-                                // If refresh fails (token expired), fall back to re-auth
-                                setShowSheetsConnect(true);
-                              }
-                            }}>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
                               Change sheet/tab
                             </Button>
                             <Button

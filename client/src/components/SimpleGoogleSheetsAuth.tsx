@@ -34,6 +34,7 @@ interface Sheet {
 export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selectionMode = 'replace', purpose = 'general' }: SimpleGoogleSheetsAuthProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
+  const [isCheckingExistingAuth, setIsCheckingExistingAuth] = useState(true);
   const [spreadsheets, setSpreadsheets] = useState<Spreadsheet[]>([]);
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string>("");
   const [availableSheets, setAvailableSheets] = useState<Sheet[]>([]);
@@ -62,7 +63,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     (async () => {
       try {
         // Only attempt the fast path when not already authenticated in this component.
-        if (authCompleted) return;
+        if (authCompleted) { setIsCheckingExistingAuth(false); return; }
         const response = await apiRequest("GET", `/api/google-sheets/${campaignId}/spreadsheets?purpose=${encodeURIComponent(purpose)}`);
         const data = await response.json().catch(() => ({}));
         if (!mounted) return;
@@ -72,6 +73,8 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
         }
       } catch {
         // Silent: if tokens aren't available, the user can OAuth normally.
+      } finally {
+        if (mounted) setIsCheckingExistingAuth(false);
       }
     })();
     return () => {
@@ -465,6 +468,20 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
           )}
         </CardContent>
       </Card>
+    );
+  }
+
+  // Show loading while checking for existing auth tokens
+  if (isCheckingExistingAuth) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-3">
+        <div className="flex gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+        </div>
+        <p className="text-sm text-muted-foreground">Checking connection...</p>
+      </div>
     );
   }
 

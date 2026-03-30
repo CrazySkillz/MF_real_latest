@@ -1245,7 +1245,7 @@ export function AddRevenueWizardModal(props: {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Revenue</CardTitle>
-                    <CardDescription>Revenue to date (lifetime). Leave blank if you only want to enter spend.</CardDescription>
+                    <CardDescription>Revenue to date (lifetime).</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1315,26 +1315,6 @@ export function AddRevenueWizardModal(props: {
                           />
                         </div>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Spend Section */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Spend</CardTitle>
-                    <CardDescription>Spend to date (lifetime). Leave blank if you only want to enter revenue.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="space-y-1">
-                      <Label>Spend to date ({currency})</Label>
-                      <Input
-                        value={manualSpendAmount}
-                        onChange={(e) => setManualSpendAmount(formatCurrencyWhileTyping(e.target.value))}
-                        onBlur={(e) => setManualSpendAmount(formatCurrencyOnBlur(e.target.value))}
-                        placeholder="0.00"
-                        inputMode="decimal"
-                      />
                     </div>
                   </CardContent>
                 </Card>

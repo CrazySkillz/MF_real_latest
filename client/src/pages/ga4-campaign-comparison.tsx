@@ -138,6 +138,10 @@ export default function GA4CampaignComparison({
         <div>
           <h3 className="text-lg font-semibold text-foreground">Ad Comparison</h3>
           <p className="text-sm text-muted-foreground/70">Compare performance across your GA4 campaigns</p>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+            <Info className="w-3 h-3 inline mr-1" />
+            Revenue shown is GA4-attributed only. Manually added revenue (CSV, Sheets, CRM) is not included as it cannot be broken down by campaign.
+          </p>
         </div>
         <div className="min-w-[220px]">
           <Select value={selectedMetric} onValueChange={onMetricChange}>
@@ -265,7 +269,7 @@ export default function GA4CampaignComparison({
       <Card>
         <CardHeader>
           <CardTitle>All Campaigns</CardTitle>
-          <CardDescription>Full comparison sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}</CardDescription>
+          <CardDescription>Full comparison sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}. Revenue reflects GA4-attributed data only.</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <div className="overflow-hidden border rounded-md">

@@ -147,7 +147,7 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 - `platformContext` field (`'ga4' | 'linkedin' | 'meta'`) prevents cross-platform revenue/spend leakage
 - GA4 native revenue tracked separately from CRM-sourced revenue
 - Campaign-level Total Revenue (in `outcome-totals`) = GA4 onsite + CRM offsite (additive)
-- Platform-specific pages (GA4, LinkedIn, Meta) show only their own platform's revenue
+- GA4 page `financialRevenue` = `ga4RevenueForFinancials + importedRevenueForFinancials` (additive — GA4 native + manual/CSV/Sheets/CRM). NOT either/or.
 - **CRM double-count prevention**: HubSpot/Salesforce wizards hardcode `revenueClassification = "offsite_not_in_ga4"` and show a warning: "Only add this revenue if NOT already tracked in GA4." No user-facing classification toggle — users should simply not add CRM revenue that duplicates GA4 ecommerce data.
 
 ### Financial Aggregation Endpoints

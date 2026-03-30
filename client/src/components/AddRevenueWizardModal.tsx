@@ -1322,14 +1322,6 @@ export function AddRevenueWizardModal(props: {
                 </Card>
 
                 <div className="flex justify-end gap-2">
-                  {!initialStep && (
-                    <Button variant="outline" onClick={() => setStep("select")}>
-                      Cancel
-                    </Button>
-                  )}
-                  <Button variant="outline" onClick={() => onOpenChange(false)}>
-                    Close
-                  </Button>
                   <Button onClick={handleManualSave} disabled={savingManual}>
                     {savingManual ? "Saving..." : isEditing ? "Update" : "Save"}
                   </Button>

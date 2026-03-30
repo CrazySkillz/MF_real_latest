@@ -45,17 +45,14 @@ export function AddRevenueWizardModal(props: {
   const queryClient = useQueryClient();
 
   const invalidateAfterRevenueChange = () => {
-    // Always refresh campaign-level rollups and connection badges.
-    void queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId], exact: false });
-    void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
-    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
-
-    // Revenue-derived endpoints used across screens.
-    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
-    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
-    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals`], exact: false });
-    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
-    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+    // Force refetch ALL campaign queries so revenue changes propagate immediately
+    void queryClient.refetchQueries({
+      predicate: (query) => {
+        const key = query.queryKey;
+        return Array.isArray(key) && key.some((k) => typeof k === "string" && k.includes(String(campaignId)));
+      },
+      type: "active",
+    });
 
     if (platformContext === 'linkedin') {
       // LinkedIn revenue totals must always be scoped (never fall back to GA4 totals).
@@ -690,8 +687,8 @@ export function AddRevenueWizardModal(props: {
         return;
       }
     } else {
-      if (!hasRevenue && !hasSpend) {
-        toast({ title: "Enter a value", description: "Enter at least a revenue or spend amount.", variant: "destructive" });
+      if (!hasRevenue) {
+        toast({ title: "Enter a value", description: "Enter a revenue amount.", variant: "destructive" });
         return;
       }
     }

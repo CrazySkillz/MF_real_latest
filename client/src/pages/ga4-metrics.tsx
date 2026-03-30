@@ -1980,9 +1980,9 @@ export default function GA4Metrics() {
   const ga4HasRevenueMetric = !!ga4RevenueMetricName || dailySummedTotals.revenue > 0;
   // Use the higher of (to-date total, summed daily rows) so Total Revenue is never less than Latest Day Revenue.
   const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue);
-  // GA4 page: show GA4 native revenue only. Fall back to imported revenue when GA4 has no revenue metric.
-  // Unified cross-platform revenue (GA4 + CRM) lives in campaign-detail.tsx Overview via outcome-totals.
-  const financialRevenue = ga4HasRevenueMetric ? ga4RevenueForFinancials : importedRevenueForFinancials;
+  // GA4 page: Total Revenue = GA4 native revenue + any imported revenue (manual, CSV, Sheets, CRM).
+  // This matches what executives expect: the full revenue picture for this campaign.
+  const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;
   const financialConversions = Math.max(Number((ga4ToDateResp as any)?.totals?.conversions || 0), dailySummedTotals.conversions);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;

@@ -336,51 +336,49 @@ export default function GA4CampaignComparison({
                     );
                   })}
                 </tbody>
-                <tfoot className="border-t-2 border-border">
-                  {(() => {
-                    const totalSessions = sortedByMetric.reduce((s, c) => s + c.sessions, 0);
-                    const totalConversions = sortedByMetric.reduce((s, c) => s + c.conversions, 0);
-                    const totalCR = totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
-                    return (
-                      <>
-                        {/* GA4 subtotal */}
-                        <tr className="font-medium bg-muted/30">
-                          <td className="px-2 py-2"></td>
-                          <td className="px-2 py-2 text-foreground">GA4 Revenue</td>
-                          <td className="px-2 py-2 text-right tabular-nums">{formatNumber(totalSessions)}</td>
-                          <td className="px-2 py-2 text-right tabular-nums">—</td>
-                          <td className="px-2 py-2 text-right tabular-nums">{formatNumber(totalConversions)}</td>
-                          <td className="px-2 py-2 text-right tabular-nums">{formatPct(totalCR)}</td>
-                          <td className="px-2 py-2 text-right tabular-nums">{formatMoney(ga4Revenue)}</td>
-                        </tr>
-                        {/* Imported revenue sources */}
-                        {revenueDisplaySources.filter(s => s.revenue != null && Number(s.revenue) > 0).map((s) => (
-                          <tr key={s.sourceId} className="text-muted-foreground">
-                            <td className="px-2 py-1.5"></td>
-                            <td className="px-2 py-1.5 text-sm">{s.displayName || s.sourceType}</td>
-                            <td className="px-2 py-1.5 text-right">—</td>
-                            <td className="px-2 py-1.5 text-right">—</td>
-                            <td className="px-2 py-1.5 text-right">—</td>
-                            <td className="px-2 py-1.5 text-right">—</td>
-                            <td className="px-2 py-1.5 text-right tabular-nums text-foreground">{formatMoney(Number(s.revenue))}</td>
-                          </tr>
-                        ))}
-                        {/* Grand total */}
-                        <tr className="font-bold bg-muted/50 border-t">
-                          <td className="px-2 py-2"></td>
-                          <td className="px-2 py-2 text-foreground">Total Revenue</td>
-                          <td className="px-2 py-2 text-right tabular-nums">{formatNumber(totalSessions)}</td>
-                          <td className="px-2 py-2 text-right tabular-nums">—</td>
-                          <td className="px-2 py-2 text-right tabular-nums">{formatNumber(totalConversions)}</td>
-                          <td className="px-2 py-2 text-right tabular-nums">{formatPct(totalCR)}</td>
-                          <td className="px-2 py-2 text-right tabular-nums">{formatMoney(totalRevenue > 0 ? totalRevenue : ga4Revenue)}</td>
-                        </tr>
-                      </>
-                    );
-                  })()}
-                </tfoot>
               </table>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Revenue Breakdown sub-table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Revenue Breakdown</CardTitle>
+          <CardDescription>Total revenue across all sources</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-hidden border rounded-md">
+            <table className="w-full text-sm">
+              <thead className="bg-muted border-b">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2">Source</th>
+                  <th className="text-right font-medium px-3 py-2">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b font-bold bg-muted/30">
+                  <td className="px-3 py-2.5 text-foreground">Total Revenue</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{formatMoney(totalRevenue > 0 ? totalRevenue : ga4Revenue)}</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="px-3 py-2 text-foreground">GA4 Revenue</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4Revenue)}</td>
+                </tr>
+                {revenueDisplaySources.filter(s => s.revenue != null && Number(s.revenue) > 0).map((s) => (
+                  <tr key={s.sourceId} className="border-b last:border-b-0">
+                    <td className="px-3 py-2 text-muted-foreground">{s.displayName || s.sourceType}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(Number(s.revenue))}</td>
+                  </tr>
+                ))}
+                {revenueDisplaySources.filter(s => s.revenue != null && Number(s.revenue) > 0).length === 0 && !hasImportedRevenue && (
+                  <tr>
+                    <td colSpan={2} className="px-3 py-2 text-center text-muted-foreground text-xs italic">No additional revenue sources</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>

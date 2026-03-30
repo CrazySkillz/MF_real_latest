@@ -30,6 +30,7 @@ interface GA4CampaignComparisonProps {
   onMetricChange: (metric: string) => void;
   formatNumber: (n: number) => string;
   formatMoney: (n: number) => string;
+  totalRevenue?: number;
 }
 
 const METRIC_OPTIONS = [
@@ -55,6 +56,7 @@ export default function GA4CampaignComparison({
   onMetricChange,
   formatNumber,
   formatMoney,
+  totalRevenue = 0,
 }: GA4CampaignComparisonProps) {
 
   const sortedByMetric = useMemo(() => {
@@ -138,10 +140,16 @@ export default function GA4CampaignComparison({
         <div>
           <h3 className="text-lg font-semibold text-foreground">Ad Comparison</h3>
           <p className="text-sm text-muted-foreground/70">Compare performance across your GA4 campaigns</p>
-          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-            <Info className="w-3 h-3 inline mr-1" />
-            Revenue shown is GA4-attributed only. Manually added revenue (CSV, Sheets, CRM) is not included as it cannot be broken down by campaign.
-          </p>
+          {totalRevenue > 0 && (() => {
+            const ga4Revenue = campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0);
+            const importedRevenue = totalRevenue - ga4Revenue;
+            return importedRevenue > 0 ? (
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                <Info className="w-3 h-3 inline mr-1" />
+                Total Revenue: {formatMoney(totalRevenue)} (GA4: {formatMoney(ga4Revenue)} + other sources: {formatMoney(importedRevenue)}). Per-campaign breakdown shows GA4-attributed revenue only.
+              </p>
+            ) : null;
+          })()}
         </div>
         <div className="min-w-[220px]">
           <Select value={selectedMetric} onValueChange={onMetricChange}>

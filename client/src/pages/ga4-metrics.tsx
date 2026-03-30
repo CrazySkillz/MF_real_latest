@@ -5895,6 +5895,7 @@ export default function GA4Metrics() {
                     onMetricChange={setCampaignComparisonMetric}
                     formatNumber={formatNumber}
                     formatMoney={formatMoney}
+                    totalRevenue={financialRevenue}
                   />
                 </TabsContent>
 

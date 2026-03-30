@@ -1630,7 +1630,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const cur = currency || (campaign as any)?.currency || "USD";
 
-      await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
+      // Note: do NOT deactivate existing sources — revenue sources are additive.
+      // Each manual/CSV/Sheets/CRM source adds independently. Only explicit delete removes a source.
 
       // For LinkedIn we support either:
       // - revenue_to_date (materialized revenue record), or
@@ -1844,7 +1845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const campaign = await storage.getCampaign(campaignId);
         const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
-        await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
+        // Note: do NOT deactivate existing sources — revenue sources are additive.
 
         const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: (platformContext === 'linkedin' && valueSource === 'conversion_value') ? 'conversion_value' : "revenue_to_date" };
         const source = await storage.createRevenueSource({
@@ -2191,7 +2192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let source: any = existingSheetsSource || null;
       if (!source) {
-        await deactivateRevenueSourcesForCampaign(campaignId, { platformContext });
+        // Note: do NOT deactivate existing sources — revenue sources are additive.
         source = await storage.createRevenueSource({
           campaignId,
           sourceType: "google_sheets",
@@ -2202,8 +2203,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: true,
         } as any);
       } else {
-        // Deactivate any other revenue sources (avoid silent double-counting), while keeping this sourceId stable.
-        await deactivateRevenueSourcesForCampaign(campaignId, { keepSourceId: String((source as any).id), platformContext });
         // Keep as the active source and refresh metadata.
         await storage.updateRevenueSource(String((source as any).id), {
           displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),

@@ -59,6 +59,21 @@ export default function GA4CampaignComparison({
   totalRevenue = 0,
 }: GA4CampaignComparisonProps) {
 
+  const ga4Revenue = useMemo(() => campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0), [campaignBreakdownAgg]);
+  const importedRevenue = totalRevenue - ga4Revenue;
+  const hasImportedRevenue = importedRevenue > 0;
+
+  const RevenueBanner = () => hasImportedRevenue ? (
+    <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-900 dark:text-amber-100 flex items-start gap-2">
+      <Info className="w-4 h-4 shrink-0 mt-0.5" />
+      <div>
+        <span className="font-medium">Total Revenue: {formatMoney(totalRevenue)}</span>
+        <span className="text-xs ml-1">(GA4: {formatMoney(ga4Revenue)} + other sources: {formatMoney(importedRevenue)})</span>
+        <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-300">Per-campaign breakdown shows GA4-attributed revenue only. Imported revenue cannot be split by campaign.</p>
+      </div>
+    </div>
+  ) : null;
+
   const sortedByMetric = useMemo(() => {
     return [...campaignBreakdownAgg].sort((a, b) => {
       const av = Number((a as any)[selectedMetric] || 0);
@@ -140,16 +155,6 @@ export default function GA4CampaignComparison({
         <div>
           <h3 className="text-lg font-semibold text-foreground">Ad Comparison</h3>
           <p className="text-sm text-muted-foreground/70">Compare performance across your GA4 campaigns</p>
-          {totalRevenue > 0 && (() => {
-            const ga4Revenue = campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0);
-            const importedRevenue = totalRevenue - ga4Revenue;
-            return importedRevenue > 0 ? (
-              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                <Info className="w-3 h-3 inline mr-1" />
-                Total Revenue: {formatMoney(totalRevenue)} (GA4: {formatMoney(ga4Revenue)} + other sources: {formatMoney(importedRevenue)}). Per-campaign breakdown shows GA4-attributed revenue only.
-              </p>
-            ) : null;
-          })()}
         </div>
         <div className="min-w-[220px]">
           <Select value={selectedMetric} onValueChange={onMetricChange}>
@@ -217,6 +222,9 @@ export default function GA4CampaignComparison({
         </div>
       )}
 
+      {/* Revenue banner — shown prominently when imported revenue exists */}
+      {selectedMetric === "revenue" && <RevenueBanner />}
+
       {/* Bar chart */}
       <Card>
         <CardHeader>
@@ -274,10 +282,11 @@ export default function GA4CampaignComparison({
       </div>
 
       {/* Full comparison table */}
+      <RevenueBanner />
       <Card>
         <CardHeader>
           <CardTitle>All Campaigns</CardTitle>
-          <CardDescription>Full comparison sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}. Revenue reflects GA4-attributed data only.</CardDescription>
+          <CardDescription>Full comparison sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <div className="overflow-hidden border rounded-md">

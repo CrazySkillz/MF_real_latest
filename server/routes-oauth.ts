@@ -12054,9 +12054,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateSalesforceConnection(sfConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
         }
 
-        // Upsert a revenue_source row (LinkedIn scoped) so the system knows there is an explicit conversion value source.
+        // Create a revenue_source row so the system knows there is an explicit revenue source.
         try {
-          await deactivateRevenueSourcesForCampaign(campaignId, { platformContext: platformCtx });
           const source = await storage.createRevenueSource({
             campaignId,
             sourceType: "salesforce",
@@ -12240,9 +12239,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateSalesforceConnection(sfConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }
 
-      // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it when GA4 revenue is missing.
+      // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it.
       try {
-        await deactivateRevenueSourcesForCampaign(campaignId, { platformContext: platformCtx });
         const cur = campaignCurrency;
 
         const source = await storage.createRevenueSource({
@@ -13110,11 +13108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "hubspot";
         });
 
-        if (!existingHubspot) {
-          await deactivateRevenueSourcesForCampaign(campaignId, { platformContext: platformCtx as any });
-        } else {
-          await deactivateRevenueSourcesForCampaign(campaignId, { keepSourceId: String((existingHubspot as any).id), platformContext: platformCtx as any });
-        }
+        // Note: do NOT deactivate existing sources — revenue sources are additive.
 
         const mappingConfig = JSON.stringify({
           provider: "hubspot",
@@ -25942,11 +25936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "shopify";
         });
 
-        if (!existingShopify) {
-          await deactivateRevenueSourcesForCampaign(campaignId, { platformContext: platformCtx as any });
-        } else {
-          await deactivateRevenueSourcesForCampaign(campaignId, { keepSourceId: String((existingShopify as any).id), platformContext: platformCtx as any });
-        }
+        // Note: do NOT deactivate existing sources — revenue sources are additive.
 
         const mappingCfg = JSON.stringify({
           provider: "shopify",

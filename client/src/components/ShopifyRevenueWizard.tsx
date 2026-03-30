@@ -87,7 +87,7 @@ export function ShopifyRevenueWizard(props: {
   }, [isLinkedIn, campaignId]);
 
   const fetchStatus = async () => {
-    const resp = await fetch(`/api/shopify/${campaignId}/status`);
+    const resp = await fetch(`/api/shopify/${campaignId}/status`, { credentials: "include" });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(json?.error || "Failed to check Shopify connection");
     const isConnected = !!json?.connected;
@@ -128,6 +128,7 @@ export function ShopifyRevenueWizard(props: {
     try {
       const resp = await fetch("/api/auth/shopify/connect", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId, shopDomain: domain }),
       });
@@ -194,6 +195,7 @@ export function ShopifyRevenueWizard(props: {
     try {
       const resp = await fetch("/api/shopify/connect", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId, shopDomain: domain, accessToken: token }),
       });
@@ -230,7 +232,8 @@ export function ShopifyRevenueWizard(props: {
       const resp = await fetch(
         `/api/shopify/${campaignId}/orders/unique-values?field=${encodeURIComponent(campaignField)}&days=${encodeURIComponent(
           String(days)
-        )}&limit=300`
+        )}&limit=300`,
+        { credentials: "include" }
       );
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
@@ -343,6 +346,7 @@ export function ShopifyRevenueWizard(props: {
       try {
         const resp = await fetch(`/api/campaigns/${campaignId}/shopify/save-mappings`, {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             campaignField,

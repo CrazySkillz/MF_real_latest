@@ -163,7 +163,7 @@ export function SalesforceRevenueWizard(props: {
   const connectedLabel = useMemo(() => orgName || null, [orgName]);
 
   const fetchStatus = async () => {
-    const resp = await fetch(`/api/salesforce/${campaignId}/status`);
+    const resp = await fetch(`/api/salesforce/${campaignId}/status`, { credentials: "include" });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(json?.error || "Failed to check Salesforce connection");
     if (json?.connected) {
@@ -250,7 +250,7 @@ export function SalesforceRevenueWizard(props: {
     setFieldsLoading(true);
     setFieldsError(null);
     try {
-      const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/fields`);
+      const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/fields`, { credentials: "include" });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load Opportunity fields");
       const f = Array.isArray(json?.fields) ? (json.fields as SalesforceField[]) : [];
@@ -293,7 +293,8 @@ export function SalesforceRevenueWizard(props: {
       const resp = await fetch(
         `/api/salesforce/${campaignId}/opportunities/unique-values?field=${encodeURIComponent(fieldName)}&days=${encodeURIComponent(
           String(days)
-        )}&limit=300`
+        )}&limit=300`,
+        { credentials: "include" }
       );
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load values");
@@ -331,6 +332,7 @@ export function SalesforceRevenueWizard(props: {
     try {
       const resp = await fetch("/api/auth/salesforce/connect", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId }),
       });
@@ -428,7 +430,7 @@ export function SalesforceRevenueWizard(props: {
       let pollTimeout: number | null = null;
       pollTimer = window.setInterval(async () => {
         try {
-          const resp = await fetch(`/api/salesforce/${campaignId}/status`);
+          const resp = await fetch(`/api/salesforce/${campaignId}/status`, { credentials: "include" });
           const json = await resp.json().catch(() => ({}));
           if (json?.connected) {
             await handleAuthSuccess();
@@ -493,7 +495,7 @@ export function SalesforceRevenueWizard(props: {
     void (async () => {
       setStagesLoading(true);
       try {
-        const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/stages`);
+        const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/stages`, { credentials: "include" });
         const json = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(json?.error || "Failed to load Opportunity stages");
         const s = Array.isArray(json?.stages) ? json.stages : [];
@@ -543,6 +545,7 @@ export function SalesforceRevenueWizard(props: {
     try {
       const resp = await fetch(`/api/salesforce/${campaignId}/opportunities/preview`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           campaignField,

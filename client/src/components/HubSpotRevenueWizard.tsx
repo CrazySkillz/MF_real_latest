@@ -166,7 +166,7 @@ export function HubSpotRevenueWizard(props: {
   }, [portalName]);
 
   const fetchStatus = async () => {
-    const resp = await fetch(`/api/hubspot/${campaignId}/status`);
+    const resp = await fetch(`/api/hubspot/${campaignId}/status`, { credentials: "include" });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(json?.error || "Failed to check HubSpot connection");
     if (json?.connected) {
@@ -182,7 +182,7 @@ export function HubSpotRevenueWizard(props: {
   };
 
   const fetchProperties = async () => {
-    const resp = await fetch(`/api/hubspot/${campaignId}/deals/properties`);
+    const resp = await fetch(`/api/hubspot/${campaignId}/deals/properties`, { credentials: "include" });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(json?.error || "Failed to load deal properties");
     const props = Array.isArray(json?.properties) ? json.properties : [];
@@ -196,7 +196,8 @@ export function HubSpotRevenueWizard(props: {
       const resp = await fetch(
         `/api/hubspot/${campaignId}/deals/unique-values?property=${encodeURIComponent(propertyName)}&days=${encodeURIComponent(
           String(days)
-        )}&limit=300`
+        )}&limit=300`,
+        { credentials: "include" }
       );
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load values");
@@ -213,7 +214,7 @@ export function HubSpotRevenueWizard(props: {
   const fetchPipelines = async () => {
     setPipelinesLoading(true);
     try {
-      const resp = await fetch(`/api/hubspot/${campaignId}/deals/pipelines`);
+      const resp = await fetch(`/api/hubspot/${campaignId}/deals/pipelines`, { credentials: "include" });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Failed to load pipelines");
       const p = Array.isArray(json?.pipelines) ? json.pipelines : [];
@@ -229,6 +230,7 @@ export function HubSpotRevenueWizard(props: {
     try {
       const resp = await fetch("/api/auth/hubspot/connect", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId }),
       });
@@ -357,6 +359,7 @@ export function HubSpotRevenueWizard(props: {
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/hubspot/save-mappings`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({

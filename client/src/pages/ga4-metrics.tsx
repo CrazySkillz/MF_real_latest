@@ -5896,6 +5896,7 @@ export default function GA4Metrics() {
                     formatNumber={formatNumber}
                     formatMoney={formatMoney}
                     totalRevenue={financialRevenue}
+                    revenueDisplaySources={revenueDisplaySources}
                   />
                 </TabsContent>
 

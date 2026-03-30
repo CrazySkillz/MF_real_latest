@@ -433,7 +433,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
               <p className="text-xs text-muted-foreground/70">
                 {availableSheets.length > 0 
                   ? (isRevenueConnector
-                      ? `Select exactly 1 tab. You’ll map Revenue or Conversion Value columns in the next step.`
+                      ? `Select a tab and map the Revenue column in the next step.`
                       : `Select one or multiple tabs to connect. If none selected, the first tab will be used.`)
                   : `The first tab in the spreadsheet will be used.`}
               </p>

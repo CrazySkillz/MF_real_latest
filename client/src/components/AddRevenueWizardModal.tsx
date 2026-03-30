@@ -232,6 +232,7 @@ export function AddRevenueWizardModal(props: {
         : "/api/auth/shopify/connect";
       const resp = await fetch(endpoint, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId }),
       });
@@ -315,7 +316,7 @@ export function AddRevenueWizardModal(props: {
     setCrmDisconnecting(platform);
     try {
       // Delete any active revenue source for this platform
-      const dsResp = await fetch(`/api/campaigns/${campaignId}/all-data-sources`);
+      const dsResp = await fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include" });
       const dsJson = await dsResp.json().catch(() => ({}));
       const revSources = Array.isArray(dsJson?.revenueSources) ? dsJson.revenueSources : [];
       const entry = revSources.find((s: any) => s?.sourceType === platform && s?.isActive !== false);
@@ -404,19 +405,19 @@ export function AddRevenueWizardModal(props: {
       setManualSubCampaign("");
       try {
         if (manualPlatform === 'linkedin') {
-          const resp = await fetch(`/api/campaigns/${campaignId}/linkedin-campaigns`);
+          const resp = await fetch(`/api/campaigns/${campaignId}/linkedin-campaigns`, { credentials: "include" });
           const json = await resp.json().catch(() => ({}));
           if (!cancelled && Array.isArray(json?.campaigns)) {
             setPlatformCampaigns(json.campaigns.map((c: any) => ({ id: c.campaignUrn || c.id || c.name, name: c.name || c.campaignUrn || 'Unknown' })));
           }
         } else if (manualPlatform === 'meta') {
-          const resp = await fetch(`/api/meta/${campaignId}/campaigns`);
+          const resp = await fetch(`/api/meta/${campaignId}/campaigns`, { credentials: "include" });
           const json = await resp.json().catch(() => ({}));
           if (!cancelled && Array.isArray(json?.campaigns)) {
             setPlatformCampaigns(json.campaigns.map((c: any) => ({ id: c.id || c.name, name: c.name || c.id || 'Unknown' })));
           }
         } else if (manualPlatform === 'google-ads') {
-          const resp = await fetch(`/api/google-ads/${campaignId}/daily-metrics`);
+          const resp = await fetch(`/api/google-ads/${campaignId}/daily-metrics`, { credentials: "include" });
           const json = await resp.json().catch(() => ({}));
           if (!cancelled && Array.isArray(json?.metrics)) {
             const seen = new Map<string, string>();
@@ -540,7 +541,7 @@ export function AddRevenueWizardModal(props: {
     (async () => {
       setSheetsConnectionsLoading(true);
       try {
-        const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=${encodeURIComponent(sheetsPurpose)}`);
+        const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=${encodeURIComponent(sheetsPurpose)}`, { credentials: "include" });
         const json = await resp.json().catch(() => ({}));
         const conns = Array.isArray(json?.connections) ? json.connections : [];
         if (!mounted) return;
@@ -561,7 +562,7 @@ export function AddRevenueWizardModal(props: {
 
   const refreshSheetsConnections = async () => {
     try {
-      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=${encodeURIComponent(sheetsPurpose)}`);
+      const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=${encodeURIComponent(sheetsPurpose)}`, { credentials: "include" });
       const json = await resp.json().catch(() => ({}));
       const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
       const filtered = conns.filter((c: any) => c && c.isActive !== false);
@@ -579,7 +580,7 @@ export function AddRevenueWizardModal(props: {
     try {
       const resp = await fetch(
         `/api/google-sheets/${encodeURIComponent(campaignId)}/connection?connectionId=${encodeURIComponent(sheetsConnectionId)}`,
-        { method: "DELETE" }
+        { method: "DELETE", credentials: "include" }
       );
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || json?.success === false) {
@@ -702,6 +703,7 @@ export function AddRevenueWizardModal(props: {
         const valueSource: 'revenue' | 'conversion_value' = effectivePlatform === 'linkedin' ? manualValueSource : 'revenue';
         const resp = await fetch(`/api/campaigns/${campaignId}/revenue/process/manual`, {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             amount: effectivePlatform === 'linkedin' ? (valueSource === 'revenue' && hasRevenue ? amt : null) : (hasRevenue ? amt : null),
@@ -721,6 +723,7 @@ export function AddRevenueWizardModal(props: {
       if (hasSpend) {
         const resp = await fetch(`/api/campaigns/${campaignId}/spend/process/manual`, {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             amount: spendAmt,
@@ -752,7 +755,7 @@ export function AddRevenueWizardModal(props: {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/preview`, { method: "POST", body: fd });
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/preview`, { method: "POST", credentials: "include", body: fd });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to preview CSV");
       setCsvPreview({ fileName: json.fileName, headers: json.headers || [], sampleRows: json.sampleRows || [], rowCount: json.rowCount || 0 });
@@ -846,7 +849,7 @@ export function AddRevenueWizardModal(props: {
       fd.append("file", csvFile);
       fd.append("mapping", JSON.stringify(mapping));
       fd.append("platformContext", platformContext);
-      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/process`, { method: "POST", body: fd });
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/process`, { method: "POST", credentials: "include", body: fd });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process CSV");
       if (platformContext === 'linkedin' && json?.mode === 'conversion_value') {
@@ -877,6 +880,7 @@ export function AddRevenueWizardModal(props: {
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/preview`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ connectionId: cid, platformContext }),
       });
@@ -975,6 +979,7 @@ export function AddRevenueWizardModal(props: {
       };
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/process`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ connectionId: sheetsConnectionId, mapping, platformContext }),
       });

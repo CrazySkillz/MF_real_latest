@@ -55,6 +55,11 @@ describe("Fetch credentials audit", () => {
     "components/HubSpotRevenueWizard.tsx",
     "components/SalesforceRevenueWizard.tsx",
     "components/ShopifyRevenueWizard.tsx",
+    "components/IntegratedGA4Auth.tsx",
+    "components/SimpleGoogleSheetsAuth.tsx",
+    "components/LinkedInConnectionFlow.tsx",
+    "components/SimpleMetaAuth.tsx",
+    "components/GA4ConnectionFlow.tsx",
   ];
 
   for (const file of criticalFiles) {

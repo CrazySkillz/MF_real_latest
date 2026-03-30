@@ -240,7 +240,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
     try {
       // Server-driven OAuth: the client never sees or enters a Client Secret.
       const connectResp = await fetch("/api/auth/linkedin/connect", {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId }),
       });
@@ -276,7 +276,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
         if (event.data.type === 'linkedin_auth_success') {
           try {
             const response = await fetch('/api/linkedin/ad-accounts', {
-              method: 'POST',
+              method: 'POST', credentials: "include",
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 campaignId
@@ -390,7 +390,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
 
     try {
       const response = await fetch('/api/linkedin/campaigns', {
-        method: 'POST',
+        method: 'POST', credentials: "include",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId,
@@ -473,7 +473,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
     try {
       // Call API to create import session
       const response = await fetch('/api/linkedin/imports', {
-        method: 'POST',
+        method: 'POST', credentials: "include",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId,

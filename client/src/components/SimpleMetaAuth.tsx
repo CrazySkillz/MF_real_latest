@@ -109,7 +109,7 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
       try {
         const selectedIds = metaCampaigns.filter(c => c.selected).map(c => c.id);
         const res = await fetch(`/api/meta/${campaignId}/selected-campaigns`, {
-          method: 'PATCH',
+          method: 'PATCH', credentials: "include",
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ selectedCampaignIds: selectedIds }),
         });

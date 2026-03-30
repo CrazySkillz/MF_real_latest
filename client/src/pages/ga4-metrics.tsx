@@ -3573,24 +3573,44 @@ export default function GA4Metrics() {
   const campaignBreakdownAgg = useMemo(() => {
     const rows = Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
     const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
+    let rawTotalSessions = 0, rawTotalConversions = 0, rawTotalRevenue = 0;
     for (const r of rows) {
       const name = String((r as any)?.campaign || "(not set)").trim();
       const existing = byName.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
-      existing.sessions += Number((r as any)?.sessions || 0);
+      const s = Number((r as any)?.sessions || 0);
+      const c = Number((r as any)?.conversions || 0);
+      const rev = Number((r as any)?.revenue || 0);
+      existing.sessions += s;
       existing.users += Number((r as any)?.users || 0);
-      existing.conversions += Number((r as any)?.conversions || 0);
-      existing.revenue += Number((r as any)?.revenue || 0);
+      existing.conversions += c;
+      existing.revenue += rev;
+      rawTotalSessions += s;
+      rawTotalConversions += c;
+      rawTotalRevenue += rev;
       byName.set(name, existing);
     }
+    // Scale to match breakdownTotals (which includes Run Refresh data)
+    const sessScale = rawTotalSessions > 0 ? breakdownTotals.sessions / rawTotalSessions : 1;
+    const convScale = rawTotalConversions > 0 ? breakdownTotals.conversions / rawTotalConversions : 1;
+    const revScale = rawTotalRevenue > 0 ? breakdownTotals.revenue / rawTotalRevenue : 1;
     return Array.from(byName.values())
-      .map(c => ({
-        ...c,
-        conversionRate: c.sessions > 0 ? (c.conversions / c.sessions) * 100 : 0,
-        revenuePerSession: c.sessions > 0 ? c.revenue / c.sessions : 0,
-      }))
+      .map(c => {
+        const scaledSessions = Math.round(c.sessions * sessScale);
+        const scaledConversions = Math.round(c.conversions * convScale);
+        const scaledRevenue = Number((c.revenue * revScale).toFixed(2));
+        return {
+          ...c,
+          sessions: scaledSessions,
+          conversions: scaledConversions,
+          revenue: scaledRevenue,
+          users: Math.round(c.users * sessScale), // approximate
+          conversionRate: scaledSessions > 0 ? (scaledConversions / scaledSessions) * 100 : 0,
+          revenuePerSession: scaledSessions > 0 ? scaledRevenue / scaledSessions : 0,
+        };
+      })
       .filter(c => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(c.name.trim().toLowerCase()))
       .sort((a, b) => b.sessions - a.sessions);
-  }, [ga4Breakdown, importedGA4CampaignNames]);
+  }, [ga4Breakdown, importedGA4CampaignNames, breakdownTotals]);
 
   const selectedPeriodLabel = ga4ReportDate ? `Daily (UTC: ${ga4ReportDate})` : "Daily";
 

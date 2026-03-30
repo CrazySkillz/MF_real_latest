@@ -230,7 +230,7 @@ export function ShopifyRevenueWizard(props: {
     setValuesLoading(true);
     try {
       const resp = await fetch(
-        `/api/shopify/${campaignId}/orders/unique-values?field=${encodeURIComponent(campaignField)}&days=${encodeURIComponent(
+        `/api/shopify/${campaignId}/orders/unique-values?field=${encodeURIComponent(campaignField, { credentials: "include" })}&days=${encodeURIComponent(
           String(days)
         )}&limit=300`,
         { credentials: "include" }
@@ -384,7 +384,7 @@ export function ShopifyRevenueWizard(props: {
     setPreviewLoading(true);
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/shopify/save-mappings`, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             campaignField,

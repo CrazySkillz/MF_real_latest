@@ -291,7 +291,7 @@ export function SalesforceRevenueWizard(props: {
     setValuesError(null);
     try {
       const resp = await fetch(
-        `/api/salesforce/${campaignId}/opportunities/unique-values?field=${encodeURIComponent(fieldName)}&days=${encodeURIComponent(
+        `/api/salesforce/${campaignId}/opportunities/unique-values?field=${encodeURIComponent(fieldName, { credentials: "include" })}&days=${encodeURIComponent(
           String(days)
         )}&limit=300`,
         { credentials: "include" }
@@ -612,7 +612,7 @@ export function SalesforceRevenueWizard(props: {
     setSaveError(null);
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/salesforce/save-mappings`, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({

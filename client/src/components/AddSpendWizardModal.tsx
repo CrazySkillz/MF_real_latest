@@ -340,7 +340,7 @@ export function AddSpendWizardModal(props: {
     (async () => {
       try {
         // Only load Spend-purpose connections for this modal (avoid pre-filling from Revenue connections).
-        const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections?purpose=spend`);
+        const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections?purpose=spend`, { credentials: "include" });
         if (!resp.ok) return;
         const json = await resp.json().catch(() => null);
         const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
@@ -436,7 +436,7 @@ export function AddSpendWizardModal(props: {
     try {
       const fd = new FormData();
       fd.append("file", csvFile);
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/csv/preview`, { method: "POST", body: fd });
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/csv/preview`, { method: "POST", credentials: "include", body: fd });
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) {
         throw new Error(json?.error || "Failed to preview CSV");
@@ -520,7 +520,7 @@ export function AddSpendWizardModal(props: {
     setIsSheetsLoading(true);
     try {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/sheets/preview`, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ connectionId: selectedSheetConnectionId }),
       });
@@ -543,7 +543,7 @@ export function AddSpendWizardModal(props: {
 
   const refreshSheetsConnections = async () => {
     try {
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections?purpose=spend`);
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections?purpose=spend`, { credentials: "include" });
       const json = await resp.json().catch(() => null);
       const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
       const filtered = conns.filter((c: any) => c && c.isActive !== false);
@@ -559,8 +559,8 @@ export function AddSpendWizardModal(props: {
     setIsRemovingSheet(true);
     try {
       const resp = await fetch(
-        `/api/google-sheets/${encodeURIComponent(props.campaignId)}/connection?connectionId=${encodeURIComponent(selectedSheetConnectionId)}`,
-        { method: "DELETE" }
+        `/api/google-sheets/${encodeURIComponent(props.campaignId, { credentials: "include" })}/connection?connectionId=${encodeURIComponent(selectedSheetConnectionId)}`,
+        { method: "DELETE", credentials: "include" }
       );
       const json = await resp.json().catch(() => null);
       if (!resp.ok || json?.success === false) {
@@ -626,7 +626,7 @@ export function AddSpendWizardModal(props: {
       const fd = new FormData();
       fd.append("file", csvFile);
       fd.append("mapping", JSON.stringify(mapping));
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/csv/process`, { method: "POST", body: fd });
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/csv/process`, { method: "POST", credentials: "include", body: fd });
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process spend");
 
@@ -667,7 +667,7 @@ export function AddSpendWizardModal(props: {
         dateRange: props.dateRange || "30days",
       };
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/sheets/process`, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ connectionId: selectedSheetConnectionId, mapping }),
       });
@@ -691,7 +691,7 @@ export function AddSpendWizardModal(props: {
     setIsLinkedInLoading(true);
     try {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/linkedin/preview`, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
       });
       const json = await resp.json().catch(() => null);
@@ -728,7 +728,7 @@ export function AddSpendWizardModal(props: {
           .filter((c) => selectedLinkedInCampaignIds.includes(c.id));
         const selectedSpend = selectedCampaigns.reduce((sum, c) => sum + c.spend, 0);
         const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/manual`, {
-          method: "POST",
+          method: "POST", credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             amount: Number(selectedSpend.toFixed(2)),
@@ -766,7 +766,7 @@ export function AddSpendWizardModal(props: {
       }
 
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/linkedin/process`, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           campaignIds: selectedLinkedInCampaignIds,
@@ -791,7 +791,7 @@ export function AddSpendWizardModal(props: {
   // ── Ad Platform: Check LinkedIn connection status ──
   const checkLinkedInConnection = async () => {
     try {
-      const resp = await fetch(`/api/campaigns/${props.campaignId}/connected-platforms`);
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/connected-platforms`, { credentials: "include" });
       const json = await resp.json().catch(() => null);
       const platforms = json?.platforms || json?.statuses || [];
       const li = platforms.find((p: any) => p.id === "linkedin");
@@ -809,7 +809,7 @@ export function AddSpendWizardModal(props: {
   const checkMetaStatus = async () => {
     try {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/meta/preview`, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
       });
       const json = await resp.json().catch(() => null);
@@ -830,7 +830,7 @@ export function AddSpendWizardModal(props: {
       const apiPath = platform === "google_ads" ? "google-ads" : platform;
       const resp = await fetch(
         `/api/${apiPath}/${props.campaignId}/daily-metrics?startDate=${startDate}&endDate=${endDate}`
-      );
+      , { credentials: "include" });
       const json = await resp.json().catch(() => ({ metrics: [] }));
       const metrics = json?.metrics || [];
 
@@ -882,7 +882,7 @@ export function AddSpendWizardModal(props: {
     setIsProcessing(true);
     try {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/manual`, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: Number(selectedSpend.toFixed(2)),
@@ -928,7 +928,7 @@ export function AddSpendWizardModal(props: {
       const endpoint = platform === "google_ads"
         ? `/api/google-ads/${props.campaignId}/connection`
         : `/api/meta/${props.campaignId}/connection`;
-      const resp = await fetch(endpoint);
+      const resp = await fetch(endpoint, { credentials: "include" });
       const json = await resp.json().catch(() => null);
       if (json?.connected) {
         setAdPlatformConnected(true);
@@ -952,7 +952,7 @@ export function AddSpendWizardModal(props: {
         ? `/api/google-ads/${props.campaignId}/connect-test`
         : `/api/meta/${props.campaignId}/connect-test`;
       const resp = await fetch(endpoint, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ spendOnly: true }),
       });
@@ -988,7 +988,7 @@ export function AddSpendWizardModal(props: {
         ? "/api/auth/google-ads/connect"
         : "/api/auth/meta/connect";
       const resp = await fetch(authEndpoint, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId: props.campaignId, spendOnly: true }),
       });
@@ -1053,7 +1053,7 @@ export function AddSpendWizardModal(props: {
     setIsProcessing(true);
     try {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/process/manual`, {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount,
@@ -1260,7 +1260,7 @@ export function AddSpendWizardModal(props: {
                                     setLinkedInAuthStep("connecting");
                                     try {
                                       const resp = await fetch("/api/auth/linkedin/connect", {
-                                        method: "POST",
+                                        method: "POST", credentials: "include",
                                         headers: { "Content-Type": "application/json" },
                                         body: JSON.stringify({ campaignId: props.campaignId, spendOnly: true }),
                                       });
@@ -1280,7 +1280,7 @@ export function AddSpendWizardModal(props: {
                                         if (event.data.type === "linkedin_auth_success") {
                                           try {
                                             const acResp = await fetch("/api/linkedin/ad-accounts", {
-                                              method: "POST",
+                                              method: "POST", credentials: "include",
                                               headers: { "Content-Type": "application/json" },
                                               body: JSON.stringify({ campaignId: props.campaignId }),
                                             });
@@ -1378,7 +1378,7 @@ export function AddSpendWizardModal(props: {
                                     setIsLinkedInConnecting(true);
                                     try {
                                       const resp = await fetch(`/api/linkedin/${props.campaignId}/select-ad-account`, {
-                                        method: "POST",
+                                        method: "POST", credentials: "include",
                                         headers: { "Content-Type": "application/json" },
                                         body: JSON.stringify({ adAccountId: selectedLinkedInAdAccount, spendOnly: true }),
                                       });

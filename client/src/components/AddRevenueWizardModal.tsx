@@ -455,8 +455,8 @@ export function AddRevenueWizardModal(props: {
       const vsRaw = String(config?.valueSource || "").trim().toLowerCase();
       const vs: 'revenue' | 'conversion_value' = vsRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
       setStep("manual");
-      setManualAmount(amt === 0 || amt ? String(amt) : "");
-      setManualConversionValue(cv === 0 || cv ? String(cv) : "");
+      setManualAmount(amt === 0 || amt ? formatCurrencyOnBlur(String(amt)) : "");
+      setManualConversionValue(cv === 0 || cv ? formatCurrencyOnBlur(String(cv)) : "");
       setManualValueSource(vs);
       return;
     }
@@ -1334,8 +1334,9 @@ export function AddRevenueWizardModal(props: {
                 <Card>
                   <CardContent className="space-y-3 pt-6">
                     {isEditing && (
-                      <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-foreground/80/60">
-                        To update this revenue source, re-upload the CSV. We’ll reuse your previous column mapping when possible.
+                      <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 p-3 text-sm text-amber-900 dark:text-amber-100">
+                        <p className="font-medium">Re-upload required</p>
+                        <p className="text-xs mt-1">CSV files aren’t stored — select the file again to update. Your previous column mapping will be reused automatically{initialSource?.displayName ? ` (original: ${initialSource.displayName})` : ""}.</p>
                       </div>
                     )}
 

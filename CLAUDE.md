@@ -556,8 +556,9 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 
 | Layer | Count | Command | What it proves |
 |-------|-------|---------|---------------|
-| **Unit tests** | 140 | `npm run test` | All math formulas are correct (ROAS/ROI/CPA/KPI bands/benchmark thresholds) |
+| **Unit tests** | 212 | `npm run test` | Math formulas, revenue/spend additivity, template gates, credentials audit, cross-tab propagation, formatPct/formatNumberByUnit |
 | **E2E tests** | 131 | `npm run test:e2e:headed` | App doesn't crash, tabs load, buttons work, modals open |
+| **Manual test plan** | 16 journeys | `GA4-MANUAL-TEST-PLAN.md` | Full data flow, cross-tab consistency, data accuracy |
 
 ### Key Test Files
 
@@ -566,8 +567,24 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 | `server/ga4-cross-tab-consistency.test.ts` | 109 unit tests — all 5 yesop profiles × all formulas |
 | `server/metric-math.test.ts` | Core math: ROAS, ROI, CPA, CR, progress |
 | `server/kpi-math.test.ts` | KPI band classification, attainment |
+| `server/revenue-additivity.test.ts` | financialRevenue additive, ROAS ratio consistency, formatPct |
+| `server/mock-refresh-accumulation.test.ts` | Simulation + DB aggregation, sequential dates, no spend/revenue records |
+| `server/cross-tab-propagation.test.ts` | Spend/revenue changes → ROAS/CPA/KPI progress updates |
+| `server/spend-and-template-gates.test.ts` | Spend additivity, KPI/Benchmark template gates, formatNumberByUnit |
+| `server/fetch-credentials-audit.test.ts` | Scans 10 wizard files for missing credentials, deactivation audit |
 | `e2e/ga4-refresh-validation.spec.ts` | 131 E2E tests — UI journeys |
-| `e2e/fixtures/ga4-scenarios.json` | Data-driven test scenarios |
+| `GA4-MANUAL-TEST-PLAN.md` | 16 manual test journeys — data flow verification |
+
+### Test Execution Order
+
+1. `npm run test` — 212 unit tests (instant, catches regressions)
+2. `npm run test:e2e:headed` — 131 E2E tests (browser, ~30 min)
+3. Walk through `GA4-MANUAL-TEST-PLAN.md` Journeys 1-15 (manual, catches data flow bugs)
+4. Journey 16 — real integration tests (when real accounts available)
+
+### Future: E2E Data Flow Tests
+
+After all platform flows (GA4, LinkedIn, Meta, Google Ads) are manually tested, build Playwright tests that verify actual data values after actions. Shared framework: ~80% shared patterns (add source → verify propagation) + ~20% platform-specific (connection flow, unique metrics). Adding new platforms = mostly configuration.
 
 ### Mock System (Yesop) — For Testing & Demos
 
@@ -582,9 +599,9 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 | yesop_paid_social | 375 | 15 | $1,125 | $750 | facebook / paid_social |
 
 - **Simulation configs**: `simulateGA4()` has distinct configs for 7/30/60/90-day ranges. Lookback window selection (30/60/90 days) controls which config is used, producing proportionally different totals (e.g., 60-day ≈ 2× 30-day values).
-- **Run Refresh** writes aggregated daily data to DB for ALL selected campaigns. Each click adds one day.
-- `ga4-to-date` and `ga4-daily` prefer real DB rows over `simulateGA4()` hardcoded data.
-- **Run Refresh button** currently visible for any connected GA4 property (staging/testing). Will be hidden behind env var (`SHOW_MOCK_REFRESH`) when deploying to production clients. Each click simulates one day: writes daily metrics, updates spend/revenue, runs KPI/benchmark progress, and triggers alert checking.
+- **Run Refresh** writes GA4 daily metrics to DB only (sessions, conversions, revenue). Does NOT create spend or revenue records. Each click writes to a sequential date (offset by existing row count) so data accumulates.
+- `ga4-to-date` and `ga4-daily` aggregate simulation baseline + DB rows from Run Refresh (additive, not replacement).
+- **Run Refresh button** currently visible for any connected GA4 property (staging/testing). Will be hidden behind env var (`SHOW_MOCK_REFRESH`) when deploying to production clients. Each click: writes daily metrics, runs KPI/benchmark progress, triggers alert checking, auto-cleans stale "GA4 Revenue" and "Mock Spend" sources from older code.
 - Select 2 campaigns → Run Refresh → both campaigns' data aggregated (e.g., brand + prospecting = 1,170 sessions/day).
 
 ### Running Tests

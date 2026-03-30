@@ -219,7 +219,8 @@ process.on('uncaughtException', (error: Error) => {
     server.listen(port, "0.0.0.0", () => {
       log(`serving on port ${port}`);
 
-      // Run database migrations on startup
+      // Run database migrations on startup — delay to let the HTTP server fully initialize
+      // and respond to Render's port scan/health check before running heavy DB operations
       setTimeout(async () => {
         try {
           if (!db) {

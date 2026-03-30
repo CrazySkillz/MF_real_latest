@@ -447,8 +447,8 @@ export async function runDailyKPIJobs(): Promise<void> {
 export function startKPIScheduler(): void {
   console.log('[KPI Scheduler] Starting KPI scheduler...');
 
-  // Run immediately on startup (for testing)
-  runDailyKPIJobs();
+  // Delay first run to let HTTP server respond to health checks
+  setTimeout(() => runDailyKPIJobs(), 45000);
 
   // Schedule to run daily at midnight
   const now = new Date();

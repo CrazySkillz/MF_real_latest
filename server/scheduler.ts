@@ -254,9 +254,9 @@ export class SnapshotScheduler {
     console.log(`   Frequency: ${this.frequency}`);
     console.log(`   Next run: ${new Date(Date.now() + interval).toLocaleString()}\n`);
     
-    // Run immediately on startup
-    createSnapshotsForAllCampaigns();
-    
+    // Delay first run to let the HTTP server respond to health checks first
+    setTimeout(() => createSnapshotsForAllCampaigns(), 30000);
+
     // Then schedule regular runs
     this.intervalId = setInterval(() => {
       createSnapshotsForAllCampaigns();

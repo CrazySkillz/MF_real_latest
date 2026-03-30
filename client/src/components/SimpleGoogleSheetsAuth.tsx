@@ -440,32 +440,26 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
             </div>
           )}
 
-          {!isRevenueConnector ? (
-            <Button
-              onClick={handleSpreadsheetSelection}
-              disabled={!selectedSpreadsheet || isSelectingSpreadsheet}
-              className="w-full"
-              size="lg"
-            >
-              {isSelectingSpreadsheet ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  {selectedSheetNames.length > 0
-                    ? `Connect ${selectedSheetNames.length} Sheet${selectedSheetNames.length > 1 ? 's' : ''}`
-                    : 'Connect Spreadsheet'}
-                </>
-              )}
-            </Button>
-          ) : (
-            <div className="text-xs text-muted-foreground text-center">
-              {isSelectingSpreadsheet ? "Connecting your selected tab…" : "Select a tab to continue."}
-            </div>
-          )}
+          <Button
+            onClick={handleSpreadsheetSelection}
+            disabled={!selectedSpreadsheet || selectedSheetNames.length === 0 || isSelectingSpreadsheet}
+            className="w-full"
+            size="lg"
+          >
+            {isSelectingSpreadsheet ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Connecting...
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                {selectedSheetNames.length > 0
+                  ? `Connect ${selectedSheetNames.length} Sheet${selectedSheetNames.length > 1 ? 's' : ''}`
+                  : 'Select a tab to continue'}
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
     );

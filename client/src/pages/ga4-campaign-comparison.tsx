@@ -335,6 +335,24 @@ export default function GA4CampaignComparison({
                     );
                   })}
                 </tbody>
+                <tfoot className="border-t-2 border-border bg-muted/50">
+                  {(() => {
+                    const totalSessions = sortedByMetric.reduce((s, c) => s + c.sessions, 0);
+                    const totalConversions = sortedByMetric.reduce((s, c) => s + c.conversions, 0);
+                    const totalCR = totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
+                    return (
+                      <tr className="font-semibold">
+                        <td className="px-2 py-2"></td>
+                        <td className="px-2 py-2 text-foreground">Total {hasImportedRevenue ? "(GA4 + imported)" : ""}</td>
+                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(totalSessions)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums">—</td>
+                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(totalConversions)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums">{formatPct(totalCR)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums">{formatMoney(hasImportedRevenue ? totalRevenue : ga4Revenue)}</td>
+                      </tr>
+                    );
+                  })()}
+                </tfoot>
               </table>
             </div>
           </div>

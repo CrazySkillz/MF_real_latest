@@ -17,7 +17,7 @@ import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { useQueryClient } from "@tanstack/react-query";
 
-type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
+type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify" | "shopify_connect";
 const SELECT_NONE = "__none__";
 
 type Preview = {
@@ -196,7 +196,6 @@ export function AddRevenueWizardModal(props: {
   const [shopifyExternalNonce, setShopifyExternalNonce] = useState(0);
   const [hubspotBackNonce, setHubspotBackNonce] = useState(0);
   const [salesforceBackNonce, setSalesforceBackNonce] = useState(0);
-  const [shopifyDomainPrompt, setShopifyDomainPrompt] = useState(false);
   const [shopifyDomain, setShopifyDomain] = useState("");
 
   // OAuth status (for skipping re-auth on click) vs imported status (for "Connected" badge)
@@ -229,7 +228,6 @@ export function AddRevenueWizardModal(props: {
 
   const startShopifyOAuth = async (domain: string) => {
     setCrmConnecting("shopify");
-    setShopifyDomainPrompt(false);
     try {
       const resp = await fetch("/api/auth/shopify/connect", {
         method: "POST",
@@ -274,9 +272,9 @@ export function AddRevenueWizardModal(props: {
       setStep(platform);
       return;
     }
-    // Shopify needs shop domain before OAuth
+    // Shopify needs shop domain before OAuth — go to dedicated step
     if (platform === "shopify") {
-      setShopifyDomainPrompt(true);
+      setStep("shopify_connect" as any);
       return;
     }
     // Not connected — trigger OAuth popup
@@ -426,7 +424,6 @@ export function AddRevenueWizardModal(props: {
     setShopifyWizardStep("campaign-field");
     setShopifyExternalStep(null);
     setShopifyExternalNonce(0);
-    setShopifyDomainPrompt(false);
     setShopifyDomain("");
     setHubspotBackNonce(0);
     setSalesforceBackNonce(0);
@@ -1104,6 +1101,7 @@ export function AddRevenueWizardModal(props: {
               step === "hubspot" ? "HubSpot revenue" :
                 step === "salesforce" ? "Salesforce revenue" :
                   step === "shopify" ? "Shopify revenue" :
+                    step === "shopify_connect" ? "Shopify revenue" :
                     "Add revenue source";
 
   const description = step === "select"
@@ -1175,34 +1173,6 @@ export function AddRevenueWizardModal(props: {
                       </CardTitle>
                       <CardDescription>{crmStatus.shopify ? "Attribute order revenue to this campaign." : "Connect Shopify to import order revenue."}</CardDescription>
                     </CardHeader>
-                  </Card>
-                )}
-
-                {shopifyDomainPrompt && (
-                  <Card className="md:col-span-2 border-blue-200 dark:border-blue-800">
-                    <CardContent className="p-4 space-y-3">
-                      <div className="text-sm font-medium">Enter your Shopify store domain</div>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="your-store.myshopify.com"
-                          value={shopifyDomain}
-                          onChange={(e) => setShopifyDomain(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter" && shopifyDomain.trim()) void startShopifyOAuth(shopifyDomain.trim()); }}
-                        />
-                        <Button
-                          onClick={() => void startShopifyOAuth(shopifyDomain.trim())}
-                          disabled={!shopifyDomain.trim() || crmConnecting === "shopify"}
-                        >
-                          {crmConnecting === "shopify" ? "Connecting…" : "Connect"}
-                        </Button>
-                        <Button variant="outline" onClick={() => { setShopifyDomainPrompt(false); setShopifyDomain(""); }}>
-                          Cancel
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground/70">
-                        Example: my-store.myshopify.com or my-store
-                      </p>
-                    </CardContent>
                   </Card>
                 )}
 
@@ -2144,6 +2114,47 @@ export function AddRevenueWizardModal(props: {
                     onOpenChange(false);
                   }}
                 />
+              </div>
+            )}
+
+            {step === "shopify_connect" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Building2 className="w-5 h-5 text-green-600" />
+                      Connect Shopify
+                    </CardTitle>
+                    <CardDescription>
+                      Enter your Shopify store domain to start the connection.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Store domain</Label>
+                      <Input
+                        placeholder="your-store.myshopify.com"
+                        value={shopifyDomain}
+                        onChange={(e) => setShopifyDomain(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && shopifyDomain.trim()) void startShopifyOAuth(shopifyDomain.trim()); }}
+                      />
+                      <p className="text-xs text-muted-foreground/70">
+                        Example: my-store.myshopify.com or just my-store
+                      </p>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => { setStep("select"); setShopifyDomain(""); }}>
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={() => void startShopifyOAuth(shopifyDomain.trim())}
+                        disabled={!shopifyDomain.trim() || crmConnecting === "shopify"}
+                      >
+                        {crmConnecting === "shopify" ? "Connecting…" : "Connect Shopify"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
 

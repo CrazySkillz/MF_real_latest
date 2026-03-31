@@ -71,6 +71,8 @@ export function ShopifyRevenueWizard(props: {
   const [valuesLoading, setValuesLoading] = useState(false);
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [valuesApiFailed, setValuesApiFailed] = useState(false);
+  const [manualValueInput, setManualValueInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   // Per-LinkedIn-campaign mapping (crosswalk enhancement)
@@ -237,18 +239,19 @@ export function ShopifyRevenueWizard(props: {
       );
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
-        // Enterprise-grade: Shopify may block orders access pending merchant approval for read_orders.
         if (resp.status === 403) {
-          const shopifyRaw = json?.shopifyError ? `\n\nShopify says: ${json.shopifyError}` : "";
+          // Shopify is blocking orders access — let user enter values manually
+          setValuesApiFailed(true);
           toast({
-            title: "Shopify access denied",
-            description: `Shopify returned 403 when reading orders. Ensure your app has read_orders scope enabled, then uninstall and reinstall the app to get a fresh token.${shopifyRaw}`,
+            title: "Shopify orders access restricted",
+            description: "Shopify is blocking order data access. You can enter campaign values manually below.",
             variant: "destructive",
           });
-          if (connectMethod !== "token") setConnectMethod("token");
+          return; // Don't throw — let the user proceed with manual entry
         }
         throw new Error(json?.error || "Failed to load values");
       }
+      setValuesApiFailed(false);
       const vals = Array.isArray(json?.values) ? json.values : [];
       setUniqueValues(vals);
       const allowed = new Set(vals.map((v: any) => String(v.value)));
@@ -623,6 +626,49 @@ export function ShopifyRevenueWizard(props: {
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (
                   <div className="text-sm text-muted-foreground">Loading values…</div>
+                ) : valuesApiFailed ? (
+                  <div className="space-y-3">
+                    <div className="text-sm text-amber-700 dark:text-amber-400">
+                      Shopify blocked order data access. Enter the campaign value(s) manually:
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="e.g. my-campaign-utm"
+                        value={manualValueInput}
+                        onChange={(e) => setManualValueInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && manualValueInput.trim()) {
+                            const v = manualValueInput.trim();
+                            setSelectedValues((prev) => Array.from(new Set([...prev, v])));
+                            setManualValueInput("");
+                          }
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (manualValueInput.trim()) {
+                            setSelectedValues((prev) => Array.from(new Set([...prev, manualValueInput.trim()])));
+                            setManualValueInput("");
+                          }
+                        }}
+                        disabled={!manualValueInput.trim()}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    {selectedValues.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {selectedValues.map((v) => (
+                          <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-sm">
+                            {v}
+                            <button className="text-muted-foreground hover:text-foreground" onClick={() => setSelectedValues((prev) => prev.filter((x) => x !== v))}>×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ) : uniqueValues.length === 0 ? (
                   <div className="text-sm text-muted-foreground">No values found for the selected attribution key.</div>
                 ) : isLinkedIn && linkedinCampaigns.length > 0 ? (

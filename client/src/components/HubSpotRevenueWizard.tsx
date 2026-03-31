@@ -322,6 +322,21 @@ export function HubSpotRevenueWizard(props: {
     })();
   }, [step, portalId, properties.length, toast]);
 
+  // When entering crosswalk step (e.g. navigating back from review), load unique values if needed.
+  useEffect(() => {
+    if (step !== "crosswalk") return;
+    if (!isConnected || !campaignProperty) return;
+    if (uniqueValues.length > 0) return;
+    void (async () => {
+      try {
+        await fetchUniqueValues(campaignProperty);
+      } catch {
+        // ignore — user can retry via Refresh button on the crosswalk step
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, isConnected, campaignProperty, uniqueValues.length]);
+
   // When entering pipeline step, load pipelines once.
   useEffect(() => {
     if (step !== "pipeline") return;

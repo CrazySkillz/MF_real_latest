@@ -488,6 +488,21 @@ export function SalesforceRevenueWizard(props: {
     })();
   }, [step, fields.length, toast, statusLoading, isConnected, campaignId]);
 
+  // When entering crosswalk step (e.g. navigating back from review), load unique values if needed.
+  useEffect(() => {
+    if (step !== "crosswalk") return;
+    if (!isConnected || !campaignField) return;
+    if (uniqueValues.length > 0) return;
+    void (async () => {
+      try {
+        await fetchUniqueValues(campaignField);
+      } catch {
+        // ignore — user can retry via Refresh button on the crosswalk step
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, isConnected, campaignField, uniqueValues.length]);
+
   useEffect(() => {
     if (step !== "pipeline") return;
     if (!isConnected) return;

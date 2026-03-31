@@ -227,9 +227,19 @@ export function SalesforceRevenueWizard(props: {
     setDays(nextDays); // persisted value when editing; no setter exposed in UI
     if ((cfg as any).dateField) setDateField(String((cfg as any).dateField));
     setLastSaveResult(null);
-    // Edit mode: jump to review so user sees current settings at a glance
+    // Edit mode: jump to review so user sees current settings with preview
     setStep("review");
   }, [campaignId, mode, initialMappingConfig]);
+
+  // In edit mode, auto-load the preview when landing on review step
+  useEffect(() => {
+    if (mode !== "edit") return;
+    if (step !== "review") return;
+    if (previewLoading || previewRows.length > 0) return;
+    if (!campaignField || selectedValues.length === 0) return;
+    void preview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, step, campaignField, selectedValues.length, previewLoading, previewRows.length]);
 
   // Best-effort: fetch connection status so we can show the connected org name on the first step,
   // or show an inline Connect CTA if the user somehow gets here without a connection.

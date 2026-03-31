@@ -530,7 +530,8 @@ export function AddRevenueWizardModal(props: {
     setStep("select");
   }, [open, initialSource]);
 
-  // Load sheets connections only when needed
+  // Load sheets connections only when needed.
+  // When editing, also try a purpose-agnostic fetch so connections with a different purpose still appear.
   useEffect(() => {
     let mounted = true;
     if (!open) return;
@@ -540,7 +541,13 @@ export function AddRevenueWizardModal(props: {
       try {
         const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=${encodeURIComponent(sheetsPurpose)}`, { credentials: "include" });
         const json = await resp.json().catch(() => ({}));
-        const conns = Array.isArray(json?.connections) ? json.connections : [];
+        let conns = Array.isArray(json?.connections) ? json.connections : [];
+        // If no connections found with the revenue purpose and we're editing, try without purpose filter
+        if (conns.length === 0 && isEditing) {
+          const resp2 = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`, { credentials: "include" });
+          const json2 = await resp2.json().catch(() => ({}));
+          conns = Array.isArray(json2?.connections) ? json2.connections : [];
+        }
         if (!mounted) return;
         setSheetsConnections(conns);
         if (!sheetsConnectionId && conns.length > 0) setSheetsConnectionId(String(conns[0]?.id || ""));
@@ -555,13 +562,18 @@ export function AddRevenueWizardModal(props: {
     return () => {
       mounted = false;
     };
-  }, [open, step, campaignId, sheetsPurpose]);
+  }, [open, step, campaignId, sheetsPurpose, isEditing]);
 
   const refreshSheetsConnections = async () => {
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=${encodeURIComponent(sheetsPurpose)}`, { credentials: "include" });
       const json = await resp.json().catch(() => ({}));
-      const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
+      let conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
+      if (conns.length === 0 && isEditing) {
+        const resp2 = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`, { credentials: "include" });
+        const json2 = await resp2.json().catch(() => ({}));
+        conns = Array.isArray(json2?.connections) ? json2.connections : Array.isArray(json2) ? json2 : [];
+      }
       const filtered = conns.filter((c: any) => c && c.isActive !== false);
       setSheetsConnections(filtered);
       return filtered;
@@ -936,15 +948,24 @@ export function AddRevenueWizardModal(props: {
     if (!isEditing) return;
     const type = String(initialSource?.sourceType || "").toLowerCase();
     if (type !== "google_sheets") return;
-    if (step !== "sheets_map") return;
-    if (!sheetsConnectionId) { setStep("sheets_choose"); return; }
-    if (sheetsPreview) return;
-    void (async () => {
-      const ok = await handleSheetsPreview(sheetsConnectionId, { preserveExisting: true });
-      if (!ok) setStep("sheets_choose");
-    })();
+    if (step === "sheets_map") {
+      if (!sheetsConnectionId) { setStep("sheets_choose"); return; }
+      if (sheetsPreview) return;
+      void (async () => {
+        const ok = await handleSheetsPreview(sheetsConnectionId, { preserveExisting: true });
+        if (!ok) setStep("sheets_choose");
+      })();
+      return;
+    }
+    // After falling back to sheets_choose, auto-advance once connections load and stored ID matches
+    if (step === "sheets_choose" && sheetsConnectionId && sheetsConnections.length > 0) {
+      const match = sheetsConnections.find((c: any) => String(c.id) === sheetsConnectionId);
+      if (match) {
+        setStep("sheets_map");
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isEditing, step, sheetsConnectionId, sheetsPreview, initialSource]);
+  }, [open, isEditing, step, sheetsConnectionId, sheetsPreview, initialSource, sheetsConnections]);
 
   const handleSheetsProcess = async () => {
     if (!sheetsConnectionId) return;

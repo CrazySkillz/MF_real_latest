@@ -4097,9 +4097,9 @@ export default function GA4Metrics() {
                                 <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
                                   {/* GA4 native revenue line */}
                                   {ga4RevenueForFinancials > 0 && (
-                                    <div className="flex items-center justify-between text-xs">
-                                      <span className="text-muted-foreground/70">GA4 Revenue</span>
-                                      <span className="text-foreground/80/60 font-medium tabular-nums">{formatMoney(ga4RevenueForFinancials)}</span>
+                                    <div className="flex items-center justify-between text-xs gap-2">
+                                      <span className="text-muted-foreground/70 shrink-0">GA4 Revenue</span>
+                                      <span className="text-foreground/80 font-medium tabular-nums text-right shrink-0">{formatMoney(ga4RevenueForFinancials)}</span>
                                     </div>
                                   )}
                                   {/* Imported revenue sources */}
@@ -4110,12 +4110,12 @@ export default function GA4Metrics() {
                                       ? ` · ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
                                       : "";
                                     return (
-                                    <div key={s.sourceId} className="flex items-center justify-between text-xs group/rev">
-                                      <span className="text-muted-foreground/70 min-w-[60px] truncate" title={dateLabel ? `Revenue dated by: ${dateLabel.slice(3)}` : ""}>
+                                    <div key={s.sourceId} className="flex items-center justify-between text-xs group/rev gap-2">
+                                      <span className="text-muted-foreground/70 truncate flex-1 min-w-0" title={(s.displayName || revenueSourceTypeLabel(s.sourceType)) + dateLabel}>
                                         {s.displayName || revenueSourceTypeLabel(s.sourceType)}{dateLabel}
                                       </span>
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-foreground/80/60 font-medium tabular-nums">
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <span className="text-foreground/80 font-medium tabular-nums text-right">
                                           {s.revenue != null ? formatMoney(s.revenue) : formatMoney(Number(financialRevenue || 0))}
                                         </span>
                                         <button

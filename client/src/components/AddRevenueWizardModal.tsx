@@ -550,7 +550,9 @@ export function AddRevenueWizardModal(props: {
         }
         if (!mounted) return;
         setSheetsConnections(conns);
-        if (!sheetsConnectionId && conns.length > 0) setSheetsConnectionId(String(conns[0]?.id || ""));
+        // Auto-select: if no connectionId set, or stored connectionId doesn't match any available connection
+        const currentIdValid = sheetsConnectionId && conns.some((c: any) => String(c.id) === sheetsConnectionId);
+        if (!currentIdValid && conns.length > 0) setSheetsConnectionId(String(conns[0]?.id || ""));
       } catch {
         if (!mounted) return;
         setSheetsConnections([]);

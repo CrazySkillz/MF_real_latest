@@ -196,6 +196,8 @@ export function AddRevenueWizardModal(props: {
   const [shopifyExternalNonce, setShopifyExternalNonce] = useState(0);
   const [hubspotBackNonce, setHubspotBackNonce] = useState(0);
   const [salesforceBackNonce, setSalesforceBackNonce] = useState(0);
+  const [shopifyDomainPrompt, setShopifyDomainPrompt] = useState(false);
+  const [shopifyDomain, setShopifyDomain] = useState("");
 
   // OAuth status (for skipping re-auth on click) vs imported status (for "Connected" badge)
   const [crmOAuth, setCrmOAuth] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
@@ -225,6 +227,46 @@ export function AddRevenueWizardModal(props: {
     return () => { cancelled = true; };
   }, [open, campaignId, hideCrmSources]);
 
+  const startShopifyOAuth = async (domain: string) => {
+    setCrmConnecting("shopify");
+    setShopifyDomainPrompt(false);
+    try {
+      const resp = await fetch("/api/auth/shopify/connect", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, shopDomain: domain }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || !json?.authUrl) {
+        toast({ title: "Failed to start Shopify connection", description: json?.message || "Please try again.", variant: "destructive" });
+        setCrmConnecting(null);
+        return;
+      }
+      const popup = window.open(json.authUrl, "shopify_oauth", "width=520,height=680");
+      const onMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        const data = event.data;
+        if (!data || typeof data !== "object") return;
+        if (data.type === "shopify_auth_success") {
+          window.removeEventListener("message", onMessage);
+          setCrmOAuth(prev => ({ ...prev, shopify: true }));
+          setCrmConnecting(null);
+          toast({ title: "Shopify connected", description: "Now configure revenue attribution." });
+          setStep("shopify");
+        } else if (data.type === "shopify_auth_error") {
+          window.removeEventListener("message", onMessage);
+          setCrmConnecting(null);
+          toast({ title: "Connection failed", description: data.error || "OAuth was cancelled or failed.", variant: "destructive" });
+        }
+      };
+      window.addEventListener("message", onMessage);
+    } catch (err: any) {
+      toast({ title: "Failed to start Shopify connection", description: err?.message || "Please try again.", variant: "destructive" });
+      setCrmConnecting(null);
+    }
+  };
+
   // OAuth gate: connect platform first, then proceed to wizard
   const handleCrmSourceClick = async (platform: "hubspot" | "salesforce" | "shopify") => {
     // Already authenticated — go straight to wizard
@@ -232,12 +274,16 @@ export function AddRevenueWizardModal(props: {
       setStep(platform);
       return;
     }
+    // Shopify needs shop domain before OAuth
+    if (platform === "shopify") {
+      setShopifyDomainPrompt(true);
+      return;
+    }
     // Not connected — trigger OAuth popup
     setCrmConnecting(platform);
     try {
       const endpoint = platform === "hubspot" ? "/api/auth/hubspot/connect"
-        : platform === "salesforce" ? "/api/auth/salesforce/connect"
-        : "/api/auth/shopify/connect";
+        : "/api/auth/salesforce/connect";
       const resp = await fetch(endpoint, {
         method: "POST",
         credentials: "include",
@@ -380,6 +426,8 @@ export function AddRevenueWizardModal(props: {
     setShopifyWizardStep("campaign-field");
     setShopifyExternalStep(null);
     setShopifyExternalNonce(0);
+    setShopifyDomainPrompt(false);
+    setShopifyDomain("");
     setHubspotBackNonce(0);
     setSalesforceBackNonce(0);
     setHubspotInitialMappingConfig(null);
@@ -1127,6 +1175,34 @@ export function AddRevenueWizardModal(props: {
                       </CardTitle>
                       <CardDescription>{crmStatus.shopify ? "Attribute order revenue to this campaign." : "Connect Shopify to import order revenue."}</CardDescription>
                     </CardHeader>
+                  </Card>
+                )}
+
+                {shopifyDomainPrompt && (
+                  <Card className="md:col-span-2 border-blue-200 dark:border-blue-800">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="text-sm font-medium">Enter your Shopify store domain</div>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="your-store.myshopify.com"
+                          value={shopifyDomain}
+                          onChange={(e) => setShopifyDomain(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter" && shopifyDomain.trim()) void startShopifyOAuth(shopifyDomain.trim()); }}
+                        />
+                        <Button
+                          onClick={() => void startShopifyOAuth(shopifyDomain.trim())}
+                          disabled={!shopifyDomain.trim() || crmConnecting === "shopify"}
+                        >
+                          {crmConnecting === "shopify" ? "Connecting…" : "Connect"}
+                        </Button>
+                        <Button variant="outline" onClick={() => { setShopifyDomainPrompt(false); setShopifyDomain(""); }}>
+                          Cancel
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground/70">
+                        Example: my-store.myshopify.com or my-store
+                      </p>
+                    </CardContent>
                   </Card>
                 )}
 

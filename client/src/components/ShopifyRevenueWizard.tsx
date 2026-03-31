@@ -241,17 +241,21 @@ export function ShopifyRevenueWizard(props: {
         if (resp.status === 403 && String(json?.code || "") === "SHOPIFY_READ_ORDERS_APPROVAL_REQUIRED") {
           toast({
             title: "Shopify permission required",
-            description: String(json?.error || "Shopify requires merchant approval for read_orders. Please approve the app and reconnect."),
+            description: connectMethod === "token"
+              ? "Your Admin API token doesn't have read_orders access. In Shopify Admin → Settings → Apps → Develop apps, ensure the app has the 'read_orders' scope enabled."
+              : String(json?.error || "Shopify requires merchant approval for read_orders. Please approve the app and reconnect."),
             variant: "destructive",
           });
         }
         if (resp.status === 403 && String(json?.code || "") === "SHOPIFY_PROTECTED_CUSTOMER_DATA_APPROVAL_REQUIRED") {
           toast({
             title: "Shopify approval required",
-            description: "Shopify is blocking OAuth access to Orders (protected customer data). Switch to “Admin API token” to connect immediately, or complete Shopify approval for the OAuth app.",
+            description: connectMethod === "token"
+              ? "Your Admin API token doesn't have read_orders access. In Shopify Admin → Settings → Apps → Develop apps, ensure the app has the 'read_orders' scope enabled."
+              : 'Shopify is blocking OAuth access to Orders (protected customer data). Switch to "Admin API token" to connect immediately, or complete Shopify approval for the OAuth app.',
             variant: "destructive",
           });
-          setConnectMethod("token");
+          if (connectMethod !== "token") setConnectMethod("token");
         }
         throw new Error(json?.error || "Failed to load values");
       }

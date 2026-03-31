@@ -17,7 +17,7 @@ import { ShopifyRevenueWizard } from "@/components/ShopifyRevenueWizard";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { useQueryClient } from "@tanstack/react-query";
 
-type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify" | "shopify_connect";
+type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
 
 type Preview = {
@@ -196,7 +196,6 @@ export function AddRevenueWizardModal(props: {
   const [shopifyExternalNonce, setShopifyExternalNonce] = useState(0);
   const [hubspotBackNonce, setHubspotBackNonce] = useState(0);
   const [salesforceBackNonce, setSalesforceBackNonce] = useState(0);
-  const [shopifyDomain, setShopifyDomain] = useState("");
 
   // OAuth status (for skipping re-auth on click) vs imported status (for "Connected" badge)
   const [crmOAuth, setCrmOAuth] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
@@ -226,72 +225,6 @@ export function AddRevenueWizardModal(props: {
     return () => { cancelled = true; };
   }, [open, campaignId, hideCrmSources]);
 
-  const startShopifyOAuth = async (domain: string) => {
-    setCrmConnecting("shopify");
-    try {
-      const resp = await fetch("/api/auth/shopify/connect", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId, shopDomain: domain }),
-      });
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok || !json?.authUrl) {
-        toast({ title: "Failed to start Shopify connection", description: json?.message || "Please try again.", variant: "destructive" });
-        setCrmConnecting(null);
-        return;
-      }
-      const popup = window.open(json.authUrl, "shopify_oauth", "width=520,height=680");
-      const handleSuccess = () => {
-        setCrmOAuth(prev => ({ ...prev, shopify: true }));
-        setCrmConnecting(null);
-        toast({ title: "Shopify connected", description: "Now configure revenue attribution." });
-        setStep("shopify");
-      };
-      const handleError = (error?: string) => {
-        setCrmConnecting(null);
-        toast({ title: "Connection failed", description: error || "OAuth was cancelled or failed.", variant: "destructive" });
-      };
-      // postMessage listener (may not work if Shopify sets COOP headers)
-      const onMessage = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
-        const data = event.data;
-        if (!data || typeof data !== "object") return;
-        if (data.type === "shopify_auth_success") {
-          window.removeEventListener("message", onMessage);
-          bc?.close();
-          handleSuccess();
-        } else if (data.type === "shopify_auth_error") {
-          window.removeEventListener("message", onMessage);
-          bc?.close();
-          handleError(data.error);
-        }
-      };
-      window.addEventListener("message", onMessage);
-      // BroadcastChannel fallback (reliable when COOP blocks window.opener)
-      let bc: BroadcastChannel | null = null;
-      if (typeof BroadcastChannel !== "undefined") {
-        bc = new BroadcastChannel("metricmind_oauth");
-        bc.addEventListener("message", (event: MessageEvent) => {
-          const data = event.data;
-          if (!data || typeof data !== "object") return;
-          if (data.type === "shopify_auth_success") {
-            window.removeEventListener("message", onMessage);
-            bc?.close();
-            handleSuccess();
-          } else if (data.type === "shopify_auth_error") {
-            window.removeEventListener("message", onMessage);
-            bc?.close();
-            handleError(data.error);
-          }
-        });
-      }
-    } catch (err: any) {
-      toast({ title: "Failed to start Shopify connection", description: err?.message || "Please try again.", variant: "destructive" });
-      setCrmConnecting(null);
-    }
-  };
-
   // OAuth gate: connect platform first, then proceed to wizard
   const handleCrmSourceClick = async (platform: "hubspot" | "salesforce" | "shopify") => {
     // Already authenticated — go straight to wizard
@@ -299,9 +232,9 @@ export function AddRevenueWizardModal(props: {
       setStep(platform);
       return;
     }
-    // Shopify needs shop domain before OAuth — go to dedicated step
+    // Shopify handles its own OAuth inside ShopifyRevenueWizard — go straight to it
     if (platform === "shopify") {
-      setStep("shopify_connect" as any);
+      setStep("shopify");
       return;
     }
     // Not connected — trigger OAuth popup
@@ -1128,7 +1061,6 @@ export function AddRevenueWizardModal(props: {
               step === "hubspot" ? "HubSpot revenue" :
                 step === "salesforce" ? "Salesforce revenue" :
                   step === "shopify" ? "Shopify revenue" :
-                    step === "shopify_connect" ? "Shopify revenue" :
                     "Add revenue source";
 
   const description = step === "select"
@@ -2141,47 +2073,6 @@ export function AddRevenueWizardModal(props: {
                     onOpenChange(false);
                   }}
                 />
-              </div>
-            )}
-
-            {step === "shopify_connect" && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Building2 className="w-5 h-5 text-green-600" />
-                      Connect Shopify
-                    </CardTitle>
-                    <CardDescription>
-                      Enter your Shopify store domain to start the connection.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Store domain</Label>
-                      <Input
-                        placeholder="your-store.myshopify.com"
-                        value={shopifyDomain}
-                        onChange={(e) => setShopifyDomain(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter" && shopifyDomain.trim()) void startShopifyOAuth(shopifyDomain.trim()); }}
-                      />
-                      <p className="text-xs text-muted-foreground/70">
-                        Example: my-store.myshopify.com or just my-store
-                      </p>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => { setStep("select"); setShopifyDomain(""); }}>
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={() => void startShopifyOAuth(shopifyDomain.trim())}
-                        disabled={!shopifyDomain.trim() || crmConnecting === "shopify"}
-                      >
-                        {crmConnecting === "shopify" ? "Connecting…" : "Connect Shopify"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             )}
 

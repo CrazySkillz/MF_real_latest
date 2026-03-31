@@ -197,27 +197,38 @@ export function AddRevenueWizardModal(props: {
   const [hubspotBackNonce, setHubspotBackNonce] = useState(0);
   const [salesforceBackNonce, setSalesforceBackNonce] = useState(0);
 
-  // Connection status for CRM/ecommerce sources (used for badges in source picker)
+  // OAuth status (for skipping re-auth on click) vs imported status (for "Connected" badge)
+  const [crmOAuth, setCrmOAuth] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmStatus, setCrmStatus] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmConnecting, setCrmConnecting] = useState<string | null>(null);
   useEffect(() => {
     if (!open || hideCrmSources) return;
     let cancelled = false;
     (async () => {
-      const checks = await Promise.all([
+      const [hubspotOAuth, salesforceOAuth, shopifyOAuth, dsResp] = await Promise.all([
         fetch(`/api/hubspot/${campaignId}/status`).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
         fetch(`/api/salesforce/${campaignId}/status`).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
         fetch(`/api/shopify/${campaignId}/status`).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
+        fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include" }).then(r => r.json()).catch(() => ({})),
       ]);
-      if (!cancelled) setCrmStatus({ hubspot: checks[0], salesforce: checks[1], shopify: checks[2] });
+      if (cancelled) return;
+      setCrmOAuth({ hubspot: hubspotOAuth, salesforce: salesforceOAuth, shopify: shopifyOAuth });
+      // "Connected" badge only when an active revenue source exists for this platform
+      const revSources: any[] = Array.isArray(dsResp?.revenueSources) ? dsResp.revenueSources : [];
+      const hasSource = (type: string) => revSources.some((s: any) => s?.sourceType === type && s?.isActive !== false);
+      setCrmStatus({
+        hubspot: hubspotOAuth && hasSource("hubspot"),
+        salesforce: salesforceOAuth && hasSource("salesforce"),
+        shopify: shopifyOAuth && hasSource("shopify"),
+      });
     })();
     return () => { cancelled = true; };
   }, [open, campaignId, hideCrmSources]);
 
   // OAuth gate: connect platform first, then proceed to wizard
   const handleCrmSourceClick = async (platform: "hubspot" | "salesforce" | "shopify") => {
-    // Already connected — go straight to wizard
-    if (crmStatus[platform]) {
+    // Already authenticated — go straight to wizard
+    if (crmOAuth[platform]) {
       setStep(platform);
       return;
     }
@@ -249,7 +260,7 @@ export function AddRevenueWizardModal(props: {
         if (!data || typeof data !== "object") return;
         if (data.type === `${platform}_auth_success`) {
           window.removeEventListener("message", onMessage);
-          setCrmStatus(prev => ({ ...prev, [platform]: true }));
+          setCrmOAuth(prev => ({ ...prev, [platform]: true }));
           setCrmConnecting(null);
           toast({ title: `${platform.charAt(0).toUpperCase() + platform.slice(1)} connected`, description: "Now configure revenue attribution." });
           setStep(platform);
@@ -271,7 +282,7 @@ export function AddRevenueWizardModal(props: {
           if (data.type === "salesforce_auth_success") {
             window.removeEventListener("message", onMessage);
             bc?.close();
-            setCrmStatus(prev => ({ ...prev, salesforce: true }));
+            setCrmOAuth(prev => ({ ...prev, salesforce: true }));
             setCrmConnecting(null);
             toast({ title: "Salesforce connected", description: "Now configure revenue attribution." });
             setStep("salesforce");
@@ -322,6 +333,7 @@ export function AddRevenueWizardModal(props: {
       }
       // Delete the OAuth connection
       await apiRequest('DELETE', `/api/${platform}/${campaignId}/connection`);
+      setCrmOAuth(prev => ({ ...prev, [platform]: false }));
       setCrmStatus(prev => ({ ...prev, [platform]: false }));
       invalidateAfterRevenueChange();
       toast({ title: `${label} disconnected`, description: "Revenue source and connection removed." });

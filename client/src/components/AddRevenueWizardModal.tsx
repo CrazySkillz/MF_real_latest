@@ -384,7 +384,6 @@ export function AddRevenueWizardModal(props: {
     setShopifyWizardStep("campaign-field");
     setShopifyExternalStep(null);
     setShopifyExternalNonce(0);
-    setShopifyDomain("");
     setHubspotBackNonce(0);
     setSalesforceBackNonce(0);
     setHubspotInitialMappingConfig(null);

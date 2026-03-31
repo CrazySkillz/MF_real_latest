@@ -123,7 +123,6 @@ export function HubSpotRevenueWizard(props: {
     const nextPipelineStageId = cfg.pipelineStageId ? String(cfg.pipelineStageId) : "";
     const nextPipelineStageLabel = cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : "";
 
-    setStep("value-source");
     setCampaignProperty(nextCampaignProperty);
     setSelectedValues(nextSelectedValues);
     setRevenueProperty(nextRevenueProperty);
@@ -134,6 +133,8 @@ export function HubSpotRevenueWizard(props: {
     setPipelineStageId(nextPipelineStageId);
     setPipelineStageLabel(nextPipelineStageLabel);
     if (cfg.dateField) setDateField(String(cfg.dateField));
+    // Edit mode: jump to review so user sees current settings at a glance
+    setStep("review");
     if (nextRevenueClassification === "onsite_in_ga4" || nextRevenueClassification === "offsite_not_in_ga4") {
       setRevenueClassification(nextRevenueClassification);
     }
@@ -305,7 +306,7 @@ export function HubSpotRevenueWizard(props: {
 
   // When entering configure step, load properties once
   useEffect(() => {
-    if (step !== "campaign-field" && step !== "revenue") return;
+    if (step !== "campaign-field" && step !== "revenue" && step !== "review") return;
     if (!isConnected) return; // don't fetch fields until connected
     if (properties.length > 0) return;
     (async () => {

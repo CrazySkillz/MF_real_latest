@@ -213,8 +213,6 @@ export function SalesforceRevenueWizard(props: {
     const nextPipelineStageName = cfg.pipelineStageName ? String(cfg.pipelineStageName) : "";
     const nextPipelineStageLabel = cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : "";
 
-    // Always start at the first step for LinkedIn so edits and source switching are consistent.
-    setStep(isLinkedIn ? "value-source" : "campaign-field");
     setFields([]);
     setFieldsError(null);
     setCampaignField(nextCampaignField);
@@ -229,6 +227,8 @@ export function SalesforceRevenueWizard(props: {
     setDays(nextDays); // persisted value when editing; no setter exposed in UI
     if ((cfg as any).dateField) setDateField(String((cfg as any).dateField));
     setLastSaveResult(null);
+    // Edit mode: jump to review so user sees current settings at a glance
+    setStep("review");
   }, [campaignId, mode, initialMappingConfig]);
 
   // Best-effort: fetch connection status so we can show the connected org name on the first step,
@@ -470,7 +470,7 @@ export function SalesforceRevenueWizard(props: {
   }, [autoStartOAuth, autoStartAttempted, mode, connectOnly, statusLoading, isConnected, campaignId]);
 
   useEffect(() => {
-    if (step !== "campaign-field" && step !== "revenue") return;
+    if (step !== "campaign-field" && step !== "revenue" && step !== "review") return;
     if (fields.length > 0) return;
     // Match HubSpot UX: don't fetch fields until connected.
     if (statusLoading || !isConnected) return;

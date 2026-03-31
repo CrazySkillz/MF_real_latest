@@ -124,8 +124,13 @@ export default function GA4CampaignComparison({
       const totalConversions = sortedByMetric.reduce((s, c) => s + c.conversions, 0);
       return totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
     }
+    // For revenue, use the full financial total (GA4 + imported sources) instead of
+    // just the breakdown sum, which only covers GA4 campaign-attributed revenue.
+    if (selectedMetric === "revenue" && totalRevenue > 0) {
+      return totalRevenue;
+    }
     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
-  }, [sortedByMetric, selectedMetric]);
+  }, [sortedByMetric, selectedMetric, totalRevenue]);
 
   if (breakdownLoading) {
     return (

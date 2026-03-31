@@ -238,21 +238,11 @@ export function ShopifyRevenueWizard(props: {
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         // Enterprise-grade: Shopify may block orders access pending merchant approval for read_orders.
-        if (resp.status === 403 && String(json?.code || "") === "SHOPIFY_READ_ORDERS_APPROVAL_REQUIRED") {
+        if (resp.status === 403) {
+          const shopifyRaw = json?.shopifyError ? `\n\nShopify says: ${json.shopifyError}` : "";
           toast({
-            title: "Shopify permission required",
-            description: connectMethod === "token"
-              ? "Your Admin API token doesn't have read_orders access. In Shopify Admin → Settings → Apps → Develop apps, ensure the app has the 'read_orders' scope enabled."
-              : String(json?.error || "Shopify requires merchant approval for read_orders. Please approve the app and reconnect."),
-            variant: "destructive",
-          });
-        }
-        if (resp.status === 403 && String(json?.code || "") === "SHOPIFY_PROTECTED_CUSTOMER_DATA_APPROVAL_REQUIRED") {
-          toast({
-            title: "Shopify approval required",
-            description: connectMethod === "token"
-              ? "Your Admin API token doesn't have read_orders access. In Shopify Admin → Settings → Apps → Develop apps, ensure the app has the 'read_orders' scope enabled."
-              : 'Shopify is blocking OAuth access to Orders (protected customer data). Switch to "Admin API token" to connect immediately, or complete Shopify approval for the OAuth app.',
+            title: "Shopify access denied",
+            description: `Shopify returned 403 when reading orders. Ensure your app has read_orders scope enabled, then uninstall and reinstall the app to get a fresh token.${shopifyRaw}`,
             variant: "destructive",
           });
           if (connectMethod !== "token") setConnectMethod("token");

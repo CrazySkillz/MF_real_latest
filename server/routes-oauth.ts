@@ -25771,17 +25771,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
     } catch (error: any) {
-      console.error("[Shopify Unique Values] Error:", error);
+      console.error("[Shopify Unique Values] Error:", error?.message, error?._shopifyText ? `Raw: ${error._shopifyText.slice(0, 500)}` : "");
       if (shopifyRequiresMerchantApproval(error)) {
         return res.status(403).json({
           error: "[Shopify] MetricMind needs merchant approval for the Shopify Orders scope (read_orders). Please approve the app's access in Shopify Admin and reconnect.",
           code: "SHOPIFY_READ_ORDERS_APPROVAL_REQUIRED",
+          shopifyError: error?.message || null,
         });
       }
       if (shopifyRequiresProtectedCustomerDataApproval(error)) {
         return res.status(403).json({
           error: "[Shopify] This OAuth app is not approved for protected customer data (Orders). Use an Admin API token or complete Shopify approval, then reconnect.",
           code: "SHOPIFY_PROTECTED_CUSTOMER_DATA_APPROVAL_REQUIRED",
+          shopifyError: error?.message || null,
         });
       }
       res.status(500).json({ error: error.message || "Failed to load Shopify values" });

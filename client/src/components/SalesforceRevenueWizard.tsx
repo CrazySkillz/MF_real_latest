@@ -231,15 +231,6 @@ export function SalesforceRevenueWizard(props: {
     setStep("review");
   }, [campaignId, mode, initialMappingConfig]);
 
-  // In edit mode, auto-load the preview when landing on review step
-  useEffect(() => {
-    if (mode !== "edit") return;
-    if (step !== "review") return;
-    if (previewLoading || previewRows.length > 0) return;
-    if (!campaignField || selectedValues.length === 0) return;
-    void preview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, step, campaignField, selectedValues.length, previewLoading, previewRows.length]);
 
   // Best-effort: fetch connection status so we can show the connected org name on the first step,
   // or show an inline Connect CTA if the user somehow gets here without a connection.
@@ -754,9 +745,6 @@ export function SalesforceRevenueWizard(props: {
         }
       }
       setStep("review");
-      // Best-effort preview on entry so users can sanity-check before processing.
-      // Don't block navigation if preview fails.
-      void preview();
       return;
     }
     if (step === "review") {
@@ -934,10 +922,7 @@ export function SalesforceRevenueWizard(props: {
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Select the Opportunity field that represents conversion value per conversion (estimated value)."
                 : "Select the Opportunity field that represents revenue (usually Amount).")}
-            {step === "review" &&
-              (isLinkedIn && valueSource === "conversion_value"
-                ? "Confirm your selections. We'll compute and save conversion value to unlock LinkedIn revenue metrics."
-                : "Confirm your selections. We'll pull won Opportunities and compute revenue-derived metrics for this campaign.")}
+            {step === "review" && "Review the settings below, then save mappings."}
             {step === "complete" &&
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Conversion value is saved. Revenue metrics should now be unlocked in Overview."
@@ -1270,171 +1255,74 @@ export function SalesforceRevenueWizard(props: {
             </div>
           )}
 
-          {step === "review" && <div />}
-
           {step === "review" && (
-            <div className="space-y-3">
-              <div className="text-sm text-foreground/80">
-                Preview the Opportunities that will be used to compute <strong>Total Revenue</strong> for this campaign (<strong>Closed Won</strong> only).
-                {isLinkedIn && pipelineEnabled ? (
-                  <>
-                    {" "}
-                    Deals currently in pipeline stages (e.g., Proposal) are tracked separately under <strong>Pipeline (Proxy)</strong>.
-                  </>
-                ) : null}
-              </div>
-
-              {previewCampaignCurrency && (
-                <div className={`text-xs ${previewCurrencyMismatch ? "text-amber-700" : "text-muted-foreground"}`}>
-                  Currency: campaign <strong>{previewCampaignCurrency}</strong>
-                  {effectiveSalesforceCurrency ? (
-                    <>
-                      {" "}· Salesforce <strong>{effectiveSalesforceCurrency}</strong>
-                    </>
-                  ) : (
-                    <>
-                      {" "}· Salesforce <strong>unknown</strong>
-                    </>
-                  )}
-                  {effectiveCurrencyMismatch && (
-                    <>
-                      {" "}— please align currencies before saving.
-                    </>
-                  )}
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-muted/40 p-4">
+                <div className="text-sm font-semibold text-foreground">
+                  Review Salesforce revenue settings
                 </div>
-              )}
+                <div className="text-sm text-muted-foreground/70 mt-1">
+                  Confirm these details before saving.
+                  {" "}Revenue will be treated as <span className="font-medium">revenue-to-date</span> for this campaign.
+                </div>
 
-              {/* When currency is unknown, show immediate diagnostics (no DevTools required). */}
-              {!effectiveSalesforceCurrency && (
-                <div className="text-xs text-muted-foreground space-y-1">
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>
-                    We couldn’t read Salesforce currency via API. Click <strong>Reconnect</strong> and try again.
-                    {previewBuild ? (
-                      <>
-                        {" "}Build: <strong>{previewBuild}</strong>
-                      </>
+                    <div className="text-xs text-muted-foreground/70">Salesforce account</div>
+                    <div className="font-medium text-foreground">
+                      {connectedLabel || orgName || "—"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-muted-foreground/70">Revenue field</div>
+                    <div className="font-medium text-foreground">{revenueFieldLabel}</div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-muted-foreground/70">Campaign identifier field</div>
+                    <div className="font-medium text-foreground">{campaignFieldDisplay}</div>
+                  </div>
+
+                  {pipelineEnabled && (
+                    <div>
+                      <div className="text-xs text-muted-foreground/70">Pipeline proxy</div>
+                      <div className="font-medium text-foreground">
+                        {pipelineStageLabel || pipelineStageName || "—"}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="text-xs text-muted-foreground/70">Date field</div>
+                    <div className="font-medium text-foreground">
+                      {dateField === "CloseDate" ? "Close Date" : dateField === "LastModifiedDate" ? "Last Modified Date" : dateField === "CreatedDate" ? "Created Date" : dateField}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-muted-foreground/70">Selected value(s)</div>
+                    <div className="font-medium text-foreground">
+                      {selectedValues.length.toLocaleString()}
+                    </div>
+                    {selectedValues.length > 0 ? (
+                      <div className="mt-1 text-xs text-muted-foreground/70">
+                        {selectedValues.slice(0, 6).join(", ")}
+                        {selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}
+                      </div>
                     ) : null}
                   </div>
-                  {Array.isArray(previewCurrencyDebugSteps) && previewCurrencyDebugSteps.length > 0 && (
-                    <details className="mt-1">
-                      <summary className="cursor-pointer underline">Why is it unknown?</summary>
-                      <pre className="mt-2 max-h-[220px] overflow-auto rounded border bg-muted p-2 text-[11px] leading-snug">
-                        {JSON.stringify(previewCurrencyDebugSteps, null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-muted-foreground">
-                  Matching on <strong>{campaignFieldDisplay}</strong> · Revenue field <strong>{revenueFieldLabel}</strong> · Selected values{" "}
-                  <strong>{selectedValues.length}</strong>
                 </div>
               </div>
 
-              {isLinkedIn && pipelineEnabled && pipelineStageLabel && (
-                <div className="text-xs text-muted-foreground">
-                  Pipeline proxy: <strong>{pipelineStageLabel}</strong>
+              {previewCampaignCurrency && effectiveCurrencyMismatch && (
+                <div className="text-xs text-amber-700">
+                  Currency mismatch: campaign <strong>{previewCampaignCurrency}</strong> · Salesforce <strong>{effectiveSalesforceCurrency}</strong> — please align currencies before saving.
                 </div>
               )}
 
               {previewError && <div className="text-sm text-red-600">{previewError}</div>}
               {saveError && <div className="text-sm text-red-600">{saveError}</div>}
-
-              {!previewError && previewHeaders.length > 0 && (
-                <div className="border rounded">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        {previewHeaders
-                          .filter((h) => String(h).toLowerCase() !== "id")
-                          .map((h) => (
-                            <TableHead key={h} className="whitespace-nowrap">
-                              {h.toLowerCase() === "name" ? "Opportunity Name" : h}
-                            </TableHead>
-                          ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewRows.length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={previewHeaders.filter((h) => String(h).toLowerCase() !== "id").length}
-                            className="text-sm text-muted-foreground"
-                          >
-                            No matching Opportunities found for the current filters.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        previewRows.map((row, idx) => (
-                          <TableRow key={idx}>
-                            {row
-                              .filter((_, j) => String(previewHeaders[j] || "").toLowerCase() !== "id")
-                              .map((cell, j) => (
-                                <TableCell key={j} className="max-w-[320px] truncate">
-                                  {cell}
-                                </TableCell>
-                              ))}
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-
-              {/* Pipeline (Proxy) preview: stage subset (not Closed Won) */}
-              {isLinkedIn && pipelineEnabled && (
-                <div className="space-y-2 pt-2">
-                  <div className="text-sm text-foreground/80">
-                    Preview for <strong>Pipeline (Proxy — stage subset)</strong> (Opportunities currently in{" "}
-                    <strong>{pipelineStageLabel || pipelineStageName || "selected stage"}</strong>).
-                  </div>
-                  {pipelinePreviewError && <div className="text-sm text-red-600">{pipelinePreviewError}</div>}
-                  {!pipelinePreviewError && pipelinePreviewHeaders.length > 0 && (
-                    <div className="border rounded">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            {pipelinePreviewHeaders
-                              .filter((h) => String(h).toLowerCase() !== "id")
-                              .map((h) => (
-                                <TableHead key={h} className="whitespace-nowrap">
-                                  {h.toLowerCase() === "name" ? "Opportunity Name" : h}
-                                </TableHead>
-                              ))}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {pipelinePreviewRows.length === 0 ? (
-                            <TableRow>
-                              <TableCell
-                                colSpan={pipelinePreviewHeaders.filter((h) => String(h).toLowerCase() !== "id").length}
-                                className="text-sm text-muted-foreground"
-                              >
-                                No matching Opportunities found for the pipeline stage subset.
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            pipelinePreviewRows.map((row, idx) => (
-                              <TableRow key={idx}>
-                                {row
-                                  .filter((_, j) => String(pipelinePreviewHeaders[j] || "").toLowerCase() !== "id")
-                                  .map((cell, j) => (
-                                    <TableCell key={j} className="max-w-[320px] truncate">
-                                      {cell}
-                                    </TableCell>
-                                  ))}
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 

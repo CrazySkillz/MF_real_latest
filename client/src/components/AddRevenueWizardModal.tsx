@@ -1379,29 +1379,8 @@ export function AddRevenueWizardModal(props: {
                           </div>
                         </div>
                       )}
-                      <div className="flex items-center justify-between gap-2">
+                      <div>
                         <Label>Upload file (CSV)</Label>
-                        {/* Reserve space for the action button to prevent layout shift when a file is selected */}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setCsvFile(null);
-                            setCsvPreview(null);
-                            setCsvRevenueCol("");
-                            setCsvConversionValueCol("");
-                            setCsvDateCol("");
-                            setCsvCampaignCol("");
-                            setCsvCampaignValues([]);
-                            setCsvCampaignQuery("");
-                            setCsvValueSource('revenue');
-                          }}
-                          disabled={!csvFile}
-                          className={`${csvFile ? "" : "opacity-0 pointer-events-none"} min-w-[104px]`}
-                        >
-                          Remove file
-                        </Button>
                       </div>
                       <Input
                         type="file"

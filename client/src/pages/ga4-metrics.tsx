@@ -4094,8 +4094,15 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-foreground mt-1">
                                   {formatMoney(Number(financialRevenue || 0))}
                                 </p>
-                                {revenueDisplaySources.length > 0 && (
                                 <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+                                  {/* GA4 native revenue line */}
+                                  {ga4RevenueForFinancials > 0 && (
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-muted-foreground/70">GA4 Revenue</span>
+                                      <span className="text-foreground/80/60 font-medium tabular-nums">{formatMoney(ga4RevenueForFinancials)}</span>
+                                    </div>
+                                  )}
+                                  {/* Imported revenue sources */}
                                   {revenueDisplaySources.map((s: any) => {
                                     const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
                                     const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
@@ -4133,7 +4140,6 @@ export default function GA4Metrics() {
                                     );
                                   })}
                                 </div>
-                                )}
                               </>
                             ) : (
                               <>
@@ -4150,12 +4156,12 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-foreground mt-1">
                                   {formatMoney(Number(financialRevenue || 0))}
                                 </p>
-                                {Number(financialRevenue || 0) === 0 && (
-                                  <div className="mt-2">
-                                    <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => { setEditingRevenueSource(null); setShowRevenueDialog(true); }}>
-                                      <Plus className="h-3.5 w-3.5 mr-1" />
-                                      Add Revenue
-                                    </Button>
+                                {ga4RevenueForFinancials > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-slate-100">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-muted-foreground/70">GA4 Revenue</span>
+                                      <span className="text-foreground/80/60 font-medium tabular-nums">{formatMoney(ga4RevenueForFinancials)}</span>
+                                    </div>
                                   </div>
                                 )}
                               </>

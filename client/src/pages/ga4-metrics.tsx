@@ -4097,9 +4097,9 @@ export default function GA4Metrics() {
                                 <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
                                   {/* GA4 native revenue line */}
                                   {ga4RevenueForFinancials > 0 && (
-                                    <div className="flex items-center text-xs gap-2">
-                                      <span className="text-muted-foreground/70 flex-1 min-w-0 truncate">GA4 Revenue</span>
-                                      <span className="text-foreground/80 font-medium tabular-nums w-[90px] text-right">{formatMoney(ga4RevenueForFinancials)}</span>
+                                    <div className="grid grid-cols-[1fr_auto] items-center text-xs gap-x-3">
+                                      <span className="text-muted-foreground/70 truncate">GA4 Revenue</span>
+                                      <span className="text-foreground/80 font-medium tabular-nums text-right whitespace-nowrap">{formatMoney(ga4RevenueForFinancials)}</span>
                                     </div>
                                   )}
                                   {/* Imported revenue sources */}
@@ -4110,11 +4110,11 @@ export default function GA4Metrics() {
                                       ? ` · ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
                                       : "";
                                     return (
-                                    <div key={s.sourceId} className="flex items-center justify-between text-xs group/rev gap-2">
-                                      <span className="text-muted-foreground/70 truncate flex-1 min-w-0" title={(s.displayName || revenueSourceTypeLabel(s.sourceType)) + dateLabel}>
+                                    <div key={s.sourceId} className="grid grid-cols-[1fr_auto] items-center text-xs group/rev gap-x-3">
+                                      <span className="text-muted-foreground/70 truncate" title={(s.displayName || revenueSourceTypeLabel(s.sourceType)) + dateLabel}>
                                         {s.displayName || revenueSourceTypeLabel(s.sourceType)}{dateLabel}
                                       </span>
-                                      <div className="flex items-center gap-1 shrink-0 w-[90px] justify-end">
+                                      <div className="flex items-center gap-1 justify-end whitespace-nowrap">
                                         <span className="text-foreground/80 font-medium tabular-nums text-right">
                                           {s.revenue != null ? formatMoney(s.revenue) : formatMoney(Number(financialRevenue || 0))}
                                         </span>
@@ -4158,9 +4158,9 @@ export default function GA4Metrics() {
                                 </p>
                                 {ga4RevenueForFinancials > 0 && (
                                   <div className="mt-2 pt-2 border-t border-slate-100">
-                                    <div className="flex items-center text-xs gap-2">
-                                      <span className="text-muted-foreground/70 flex-1 min-w-0 truncate">GA4 Revenue</span>
-                                      <span className="text-foreground/80 font-medium tabular-nums w-[90px] text-right">{formatMoney(ga4RevenueForFinancials)}</span>
+                                    <div className="grid grid-cols-[1fr_auto] items-center text-xs gap-x-3">
+                                      <span className="text-muted-foreground/70 truncate">GA4 Revenue</span>
+                                      <span className="text-foreground/80 font-medium tabular-nums text-right whitespace-nowrap">{formatMoney(ga4RevenueForFinancials)}</span>
                                     </div>
                                   </div>
                                 )}

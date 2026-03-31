@@ -1970,8 +1970,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const platformContext = body.data.platformContext || "ga4";
       const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : 'revenue';
 
-      const connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
-      const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
+      let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      // Fall back to purpose-agnostic lookup — the connection may have a different purpose value
+      if (!conn) {
+        connections = await storage.getGoogleSheetsConnections(campaignId);
+        conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      }
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
       // Proactively refresh near-expiry tokens.
       let accessToken = conn.accessToken;
@@ -2087,8 +2092,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : 'revenue';
-      const connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
-      const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
+      let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      // Fall back to purpose-agnostic lookup — the connection may have a different purpose value
+      if (!conn) {
+        connections = await storage.getGoogleSheetsConnections(campaignId);
+        conn = (connections as any[]).find((c) => String(c.id) === connectionId);
+      }
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
       // Proactively refresh near-expiry tokens.
       let accessToken = conn.accessToken;

@@ -496,11 +496,13 @@ export function ShopifyRevenueWizard(props: {
               <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2 relative">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium">Shopify store</div>
-                  <div className="text-xs text-muted-foreground/70 min-h-[16px] transition-opacity duration-200">
-                    <span className={statusLoading ? "opacity-0" : "opacity-100"}>
-                      {connected ? "Connected" : "Not connected"}
-                    </span>
-                  </div>
+                  {!connected && (
+                    <div className="text-xs text-muted-foreground/70 min-h-[16px] transition-opacity duration-200">
+                      <span className={statusLoading ? "opacity-0" : "opacity-100"}>
+                        Not connected
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Fixed-height helper text to avoid reflow on connected state */}

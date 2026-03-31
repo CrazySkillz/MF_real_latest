@@ -4094,52 +4094,46 @@ export default function GA4Metrics() {
                                 <p className="text-2xl font-bold text-foreground mt-1">
                                   {formatMoney(Number(financialRevenue || 0))}
                                 </p>
-                                <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
-                                  {/* GA4 native revenue line */}
-                                  {ga4RevenueForFinancials > 0 && (
-                                    <div className="grid grid-cols-[1fr_auto] items-center text-xs gap-x-3">
-                                      <span className="text-muted-foreground/70 truncate">GA4 Revenue</span>
-                                      <span className="text-foreground/80 font-medium tabular-nums text-right whitespace-nowrap">{formatMoney(ga4RevenueForFinancials)}</span>
-                                    </div>
-                                  )}
-                                  {/* Imported revenue sources */}
-                                  {revenueDisplaySources.map((s: any) => {
-                                    const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
-                                    const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
-                                    const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
-                                      ? ` · ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
-                                      : "";
-                                    return (
-                                    <div key={s.sourceId} className="grid grid-cols-[1fr_auto] items-center text-xs group/rev gap-x-3">
-                                      <span className="text-muted-foreground/70 truncate" title={(s.displayName || revenueSourceTypeLabel(s.sourceType)) + dateLabel}>
-                                        {s.displayName || revenueSourceTypeLabel(s.sourceType)}{dateLabel}
-                                      </span>
-                                      <div className="flex items-center gap-1 justify-end whitespace-nowrap">
-                                        <span className="text-foreground/80 font-medium tabular-nums text-right">
-                                          {s.revenue != null ? formatMoney(s.revenue) : formatMoney(Number(financialRevenue || 0))}
-                                        </span>
-                                        <button
-                                          onClick={() => {
-                                            setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig });
-                                            setShowRevenueDialog(true);
-                                          }}
-                                          className="p-0.5 rounded hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground dark:hover:text-muted-foreground/60 opacity-0 group-hover/rev:opacity-100 transition-all"
-                                          title="Edit revenue source"
-                                        >
-                                          <Edit className="h-3 w-3" />
-                                        </button>
-                                        <button
-                                          onClick={() => setDeletingRevenueSourceId(s.sourceId)}
-                                          className="p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/60 hover:text-red-600 opacity-0 group-hover/rev:opacity-100 transition-all"
-                                          title="Remove revenue source"
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                    );
-                                  })}
-                                </div>
+                                <table className="w-full mt-2 pt-2 border-t border-slate-100 text-xs">
+                                  <tbody>
+                                    {ga4RevenueForFinancials > 0 && (
+                                      <tr>
+                                        <td className="text-muted-foreground/70 py-0.5 pr-2">GA4 Revenue</td>
+                                        <td className="text-right font-medium tabular-nums text-foreground/80 py-0.5 whitespace-nowrap">{formatMoney(ga4RevenueForFinancials)}</td>
+                                        <td className="w-[36px]"></td>
+                                      </tr>
+                                    )}
+                                    {revenueDisplaySources.map((s: any) => {
+                                      const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
+                                      const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
+                                      const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
+                                        ? ` · ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
+                                        : "";
+                                      return (
+                                        <tr key={s.sourceId} className="group/rev">
+                                          <td className="text-muted-foreground/70 py-0.5 pr-2 max-w-[120px] truncate" title={(s.displayName || revenueSourceTypeLabel(s.sourceType)) + dateLabel}>
+                                            {s.displayName || revenueSourceTypeLabel(s.sourceType)}{dateLabel}
+                                          </td>
+                                          <td className="text-right font-medium tabular-nums text-foreground/80 py-0.5 whitespace-nowrap">
+                                            {s.revenue != null ? formatMoney(s.revenue) : formatMoney(Number(financialRevenue || 0))}
+                                          </td>
+                                          <td className="w-[36px] text-right whitespace-nowrap">
+                                            <button
+                                              onClick={() => { setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig }); setShowRevenueDialog(true); }}
+                                              className="p-0.5 rounded hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground opacity-0 group-hover/rev:opacity-100 transition-all"
+                                              title="Edit"
+                                            ><Edit className="h-3 w-3" /></button>
+                                            <button
+                                              onClick={() => setDeletingRevenueSourceId(s.sourceId)}
+                                              className="p-0.5 rounded hover:bg-red-50 text-muted-foreground/60 hover:text-red-600 opacity-0 group-hover/rev:opacity-100 transition-all"
+                                              title="Delete"
+                                            ><Trash2 className="h-3 w-3" /></button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
                               </>
                             ) : (
                               <>

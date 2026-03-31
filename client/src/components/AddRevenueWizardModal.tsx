@@ -872,9 +872,9 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
-  const handleSheetsPreview = async (connectionIdOverride?: string, opts?: { preserveExisting?: boolean }) => {
+  const handleSheetsPreview = async (connectionIdOverride?: string, opts?: { preserveExisting?: boolean }): Promise<boolean> => {
     const cid = String(connectionIdOverride || sheetsConnectionId || "").trim();
-    if (!cid) return;
+    if (!cid) return false;
     setSheetsProcessing(true);
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/preview`, {
@@ -919,24 +919,30 @@ export function AddRevenueWizardModal(props: {
         }
         if (!sheetsCampaignCol) setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
       }
+      return true;
     } catch (e: any) {
       toast({ title: "Preview failed", description: e?.message || "Please try again.", variant: "destructive" });
       setSheetsPreview(null);
+      return false;
     } finally {
       setSheetsProcessing(false);
     }
   };
 
   // If opened in edit mode for Sheets, auto-load preview so the user can update mappings immediately.
+  // If the connection no longer exists, fall back to the connection chooser step.
   useEffect(() => {
     if (!open) return;
     if (!isEditing) return;
     const type = String(initialSource?.sourceType || "").toLowerCase();
     if (type !== "google_sheets") return;
     if (step !== "sheets_map") return;
-    if (!sheetsConnectionId) return;
+    if (!sheetsConnectionId) { setStep("sheets_choose"); return; }
     if (sheetsPreview) return;
-    void handleSheetsPreview(sheetsConnectionId, { preserveExisting: true });
+    void (async () => {
+      const ok = await handleSheetsPreview(sheetsConnectionId, { preserveExisting: true });
+      if (!ok) setStep("sheets_choose");
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isEditing, step, sheetsConnectionId, sheetsPreview, initialSource]);
 

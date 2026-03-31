@@ -242,23 +242,50 @@ export function AddRevenueWizardModal(props: {
         return;
       }
       const popup = window.open(json.authUrl, "shopify_oauth", "width=520,height=680");
+      const handleSuccess = () => {
+        setCrmOAuth(prev => ({ ...prev, shopify: true }));
+        setCrmConnecting(null);
+        toast({ title: "Shopify connected", description: "Now configure revenue attribution." });
+        setStep("shopify");
+      };
+      const handleError = (error?: string) => {
+        setCrmConnecting(null);
+        toast({ title: "Connection failed", description: error || "OAuth was cancelled or failed.", variant: "destructive" });
+      };
+      // postMessage listener (may not work if Shopify sets COOP headers)
       const onMessage = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
         const data = event.data;
         if (!data || typeof data !== "object") return;
         if (data.type === "shopify_auth_success") {
           window.removeEventListener("message", onMessage);
-          setCrmOAuth(prev => ({ ...prev, shopify: true }));
-          setCrmConnecting(null);
-          toast({ title: "Shopify connected", description: "Now configure revenue attribution." });
-          setStep("shopify");
+          bc?.close();
+          handleSuccess();
         } else if (data.type === "shopify_auth_error") {
           window.removeEventListener("message", onMessage);
-          setCrmConnecting(null);
-          toast({ title: "Connection failed", description: data.error || "OAuth was cancelled or failed.", variant: "destructive" });
+          bc?.close();
+          handleError(data.error);
         }
       };
       window.addEventListener("message", onMessage);
+      // BroadcastChannel fallback (reliable when COOP blocks window.opener)
+      let bc: BroadcastChannel | null = null;
+      if (typeof BroadcastChannel !== "undefined") {
+        bc = new BroadcastChannel("metricmind_oauth");
+        bc.addEventListener("message", (event: MessageEvent) => {
+          const data = event.data;
+          if (!data || typeof data !== "object") return;
+          if (data.type === "shopify_auth_success") {
+            window.removeEventListener("message", onMessage);
+            bc?.close();
+            handleSuccess();
+          } else if (data.type === "shopify_auth_error") {
+            window.removeEventListener("message", onMessage);
+            bc?.close();
+            handleError(data.error);
+          }
+        });
+      }
     } catch (err: any) {
       toast({ title: "Failed to start Shopify connection", description: err?.message || "Please try again.", variant: "destructive" });
       setCrmConnecting(null);

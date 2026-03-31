@@ -634,7 +634,7 @@ export function SalesforceRevenueWizard(props: {
           campaignField,
           selectedValues,
           revenueField,
-          conversionValueField: isLinkedIn ? conversionValueField : null,
+          ...(isLinkedIn && conversionValueField ? { conversionValueField } : {}),
           valueSource: isLinkedIn ? valueSource : "revenue",
           revenueClassification,
           days,

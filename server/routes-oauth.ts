@@ -11800,7 +11800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignField: z.string().trim().min(1),
           selectedValues: zSelectedValues,
           revenueField: z.string().trim().min(1).optional(),
-          conversionValueField: z.string().trim().optional(),
+          conversionValueField: z.string().trim().optional().nullable(),
           valueSource: zValueSource.optional(),
           days: zNumberLike.optional(),
           revenueClassification: z.string().trim().optional(),

@@ -1816,8 +1816,12 @@ export function AddRevenueWizardModal(props: {
                 <Card>
                   <CardContent className="space-y-4">
                     {!sheetsPreview ? (
-                      <div className="rounded-md border p-3 text-sm text-muted-foreground/70">
-                        No preview loaded yet. Go back and select a Google Sheet tab.
+                      <div className="flex items-center justify-center py-8">
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        </div>
                       </div>
                     ) : (
                       <>

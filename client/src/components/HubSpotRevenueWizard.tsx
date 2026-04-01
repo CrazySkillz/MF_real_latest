@@ -35,6 +35,8 @@ export function HubSpotRevenueWizard(props: {
     pipelineEnabled?: boolean;
     pipelineStageId?: string;
     pipelineStageLabel?: string;
+    lastTotalRevenue?: number;
+    dateField?: string;
   } | null;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
@@ -94,11 +96,11 @@ export function HubSpotRevenueWizard(props: {
   const [valuesLoading, setValuesLoading] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
 
-  // Revenue amount for the review step: prefer lastSaveResult, then stored config
+  // Revenue amount for the review step: prefer lastSaveResult, then stored config, then breakdown revenue
   const reviewRevenue = useMemo(() => {
     if (lastSaveResult?.totalRevenue != null) return Number(lastSaveResult.totalRevenue);
-    const stored = Number((initialMappingConfig as any)?.lastTotalRevenue);
-    if (Number.isFinite(stored) && stored > 0) return stored;
+    const stored = Number(initialMappingConfig?.lastTotalRevenue);
+    if (Number.isFinite(stored) && stored >= 0) return stored;
     return null;
   }, [lastSaveResult, initialMappingConfig]);
 
@@ -380,14 +382,24 @@ export function HubSpotRevenueWizard(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, isConnected, pipelines.length, campaignId]);
 
+  // Common HubSpot property name → human label (fallback when API unavailable in edit mode)
+  const hubspotPropertyFallback = (name: string): string => {
+    const map: Record<string, string> = {
+      dealname: "Deal Name", amount: "Amount", closedate: "Close Date",
+      hs_lastmodifieddate: "Last Modified Date", createdate: "Created Date",
+      dealstage: "Deal Stage", pipeline: "Pipeline", hubspot_owner_id: "Owner",
+    };
+    return map[name] || name;
+  };
+
   const campaignPropertyLabel = useMemo(() => {
     const p = properties.find((x) => x.name === campaignProperty);
-    return p?.label || campaignProperty || "Campaign field";
+    return p?.label || hubspotPropertyFallback(campaignProperty) || "Campaign field";
   }, [properties, campaignProperty]);
 
   const revenuePropertyLabel = useMemo(() => {
     const p = properties.find((x) => x.name === revenueProperty);
-    return p?.label || revenueProperty || "Revenue field";
+    return p?.label || hubspotPropertyFallback(revenueProperty) || "Revenue field";
   }, [properties, revenueProperty]);
 
   const hubspotSourceMode = useMemo(() => {

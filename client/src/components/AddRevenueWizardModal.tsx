@@ -129,6 +129,8 @@ export function AddRevenueWizardModal(props: {
     pipelineEnabled?: boolean;
     pipelineStageId?: string;
     pipelineStageLabel?: string;
+    lastTotalRevenue?: number;
+    dateField?: string;
   }>(null);
 
   // Manual
@@ -540,6 +542,9 @@ export function AddRevenueWizardModal(props: {
         pipelineEnabled: config?.pipelineEnabled === true,
         pipelineStageId: config?.pipelineStageId ? String(config.pipelineStageId) : undefined,
         pipelineStageLabel: config?.pipelineStageLabel ? String(config.pipelineStageLabel) : undefined,
+        lastTotalRevenue: Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue)
+          : Number.isFinite(Number(initialSource?.revenue)) ? Number(initialSource.revenue) : undefined,
+        dateField: config?.dateField ? String(config.dateField) : undefined,
       };
       setHubspotInitialMappingConfig(next);
       setStep("hubspot");

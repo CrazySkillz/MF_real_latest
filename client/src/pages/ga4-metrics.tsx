@@ -4132,7 +4132,7 @@ export default function GA4Metrics() {
                                           </td>
                                           <td className="w-[36px] text-right whitespace-nowrap">
                                             <button
-                                              onClick={() => { setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig }); setShowRevenueDialog(true); }}
+                                              onClick={() => { setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue }); setShowRevenueDialog(true); }}
                                               className="p-0.5 rounded hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground opacity-0 group-hover/rev:opacity-100 transition-all"
                                               title="Edit"
                                             ><Edit className="h-3 w-3" /></button>

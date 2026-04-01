@@ -1242,16 +1242,6 @@ export function SalesforceRevenueWizard(props: {
                   </div>
                 )}
               </div>
-              {/* Show reconnect prompt when only synthesized values are available (API fetch failed) */}
-              {uniqueValues.length > 0 && uniqueValues.every(v => v.count === 0) && !valuesLoading && crosswalkFetchedRef.current && (
-                <div className="text-xs text-muted-foreground mt-2">
-                  Only your saved selection is shown.{" "}
-                  <button className="underline text-primary" onClick={() => void openOAuthWindow()} disabled={isConnecting}>
-                    {isConnecting ? "Reconnecting..." : "Reconnect Salesforce"}
-                  </button>
-                  {" "}to load all available values, or click <strong>Refresh values</strong> to retry.
-                </div>
-              )}
             </div>
           )}
 

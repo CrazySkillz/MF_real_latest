@@ -559,17 +559,19 @@ export function SalesforceRevenueWizard(props: {
     return raw === "conversion_value";
   }, [mode, initialMappingConfig]);
 
-  // Revenue amount for the review step: prefer save result, then stored config, then preview rows
+  // Revenue amount for the review step: prefer save result, then stored config, then preview data
+  // Returns a number (including 0) when data is available, null when no data yet
   const reviewRevenue = useMemo(() => {
     if (lastSaveResult?.totalRevenue != null) return Number(lastSaveResult.totalRevenue);
     const stored = Number((initialMappingConfig as any)?.lastTotalRevenue);
-    if (Number.isFinite(stored) && stored > 0) return stored;
-    if (previewRows.length > 0 && previewHeaders.length > 0) {
+    if (Number.isFinite(stored)) return stored;
+    // Preview completed (headers set) — compute from rows even if 0
+    if (previewHeaders.length > 0) {
       const amtIdx = previewHeaders.findIndex((h) => h.toLowerCase() === "amount" || h === revenueField);
       if (amtIdx >= 0) {
-        const sum = previewRows.reduce((acc, row) => acc + (Number(row[amtIdx]) || 0), 0);
-        if (sum > 0) return sum;
+        return previewRows.reduce((acc, row) => acc + (Number(row[amtIdx]) || 0), 0);
       }
+      return 0;
     }
     return null;
   }, [lastSaveResult, initialMappingConfig, previewRows, previewHeaders, revenueField]);
@@ -1353,14 +1355,16 @@ export function SalesforceRevenueWizard(props: {
                     <div className="font-medium text-foreground">{campaignFieldDisplay}</div>
                   </div>
 
-                  {reviewRevenue != null && (
-                    <div>
-                      <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
-                      <div className="font-medium text-foreground text-green-700 dark:text-green-400">
-                        ${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
+                    <div className="font-medium text-foreground text-green-700 dark:text-green-400">
+                      {reviewRevenue != null
+                        ? `$${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : previewLoading
+                          ? "Loading..."
+                          : "—"}
                     </div>
-                  )}
+                  </div>
 
                   {pipelineEnabled && (
                     <div>

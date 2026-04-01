@@ -322,11 +322,12 @@ export function HubSpotRevenueWizard(props: {
     })();
   }, [step, portalId, properties.length, toast]);
 
-  // When entering crosswalk step (e.g. navigating back from review), load unique values if needed.
+  // When entering crosswalk step, load unique values if needed.
+  // Skip if selectedValues already exist (edit mode prefill) — user can use Refresh button if they want fresh data.
   useEffect(() => {
     if (step !== "crosswalk") return;
     if (!isConnected || !campaignProperty) return;
-    if (uniqueValues.length > 0) return;
+    if (uniqueValues.length > 0 || selectedValues.length > 0) return;
     void (async () => {
       try {
         await fetchUniqueValues(campaignProperty);

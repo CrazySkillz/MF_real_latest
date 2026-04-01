@@ -489,11 +489,12 @@ export function SalesforceRevenueWizard(props: {
     })();
   }, [step, fields.length, toast, statusLoading, isConnected, campaignId]);
 
-  // When entering crosswalk step (e.g. navigating back from review), load unique values if needed.
+  // When entering crosswalk step, load unique values if needed.
+  // Skip if selectedValues already exist (edit mode prefill) — user can use Refresh button if they want fresh data.
   useEffect(() => {
     if (step !== "crosswalk") return;
     if (!isConnected || !campaignField) return;
-    if (uniqueValues.length > 0) return;
+    if (uniqueValues.length > 0 || selectedValues.length > 0) return;
     void (async () => {
       try {
         await fetchUniqueValues(campaignField);
@@ -502,7 +503,7 @@ export function SalesforceRevenueWizard(props: {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, isConnected, campaignField, uniqueValues.length]);
+  }, [step, isConnected, campaignField, uniqueValues.length, selectedValues.length]);
 
   useEffect(() => {
     if (step !== "pipeline") return;

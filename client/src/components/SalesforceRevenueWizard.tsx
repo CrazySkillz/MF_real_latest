@@ -578,6 +578,21 @@ export function SalesforceRevenueWizard(props: {
     return raw === "conversion_value";
   }, [mode, initialMappingConfig]);
 
+  // Fire preview once when entering review step without stored revenue (e.g., old configs missing lastTotalRevenue)
+  const reviewPreviewFiredRef = useRef(false);
+  useEffect(() => {
+    if (step !== "review") return;
+    if (reviewPreviewFiredRef.current) return;
+    if (lastSaveResult?.totalRevenue != null) return;
+    const stored = Number((initialMappingConfig as any)?.lastTotalRevenue);
+    if (Number.isFinite(stored)) return;
+    if (previewHeaders.length > 0) return; // preview already loaded
+    if (!isConnected || isConnecting || !campaignField || selectedValues.length === 0) return;
+    reviewPreviewFiredRef.current = true;
+    void preview().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, isConnected, isConnecting]);
+
   // Revenue amount for the review step: prefer save result, then stored config, then preview data
   // Returns a number (including 0) when data is available, null when no data yet
   const reviewRevenue = useMemo(() => {

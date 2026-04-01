@@ -143,6 +143,23 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
   → revenueRecords (daily normalized rows: date, revenue, currency, platformContext)
 ```
 
+### Per-Day Revenue Records (CSV/Sheets)
+- CSV and Sheets revenue import endpoints support an optional `dateColumn` in the mapping
+- When mapped: creates one `revenueRecord` per date (enables Latest Day Revenue card + Trends daily tracking)
+- When not mapped: sums all rows into a single record dated yesterday (backward compatible)
+- The Date column selector is labeled "(recommended)" in both CSV and Sheets mapping UIs
+- Spend already had per-day support via `dateColumn` — revenue now matches
+- Daily scheduler (`auto-refresh-scheduler.ts`) preserves per-day records on re-sync
+
+### Google Sheets Daily Sync (`auto-refresh-scheduler.ts`)
+- Runs daily at 3 AM alongside LinkedIn/CRM refresh
+- Re-reads ALL active Google Sheets spend and revenue sources (fixed `.find()` → `.filter()` bug)
+- Revenue uses direct DB operations (fixed auth failure from `postJson` to endpoints requiring Clerk)
+- Revenue checks all platform contexts: ga4, linkedin, meta (fixed missing context bug)
+- Spend uses `postJson` to spend/sheets/process endpoint (no auth required)
+- Updates `mappingConfig.lastSyncedAt` on success
+- One failure doesn't stop others (try/catch per source)
+
 ### Platform Context
 - `platformContext` field (`'ga4' | 'linkedin' | 'meta'`) prevents cross-platform revenue/spend leakage
 - GA4 native revenue tracked separately from CRM-sourced revenue
@@ -152,7 +169,7 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 
 ### Financial Aggregation Endpoints
 - `GET /api/campaigns/:id/spend-totals` / `spend-breakdown` / `spend-to-date` / `spend-daily?date=YYYY-MM-DD`
-- `GET /api/campaigns/:id/revenue-totals` / `revenue-breakdown` / `revenue-to-date`
+- `GET /api/campaigns/:id/revenue-totals` / `revenue-breakdown` / `revenue-to-date` / `revenue-daily?date=YYYY-MM-DD`
 - `GET /api/campaigns/:id/outcome-totals` — unified metrics (GA4 + platforms + revenue + spend)
 - `DELETE /api/campaigns/:id/spend-sources/:sourceId` — soft-delete a spend source, recalculate total
 
@@ -168,7 +185,7 @@ Source (GA4 native, Manual, CSV, Sheets, HubSpot, Salesforce, Shopify)
 
 ### Spend Cards (GA4 Overview)
 - **Total Spend**: Uses `financialSpend` (prefers `spend-breakdown` total, falls back to `spend-to-date`). Shows "+" icon to add sources and per-source breakdown with edit/trash icons when sources exist. Shows "Add Spend" prompt when no spend exists.
-- **Latest Day Revenue**: Uses `ga4ReportDate` to find the most recent **complete** day (skips today's partial intraday data). GA4-only — does not include CRM/imported revenue.
+- **Latest Day Revenue**: GA4 native daily revenue (`ga4DailyRows[ga4ReportDate].revenue`) + imported revenue for the same date (`revenue-daily?date=ga4ReportDate`). Uses `ga4ReportDate` (most recent complete day, skips today's partial). Falls back to yesterday when no GA4 data. Imported revenue only shows for sources with per-day records (date column mapped in CSV/Sheets, or CRM with actual deal dates).
 - **Latest Day Spend**: Queries `/spend-daily` for both today and yesterday, prefers whichever has data. Manual/CSV/ad platform spend records are dated today; scheduler records have actual historical dates. No dead fallback to GA4 `_raw.spend` (ga4_daily_metrics has no spend column).
 - **Empty state gate**: Card shows populated view when `spendBreakdownResp.sources.length > 0 OR financialSpend > 0` (prevents showing $0 when breakdown hasn't loaded but spend exists).
 - Per-source trash uses AlertDialog confirmation → `DELETE /api/campaigns/:id/spend-sources/:sourceId`.

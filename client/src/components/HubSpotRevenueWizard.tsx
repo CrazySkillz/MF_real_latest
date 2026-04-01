@@ -311,7 +311,7 @@ export function HubSpotRevenueWizard(props: {
     if (step !== "campaign-field" && step !== "revenue") return;
     if (!isConnected) return;
     if (properties.length > 0) return;
-    if (mode === "edit" && campaignProperty && revenueProperty) return;
+    if (campaignProperty && revenueProperty && (mode === "edit" || initialMappingConfig)) return;
     (async () => {
       try {
         await fetchProperties();
@@ -432,7 +432,7 @@ export function HubSpotRevenueWizard(props: {
       return;
     }
     if (step === "campaign-field") {
-      if (!isConnected && mode !== "edit") {
+      if (!isConnected && mode !== "edit" && !initialMappingConfig) {
         toast({
           title: "Connect HubSpot",
           description: "Please connect HubSpot before selecting deal fields.",
@@ -448,7 +448,7 @@ export function HubSpotRevenueWizard(props: {
         });
         return;
       }
-      if (!(mode === "edit" && selectedValues.length > 0)) {
+      if (!((mode === "edit" || initialMappingConfig) && selectedValues.length > 0)) {
         await fetchUniqueValues(campaignProperty);
       }
       setStep("crosswalk");
@@ -1095,7 +1095,7 @@ export function HubSpotRevenueWizard(props: {
                   valuesLoading ||
                   isSaving ||
                   statusLoading ||
-                  (step === "campaign-field" ? ((!isConnected && mode !== "edit") || !campaignProperty) :
+                  (step === "campaign-field" ? ((!isConnected && mode !== "edit" && !initialMappingConfig) || !campaignProperty) :
                     step === "crosswalk" ? (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0) :
                       step === "pipeline" ? (!pipelineStageId) :
                         step === "revenue" ? (!revenueProperty) :

@@ -475,7 +475,7 @@ export function SalesforceRevenueWizard(props: {
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
     if (fields.length > 0) return;
-    if (mode === "edit" && campaignField && revenueField) return; // Edit mode has prefilled values — dropdowns will show raw names
+    if (campaignField && revenueField && (mode === "edit" || initialMappingConfig)) return; // Edit mode has prefilled values — dropdowns will show raw names
     if (statusLoading || !isConnected) return;
     (async () => {
       try {
@@ -691,7 +691,7 @@ export function SalesforceRevenueWizard(props: {
       return;
     }
     if (step === "campaign-field") {
-      if (!isConnected && mode !== "edit") {
+      if (!isConnected && mode !== "edit" && !initialMappingConfig) {
         toast({ title: "Connect Salesforce", description: "Connect Salesforce before continuing.", variant: "destructive" });
         return;
       }
@@ -704,7 +704,7 @@ export function SalesforceRevenueWizard(props: {
         return;
       }
       // In edit mode with prefilled values, skip the API fetch — crosswalk useEffect will synthesize from selectedValues
-      if (!(mode === "edit" && selectedValues.length > 0)) {
+      if (!((mode === "edit" || initialMappingConfig) && selectedValues.length > 0)) {
         await fetchUniqueValues(campaignField);
       }
       setStep("crosswalk");
@@ -1367,7 +1367,7 @@ export function SalesforceRevenueWizard(props: {
                   valuesLoading ||
                   isSaving ||
                   stagesLoading ||
-                  (step === "campaign-field" && (statusLoading || (!isConnected && mode !== "edit") || fieldsLoading || (fields.length === 0 && mode !== "edit") || !campaignField)) ||
+                  (step === "campaign-field" && (statusLoading || (!isConnected && mode !== "edit" && !initialMappingConfig) || fieldsLoading || (fields.length === 0 && mode !== "edit" && !initialMappingConfig) || !campaignField)) ||
                   (step === "crosswalk" && (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0)) ||
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.

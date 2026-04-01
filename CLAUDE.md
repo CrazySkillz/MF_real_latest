@@ -448,6 +448,27 @@ Include filter params (e.g., `dateRange`, `platformContext`, `clientId`) for cor
 5. Wizard step loads (campaign field mapping → crosswalk → pipeline → revenue → review → save)
 6. **"Connected" badge** only shows when BOTH OAuth done AND active revenue source exists
 
+### CRM Endpoint Requirements (CRITICAL — enforced by `endpoint-auth-audit.test.ts`)
+
+Every `/api/salesforce/:campaignId/*`, `/api/hubspot/:campaignId/*`, `/api/shopify/:campaignId/*` endpoint MUST:
+
+1. **Have `ensureCampaignAccess`** in the first 10 lines:
+   ```typescript
+   const campaignId = String(req.params.campaignId || "");
+   const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+   if (!ok) return;
+   ```
+
+2. **OAuth scopes MUST include `refresh_token`** — without it, tokens expire (~2h for Salesforce) and connections silently die. Default Salesforce scope: `'api id refresh_token'`.
+
+3. **Token refresh errors MUST propagate** — never silently catch and use expired tokens. Throw with a clear message so the endpoint returns a proper error and the UI can prompt re-auth.
+
+4. **Client-side `encodeURIComponent`** takes exactly ONE argument — never pass `{ credentials: "include" }` as a second arg (JS silently ignores it, but it indicates a copy-paste bug).
+
+5. **No duplicate `credentials` in fetch options** — `credentials: "include"` must appear exactly once per fetch call.
+
+These rules are enforced by `server/endpoint-auth-audit.test.ts` (7 tests, <1s). The test scans source code and fails immediately if any rule is violated. Run `npm run test` before every push.
+
 ### CRM Edit Mode (CRITICAL — read before modifying HubSpot/Salesforce wizards)
 
 Edit mode must work with **expired OAuth tokens**. No automatic API calls. All data from stored `mappingConfig`.
@@ -595,7 +616,7 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 
 | Layer | Count | Command | What it proves |
 |-------|-------|---------|---------------|
-| **Unit tests** | 212 | `npm run test` | Math formulas, revenue/spend additivity, template gates, credentials audit, cross-tab propagation, formatPct/formatNumberByUnit |
+| **Unit tests** | 212+ | `npm run test` | Math formulas, revenue/spend additivity, template gates, credentials audit, endpoint auth audit, cross-tab propagation, formatPct/formatNumberByUnit |
 | **E2E tests** | 131 | `npm run test:e2e:headed` | App doesn't crash, tabs load, buttons work, modals open |
 | **Manual test plan** | 16 journeys | `GA4-MANUAL-TEST-PLAN.md` | Full data flow, cross-tab consistency, data accuracy |
 
@@ -611,6 +632,7 @@ Migrations run in `server/index.ts` on startup (ALTER TABLE statements). Schema 
 | `server/cross-tab-propagation.test.ts` | Spend/revenue changes → ROAS/CPA/KPI progress updates |
 | `server/spend-and-template-gates.test.ts` | Spend additivity, KPI/Benchmark template gates, formatNumberByUnit |
 | `server/fetch-credentials-audit.test.ts` | Scans 10 wizard files for missing credentials, deactivation audit |
+| `server/endpoint-auth-audit.test.ts` | Scans CRM endpoints for missing auth guards, OAuth scope, token refresh, client fetch bugs |
 | `e2e/ga4-refresh-validation.spec.ts` | 131 E2E tests — UI journeys |
 | `GA4-MANUAL-TEST-PLAN.md` | 16 manual test journeys — data flow verification |
 

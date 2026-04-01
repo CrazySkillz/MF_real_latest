@@ -34,6 +34,8 @@ export function SalesforceRevenueWizard(props: {
     pipelineEnabled?: boolean;
     pipelineStageName?: string;
     pipelineStageLabel?: string;
+    lastTotalRevenue?: number;
+    dateField?: string;
   } | null;
   connectOnly?: boolean;
   /**
@@ -225,7 +227,9 @@ export function SalesforceRevenueWizard(props: {
     setPipelineStageName(nextPipelineStageName);
     setPipelineStageLabel(nextPipelineStageLabel);
     setSelectedValues(nextSelectedValues);
-    setUniqueValues([]);
+    // Synthesize uniqueValues from selectedValues so crosswalk checkboxes render
+    // when user navigates back (API may be unavailable with expired tokens)
+    setUniqueValues(nextSelectedValues.map((v) => ({ value: v, count: 0 })));
     setDays(nextDays); // persisted value when editing; no setter exposed in UI
     if ((cfg as any).dateField) setDateField(String((cfg as any).dateField));
     setLastSaveResult(null);
@@ -584,7 +588,7 @@ export function SalesforceRevenueWizard(props: {
     if (step !== "review") return;
     if (reviewPreviewFiredRef.current) return;
     if (lastSaveResult?.totalRevenue != null) return;
-    const stored = Number((initialMappingConfig as any)?.lastTotalRevenue);
+    const stored = Number(initialMappingConfig?.lastTotalRevenue);
     if (Number.isFinite(stored)) return;
     if (previewHeaders.length > 0) return; // preview already loaded
     if (!isConnected || isConnecting || !campaignField || selectedValues.length === 0) return;
@@ -597,7 +601,7 @@ export function SalesforceRevenueWizard(props: {
   // Returns a number (including 0) when data is available, null when no data yet
   const reviewRevenue = useMemo(() => {
     if (lastSaveResult?.totalRevenue != null) return Number(lastSaveResult.totalRevenue);
-    const stored = Number((initialMappingConfig as any)?.lastTotalRevenue);
+    const stored = Number(initialMappingConfig?.lastTotalRevenue);
     if (Number.isFinite(stored)) return stored;
     // Preview completed (headers set) — compute from rows even if 0
     if (previewHeaders.length > 0) {

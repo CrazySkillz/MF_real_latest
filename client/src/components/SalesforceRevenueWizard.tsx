@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -197,8 +197,8 @@ export function SalesforceRevenueWizard(props: {
       setUniqueValues([]);
       setSelectedValues([]);
       setLastSaveResult(null);
-      setCrosswalkFetched(false);
-      setStagesFetched(false);
+      crosswalkFetchedRef.current = false;
+      stagesFetchedRef.current = false;
       return;
     }
 
@@ -509,7 +509,7 @@ export function SalesforceRevenueWizard(props: {
 
   // When entering crosswalk step, load unique values.
   // In edit mode: synthesize immediately (so checkboxes render), then fetch real values in background.
-  const [crosswalkFetched, setCrosswalkFetched] = useState(false);
+  const crosswalkFetchedRef = useRef(false);
   useEffect(() => {
     if (step !== "crosswalk") return;
     // Synthesize fallback entries first so the UI isn't empty
@@ -517,9 +517,9 @@ export function SalesforceRevenueWizard(props: {
       setUniqueValues(selectedValues.map(v => ({ value: v, count: 0 })));
     }
     // Fetch real values from API (for full list + accurate counts)
-    if (crosswalkFetched) return; // already fetched this session
+    if (crosswalkFetchedRef.current) return;
     if (!isConnected || !campaignField) return;
-    setCrosswalkFetched(true);
+    crosswalkFetchedRef.current = true;
     void (async () => {
       try {
         await fetchUniqueValues(campaignField);
@@ -532,12 +532,12 @@ export function SalesforceRevenueWizard(props: {
 
   // Fetch pipeline stages when entering pipeline step.
   // Always attempt fetch so edit mode users can change their selection.
-  const [stagesFetched, setStagesFetched] = useState(false);
+  const stagesFetchedRef = useRef(false);
   useEffect(() => {
     if (step !== "pipeline") return;
     if (!isConnected) return;
-    if (stagesFetched || stages.length > 0) return; // already fetched
-    setStagesFetched(true);
+    if (stagesFetchedRef.current || stages.length > 0) return;
+    stagesFetchedRef.current = true;
     void (async () => {
       setStagesLoading(true);
       try {
@@ -555,7 +555,8 @@ export function SalesforceRevenueWizard(props: {
         setStagesLoading(false);
       }
     })();
-  }, [step, isConnected, stagesFetched, stages.length, campaignId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, isConnected, stages.length, campaignId]);
 
   const salesforceSourceMode = useMemo(() => {
     return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);
@@ -742,10 +743,10 @@ export function SalesforceRevenueWizard(props: {
         return;
       }
       // Fetch unique values for the crosswalk step (edit mode also fetches so user can change selection)
-      if (!crosswalkFetched) {
+      if (!crosswalkFetchedRef.current) {
         try {
           await fetchUniqueValues(campaignField);
-          setCrosswalkFetched(true);
+          crosswalkFetchedRef.current = true;
         } catch {
           // Non-fatal — crosswalk useEffect will synthesize from selectedValues if needed
         }

@@ -450,7 +450,11 @@ Include filter params (e.g., `dateRange`, `platformContext`, `clientId`) for cor
 
 ### CRM Edit Mode
 - **Edit opens on Review step** with HubSpot-style settings summary (account, revenue field, campaign field, date field, selected values)
-- **Back navigation** works through all steps with prefilled values — each step has a useEffect to auto-fetch data (properties, unique values, pipelines) when entered
+- **Review step NEVER fetches from CRM APIs** — only displays data from stored `mappingConfig`. Labels fall back to raw field names (`"Amount"`, `"Opportunity Name"`) when properties aren't loaded. Fetching on review caused "Session expired" errors when OAuth tokens expired.
+- **Back navigation** works through all steps with prefilled values — each step has a useEffect to auto-fetch data when entered:
+  - Properties/Fields: fetch on `campaign-field` and `revenue` steps ONLY (NOT `review`)
+  - Unique Values: fetch on `crosswalk` step
+  - Pipelines/Stages: fetch on `pipeline` step
 - **Google Sheets edit**: backend preview/process use purpose-agnostic connection fallback; client auto-selects first available connection if stored ID is invalid
 - **Salesforce Zod**: `conversionValueField` is `.nullable()` — GA4 context omits it instead of sending null
 

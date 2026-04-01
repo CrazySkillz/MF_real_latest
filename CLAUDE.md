@@ -4,6 +4,14 @@
 >
 > **Quality standard: "Tests pass" is NOT "done."** After every fix, trace the full user journey — what will the user actually see? For auth/OAuth fixes, test with existing stale connections, not just fresh ones. For error changes, trace every UI surface (toasts, inline errors, disabled buttons). For wizard fixes, walk every step. Ship the complete fix (backend + frontend + error handling + migration path) in one commit. Never ship a partial backend fix and wait for the user to report the frontend symptoms.
 >
+> **Before changing ANY function call, read the FULL function being called** — especially its error/catch paths, state mutations, and return values. Most bugs in this project were caused by editing a useEffect without reading the function it calls. If a useEffect calls `fetchUniqueValues()`, read ALL of `fetchUniqueValues` (including its catch block) before changing the useEffect. If a function sets state on error (e.g., `setUniqueValues([])`), that state change affects every caller. Never assume a function "just fetches data" — verify what it does on failure.
+>
+> **React rules — verify before writing:**
+> - State read inside useEffect but NOT in deps → use `useRef`, not `useState`
+> - Function called from useEffect → read the function's error path (does it wipe state? show toasts? set error strings?)
+> - Radix Select with `value` prop → must have a matching `SelectItem` or the value won't display
+> - `finally` blocks in async functions → runs immediately when the sync part completes, NOT when the async operation completes
+>
 > Specific rules:
 > - **GA4 Users are non-additive** — never sum or average users across dates, dimensions, or campaigns. In rolling windows (7d/30d), hide Users from the metric selector entirely rather than showing overcounted values. Per-campaign user counts from breakdown reports are approximate.
 > - **Exclude partial intraday data** — GA4 endpoints should use `endDate: "yesterday"` (not `"today"`) to report only complete UTC days. Partial data makes metrics look artificially low.

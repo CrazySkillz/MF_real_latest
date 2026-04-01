@@ -378,7 +378,7 @@ export function SalesforceRevenueWizard(props: {
         setStatusLoading(true);
         await fetchStatus();
         setStatusLoading(false);
-        setIsConnecting(false); // Mark OAuth complete AFTER fresh tokens are stored — triggers fields useEffect
+        setIsConnecting(false);
         toast({
           title: "Salesforce Connected",
           description: connectOnly
@@ -390,9 +390,14 @@ export function SalesforceRevenueWizard(props: {
           onClose?.();
           return;
         }
-        // Reset fields so useEffect re-fetches with fresh token
-        setFields([]);
+        // Explicitly fetch fields with the fresh token — don't rely on useEffect
+        // which has edit-mode guards that block re-fetching
         setFieldsError(null);
+        try {
+          await fetchFields();
+        } catch {
+          // non-fatal — user can retry
+        }
         setStep("campaign-field");
       };
 
@@ -479,23 +484,26 @@ export function SalesforceRevenueWizard(props: {
   }, [autoStartOAuth, autoStartAttempted, mode, connectOnly, statusLoading, isConnected, campaignId]);
 
   // Fetch fields when entering campaign-field or revenue steps (for dropdown options).
-  // Skip if fields already loaded, OR if in edit mode with prefilled values (prevents expired token errors).
-  // Skip if OAuth reconnect is in progress (isConnecting) — wait for new tokens before hitting the API.
+  // Skip if fields already loaded or if OAuth is in progress.
+  // In edit mode: still attempt to fetch for dropdown options — if it fails (expired token),
+  // the dropdown falls back to showing the raw prefilled field name, and the user can Reconnect.
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
     if (fields.length > 0) return;
     if (isConnecting) return; // OAuth in progress — don't fetch with potentially expired token
-    if (campaignField && revenueField && (mode === "edit" || initialMappingConfig)) return; // Edit mode has prefilled values — dropdowns will show raw names
     if (statusLoading || !isConnected) return;
     (async () => {
       try {
         await fetchFields();
       } catch (err: any) {
-        setFieldsError(err?.message || "Failed to load Opportunity fields.");
-        // No toast — the inline error with Retry/Reconnect link is sufficient and less intrusive
+        // In edit mode, this is non-fatal — the dropdown shows the raw field name
+        // and the user can click Reconnect to get a fresh token
+        if (mode !== "edit" && !initialMappingConfig) {
+          setFieldsError(err?.message || "Failed to load Opportunity fields.");
+        }
       }
     })();
-  }, [step, fields.length, toast, statusLoading, isConnected, isConnecting, campaignId, mode, campaignField, revenueField]);
+  }, [step, fields.length, statusLoading, isConnected, isConnecting, campaignId]);
 
   // When entering crosswalk step, load unique values if needed.
   // In edit mode with prefilled selectedValues, synthesize uniqueValues so checkboxes render.
@@ -1029,14 +1037,18 @@ export function SalesforceRevenueWizard(props: {
                     />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]" side="bottom" align="start" sideOffset={4} avoidCollisions={false}>
-                    {fields
-                      .slice()
-                      .sort((a, b) => a.label.localeCompare(b.label))
-                      .map((f) => (
-                        <SelectItem key={f.name} value={f.name}>
-                          {f.label}
-                        </SelectItem>
-                      ))}
+                    {fields.length > 0
+                      ? fields
+                          .slice()
+                          .sort((a, b) => a.label.localeCompare(b.label))
+                          .map((f) => (
+                            <SelectItem key={f.name} value={f.name}>
+                              {f.label}
+                            </SelectItem>
+                          ))
+                      : campaignField
+                        ? <SelectItem value={campaignField}>{campaignFieldDisplay}</SelectItem>
+                        : null}
                   </SelectContent>
                 </Select>
 
@@ -1231,13 +1243,19 @@ export function SalesforceRevenueWizard(props: {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]">
-                    {fields
-                      .filter((f) => f.type === "currency" || f.type === "double" || f.type === "int" || f.name === "Amount")
-                      .map((f) => (
-                        <SelectItem key={f.name} value={f.name}>
-                          {f.label} ({f.name})
-                        </SelectItem>
-                      ))}
+                    {(() => {
+                      const numericFields = fields.filter((f) => f.type === "currency" || f.type === "double" || f.type === "int" || f.name === "Amount");
+                      if (numericFields.length > 0) {
+                        return numericFields.map((f) => (
+                          <SelectItem key={f.name} value={f.name}>
+                            {f.label} ({f.name})
+                          </SelectItem>
+                        ));
+                      }
+                      // Fallback: show prefilled value when fields haven't loaded
+                      const currentVal = isLinkedIn && valueSource === "conversion_value" ? conversionValueField : revenueField;
+                      return currentVal ? <SelectItem value={currentVal}>{revenueFieldLabel} ({currentVal})</SelectItem> : null;
+                    })()}
                   </SelectContent>
                 </Select>
                 <div className="text-xs text-muted-foreground">

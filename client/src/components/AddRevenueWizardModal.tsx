@@ -670,7 +670,10 @@ export function AddRevenueWizardModal(props: {
   const handleBack = () => {
     if (step === "select") return;
     if (step === "csv_map") return setStep("csv");
-    if (step === "sheets_map") return setStep("sheets_choose");
+    if (step === "sheets_map") {
+      setSheetsConnectionId(""); // Clear so auto-advance doesn't immediately push back to sheets_map
+      return setStep("sheets_choose");
+    }
     if (step === "hubspot") {
       setHubspotBackNonce((n) => n + 1);
       return;

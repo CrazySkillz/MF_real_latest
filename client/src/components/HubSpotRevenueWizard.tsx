@@ -477,7 +477,7 @@ export function HubSpotRevenueWizard(props: {
       if (!pipelineStageId) {
         toast({
           title: "Select a pipeline stage",
-          description: "Choose the HubSpot stage that should count as “pipeline created”.",
+          description: "Choose the HubSpot stage that should count as 'pipeline created'.",
           variant: "destructive",
         });
         return;
@@ -635,9 +635,9 @@ export function HubSpotRevenueWizard(props: {
                   ? `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : ""}Select the HubSpot deal field that identifies which deals belong to this MetricMind campaign.`
                   : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
             {step === "crosswalk" &&
-              `Select the value(s) from “${campaignPropertyLabel}” that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
+              `Select the value(s) from "${campaignPropertyLabel}" that should map to this MetricMind campaign. (The value does not need to match the MetricMind campaign name.)`}
             {step === "pipeline" &&
-              "Choose the HubSpot stage that should count as “pipeline created”. This provides a daily signal alongside daily spend."}
+              "Choose the HubSpot stage that should count as 'pipeline created'. This provides a daily signal alongside daily spend."}
             {step === "revenue" &&
               "Select the HubSpot field that represents deal amount."}
             {step === "review" && "Review the settings below, then save mappings."}
@@ -709,7 +709,7 @@ export function HubSpotRevenueWizard(props: {
 
                   <div className="text-xs text-muted-foreground">
                     {hubspotSourceMode === "revenue_plus_pipeline"
-                      ? "Next, you’ll choose which Pipeline stage should count as “pipeline created”."
+                      ? "Next, you’ll choose which Pipeline stage should count as 'pipeline created'."
                       : "Next, you’ll map HubSpot deals to this campaign."}
                   </div>
                 </div>
@@ -758,15 +758,19 @@ export function HubSpotRevenueWizard(props: {
                         sideOffset={4}
                         avoidCollisions={false}
                       >
-                        {properties.map((p) => (
-                          <SelectItem key={p.name} value={p.name}>
-                            {p.label} ({p.name})
-                          </SelectItem>
-                        ))}
+                        {properties.length > 0
+                        ? properties.map((p) => (
+                            <SelectItem key={p.name} value={p.name}>
+                              {p.label} ({p.name})
+                            </SelectItem>
+                          ))
+                        : campaignProperty
+                          ? (<SelectItem value={campaignProperty}>{campaignPropertyLabel}</SelectItem>)
+                          : null}
                       </SelectContent>
                     </Select>
                     <div className="text-xs text-muted-foreground">
-                      Tip: pick the HubSpot property your team uses for “LinkedIn campaign” or “UTM campaign”.
+                      Tip: pick the HubSpot property your team uses for "LinkedIn campaign" or "UTM campaign".
                     </div>
                   </div>
                 )}
@@ -890,7 +894,7 @@ export function HubSpotRevenueWizard(props: {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Stage that counts as “pipeline created”</Label>
+                    <Label>Stage that counts as 'pipeline created'</Label>
                     <Select
                       value={pipelineStageId}
                       onValueChange={(v) => {
@@ -953,13 +957,19 @@ export function HubSpotRevenueWizard(props: {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="z-[10000]">
-                      {properties
-                        .filter((p) => p.type === "number" || p.name === "amount")
-                        .map((p) => (
-                          <SelectItem key={p.name} value={p.name}>
-                            {p.label} ({p.name})
-                          </SelectItem>
-                        ))}
+                      {(() => {
+                        const numericProps = properties.filter((p) => p.type === "number" || p.name === "amount");
+                        if (numericProps.length > 0) {
+                          return numericProps.map((p) => (
+                            <SelectItem key={p.name} value={p.name}>
+                              {p.label} ({p.name})
+                            </SelectItem>
+                          ));
+                        }
+                        return revenueProperty
+                          ? (<SelectItem value={revenueProperty}>{revenuePropertyLabel} ({revenueProperty})</SelectItem>)
+                          : null;
+                      })()}
                     </SelectContent>
                   </Select>
                   <div className="text-xs text-muted-foreground">

@@ -1,6 +1,10 @@
 # MimoSaaS (MF_real_latest) — Architecture Reference
 
-> **Enterprise-grade platform.** Marketing executives rely on MimoSaaS for business-critical decisions. Every number, chart, and table must be accurate and consistent — executives make budget and strategy decisions based on these metrics. When in doubt, don't show inaccurate data; hide the metric or show a clear caveat. Specific rules:
+> **Enterprise-grade platform.** Marketing executives rely on MimoSaaS for business-critical decisions. Every number, chart, and table must be accurate and consistent — executives make budget and strategy decisions based on these metrics. When in doubt, don't show inaccurate data; hide the metric or show a clear caveat.
+>
+> **Quality standard: "Tests pass" is NOT "done."** After every fix, trace the full user journey — what will the user actually see? For auth/OAuth fixes, test with existing stale connections, not just fresh ones. For error changes, trace every UI surface (toasts, inline errors, disabled buttons). For wizard fixes, walk every step. Ship the complete fix (backend + frontend + error handling + migration path) in one commit. Never ship a partial backend fix and wait for the user to report the frontend symptoms.
+>
+> Specific rules:
 > - **GA4 Users are non-additive** — never sum or average users across dates, dimensions, or campaigns. In rolling windows (7d/30d), hide Users from the metric selector entirely rather than showing overcounted values. Per-campaign user counts from breakdown reports are approximate.
 > - **Exclude partial intraday data** — GA4 endpoints should use `endDate: "yesterday"` (not `"today"`) to report only complete UTC days. Partial data makes metrics look artificially low.
 > - **Date range consistency** — document when different tabs use different date windows (e.g., 90-day breakdown vs campaign lifetime totals) so executives understand why numbers may differ.

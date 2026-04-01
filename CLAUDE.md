@@ -494,8 +494,14 @@ Edit mode must work with **expired OAuth tokens**. All data prefilled from store
 - **Google Sheets edit**: backend preview/process use purpose-agnostic connection fallback; client auto-selects first available connection if stored ID is invalid
 - **Salesforce Zod**: `conversionValueField` is `.nullable()` — GA4 context omits it instead of sending null
 
-### HubSpot Pipeline (Proxy)
-Available for all platform contexts. Lets users select a HubSpot deal stage (e.g., SQL) as an early pipeline signal for long sales cycles. Optional — default is Revenue-only.
+### Pipeline (Proxy) — HubSpot & Salesforce
+Available for **all platform contexts** (GA4 and LinkedIn) on both HubSpot and Salesforce. Lets users select a deal/opportunity stage (e.g., SQL, Proposal) as an early pipeline signal for long B2B sales cycles. Optional — default is Revenue-only.
+
+- **Wizard flow**: Value-source step (first step) shows RadioGroup: "Total Revenue + Pipeline (Proxy)" or "Total Revenue only". If enabled, Pipeline step appears after Crosswalk for stage selection.
+- **Salesforce**: uses `pipelineStageName` (stage name string for SOQL). Backend endpoint: `/api/salesforce/:campaignId/pipeline-proxy`.
+- **HubSpot**: uses `pipelineStageId` (stage ID). Backend endpoint: `/api/hubspot/:campaignId/pipeline-proxy`.
+- **Backend**: save-mappings computes pipeline proxy on save (sum of deals currently in selected stage). Cached in `mappingConfig` (`pipelineTotalToDate`, `pipelineCurrency`, `pipelineProxyMode`).
+- **Stepper**: Pipeline step always included in the stepper array (greyed out when disabled) to prevent layout shift when toggling.
 
 ### CRM Date Field Selection
 HubSpot revenue wizard includes a date field selector (in Advanced section) controlling which date revenue is reported under:

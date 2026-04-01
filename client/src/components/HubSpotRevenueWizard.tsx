@@ -94,6 +94,14 @@ export function HubSpotRevenueWizard(props: {
   const [valuesLoading, setValuesLoading] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
 
+  // Revenue amount for the review step: prefer lastSaveResult, then stored config
+  const reviewRevenue = useMemo(() => {
+    if (lastSaveResult?.totalRevenue != null) return Number(lastSaveResult.totalRevenue);
+    const stored = Number((initialMappingConfig as any)?.lastTotalRevenue);
+    if (Number.isFinite(stored) && stored > 0) return stored;
+    return null;
+  }, [lastSaveResult, initialMappingConfig]);
+
   // Per-LinkedIn-campaign mapping (crosswalk enhancement)
   const [linkedinCampaigns, setLinkedinCampaigns] = useState<Array<{ urn: string; name: string; status: string }>>([]);
   const [campaignMappings, setCampaignMappings] = useState<Array<{ crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string }>>([]);
@@ -1030,6 +1038,15 @@ export function HubSpotRevenueWizard(props: {
                       <div className="text-xs text-muted-foreground/70">Campaign identifier field</div>
                       <div className="font-medium text-foreground">{campaignPropertyLabel}</div>
                     </div>
+
+                    {reviewRevenue != null && (
+                      <div>
+                        <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
+                        <div className="font-medium text-foreground text-green-700 dark:text-green-400">
+                          ${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    )}
 
                     {pipelineEnabled && (
                       <div>

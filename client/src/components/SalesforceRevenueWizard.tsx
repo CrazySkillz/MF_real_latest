@@ -559,6 +559,22 @@ export function SalesforceRevenueWizard(props: {
     return raw === "conversion_value";
   }, [mode, initialMappingConfig]);
 
+  // Revenue amount for the review step: prefer lastSaveResult, then stored config, then preview rows sum
+  const reviewRevenue = useMemo(() => {
+    if (lastSaveResult?.totalRevenue != null) return Number(lastSaveResult.totalRevenue);
+    const stored = Number((initialMappingConfig as any)?.lastTotalRevenue);
+    if (Number.isFinite(stored) && stored > 0) return stored;
+    // Compute from preview rows if available (Amount column)
+    if (previewRows.length > 0 && previewHeaders.length > 0) {
+      const amtIdx = previewHeaders.findIndex((h) => h.toLowerCase() === "amount" || h === revenueField);
+      if (amtIdx >= 0) {
+        const sum = previewRows.reduce((acc, row) => acc + (Number(row[amtIdx]) || 0), 0);
+        if (sum > 0) return sum;
+      }
+    }
+    return null;
+  }, [lastSaveResult, initialMappingConfig, previewRows, previewHeaders, revenueField]);
+
   const campaignFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === campaignField);
     return f?.label || campaignField || "Campaign field";
@@ -1326,11 +1342,20 @@ export function SalesforceRevenueWizard(props: {
                     <div className="font-medium text-foreground">{campaignFieldDisplay}</div>
                   </div>
 
+                  {reviewRevenue != null && (
+                    <div>
+                      <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
+                      <div className="font-medium text-foreground text-green-700 dark:text-green-400">
+                        ${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  )}
+
                   {pipelineEnabled && (
                     <div>
                       <div className="text-xs text-muted-foreground/70">Pipeline proxy</div>
                       <div className="font-medium text-foreground">
-                        {pipelineStageLabel || pipelineStageName || "—"}
+                        {pipelineStageLabel || pipelineStageName || "---"}
                       </div>
                     </div>
                   )}

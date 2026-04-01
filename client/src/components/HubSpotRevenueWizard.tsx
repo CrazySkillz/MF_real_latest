@@ -1093,7 +1093,7 @@ export function HubSpotRevenueWizard(props: {
                   valuesLoading ||
                   isSaving ||
                   statusLoading ||
-                  (step === "campaign-field" ? (!isConnected || !campaignProperty) :
+                  (step === "campaign-field" ? ((!isConnected && mode !== "edit") || !campaignProperty) :
                     step === "crosswalk" ? (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0) :
                       step === "pipeline" ? (!pipelineStageId) :
                         step === "revenue" ? (!revenueProperty) :

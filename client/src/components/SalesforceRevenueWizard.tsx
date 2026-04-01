@@ -1364,7 +1364,7 @@ export function SalesforceRevenueWizard(props: {
                   valuesLoading ||
                   isSaving ||
                   stagesLoading ||
-                  (step === "campaign-field" && (statusLoading || !isConnected || fieldsLoading || fields.length === 0 || !campaignField)) ||
+                  (step === "campaign-field" && (statusLoading || (!isConnected && mode !== "edit") || fieldsLoading || (fields.length === 0 && mode !== "edit") || !campaignField)) ||
                   (step === "crosswalk" && (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0)) ||
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.

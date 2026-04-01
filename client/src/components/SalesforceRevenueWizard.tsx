@@ -470,10 +470,12 @@ export function SalesforceRevenueWizard(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartOAuth, autoStartAttempted, mode, connectOnly, statusLoading, isConnected, campaignId]);
 
+  // Fetch fields when entering campaign-field or revenue steps (for dropdown options).
+  // Skip if fields already loaded, OR if in edit mode with prefilled values (prevents expired token errors).
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
     if (fields.length > 0) return;
-    // Match HubSpot UX: don't fetch fields until connected.
+    if (mode === "edit" && campaignField && revenueField) return; // Edit mode has prefilled values — dropdowns will show raw names
     if (statusLoading || !isConnected) return;
     (async () => {
       try {
@@ -487,7 +489,7 @@ export function SalesforceRevenueWizard(props: {
         });
       }
     })();
-  }, [step, fields.length, toast, statusLoading, isConnected, campaignId]);
+  }, [step, fields.length, toast, statusLoading, isConnected, campaignId, mode, campaignField, revenueField]);
 
   // When entering crosswalk step, load unique values if needed.
   // Skip if selectedValues already exist (edit mode prefill) — user can use Refresh button if they want fresh data.
@@ -505,10 +507,12 @@ export function SalesforceRevenueWizard(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, isConnected, campaignField, uniqueValues.length, selectedValues.length]);
 
+  // Fetch pipeline stages when entering pipeline step.
+  // Skip if stage is already prefilled from edit mode — prevents expired token errors.
   useEffect(() => {
     if (step !== "pipeline") return;
     if (!isConnected) return;
-    if (stages.length > 0) return;
+    if (stages.length > 0 || pipelineStageName) return;
     void (async () => {
       setStagesLoading(true);
       try {
@@ -524,7 +528,7 @@ export function SalesforceRevenueWizard(props: {
         setStagesLoading(false);
       }
     })();
-  }, [step, isConnected, stages.length, campaignId, toast]);
+  }, [step, isConnected, stages.length, pipelineStageName, campaignId, toast]);
 
   const salesforceSourceMode = useMemo(() => {
     if (!isLinkedIn) return "revenue_only" as const;

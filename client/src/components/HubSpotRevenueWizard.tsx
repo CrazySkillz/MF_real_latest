@@ -305,10 +305,13 @@ export function HubSpotRevenueWizard(props: {
   }, [campaignId]);
 
   // When entering configure step, load properties once
+  // Fetch properties when entering campaign-field or revenue steps (for dropdown options).
+  // Skip if in edit mode with prefilled values — prevents expired token errors.
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
-    if (!isConnected) return; // don't fetch fields until connected
+    if (!isConnected) return;
     if (properties.length > 0) return;
+    if (mode === "edit" && campaignProperty && revenueProperty) return;
     (async () => {
       try {
         await fetchProperties();
@@ -320,7 +323,7 @@ export function HubSpotRevenueWizard(props: {
         });
       }
     })();
-  }, [step, portalId, properties.length, toast]);
+  }, [step, portalId, properties.length, toast, mode, campaignProperty, revenueProperty]);
 
   // When entering crosswalk step, load unique values if needed.
   // Skip if selectedValues already exist (edit mode prefill) — user can use Refresh button if they want fresh data.
@@ -339,10 +342,11 @@ export function HubSpotRevenueWizard(props: {
   }, [step, isConnected, campaignProperty, uniqueValues.length]);
 
   // When entering pipeline step, load pipelines once.
+  // Skip if pipeline stage already prefilled from edit mode — prevents expired token errors.
   useEffect(() => {
     if (step !== "pipeline") return;
     if (!isConnected) return;
-    if (pipelines.length > 0) return;
+    if (pipelines.length > 0 || pipelineStageId) return;
     void (async () => {
       try {
         await fetchPipelines();

@@ -163,6 +163,7 @@ export function AddRevenueWizardModal(props: {
   const [csvRevenueCol, setCsvRevenueCol] = useState<string>("");
   const [csvConversionValueCol, setCsvConversionValueCol] = useState<string>("");
   const [csvCampaignCol, setCsvCampaignCol] = useState<string>("");
+  const [csvDateCol, setCsvDateCol] = useState<string>("");
   const [csvCampaignQuery, setCsvCampaignQuery] = useState<string>("");
   const [csvCampaignValues, setCsvCampaignValues] = useState<string[]>([]);
   const [csvProcessing, setCsvProcessing] = useState(false);
@@ -185,6 +186,7 @@ export function AddRevenueWizardModal(props: {
   const [sheetsRevenueCol, setSheetsRevenueCol] = useState<string>("");
   const [sheetsConversionValueCol, setSheetsConversionValueCol] = useState<string>("");
   const [sheetsCampaignCol, setSheetsCampaignCol] = useState<string>("");
+  const [sheetsDateCol, setSheetsDateCol] = useState<string>("");
   const [sheetsCampaignQuery, setSheetsCampaignQuery] = useState<string>("");
   const [sheetsCampaignValues, setSheetsCampaignValues] = useState<string[]>([]);
   const [sheetsProcessing, setSheetsProcessing] = useState(false);
@@ -364,6 +366,7 @@ export function AddRevenueWizardModal(props: {
     setCsvConversionValueCol("");
     setCsvCampaignCol("");
     setCsvCampaignQuery("");
+    setCsvDateCol("");
     setCsvCampaignValues([]);
     setCsvProcessing(false);
     setCsvPreviewing(false);
@@ -377,6 +380,7 @@ export function AddRevenueWizardModal(props: {
     setSheetsRevenueCol("");
     setSheetsConversionValueCol("");
     setSheetsCampaignCol("");
+    setSheetsDateCol("");
     setSheetsCampaignQuery("");
     setSheetsCampaignValues([]);
     setSheetsProcessing(false);
@@ -869,6 +873,7 @@ export function AddRevenueWizardModal(props: {
         campaignColumn: csvCampaignCol,
         campaignValue: csvCampaignValues.length === 1 ? csvCampaignValues[0] : null,
         campaignValues: csvCampaignValues,
+        dateColumn: csvDateCol || null,
         currency,
         displayName: csvFile.name,
         mode: "revenue_to_date",
@@ -1017,6 +1022,7 @@ export function AddRevenueWizardModal(props: {
         campaignColumn: hasCampaignScope ? sheetsCampaignCol : null,
         campaignValue: hasCampaignScope && sheetsCampaignValues.length === 1 ? sheetsCampaignValues[0] : null,
         campaignValues: hasCampaignScope ? sheetsCampaignValues : null,
+        dateColumn: sheetsDateCol || null,
         currency,
         displayName: "Google Sheets revenue",
         mode: "revenue_to_date",
@@ -1553,6 +1559,24 @@ export function AddRevenueWizardModal(props: {
                           )}
                         </div>
 
+                        <div className="space-y-1">
+                          <Label>Date column (recommended)</Label>
+                          <Select value={csvDateCol || SELECT_NONE} onValueChange={(v) => setCsvDateCol(v === SELECT_NONE ? "" : v)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="None — all rows summed into one total" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10000]">
+                              <SelectItem value={SELECT_NONE}>None — all rows summed into one total</SelectItem>
+                              {csvHeaders.map((h) => (
+                                <SelectItem key={h} value={h}>{h}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground/70">
+                            Map a date column to enable daily revenue tracking in Latest Day Revenue and Trends charts.
+                          </p>
+                        </div>
+
                         {platformContext === 'linkedin' && (
                           <div className="text-xs text-muted-foreground/70">
                             Mode: <span className="font-medium">{csvValueSource === 'conversion_value' ? 'Conversion Value' : 'Total Revenue'}</span>
@@ -1887,7 +1911,23 @@ export function AddRevenueWizardModal(props: {
                             </Select>
                           </div>
 
-                          {/* Date column removed: revenue imports are treated as revenue-to-date (lifetime). */}
+                          <div className="space-y-1">
+                            <Label>Date column (recommended)</Label>
+                            <Select value={sheetsDateCol || SELECT_NONE} onValueChange={(v) => setSheetsDateCol(v === SELECT_NONE ? "" : v)}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="None" />
+                              </SelectTrigger>
+                              <SelectContent className="z-[10000]">
+                                <SelectItem value={SELECT_NONE}>None — all rows summed into one total</SelectItem>
+                                {sheetsHeaders.map((h) => (
+                                  <SelectItem key={h} value={h}>{h}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground/70 mt-1">
+                              Map a date column for daily revenue tracking.
+                            </p>
+                          </div>
 
                           {platformContext === 'linkedin' && (
                             <div className="space-y-1">

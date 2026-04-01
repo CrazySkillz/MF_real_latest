@@ -432,7 +432,7 @@ export function HubSpotRevenueWizard(props: {
       return;
     }
     if (step === "campaign-field") {
-      if (!isConnected) {
+      if (!isConnected && mode !== "edit") {
         toast({
           title: "Connect HubSpot",
           description: "Please connect HubSpot before selecting deal fields.",
@@ -448,7 +448,9 @@ export function HubSpotRevenueWizard(props: {
         });
         return;
       }
-      await fetchUniqueValues(campaignProperty);
+      if (!(mode === "edit" && selectedValues.length > 0)) {
+        await fetchUniqueValues(campaignProperty);
+      }
       setStep("crosswalk");
       return;
     }

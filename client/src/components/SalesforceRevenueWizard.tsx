@@ -691,7 +691,7 @@ export function SalesforceRevenueWizard(props: {
       return;
     }
     if (step === "campaign-field") {
-      if (!isConnected) {
+      if (!isConnected && mode !== "edit") {
         toast({ title: "Connect Salesforce", description: "Connect Salesforce before continuing.", variant: "destructive" });
         return;
       }
@@ -703,7 +703,10 @@ export function SalesforceRevenueWizard(props: {
         });
         return;
       }
-      await fetchUniqueValues(campaignField);
+      // In edit mode with prefilled values, skip the API fetch — crosswalk useEffect will synthesize from selectedValues
+      if (!(mode === "edit" && selectedValues.length > 0)) {
+        await fetchUniqueValues(campaignField);
+      }
       setStep("crosswalk");
       return;
     }

@@ -941,17 +941,21 @@ export function SalesforceRevenueWizard(props: {
               )}
             </CardTitle>
 
-            {/* Subtle reconnect affordance (keeps first-step layout clean, matches HubSpot-style UX). */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => void openOAuthWindow()}
-              disabled={isConnecting || statusLoading || !isConnected || step === "complete"}
-              className={`${!statusLoading && isConnected && step !== "complete" ? "" : "opacity-0 pointer-events-none"} min-w-[116px]`}
-            >
-              {isConnecting ? "Reconnecting…" : "Reconnect"}
-            </Button>
+            {/* Reconnect only on campaign-field step — other steps don't need it */}
+            {step === "campaign-field" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void openOAuthWindow()}
+                disabled={isConnecting || statusLoading || !isConnected}
+                className={`${!statusLoading && isConnected ? "" : "opacity-0 pointer-events-none"} min-w-[116px]`}
+              >
+                {isConnecting ? "Reconnecting…" : "Reconnect"}
+              </Button>
+            ) : (
+              <div className="min-w-[116px]" />
+            )}
           </div>
           <CardDescription>
             {/* Reserve space for connection label to avoid layout shift when async status arrives */}

@@ -1843,13 +1843,14 @@ export default function GA4Metrics() {
   // Use whichever day has spend data (prefer today, fall back to yesterday)
   const spendDailyResp = (Number(spendDailyTodayResp?.totalSpend) > 0) ? spendDailyTodayResp : spendDailyYesterdayResp;
 
-  // Latest Day imported revenue (CSV/Sheets/CRM records with actual dates)
+  // Latest Day imported revenue — uses ga4ReportDate (or yesterday fallback) so dates are consistent
+  const revenueDailyDate = ga4ReportDate || spendDailyYesterday;
   const { data: revenueDailyResp } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/revenue-daily`, spendDailyYesterday],
+    queryKey: [`/api/campaigns/${campaignId}/revenue-daily`, revenueDailyDate],
     enabled: !!campaignId,
     staleTime: 0,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-daily?date=${spendDailyYesterday}`, { credentials: "include" });
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-daily?date=${revenueDailyDate}`, { credentials: "include" });
       if (!resp.ok) return { success: false, totalRevenue: 0 };
       return resp.json().catch(() => ({ success: false, totalRevenue: 0 }));
     },

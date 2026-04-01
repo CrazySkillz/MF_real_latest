@@ -492,11 +492,16 @@ export function SalesforceRevenueWizard(props: {
   }, [step, fields.length, toast, statusLoading, isConnected, campaignId, mode, campaignField, revenueField]);
 
   // When entering crosswalk step, load unique values if needed.
-  // Skip if selectedValues already exist (edit mode prefill) — user can use Refresh button if they want fresh data.
+  // In edit mode with prefilled selectedValues, synthesize uniqueValues so checkboxes render.
   useEffect(() => {
     if (step !== "crosswalk") return;
+    // If we have selectedValues but no uniqueValues (edit mode prefill), create synthetic entries
+    if (uniqueValues.length === 0 && selectedValues.length > 0) {
+      setUniqueValues(selectedValues.map(v => ({ value: v, count: 0 })));
+      return;
+    }
     if (!isConnected || !campaignField) return;
-    if (uniqueValues.length > 0 || selectedValues.length > 0) return;
+    if (uniqueValues.length > 0) return;
     void (async () => {
       try {
         await fetchUniqueValues(campaignField);

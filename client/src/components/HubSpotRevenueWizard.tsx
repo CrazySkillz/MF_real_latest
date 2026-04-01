@@ -326,11 +326,15 @@ export function HubSpotRevenueWizard(props: {
   }, [step, portalId, properties.length, toast, mode, campaignProperty, revenueProperty]);
 
   // When entering crosswalk step, load unique values if needed.
-  // Skip if selectedValues already exist (edit mode prefill) — user can use Refresh button if they want fresh data.
+  // In edit mode with prefilled selectedValues, synthesize uniqueValues so checkboxes render.
   useEffect(() => {
     if (step !== "crosswalk") return;
+    if (uniqueValues.length === 0 && selectedValues.length > 0) {
+      setUniqueValues(selectedValues.map(v => ({ value: v, count: 0 })));
+      return;
+    }
     if (!isConnected || !campaignProperty) return;
-    if (uniqueValues.length > 0 || selectedValues.length > 0) return;
+    if (uniqueValues.length > 0) return;
     void (async () => {
       try {
         await fetchUniqueValues(campaignProperty);
@@ -339,7 +343,7 @@ export function HubSpotRevenueWizard(props: {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, isConnected, campaignProperty, uniqueValues.length]);
+  }, [step, isConnected, campaignProperty, uniqueValues.length, selectedValues.length]);
 
   // When entering pipeline step, load pipelines once.
   // Skip if pipeline stage already prefilled from edit mode — prevents expired token errors.

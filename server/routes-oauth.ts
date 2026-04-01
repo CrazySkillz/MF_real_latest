@@ -11425,16 +11425,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure we have a human-friendly account name for UI display.
       // HubSpot redirect screens + tokens provide hub_id, but not always accountName reliably.
       // Best-effort hydrate from HubSpot account-info endpoint.
-      const hydrateAccountName = async (): Promise<{ portalId: string | null; portalName: string | null }> => {
-        let accessToken = conn.accessToken;
-        try {
-          const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
-          if (shouldRefresh && conn.refreshToken) {
-            accessToken = await refreshHubspotToken(conn);
+      // Check if token is expired
+      const isExpiring = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+      if (isExpiring) {
+        if (conn.refreshToken) {
+          try {
+            await refreshHubspotToken(conn);
+          } catch (err) {
+            console.error('[HubSpot Status] Token refresh failed:', err);
+            return res.json({ connected: false });
           }
-        } catch {
-          // ignore refresh failure; try existing token
+        } else {
+          return res.json({ connected: false });
         }
+      }
+
+      const hydrateAccountName = async (): Promise<{ portalId: string | null; portalName: string | null }> => {
+        const accessToken = conn.accessToken;
 
         let portalId: string | null = conn.portalId ? String(conn.portalId) : null;
         let portalName: string | null = conn.portalName ? String(conn.portalName) : null;

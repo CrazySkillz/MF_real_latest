@@ -142,19 +142,105 @@ async function reprocessGoogleSheetsSpend(campaignId: string, mappingConfig: Any
   return true;
 }
 
-async function reprocessGoogleSheetsRevenue(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
+async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean> {
   const connectionId = String(mappingConfig?.connectionId || "").trim();
   if (!connectionId) return false;
-  const body = {
-    connectionId,
-    mapping: { ...(mappingConfig || {}) },
-  };
-  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/revenue/sheets/process`, body);
-  if (!result.ok) {
-    console.error(`[Auto Refresh] Google Sheets revenue reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
+  try {
+    // Direct DB operations — avoids auth/rate-limit issues from HTTP self-calls
+    const connections = await storage.getGoogleSheetsConnections(campaignId);
+    let conn = (connections as any[]).find((c: any) => String(c.id) === connectionId);
+    if (!conn) {
+      // Try without purpose filter
+      const allConns = await storage.getGoogleSheetsConnections(campaignId);
+      conn = (allConns as any[]).find((c: any) => String(c.id) === connectionId);
+    }
+    if (!conn || !conn.accessToken) {
+      console.warn(`[Auto Refresh] Google Sheets revenue: connection ${connectionId} not found for campaign ${campaignId}`);
+      return false;
+    }
+
+    // Read sheet data with token refresh
+    let accessToken = conn.accessToken;
+    const sheetName = conn.sheetName ? String(conn.sheetName).trim() : "";
+    const range = sheetName ? `'${sheetName.replace(/'/g, "''")}'!A1:ZZ5000` : "A1:ZZ5000";
+    let resp = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(30000) }
+    );
+    if (resp.status === 401 && conn.refreshToken && conn.clientId && conn.clientSecret) {
+      try {
+        const tr = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: conn.refreshToken, client_id: conn.clientId, client_secret: conn.clientSecret }),
+          signal: AbortSignal.timeout(15000),
+        });
+        if (tr.ok) {
+          const tokens = await tr.json();
+          accessToken = tokens.access_token;
+          await storage.updateGoogleSheetsConnection(conn.id, { accessToken, expiresAt: new Date(Date.now() + (tokens.expires_in || 3600) * 1000) } as any);
+          resp = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(30000) }
+          );
+        }
+      } catch { /* fall through */ }
+    }
+    if (!resp.ok) {
+      console.warn(`[Auto Refresh] Google Sheets revenue fetch failed for campaign ${campaignId}: HTTP ${resp.status}`);
+      return false;
+    }
+
+    const data = await resp.json();
+    const allRows = data.values || [];
+    if (allRows.length < 2) return false;
+    const headers: string[] = allRows[0];
+    const dataRows: string[][] = allRows.slice(1);
+
+    // Parse rows using stored mapping
+    const revenueCol = String(mappingConfig.revenueColumn || "");
+    const campaignCol = String(mappingConfig.campaignColumn || "");
+    const campaignValues: string[] = Array.isArray(mappingConfig.campaignValues) ? mappingConfig.campaignValues : [];
+    const campaignValueSet = campaignValues.length > 0 ? new Set(campaignValues) : null;
+
+    const parseNum = (v: any) => { const n = parseFloat(String(v || "0").replace(/[^0-9.\-]/g, "")); return Number.isFinite(n) ? n : 0; };
+
+    let totalRevenue = 0;
+    let kept = 0;
+    for (const row of dataRows) {
+      const rowObj: any = {};
+      headers.forEach((h, i) => { rowObj[h] = row[i] ?? ""; });
+      if (campaignCol && campaignValueSet) {
+        const v = String(rowObj[campaignCol] ?? "").trim();
+        if (!campaignValueSet.has(v)) continue;
+      }
+      const rev = parseNum(rowObj[revenueCol]);
+      if (rev > 0) { totalRevenue += rev; kept++; }
+    }
+
+    const total = Number(totalRevenue.toFixed(2));
+    const sourceId = String(source.id);
+    const endDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10); // yesterday
+
+    // Delete old records and create new
+    await storage.deleteRevenueRecordsBySource(sourceId);
+    if (total > 0) {
+      const campaign = await storage.getCampaign(campaignId);
+      const currency = String(mappingConfig.currency || (campaign as any)?.currency || "USD");
+      await storage.createRevenueRecords([{ campaignId, revenueSourceId: sourceId, date: endDate, revenue: total.toFixed(2) as any, currency } as any]);
+    }
+
+    // Update lastSyncedAt
+    await storage.updateRevenueSource(sourceId, {
+      mappingConfig: JSON.stringify({ ...mappingConfig, lastSyncedAt: new Date().toISOString() }),
+    } as any);
+
+    console.log(`[Auto Refresh] ✅ Google Sheets revenue synced for campaign ${campaignId}: $${total} from ${kept} rows`);
+    return true;
+  } catch (err: any) {
+    console.error(`[Auto Refresh] Google Sheets revenue reprocess failed for campaign ${campaignId}:`, err?.message || err);
     return false;
   }
-  return true;
 }
 
 async function reprocessLinkedInSpend(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
@@ -337,19 +423,22 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
           skipped++;
         }
 
-        // Google Sheets (Spend)
+        // Google Sheets (Spend) — process ALL active Sheets spend sources
         try {
           const spendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
-          const sheetSpend = (Array.isArray(spendSources) ? spendSources : []).find((s: any) => {
+          const sheetSpendSources = (Array.isArray(spendSources) ? spendSources : []).filter((s: any) => {
             return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "google_sheets";
           });
-          const spendCfg = safeJsonParse(sheetSpend?.mappingConfig);
-          if (sheetSpend && spendCfg?.connectionId && spendCfg?.spendColumn) {
-            attempted++;
-            if (await reprocessGoogleSheetsSpend(campaignId, spendCfg)) { succeeded++; anyUpdated = true; }
-          } else {
-            skipped++;
+          for (const sheetSpend of sheetSpendSources) {
+            const spendCfg = safeJsonParse(sheetSpend?.mappingConfig);
+            if (spendCfg?.connectionId && spendCfg?.spendColumn) {
+              attempted++;
+              if (await reprocessGoogleSheetsSpend(campaignId, spendCfg)) { succeeded++; anyUpdated = true; }
+            } else {
+              skipped++;
+            }
           }
+          if (sheetSpendSources.length === 0) skipped++;
         } catch {
           // ignore
         }
@@ -425,19 +514,26 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
           // ignore
         }
 
-        // Google Sheets (Revenue)
+        // Google Sheets (Revenue) — process ALL active Sheets revenue sources across all platform contexts
         try {
-          const revenueSources = await storage.getRevenueSources(campaignId).catch(() => [] as any[]);
-          const sheetRevenue = (Array.isArray(revenueSources) ? revenueSources : []).find((s: any) => {
-            return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "google_sheets";
-          });
-          const revCfg = safeJsonParse(sheetRevenue?.mappingConfig);
-          if (sheetRevenue && revCfg?.connectionId && revCfg?.revenueColumn) {
-            attempted++;
-            if (await reprocessGoogleSheetsRevenue(campaignId, revCfg)) { succeeded++; anyUpdated = true; }
-          } else {
-            skipped++;
+          let sheetRevCount = 0;
+          for (const ctx of ["ga4", "linkedin", "meta"] as const) {
+            const revenueSources = await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]);
+            const sheetRevSources = (Array.isArray(revenueSources) ? revenueSources : []).filter((s: any) => {
+              return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "google_sheets";
+            });
+            for (const sheetRevenue of sheetRevSources) {
+              sheetRevCount++;
+              const revCfg = safeJsonParse(sheetRevenue?.mappingConfig);
+              if (revCfg?.connectionId && revCfg?.revenueColumn) {
+                attempted++;
+                if (await reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg)) { succeeded++; anyUpdated = true; }
+              } else {
+                skipped++;
+              }
+            }
           }
+          if (sheetRevCount === 0) skipped++;
         } catch {
           // ignore
         }

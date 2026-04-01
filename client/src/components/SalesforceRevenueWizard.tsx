@@ -330,6 +330,8 @@ export function SalesforceRevenueWizard(props: {
   const openOAuthWindow = async () => {
     setIsConnecting(true);
     setOauthError(null);
+    setFieldsError(null);
+    setValuesError(null);
     try {
       const resp = await fetch("/api/auth/salesforce/connect", {
         method: "POST",
@@ -484,11 +486,7 @@ export function SalesforceRevenueWizard(props: {
         await fetchFields();
       } catch (err: any) {
         setFieldsError(err?.message || "Failed to load Opportunity fields.");
-        toast({
-          title: "Failed to Load Salesforce Fields",
-          description: err?.message || "Please try again.",
-          variant: "destructive",
-        });
+        // No toast — the inline error with Retry/Reconnect link is sufficient and less intrusive
       }
     })();
   }, [step, fields.length, toast, statusLoading, isConnected, isConnecting, campaignId, mode, campaignField, revenueField]);

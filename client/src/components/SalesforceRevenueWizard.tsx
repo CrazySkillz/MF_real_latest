@@ -472,9 +472,11 @@ export function SalesforceRevenueWizard(props: {
 
   // Fetch fields when entering campaign-field or revenue steps (for dropdown options).
   // Skip if fields already loaded, OR if in edit mode with prefilled values (prevents expired token errors).
+  // Skip if OAuth reconnect is in progress (isConnecting) — wait for new tokens before hitting the API.
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
     if (fields.length > 0) return;
+    if (isConnecting) return; // OAuth in progress — don't fetch with potentially expired token
     if (campaignField && revenueField && (mode === "edit" || initialMappingConfig)) return; // Edit mode has prefilled values — dropdowns will show raw names
     if (statusLoading || !isConnected) return;
     (async () => {
@@ -489,7 +491,7 @@ export function SalesforceRevenueWizard(props: {
         });
       }
     })();
-  }, [step, fields.length, toast, statusLoading, isConnected, campaignId, mode, campaignField, revenueField]);
+  }, [step, fields.length, toast, statusLoading, isConnected, isConnecting, campaignId, mode, campaignField, revenueField]);
 
   // When entering crosswalk step, load unique values if needed.
   // In edit mode with prefilled selectedValues, synthesize uniqueValues so checkboxes render.

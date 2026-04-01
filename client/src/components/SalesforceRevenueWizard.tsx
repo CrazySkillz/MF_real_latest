@@ -507,9 +507,9 @@ export function SalesforceRevenueWizard(props: {
       try {
         await fetchFields();
       } catch (err: any) {
-        // In edit mode, this is non-fatal — the dropdown shows the raw field name
-        // and the user can click Reconnect to get a fresh token
-        if (mode !== "edit" && !initialMappingConfig) {
+        // Only show error if there's no fallback value in the dropdown.
+        // When campaignField is set, the fallback SelectItem displays it — error is noise.
+        if (!campaignField) {
           setFieldsError(err?.message || "Failed to load Opportunity fields.");
         }
       }

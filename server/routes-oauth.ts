@@ -2696,7 +2696,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
 
-      await storage.updateCampaign(campaignId, { spend: Number(totalSpend.toFixed(2)).toFixed(2) as any, currency: cur } as any);
+      // Deactivate existing LinkedIn spend sources for this campaign (single active connection)
+      const existingSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+      for (const s of (Array.isArray(existingSources) ? existingSources : [])) {
+        if ((s as any).isActive !== false && String((s as any).sourceType || "") === "linkedin_api") {
+          await storage.deleteSpendRecordsBySource(String((s as any).id));
+          await storage.updateSpendSource(String((s as any).id), { isActive: false } as any);
+        }
+      }
 
       const source = await storage.createSpendSource({
         campaignId,
@@ -2714,6 +2721,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }),
         isActive: true,
       } as any);
+
+      // Create spend_record so spend-breakdown returns correct amounts
+      const today = new Date().toISOString().split("T")[0];
+      await storage.createSpendRecords([{
+        campaignId,
+        spendSourceId: String(source.id),
+        date: today,
+        spend: totalSpend.toFixed(2),
+        currency: cur,
+        sourceType: "linkedin_api",
+      }] as any);
+
+      await recalcCampaignSpend(campaignId);
 
       res.json({
         success: true,

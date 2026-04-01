@@ -314,60 +314,67 @@ export function HubSpotRevenueWizard(props: {
 
   // When entering configure step, load properties once
   // Fetch properties when entering campaign-field or revenue steps (for dropdown options).
-  // Skip if in edit mode with prefilled values — prevents expired token errors.
+  // Fetch properties when entering campaign-field or revenue steps.
+  // In edit mode: still attempt fetch so dropdowns have full list. Suppress error if fallback exists.
   useEffect(() => {
     if (step !== "campaign-field" && step !== "revenue") return;
     if (!isConnected) return;
     if (properties.length > 0) return;
-    if (campaignProperty && revenueProperty && (mode === "edit" || initialMappingConfig)) return;
     (async () => {
       try {
         await fetchProperties();
       } catch (err: any) {
-        toast({
-          title: "Failed to Load HubSpot Fields",
-          description: err?.message || "Please try again.",
-          variant: "destructive",
-        });
+        // Only show error if no fallback value exists in the dropdown
+        if (!campaignProperty && !revenueProperty) {
+          toast({
+            title: "Failed to Load HubSpot Fields",
+            description: err?.message || "Please try again.",
+            variant: "destructive",
+          });
+        }
       }
     })();
   }, [step, portalId, properties.length, toast, mode, campaignProperty, revenueProperty]);
 
-  // When entering crosswalk step, load unique values if needed.
-  // In edit mode with prefilled selectedValues, synthesize uniqueValues so checkboxes render.
+  // When entering crosswalk step, load unique values.
+  // In edit mode: synthesize immediately, then fetch real values in background.
+  const crosswalkFetchedRef = useRef(false);
   useEffect(() => {
     if (step !== "crosswalk") return;
     if (uniqueValues.length === 0 && selectedValues.length > 0) {
       setUniqueValues(selectedValues.map(v => ({ value: v, count: 0 })));
-      return;
     }
+    if (crosswalkFetchedRef.current) return;
     if (!isConnected || !campaignProperty) return;
-    if (uniqueValues.length > 0) return;
+    crosswalkFetchedRef.current = true;
     void (async () => {
       try {
         await fetchUniqueValues(campaignProperty);
       } catch {
-        // ignore — user can retry via Refresh button on the crosswalk step
+        // ignore — user can retry via Refresh button
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, isConnected, campaignProperty, uniqueValues.length, selectedValues.length]);
+  }, [step, isConnected, campaignProperty]);
 
-  // When entering pipeline step, load pipelines once.
-  // Skip if pipeline stage already prefilled from edit mode — prevents expired token errors.
+  // When entering pipeline step, load pipelines.
+  const pipelinesFetchedRef = useRef(false);
   useEffect(() => {
     if (step !== "pipeline") return;
     if (!isConnected) return;
-    if (pipelines.length > 0 || pipelineStageId) return;
+    if (pipelinesFetchedRef.current || pipelines.length > 0) return;
+    pipelinesFetchedRef.current = true;
     void (async () => {
       try {
         await fetchPipelines();
       } catch (err: any) {
-        toast({
-          title: "Failed to Load HubSpot Pipelines",
-          description: err?.message || "Please try again.",
-          variant: "destructive",
-        });
+        if (!pipelineStageId) {
+          toast({
+            title: "Failed to Load HubSpot Pipelines",
+            description: err?.message || "Please try again.",
+            variant: "destructive",
+          });
+        }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -918,19 +925,24 @@ export function HubSpotRevenueWizard(props: {
                         <SelectValue placeholder={pipelinesLoading ? "Loading…" : "Select a stage…"} />
                       </SelectTrigger>
                       <SelectContent className="z-[10000] max-h-[320px]">
-                        {(pipelines || []).flatMap((p: any) => {
-                          const stages = Array.isArray(p?.stages) ? p.stages : [];
-                          const pLabel = String(p?.label || p?.name || "Pipeline");
-                          return stages.map((s: any) => {
-                            const id = String(s?.id || "");
-                            const label = String(s?.label || s?.name || id);
-                            return (
-                              <SelectItem key={`${pLabel}-${id}`} value={id}>
-                                {pLabel} — {label}
-                              </SelectItem>
-                            );
-                          });
-                        })}
+                        {(() => {
+                          const allStages = (pipelines || []).flatMap((p: any) => {
+                            const stages = Array.isArray(p?.stages) ? p.stages : [];
+                            const pLabel = String(p?.label || p?.name || "Pipeline");
+                            return stages.map((s: any) => ({
+                              id: String(s?.id || ""),
+                              label: `${pLabel} — ${String(s?.label || s?.name || s?.id || "")}`,
+                            }));
+                          }).filter(s => !!s.id);
+                          if (allStages.length > 0) {
+                            return allStages.map(s => (
+                              <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+                            ));
+                          }
+                          return pipelineStageId
+                            ? (<SelectItem value={pipelineStageId}>{pipelineStageLabel || pipelineStageId}</SelectItem>)
+                            : null;
+                        })()}
                       </SelectContent>
                     </Select>
                     <div className="text-xs text-muted-foreground">

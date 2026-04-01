@@ -448,13 +448,22 @@ Include filter params (e.g., `dateRange`, `platformContext`, `clientId`) for cor
 5. Wizard step loads (campaign field mapping → crosswalk → pipeline → revenue → review → save)
 6. **"Connected" badge** only shows when BOTH OAuth done AND active revenue source exists
 
-### CRM Edit Mode
+### CRM Edit Mode (CRITICAL — read before modifying HubSpot/Salesforce wizards)
+
+Edit mode must work with **expired OAuth tokens**. No automatic API calls. All data from stored `mappingConfig`.
+
 - **Edit opens on Review step** with HubSpot-style settings summary (account, revenue field, campaign field, date field, selected values)
-- **Review step NEVER fetches from CRM APIs** — only displays data from stored `mappingConfig`. Labels fall back to raw field names (`"Amount"`, `"Opportunity Name"`) when properties aren't loaded. Fetching on review caused "Session expired" errors when OAuth tokens expired.
-- **Back navigation** works through all steps with prefilled values — each step has a useEffect to auto-fetch data when entered:
-  - Properties/Fields: fetch on `campaign-field` and `revenue` steps ONLY (NOT `review`)
-  - Unique Values: fetch on `crosswalk` step
-  - Pipelines/Stages: fetch on `pipeline` step
+- **Review step NEVER fetches from CRM APIs** — only displays data from stored `mappingConfig`. Labels fall back to raw field names (`"Amount"`, `"Opportunity Name"`).
+- **useEffect guards** — every useEffect that calls a CRM API must skip in edit mode:
+  - Properties/Fields: skip when `mode === "edit" && campaignField && revenueField`
+  - Unique Values (crosswalk): skip when `selectedValues.length > 0` — instead, synthesize `uniqueValues` from `selectedValues` so checkboxes render
+  - Pipelines/Stages: skip when `pipelineStageId`/`pipelineStageName` is prefilled
+- **handleNext guards** — forward navigation must also skip API calls in edit mode:
+  - `!isConnected` check: bypass when `mode === "edit"` (user is editing existing config, not connecting)
+  - `fetchUniqueValues()` call: skip when `mode === "edit" && selectedValues.length > 0`
+- **Continue button disabled states** — must allow proceeding in edit mode:
+  - `!isConnected`: bypass when `mode !== "edit"`
+  - `fields.length === 0`: bypass when `mode !== "edit"`
 - **Google Sheets edit**: backend preview/process use purpose-agnostic connection fallback; client auto-selects first available connection if stored ID is invalid
 - **Salesforce Zod**: `conversionValueField` is `.nullable()` — GA4 context omits it instead of sending null
 

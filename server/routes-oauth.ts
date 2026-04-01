@@ -1221,6 +1221,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Revenue daily — sum all imported revenue records for a single date (mirrors spend-daily)
+  app.get("/api/campaigns/:id/revenue-daily", requireCampaignAccessParamId, async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const date = String(req.query.date || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
+      }
+      const totals = await storage.getRevenueTotalForRange(campaignId, date, date);
+      res.json({ success: true, date, ...totals });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch daily revenue" });
+    }
+  });
+
   // Revenue sources (manual/CSV/Sheets + connectors that materialize revenue rows)
   app.get("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {

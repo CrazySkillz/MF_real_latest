@@ -1843,6 +1843,18 @@ export default function GA4Metrics() {
   // Use whichever day has spend data (prefer today, fall back to yesterday)
   const spendDailyResp = (Number(spendDailyTodayResp?.totalSpend) > 0) ? spendDailyTodayResp : spendDailyYesterdayResp;
 
+  // Latest Day imported revenue (CSV/Sheets/CRM records with actual dates)
+  const { data: revenueDailyResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-daily`, spendDailyYesterday],
+    enabled: !!campaignId,
+    staleTime: 0,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-daily?date=${spendDailyYesterday}`, { credentials: "include" });
+      if (!resp.ok) return { success: false, totalRevenue: 0 };
+      return resp.json().catch(() => ({ success: false, totalRevenue: 0 }));
+    },
+  });
+
   const spendSourceLabels = useMemo(() => {
     const persistedSpend = Number(spendToDateResp?.spendToDate || 0);
     const ids = Array.isArray(spendToDateResp?.sourceIds) ? spendToDateResp.sourceIds.map(String) : [];
@@ -4162,16 +4174,15 @@ export default function GA4Metrics() {
                             )}
                           </CardContent>
                         </Card>
-                        {/* Latest Day Revenue — most recent complete day (skips today's partial) */}
+                        {/* Latest Day Revenue — GA4 native + imported sources for most recent complete day */}
                         <Card>
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Latest Day Revenue</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatMoney(Number(
-                                ga4ReportDate
-                                  ? (ga4DailyRows.find((r: any) => String(r?.date) === ga4ReportDate)?.revenue || 0)
-                                  : 0
-                              ))}
+                              {formatMoney(
+                                Number(ga4ReportDate ? (ga4DailyRows.find((r: any) => String(r?.date) === ga4ReportDate)?.revenue || 0) : 0)
+                                + Number(revenueDailyResp?.totalRevenue || 0)
+                              )}
                             </p>
                           </CardContent>
                         </Card>

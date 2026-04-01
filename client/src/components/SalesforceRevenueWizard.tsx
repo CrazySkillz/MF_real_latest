@@ -1230,11 +1230,15 @@ export function SalesforceRevenueWizard(props: {
                       <SelectValue placeholder={stagesLoading ? "Loading…" : "Select a stage…"} />
                     </SelectTrigger>
                     <SelectContent className="z-[10000] max-h-[320px]">
-                      {stages.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>
-                          {s.label}
-                        </SelectItem>
-                      ))}
+                      {stages.length > 0
+                        ? stages.map((s) => (
+                            <SelectItem key={s.value} value={s.value}>
+                              {s.label}
+                            </SelectItem>
+                          ))
+                        : pipelineStageName
+                          ? (<SelectItem value={pipelineStageName}>{pipelineStageLabel || pipelineStageName}</SelectItem>)
+                          : null}
                     </SelectContent>
                   </Select>
                   <div className="text-xs text-muted-foreground">

@@ -471,7 +471,7 @@ export function SalesforceRevenueWizard(props: {
   }, [autoStartOAuth, autoStartAttempted, mode, connectOnly, statusLoading, isConnected, campaignId]);
 
   useEffect(() => {
-    if (step !== "campaign-field" && step !== "revenue" && step !== "review") return;
+    if (step !== "campaign-field" && step !== "revenue") return;
     if (fields.length > 0) return;
     // Match HubSpot UX: don't fetch fields until connected.
     if (statusLoading || !isConnected) return;
@@ -546,7 +546,7 @@ export function SalesforceRevenueWizard(props: {
     // If we're defaulted to Salesforce API field "Name", always display the friendly label.
     if (String(campaignField || "").toLowerCase() === "name") return "Opportunity Name";
     const f = fields.find((x) => x.name === campaignField);
-    return f?.label || "Select an Opportunity field…";
+    return f?.label || campaignField || "Select an Opportunity field…";
   }, [campaignField, fields, fieldsLoading]);
 
   const revenueFieldLabel = useMemo(() => {

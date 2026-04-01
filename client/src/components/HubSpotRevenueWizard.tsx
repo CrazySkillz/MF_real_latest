@@ -306,7 +306,7 @@ export function HubSpotRevenueWizard(props: {
 
   // When entering configure step, load properties once
   useEffect(() => {
-    if (step !== "campaign-field" && step !== "revenue" && step !== "review") return;
+    if (step !== "campaign-field" && step !== "revenue") return;
     if (!isConnected) return; // don't fetch fields until connected
     if (properties.length > 0) return;
     (async () => {

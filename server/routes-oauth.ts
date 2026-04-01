@@ -1833,6 +1833,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let kept = 0;
         let totalRevenueToDate = 0;
         const conversionValues: number[] = [];
+        const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
+        const dailyRevenueMap = new Map<string, number>(); // date -> revenue
 
         for (const row of parsed.rows) {
           if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -1853,8 +1855,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!(revenue > 0)) continue;
             kept++;
             totalRevenueToDate += revenue;
-            // If a conversion value column was also provided (but not selected as source of truth), we can optionally collect it
-            // for diagnostics; we do not persist it as the active conversion value when revenue is source of truth.
+
+            // Track daily revenue if date column provided
+            if (dateCol) {
+              const dateStr = String((row as any)[dateCol] ?? "").trim();
+              if (dateStr) {
+                const date = new Date(dateStr);
+                if (!isNaN(date.getTime())) {
+                  const normalizedDate = date.toISOString().split('T')[0];
+                  dailyRevenueMap.set(normalizedDate, (dailyRevenueMap.get(normalizedDate) || 0) + revenue);
+                }
+              }
+            }
           }
         }
 
@@ -1865,7 +1877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Note: do NOT deactivate existing sources — revenue sources are additive.
         const existingSourceId = mapping?.sourceId || null;
-        const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: (platformContext === 'linkedin' && valueSource === 'conversion_value') ? 'conversion_value' : "revenue_to_date" };
+        const normalizedMapping = { ...mapping, dateRange: undefined, mode: (platformContext === 'linkedin' && valueSource === 'conversion_value') ? 'conversion_value' : "revenue_to_date" };
         delete (normalizedMapping as any).sourceId; // don't persist sourceId in mappingConfig
 
         let source: any;
@@ -1928,7 +1940,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // ignore
           }
           const totalRevenue = Number(totalRevenueToDate.toFixed(2));
-          if (totalRevenue > 0) {
+          // Create revenue records — daily granularity if date column provided, otherwise single record
+          if (dateCol && dailyRevenueMap.size > 0) {
+            const revenueRecordsToInsert = Array.from(dailyRevenueMap.entries())
+              .filter(([, rev]) => rev > 0)
+              .map(([date, rev]) => ({
+                campaignId,
+                revenueSourceId: source.id,
+                date,
+                revenue: Number(rev.toFixed(2)).toFixed(2) as any,
+                currency,
+              } as any));
+            if (revenueRecordsToInsert.length > 0) {
+              await storage.createRevenueRecords(revenueRecordsToInsert);
+            }
+          } else if (totalRevenue > 0) {
             await storage.createRevenueRecords([
               {
                 campaignId,
@@ -2176,8 +2202,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let kept = 0;
       const revenueCol = revenueColumn ? String(revenueColumn) : "";
       const convCol = conversionValueColumn ? String(conversionValueColumn) : "";
+      const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
       let totalRevenueToDate = 0;
       const conversionValues: number[] = [];
+      const dailyRevenueMap = new Map<string, number>(); // date -> revenue
 
       for (const row of rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -2194,6 +2222,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (revenue > 0) {
             totalRevenueToDate += revenue;
             rowKept = true;
+
+            // Track daily revenue if date column provided
+            if (dateCol) {
+              const dateStr = String((row as any)[dateCol] ?? "").trim();
+              if (dateStr) {
+                const date = new Date(dateStr);
+                if (!isNaN(date.getTime())) {
+                  const normalizedDate = date.toISOString().split('T')[0];
+                  dailyRevenueMap.set(normalizedDate, (dailyRevenueMap.get(normalizedDate) || 0) + revenue);
+                }
+              }
+            }
           }
         }
         if (platformContext === 'linkedin' && convCol) {
@@ -2211,7 +2251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
 
-      const normalizedMapping = { ...mapping, dateColumn: null, dateRange: undefined, mode: valueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date" };
+      const normalizedMapping = { ...mapping, dateRange: undefined, mode: valueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date" };
       const nextMappingConfig = JSON.stringify({
         ...normalizedMapping,
         connectionId,
@@ -2291,7 +2331,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      if (totalRevenue > 0) {
+      // Create revenue records — daily granularity if date column provided, otherwise single record
+      if (dateCol && dailyRevenueMap.size > 0) {
+        const revenueRecordsToInsert = Array.from(dailyRevenueMap.entries())
+          .filter(([, rev]) => rev > 0)
+          .map(([date, rev]) => ({
+            campaignId,
+            revenueSourceId: source.id,
+            date,
+            revenue: Number(rev.toFixed(2)).toFixed(2) as any,
+            currency,
+          } as any));
+        if (revenueRecordsToInsert.length > 0) {
+          await storage.createRevenueRecords(revenueRecordsToInsert);
+        }
+      } else if (totalRevenue > 0) {
         await storage.createRevenueRecords([
           {
             campaignId,

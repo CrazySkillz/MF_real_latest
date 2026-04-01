@@ -250,7 +250,7 @@ Extracted component comparing GA4 campaigns by selected metric. Data from `/api/
 
 - **Ranking cards** (3-col, shown when ≥2 campaigns): Best Performing (dynamic, sorts by selected metric), Most Efficient (highest CR), Needs Attention (lowest CR, guards against duplicating Best Performing)
 - **Bar chart**: Top 10 campaigns by selected metric (horizontal Recharts `BarChart`)
-- **Summary cards**: Total metric + Campaigns Compared. Users metric shows amber `Info` tooltip warning about non-additivity.
+- **Summary cards**: Total metric + Campaigns Compared. Users metric shows amber `Info` tooltip warning about non-additivity. **Revenue total** uses `financialRevenue` (GA4 + imported sources) instead of breakdown sum — matches Overview tab.
 - **Comparison table**: All campaigns sorted by selected metric, top row green, bottom row red. Values scaled proportionally to match `breakdownTotals` (includes Run Refresh data).
 - **Revenue Breakdown sub-table**: Separate card below All Campaigns showing Total Revenue (bold), GA4 Revenue, then each imported source with amount. Data from `revenueDisplaySources` — stays in sync with Overview tab. Revenue banner shown above chart when Revenue metric is selected.
 - **Revenue attribution**: When imported revenue exists (manual/CSV/Sheets/CRM), per-campaign breakdown shows GA4-attributed revenue only (imported can't be split by campaign). The Revenue Breakdown sub-table shows the full picture.
@@ -425,10 +425,17 @@ Include filter params (e.g., `dateRange`, `platformContext`, `clientId`) for cor
 
 ### OAuth Flow (CRM Sources)
 1. User clicks CRM card in Add Revenue modal
-2. `handleCrmSourceClick` checks connection status
-3. If not connected → opens OAuth popup window
+2. `handleCrmSourceClick` checks `crmOAuth` (NOT `crmStatus`) — `crmOAuth` = OAuth tokens exist, `crmStatus` = revenue actually imported
+3. If not authenticated → opens OAuth popup window
 4. OAuth callback stores tokens → popup closes
 5. Wizard step loads (campaign field mapping → crosswalk → pipeline → revenue → review → save)
+6. **"Connected" badge** only shows when BOTH OAuth done AND active revenue source exists
+
+### CRM Edit Mode
+- **Edit opens on Review step** with HubSpot-style settings summary (account, revenue field, campaign field, date field, selected values)
+- **Back navigation** works through all steps with prefilled values — each step has a useEffect to auto-fetch data (properties, unique values, pipelines) when entered
+- **Google Sheets edit**: backend preview/process use purpose-agnostic connection fallback; client auto-selects first available connection if stored ID is invalid
+- **Salesforce Zod**: `conversionValueField` is `.nullable()` — GA4 context omits it instead of sending null
 
 ### HubSpot Pipeline (Proxy)
 Available for all platform contexts. Lets users select a HubSpot deal stage (e.g., SQL) as an early pipeline signal for long sales cycles. Optional — default is Revenue-only.

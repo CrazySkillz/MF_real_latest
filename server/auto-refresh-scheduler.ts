@@ -205,8 +205,10 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
 
     const parseNum = (v: any) => { const n = parseFloat(String(v || "0").replace(/[^0-9.\-]/g, "")); return Number.isFinite(n) ? n : 0; };
 
+    const dateCol = mappingConfig.dateColumn ? String(mappingConfig.dateColumn) : null;
     let totalRevenue = 0;
     let kept = 0;
+    const dailyRevenueMap = new Map<string, number>(); // date -> revenue
     for (const row of dataRows) {
       const rowObj: any = {};
       headers.forEach((h, i) => { rowObj[h] = row[i] ?? ""; });
@@ -215,7 +217,22 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
         if (!campaignValueSet.has(v)) continue;
       }
       const rev = parseNum(rowObj[revenueCol]);
-      if (rev > 0) { totalRevenue += rev; kept++; }
+      if (rev > 0) {
+        totalRevenue += rev;
+        kept++;
+
+        // Track daily revenue if date column provided
+        if (dateCol) {
+          const dateStr = String(rowObj[dateCol] ?? "").trim();
+          if (dateStr) {
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+              const normalizedDate = date.toISOString().split('T')[0];
+              dailyRevenueMap.set(normalizedDate, (dailyRevenueMap.get(normalizedDate) || 0) + rev);
+            }
+          }
+        }
+      }
     }
 
     const total = Number(totalRevenue.toFixed(2));
@@ -227,7 +244,23 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
     if (total > 0) {
       const campaign = await storage.getCampaign(campaignId);
       const currency = String(mappingConfig.currency || (campaign as any)?.currency || "USD");
-      await storage.createRevenueRecords([{ campaignId, revenueSourceId: sourceId, date: endDate, revenue: total.toFixed(2) as any, currency } as any]);
+
+      if (dateCol && dailyRevenueMap.size > 0) {
+        const revenueRecordsToInsert = Array.from(dailyRevenueMap.entries())
+          .filter(([, rev]) => rev > 0)
+          .map(([date, rev]) => ({
+            campaignId,
+            revenueSourceId: sourceId,
+            date,
+            revenue: Number(rev.toFixed(2)).toFixed(2) as any,
+            currency,
+          } as any));
+        if (revenueRecordsToInsert.length > 0) {
+          await storage.createRevenueRecords(revenueRecordsToInsert);
+        }
+      } else {
+        await storage.createRevenueRecords([{ campaignId, revenueSourceId: sourceId, date: endDate, revenue: total.toFixed(2) as any, currency } as any]);
+      }
     }
 
     // Update lastSyncedAt

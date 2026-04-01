@@ -1039,14 +1039,14 @@ export function HubSpotRevenueWizard(props: {
                       <div className="font-medium text-foreground">{campaignPropertyLabel}</div>
                     </div>
 
-                    {reviewRevenue != null && (
-                      <div>
-                        <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
-                        <div className="font-medium text-foreground text-green-700 dark:text-green-400">
-                          ${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
+                      <div className="font-medium text-foreground text-green-700 dark:text-green-400">
+                        {reviewRevenue != null
+                          ? `$${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : "—"}
                       </div>
-                    )}
+                    </div>
 
                     {pipelineEnabled && (
                       <div>

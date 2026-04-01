@@ -320,13 +320,14 @@ export function SalesforceRevenueWizard(props: {
       return vals;
     } catch (err: any) {
       const msg = err?.message || "Failed to load values";
-      // Never wipe existing values (synthesized or previously loaded) — they're valid fallback
-      if (uniqueValues.length === 0) {
+      // Only show error + wipe values if there's nothing to fall back to.
+      // Check selectedValues (stable, not affected by stale closure) — if the user has
+      // prefilled selections, synthesized values will render as fallback.
+      if (selectedValues.length === 0) {
         setUniqueValues([]);
         setValuesError(msg);
         toast({ title: "Failed to Load Values", description: msg, variant: "destructive" });
       }
-      // If we have fallback values, suppress error — the user can still proceed
       return [];
     } finally {
       setValuesLoading(false);
@@ -528,7 +529,8 @@ export function SalesforceRevenueWizard(props: {
       try {
         await fetchUniqueValues(campaignField);
       } catch {
-        // ignore — user can retry via Refresh button
+        // Clear any error set by fetchUniqueValues — synthesized values are the fallback
+        if (selectedValues.length > 0) setValuesError(null);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -752,7 +754,7 @@ export function SalesforceRevenueWizard(props: {
           await fetchUniqueValues(campaignField);
           crosswalkFetchedRef.current = true;
         } catch {
-          // Non-fatal — crosswalk useEffect will synthesize from selectedValues if needed
+          if (selectedValues.length > 0) setValuesError(null);
         }
       }
       setStep("crosswalk");

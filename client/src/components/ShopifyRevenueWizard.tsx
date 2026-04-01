@@ -230,7 +230,7 @@ export function ShopifyRevenueWizard(props: {
     setValuesLoading(true);
     try {
       const resp = await fetch(
-        `/api/shopify/${campaignId}/orders/unique-values?field=${encodeURIComponent(campaignField, { credentials: "include" })}&days=${encodeURIComponent(
+        `/api/shopify/${campaignId}/orders/unique-values?field=${encodeURIComponent(campaignField)}&days=${encodeURIComponent(
           String(days)
         )}&limit=300`,
         { credentials: "include" }

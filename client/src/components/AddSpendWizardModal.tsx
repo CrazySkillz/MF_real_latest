@@ -559,7 +559,7 @@ export function AddSpendWizardModal(props: {
     setIsRemovingSheet(true);
     try {
       const resp = await fetch(
-        `/api/google-sheets/${encodeURIComponent(props.campaignId, { credentials: "include" })}/connection?connectionId=${encodeURIComponent(selectedSheetConnectionId)}`,
+        `/api/google-sheets/${encodeURIComponent(props.campaignId)}/connection?connectionId=${encodeURIComponent(selectedSheetConnectionId)}`,
         { method: "DELETE", credentials: "include" }
       );
       const json = await resp.json().catch(() => null);

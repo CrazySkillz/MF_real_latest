@@ -6329,7 +6329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Default to the minimum needed for this integration.
       // NOTE: we include "id" so we can call the identity/userinfo endpoints to reliably detect user/org currency.
       // You can override via env var if your org allows/needs more (e.g. "api id refresh_token offline_access").
-      const scope = String(process.env.SALESFORCE_OAUTH_SCOPE || process.env.SALESFORCE_OAUTH_SCOPES || 'api id').trim();
+      const scope = String(process.env.SALESFORCE_OAUTH_SCOPE || process.env.SALESFORCE_OAUTH_SCOPES || 'api id refresh_token').trim();
 
       // PKCE
       cleanupSalesforcePkce();
@@ -7276,7 +7276,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete/reset HubSpot connection (CRM revenue source)
   app.delete("/api/hubspot/:campaignId/connection", async (req, res) => {
     try {
-      const { campaignId } = req.params;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { connectionId } = req.query; // Optional: delete specific connection
 
       const isRevenueTrackingHubspotConnection = (conn: any): boolean => {
@@ -7406,7 +7408,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete/reset Salesforce connection (CRM revenue source)
   app.delete("/api/salesforce/:campaignId/connection", async (req, res) => {
     try {
-      const { campaignId } = req.params;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { connectionId } = req.query; // Optional: delete specific connection
 
       const isRevenueTrackingSalesforceConnection = (conn: any): boolean => {
@@ -7534,7 +7538,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete/reset Shopify connection (CRM revenue source)
   app.delete("/api/shopify/:campaignId/connection", async (req, res) => {
     try {
-      const { campaignId } = req.params;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { connectionId } = req.query;
 
       let targetConnId: string | null = connectionId ? String(connectionId) : null;
@@ -11408,7 +11414,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // HubSpot connection status
   app.get("/api/hubspot/:campaignId/status", async (req, res) => {
     try {
-      const campaignId = req.params.campaignId;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const conn: any = await storage.getHubspotConnection(campaignId);
       if (!conn || !conn.isActive || !conn.accessToken) {
         return res.json({ connected: false });
@@ -11470,7 +11478,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get Salesforce connection details (including mappingConfig) for editing/reprocessing
   app.get("/api/salesforce/:campaignId/connection", async (req, res) => {
     try {
-      const { campaignId } = req.params;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { connectionId } = req.query as any;
 
       const conns = await storage.getSalesforceConnections(campaignId);
@@ -11509,7 +11519,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Salesforce connection status
   app.get("/api/salesforce/:campaignId/status", async (req, res) => {
     try {
-      const campaignId = req.params.campaignId;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const conn: any = await storage.getSalesforceConnection(campaignId);
       if (!conn || !conn.isActive || !conn.accessToken || !conn.instanceUrl) {
         return res.json({ connected: false });
@@ -11539,7 +11551,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Salesforce Opportunity fields (describe)
   app.get("/api/salesforce/:campaignId/opportunities/fields", async (req, res) => {
     try {
-      const campaignId = req.params.campaignId;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
 
@@ -11576,7 +11590,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Salesforce Opportunity stages (StageName picklist, for pipeline proxy selection)
   app.get("/api/salesforce/:campaignId/opportunities/stages", async (req, res) => {
     try {
-      const campaignId = req.params.campaignId;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || "v59.0";
 
@@ -11609,7 +11625,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Salesforce Opportunity unique values for a field (for crosswalk multi-select)
   app.get("/api/salesforce/:campaignId/opportunities/unique-values", async (req, res) => {
     try {
-      const campaignId = req.params.campaignId;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const field = String(req.query.field || '').trim();
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '200'), 10) || 200, 10), 500);
       const days = Math.min(Math.max(parseInt(String(req.query.days || '90'), 10) || 90, 1), 3650);
@@ -11703,7 +11721,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Returns sample rows for the chosen attribution field + selected values + revenue field.
   app.post("/api/salesforce/:campaignId/opportunities/preview", async (req, res) => {
     try {
-      const campaignId = req.params.campaignId;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { campaignField, selectedValues, revenueField, days, limit, debug, pipelineEnabled, pipelineStageName } = req.body || {};
       const debugMode = !!debug;
 
@@ -11927,7 +11947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
-      const platformCtx = String(platformContext || "linkedin").trim().toLowerCase() === "ga4" ? "ga4" : "linkedin";
+      const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
       const camp = await storage.getCampaign(campaignId);
       const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
 
@@ -12602,7 +12622,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // HubSpot deals properties (for mapping wizard)
   app.get("/api/hubspot/:campaignId/deals/properties", async (req, res) => {
     try {
-      const campaignId = req.params.campaignId;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
       const resp = await fetch('https://api.hubapi.com/crm/v3/properties/deals?archived=false', {
@@ -12642,7 +12664,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // HubSpot deals pipelines (for default closed-won stage selection)
   app.get("/api/hubspot/:campaignId/deals/pipelines", async (req, res) => {
     try {
-      const campaignId = req.params.campaignId;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
       const resp = await fetch('https://api.hubapi.com/crm/v3/pipelines/deals', {
@@ -12898,7 +12922,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // HubSpot unique values for a deal property (used by crosswalk multi-select)
   app.get("/api/hubspot/:campaignId/deals/unique-values", async (req, res) => {
     try {
-      const campaignId = req.params.campaignId;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const property = String(req.query.property || '').trim();
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '200'), 10) || 200, 10), 500);
       const days = Math.min(Math.max(parseInt(String(req.query.days || '90'), 10) || 90, 1), 3650);
@@ -13568,13 +13594,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const conn: any = await storage.getSalesforceConnection(campaignId);
     if (!conn || !conn.accessToken || !conn.instanceUrl) throw new Error('No Salesforce connection found');
     let accessToken = conn.accessToken;
-    try {
-      const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
-      if (shouldRefresh && conn.refreshToken) {
+    const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+    if (shouldRefresh) {
+      if (conn.refreshToken) {
         accessToken = await refreshSalesforceToken(conn);
+      } else {
+        throw new Error('Salesforce access token expired and no refresh token available. Please reconnect Salesforce.');
       }
-    } catch {
-      // ignore and try existing token
     }
     return { accessToken, instanceUrl: String(conn.instanceUrl), connectionId: String(conn.id) };
   }
@@ -25620,7 +25646,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/shopify/:campaignId/status", async (req, res) => {
     try {
-      const { campaignId } = req.params;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const conn: any = await storage.getShopifyConnection(campaignId);
       const connected = !!(conn && conn.isActive && conn.accessToken && conn.shopDomain);
       res.json({
@@ -25642,7 +25670,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get("/api/shopify/:campaignId/debug", async (req, res) => {
     try {
-      const { campaignId } = req.params;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
 
@@ -25736,7 +25766,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/shopify/:campaignId/orders/preview", async (req, res) => {
     try {
-      const { campaignId } = req.params;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || "50"), 10) || 50, 1), 100);
       const columnsParam = String(req.query.columns || "").trim();
       const columns = columnsParam ? columnsParam.split(",").map((s) => s.trim()).filter(Boolean) : [];
@@ -25808,7 +25840,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/shopify/:campaignId/orders/unique-values", async (req, res) => {
     try {
-      const { campaignId } = req.params;
+      const campaignId = String(req.params.campaignId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const field = String(req.query.field || "").trim();
       const days = Math.min(Math.max(parseInt(String(req.query.days || "90"), 10) || 90, 1), 3650);
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || "300"), 10) || 300, 1), 500);

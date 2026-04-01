@@ -386,7 +386,6 @@ export function HubSpotRevenueWizard(props: {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           campaignProperty,
           selectedValues,

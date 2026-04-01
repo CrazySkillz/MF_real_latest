@@ -197,6 +197,8 @@ export function SalesforceRevenueWizard(props: {
       setUniqueValues([]);
       setSelectedValues([]);
       setLastSaveResult(null);
+      setCrosswalkFetched(false);
+      setStagesFetched(false);
       return;
     }
 
@@ -505,33 +507,37 @@ export function SalesforceRevenueWizard(props: {
     })();
   }, [step, fields.length, statusLoading, isConnected, isConnecting, campaignId]);
 
-  // When entering crosswalk step, load unique values if needed.
-  // In edit mode with prefilled selectedValues, synthesize uniqueValues so checkboxes render.
+  // When entering crosswalk step, load unique values.
+  // In edit mode: synthesize immediately (so checkboxes render), then fetch real values in background.
+  const [crosswalkFetched, setCrosswalkFetched] = useState(false);
   useEffect(() => {
     if (step !== "crosswalk") return;
-    // If we have selectedValues but no uniqueValues (edit mode prefill), create synthetic entries
+    // Synthesize fallback entries first so the UI isn't empty
     if (uniqueValues.length === 0 && selectedValues.length > 0) {
       setUniqueValues(selectedValues.map(v => ({ value: v, count: 0 })));
-      return;
     }
+    // Fetch real values from API (for full list + accurate counts)
+    if (crosswalkFetched) return; // already fetched this session
     if (!isConnected || !campaignField) return;
-    if (uniqueValues.length > 0) return;
+    setCrosswalkFetched(true);
     void (async () => {
       try {
         await fetchUniqueValues(campaignField);
       } catch {
-        // ignore — user can retry via Refresh button on the crosswalk step
+        // ignore — user can retry via Refresh button
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, isConnected, campaignField, uniqueValues.length, selectedValues.length]);
+  }, [step, isConnected, campaignField]);
 
   // Fetch pipeline stages when entering pipeline step.
-  // Skip if stage is already prefilled from edit mode — prevents expired token errors.
+  // Always attempt fetch so edit mode users can change their selection.
+  const [stagesFetched, setStagesFetched] = useState(false);
   useEffect(() => {
     if (step !== "pipeline") return;
     if (!isConnected) return;
-    if (stages.length > 0 || pipelineStageName) return;
+    if (stagesFetched || stages.length > 0) return; // already fetched
+    setStagesFetched(true);
     void (async () => {
       setStagesLoading(true);
       try {
@@ -541,13 +547,15 @@ export function SalesforceRevenueWizard(props: {
         const s = Array.isArray(json?.stages) ? json.stages : [];
         setStages(s);
       } catch (err: any) {
-        setStages([]);
-        toast({ title: "Failed to Load Stages", description: err?.message || "Please try again.", variant: "destructive" });
+        // In edit mode, keep fallback (pipelineStageName renders via fallback SelectItem)
+        if (stages.length === 0 && !pipelineStageName) {
+          toast({ title: "Failed to Load Stages", description: err?.message || "Please try again.", variant: "destructive" });
+        }
       } finally {
         setStagesLoading(false);
       }
     })();
-  }, [step, isConnected, stages.length, pipelineStageName, campaignId, toast]);
+  }, [step, isConnected, stagesFetched, stages.length, campaignId]);
 
   const salesforceSourceMode = useMemo(() => {
     return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);
@@ -733,9 +741,14 @@ export function SalesforceRevenueWizard(props: {
         });
         return;
       }
-      // In edit mode with prefilled values, skip the API fetch — crosswalk useEffect will synthesize from selectedValues
-      if (!((mode === "edit" || initialMappingConfig) && selectedValues.length > 0)) {
-        await fetchUniqueValues(campaignField);
+      // Fetch unique values for the crosswalk step (edit mode also fetches so user can change selection)
+      if (!crosswalkFetched) {
+        try {
+          await fetchUniqueValues(campaignField);
+          setCrosswalkFetched(true);
+        } catch {
+          // Non-fatal — crosswalk useEffect will synthesize from selectedValues if needed
+        }
       }
       setStep("crosswalk");
       return;

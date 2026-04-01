@@ -559,40 +559,13 @@ export function SalesforceRevenueWizard(props: {
     return raw === "conversion_value";
   }, [mode, initialMappingConfig]);
 
-  // Auto-fetch preview when entering review step to get revenue totals.
-  // Skips if preview already loaded, or if stored revenue exists (edit mode), or if not connected.
-  useEffect(() => {
-    if (step !== "review") return;
-    if (previewRows.length > 0) return; // already loaded
-    if (lastSaveResult?.totalRevenue != null) return; // already saved
-    const storedRev = Number((initialMappingConfig as any)?.lastTotalRevenue);
-    if (Number.isFinite(storedRev) && storedRev > 0) return; // edit mode has stored value
-    if (!isConnected || isConnecting || !campaignField || selectedValues.length === 0) return;
-    void (async () => {
-      try {
-        await preview();
-      } catch {
-        // Non-fatal — revenue amount just won't show on review
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, isConnected, isConnecting]);
-
-  // Revenue amount for the review step: prefer lastSaveResult, then stored config, then preview rows sum
+  // Revenue amount for the review step: from lastSaveResult (after save) or stored config (edit mode)
   const reviewRevenue = useMemo(() => {
     if (lastSaveResult?.totalRevenue != null) return Number(lastSaveResult.totalRevenue);
     const stored = Number((initialMappingConfig as any)?.lastTotalRevenue);
     if (Number.isFinite(stored) && stored > 0) return stored;
-    // Compute from preview rows if available (Amount column)
-    if (previewRows.length > 0 && previewHeaders.length > 0) {
-      const amtIdx = previewHeaders.findIndex((h) => h.toLowerCase() === "amount" || h === revenueField);
-      if (amtIdx >= 0) {
-        const sum = previewRows.reduce((acc, row) => acc + (Number(row[amtIdx]) || 0), 0);
-        if (sum > 0) return sum;
-      }
-    }
     return null;
-  }, [lastSaveResult, initialMappingConfig, previewRows, previewHeaders, revenueField]);
+  }, [lastSaveResult, initialMappingConfig]);
 
   const campaignFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === campaignField);

@@ -12,6 +12,7 @@ export default defineConfig({
     environment: "node",
     globals: true,
     reporters: ["default"],
+    pool: "forks",
   },
 });
 

@@ -475,14 +475,16 @@ These rules are enforced by `server/endpoint-auth-audit.test.ts` (7 tests, <1s).
 
 ### CRM Edit Mode (CRITICAL — read before modifying HubSpot/Salesforce wizards)
 
-Edit mode must work with **expired OAuth tokens**. No automatic API calls. All data from stored `mappingConfig`.
+Edit mode must work with **expired OAuth tokens**. All data prefilled from stored `mappingConfig`.
 
 - **Edit opens on Review step** with HubSpot-style settings summary (account, revenue field, campaign field, date field, selected values)
 - **Review step NEVER fetches from CRM APIs** — only displays data from stored `mappingConfig`. Labels fall back to raw field names (`"Amount"`, `"Opportunity Name"`).
-- **useEffect guards** — every useEffect that calls a CRM API must skip in edit mode:
-  - Properties/Fields: skip when `mode === "edit" && campaignField && revenueField`
+- **useEffect guards** — CRM API useEffects must handle edit mode gracefully:
+  - Properties/Fields (Salesforce): attempts fetch but **suppresses errors** in edit mode — Select dropdown shows fallback `SelectItem` with prefilled raw field name so the user always sees their current selection
   - Unique Values (crosswalk): skip when `selectedValues.length > 0` — instead, synthesize `uniqueValues` from `selectedValues` so checkboxes render
   - Pipelines/Stages: skip when `pipelineStageId`/`pipelineStageName` is prefilled
+- **Reconnect flow (Salesforce)** — `isConnecting` stays `true` until the OAuth popup completes (not until popup opens). `handleAuthSuccess` calls `fetchFields()` **directly** (not via useEffect — edit-mode conditions would block it). No red toast on token expiry — inline error with Retry link only.
+- **Select dropdown fallback** — Radix Select only shows a value if a matching `SelectItem` exists. When `fields` is empty (expired token), a single fallback `SelectItem` is rendered with the prefilled value so the dropdown isn't blank.
 - **handleNext guards** — forward navigation must also skip API calls in edit mode:
   - `!isConnected` check: bypass when `mode === "edit"` (user is editing existing config, not connecting)
   - `fetchUniqueValues()` call: skip when `mode === "edit" && selectedValues.length > 0`

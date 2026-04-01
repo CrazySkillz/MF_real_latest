@@ -320,9 +320,13 @@ export function SalesforceRevenueWizard(props: {
       return vals;
     } catch (err: any) {
       const msg = err?.message || "Failed to load values";
-      setUniqueValues([]);
-      setValuesError(msg);
-      toast({ title: "Failed to Load Values", description: msg, variant: "destructive" });
+      // Never wipe existing values (synthesized or previously loaded) — they're valid fallback
+      if (uniqueValues.length === 0) {
+        setUniqueValues([]);
+        setValuesError(msg);
+        toast({ title: "Failed to Load Values", description: msg, variant: "destructive" });
+      }
+      // If we have fallback values, suppress error — the user can still proceed
       return [];
     } finally {
       setValuesLoading(false);

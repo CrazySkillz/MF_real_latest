@@ -11526,12 +11526,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!conn || !conn.isActive || !conn.accessToken || !conn.instanceUrl) {
         return res.json({ connected: false });
       }
-      // Refresh token if expired or expiring within 5 minutes
-      if (conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000) && conn.refreshToken) {
-        try {
-          await refreshSalesforceToken(conn);
-        } catch (err) {
-          console.error('[Salesforce Status] Token refresh failed:', err);
+      // Check if token is expired or expiring within 5 minutes
+      const isExpiring = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+      if (isExpiring) {
+        if (conn.refreshToken) {
+          try {
+            await refreshSalesforceToken(conn);
+          } catch (err) {
+            console.error('[Salesforce Status] Token refresh failed:', err);
+            return res.json({ connected: false });
+          }
+        } else {
+          // Token expired and no refresh token — connection is unusable
           return res.json({ connected: false });
         }
       }

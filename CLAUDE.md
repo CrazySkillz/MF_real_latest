@@ -634,10 +634,20 @@ After all platform flows (GA4, LinkedIn, Meta, Google Ads) are manually tested, 
 - **Run Refresh button** currently visible for any connected GA4 property (staging/testing). Will be hidden behind env var (`SHOW_MOCK_REFRESH`) when deploying to production clients. Each click: writes daily metrics, runs KPI/benchmark progress, triggers alert checking, auto-cleans stale "GA4 Revenue" and "Mock Spend" sources from older code.
 - Select 2 campaigns → Run Refresh → both campaigns' data aggregated (e.g., brand + prospecting = 1,170 sessions/day).
 
+### Pre-Push Checklist (MANDATORY)
+
+After EVERY code change, before committing and pushing:
+
+1. `npm run test` — 212 unit tests, ~3 seconds. Must all pass.
+2. `npx vite build` — compile check, ~20 seconds. Must succeed.
+3. Both pass → commit and push.
+4. Either fails → fix before pushing. Never push broken code.
+
 ### Running Tests
 
 ```bash
-npm run test                    # Unit tests (instant, no browser)
+npm run test                    # Unit tests (instant, no browser) — RUN BEFORE EVERY PUSH
+npx vite build                  # Compile check — RUN BEFORE EVERY PUSH
 npm run test:e2e:headed         # E2E tests (browser opens, ~30 min)
 npx playwright show-report      # View HTML report with screenshots
 npx playwright test --update-snapshots  # Update visual baselines after UI changes

@@ -559,13 +559,20 @@ export function SalesforceRevenueWizard(props: {
     return raw === "conversion_value";
   }, [mode, initialMappingConfig]);
 
-  // Revenue amount for the review step: from lastSaveResult (after save) or stored config (edit mode)
+  // Revenue amount for the review step: prefer save result, then stored config, then preview rows
   const reviewRevenue = useMemo(() => {
     if (lastSaveResult?.totalRevenue != null) return Number(lastSaveResult.totalRevenue);
     const stored = Number((initialMappingConfig as any)?.lastTotalRevenue);
     if (Number.isFinite(stored) && stored > 0) return stored;
+    if (previewRows.length > 0 && previewHeaders.length > 0) {
+      const amtIdx = previewHeaders.findIndex((h) => h.toLowerCase() === "amount" || h === revenueField);
+      if (amtIdx >= 0) {
+        const sum = previewRows.reduce((acc, row) => acc + (Number(row[amtIdx]) || 0), 0);
+        if (sum > 0) return sum;
+      }
+    }
     return null;
-  }, [lastSaveResult, initialMappingConfig]);
+  }, [lastSaveResult, initialMappingConfig, previewRows, previewHeaders, revenueField]);
 
   const campaignFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === campaignField);
@@ -779,6 +786,10 @@ export function SalesforceRevenueWizard(props: {
         }
       }
       setStep("review");
+      // Fire preview in background to populate revenue total — non-blocking, fails silently
+      if (isConnected && !isConnecting && selectedValues.length > 0 && previewRows.length === 0) {
+        void preview().catch(() => {});
+      }
       return;
     }
     if (step === "review") {

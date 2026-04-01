@@ -12312,9 +12312,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
           revenueClassification: rc,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
-          pipelineEnabled: platformCtx === "linkedin" ? pipelineEnabled : false,
-          pipelineStageName: platformCtx === "linkedin" && pipelineEnabled && pipelineStageName ? pipelineStageName : null,
-          pipelineStageLabel: platformCtx === "linkedin" && pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
+          pipelineEnabled: !!pipelineEnabled,
+          pipelineStageName: pipelineEnabled && pipelineStageName ? pipelineStageName : null,
+          pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
           pipelineTotalToDate: 0,
           pipelineCurrency: null,
           pipelineLastUpdatedAt: null,
@@ -12325,7 +12325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Best-effort: compute an exec-facing pipeline proxy as the sum of Opportunities CURRENTLY in the selected stage.
         // This is intentionally a stage subset, not historical "entered stage" totals.
-        if (platformCtx === "linkedin" && pipelineEnabled && pipelineStageName) {
+        if (pipelineEnabled && pipelineStageName) {
           try {
             let pipelineToDate = 0;
             const pipelineCurrencies = new Set<string>();
@@ -12414,9 +12414,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             days: rangeDays,
             revenueClassification,
             lastTotalRevenue: Number(totalRevenue.toFixed(2)),
-            pipelineEnabled: platformCtx === "linkedin" ? pipelineEnabled : false,
-            pipelineStageName: platformCtx === "linkedin" && pipelineEnabled && pipelineStageName ? pipelineStageName : null,
-            pipelineStageLabel: platformCtx === "linkedin" && pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
+            pipelineEnabled: !!pipelineEnabled,
+            pipelineStageName: pipelineEnabled && pipelineStageName ? pipelineStageName : null,
+            pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
             ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
           }),
           isActive: true,

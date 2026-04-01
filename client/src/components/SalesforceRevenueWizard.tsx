@@ -378,6 +378,7 @@ export function SalesforceRevenueWizard(props: {
         setStatusLoading(true);
         await fetchStatus();
         setStatusLoading(false);
+        setIsConnecting(false); // Mark OAuth complete AFTER fresh tokens are stored — triggers fields useEffect
         toast({
           title: "Salesforce Connected",
           description: connectOnly
@@ -389,11 +390,15 @@ export function SalesforceRevenueWizard(props: {
           onClose?.();
           return;
         }
+        // Reset fields so useEffect re-fetches with fresh token
+        setFields([]);
+        setFieldsError(null);
         setStep("campaign-field");
       };
 
       const handleAuthError = (msg?: string) => {
         cleanup();
+        setIsConnecting(false);
         toast({
           title: "Salesforce Connection Failed",
           description: msg || "Please try again.",
@@ -442,19 +447,20 @@ export function SalesforceRevenueWizard(props: {
           // ignore
         }
       }, 1200);
-      pollTimeout = window.setTimeout(() => cleanup(), 60_000);
+      pollTimeout = window.setTimeout(() => { cleanup(); setIsConnecting(false); }, 60_000);
 
       window.addEventListener("message", onWindowMessage);
     } catch (err: any) {
+      setIsConnecting(false); // Only on immediate failure (popup blocked, no auth URL)
       setOauthError(err?.message || "Failed to open Salesforce OAuth.");
       toast({
         title: "Salesforce Connection Failed",
         description: err?.message || "Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsConnecting(false);
     }
+    // NOTE: Do NOT set isConnecting=false here — it stays true until handleAuthSuccess/handleAuthError
+    // runs after the popup completes. This prevents the fields useEffect from firing with expired tokens.
   };
 
   // Optional: auto-prompt OAuth when opened from "Add revenue source" so the flow matches HubSpot UX expectations.

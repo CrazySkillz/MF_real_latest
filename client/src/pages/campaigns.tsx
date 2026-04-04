@@ -1889,15 +1889,6 @@ export default function Campaigns() {
                           );
                         })}
                       </div>
-                      <div className="text-center pt-2">
-                        <button
-                          type="button"
-                          className="text-sm text-muted-foreground hover:text-foreground underline"
-                          onClick={() => setWizardStep(5)}
-                        >
-                          Skip — connect later
-                        </button>
-                      </div>
                       <div className="flex pt-4 border-t">
                         <Button type="button" variant="outline" onClick={() => setWizardStep(1)}>
                           <ArrowLeft className="w-4 h-4 mr-2" /> Back

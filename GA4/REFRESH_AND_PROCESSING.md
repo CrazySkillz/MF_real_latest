@@ -20,10 +20,12 @@ The required GA4 platform pattern is:
 
 1. refresh the GA4 `Overview` inputs first
 2. recompute dependent KPI values and KPI performance state
-3. recompute dependent Benchmark values and Benchmark performance state
-4. refresh `Ad Comparison` from refreshed breakdown and revenue inputs
-5. refresh `Insights` from refreshed Overview, KPI, and Benchmark context
-6. ensure `Reports` render from those refreshed inputs when generated or sent
+3. refresh the KPI `Executive snapshot` cards from the recomputed KPI state
+4. recompute dependent Benchmark values and Benchmark performance state
+5. refresh the Benchmark `Executive snapshot` cards from the recomputed Benchmark state
+6. refresh `Ad Comparison` from refreshed breakdown and revenue inputs
+7. refresh `Insights` from refreshed Overview, KPI, and Benchmark context
+8. ensure `Reports` render from those refreshed inputs when generated or sent
 
 Important meaning:
 
@@ -44,6 +46,7 @@ Important meaning:
 
 - it keeps persisted GA4 daily facts current
 - it is campaign-scoped and property-scoped
+- this is only one part of `Overview` freshness; `Overview` also depends on refreshed external revenue and spend source state where applicable
 
 ## Scheduler 2: External Value Auto-Refresh And Auto-Process
 
@@ -66,8 +69,13 @@ Required order:
 
 1. recompute GA4 KPI values
 2. refresh KPI progress and performance state
-3. update stored KPI history where applicable
-4. run KPI alert checks
+3. refresh the KPI `Executive snapshot` cards from the recomputed KPI grid/state
+4. update stored KPI history where applicable
+5. run KPI alert checks
+
+Important meaning:
+
+- KPI alerts must run only after both the KPI grid state and the KPI `Executive snapshot` state are coherent with the latest recomputed values
 
 ## After Overview Refresh: Benchmark Recompute And Alert Checks
 
@@ -75,8 +83,13 @@ Required order:
 
 1. recompute GA4 benchmark values
 2. refresh benchmark progress and performance state
-3. update stored benchmark history where applicable
-4. run benchmark alert checks
+3. refresh the Benchmark `Executive snapshot` cards from the recomputed benchmark grid/state
+4. update stored benchmark history where applicable
+5. run benchmark alert checks
+
+Important meaning:
+
+- Benchmark alerts must run only after both the benchmark grid state and the Benchmark `Executive snapshot` state are coherent with the latest recomputed values
 
 ## Ad Comparison Refresh
 
@@ -107,6 +120,12 @@ Instead:
 - ad hoc GA4 reports use live refreshed page state at generation time
 - scheduled/server-generated reports use saved config plus shared report-generation infrastructure
 
+Important meaning:
+
+- `Reports` is a downstream output layer
+- reports should render from refreshed GA4 tab inputs
+- reports must not become a competing source of truth for campaign metrics
+
 ## Current-State Notes
 
 The current codebase is broadly aligned with the required dependency order, but it is split rather than fully consolidated.
@@ -136,3 +155,8 @@ Current examples:
 - `Upload CSV`
 
 These behave more like snapshot inputs unless the user updates them again.
+
+Important meaning:
+
+- they do not participate in scheduled daily source refresh on their own
+- they are still included in recomputed totals until the user edits, replaces, or deletes them

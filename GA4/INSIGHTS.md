@@ -16,6 +16,11 @@ The current tab contains:
 - an executive summary tracker panel
 - `What changed, what to do next`
 
+Important meaning:
+
+- this tab combines summary, diagnostics, trend context, and action guidance
+- it is not just a charting or anomaly surface
+
 ## Executive Financials
 
 The `Executive financials` section summarizes:
@@ -66,6 +71,20 @@ The current tracker panel shows:
 - `High priority`
 - `Needs attention`
 
+Current meaning:
+
+- `Total insights`
+  Count of all generated insight items currently shown by the findings engine.
+- `High priority`
+  Count of insight items currently classified as high severity.
+- `Needs attention`
+  Count of insight items currently classified as medium severity.
+
+Important meaning:
+
+- positive and informational items may exist in the findings list without contributing to `High priority` or `Needs attention`
+- the summary cards are derived from the current findings list, not a separate source of truth
+
 ## Trends
 
 The current `Trends` section supports:
@@ -83,6 +102,8 @@ Users can switch the viewed metric and see:
 Important meaning:
 
 - trends depend on enough daily history being available
+- some trend modes need more history than others
+- `Users` is currently only available in `Daily` mode in the present implementation
 
 ## What Changed, What To Do Next
 
@@ -92,6 +113,24 @@ Each current finding includes:
 - title
 - supporting description or evidence
 - suggested next step when available
+
+Important meaning:
+
+- the findings list is a merged output from one insights engine
+- it combines integrity/config checks, KPI context, benchmark context, anomaly signals, and financial/performance context
+- not every item is a negative alert; the list can also contain positive or informational items
+
+## Data Summary
+
+The current `Data Summary` section is a supporting context block.
+
+Its purpose is to give a quick at-a-glance performance summary using currently available campaign data before the user reads the deeper findings list.
+
+Important meaning:
+
+- `Executive financials` focuses on financial health
+- `Data Summary` gives compact operational context
+- `What changed, what to do next` is the action-oriented interpretation layer
 
 ## Budget / Pacing Prompt Pattern
 

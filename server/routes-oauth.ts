@@ -1138,6 +1138,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return next();
   };
 
+  const hasActivatableCampaignDataPath = async (campaignId: string, nextPlatformRaw: unknown, existingCampaign?: any) => {
+    const nextPlatform = String(nextPlatformRaw ?? existingCampaign?.platform ?? "").trim();
+    if (nextPlatform) return true;
+
+    const [
+      ga4Connection,
+      linkedInConnection,
+      metaConnection,
+      googleAdsConnection,
+      sheetsConnections,
+      spendSources,
+      ga4RevenueSources,
+      linkedinRevenueSources,
+      metaRevenueSources,
+    ] = await Promise.all([
+      storage.getGA4Connection(campaignId).catch(() => undefined),
+      storage.getLinkedInConnection(campaignId).catch(() => undefined),
+      storage.getMetaConnection(campaignId).catch(() => undefined),
+      storage.getGoogleAdsConnection(campaignId).catch(() => undefined),
+      storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]),
+      storage.getSpendSources(campaignId).catch(() => [] as any[]),
+      storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]),
+      storage.getRevenueSources(campaignId, "linkedin").catch(() => [] as any[]),
+      storage.getRevenueSources(campaignId, "meta").catch(() => [] as any[]),
+    ]);
+
+    return Boolean(
+      ga4Connection ||
+      linkedInConnection ||
+      metaConnection ||
+      googleAdsConnection ||
+      (Array.isArray(sheetsConnections) && sheetsConnections.some((c: any) => c && c.isActive !== false)) ||
+      (Array.isArray(spendSources) && spendSources.some((s: any) => s && s.isActive !== false)) ||
+      ([...ga4RevenueSources, ...linkedinRevenueSources, ...metaRevenueSources]).some((s: any) => s && s.isActive !== false)
+    );
+  };
+
   // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).
 
   // Imported revenue "to date" (campaign lifetime). Used as fallback when GA4 has no revenue metric configured.
@@ -4820,12 +4857,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/campaigns/:id", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
+      const existingCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!existingCampaign) return;
 
       const validatedData = insertCampaignSchema.partial().parse(req.body);
       // Never allow ownership to be modified by the client.
       delete (validatedData as any).ownerId;
+      const isDraftActivation =
+        String((existingCampaign as any)?.status || "").trim().toLowerCase() === "draft" &&
+        String((validatedData as any)?.status || "").trim().toLowerCase() === "active";
+
+      if (isDraftActivation) {
+        const hasDataPath = await hasActivatableCampaignDataPath(campaignId, (validatedData as any)?.platform, existingCampaign);
+        if (!hasDataPath) {
+          return res.status(400).json({
+            message: "Connect at least one data source before activating this campaign.",
+          });
+        }
+      }
+
       const campaign = await storage.updateCampaign(campaignId, validatedData);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });

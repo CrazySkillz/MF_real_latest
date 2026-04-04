@@ -36,7 +36,7 @@ The platform transforms those inputs into:
 This platform is primarily for:
 
 - marketing managers and growth teams tracking campaign performance across channels
-- analysts who need cross-platform rollups for spend, conversions, revenue, ROAS, and related metrics
+- analysts who need cross-platform rollups for spend, conversions, revenue, ROI, ROAS, and related metrics
 - executives who need a single health-and-insights view and executive-ready reports
 
 ## Enterprise Standard
@@ -62,6 +62,8 @@ This flow must remain the conceptual backbone of the product.
 
 The user authenticates first.
 
+The system uses `Clerk` for account creation and authentication.
+
 Protected product routes are not the entry point for signed-out users.
 Authentication gates access to the rest of the system.
 
@@ -80,6 +82,29 @@ The expected pattern is:
 - then work on campaigns within that client
 
 Future development should preserve client context as a real product layer, not a cosmetic selector.
+
+The concrete top-of-funnel journey should be understood as:
+
+1. user signs in through `Clerk`
+2. user lands on the `Welcome / Home` page
+3. the `Welcome / Home` page contains marketing-industry news / information
+4. the user can create a new client by clicking `+` next to `CLIENTS` in the left nav
+5. a client-creation modal opens
+6. the user enters the client name and clicks `Save`
+7. the new client appears under the `Clients` section in the left nav
+8. clicking the client should route the user to that client's `Dashboard`
+
+### Current-State Note: Dashboard
+
+The `Dashboard` should be treated as the client-level overview layer for that client's campaigns.
+
+The Dashboard still needs refinement.
+
+For now, preserve the current routing and hierarchy:
+
+- `Welcome / Home` -> select/create client -> client `Dashboard` -> `Campaigns` -> campaign-specific analytics
+
+Do not redesign around the Dashboard until that layer is intentionally updated.
 
 ### 3. Create Campaign
 
@@ -111,8 +136,8 @@ The sources attach to the campaign.
 
 The pattern is:
 
-- create campaign first
-- then connect data to that campaign
+- enter campaign details
+- connect data to that campaign
 - then derive analytics from those campaign-scoped connections
 
 Do not invert this model unless explicitly requested.
@@ -158,8 +183,8 @@ The required product architecture pattern is:
 3. Campaigns are the primary detailed analytics object.
 4. Data sources connect into campaigns.
 5. The system transforms those campaign-connected sources into analytics.
-6. Platform-level views summarize more broadly.
-7. Campaign-level views drill into a single campaign.
+6. Platform-level views drill into platform-level analytics.
+7. Campaign-level views drill into the campaign as a whole with all connected data sources.
 8. KPIs, benchmarks, alerts, and reports sit on top of those analytics layers.
 9. The final outcome is business action based on accurate data.
 
@@ -175,36 +200,39 @@ Do not build new features that confuse cross-campaign views with single-campaign
 
 ### Platform-Level Analytics
 
-Platform-level analytics are cross-campaign, client-level, or account-level views.
+In this product, a platform means a connected source such as:
+
+- GA4
+- Meta
+- LinkedIn
+- Google Ads
+- Google Sheets
+
+Platform-level analytics means analytics specific to that connected platform.
+
+Connected Platforms = where the data comes from.
+Platform-specific deep detail = one platform's connected data for the current campaign or context.
 
 They answer questions like:
 
-- How is the overall portfolio performing?
-- What is happening across multiple campaigns?
-- What broad alerts, trends, or reports matter at the account level?
-- What should leaders see first?
+- What does GA4 say for this campaign's selected GA4 configuration?
+- What does LinkedIn say for this campaign's selected LinkedIn campaigns?
+- What does Meta say for this campaign's selected Meta campaigns?
+- What is happening inside this one connected platform?
+- What source-specific detail or validation is needed here?
 
-These views are summary-oriented.
+Important scoping rule:
 
-They are used for:
+- platform analytics should be scoped to the data the user selected when connecting that platform
+- example:
+  - if a user connects a GA4 property and selects specific GA4 campaigns, the GA4 analytics should be scoped to those selected GA4 campaigns
+  - if a user connects LinkedIn and selects specific LinkedIn campaigns, the LinkedIn analytics should be scoped to those selected LinkedIn campaigns
+- do not silently expand a platform view to unrelated data in the same property/account unless that behavior is explicitly designed and communicated
 
-- broad monitoring
-- account-wide rollups
-- executive visibility
-- cross-campaign comparison
-- top-level reporting
-
-Examples include:
-
-- dashboard
-- notifications
-- reports
-- platform-wide KPI pages
-- other broad overview surfaces not scoped to a single campaign
 
 ### Campaign-Level Analytics
 
-Campaign-level analytics are scoped to a single campaign.
+Campaign-level analytics are scoped to a campaign and include all connected data sources.
 
 They answer questions like:
 
@@ -335,6 +363,12 @@ It should continue to use campaign context such as:
 
 It should not be repurposed into a single-platform diagnostic tool unless explicitly designed that way.
 
+Current-state note:
+
+- Freestyle Chat is still in progress
+- the intended behavior is that users can enter prompts and run queries against their campaign data to get insights
+- future work should preserve this as a campaign-context analytics surface rather than a generic chatbot
+
 ### Overview And Campaign DeepDive
 
 The Overview tab is the campaign hub landing area.
@@ -439,14 +473,6 @@ This means:
 
 Based on the current implementation, the codebase is broadly consistent with this pattern, with these important clarifications:
 
-### What Is Consistent
-
-- The campaign detail page acts as a hub.
-- KPIs are campaign-level.
-- Benchmarks are campaign-level.
-- Freestyle Chat is campaign-level.
-- Campaign DeepDive launchers point to campaign-wide analysis pages.
-- Connected Platforms exposes per-platform connection state and platform-specific analytics entry points.
 
 ### Important Clarification
 
@@ -494,9 +520,12 @@ The user navigates to `Campaigns` from the left sidebar.
 
 They land on the Campaign Management page, which is client-specific.
 
+The currently selected client in the client context / dropdown determines which campaigns are shown there.
+
 That page should:
 
 - list campaigns for the currently selected client
+- show `No campaigns found` for new users or clients with no campaigns
 - let the user create campaigns
 - let the user edit campaigns
 - let the user pause or re-activate campaigns
@@ -515,6 +544,7 @@ The intended campaign creation pattern is:
 7. The system finalizes the campaign and marks it active
 8. The user returns to Campaign Management and sees the new campaign in the list
 9. The user clicks the campaign and lands on the campaign-level Overview
+10. Under "Connected Platforms" in the Overview all connected platforms should show a blue Connected badge and a View Detailed Analytics link which should link to the specific platform's analytics section
 
 ### Draft vs Finalized Campaigns
 
@@ -528,6 +558,7 @@ Required interpretation for future development:
 
 - the final `Create Campaign` action should represent campaign finalization, not just record creation
 - an `active` campaign should normally mean the campaign has at least one successfully configured data source or intentionally supported campaign data path
+- intentionally supported data paths can include manual or import-based campaign setup, not only OAuth-connected platforms
 - do not treat connector setup as optional if the campaign is expected to produce analytics immediately
 
 ### Campaign Overview Entry After Creation
@@ -540,9 +571,20 @@ Inside that hub, the `Connected Platforms` section should:
 
 - be campaign-specific
 - show connection status for sources attached to that campaign
+- show a blue `Connected` badge for platforms that are successfully connected to that campaign
 - provide `View Detailed Analytics` entry points for connected sources
+- have each `View Detailed Analytics` link route to that specific platform's analytics section for the current campaign
 
 This is the correct bridge from campaign setup into analytics.
+
+This is a super-important design pattern.
+
+Required interpretation for future development:
+
+- `Connected Platforms` belongs inside the campaign-level `Overview` because it answers which sources are attached to the campaign
+- the blue `Connected` badge communicates that the source is live for that campaign
+- `View Detailed Analytics` is the handoff from the campaign hub to the platform-specific analytics layer
+- the user should not be sent to a generic or wrong destination; the link must open the correct analytics section for that exact connected platform
 
 ## Platform-Specific Templates
 

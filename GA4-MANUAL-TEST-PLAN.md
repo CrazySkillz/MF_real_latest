@@ -3,6 +3,71 @@
 ## How This Plan Works
 Each journey follows the exact steps a user would take, in order. Start with Journey 1 and work through sequentially. Each journey builds on the state left by the previous one.
 
+## Purpose
+Use this plan to:
+
+- validate the intended GA4 user journey
+- verify cross-tab consistency
+- catch regressions after bug fixes
+- confirm that refresh and recomputation behavior remain trustworthy
+
+## Recommended Testing Workflow
+
+Do not use this plan only as one long uninterrupted script.
+
+Recommended process:
+
+1. run the journeys sequentially when establishing a fresh baseline
+2. when a bug is fixed, retest the affected journey first
+3. then run the Shared Regression Sweep below
+4. use `Run Refresh` when the bug touches calculations, freshness, KPIs, Benchmarks, Insights, or Reports
+5. only continue to the next journey after the fixed area and regression sweep both pass
+
+## Test Preconditions
+
+Before starting a fresh run:
+
+- use a known test client
+- start from a clean or clearly understood campaign state
+- note whether the run is baseline validation, regression retest, or real integration verification
+- record the campaign name used for the run
+
+## Evidence Capture
+
+For any failed step, capture:
+
+- journey number
+- step number
+- campaign name
+- tab/page
+- expected result
+- actual result
+- whether `Run Refresh` had been used
+- whether the issue blocks the rest of the plan or only affects one area
+
+## Shared Regression Sweep
+
+After any GA4 bug fix, run this short regression sweep before moving on:
+
+- Overview: core cards still populate correctly
+- Overview: financial cards still recompute correctly
+- KPIs: current values and Executive snapshot still match
+- Benchmarks: current values and Executive snapshot still match
+- Ad Comparison: selected metric and ranking still update
+- Insights: Executive Financials and findings still reflect current values
+- Reports: on-demand output still reflects current tab state
+- Connected source rows: edit/delete still recompute totals correctly
+
+## Stop Rules
+
+Pause the current run and log the issue if:
+
+- a shared financial value stops matching across tabs
+- a fix breaks an unrelated GA4 tab
+- `Run Refresh` stops updating downstream tabs correctly
+- source edit/delete creates duplicate or stale values
+- KPI or Benchmark current values no longer align with Overview values
+
 ## Two Data Sources Explained
 The mock system has two separate data sources — understanding this is key to validating numbers:
 
@@ -51,6 +116,14 @@ Spend arrives when the user explicitly adds it:
 ---
 
 ## Journey 1: Create Campaign + Connect GA4
+
+Checkpoint after Journey 1:
+
+- campaign creation works
+- GA4 entry path works
+- Overview baseline values are trustworthy
+- KPI and Benchmark template gating is correct
+- Insights loads without broken dependencies
 
 ### Step 1: Create a fresh campaign + connect GA4
 - [ ] Open MimoSaaS in your browser
@@ -148,6 +221,12 @@ Spend arrives when the user explicitly adds it:
 
 **State**: Metrics + revenue exist from simulation. Spend = $0. This is the default state after connecting GA4 — test it before adding spend.
 
+Checkpoint after Journey 2:
+
+- non-financial KPI creation works
+- non-financial Benchmark creation works
+- financial template gating still holds before spend is added
+
 ### Step 1: Create Sessions KPI
 - [ ] Click the **KPIs** tab → click **Create KPI**
 - [ ] Select **"Total Sessions"** template → ENABLED (no spend needed)
@@ -197,6 +276,13 @@ Spend arrives when the user explicitly adds it:
 
 **Why**: GA4 doesn't track spend. In production, spend arrives when the user adds it via the Add Spend wizard (manual entry, CSV, Google Sheets, or connecting an ad platform). Run Refresh only simulates the GA4 scheduler (sessions, conversions, revenue) — it does NOT bring in spend.
 
+Checkpoint after Journey 3:
+
+- Run Refresh updates GA4 values only
+- Add Spend works
+- financial metrics unlock correctly
+- Insights integrity behavior updates correctly
+
 ### Step 1: Run Refresh (GA4 data only, no spend)
 - [ ] Click the **Overview** tab
 - [ ] Find and click the **Run Refresh** button
@@ -243,6 +329,12 @@ Spend arrives when the user explicitly adds it:
 
 ## Journey 4: Create Financial KPIs & Benchmarks (Spend Now Exists)
 
+Checkpoint after Journey 4:
+
+- financial KPI creation works
+- financial Benchmark creation works
+- current values align with Overview financial metrics
+
 ### Step 1: ROAS KPI
 - [ ] Click the **KPIs** tab → **Create KPI** → select **"ROAS"** → ENABLED
 - [ ] Current auto-populates as ratio (e.g., **48.91** meaning 48.91x return) — matches Overview ROAS
@@ -278,6 +370,12 @@ Spend arrives when the user explicitly adds it:
 
 **Now that KPIs and Benchmarks exist (Journeys 3-4), verify they update when new daily data arrives.**
 
+Checkpoint after Journey 5:
+
+- KPI current values recompute after refresh
+- Benchmark current values recompute after refresh
+- Insights trends reflect the added history
+
 ### Step 1: Run Refresh ×3 more
 - [ ] Click **Run Refresh** three more times (you now have 6 total days of Run Refresh data)
 - [ ] Each click: spend increases by $1,630, revenue by $4,200, sessions by 1,170
@@ -304,6 +402,12 @@ Spend arrives when the user explicitly adds it:
 ## Journey 5B: Edit & Delete KPIs and Benchmarks
 
 **State**: 6 KPIs and 3 Benchmarks exist from Journeys 2 + 4. Test that editing and deleting works correctly and totals/scoring update.
+
+Checkpoint after Journey 5B:
+
+- edit flows preserve existing records correctly
+- delete flows recalculate summary cards correctly
+- deleted items no longer affect Insights or notifications
 
 ### Step 1: Edit a KPI — change target
 - [ ] Click the **KPIs** tab
@@ -395,6 +499,13 @@ Spend arrives when the user explicitly adds it:
 
 **Purpose**: Test adding spend from different sources and verify that new spend values propagate correctly to ALL tabs — Overview financial metrics, KPIs, Benchmarks, and Insights.
 
+Checkpoint after Journey 7:
+
+- all supported spend-source journeys work
+- totals are cumulative where expected
+- edits replace rather than duplicate
+- deletes fully recompute downstream values
+
 ### Step 1: Note current values before adding spend
 - [ ] **Overview tab**: note Total Spend, ROAS, ROI, CPA, Profit values
 - [ ] **KPIs tab**: note ROAS KPI current value, CPA KPI current value
@@ -460,6 +571,12 @@ Spend arrives when the user explicitly adds it:
 ## Journey 8: Add More Revenue Sources + Verify Propagation
 
 **Purpose**: Test adding revenue from different sources and verify that new revenue values propagate correctly to ALL tabs — Overview financial metrics, KPIs, Benchmarks, and Insights.
+
+Checkpoint after Journey 8:
+
+- all supported revenue-source journeys work
+- total revenue remains additive
+- downstream ROAS, ROI, Profit, KPI, Benchmark, and Insights values stay aligned
 
 ### Step 1: Note current values before adding revenue
 - [ ] **Overview tab**: note Total Revenue, ROAS, ROI, Profit values
@@ -767,6 +884,38 @@ Spend arrives when the user explicitly adds it:
 - [ ] Benchmark current values updated
 - [ ] Insights regenerate (new anomalies or changed recommendations)
 - [ ] Alert thresholds re-evaluated → notifications created if breached
+
+## Fast Retest Matrix After A Code Fix
+
+Use this instead of rerunning the full plan after every small fix:
+
+- Overview-only bug:
+  - affected Overview step
+  - Journey 13 Cross-Tab Consistency
+  - `Run Refresh` once if the bug touched calculations
+- KPI bug:
+  - affected KPI step
+  - KPI Executive snapshot check
+  - Insights KPI-related check
+  - Journey 13 Cross-Tab Consistency
+- Benchmark bug:
+  - affected Benchmark step
+  - Benchmark Executive snapshot check
+  - Insights Benchmark-related check
+  - Journey 13 Cross-Tab Consistency
+- financial-source bug:
+  - affected source add/edit/delete step
+  - Overview financial cards
+  - KPI and Benchmark financial cards
+  - Insights financial row
+  - Reports spot check
+- refresh or recompute bug:
+  - affected step
+  - `Run Refresh`
+  - KPI and Benchmark updates
+  - Ad Comparison
+  - Insights
+  - Reports
 
 ---
 

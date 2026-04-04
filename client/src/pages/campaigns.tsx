@@ -2183,7 +2183,7 @@ export default function Campaigns() {
                           type="button"
                           className="flex-1"
                           onClick={() => handleConnectorsComplete(connectedPlatformsInDialog)}
-                          disabled={createCampaignMutation.isPending}
+                          disabled={createCampaignMutation.isPending || connectedPlatformsInDialog.length === 0}
                         >
                           {createCampaignMutation.isPending ? (
                             <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>

@@ -34,6 +34,76 @@ The GA4 `Overview` cards are computed outputs from query-backed data paths.
 
 They are not hard-coded values and they are not manually maintained UI state.
 
+Important clarification:
+
+- campaign creation does not permanently populate these cards with one-time imported values
+- during campaign setup, the system stores the GA4 property and campaign selection/filter for this app campaign
+- after that, the Overview tab fetches current GA4 data for that saved scope and computes the cards from those query results
+
+## Source-Of-Truth Hierarchy
+
+The GA4 Overview should be understood through this hierarchy:
+
+1. campaign creation stores GA4 scope and campaign configuration
+2. GA4 queries fetch current base metrics for that saved scope
+3. revenue and spend sources contribute normalized campaign records where applicable
+4. Overview cards are recomputed outputs from those fetched and normalized inputs
+
+Important meaning:
+
+- setup stores scope, not frozen metric values
+- queries and normalized records are the real inputs
+- the cards are the presentation layer for those recomputed results
+
+## Fetched Vs Derived Values
+
+The clearest way to understand the Overview cards is:
+
+- some cards are base fetched values from GA4-backed queries
+- some cards are derived from those fetched values
+- some financial cards combine GA4-fetched values with imported campaign revenue/spend records
+
+### Base Fetched GA4-Backed Values
+
+These are the primary fetched values that come from the campaign's saved GA4 scope:
+
+- `Sessions`
+- `Users`
+- `Conversions`
+- `Engagement Rate`
+- GA4-native revenue when available
+
+These values are fetched from the current GA4 query paths, not stored as fixed values at campaign-creation time.
+
+Important clarification:
+
+- `Conversions` on the GA4 Overview is the GA4 conversion total for this campaign's saved GA4 scope
+- it is not sourced from imported CRM/ecommerce/manual conversion systems on this page
+- derived metrics like `CPA` depend on this GA4-scoped conversion total unless the implementation is explicitly redesigned
+
+### Derived Overview Values
+
+These cards are derived from fetched or recomputed inputs:
+
+- `Conv. Rate = Conversions / Sessions`
+- `Profit = Revenue - Spend`
+- `ROAS = Revenue / Spend`
+- `ROI = (Revenue - Spend) / Spend`
+- `CPA = Spend / Conversions`
+
+`Latest Day Revenue` and `Latest Day Spend` are also computed from daily values rather than being fixed setup-time values.
+
+Intended behavior:
+
+- `Latest Day Revenue` should show the previous day's total revenue for the campaign across all applicable revenue sources
+- `Latest Day Spend` should show the previous day's total spend for the campaign across all applicable spend sources
+
+Current-state note:
+
+- `Latest Day Revenue` is currently built from the GA4-selected report day plus imported revenue for that same day, rather than simply using the previous day's total across all relevant revenue sources
+- `Latest Day Spend` is intended to represent the previous day's total spend for the campaign across all applicable spend sources, but the current implementation uses a narrower `today else yesterday` check
+- treat these differences as current-state implementation issues to fix later, not as the desired long-term template
+
 ### Summary Cards
 
 - `Sessions`
@@ -59,9 +129,16 @@ Financial-card detail lives in `GA4/FINANCIAL_SOURCES.md`.
 
 High-level rule:
 
-- revenue cards combine GA4-native revenue and imported campaign revenue where applicable
-- spend cards come from explicit spend sources attached to the campaign
+- `Total Revenue` is additive:
+  `Total Revenue = GA4-native revenue + imported campaign revenue`
+- spend cards come only from explicit spend sources attached to the campaign
+- GA4 itself does not provide spend for this page's spend cards
 - profit and efficiency metrics are derived outputs, not manually stored totals
+
+Reference note:
+
+- use `GA4/OVERVIEW.md` for tab-level meaning and visible card behavior
+- use `GA4/FINANCIAL_SOURCES.md` for revenue/spend source workflows, provenance, and recomputation rules
 
 ## GA4 Scope Rule
 
@@ -90,6 +167,12 @@ Columns:
 - `Conversions`
 - `Conv Rate`
 - `Revenue`
+
+Important clarification:
+
+- `Campaign Breakdown` revenue is GA4 revenue attributed to each GA4 campaign row
+- it is not a proportional allocation of imported external revenue
+- campaign financial cards and campaign-breakdown revenue should not be treated as interchangeable numbers
 
 ### Landing Pages
 

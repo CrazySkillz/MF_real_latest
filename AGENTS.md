@@ -1,8 +1,12 @@
 # AGENTS.md
 
+## General Standard
+
+Work carefully, finish the requested task end-to-end when safe to do so, and prioritize correctness over speed in all analytics-sensitive areas.
+
 ## Purpose
 
-This project is an existing marketing analytics platform with known regressions from prior AI edits. The primary goal of any future change is to stabilize behavior, fix explicitly requested bugs, and preserve the current design pattern and architecture.
+This project is an existing marketing analytics platform with known regressions from prior AI edits. The primary goal of any future change is to add more features and data sources following the overall system architecture and design pattern, stabilize behavior, fix explicitly requested bugs, and preserve the current design pattern and architecture.
 
 This file is a strict operating contract for any agent working in this repository.
 
@@ -10,12 +14,21 @@ Required companion reference:
 
 - `ARCHITECTURE_USER_JOURNEY.md`
 - `GA4/README.md` for GA4-related work
+- `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 fix/test workflow guidance
 
 `ARCHITECTURE_USER_JOURNEY.md` defines the detailed end-to-end user journey, campaign creation flow, and the distinction between platform-level and campaign-level analytics.
 
 Treat that document as required reading before making architectural or workflow-sensitive changes.
 
 For GA4 work, `GA4/README.md` is the entry point and the files in `GA4/` are the canonical GA4 reference set.
+
+Required reference order:
+
+1. `AGENTS.md`
+2. `ARCHITECTURE_USER_JOURNEY.md`
+3. `GA4/README.md` for GA4-related work
+4. `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 stabilization, bug-fix, and test workflow
+5. the relevant platform-specific doc(s)
 
 ## What This App Does
 
@@ -30,12 +43,12 @@ This app is a marketing analytics platform that pulls performance data from mult
 It is primarily used by:
 
 - marketing managers and growth teams tracking campaign performance across channels
-- analysts who need cross-platform rollups for spend, conversions, revenue, ROAS, and related metrics
+- analysts who need cross-platform rollups for spend, conversions, revenue, ROI, ROAS, and related metrics
 - executives who need a single health-and-insights view plus downloadable reports
 
 Key workflow:
 
-`sign-in -> create campaign -> connect data -> analyze -> act`
+`sign-in -> create/select client -> client dashboard -> campaigns -> create/select campaign -> connect data -> analyze -> act`
 
 ## Accuracy Standard
 
@@ -45,8 +58,9 @@ There is no margin for error.
 
 Accuracy is not optional.
 If a metric, transformation, attribution path, rollup, or report output is uncertain, do not guess.
-Do not ship changes that "probably work" in sensitive analytics paths.
+Do not ship changes that "probably work" in analytics paths.
 Preserve trust in the numbers above all else.
+Do not take short cuts.
 
 ## Required Product Pattern
 
@@ -62,6 +76,11 @@ For GA4-specific work, future development must also preserve the platform rules 
 That pattern is required architecture, not optional guidance.
 
 Any new feature must fit into the existing model instead of inventing a parallel journey.
+
+Preserve intended architecture even when a feature is still in progress.
+
+If a surface is incomplete or currently imperfect, do not use that as permission to redesign the product pattern.
+Follow the intended architecture documented in the companion docs unless the user explicitly asks to change it.
 
 ## Non-Negotiable Rule
 
@@ -108,7 +127,14 @@ Fix issues inside the existing path. Do not create alternative side paths.
 - Keep transformations in their current layer.
 - Keep response formats backward compatible.
 - Keep multi-tenant and campaign-scoped access patterns intact.
+- Keep platform-specific analytics scoped to the platform configuration the user selected for that campaign.
 - Preserve the current naming and file layout unless a rename is absolutely required for a requested bug fix.
+
+Platform-scoping rule:
+
+- a platform means a connected source such as `GA4`, `LinkedIn`, `Meta`, `Google Ads`, or `Google Sheets`
+- platform-specific analytics must remain scoped to the campaigns, properties, accounts, sheets, or other source configuration selected when that platform was connected to the campaign
+- do not silently broaden platform analytics to unrelated source data in the same account/property unless explicitly required by the product design
 
 ## Strict Safety Rules
 

@@ -660,6 +660,10 @@ export default function GA4Metrics() {
       });
       // Also invalidate campaign-level queries
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+      // Refresh the bell / notifications center immediately so alert notifications created during
+      // mock refresh are visible without waiting for the navigation poll interval.
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/notifications"] });
       toast({
         title: "Mock Refresh Complete",
         description: data?.summary || "Daily mock data injected. Check cards for updated values.",

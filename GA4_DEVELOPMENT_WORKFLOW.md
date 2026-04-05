@@ -10,6 +10,14 @@ Use this as the operating process for future GA4 development and QA.
 
 The GA4 docs are now the specification.
 
+Stabilization rule:
+
+- no more "likely fix" approach
+- no grouped assumptions
+- only root-cause-confirmed fixes
+- if root cause is not yet confirmed, do not change code
+- fix one bug at a time, validate it, then move on
+
 Future bug fixes and testing should follow the documented behavior in:
 
 - `AGENTS.md`
@@ -124,6 +132,10 @@ Do not batch many unrelated fixes together.
 Do not refactor while bug fixing.
 
 Do not change adjacent behavior unless the bug cannot be fixed safely otherwise.
+
+Do not implement speculative fixes.
+
+If the root cause is still uncertain, stop investigation there and keep tracing instead of editing code.
 
 ## Step 5: Regression-First Validation
 

@@ -199,6 +199,8 @@ Follow this order every time:
 Do not code first and investigate later.
 Do not guess at fixes.
 Do not patch symptoms without understanding the source.
+Do not implement speculative "likely fixes".
+If root cause is not confirmed yet, do not change code.
 
 ## Validation Requirements
 

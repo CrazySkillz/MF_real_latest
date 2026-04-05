@@ -237,7 +237,6 @@ export async function checkPerformanceAlerts(): Promise<void> {
     const activeKPIs = await db.select()
       .from(kpis)
       .where(and(
-        eq(kpis.status, 'active'),
         eq(kpis.alertsEnabled, true)
       ));
 

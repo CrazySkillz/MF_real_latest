@@ -70,6 +70,18 @@ Status: `Done`
 
 ### 2. `Latest Day Spend` does not follow the intended previous-day all-sources rule
 
+Status: `Done`
+
+- Fixed with:
+  - GA4 Overview now reads the previous day only for `Latest Day Spend`
+  - `/api/campaigns/:id/spend-daily` now filters out snapshot-style spend sources for latest-day calculation
+- Manual result:
+  - adding, editing, and deleting snapshot-style spend sources updates `Total Spend` correctly
+  - `Latest Day Spend` no longer changes just because a new manual spend value is added today
+- Automated result:
+  - `npm test -- server/latest-day-spend-regression.test.ts`
+  - passed: `1` file, `2` tests
+
 - Severity: `P0`
 - Area: `GA4 Overview / Financial computation`
 - Affected docs:
@@ -94,6 +106,18 @@ Status: `Done`
 
 ### 3. `Latest Day Revenue` does not cleanly match the intended previous-day all-sources rule
 
+Status: `Done`
+
+- Fixed with:
+  - GA4 Overview now reads the previous day only for `Latest Day Revenue`
+  - both `/api/campaigns/:id/revenue-daily` handlers now filter out snapshot-style revenue sources for latest-day calculation
+- Manual result:
+  - adding, editing, and deleting snapshot-style revenue sources updates `Total Revenue` correctly
+  - `Latest Day Revenue` no longer changes just because a new manual revenue value is added today
+- Automated result:
+  - `npm test -- server/latest-day-revenue-regression.test.ts`
+  - passed: `1` file, `2` tests
+
 - Severity: `P0`
 - Area: `GA4 Overview / Financial computation`
 - Affected docs:
@@ -117,6 +141,20 @@ Status: `Done`
   - mixed-source revenue scenarios
 
 ### 4. GA4 KPI alert notifications still use LinkedIn-style destination URLs
+
+Status: `Done`
+
+- Fixed with:
+  - GA4 KPI notifications now build GA4-specific action URLs instead of LinkedIn links
+  - KPI alert generation no longer excludes GA4 KPIs just because their status is `tracking` rather than `active`
+  - `Create KPI` now opens with a clean empty form state instead of leaking values from the previous KPI
+- Manual result:
+  - breached GA4 KPI alerts now appear in the bell / Notifications center
+  - clicking the notification routes to the GA4 KPI tab for the campaign
+  - `Create KPI` opens blank after editing another KPI
+- Automated result:
+  - `npm test -- server/ga4-kpi-regression.test.ts`
+  - passed: `1` file, `3` tests
 
 - Severity: `P1`
 - Area: `GA4 KPIs / Notifications`

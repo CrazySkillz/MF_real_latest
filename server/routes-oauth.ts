@@ -1175,6 +1175,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     );
   };
 
+  const isEligibleForLatestDaySpend = (source: any): boolean => {
+    const sourceType = String(source?.sourceType || "").trim().toLowerCase();
+    let mapping: any = null;
+    try {
+      mapping = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : null;
+    } catch {
+      mapping = null;
+    }
+
+    if (sourceType === "manual" || sourceType === "csv" || sourceType === "linkedin_api" || sourceType === "connector_derived") {
+      return false;
+    }
+
+    if (sourceType === "google_sheets") {
+      return !!String(mapping?.dateColumn || "").trim();
+    }
+
+    if (sourceType === "ad_platforms") {
+      return !mapping;
+    }
+
+    return true;
+  };
+
   // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).
 
   // Imported revenue "to date" (campaign lifetime). Used as fallback when GA4 has no revenue metric configured.
@@ -1251,8 +1275,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
       }
-      const totals = await storage.getSpendTotalForRange(campaignId, date, date);
-      res.json({ success: true, date, ...totals });
+      const [sources, breakdown] = await Promise.all([
+        storage.getSpendSources(campaignId),
+        storage.getSpendBreakdownBySource(campaignId, date, date),
+      ]);
+      const eligibleSourceIds = new Set(
+        (Array.isArray(sources) ? sources : [])
+          .filter((source: any) => source && source.isActive !== false && isEligibleForLatestDaySpend(source))
+          .map((source: any) => String(source.id))
+      );
+      const eligibleBreakdown = (Array.isArray(breakdown) ? breakdown : []).filter((row: any) =>
+        eligibleSourceIds.has(String(row?.sourceId || ""))
+      );
+      const totalSpend = eligibleBreakdown.reduce((sum: number, row: any) => sum + Number(row?.spend || 0), 0);
+      const currency = eligibleBreakdown.find((row: any) => row?.currency)?.currency;
+      res.json({
+        success: true,
+        date,
+        totalSpend: Number(totalSpend.toFixed(2)),
+        currency,
+        sourceIds: eligibleBreakdown.map((row: any) => String(row.sourceId)),
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch daily spend" });
     }

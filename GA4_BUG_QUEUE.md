@@ -34,6 +34,18 @@ Keep the severity labels, but work from top to bottom unless a specific retest o
 
 ### 1. Campaign can be finalized as active without a successful source connection
 
+Status: `Done`
+
+- Fixed with:
+  - backend draft -> active activation guard
+  - final wizard button gating
+  - removal of the `Skip — connect later` path from the campaign wizard
+- Manual result:
+  - valid GA4-connected campaign creation still works
+  - invalid skip/bypass path is removed
+  - campaign entry flow still works
+  - `View Detailed Analytics` path still works
+
 - Severity: `P0`
 - Area: `Campaign creation / Campaign Management / GA4 entry flow`
 - Affected docs:

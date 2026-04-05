@@ -1809,26 +1809,12 @@ export default function GA4Metrics() {
     },
   });
 
-  // Latest-day spend from imported spend records (yesterday)
-  // Latest Day Spend: try today first (manual/CSV/ad platform records are dated today),
-  // fall back to yesterday (scheduler-sourced records have actual historical dates)
-  const spendDailyToday = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // Latest Day Spend should use the previous complete day across all spend sources.
   const spendDailyYesterday = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
     return d.toISOString().slice(0, 10);
   }, []);
-  const { data: spendDailyTodayResp } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/spend-daily`, spendDailyToday],
-    enabled: !!campaignId,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/spend-daily?date=${spendDailyToday}`);
-      if (!resp.ok) return { success: false, totalSpend: 0 };
-      return resp.json().catch(() => ({ success: false, totalSpend: 0 }));
-    },
-  });
   const { data: spendDailyYesterdayResp } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/spend-daily`, spendDailyYesterday],
     enabled: !!campaignId,
@@ -1840,8 +1826,7 @@ export default function GA4Metrics() {
       return resp.json().catch(() => ({ success: false, totalSpend: 0 }));
     },
   });
-  // Use whichever day has spend data (prefer today, fall back to yesterday)
-  const spendDailyResp = (Number(spendDailyTodayResp?.totalSpend) > 0) ? spendDailyTodayResp : spendDailyYesterdayResp;
+  const spendDailyResp = spendDailyYesterdayResp;
 
   // Latest Day imported revenue — uses ga4ReportDate (or yesterday fallback) so dates are consistent
   const revenueDailyDate = ga4ReportDate || spendDailyYesterday;

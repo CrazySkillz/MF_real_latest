@@ -1199,6 +1199,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return true;
   };
 
+  const isEligibleForLatestDayRevenue = (source: any): boolean => {
+    const sourceType = String(source?.sourceType || "").trim().toLowerCase();
+    let mapping: any = null;
+    try {
+      mapping = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : null;
+    } catch {
+      mapping = null;
+    }
+
+    if (sourceType === "manual" || sourceType === "hubspot") {
+      return false;
+    }
+
+    if (sourceType === "csv" || sourceType === "google_sheets") {
+      return !!String(mapping?.dateColumn || "").trim();
+    }
+
+    return true;
+  };
+
   // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).
 
   // Imported revenue "to date" (campaign lifetime). Used as fallback when GA4 has no revenue metric configured.
@@ -1310,8 +1330,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
       }
-      const totals = await storage.getRevenueTotalForRange(campaignId, date, date);
-      res.json({ success: true, date, ...totals });
+      const [sources, breakdown] = await Promise.all([
+        storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]),
+        storage.getRevenueBreakdownBySource(campaignId, date, date, "ga4").catch(() => [] as any[]),
+      ]);
+      const eligibleSourceIds = new Set(
+        (Array.isArray(sources) ? sources : [])
+          .filter((source: any) => source && source.isActive !== false && isEligibleForLatestDayRevenue(source))
+          .map((source: any) => String(source.id))
+      );
+      const eligibleBreakdown = (Array.isArray(breakdown) ? breakdown : []).filter((row: any) =>
+        eligibleSourceIds.has(String(row?.sourceId || ""))
+      );
+      const totalRevenue = eligibleBreakdown.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0);
+      const currency = eligibleBreakdown.find((row: any) => row?.currency)?.currency;
+      res.json({
+        success: true,
+        date,
+        totalRevenue: Number(totalRevenue.toFixed(2)),
+        currency,
+        sourceIds: eligibleBreakdown.map((row: any) => String(row.sourceId)),
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch daily revenue" });
     }
@@ -1626,8 +1665,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
       }
-      const totals = await storage.getRevenueTotalForRange(campaignId, date, date, platformContext);
-      res.json({ success: true, platformContext, date, ...totals });
+      const [sources, breakdown] = await Promise.all([
+        storage.getRevenueSources(campaignId, platformContext as any).catch(() => [] as any[]),
+        storage.getRevenueBreakdownBySource(campaignId, date, date, platformContext as any).catch(() => [] as any[]),
+      ]);
+      const eligibleSourceIds = new Set(
+        (Array.isArray(sources) ? sources : [])
+          .filter((source: any) => source && source.isActive !== false && isEligibleForLatestDayRevenue(source))
+          .map((source: any) => String(source.id))
+      );
+      const eligibleBreakdown = (Array.isArray(breakdown) ? breakdown : []).filter((row: any) =>
+        eligibleSourceIds.has(String(row?.sourceId || ""))
+      );
+      const totalRevenue = eligibleBreakdown.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0);
+      const currency = eligibleBreakdown.find((row: any) => row?.currency)?.currency;
+      res.json({
+        success: true,
+        platformContext,
+        date,
+        totalRevenue: Number(totalRevenue.toFixed(2)),
+        currency,
+        sourceIds: eligibleBreakdown.map((row: any) => String(row.sourceId)),
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch daily revenue" });
     }

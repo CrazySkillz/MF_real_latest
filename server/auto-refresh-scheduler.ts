@@ -17,6 +17,7 @@ import { storage } from "./storage";
 import { refreshAllLinkedInData } from "./linkedin-scheduler";
 import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
+import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 
 type AnyRecord = Record<string, any>;
 
@@ -600,6 +601,9 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
     if (anyCampaignUpdated) {
       await checkPerformanceAlerts().catch((e) => {
         console.warn("[Auto Refresh] Alert check failed after provider reprocess:", (e as any)?.message || e);
+      });
+      await checkBenchmarkPerformanceAlerts().catch((e) => {
+        console.warn("[Auto Refresh] Benchmark alert check failed after provider reprocess:", (e as any)?.message || e);
       });
     }
 

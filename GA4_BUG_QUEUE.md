@@ -216,6 +216,23 @@ Status: `Done`
 
 ### 6. GA4 post-refresh KPI path still depends partly on a legacy generic KPI refresh helper
 
+Status: `Done`
+
+- Fixed with:
+  - GA4 immediate post-refresh path no longer calls the legacy LinkedIn-only `refreshKPIsForCampaign` helper
+  - GA4 KPI jobs now refresh stored `currentValue` on same-day reruns before history dedupe skips a new point
+  - `Run refresh` mock data now advances the injected GA4 day on rerun so KPI cards receive a real changed input during QA
+  - KPI `Avg. Progress` now uses bounded per-card progress instead of uncapped over-target attainment
+  - Benchmark edit modal now shows the same live current value as the benchmark card
+- Manual result:
+  - `Run refresh` updates KPI cards again
+  - KPI executive snapshot remains coherent after refresh
+  - KPI `Avg. Progress` looks consistent with card progress bars
+  - Benchmark edit modal current value matches the card value
+- Automated result:
+  - `npm test -- server/ga4-kpi-benchmark-summary-regression.test.ts`
+  - passed: `1` file, `3` tests
+
 - Severity: `P1`
 - Area: `GA4 KPIs / Refresh and processing`
 - Affected docs:

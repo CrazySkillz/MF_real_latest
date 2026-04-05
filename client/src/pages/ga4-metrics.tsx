@@ -1828,8 +1828,8 @@ export default function GA4Metrics() {
   });
   const spendDailyResp = spendDailyYesterdayResp;
 
-  // Latest Day imported revenue — uses ga4ReportDate (or yesterday fallback) so dates are consistent
-  const revenueDailyDate = ga4ReportDate || spendDailyYesterday;
+  // Latest Day Revenue should use the previous complete day across GA4 native + imported revenue sources.
+  const revenueDailyDate = spendDailyYesterday;
   const { data: revenueDailyResp } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/revenue-daily`, revenueDailyDate],
     enabled: !!campaignId,
@@ -1840,6 +1840,9 @@ export default function GA4Metrics() {
       return resp.json().catch(() => ({ success: false, totalRevenue: 0 }));
     },
   });
+  const ga4LatestDayRevenue = useMemo(() => {
+    return Number(ga4DailyRows.find((r: any) => String(r?.date) === String(revenueDailyDate))?.revenue || 0);
+  }, [ga4DailyRows, revenueDailyDate]);
 
   const spendSourceLabels = useMemo(() => {
     const persistedSpend = Number(spendToDateResp?.spendToDate || 0);
@@ -4166,7 +4169,7 @@ export default function GA4Metrics() {
                             <p className="text-sm font-medium text-muted-foreground/70">Latest Day Revenue</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {formatMoney(
-                                Number(ga4ReportDate ? (ga4DailyRows.find((r: any) => String(r?.date) === ga4ReportDate)?.revenue || 0) : 0)
+                                Number(ga4LatestDayRevenue || 0)
                                 + Number(revenueDailyResp?.totalRevenue || 0)
                               )}
                             </p>

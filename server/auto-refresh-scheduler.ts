@@ -15,7 +15,6 @@
 
 import { storage } from "./storage";
 import { refreshAllLinkedInData } from "./linkedin-scheduler";
-import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 
@@ -586,11 +585,6 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
           if (!r.ok) {
             console.warn(`[Auto Refresh] KPI/Benchmark recompute failed for campaign ${campaignId}:`, r.status, r.json?.error || r.text);
           }
-
-          // Also recompute KPI values immediately (exec-grade freshness).
-          await refreshKPIsForCampaign(campaignId).catch((e) => {
-            console.warn(`[Auto Refresh] KPI refresh failed for campaign ${campaignId}:`, (e as any)?.message || e);
-          });
         }
       } catch (e: any) {
         console.error(`[Auto Refresh] Error processing campaign ${campaignId}:`, e?.message || e);

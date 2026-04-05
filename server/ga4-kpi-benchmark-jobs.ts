@@ -256,6 +256,14 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         const kpiId = String((kpi as any)?.id || "");
         if (!kpiId) continue;
 
+        const metricOrName = String((kpi as any)?.metric || (kpi as any)?.name || "");
+        const valueNum = computeKpiValue(metricOrName, inputs);
+        // Always refresh stored currentValue so same-day Run Refresh updates what alert checks read,
+        // even if we skip writing another history point for the same date.
+        try {
+          await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);
+        } catch (_) { /* best-effort */ }
+
         const existing = await storage.getKPIProgress(kpiId).catch(() => []);
         const existingPts = (Array.isArray(existing) ? existing : [])
           .map((p: any) => ({
@@ -268,8 +276,6 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         const already = existingPts.some((p) => isoDateUTC(p.recordedAt) === date);
         if (already) continue;
 
-        const metricOrName = String((kpi as any)?.metric || (kpi as any)?.name || "");
-        const valueNum = computeKpiValue(metricOrName, inputs);
         const prev = existingPts.length > 0 ? existingPts[0].value : null;
 
         const newPoint = { value: valueNum, recordedAt };
@@ -286,11 +292,6 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           recordedAt,
           notes: `auto:ga4_daily:${date}`,
         } as any);
-
-        // Update KPI currentValue so alert checker uses fresh value
-        try {
-          await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);
-        } catch (_) { /* best-effort */ }
 
         kpisRecorded += 1;
       }

@@ -61,6 +61,11 @@ The benchmark grid is the detailed record of benchmark state.
 
 The executive snapshot tracker is a summary derived from the benchmark grid, not a separate source of truth.
 
+When editing an existing benchmark:
+
+- the edit modal should show the same live current value the benchmark card is using
+- it should not prefill from a stale stored snapshot if the current GA4 or financial inputs have changed
+
 ## Benchmark Progress And Status
 
 Current status model:

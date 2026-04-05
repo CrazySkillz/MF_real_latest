@@ -974,6 +974,10 @@ export default function GA4Metrics() {
     setEditingBenchmark(benchmark);
     setShowCreateBenchmark(true);
     const metric = (benchmark as any).metric || "";
+    const liveCurrentValue =
+      metric && metric !== "__custom__"
+        ? String(getLiveBenchmarkCurrentValue(metric))
+        : String(benchmark.currentValue ?? "");
     const normalizedType =
       String((benchmark as any)?.benchmarkType || "").toLowerCase() === "goal"
         ? "custom"
@@ -985,7 +989,7 @@ export default function GA4Metrics() {
       benchmarkType: normalizedType,
       unit: benchmark.unit || "",
       benchmarkValue: formatNumberByUnit(String(benchmark.benchmarkValue ?? ""), String(benchmark.unit || "%")),
-      currentValue: formatNumberByUnit(String(benchmark.currentValue ?? ""), String(benchmark.unit || "%")),
+      currentValue: formatNumberByUnit(liveCurrentValue, String(benchmark.unit || "%")),
       metric: metric,
       industry: benchmark.industry || "",
       geoLocation: benchmark.geoLocation || "",
@@ -1094,6 +1098,10 @@ export default function GA4Metrics() {
   const resetBenchmarkDraft = () => {
     if (editingBenchmark) {
       const metric = (editingBenchmark as any).metric || "";
+      const liveCurrentValue =
+        metric && metric !== "__custom__"
+          ? String(getLiveBenchmarkCurrentValue(metric))
+          : String((editingBenchmark as any).currentValue ?? "");
       const normalizedType =
         String((editingBenchmark as any)?.benchmarkType || "").toLowerCase() === "goal"
           ? "custom"
@@ -1105,7 +1113,7 @@ export default function GA4Metrics() {
         benchmarkType: normalizedType,
         unit: editingBenchmark.unit || "",
         benchmarkValue: formatNumberByUnit(String((editingBenchmark as any).benchmarkValue ?? ""), String((editingBenchmark as any).unit || "%")),
-        currentValue: formatNumberByUnit(String((editingBenchmark as any).currentValue ?? ""), String((editingBenchmark as any).unit || "%")),
+        currentValue: formatNumberByUnit(liveCurrentValue, String((editingBenchmark as any).unit || "%")),
         metric: metric,
         industry: (editingBenchmark as any).industry || "",
         geoLocation: (editingBenchmark as any).geoLocation || "",
@@ -2729,7 +2737,9 @@ export default function GA4Metrics() {
       if (!Number.isFinite(target) || target <= 0) continue; // can't score without a target
       const p = computeKpiProgress(kpi);
       scored += 1;
-      sumPct += p.attainmentPct;
+      // Avg. Progress should reflect bounded progress toward target, not be inflated above 100%
+      // by over-performing KPIs.
+      sumPct += p.fillPct;
       if (p.band === "above") above += 1;
       else if (p.band === "near") near += 1;
       else below += 1;
@@ -2738,7 +2748,7 @@ export default function GA4Metrics() {
     const avgPct = scored > 0 ? sumPct / scored : 0;
     return { total: items.length, scored, above, near, below, blocked, avgPct };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
-  }, [platformKPIs, breakdownTotals, ga4Metrics, financialSpend, spendMetricAvailable, revenueMetricAvailable]);
+  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, spendMetricAvailable, revenueMetricAvailable]);
 
   const benchmarkTracker = useMemo(() => {
     const items = Array.isArray(benchmarks) ? benchmarks : [];

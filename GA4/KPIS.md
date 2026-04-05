@@ -25,7 +25,7 @@ Executive snapshot cards:
 - `Below Track`
   More than `-5%` below target.
 - `Avg. Progress`
-  Average progress across scorable KPIs.
+  Average progress across scorable KPIs, bounded to `0%` to `100%` per KPI so over-target KPIs do not inflate the executive summary above full completion.
 
 ## KPI Creation Journey
 

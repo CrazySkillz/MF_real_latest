@@ -256,6 +256,16 @@ Status: `Done`
 
 ### 7. GA4 `Landing Pages` and `Conversion Events` copy is misleading relative to actual campaign scoping
 
+Status: `Done`
+
+- Fixed with:
+  - copy-only update to the `Landing Pages` and `Conversion Events` subtitles so they describe the real campaign-scoped GA4 behavior
+- Manual result:
+  - updated subtitles display correctly in `Overview`
+  - both tables still load normally
+  - no layout regressions were observed
+  - no data or scoping behavior changed
+
 - Severity: `P1`
 - Area: `GA4 Overview`
 - Affected docs:

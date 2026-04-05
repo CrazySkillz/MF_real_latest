@@ -303,12 +303,18 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         const metricKey = String((b as any)?.metric || "").trim();
         if (!metricKey) continue; // can't compute without a metric key
 
+        const currentValue = computeKpiValue(metricKey, inputs);
+        // Always refresh stored currentValue so same-day Run Refresh updates what alert checks read,
+        // even if we skip writing another history point for the same date.
+        try {
+          await storage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
+        } catch (_) { /* best-effort */ }
+
         const history = await storage.getBenchmarkHistory(benchmarkId).catch(() => []);
         const hist = Array.isArray(history) ? history : [];
         const last = hist.length > 0 ? hist[hist.length - 1] : null; // history is ordered asc in DB
         if (last && isoDateUTC(new Date((last as any)?.recordedAt || 0)) === date) continue;
 
-        const currentValue = computeKpiValue(metricKey, inputs);
         const benchmarkValue = Number((b as any)?.benchmarkValue || 0) || 0;
         const variance = computeBenchmarkVariance(metricKey, currentValue, benchmarkValue);
         const rating = computeBenchmarkRating(variance);
@@ -322,12 +328,6 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           recordedAt,
           notes: `auto:ga4_daily:${date}`,
         } as any);
-
-        // Update benchmark currentValue so alert checker uses fresh value
-        try {
-          await storage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
-        } catch (_) { /* best-effort */ }
-
         benchmarksRecorded += 1;
       }
 

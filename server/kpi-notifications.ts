@@ -36,14 +36,26 @@ async function getLinkedInWindowKey(campaignId: string): Promise<string | null> 
  * Creates in-app notifications for KPI events
  */
 
+function buildKPIActionUrl(kpi: KPI): string {
+  const platform = String((kpi as any)?.platformType || "").trim().toLowerCase();
+
+  if (platform === "google_analytics") {
+    return kpi.campaignId
+      ? `/campaigns/${kpi.campaignId}/ga4-metrics?tab=kpis&highlight=${kpi.id}`
+      : `/ga4-metrics?tab=kpis&highlight=${kpi.id}`;
+  }
+
+  return kpi.campaignId
+    ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
+    : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
+}
+
 /**
  * Create a monthly reminder notification
  * Triggered on 1st of month for monthly KPIs
  */
 export async function createKPIReminder(kpi: KPI): Promise<void> {
-  const actionUrl = kpi.campaignId
-    ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
-    : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
+  const actionUrl = buildKPIActionUrl(kpi);
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'reminder',
@@ -127,10 +139,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   const gap = ((targetValue - currentValue) / targetValue) * 100;
   const gapText = gap > 0 ? `${Math.abs(gap).toFixed(1)}% below` : `${Math.abs(gap).toFixed(1)}% above`;
 
-  // Build the correct URL based on whether KPI is campaign-specific
-  const actionUrl = kpi.campaignId 
-    ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
-    : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
+  const actionUrl = buildKPIActionUrl(kpi);
   
   // Fetch campaign name if campaignId exists
   let campaignName: string | undefined = undefined;
@@ -187,9 +196,7 @@ export async function createPeriodComplete(
     ? ` (${trendDirection === 'up' ? '↑' : trendDirection === 'down' ? '↓' : '→'} ${Math.abs(changePercentage).toFixed(1)}% from previous period)`
     : '';
 
-  const actionUrl = kpi.campaignId
-    ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
-    : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
+  const actionUrl = buildKPIActionUrl(kpi);
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'period-complete',
@@ -216,9 +223,7 @@ export async function createPeriodComplete(
  * Triggered when KPI shows consistent decline
  */
 export async function createTrendAlert(kpi: KPI, consecutivePeriods: number): Promise<void> {
-  const actionUrl = kpi.campaignId
-    ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
-    : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
+  const actionUrl = buildKPIActionUrl(kpi);
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'trend-alert',

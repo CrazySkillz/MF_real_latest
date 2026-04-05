@@ -66,9 +66,9 @@ The executive snapshot tracker is a summary derived from the benchmark grid, not
 Current status model:
 
 - `On Track`
-  Meeting or exceeding the benchmark
+  `90%` or more of the benchmark
 - `Needs Attention`
-  Within `70%` to `90%` of the benchmark
+  `70%` to under `90%` of the benchmark
 - `Behind`
   Below `70%` of the benchmark
 
@@ -77,9 +77,9 @@ Executive snapshot meaning:
 - `Total Benchmarks`
   Number of total benchmarks.
 - `On Track`
-  Meeting or exceeding the benchmark.
+  `90%` or more of the benchmark.
 - `Needs Attention`
-  Within `70%` to `90%` of the benchmark.
+  `70%` to under `90%` of the benchmark.
 - `Behind`
   Below `70%` of the benchmark.
 - `Avg. Progress`

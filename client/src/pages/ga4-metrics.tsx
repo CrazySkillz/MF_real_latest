@@ -2768,7 +2768,19 @@ export default function GA4Metrics() {
 
     const avgPct = scored > 0 ? sumPct / scored : 0;
     return { total: items.length, scored, onTrack, needsAttention, behind, blocked, avgPct };
-  }, [benchmarks, spendMetricAvailable, revenueMetricAvailable]);
+    // benchmark progress depends on the same live inputs used by the individual benchmark cards.
+  }, [
+    benchmarks,
+    breakdownTotals,
+    ga4Metrics,
+    dailySummedTotals,
+    financialRevenue,
+    financialROAS,
+    financialROI,
+    financialCPA,
+    spendMetricAvailable,
+    revenueMetricAvailable,
+  ]);
 
   // --- Rolling window rollups (moved above insights so insights can use them) ---
   const insightsRollups = useMemo(() => {
@@ -5430,7 +5442,7 @@ export default function GA4Metrics() {
                                   <div>
                                     <p className="text-sm text-muted-foreground/70">On Track</p>
                                     <p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p>
-                                    <p className="text-xs text-muted-foreground">meeting or exceeding target</p>
+                                    <p className="text-xs text-muted-foreground">90% or more of benchmark</p>
                                   </div>
                                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                                 </div>
@@ -5443,7 +5455,7 @@ export default function GA4Metrics() {
                                   <div>
                                     <p className="text-sm text-muted-foreground/70">Needs Attention</p>
                                     <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
-                                    <p className="text-xs text-muted-foreground">within 70–90% of target</p>
+                                    <p className="text-xs text-muted-foreground">70% to under 90% of benchmark</p>
                                   </div>
                                   <AlertCircle className="w-8 h-8 text-amber-500" />
                                 </div>
@@ -5456,7 +5468,7 @@ export default function GA4Metrics() {
                                   <div>
                                     <p className="text-sm text-muted-foreground/70">Behind</p>
                                     <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
-                                    <p className="text-xs text-muted-foreground">below 70% of target</p>
+                                    <p className="text-xs text-muted-foreground">below 70% of benchmark</p>
                                   </div>
                                   <AlertTriangle className="w-8 h-8 text-red-500" />
                                 </div>

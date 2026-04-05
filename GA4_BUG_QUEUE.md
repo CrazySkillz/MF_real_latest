@@ -178,6 +178,20 @@ Status: `Done`
 
 ### 5. Immediate post-refresh benchmark alert checks are not fully mirrored in the auto-refresh path
 
+Status: `Done`
+
+- Fixed with:
+  - immediate auto-refresh now runs benchmark alert checks after KPI alert checks
+  - GA4 benchmark current values now refresh on same-day reruns before alert checks read them
+  - `Run refresh` now refetches notifications immediately so new benchmark alerts appear in the bell without waiting for the poll interval
+- Manual result:
+  - benchmark notifications are created and visible through the bell / Notifications center
+  - benchmark notifications route to the GA4 `Benchmarks` tab for the campaign
+  - benchmark executive snapshot and card states stay aligned
+- Automated result:
+  - `npm test -- server/ga4-benchmark-regression.test.ts`
+  - passed: `1` file, `3` tests
+
 - Severity: `P1`
 - Area: `GA4 Benchmarks / Refresh and processing`
 - Affected docs:

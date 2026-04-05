@@ -339,6 +339,22 @@ export default function GA4Metrics() {
       emailRecipients: "",
     },
   });
+  const getEmptyKpiFormValues = (): KPIFormData => ({
+    name: "",
+    metric: "",
+    description: "",
+    unit: "%",
+    currentValue: "",
+    targetValue: "",
+    priority: "medium",
+    targetDate: "",
+    alertsEnabled: false,
+    alertThreshold: "",
+    alertCondition: "below",
+    alertFrequency: "daily",
+    emailNotifications: false,
+    emailRecipients: "",
+  });
 
   const stripNumberFormatting = (s: string) => String(s || "").replace(/,/g, "").trim();
 
@@ -397,7 +413,7 @@ export default function GA4Metrics() {
   const openCreateKPI = () => {
     setEditingKPI(null);
     setSelectedKPITemplate(null);
-    kpiForm.reset({ ...kpiForm.getValues(), name: "", metric: "", description: "", unit: "%", currentValue: "", targetValue: "", priority: "medium" });
+    kpiForm.reset(getEmptyKpiFormValues());
     setShowKPIDialog(true);
   };
 
@@ -6590,7 +6606,17 @@ export default function GA4Metrics() {
       </div>
 
       {/* Create KPI Dialog */}
-      <Dialog open={showKPIDialog} onOpenChange={setShowKPIDialog}>
+      <Dialog
+        open={showKPIDialog}
+        onOpenChange={(open) => {
+          setShowKPIDialog(open);
+          if (!open) {
+            setEditingKPI(null);
+            setSelectedKPITemplate(null);
+            kpiForm.reset(getEmptyKpiFormValues());
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
           <DialogHeader className="pb-4 pr-8">
             <DialogTitle>{editingKPI ? "Edit KPI" : "Create New KPI"}</DialogTitle>
@@ -6693,14 +6719,8 @@ export default function GA4Metrics() {
                           if (isCustom) {
                             setSelectedKPITemplate(null);
                             kpiForm.reset({
-                              ...kpiForm.getValues(),
-                              name: "",
-                              metric: "",
-                              description: "",
+                              ...getEmptyKpiFormValues(),
                               unit: SELECT_UNIT as any,
-                              currentValue: "",
-                              targetValue: "",
-                              priority: "medium",
                             });
                             return;
                           }

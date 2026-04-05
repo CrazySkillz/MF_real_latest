@@ -5474,6 +5474,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { users: 0, sessions: 0, pageviews: 0, conversions: 0, revenue: 0, spend: 0 }
       );
 
+      // Make each Run Refresh behave like a new daily update instead of rewriting the same
+      // fixed mock values. This keeps KPI/Benchmark cards visibly moving during manual QA.
+      const existingDailyRows = await storage.getGA4DailyMetrics(campaignId, propertyId, dateStr, dateStr).catch(() => []);
+      const existingDaily = Array.isArray(existingDailyRows) ? (existingDailyRows as any[])[0] : null;
+      const mockDayNext = existingDaily
+        ? {
+            users: Math.max(mockDay.users, (Number(existingDaily?.users || 0) || 0) + 25),
+            sessions: Math.max(mockDay.sessions, (Number(existingDaily?.sessions || 0) || 0) + 40),
+            pageviews: Math.max(mockDay.pageviews, (Number(existingDaily?.pageviews || 0) || 0) + 120),
+            conversions: Math.max(mockDay.conversions, (Number(existingDaily?.conversions || 0) || 0) + 2),
+            revenue: Number((Math.max(mockDay.revenue, Number(existingDaily?.revenue || 0) || 0) + 175).toFixed(2)),
+            spend: mockDay.spend,
+          }
+        : mockDay;
+
       // 0) Ensure GA4 connection exists (so the page shows tabs, not "Connect" screen)
       const existingConns = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
       if (!existingConns || existingConns.length === 0) {
@@ -5494,11 +5509,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignId,
         propertyId,
         date: dateStr,
-        users: mockDay.users,
-        sessions: mockDay.sessions,
-        pageviews: mockDay.pageviews,
-        conversions: mockDay.conversions,
-        revenue: String(mockDay.revenue.toFixed(2)),
+        users: mockDayNext.users,
+        sessions: mockDayNext.sessions,
+        pageviews: mockDayNext.pageviews,
+        conversions: mockDayNext.conversions,
+        revenue: String(mockDayNext.revenue.toFixed(2)),
         engagementRate: "0.62",
         revenueMetric: "totalRevenue",
         isSimulated: true,
@@ -5539,13 +5554,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         date: dateStr,
         injected: {
-          users: mockDay.users,
-          sessions: mockDay.sessions,
-          pageviews: mockDay.pageviews,
-          conversions: mockDay.conversions,
-          revenue: mockDay.revenue,
+          users: mockDayNext.users,
+          sessions: mockDayNext.sessions,
+          pageviews: mockDayNext.pageviews,
+          conversions: mockDayNext.conversions,
+          revenue: mockDayNext.revenue,
         },
-        summary: `${dateStr}: ${mockDay.sessions.toLocaleString()} sessions, ${mockDay.conversions} conversions, $${mockDay.revenue.toFixed(2)} revenue`,
+        summary: `${dateStr}: ${mockDayNext.sessions.toLocaleString()} sessions, ${mockDayNext.conversions} conversions, $${mockDayNext.revenue.toFixed(2)} revenue`,
         kpiJobResult: insightsResult,
       });
     } catch (e: any) {

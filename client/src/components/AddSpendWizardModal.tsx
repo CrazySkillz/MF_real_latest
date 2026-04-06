@@ -414,6 +414,35 @@ export function AddSpendWizardModal(props: {
     return !!effectiveCampaignColumn && uniqueCampaignKeyValues.length > 0 && campaignKeyValues.length === 0;
   }, [effectiveCampaignColumn, uniqueCampaignKeyValues, campaignKeyValues]);
 
+  const canRecalculateCsvEditWithoutReupload = useMemo(() => {
+    if (!isEditing || csvFile) return true;
+    if (!csvPrefillMapping) return false;
+
+    const storedSpendRows = Array.isArray(csvPrefillMapping?.csvStoredSpendRows)
+      ? csvPrefillMapping.csvStoredSpendRows
+      : null;
+
+    const sampleRows = Array.isArray(csvPrefillMapping?.csvSampleRows)
+      ? csvPrefillMapping.csvSampleRows
+      : null;
+    const sampleRowCount = Number.isFinite(csvPrefillMapping?.csvRowCount)
+      ? Number(csvPrefillMapping.csvRowCount)
+      : null;
+    const hasCompleteSampleDataset = !!sampleRows && sampleRows.length > 0 && sampleRowCount !== null && sampleRowCount <= sampleRows.length;
+
+    const storedSpendColumn = String(csvPrefillMapping?.storedSpendColumn || csvPrefillMapping?.spendColumn || "");
+    const storedCampaignColumn = String(csvPrefillMapping?.storedCampaignColumn || csvPrefillMapping?.campaignColumn || "");
+
+    const spendColumnMatches = !spendColumn || !storedSpendColumn || spendColumn === storedSpendColumn;
+    const campaignColumnMatches =
+      (!effectiveCampaignColumn && !storedCampaignColumn) ||
+      (!!effectiveCampaignColumn && !!storedCampaignColumn && effectiveCampaignColumn === storedCampaignColumn);
+
+    return (Array.isArray(storedSpendRows) && storedSpendRows.length > 0 || hasCompleteSampleDataset)
+      && spendColumnMatches
+      && campaignColumnMatches;
+  }, [isEditing, csvFile, csvPrefillMapping, spendColumn, effectiveCampaignColumn]);
+
   // If we are editing a CSV spend source and the user re-uploads a file, try to apply the saved mapping.
   useEffect(() => {
     if (!csvPreview?.success) return;
@@ -598,11 +627,11 @@ export function AddSpendWizardModal(props: {
   }, [props.open, autoPreviewSheetOnOpen, step, selectedSheetConnectionId]);
 
   const processCsv = async () => {
-    if (!csvFile) {
+    if (!csvFile && !canRecalculateCsvEditWithoutReupload) {
       toast({
         title: isEditing ? "Re-upload CSV required" : "CSV file required",
         description: isEditing
-          ? "Please re-upload the same or updated CSV file before updating this spend source."
+          ? "Re-upload the CSV if you changed the mapped columns or if the original dataset is not fully available for recalculation."
           : "Please upload a CSV file before importing spend.",
         variant: "destructive"
       });
@@ -629,7 +658,7 @@ export function AddSpendWizardModal(props: {
     try {
       const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;
       const mapping = {
-        displayName: csvFile.name,
+        displayName: csvFile?.name || csvPrefillMapping?.displayName || props.initialSource?.displayName || "CSV",
         dateColumn: null, // date-agnostic: always distribute spend across the selected period
         spendColumn,
         campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
@@ -645,7 +674,7 @@ export function AddSpendWizardModal(props: {
         ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
       };
       const fd = new FormData();
-      fd.append("file", csvFile);
+      if (csvFile) fd.append("file", csvFile);
       fd.append("mapping", JSON.stringify(mapping));
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/csv/process`, { method: "POST", credentials: "include", body: fd });
       const json = await resp.json().catch(() => null);
@@ -2154,13 +2183,13 @@ export function AddSpendWizardModal(props: {
 
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setStep("select")} disabled={isProcessing}>Cancel</Button>
-                      <Button
-                        onClick={step === "csv_map" ? processCsv : processSheets}
-                        disabled={
-                          isProcessing ||
-                          (step === "csv_map" && (requiresCampaignValueSelection || (isEditing && !csvFile)))
-                        }
-                      >
+      <Button
+        onClick={step === "csv_map" ? processCsv : processSheets}
+        disabled={
+          isProcessing ||
+          (step === "csv_map" && (requiresCampaignValueSelection || (isEditing && !csvFile && !canRecalculateCsvEditWithoutReupload)))
+        }
+      >
                         {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}
                       </Button>
                     </div>

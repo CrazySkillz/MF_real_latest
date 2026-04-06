@@ -2952,23 +2952,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/spend/csv/process", importRateLimiter, uploadCsv.single("file"), async (req, res) => {
     try {
       const campaignId = req.params.id;
-      if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
-      const file = (req as any).file as any;
       const mapping = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
       if (!mapping?.spendColumn) {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
 
-      const csvText = Buffer.from(file.buffer).toString("utf-8");
-      const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
-      if (approxLines > MAX_CSV_ROWS_PROCESS + 5) {
-        return res.status(413).json({
-          success: false,
-          error: `CSV too large. Please reduce rows (max ~${MAX_CSV_ROWS_PROCESS.toLocaleString()} rows).`,
-          code: "CSV_TOO_LARGE",
-        });
+      const file = (req as any).file as any;
+      let parsedRows: Array<Record<string, any>> = [];
+      let parsedHeaders: string[] = [];
+
+      if (file) {
+        const csvText = Buffer.from(file.buffer).toString("utf-8");
+        const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
+        if (approxLines > MAX_CSV_ROWS_PROCESS + 5) {
+          return res.status(413).json({
+            success: false,
+            error: `CSV too large. Please reduce rows (max ~${MAX_CSV_ROWS_PROCESS.toLocaleString()} rows).`,
+            code: "CSV_TOO_LARGE",
+          });
+        }
+        const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS);
+        parsedRows = parsed.rows;
+        parsedHeaders = parsed.headers;
+      } else {
+        const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : "";
+        if (!existingSourceId) {
+          return res.status(400).json({ success: false, error: "No CSV file provided" });
+        }
+        const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
+        if (!existingSource) {
+          return res.status(404).json({ success: false, error: "Spend source not found" });
+        }
+        let existingMapping: any = null;
+        try {
+          existingMapping = (existingSource as any)?.mappingConfig ? JSON.parse(String((existingSource as any).mappingConfig)) : null;
+        } catch {
+          existingMapping = null;
+        }
+
+        const storedSpendRows = Array.isArray(existingMapping?.csvStoredSpendRows) ? existingMapping.csvStoredSpendRows : null;
+        const storedSampleRows = Array.isArray(existingMapping?.csvSampleRows) ? existingMapping.csvSampleRows : null;
+        const storedRowCount = Number.isFinite(existingMapping?.csvRowCount) ? Number(existingMapping.csvRowCount) : null;
+        const canUseSampleRows = !!storedSampleRows && storedSampleRows.length > 0 && storedRowCount !== null && storedRowCount <= storedSampleRows.length;
+
+        if (Array.isArray(storedSpendRows) && storedSpendRows.length > 0) {
+          const storedSpendColumn = String(existingMapping?.storedSpendColumn || existingMapping?.spendColumn || "");
+          const storedCampaignColumn = String(existingMapping?.storedCampaignColumn || existingMapping?.campaignColumn || "");
+          if (storedSpendColumn && String(mapping.spendColumn) !== storedSpendColumn) {
+            return res.status(400).json({ success: false, error: "Re-upload required when changing the spend column for a CSV source" });
+          }
+          const requestedCampaignColumn = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
+          const storedCampaignColOrNull = storedCampaignColumn || null;
+          if ((requestedCampaignColumn || null) !== storedCampaignColOrNull) {
+            return res.status(400).json({ success: false, error: "Re-upload required when changing the campaign identifier column for a CSV source" });
+          }
+          parsedRows = storedSpendRows.map((r: any) => ({
+            [storedSpendColumn]: String(r?.spendRaw ?? r?.spend ?? ""),
+            ...(storedCampaignColOrNull ? { [storedCampaignColOrNull]: String(r?.campaignKey ?? "") } : {}),
+          }));
+          parsedHeaders = [storedSpendColumn, ...(storedCampaignColOrNull ? [storedCampaignColOrNull] : [])];
+        } else if (canUseSampleRows) {
+          parsedRows = storedSampleRows as Array<Record<string, any>>;
+          parsedHeaders = Array.isArray(existingMapping?.csvHeaders) ? existingMapping.csvHeaders.map((h: any) => String(h ?? "")) : Object.keys(parsedRows[0] || {});
+        } else {
+          return res.status(400).json({ success: false, error: "Re-upload CSV required to update this spend source" });
+        }
       }
-      const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS);
 
       const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
       const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
@@ -2981,7 +3030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const spendCol = String(mapping.spendColumn);
       let totalSpend = 0;
 
-      for (const row of parsed.rows) {
+      for (const row of parsedRows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
           const v = String((row as any)[campaignCol] ?? "").trim();
           if (campaignValueSet) {
@@ -2999,7 +3048,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
       const existingSourceId = mapping?.sourceId || null;
-      const mappingForStorage = { ...mapping, mode: "spend_to_date" };
+      const normalizedStoredRows = parsedRows.map((row: any) => ({
+        campaignKey: campaignCol ? String(row?.[campaignCol] ?? "").trim() : "",
+        spendRaw: String(row?.[spendCol] ?? "").trim(),
+      }));
+      const mappingForStorage = {
+        ...mapping,
+        mode: "spend_to_date",
+        storedSpendColumn: spendCol,
+        storedCampaignColumn: campaignCol,
+        csvStoredSpendRows: normalizedStoredRows,
+        csvHeaders: parsedHeaders,
+        csvSampleRows: parsedRows.slice(0, 25),
+        csvRowCount: parsedRows.length,
+      };
       delete mappingForStorage.sourceId; // don't persist sourceId in mappingConfig
 
       let source: any;
@@ -3044,7 +3106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         sourceId: source.id,
         currency,
-        rowCount: parsed.rows.length,
+        rowCount: parsedRows.length,
         keptRows: kept,
         spendToDate: Number(totalSpend.toFixed(2)),
       });

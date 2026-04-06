@@ -2068,7 +2068,12 @@ export default function GA4Metrics() {
       : "below" as const;
     const attainmentPct = computeAttainmentPct({ current: safeCurrent, target: safeTarget, lowerIsBetter });
     const fillPct = attainmentPct !== null ? computeAttainmentFillPct(attainmentPct) : 0;
-    const progressColor = (attainmentPct ?? 0) >= 100 ? "bg-green-500" : (attainmentPct ?? 0) >= 90 ? "bg-amber-500" : "bg-red-500";
+    const progressColor =
+      band === "above"
+        ? "bg-green-500"
+        : band === "near"
+          ? "bg-blue-500"
+          : "bg-red-500";
 
     return { band, effectiveDeltaPct: effectiveDeltaPctVal, attainmentPct: attainmentPct ?? 0, fillPct, progressColor, lowerIsBetter };
   };
@@ -4694,11 +4699,11 @@ export default function GA4Metrics() {
                                 <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm text-muted-foreground/70">Below Track</p>
-                                      <p className="text-2xl font-bold text-amber-600">{kpiTracker.below}</p>
+                                      <p className="text-sm text-muted-foreground/70">Below Target</p>
+                                      <p className="text-2xl font-bold text-red-600">{kpiTracker.below}</p>
                                       <p className="text-xs text-muted-foreground">more than −5% below target</p>
                                     </div>
-                                    <AlertCircle className="w-8 h-8 text-amber-500" />
+                                    <AlertCircle className="w-8 h-8 text-red-500" />
                                   </div>
                                 </CardContent>
                               </Card>

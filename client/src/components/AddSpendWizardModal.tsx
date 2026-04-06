@@ -598,7 +598,16 @@ export function AddSpendWizardModal(props: {
   }, [props.open, autoPreviewSheetOnOpen, step, selectedSheetConnectionId]);
 
   const processCsv = async () => {
-    if (!csvFile) return;
+    if (!csvFile) {
+      toast({
+        title: isEditing ? "Re-upload CSV required" : "CSV file required",
+        description: isEditing
+          ? "Please re-upload the same or updated CSV file before updating this spend source."
+          : "Please upload a CSV file before importing spend.",
+        variant: "destructive"
+      });
+      return;
+    }
     if (!spendColumn) {
       toast({ title: "Missing mappings", description: "Select a Spend column.", variant: "destructive" });
       return;
@@ -2147,7 +2156,10 @@ export function AddSpendWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")} disabled={isProcessing}>Cancel</Button>
                       <Button
                         onClick={step === "csv_map" ? processCsv : processSheets}
-                        disabled={isProcessing || (step === "csv_map" && requiresCampaignValueSelection)}
+                        disabled={
+                          isProcessing ||
+                          (step === "csv_map" && (requiresCampaignValueSelection || (isEditing && !csvFile)))
+                        }
                       >
                         {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}
                       </Button>
@@ -2164,4 +2176,3 @@ export function AddSpendWizardModal(props: {
     </Dialog>
   );
 }
-

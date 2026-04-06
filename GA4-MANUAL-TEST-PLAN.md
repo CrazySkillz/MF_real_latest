@@ -1,7 +1,18 @@
 # GA4 Manual Test Plan — User Journeys
 
 ## How This Plan Works
-Each journey follows the exact steps a user would take, in order. Start with Journey 1 and work through sequentially. Each journey builds on the state left by the previous one.
+Each journey follows the real user flow as closely as possible.
+
+Use the plan in 2 modes:
+
+- baseline mode: start with Journey 1 and work forward on a clean or clearly understood campaign state
+- regression mode: retest the affected journey first, then run the Shared Regression Sweep
+
+Important:
+
+- treat the GA4 docs as the product spec if a step here is ambiguous
+- treat exact mock numbers as reference values, not absolute truth, unless the campaign state is clean
+- if a campaign already has prior `Run Refresh` history or added sources, prioritize directional correctness over exact sample numbers
 
 ## Purpose
 Use this plan to:
@@ -44,6 +55,24 @@ For any failed step, capture:
 - actual result
 - whether `Run Refresh` had been used
 - whether the issue blocks the rest of the plan or only affects one area
+
+## What To Do If You Find A Bug
+
+If a step fails:
+
+1. stop at the failing step
+2. capture the evidence listed above
+3. decide whether the issue is:
+   - a real bug
+   - a stale test-plan step
+   - a documented current-state caveat or deferred enhancement
+4. if it is a real bug, add or update the item in `GA4_BUG_QUEUE.md`
+5. do a root-cause trace before changing code
+6. do not change code until root cause is confirmed
+7. make the smallest safe fix
+8. retest the failed step first
+9. run the Shared Regression Sweep
+10. add automated regression coverage if the bug is high risk and deterministic
 
 ## Shared Regression Sweep
 
@@ -104,6 +133,11 @@ So after each Run Refresh click:
 - **Spend stays at $0** until the user adds it via Add Spend
 
 After Run Refresh, the `ga4-to-date` and `ga4-daily` endpoints prefer real DB rows over simulation. So the Overview totals will shift from simulation values to accumulated Run Refresh values.
+
+Note:
+
+- the mock refresh path is intended to produce visibly updated KPI and Benchmark inputs on rerun
+- if the campaign already has previous refresh history, use delta checks and cross-tab consistency rather than expecting one exact hard-coded total
 
 **3. Add Spend (user action via "+" button on Spend card)**
 Spend arrives when the user explicitly adds it:
@@ -212,7 +246,7 @@ Checkpoint after Journey 1:
   - **"Spend missing"** integrity insight should appear (revenue exists but no spend)
 
 ### Step 12: Verify Ad Comparison tab
-- [ ] Click the **Campaigns** tab (this is the Ad Comparison view)
+- [ ] Click the **Campaigns** tab (this is the current Ad Comparison view in the product)
 - [ ] Campaign breakdown table visible with data from simulation
 
 ---
@@ -378,7 +412,8 @@ Checkpoint after Journey 5:
 
 ### Step 1: Run Refresh ×3 more
 - [ ] Click **Run Refresh** three more times (you now have 6 total days of Run Refresh data)
-- [ ] Each click: spend increases by $1,630, revenue by $4,200, sessions by 1,170
+- [ ] Each click: GA4 sessions, conversions, and revenue increase again
+- [ ] Spend does NOT increase unless the user adds or edits a spend source separately
 
 ### Step 2: Verify KPIs updated
 - [ ] Click the **KPIs** tab
@@ -663,11 +698,12 @@ Checkpoint after Journey 8:
 - [ ] Only Sessions/ER/CR KPIs remain active
 - [ ] Create KPI: only Sessions/Users/Conversions/ER/CR ENABLED
 
-### Step 3: Restore via Run Refresh
-- [ ] Click Run Refresh → creates Mock Spend + GA4 Revenue
-- [ ] All KPIs become unblocked
-- [ ] Templates re-enabled
-- [ ] Integrity insights disappear
+### Step 3: Restore required inputs explicitly
+- [ ] If revenue is missing: click Run Refresh to restore GA4 revenue
+- [ ] If spend is missing: add a spend source again via the "+" Spend flow
+- [ ] After the required inputs exist again, blocked KPIs should become unblocked
+- [ ] Templates should re-enable only when their required inputs exist again
+- [ ] Integrity insights should clear only after the missing input is truly restored
 
 ---
 
@@ -693,6 +729,7 @@ Checkpoint after Journey 8:
 
 ## Journey 11: Ad Comparison
 
+- [ ] Open the current **Campaigns** tab (this is the current Ad Comparison surface)
 - [ ] Switch metrics: Sessions, Conversions, Revenue, CR, Users
 - [ ] Ranking cards update per selected metric
 - [ ] Best Performing ≠ Needs Attention

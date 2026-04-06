@@ -646,6 +646,19 @@ export function AddRevenueWizardModal(props: {
   const csvHeaders = useMemo(() => csvPreview?.headers || [], [csvPreview]);
   const sheetsHeaders = useMemo(() => sheetsPreview?.headers || [], [sheetsPreview]);
 
+  const uniqueValuesFromPreview = (preview: Preview | null, col: string) => {
+    if (!preview || !col) return [];
+    const vals = new Map<string, number>();
+    for (const r of preview.sampleRows || []) {
+      const v = String((r as any)?.[col] ?? "").trim();
+      if (!v) continue;
+      vals.set(v, (vals.get(v) || 0) + 1);
+    }
+    return Array.from(vals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([value]) => value);
+  };
+
   const filteredCsvPreviewRows = useMemo(() => {
     const rows = Array.isArray(csvPreview?.sampleRows) ? csvPreview!.sampleRows : [];
     if (!csvCampaignCol) return rows;
@@ -669,19 +682,6 @@ export function AddRevenueWizardModal(props: {
     if (set.size === 0) return rows;
     return rows.filter((r: any) => set.has(String(r?.[sheetsCampaignCol] ?? "").trim()));
   }, [sheetsPreview, sheetsCampaignCol, sheetsCampaignValues]);
-
-  const uniqueValuesFromPreview = (preview: Preview | null, col: string) => {
-    if (!preview || !col) return [];
-    const vals = new Map<string, number>();
-    for (const r of preview.sampleRows || []) {
-      const v = String((r as any)?.[col] ?? "").trim();
-      if (!v) continue;
-      vals.set(v, (vals.get(v) || 0) + 1);
-    }
-    return Array.from(vals.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([value]) => value);
-  };
 
   const handleBack = () => {
     if (step === "select") return;

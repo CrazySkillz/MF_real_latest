@@ -173,10 +173,21 @@ export function AddRevenueWizardModal(props: {
   const [csvProcessing, setCsvProcessing] = useState(false);
   const [csvPreviewing, setCsvPreviewing] = useState(false);
   const [csvPrefill, setCsvPrefill] = useState<null | {
+    displayName?: string;
     revenueColumn?: string;
     conversionValueColumn?: string;
     campaignColumn?: string;
     campaignValues?: string[];
+    dateColumn?: string;
+    valueSource?: 'revenue' | 'conversion_value';
+    csvHeaders?: string[];
+    csvSampleRows?: Array<Record<string, string>>;
+    csvRowCount?: number;
+    storedRevenueColumn?: string;
+    storedConversionValueColumn?: string;
+    storedCampaignColumn?: string;
+    storedDateColumn?: string;
+    csvStoredRevenueRows?: Array<Record<string, string>>;
   }>(null);
   const [csvValueSource, setCsvValueSource] = useState<'revenue' | 'conversion_value'>('revenue');
 
@@ -460,7 +471,7 @@ export function AddRevenueWizardModal(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, step, manualPlatform, campaignId]);
 
-  // Prefill edit mode from an existing revenue source (manual + sheets supported; CSV requires re-upload).
+  // Prefill edit mode from an existing revenue source.
   useEffect(() => {
     if (!open) return;
     if (!initialSource) return;
@@ -503,13 +514,41 @@ export function AddRevenueWizardModal(props: {
     if (type === "csv") {
       const vsRaw = String(config?.valueSource || config?.mode || "").trim().toLowerCase();
       const vs: 'revenue' | 'conversion_value' = vsRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
-      setStep("csv");
+      setStep("csv_map");
       setCsvPrefill({
+        displayName: String(config?.displayName || initialSource?.displayName || ""),
         revenueColumn: String(config?.revenueColumn || ""),
         conversionValueColumn: String(config?.conversionValueColumn || ""),
         campaignColumn: String(config?.campaignColumn || ""),
         campaignValues: Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : [],
+        dateColumn: String(config?.dateColumn || ""),
+        valueSource: vs,
+        csvHeaders: Array.isArray(config?.csvHeaders) ? config.csvHeaders.map(String) : [],
+        csvSampleRows: Array.isArray(config?.csvSampleRows) ? config.csvSampleRows : [],
+        csvRowCount: Number.isFinite(Number(config?.csvRowCount)) ? Number(config.csvRowCount) : undefined,
+        storedRevenueColumn: String(config?.storedRevenueColumn || ""),
+        storedConversionValueColumn: String(config?.storedConversionValueColumn || ""),
+        storedCampaignColumn: String(config?.storedCampaignColumn || ""),
+        storedDateColumn: String(config?.storedDateColumn || ""),
+        csvStoredRevenueRows: Array.isArray(config?.csvStoredRevenueRows) ? config.csvStoredRevenueRows : [],
       });
+      const savedHeaders = Array.isArray(config?.csvHeaders) ? config.csvHeaders.map(String).filter(Boolean) : [];
+      const savedSampleRows = Array.isArray(config?.csvSampleRows) ? config.csvSampleRows : [];
+      const savedRowCount = Number.isFinite(Number(config?.csvRowCount)) ? Number(config.csvRowCount) : 0;
+      if (savedHeaders.length) {
+        setCsvPreview({
+          fileName: String(config?.displayName || initialSource?.displayName || "CSV revenue"),
+          headers: savedHeaders,
+          sampleRows: savedSampleRows,
+          rowCount: savedRowCount,
+        });
+      } else {
+        setCsvPreview(null);
+      }
+      setCsvRevenueCol(String(config?.revenueColumn || ""));
+      setCsvCampaignCol(String(config?.campaignColumn || ""));
+      setCsvCampaignValues(Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : []);
+      setCsvDateCol(String(config?.dateColumn || ""));
       setCsvConversionValueCol(String(config?.conversionValueColumn || ""));
       setCsvValueSource(vs);
       return;
@@ -673,6 +712,65 @@ export function AddRevenueWizardModal(props: {
     const available = uniqueValuesFromPreview(csvPreview, csvCampaignCol);
     return available.length > 0 && (!Array.isArray(csvCampaignValues) || csvCampaignValues.length === 0);
   }, [csvPreview, csvCampaignCol, csvCampaignValues]);
+
+  const canRecalculateCsvRevenueEditWithoutReupload = useMemo(() => {
+    if (!isEditing || csvFile) return true;
+    if (!csvPrefill) return false;
+
+    const storedRows = Array.isArray(csvPrefill?.csvStoredRevenueRows) ? csvPrefill.csvStoredRevenueRows : null;
+    const sampleRows = Array.isArray(csvPrefill?.csvSampleRows) ? csvPrefill.csvSampleRows : null;
+    const sampleRowCount = Number.isFinite(csvPrefill?.csvRowCount) ? Number(csvPrefill.csvRowCount) : null;
+    const hasCompleteSampleDataset = !!sampleRows && sampleRows.length > 0 && sampleRowCount !== null && sampleRowCount <= sampleRows.length;
+
+    const storedValueSource = String(csvPrefill?.valueSource || "revenue").trim().toLowerCase();
+    const currentValueSource = String(platformContext === 'linkedin' ? csvValueSource : 'revenue').trim().toLowerCase();
+    if (storedValueSource !== currentValueSource) return false;
+
+    const storedRevenueColumn = String(csvPrefill?.storedRevenueColumn || csvPrefill?.revenueColumn || "");
+    const storedConversionValueColumn = String(csvPrefill?.storedConversionValueColumn || csvPrefill?.conversionValueColumn || "");
+    const storedCampaignColumn = String(csvPrefill?.storedCampaignColumn || csvPrefill?.campaignColumn || "");
+    const storedDateColumn = String(csvPrefill?.storedDateColumn || csvPrefill?.dateColumn || "");
+
+    if (currentValueSource === 'conversion_value') {
+      if (String(csvConversionValueCol || "") !== storedConversionValueColumn) return false;
+    } else {
+      if (String(csvRevenueCol || "") !== storedRevenueColumn) return false;
+    }
+    if (String(csvCampaignCol || "") !== storedCampaignColumn) return false;
+    if (String(csvDateCol || "") !== storedDateColumn) return false;
+
+    return (Array.isArray(storedRows) && storedRows.length > 0) || hasCompleteSampleDataset;
+  }, [isEditing, csvFile, csvPrefill, platformContext, csvValueSource, csvRevenueCol, csvConversionValueCol, csvCampaignCol, csvDateCol]);
+
+  const hasMeaningfulCsvRevenueEditChanges = useMemo(() => {
+    if (!isEditing) return true;
+    if (csvFile) return true;
+    if (!csvPrefill) return false;
+
+    const initialValueSource = String(csvPrefill?.valueSource || 'revenue').trim().toLowerCase();
+    const currentValueSource = String(platformContext === 'linkedin' ? csvValueSource : 'revenue').trim().toLowerCase();
+    const initialRevenueColumn = String(csvPrefill?.revenueColumn || "");
+    const initialConversionValueColumn = String(csvPrefill?.conversionValueColumn || "");
+    const initialCampaignColumn = String(csvPrefill?.campaignColumn || "");
+    const initialDateColumn = String(csvPrefill?.dateColumn || "");
+    const initialCampaignValues = Array.isArray(csvPrefill?.campaignValues)
+      ? csvPrefill.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
+      : [];
+    const currentCampaignValues = csvCampaignValues.map((v) => String(v ?? "").trim()).filter(Boolean);
+
+    if (currentValueSource !== initialValueSource) return true;
+    if (String(csvRevenueCol || "") !== initialRevenueColumn) return true;
+    if (String(csvConversionValueCol || "") !== initialConversionValueColumn) return true;
+    if (String(csvCampaignCol || "") !== initialCampaignColumn) return true;
+    if (String(csvDateCol || "") !== initialDateColumn) return true;
+    if (currentCampaignValues.length !== initialCampaignValues.length) return true;
+
+    const initialSet = new Set(initialCampaignValues);
+    for (const value of currentCampaignValues) {
+      if (!initialSet.has(value)) return true;
+    }
+    return false;
+  }, [isEditing, csvFile, csvPrefill, platformContext, csvValueSource, csvRevenueCol, csvConversionValueCol, csvCampaignCol, csvDateCol, csvCampaignValues]);
 
   const filteredSheetsPreviewRows = useMemo(() => {
     const rows = Array.isArray(sheetsPreview?.sampleRows) ? sheetsPreview!.sampleRows : [];
@@ -854,7 +952,16 @@ export function AddRevenueWizardModal(props: {
   };
 
   const handleCsvProcess = async () => {
-    if (!csvFile) return;
+    if (!csvFile && !canRecalculateCsvRevenueEditWithoutReupload) {
+      toast({
+        title: isEditing ? "Re-upload CSV required" : "CSV file required",
+        description: isEditing
+          ? "Re-upload the CSV if you changed structural mappings or if the original dataset is not fully available for recalculation."
+          : "Choose a CSV file to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!csvCampaignCol) {
       toast({ title: "Select a campaign column", description: "Campaign is required for revenue imports.", variant: "destructive" });
       return;
@@ -894,12 +1001,15 @@ export function AddRevenueWizardModal(props: {
         campaignValues: csvCampaignValues,
         dateColumn: csvDateCol || null,
         currency,
-        displayName: csvFile.name,
+        displayName: csvFile?.name || csvPrefill?.displayName || initialSource?.displayName || "CSV",
         mode: "revenue_to_date",
+        csvHeaders: Array.isArray(csvPreview?.headers) ? csvPreview.headers : undefined,
+        csvSampleRows: Array.isArray(csvPreview?.sampleRows) ? csvPreview.sampleRows : undefined,
+        csvRowCount: typeof csvPreview?.rowCount === "number" ? csvPreview.rowCount : undefined,
         ...(isEditing && initialSource?.id ? { sourceId: String(initialSource.id) } : {}),
       };
       const fd = new FormData();
-      fd.append("file", csvFile);
+      if (csvFile) fd.append("file", csvFile);
       fd.append("mapping", JSON.stringify(mapping));
       fd.append("platformContext", platformContext);
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/process`, { method: "POST", credentials: "include", body: fd });
@@ -1695,7 +1805,16 @@ export function AddRevenueWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
                       </Button>
-                      <Button onClick={handleCsvProcess} disabled={!csvPreview || csvProcessing || requiresCsvCampaignValueSelection}>
+      <Button
+        onClick={handleCsvProcess}
+        disabled={
+          !csvPreview ||
+          csvProcessing ||
+          requiresCsvCampaignValueSelection ||
+          (isEditing && !hasMeaningfulCsvRevenueEditChanges) ||
+          (isEditing && !csvFile && !canRecalculateCsvRevenueEditWithoutReupload)
+        }
+      >
                         {csvProcessing ? "Processing…" : isEditing ? "Update revenue" : "Import revenue"}
                       </Button>
                     </div>

@@ -468,6 +468,41 @@ export function AddSpendWizardModal(props: {
     return false;
   }, [isEditing, csvFile, csvPrefillMapping, spendColumn, effectiveCampaignColumn, campaignKeyValues]);
 
+  const hasMeaningfulSheetsEditChanges = useMemo(() => {
+    if (!isEditing) return true;
+    if (!props.initialSource?.mappingConfig) return false;
+
+    let initialMapping: any = null;
+    try {
+      initialMapping = JSON.parse(String(props.initialSource.mappingConfig));
+    } catch {
+      initialMapping = null;
+    }
+    if (!initialMapping) return false;
+
+    const initialSpendColumn = String(initialMapping?.spendColumn || "");
+    const initialCampaignColumn = String(initialMapping?.campaignColumn || "");
+    const initialConnectionId = String(initialMapping?.connectionId || "");
+    const initialCampaignValues = Array.isArray(initialMapping?.campaignValues)
+      ? initialMapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
+      : (initialMapping?.campaignValue ? [String(initialMapping.campaignValue).trim()] : []);
+
+    const currentCampaignColumn = String(effectiveCampaignColumn || "");
+    const currentCampaignValues = campaignKeyValues.map((v) => String(v ?? "").trim()).filter(Boolean);
+    const currentConnectionId = String(selectedSheetConnectionId || "");
+
+    if (String(spendColumn || "") !== initialSpendColumn) return true;
+    if (currentCampaignColumn !== initialCampaignColumn) return true;
+    if (currentConnectionId !== initialConnectionId) return true;
+    if (currentCampaignValues.length !== initialCampaignValues.length) return true;
+
+    const initialSet = new Set(initialCampaignValues);
+    for (const value of currentCampaignValues) {
+      if (!initialSet.has(value)) return true;
+    }
+    return false;
+  }, [isEditing, props.initialSource?.mappingConfig, spendColumn, effectiveCampaignColumn, campaignKeyValues, selectedSheetConnectionId]);
+
   // If we are editing a CSV spend source and the user re-uploads a file, try to apply the saved mapping.
   useEffect(() => {
     if (!csvPreview?.success) return;
@@ -2224,7 +2259,8 @@ export function AddSpendWizardModal(props: {
           (step === "csv_map" && (
             (isEditing && !hasMeaningfulCsvEditChanges) ||
             (isEditing && !csvFile && !canRecalculateCsvEditWithoutReupload)
-          ))
+          )) ||
+          (step === "sheets_map" && isEditing && !hasMeaningfulSheetsEditChanges)
         }
       >
                         {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}

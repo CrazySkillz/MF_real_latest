@@ -22,10 +22,21 @@ Executive snapshot cards:
   More than `+5%` above target.
 - `On Track`
   Within `±5%` of target.
-- `Below Track`
+- `Below Target`
   More than `-5%` below target.
 - `Avg. Progress`
   Average progress across scorable KPIs, bounded to `0%` to `100%` per KPI so over-target KPIs do not inflate the executive summary above full completion.
+
+Current KPI color meaning:
+
+- `Above Target` = green
+- `On Track` = blue
+- `Below Target` = red
+
+Important meaning:
+
+- KPI card progress bars and the KPI executive snapshot should use the same status-color scheme
+- visual status should not drift from the underlying KPI band classification
 
 ## KPI Creation Journey
 
@@ -96,7 +107,7 @@ Important meaning:
 - missing spend/revenue should not silently show misleading zeroes
 - blocked KPIs are excluded from executive scoring
 - blocked KPIs should also be excluded from `Avg. Progress`
-- blocked KPIs should not be classified into `Above Target`, `On Track`, or `Below Track`
+- blocked KPIs should not be classified into `Above Target`, `On Track`, or `Below Target`
 
 ## Executive Snapshot Band Logic
 
@@ -106,7 +117,7 @@ The executive snapshot tracker uses these classification bands:
   More than `+5%` above target.
 - `On Track`
   Within `±5%` of target.
-- `Below Track`
+- `Below Target`
   More than `-5%` below target.
 
 Important meaning:

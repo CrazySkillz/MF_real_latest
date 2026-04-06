@@ -269,7 +269,7 @@ Checkpoint after Journey 2:
 - [ ] Alert: threshold = **50,000**, condition = **below**, enable alerts
 - [ ] Click **Create KPI**
 - [ ] Card: Current ≈ 65,600, Target = 100,000, Progress ≈ 66%
-- [ ] Progress bar AMBER (≥ 90% would be green)
+- [ ] Progress bar RED (`Below Target`)
 - [ ] Yellow alert icon (hover: "Alerts enabled — threshold: 50,000 (below)")
 - [ ] 65,600 > 50,000 → NO red pulsing dot
 
@@ -277,7 +277,7 @@ Checkpoint after Journey 2:
 - [ ] Click **Create KPI** → select **"Engagement Rate"** → ENABLED
 - [ ] Current auto-populates (≈ 54%)
 - [ ] Target = **70%** → Save
-- [ ] Progress ≈ 77.1%, amber bar
+- [ ] Progress ≈ 77.1%, red bar (`Below Target`)
 
 ### Step 3: Create Revenue KPI
 - [ ] Select **"Revenue"** → ENABLED (revenue exists from simulation)
@@ -292,7 +292,7 @@ Checkpoint after Journey 2:
 
 ### Step 5: Create CR Benchmark (no spend needed)
 - [ ] Click the **Benchmarks** tab → click **Create Benchmark**
-- [ ] Name = **"Conversion Rate"**, Current auto-populates, Benchmark = **5.00**, Unit = **%**
+- [ ] Name = **"Conversion Rate"**, Current auto-populates, enter **Benchmark Value = 5.00**, Unit = **%**
 - [ ] Save → card shows status color (ON TRACK / NEEDS ATTENTION / BEHIND)
 
 ### Step 6: Verify financial benchmark templates still DISABLED
@@ -374,7 +374,7 @@ Checkpoint after Journey 4:
 - [ ] Current auto-populates as ratio (e.g., **48.91** meaning 48.91x return) — matches Overview ROAS
 - [ ] Unit shows as **ratio** (displayed with "x" suffix)
 - [ ] Target = **50** (= 50x return) → Save
-- [ ] Progress ≈ 97.8% (48.91 / 50), amber bar
+- [ ] Progress ≈ 97.8% (48.91 / 50), blue bar (`On Track`)
 
 ### Step 2: CPA KPI (lower-is-better)
 - [ ] Select **"CPA"** → ENABLED

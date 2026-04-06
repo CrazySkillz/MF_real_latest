@@ -655,6 +655,12 @@ export function AddRevenueWizardModal(props: {
     return rows.filter((r: any) => set.has(String(r?.[csvCampaignCol] ?? "").trim()));
   }, [csvPreview, csvCampaignCol, csvCampaignValues]);
 
+  const requiresCsvCampaignValueSelection = useMemo(() => {
+    if (!csvCampaignCol) return false;
+    const available = uniqueValuesFromPreview(csvPreview, csvCampaignCol);
+    return available.length > 0 && (!Array.isArray(csvCampaignValues) || csvCampaignValues.length === 0);
+  }, [csvPreview, csvCampaignCol, csvCampaignValues]);
+
   const filteredSheetsPreviewRows = useMemo(() => {
     const rows = Array.isArray(sheetsPreview?.sampleRows) ? sheetsPreview!.sampleRows : [];
     if (!sheetsCampaignCol) return rows;
@@ -1689,7 +1695,7 @@ export function AddRevenueWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
                       </Button>
-                      <Button onClick={handleCsvProcess} disabled={!csvPreview || csvProcessing}>
+                      <Button onClick={handleCsvProcess} disabled={!csvPreview || csvProcessing || requiresCsvCampaignValueSelection}>
                         {csvProcessing ? "Processing…" : isEditing ? "Update revenue" : "Import revenue"}
                       </Button>
                     </div>

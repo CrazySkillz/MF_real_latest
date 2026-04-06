@@ -724,6 +724,14 @@ export function AddSpendWizardModal(props: {
       toast({ title: "Missing mappings", description: "Select a Spend column.", variant: "destructive" });
       return;
     }
+    if (requiresCampaignValueSelection) {
+      toast({
+        title: "Campaign mapping incomplete",
+        description: "Select at least one campaign value, or clear the campaign identifier to import the full sheet.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (campaignKeyValues.length > 0 && !effectiveCampaignColumn) {
       toast({ title: "Campaign mapping incomplete", description: "Select a campaign identifier column (or clear campaign values).", variant: "destructive" });
       return;
@@ -2212,8 +2220,8 @@ export function AddSpendWizardModal(props: {
         onClick={step === "csv_map" ? processCsv : processSheets}
         disabled={
           isProcessing ||
+          ((step === "csv_map" || step === "sheets_map") && requiresCampaignValueSelection) ||
           (step === "csv_map" && (
-            requiresCampaignValueSelection ||
             (isEditing && !hasMeaningfulCsvEditChanges) ||
             (isEditing && !csvFile && !canRecalculateCsvEditWithoutReupload)
           ))

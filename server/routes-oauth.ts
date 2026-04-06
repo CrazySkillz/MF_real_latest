@@ -2353,6 +2353,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? (mapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v))
         : null;
       const campaignValueSet = campaignValues && campaignValues.length > 0 ? new Set<string>(campaignValues) : null;
+      if (campaignCol && !campaignValueSet && !campaignValue) {
+        return res.status(400).json({
+          success: false,
+          error: "Select at least one campaign value, or clear campaignColumn to import the full file",
+        });
+      }
 
       let kept = 0;
       const revenueCol = revenueColumn ? String(revenueColumn) : "";

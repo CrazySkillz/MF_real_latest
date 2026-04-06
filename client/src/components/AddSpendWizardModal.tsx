@@ -410,6 +410,10 @@ export function AddSpendWizardModal(props: {
     return sampleRows.filter((r: any) => set.has(String(r?.[effectiveCampaignColumn] ?? "").trim()));
   }, [sampleRows, campaignKeyValues, effectiveCampaignColumn]);
 
+  const requiresCampaignValueSelection = useMemo(() => {
+    return !!effectiveCampaignColumn && uniqueCampaignKeyValues.length > 0 && campaignKeyValues.length === 0;
+  }, [effectiveCampaignColumn, uniqueCampaignKeyValues, campaignKeyValues]);
+
   // If we are editing a CSV spend source and the user re-uploads a file, try to apply the saved mapping.
   useEffect(() => {
     if (!csvPreview?.success) return;
@@ -597,6 +601,14 @@ export function AddSpendWizardModal(props: {
     if (!csvFile) return;
     if (!spendColumn) {
       toast({ title: "Missing mappings", description: "Select a Spend column.", variant: "destructive" });
+      return;
+    }
+    if (requiresCampaignValueSelection) {
+      toast({
+        title: "Campaign mapping incomplete",
+        description: "Select at least one campaign value, or clear the campaign identifier to import the full file.",
+        variant: "destructive"
+      });
       return;
     }
     if (campaignKeyValues.length > 0 && !effectiveCampaignColumn) {
@@ -2133,7 +2145,10 @@ export function AddSpendWizardModal(props: {
 
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setStep("select")} disabled={isProcessing}>Cancel</Button>
-                      <Button onClick={step === "csv_map" ? processCsv : processSheets} disabled={isProcessing}>
+                      <Button
+                        onClick={step === "csv_map" ? processCsv : processSheets}
+                        disabled={isProcessing || (step === "csv_map" && requiresCampaignValueSelection)}
+                      >
                         {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}
                       </Button>
                     </div>
@@ -2149,5 +2164,4 @@ export function AddSpendWizardModal(props: {
     </Dialog>
   );
 }
-
 

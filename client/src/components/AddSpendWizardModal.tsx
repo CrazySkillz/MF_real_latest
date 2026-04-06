@@ -443,6 +443,31 @@ export function AddSpendWizardModal(props: {
       && campaignColumnMatches;
   }, [isEditing, csvFile, csvPrefillMapping, spendColumn, effectiveCampaignColumn]);
 
+  const hasMeaningfulCsvEditChanges = useMemo(() => {
+    if (!isEditing) return true;
+    if (csvFile) return true;
+    if (!csvPrefillMapping) return false;
+
+    const initialSpendColumn = String(csvPrefillMapping?.spendColumn || "");
+    const initialCampaignColumn = String(csvPrefillMapping?.campaignColumn || "");
+    const initialCampaignValues = Array.isArray(csvPrefillMapping?.campaignValues)
+      ? csvPrefillMapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
+      : (csvPrefillMapping?.campaignValue ? [String(csvPrefillMapping.campaignValue).trim()] : []);
+
+    const currentCampaignColumn = String(effectiveCampaignColumn || "");
+    const currentCampaignValues = campaignKeyValues.map((v) => String(v ?? "").trim()).filter(Boolean);
+
+    if (String(spendColumn || "") !== initialSpendColumn) return true;
+    if (currentCampaignColumn !== initialCampaignColumn) return true;
+    if (currentCampaignValues.length !== initialCampaignValues.length) return true;
+
+    const initialSet = new Set(initialCampaignValues);
+    for (const value of currentCampaignValues) {
+      if (!initialSet.has(value)) return true;
+    }
+    return false;
+  }, [isEditing, csvFile, csvPrefillMapping, spendColumn, effectiveCampaignColumn, campaignKeyValues]);
+
   // If we are editing a CSV spend source and the user re-uploads a file, try to apply the saved mapping.
   useEffect(() => {
     if (!csvPreview?.success) return;
@@ -2187,7 +2212,11 @@ export function AddSpendWizardModal(props: {
         onClick={step === "csv_map" ? processCsv : processSheets}
         disabled={
           isProcessing ||
-          (step === "csv_map" && (requiresCampaignValueSelection || (isEditing && !csvFile && !canRecalculateCsvEditWithoutReupload)))
+          (step === "csv_map" && (
+            requiresCampaignValueSelection ||
+            (isEditing && !hasMeaningfulCsvEditChanges) ||
+            (isEditing && !csvFile && !canRecalculateCsvEditWithoutReupload)
+          ))
         }
       >
                         {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}

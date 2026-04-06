@@ -1235,7 +1235,7 @@ export function AddRevenueWizardModal(props: {
                       <FileSpreadsheet className="w-4 h-4" />
                       Google Sheets
                     </CardTitle>
-                    <CardDescription>Import revenue from a connected Google Sheet tab.</CardDescription>
+                    <CardDescription>Import revenue from a connected Google Sheet tab. With a date column this behaves like daily history; without one it behaves like a revenue snapshot.</CardDescription>
                   </CardHeader>
                 </Card>
 
@@ -1248,7 +1248,7 @@ export function AddRevenueWizardModal(props: {
                     <CardDescription>
                       <div className="flex items-start gap-2">
                         <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
-                        <span>Import revenue from a CSV. Requires manual re-upload to update.</span>
+                        <span>Import revenue from a CSV. This is a one-time import and does not auto-sync; update it later by uploading a new file.</span>
                       </div>
                     </CardDescription>
                   </CardHeader>
@@ -1573,7 +1573,7 @@ export function AddRevenueWizardModal(props: {
                         </div>
 
                         <div className="space-y-1">
-                          <Label>Date column (recommended)</Label>
+                          <Label>Date column (recommended for daily tracking)</Label>
                           <Select value={csvDateCol || SELECT_NONE} onValueChange={(v) => setCsvDateCol(v === SELECT_NONE ? "" : v)}>
                             <SelectTrigger>
                               <SelectValue placeholder="None — all rows summed into one total" />
@@ -1586,7 +1586,7 @@ export function AddRevenueWizardModal(props: {
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground/70">
-                            Map a date column to enable daily revenue tracking in Latest Day Revenue and Trends charts.
+                            Select a date column for daily revenue tracking. If you leave this blank, the CSV will behave like a static revenue snapshot rather than daily history.
                           </p>
                         </div>
 
@@ -1635,6 +1635,15 @@ export function AddRevenueWizardModal(props: {
                         ) : (
                           <div className="text-sm text-muted-foreground/70">Select a campaign column to choose campaign values.</div>
                         )}
+
+                        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground/70">
+                          <div>
+                            Mode: <span className="font-medium">{csvDateCol ? "Daily history" : "Snapshot"}</span>
+                          </div>
+                          <div>
+                            Update model: <span className="font-medium">Manual re-upload only</span>
+                          </div>
+                        </div>
 
                         {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">
@@ -1925,20 +1934,20 @@ export function AddRevenueWizardModal(props: {
                           </div>
 
                           <div className="space-y-1">
-                            <Label>Date column (recommended)</Label>
+                            <Label>Date column (recommended for daily tracking)</Label>
                             <Select value={sheetsDateCol || SELECT_NONE} onValueChange={(v) => setSheetsDateCol(v === SELECT_NONE ? "" : v)}>
                               <SelectTrigger>
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                <SelectItem value={SELECT_NONE}>None — all rows summed into one total</SelectItem>
+                                <SelectItem value={SELECT_NONE}>None — import as a revenue snapshot (all rows summed into one total)</SelectItem>
                                 {sheetsHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>{h}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground/70 mt-1">
-                              Map a date column for daily revenue tracking.
+                              Select a date column for daily revenue tracking. If you leave this blank, the source will behave like a revenue-to-date snapshot rather than daily history.
                             </p>
                           </div>
 
@@ -2016,6 +2025,9 @@ export function AddRevenueWizardModal(props: {
                         <div className="flex items-center justify-between">
                           <div className="text-xs text-muted-foreground/70">
                             Rows detected: <span className="font-medium">{sheetsPreview.rowCount.toLocaleString()}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground/70">
+                            Mode: <span className="font-medium">{sheetsDateCol ? "Daily history" : "Snapshot"}</span>
                           </div>
                         </div>
 
@@ -2152,5 +2164,3 @@ export function AddRevenueWizardModal(props: {
     </Dialog>
   );
 }
-
-

@@ -710,26 +710,23 @@ export function HubSpotRevenueWizard(props: {
 	          </CardDescription>
 	          {step === "value-source" && (
 	            <div className="flex justify-end min-h-8">
-	              {statusLoading ? (
-	                <div className="h-8 w-24" />
-	              ) : isConnected ? (
-	                <Button
-	                  type="button"
-	                  variant="link"
-	                  className="px-0 h-auto self-start"
-	                  onClick={() => void openOAuthWindow()}
-	                  disabled={isConnecting}
-	                >
-	                  {isConnecting ? "Reconnecting…" : "Reconnect"}
-	                </Button>
-	              ) : null}
+	              <Button
+	                type="button"
+	                variant="link"
+	                className={`px-0 h-auto self-start ${statusLoading || !isConnected ? "invisible pointer-events-none" : ""}`}
+	                onClick={() => void openOAuthWindow()}
+	                disabled={statusLoading || !isConnected || isConnecting}
+	                aria-hidden={statusLoading || !isConnected}
+	              >
+	                {isConnecting ? "Reconnecting…" : "Reconnect"}
+	              </Button>
 	            </div>
 	          )}
 	        </CardHeader>
 
-        <CardContent className="flex-1 flex flex-col min-h-0">
-          {/* Scrollable step body to keep footer always visible */}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-1 space-y-4">
+	        <CardContent className="flex-1 flex flex-col min-h-0">
+	          {/* Scrollable step body to keep footer always visible */}
+	          <div className={`flex-1 min-h-0 overflow-x-visible px-1 space-y-4 ${step === "value-source" ? "overflow-y-hidden" : "overflow-y-auto"}`}>
 		            {step === "value-source" && (
 			              <div className="space-y-3">
 			                <div className="rounded-lg border bg-card p-4 space-y-2">

@@ -669,16 +669,29 @@ export function HubSpotRevenueWizard(props: {
           {/* Scrollable step body to keep footer always visible */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-1 space-y-4">
             {step === "value-source" && (
-              <div className="space-y-3">
-                <div className="rounded-lg border bg-card p-4 space-y-2">
-                  <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
-                  <div className="text-xs text-muted-foreground/70 mb-2">
-                    <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.
-                  </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <RadioGroup
-                      value={hubspotSourceMode}
-                      onValueChange={(v: any) => {
+	              <div className="space-y-3">
+	                <div className="rounded-lg border bg-card p-4 space-y-2">
+	                  {isConnected && (
+	                    <div className="flex justify-end">
+	                      <Button
+	                        type="button"
+	                        variant="link"
+	                        className="px-0 h-auto"
+	                        onClick={() => void openOAuthWindow()}
+	                        disabled={isConnecting}
+	                      >
+	                        {isConnecting ? "Reconnecting…" : "Reconnect"}
+	                      </Button>
+	                    </div>
+	                  )}
+	                  <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
+	                  <div className="text-xs text-muted-foreground/70 mb-2">
+	                    <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.
+	                  </div>
+	                  <div>
+	                    <RadioGroup
+	                      value={hubspotSourceMode}
+	                      onValueChange={(v: any) => {
                         const next = String(v || "");
                         // Revenue modes
                         setValueSource("revenue");
@@ -709,22 +722,10 @@ export function HubSpotRevenueWizard(props: {
                           <div className="text-xs text-muted-foreground leading-snug">
                             Imports revenue-to-date from mapped deal Amounts. No Pipeline (Proxy) section in Overview.
                           </div>
-                        </label>
-                      </div>
-                    </RadioGroup>
-
-                    {isConnected && (
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="px-0 h-auto"
-                        onClick={() => void openOAuthWindow()}
-                        disabled={isConnecting}
-                      >
-                        {isConnecting ? "Reconnecting…" : "Reconnect"}
-                      </Button>
-                    )}
-                  </div>
+	                        </label>
+	                      </div>
+	                    </RadioGroup>
+	                  </div>
 
                   <div className="text-xs text-muted-foreground">
                     {hubspotSourceMode === "revenue_plus_pipeline"
@@ -1051,7 +1052,16 @@ export function HubSpotRevenueWizard(props: {
                     )}
                   </div>
 
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+	                  <div className="mt-4 rounded-lg border border-green-200/70 bg-green-50/60 px-4 py-3 dark:border-green-900/60 dark:bg-green-950/20">
+	                    <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
+	                    <div className="text-2xl font-semibold text-green-700 dark:text-green-400">
+	                      {reviewRevenue != null
+	                        ? `$${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+	                        : "—"}
+	                    </div>
+	                  </div>
+
+	                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>
                       <div className="text-xs text-muted-foreground/70">HubSpot account</div>
                       <div className="font-medium text-foreground">
@@ -1161,5 +1171,3 @@ export function HubSpotRevenueWizard(props: {
     </div>
   );
 }
-
-

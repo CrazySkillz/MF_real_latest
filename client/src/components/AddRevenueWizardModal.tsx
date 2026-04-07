@@ -198,6 +198,7 @@ export function AddRevenueWizardModal(props: {
   const [showSheetsConnect, setShowSheetsConnect] = useState(false);
   const [sheetsRemoving, setSheetsRemoving] = useState(false);
   const [sheetsPreview, setSheetsPreview] = useState<Preview | null>(null);
+  const [sheetsBackToChooser, setSheetsBackToChooser] = useState(false);
   const [sheetsRevenueCol, setSheetsRevenueCol] = useState<string>("");
   const [sheetsConversionValueCol, setSheetsConversionValueCol] = useState<string>("");
   const [sheetsCampaignCol, setSheetsCampaignCol] = useState<string>("");
@@ -392,6 +393,7 @@ export function AddRevenueWizardModal(props: {
     setShowSheetsConnect(false);
     setSheetsRemoving(false);
     setSheetsPreview(null);
+    setSheetsBackToChooser(false);
     setSheetsRevenueCol("");
     setSheetsConversionValueCol("");
     setSheetsCampaignCol("");
@@ -622,7 +624,9 @@ export function AddRevenueWizardModal(props: {
         setSheetsConnections(conns);
         // Auto-select: if no connectionId set, or stored connectionId doesn't match any available connection
         const currentIdValid = sheetsConnectionId && conns.some((c: any) => String(c.id) === sheetsConnectionId);
-        if (!currentIdValid && conns.length > 0) setSheetsConnectionId(String(conns[0]?.id || ""));
+        if (!sheetsBackToChooser && !currentIdValid && conns.length > 0) {
+          setSheetsConnectionId(String(conns[0]?.id || ""));
+        }
       } catch {
         if (!mounted) return;
         setSheetsConnections([]);
@@ -634,7 +638,7 @@ export function AddRevenueWizardModal(props: {
     return () => {
       mounted = false;
     };
-  }, [open, step, campaignId, sheetsPurpose, isEditing]);
+  }, [open, step, campaignId, sheetsPurpose, isEditing, sheetsConnectionId, sheetsBackToChooser]);
 
   const refreshSheetsConnections = async () => {
     try {
@@ -829,6 +833,7 @@ export function AddRevenueWizardModal(props: {
     if (step === "select") return;
     if (step === "csv_map") return setStep("csv");
     if (step === "sheets_map") {
+      setSheetsBackToChooser(true);
       setSheetsConnectionId(""); // Clear so auto-advance doesn't immediately push back to sheets_map
       return setStep("sheets_choose");
     }
@@ -1154,14 +1159,14 @@ export function AddRevenueWizardModal(props: {
       return;
     }
     // After falling back to sheets_choose, auto-advance once connections load and stored ID matches
-    if (step === "sheets_choose" && sheetsConnectionId && sheetsConnections.length > 0) {
+    if (step === "sheets_choose" && !sheetsBackToChooser && sheetsConnectionId && sheetsConnections.length > 0) {
       const match = sheetsConnections.find((c: any) => String(c.id) === sheetsConnectionId);
       if (match) {
         setStep("sheets_map");
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isEditing, step, sheetsConnectionId, sheetsPreview, initialSource, sheetsConnections]);
+  }, [open, isEditing, step, sheetsConnectionId, sheetsPreview, initialSource, sheetsConnections, sheetsBackToChooser]);
 
   const handleSheetsProcess = async () => {
     if (!sheetsConnectionId) return;
@@ -1933,6 +1938,7 @@ export function AddRevenueWizardModal(props: {
                           purpose={sheetsPurpose}
                           onSuccess={async (info) => {
                             setShowSheetsConnect(false);
+                            setSheetsBackToChooser(false);
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
                             if (preferredId) {
                               setSheetsConnectionId(preferredId);
@@ -1961,6 +1967,7 @@ export function AddRevenueWizardModal(props: {
                           purpose={sheetsPurpose}
                           onSuccess={async (info) => {
                             setShowSheetsConnect(false);
+                            setSheetsBackToChooser(false);
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
                             if (preferredId) {
                               setSheetsConnectionId(preferredId);
@@ -1999,6 +2006,7 @@ export function AddRevenueWizardModal(props: {
                         <Select
                           value={sheetsConnectionId}
                           onValueChange={(v) => {
+                            setSheetsBackToChooser(false);
                             setSheetsConnectionId(v);
                             setSheetsPreview(null);
                             setSheetsRevenueCol("");

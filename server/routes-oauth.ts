@@ -13357,6 +13357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           selectedValues: zSelectedValues,
           revenueProperty: z.string().trim().min(1).optional(),
           conversionValueProperty: z.string().trim().optional().nullable(),
+          previewOnly: z.boolean().optional(),
           valueSource: zValueSource.optional(),
           revenueClassification: z.string().trim().optional(),
           days: zNumberLike.optional(),
@@ -13380,6 +13381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const revenueProp = String(body.data.revenueProperty || "amount").trim();
       const convValueProp = String(body.data.conversionValueProperty || "").trim();
       const parsedValueSource: "revenue" | "conversion_value" = body.data.valueSource || "revenue";
+      const previewOnly = body.data.previewOnly === true;
       const selected = body.data.selectedValues;
       const rangeDays = Math.min(Math.max(parseInt(String(body.data.days ?? 90), 10) || 90, 1), 3650);
       const stageIds = body.data.stageIds;
@@ -13507,6 +13509,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (platformCtx === 'linkedin' && effectiveValueSource === 'conversion_value' && !convValueProp) {
         return res.status(400).json({ error: 'conversionValueProperty is required when valueSource=conversion_value' });
+      }
+
+      if (previewOnly) {
+        return res.json({
+          success: true,
+          previewOnly: true,
+          totalRevenue: Number(totalRevenue.toFixed(2)),
+        });
       }
 
       // Persist mapping config on the active HubSpot connection

@@ -95,14 +95,16 @@ export function HubSpotRevenueWizard(props: {
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
+  const [reviewPreviewRevenue, setReviewPreviewRevenue] = useState<number | null>(null);
 
-  // Revenue amount for the review step: prefer lastSaveResult, then stored config, then breakdown revenue
+  // Revenue amount for the review step: prefer saved result, then live preview, then stored config
   const reviewRevenue = useMemo(() => {
     if (lastSaveResult?.totalRevenue != null) return Number(lastSaveResult.totalRevenue);
+    if (reviewPreviewRevenue != null) return Number(reviewPreviewRevenue);
     const stored = Number(initialMappingConfig?.lastTotalRevenue);
     if (Number.isFinite(stored) && stored >= 0) return stored;
     return null;
-  }, [lastSaveResult, initialMappingConfig]);
+  }, [lastSaveResult, reviewPreviewRevenue, initialMappingConfig]);
 
   // Per-LinkedIn-campaign mapping (crosswalk enhancement)
   const [linkedinCampaigns, setLinkedinCampaigns] = useState<Array<{ urn: string; name: string; status: string }>>([]);
@@ -405,6 +407,49 @@ export function HubSpotRevenueWizard(props: {
   const hubspotSourceMode = useMemo(() => {
     return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);
   }, [pipelineEnabled]);
+
+  const reviewPreviewFiredRef = useRef(false);
+  useEffect(() => {
+    reviewPreviewFiredRef.current = false;
+    setReviewPreviewRevenue(null);
+  }, [campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn, campaignMappings]);
+
+  useEffect(() => {
+    if (step !== "review") return;
+    if (reviewPreviewFiredRef.current) return;
+    if (!isConnected || !campaignProperty || selectedValues.length === 0 || !revenueProperty) return;
+    reviewPreviewFiredRef.current = true;
+    void (async () => {
+      try {
+        const resp = await fetch(`/api/campaigns/${campaignId}/hubspot/save-mappings`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignProperty,
+            selectedValues,
+            revenueProperty,
+            conversionValueProperty: null,
+            previewOnly: true,
+            valueSource: "revenue",
+            revenueClassification,
+            days,
+            dateField,
+            pipelineEnabled,
+            pipelineStageId: pipelineEnabled ? pipelineStageId : null,
+            pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
+            platformContext,
+            ...(isLinkedIn && campaignMappings.length > 0 ? { campaignMappings } : {}),
+          }),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(json?.error || "Failed to preview HubSpot revenue");
+        setReviewPreviewRevenue(Number(json?.totalRevenue || 0));
+      } catch {
+        // Keep the review usable even if preview fails.
+      }
+    })();
+  }, [step, isConnected, campaignId, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn, campaignMappings]);
 
   const save = async () => {
     setIsSaving(true);
@@ -1051,15 +1096,6 @@ export function HubSpotRevenueWizard(props: {
                       </>
                     )}
                   </div>
-
-	                  <div className="mt-4 rounded-lg border border-green-200/70 bg-green-50/60 px-4 py-3 dark:border-green-900/60 dark:bg-green-950/20">
-	                    <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
-	                    <div className="text-2xl font-semibold text-green-700 dark:text-green-400">
-	                      {reviewRevenue != null
-	                        ? `$${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-	                        : "—"}
-	                    </div>
-	                  </div>
 
 	                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>

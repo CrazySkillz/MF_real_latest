@@ -508,6 +508,7 @@ export function AddRevenueWizardModal(props: {
       setSheetsValueSource(vs);
       setSheetsCampaignCol(String(config?.campaignColumn || ""));
       setSheetsCampaignValues(Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : []);
+      setSheetsDateCol(String(config?.dateColumn || ""));
       return;
     }
 
@@ -786,6 +787,43 @@ export function AddRevenueWizardModal(props: {
     const availableValues = uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol);
     return availableValues.length > 0 && sheetsCampaignValues.length === 0;
   }, [step, sheetsCampaignCol, sheetsPreview, sheetsCampaignValues]);
+
+  const hasMeaningfulSheetsRevenueEditChanges = useMemo(() => {
+    if (!isEditing) return true;
+
+    let config: any = {};
+    try {
+      config = initialSource?.mappingConfig ? JSON.parse(String(initialSource.mappingConfig)) : {};
+    } catch {
+      config = {};
+    }
+
+    const initialConnectionId = String(config?.connectionId || initialSource?.connectionId || "");
+    const initialValueSource = String(config?.valueSource || config?.mode || "revenue").trim().toLowerCase();
+    const initialRevenueColumn = String(config?.revenueColumn || "");
+    const initialConversionValueColumn = String(config?.conversionValueColumn || "");
+    const initialCampaignColumn = String(config?.campaignColumn || "");
+    const initialDateColumn = String(config?.dateColumn || "");
+    const initialCampaignValues = Array.isArray(config?.campaignValues)
+      ? config.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
+      : [];
+    const currentCampaignValues = sheetsCampaignValues.map((v) => String(v ?? "").trim()).filter(Boolean);
+    const currentValueSource = String(platformContext === 'linkedin' ? sheetsValueSource : 'revenue').trim().toLowerCase();
+
+    if (String(sheetsConnectionId || "") !== initialConnectionId) return true;
+    if (currentValueSource !== initialValueSource) return true;
+    if (String(sheetsRevenueCol || "") !== initialRevenueColumn) return true;
+    if (String(sheetsConversionValueCol || "") !== initialConversionValueColumn) return true;
+    if (String(sheetsCampaignCol || "") !== initialCampaignColumn) return true;
+    if (String(sheetsDateCol || "") !== initialDateColumn) return true;
+    if (currentCampaignValues.length !== initialCampaignValues.length) return true;
+
+    const initialSet = new Set(initialCampaignValues);
+    for (const value of currentCampaignValues) {
+      if (!initialSet.has(value)) return true;
+    }
+    return false;
+  }, [isEditing, initialSource, platformContext, sheetsConnectionId, sheetsValueSource, sheetsRevenueCol, sheetsConversionValueCol, sheetsCampaignCol, sheetsDateCol, sheetsCampaignValues]);
 
   const handleBack = () => {
     if (step === "select") return;
@@ -2219,6 +2257,7 @@ export function AddRevenueWizardModal(props: {
                         disabled={
                           !sheetsPreview ||
                           sheetsProcessing ||
+                          (isEditing && !hasMeaningfulSheetsRevenueEditChanges) ||
                           requiresSheetsCampaignValueSelection ||
                           (platformContext !== 'linkedin' && !sheetsRevenueCol) ||
                           (platformContext === 'linkedin' && ((sheetsValueSource === 'revenue' && !sheetsRevenueCol) || (sheetsValueSource === 'conversion_value' && !sheetsConversionValueCol)))

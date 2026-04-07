@@ -709,18 +709,18 @@ export function HubSpotRevenueWizard(props: {
 	              "HubSpot is connected. Your selected revenue input will be used to compute financial metrics."}
 	          </CardDescription>
 	          {step === "value-source" && (
-	            <div className="flex justify-end min-h-8">
-	              <Button
-	                type="button"
-	                variant="link"
-	                className={`px-0 h-auto self-start ${statusLoading || !isConnected ? "invisible pointer-events-none" : ""}`}
-	                onClick={() => void openOAuthWindow()}
-	                disabled={statusLoading || !isConnected || isConnecting}
-	                aria-hidden={statusLoading || !isConnected}
-	              >
-	                {isConnecting ? "Reconnecting…" : "Reconnect"}
-	              </Button>
-	            </div>
+		            <div className="flex justify-end min-h-8">
+		              <Button
+		                type="button"
+		                variant="link"
+		                className={`px-0 h-auto self-start no-underline hover:no-underline ${statusLoading || !isConnected ? "invisible pointer-events-none" : ""}`}
+		                onClick={() => void openOAuthWindow()}
+		                disabled={statusLoading || !isConnected || isConnecting}
+		                aria-hidden={statusLoading || !isConnected}
+		              >
+		                {isConnecting ? "Reconnecting…" : "Reconnect"}
+		              </Button>
+		            </div>
 	          )}
 	        </CardHeader>
 
@@ -752,24 +752,24 @@ export function HubSpotRevenueWizard(props: {
                       }}
                       className="space-y-2 flex-1"
                     >
-                      <div className="flex items-start gap-2">
-                        <RadioGroupItem id="hs-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
-                        <label htmlFor="hs-mode-revenue-pipeline" className="cursor-pointer">
-                          <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
-                          <div className="text-xs text-muted-foreground leading-snug">
-                            Total Revenue comes from mapped deal Amounts (to date). Adds a Pipeline (Proxy) card using a stage like SQL as an early signal.
-                          </div>
-                        </label>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <RadioGroupItem id="hs-mode-revenue-only" value="revenue_only" className="mt-0.5" />
-                        <label htmlFor="hs-mode-revenue-only" className="cursor-pointer">
-                          <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
-                          <div className="text-xs text-muted-foreground leading-snug">
-                            Imports revenue-to-date from mapped deal Amounts. No Pipeline (Proxy) section in Overview.
-                          </div>
-	                        </label>
-	                      </div>
+		                      <div className="flex items-start gap-2">
+		                        <RadioGroupItem id="hs-mode-revenue-only" value="revenue_only" className="mt-0.5" />
+		                        <label htmlFor="hs-mode-revenue-only" className="cursor-pointer">
+		                          <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
+		                          <div className="text-xs text-muted-foreground leading-snug">
+		                            Imports revenue-to-date from mapped deal Amounts. No Pipeline (Proxy) section in Overview.
+		                          </div>
+		                        </label>
+		                      </div>
+		                      <div className="flex items-start gap-2">
+		                        <RadioGroupItem id="hs-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
+		                        <label htmlFor="hs-mode-revenue-pipeline" className="cursor-pointer">
+		                          <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
+		                          <div className="text-xs text-muted-foreground leading-snug">
+		                            Total Revenue comes from mapped deal Amounts (to date). Adds a Pipeline (Proxy) card using a stage like SQL as an early signal.
+		                          </div>
+		                        </label>
+		                      </div>
 	                    </RadioGroup>
 	                  </div>
 

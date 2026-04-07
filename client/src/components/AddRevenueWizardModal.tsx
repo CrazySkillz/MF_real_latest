@@ -781,6 +781,12 @@ export function AddRevenueWizardModal(props: {
     return rows.filter((r: any) => set.has(String(r?.[sheetsCampaignCol] ?? "").trim()));
   }, [sheetsPreview, sheetsCampaignCol, sheetsCampaignValues]);
 
+  const requiresSheetsCampaignValueSelection = useMemo(() => {
+    if (step !== "sheets_map" || !sheetsCampaignCol) return false;
+    const availableValues = uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol);
+    return availableValues.length > 0 && sheetsCampaignValues.length === 0;
+  }, [step, sheetsCampaignCol, sheetsPreview, sheetsCampaignValues]);
+
   const handleBack = () => {
     if (step === "select") return;
     if (step === "csv_map") return setStep("csv");
@@ -1139,6 +1145,14 @@ export function AddRevenueWizardModal(props: {
           return;
         }
       }
+    }
+    if (requiresSheetsCampaignValueSelection) {
+      toast({
+        title: "Select at least one campaign value",
+        description: "Choose one or more campaign values, or clear the campaign column to import the full sheet.",
+        variant: "destructive",
+      });
+      return;
     }
     setSheetsProcessing(true);
     try {
@@ -2005,7 +2019,7 @@ export function AddRevenueWizardModal(props: {
                         </div>
                     ) : (
                       <>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <Label>Campaign column (optional)</Label>
                             <Select
@@ -2058,7 +2072,7 @@ export function AddRevenueWizardModal(props: {
                             </Select>
                           </div>
 
-                          <div className="space-y-1">
+                          <div className="space-y-1 md:col-span-2">
                             <Label>Date column (recommended for daily tracking)</Label>
                             <Select value={sheetsDateCol || SELECT_NONE} onValueChange={(v) => setSheetsDateCol(v === SELECT_NONE ? "" : v)}>
                               <SelectTrigger>
@@ -2205,6 +2219,7 @@ export function AddRevenueWizardModal(props: {
                         disabled={
                           !sheetsPreview ||
                           sheetsProcessing ||
+                          requiresSheetsCampaignValueSelection ||
                           (platformContext !== 'linkedin' && !sheetsRevenueCol) ||
                           (platformContext === 'linkedin' && ((sheetsValueSource === 'revenue' && !sheetsRevenueCol) || (sheetsValueSource === 'conversion_value' && !sheetsConversionValueCol)))
                         }

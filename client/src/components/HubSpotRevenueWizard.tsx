@@ -644,8 +644,8 @@ export function HubSpotRevenueWizard(props: {
 
       {/* Step Content */}
       <Card className="flex-1 flex flex-col min-h-0">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+	        <CardHeader>
+	          <CardTitle className="flex items-center gap-2">
             {step === "value-source" && (
               <>
                 <DollarSign className="w-5 h-5 text-green-600" />
@@ -689,7 +689,7 @@ export function HubSpotRevenueWizard(props: {
               </>
             )}
           </CardTitle>
-          <CardDescription>
+	          <CardDescription>
             {step === "value-source" &&
               "Choose what HubSpot should provide: Total Revenue only, or Total Revenue + Pipeline (Proxy) for an early signal on long sales cycles."}
             {step === "campaign-field" &&
@@ -705,30 +705,34 @@ export function HubSpotRevenueWizard(props: {
             {step === "revenue" &&
               "Select the HubSpot field that represents deal amount."}
             {step === "review" && "Review the settings below, then save mappings."}
-            {step === "complete" &&
-              "HubSpot is connected. Your selected revenue input will be used to compute financial metrics."}
-          </CardDescription>
-        </CardHeader>
+	            {step === "complete" &&
+	              "HubSpot is connected. Your selected revenue input will be used to compute financial metrics."}
+	          </CardDescription>
+	          {step === "value-source" && (
+	            <div className="flex justify-end min-h-8">
+	              {statusLoading ? (
+	                <div className="h-8 w-24" />
+	              ) : isConnected ? (
+	                <Button
+	                  type="button"
+	                  variant="link"
+	                  className="px-0 h-auto self-start"
+	                  onClick={() => void openOAuthWindow()}
+	                  disabled={isConnecting}
+	                >
+	                  {isConnecting ? "Reconnecting…" : "Reconnect"}
+	                </Button>
+	              ) : null}
+	            </div>
+	          )}
+	        </CardHeader>
 
         <CardContent className="flex-1 flex flex-col min-h-0">
           {/* Scrollable step body to keep footer always visible */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-1 space-y-4">
-	            {step === "value-source" && (
-		              <div className="space-y-3">
-		                {isConnected && (
-		                  <div className="flex justify-end">
-		                    <Button
-		                      type="button"
-		                      variant="link"
-		                      className="px-0 h-auto"
-		                      onClick={() => void openOAuthWindow()}
-		                      disabled={isConnecting}
-		                    >
-		                      {isConnecting ? "Reconnecting…" : "Reconnect"}
-		                    </Button>
-		                  </div>
-		                )}
-		                <div className="rounded-lg border bg-card p-4 space-y-2">
+		            {step === "value-source" && (
+			              <div className="space-y-3">
+			                <div className="rounded-lg border bg-card p-4 space-y-2">
 		                  <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
 		                  <div className="text-xs text-muted-foreground/70 mb-2">
 		                    <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.

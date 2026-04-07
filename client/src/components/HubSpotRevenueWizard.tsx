@@ -713,25 +713,25 @@ export function HubSpotRevenueWizard(props: {
         <CardContent className="flex-1 flex flex-col min-h-0">
           {/* Scrollable step body to keep footer always visible */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-1 space-y-4">
-            {step === "value-source" && (
-	              <div className="space-y-3">
-	                <div className="rounded-lg border bg-card p-4 space-y-2">
-	                  {isConnected && (
-	                    <div className="flex justify-end">
-	                      <Button
-	                        type="button"
-	                        variant="link"
-	                        className="px-0 h-auto"
-	                        onClick={() => void openOAuthWindow()}
-	                        disabled={isConnecting}
-	                      >
-	                        {isConnecting ? "Reconnecting…" : "Reconnect"}
-	                      </Button>
-	                    </div>
-	                  )}
-	                  <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
-	                  <div className="text-xs text-muted-foreground/70 mb-2">
-	                    <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.
+	            {step === "value-source" && (
+		              <div className="space-y-3">
+		                {isConnected && (
+		                  <div className="flex justify-end">
+		                    <Button
+		                      type="button"
+		                      variant="link"
+		                      className="px-0 h-auto"
+		                      onClick={() => void openOAuthWindow()}
+		                      disabled={isConnecting}
+		                    >
+		                      {isConnecting ? "Reconnecting…" : "Reconnect"}
+		                    </Button>
+		                  </div>
+		                )}
+		                <div className="rounded-lg border bg-card p-4 space-y-2">
+		                  <div className="text-sm font-medium">What do you want MetricMind to pull from HubSpot?</div>
+		                  <div className="text-xs text-muted-foreground/70 mb-2">
+		                    <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.
 	                  </div>
 	                  <div>
 	                    <RadioGroup
@@ -1057,9 +1057,9 @@ export function HubSpotRevenueWizard(props: {
                   </p>
                 </div>
 
-                <div className="space-y-2 border-t pt-3">
-                  <Label className="text-muted-foreground">Date field</Label>
-                  <Select value={dateField} onValueChange={setDateField}>
+	                <div className="space-y-2 border-t pt-3">
+	                  <Label className="text-muted-foreground">Date field</Label>
+	                  <Select value={dateField} onValueChange={setDateField}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -1068,11 +1068,12 @@ export function HubSpotRevenueWizard(props: {
                       <SelectItem value="hs_lastmodifieddate">Last Modified Date — when the deal was last updated</SelectItem>
                       <SelectItem value="createdate">Created Date — when the deal was first entered</SelectItem>
                     </SelectContent>
-                  </Select>
-                  <div className="text-xs text-muted-foreground">
-                    Controls which date revenue is reported under. Default: Close Date.
-                  </div>
-                </div>
+	                  </Select>
+	                  <div className="text-xs text-muted-foreground">
+	                    Controls which HubSpot date property is used to decide which deals are included in this revenue total. Default: Close Date.
+	                    Use Close Date for won-revenue reporting, Last Modified Date for recently updated deals, or Created Date for newly created deals.
+	                  </div>
+	                </div>
               </div>
             )}
 

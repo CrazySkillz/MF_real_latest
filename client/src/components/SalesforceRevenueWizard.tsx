@@ -730,6 +730,7 @@ export function SalesforceRevenueWizard(props: {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(mode === "edit" && sourceId ? { sourceId } : {}),
           campaignField,
           selectedValues,
           revenueField,

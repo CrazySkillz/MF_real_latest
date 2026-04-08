@@ -2307,6 +2307,7 @@ export function AddRevenueWizardModal(props: {
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
+                  sourceId={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? String(initialSource?.id || "") : undefined}
                   platformContext={platformContext}
                   autoStartOAuth={!isEditing}
                   mode={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? "edit" : "connect"}

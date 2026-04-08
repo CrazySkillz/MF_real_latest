@@ -12278,6 +12278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .safeParse(req.body || {});
       if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
 
+      const existingSourceIdOrNull = body.data?.sourceId ? String(body.data.sourceId) : null;
       const attribField = body.data.campaignField;
       const revenue = String(body.data.revenueField || "Amount").trim();
       const convValueField = String(body.data.conversionValueField || "").trim();
@@ -12745,32 +12746,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const cur = campaignCurrency;
 
-        const source = await storage.createRevenueSource({
-          campaignId,
-          sourceType: "salesforce",
+        const normalizedMapping = {
+          provider: "salesforce",
           platformContext: platformCtx,
-          displayName: `Salesforce (Opportunities)`,
-          currency: cur,
-          mappingConfig: JSON.stringify({
-            provider: "salesforce",
-            platformContext: platformCtx,
-            mode: "revenue_to_date",
-            valueSource: "revenue",
-            campaignField: attribField,
-            selectedValues: selected,
-            revenueField: revenue,
-            days: rangeDays,
-            revenueClassification,
-            lastTotalRevenue: Number(totalRevenue.toFixed(2)),
-            pipelineEnabled: !!pipelineEnabled,
-            pipelineStageName: pipelineEnabled && pipelineStageName ? pipelineStageName : null,
-            pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
-            ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
-          }),
-          isActive: true,
-        } as any);
+          mode: "revenue_to_date",
+          valueSource: "revenue",
+          campaignField: attribField,
+          selectedValues: selected,
+          revenueField: revenue,
+          days: rangeDays,
+          revenueClassification,
+          lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+          pipelineEnabled: !!pipelineEnabled,
+          pipelineStageName: pipelineEnabled && pipelineStageName ? pipelineStageName : null,
+          pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
+          ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
+        };
 
-        await storage.deleteRevenueRecordsBySource(source.id);
+        let source: any;
+        if (existingSourceIdOrNull) {
+          source = await storage.updateRevenueSource(existingSourceIdOrNull, {
+            sourceType: "salesforce",
+            displayName: `Salesforce (Opportunities)`,
+            currency: cur,
+            mappingConfig: JSON.stringify(normalizedMapping),
+            isActive: true,
+          } as any);
+          if (!source) source = { id: existingSourceIdOrNull };
+          await storage.deleteRevenueRecordsBySource(existingSourceIdOrNull);
+        } else {
+          source = await storage.createRevenueSource({
+            campaignId,
+            sourceType: "salesforce",
+            platformContext: platformCtx,
+            displayName: `Salesforce (Opportunities)`,
+            currency: cur,
+            mappingConfig: JSON.stringify(normalizedMapping),
+            isActive: true,
+          } as any);
+          await storage.deleteRevenueRecordsBySource(source.id);
+        }
 
         // Enterprise accuracy: record revenue on actual Opportunity CloseDate (daily totals),
         // rather than distributing evenly across the range.

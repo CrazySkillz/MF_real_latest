@@ -23,6 +23,7 @@ type UniqueValue = {
 
 export function SalesforceRevenueWizard(props: {
   campaignId: string;
+  sourceId?: string;
   mode?: "connect" | "edit";
   initialMappingConfig?: {
     campaignField?: string;
@@ -60,6 +61,7 @@ export function SalesforceRevenueWizard(props: {
 }) {
   const {
     campaignId,
+    sourceId,
     mode = "connect",
     initialMappingConfig = null,
     connectOnly = false,
@@ -659,6 +661,7 @@ export function SalesforceRevenueWizard(props: {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(mode === "edit" && sourceId ? { sourceId } : {}),
           campaignField,
           selectedValues,
           revenueField,

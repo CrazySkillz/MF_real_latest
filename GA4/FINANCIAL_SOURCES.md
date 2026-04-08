@@ -117,6 +117,12 @@ Important meaning:
 - `Google Sheets` and `CSV` are preview + mapping + import workflows
 - `Manual` is a direct campaign revenue-entry workflow
 
+Production direction note:
+
+- `Manual` is being retained during the current GA4 validation/manual-testing phase
+- after the full GA4 user-journey test pass is complete, the intended production direction is to remove `Manual` entirely
+- the reason is data-quality and data-integrity protection: unrestricted manual revenue entry creates avoidable provenance, duplication, and audit-risk issues
+
 Executive-UX note:
 
 - these workflows are logical for enterprise users who need source provenance and campaign attribution
@@ -165,6 +171,11 @@ Important meaning:
 
 - HubSpot is a CRM mapping workflow
 - the user maps HubSpot deal revenue into this campaign rather than typing a single value
+- the HubSpot `Date field` is logically necessary in the current model because it decides which HubSpot deal date property is used when including/reporting revenue
+- `Close Date` is the default for finance-style won-revenue reporting
+- `Last Modified Date` is useful when the user wants revenue tied to recently updated deals
+- `Created Date` is useful when the user wants revenue tied to when opportunities first entered HubSpot
+- the `Reconnect` action on the first HubSpot screen should render in a stable header/action area, not inside the main source-choice card or a shifting scroll region
 
 ## Revenue Source 3: Salesforce Journey
 
@@ -188,6 +199,8 @@ Important meaning:
 
 - Salesforce is a CRM opportunity-mapping workflow
 - this path is sensitive because it can include currency validation and attribution-field matching
+- in edit mode, Salesforce revenue must preserve the existing revenue `sourceId` all the way through the save request so the system updates the existing source instead of creating an additive duplicate
+- Salesforce review-step `Total Revenue (to date)` should prefer fresh preview data from the current edit session over stored `lastTotalRevenue` values from the previous save
 
 ## Revenue Source 4: Google Sheets Journey
 
@@ -210,6 +223,13 @@ Important meaning:
 
 - Google Sheets is a connected-sheet preview and mapping workflow
 - the preview step is part of the source-selection journey, not a separate admin flow
+- if the user selects a date column, the source behaves like daily revenue history
+- if the user does not select a date column, the source behaves like a revenue snapshot / revenue-to-date import
+- the date column supports daily-history behavior; it does not itself create automatic daily syncing
+- Google Sheets refreshability comes from the connected sheet source, while the date column controls date granularity
+- if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
+- Google Sheets revenue edit should keep `Update revenue` disabled until a meaningful edit is made
+- the UI should make this daily-history vs snapshot distinction explicit so users understand the downstream effect on latest-day and trend-style views
 
 ## Revenue Source 5: CSV Journey
 
@@ -232,7 +252,16 @@ Important meaning:
 
 - CSV is a structured import workflow, not a simple file attachment
 - without a date column, the import behaves more like a revenue-to-date snapshot
+- with a date column, the source behaves more like daily revenue history
+- a date column supports daily-history calculations and latest-day/trend-style views; it does not make CSV auto-refreshing
 - because CSV is manual, updates require re-upload rather than automatic refresh
+- CSV should be treated as a one-time or occasional import, not an auto-syncing source
+- if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
+- the UI should make it explicit that CSV updates require manual re-upload
+- CSV revenue edit should reopen directly into the mapping screen when the stored imported dataset is available
+- if only campaign-value selection changes, CSV revenue should recalculate without forcing a re-upload
+- if structural mappings change, such as revenue column, conversion value column, campaign column, date column, or value-source mode, re-upload is still required
+- `Update revenue` should remain disabled until a meaningful edit is made
 
 ## Revenue Source 6: Manual Journey
 
@@ -251,6 +280,7 @@ Important meaning:
 - `Manual` is a direct value-entry workflow
 - unlike CRM and sheet-based options, it is not an attribution or import mapping process
 - it behaves more like a manually maintained revenue snapshot and is best treated as a higher-friction, less automated path
+- it should be treated as a temporary validation/testing path rather than a long-term production workflow
 
 ## The Six `Total Spend +` Options
 
@@ -274,6 +304,12 @@ When the user clicks `+` on the `Total Spend` card:
 - `LinkedIn Ads`, `Meta / Facebook`, and `Google Ads` are connector-based spend workflows with campaign selection inside the modal
 - `Google Sheets` and `CSV` are preview + mapping + import workflows
 - `Manual` is a direct spend-entry workflow
+
+Production direction note:
+
+- `Manual` is being retained during the current GA4 validation/manual-testing phase
+- after the full GA4 user-journey test pass is complete, the intended production direction is to remove `Manual` entirely
+- the reason is data-quality and data-integrity protection: unrestricted manual spend entry creates avoidable provenance, duplication, and audit-risk issues
 
 Important meaning:
 
@@ -371,6 +407,7 @@ Important current-state note:
 - the visible spend flow is a preview + mapping + import workflow
 - in the current spend UI, Google Sheets is treated as a spend-to-date import flow rather than a user-configured daily-date mapping flow
 - Google Sheets spend is eligible for scheduled auto-refresh after setup
+- if the user selects a campaign identifier column and matching values are available, at least one campaign value must be selected before import
 
 ## Spend Source 5: CSV Journey
 
@@ -391,7 +428,9 @@ Important meaning:
 
 - CSV spend is a structured import workflow, not a file attachment
 - the visible flow behaves like a spend-to-date snapshot import
-- updates require manual re-upload; CSV spend does not auto-refresh on a schedule
+- CSV spend does not auto-refresh on a schedule
+- once a CSV spend source has been imported with the persisted edit payload, edit mode can recalculate from the stored imported dataset when the user changes only campaign-value selection
+- if the user changes mapped columns or the original stored dataset is not available, re-upload is still required
 
 ## Spend Source 6: Manual Journey
 
@@ -411,6 +450,7 @@ Important meaning:
 - `Manual` is a direct spend-entry workflow
 - it behaves like a manually maintained snapshot, not a refreshable connector
 - the current UI explicitly positions it as best suited for testing/manual fallback rather than automated ongoing sync
+- it should be treated as a temporary validation/testing path rather than a long-term production workflow
 
 ## Source Rows Under The Cards
 
@@ -436,12 +476,21 @@ The required pattern is:
 
 - connector-based revenue or spend sources should reopen their source-specific flow rather than exposing a raw total-field edit
 - `Google Sheets` edit should reopen the connection/mapping flow for that sheet source
-- `CSV` edit should reopen the mapping flow but still require a re-upload to reprocess data
+- `Google Sheets` spend edit should keep `Update spend` disabled until the user makes a meaningful change
+- `Google Sheets` spend edit should allow recalculation when the user changes selected campaign values, mapped columns, or the selected sheet connection
+- `CSV` spend edit should reopen the mapping flow
+- if only campaign-value selection changes and the stored import dataset is available, `Update spend` should recalculate without forcing a re-upload
+- if mapped columns change or the original stored dataset is unavailable, `CSV` spend edit should require re-upload
+- `CSV` spend edit should keep `Update spend` disabled until the user makes a meaningful change
+- `Salesforce` revenue edit must update the existing revenue source and replace that source's materialized records rather than creating a second additive source row
+- for CRM edit flows, stable source identity is required: the existing `sourceId` must survive modal -> wizard -> save payload -> save route
+- review-step totals in CRM edit flows should refresh from the current preview inputs and should not let stale saved totals override fresh preview totals
 - `Manual` edit should overwrite the saved snapshot amount and then recompute downstream values
 
 ### Campaign Filter Meaning For CSV And Google Sheets
 
 - if the user selects a campaign identifier column and one or more campaign values, only matching rows should contribute to this campaign
+- if a campaign identifier column is selected and matching values are available, import should be blocked until at least one campaign value is chosen
 - if the user does not apply that filter, the imported source is treated as wholly belonging to this campaign
 
 ### Refreshable Vs Snapshot Behavior
@@ -450,8 +499,10 @@ The required pattern is:
 - `Google Sheets` spend is a refreshable source after setup
 - `LinkedIn Ads` spend is connector-based and refreshable through the platform refresh pipeline
 - `Meta / Facebook` and `Google Ads` spend currently use connected-platform selection flows, but their current persisted spend handling is still more snapshot-like than a fully specialized connector pipeline
-- `Upload CSV` revenue/spend is a manual snapshot source and requires re-upload for updates
+- `Upload CSV` revenue is a manual snapshot source and requires re-upload for updates
+- `Upload CSV` spend is a manual snapshot source for import cadence, but spend-source edit can recalculate from the stored imported dataset when only campaign-value selection changes
 - `Manual` revenue/spend is a manual snapshot source and requires direct manual updates
+- planned production direction: remove `Manual` after the current GA4 validation cycle is complete
 
 ### Financial Source-Of-Truth Hierarchy
 
@@ -481,5 +532,11 @@ The current implementation is intentionally hybrid:
 - spend is always explicit and source-backed
 - manual and CSV flows behave more like snapshot inputs than auto-refreshing connectors
 - some users may have no GA4-native revenue and rely entirely on imported external revenue sources
+
+Planned production direction:
+
+- `Manual` is currently retained to support testing and validation
+- once the full GA4 manual-user-journey pass is complete, `Manual` should be removed from production revenue and spend source options
+- `CSV` may still remain as a structured manual import path, but unrestricted direct manual entry should not remain a general production option
 
 Future work must preserve financial provenance and recomputation accuracy.

@@ -582,10 +582,16 @@ Checkpoint after Journey 7:
 - [ ] ROAS/CPA/ROI/Profit all reflect the cumulative total spend
 
 ### Step 8: Edit a spend source
-- [ ] Click edit (pencil) on the CSV source → re-upload with different amount → Save
-- [ ] Total Spend recalculated (old CSV amount replaced, not duplicated)
+- [ ] Click edit (pencil) on the CSV source
+- [ ] Confirm `Update spend` is **disabled** immediately on open before any changes are made
+- [ ] Deselect one campaign value while keeping one valid campaign selected
+- [ ] Confirm `Update spend` becomes enabled after the mapping change
+- [ ] Click `Update spend`
+- [ ] Total Spend recalculated from the stored CSV dataset (old CSV amount replaced, not duplicated)
 - [ ] ROAS/CPA updated accordingly
 - [ ] **No duplicate source created** — same source ID, updated amount
+- [ ] Reopen the same CSV source in edit mode and restore the original campaign selection
+- [ ] Confirm `Update spend` becomes disabled again when the edit state matches the saved mapping
 
 ### Step 9: Delete a spend source
 - [ ] Click delete (trash) on the LinkedIn source → confirm
@@ -597,9 +603,20 @@ Checkpoint after Journey 7:
 - [ ] **Insights tab**: financial row updated
 
 ### Step 10: Add Google Sheets Spend
-- [ ] "+" → Sheets → authenticate → select sheet → map → Save
+- [ ] "+" → Sheets → authenticate → select sheet → map Spend column
+- [ ] Select a campaign identifier column and leave all campaign values unselected
+- [ ] Confirm `Import spend` is blocked/disabled until at least one campaign value is selected
+- [ ] Select one or more campaign values → Save
 - [ ] Micro copy: "Google Sheets — $X,XXX" (NOT the spreadsheet name)
-- [ ] Edit/Delete same pattern as other sources
+- [ ] Click edit (pencil) on the Google Sheets source
+- [ ] Confirm `Update spend` is **disabled** immediately on open before any changes are made
+- [ ] Deselect one campaign value while keeping one valid campaign selected
+- [ ] Confirm `Update spend` becomes enabled after the mapping change
+- [ ] Click `Update spend`
+- [ ] Total Spend recalculated (old Google Sheets amount replaced, not duplicated)
+- [ ] Reopen the same Google Sheets source in edit mode and restore the original campaign selection
+- [ ] Confirm `Update spend` becomes disabled again when the edit state matches the saved mapping
+- [ ] Delete still follows the same pattern as other sources
 
 ---
 
@@ -632,24 +649,67 @@ Checkpoint after Journey 8:
 - [ ] **Insights tab**: Executive Financials revenue updated, Data Summary revenue updated
 
 ### Step 4: Add CSV Revenue
-- [ ] "+" → CSV → upload → map Revenue + Campaign columns → Import
+- [ ] "+" → CSV → upload → map Revenue + Campaign columns
+- [ ] Optional: map a Date column only if you want daily revenue history
+- [ ] Confirm the Date column supports daily history / latest-day style calculations but does **not** make CSV auto-refreshing
+- [ ] Leave campaign values unselected after choosing a campaign column
+- [ ] Confirm `Import revenue` is blocked/disabled until at least one campaign value is selected
+- [ ] Select one or more campaign values → Import
 - [ ] Micro copy shows CSV source with amount
 - [ ] **Total Revenue = GA4 native + Manual + CSV**
-- [ ] Edit (pencil) → re-upload → update. Delete (trash) → recalculated
+- [ ] Click edit (pencil) on the CSV revenue source
+- [ ] Confirm it opens directly into the mapping screen with preview loaded
+- [ ] Confirm `Update revenue` is **disabled** immediately on open before any changes are made
+- [ ] Deselect one campaign value while keeping one valid value selected
+- [ ] Confirm `Update revenue` becomes enabled after the mapping change
+- [ ] Click `Update revenue`
+- [ ] Total Revenue recalculated from the stored CSV dataset (old CSV revenue replaced, not duplicated)
+- [ ] Reopen the same CSV revenue source in edit mode and restore the original campaign selection
+- [ ] Confirm `Update revenue` becomes disabled again when the edit state matches the saved mapping
+- [ ] Delete (trash) → recalculated
 
 ### Step 5: Add Google Sheets Revenue
-- [ ] "+" → Sheets → authenticate → select → map → Save
+- [ ] "+" → Sheets → authenticate → select → map Revenue column
+- [ ] Optional: map a Date column only if you want daily revenue history
+- [ ] Confirm the Date column supports daily history / latest-day style calculations but does **not** by itself create automatic daily syncing
+- [ ] Select a campaign column and leave all campaign values unselected
+- [ ] Confirm `Import revenue` is blocked/disabled until at least one campaign value is selected
+- [ ] Select one or more campaign values → Import
 - [ ] Micro copy: "Google Sheets — $X,XXX"
+- [ ] Click edit (pencil) on the Google Sheets revenue source
+- [ ] Confirm `Update revenue` is **disabled** immediately on open before any changes are made
+- [ ] Deselect one campaign value while keeping one valid value selected
+- [ ] Confirm `Update revenue` becomes enabled after the mapping change
+- [ ] Click `Update revenue`
+- [ ] Total Revenue recalculated (old Google Sheets revenue replaced, not duplicated)
+- [ ] Reopen the same Google Sheets revenue source in edit mode and restore the original campaign selection
+- [ ] Confirm `Update revenue` becomes disabled again when the edit state matches the saved mapping
 
 ### Step 6: Add HubSpot Revenue (if HubSpot connected)
 - [ ] "+" → HubSpot → OAuth → campaign field → crosswalk → pipeline (optional) → revenue property → date field (Close Date default) → review → Save
+- [ ] Confirm `Reconnect` appears immediately in a stable header/action area on the first screen
+- [ ] Confirm the first HubSpot screen does **not** show an unnecessary vertical scrollbar
 - [ ] Micro copy: "HubSpot — $X,XXX"
 - [ ] Non-default date field: "HubSpot · Modified Date"
+- [ ] Confirm the Date field copy makes clear that it controls which HubSpot deal date is used when including/reporting revenue
+- [ ] Confirm `Save Mappings` shows a single `Total Revenue (to date)` value and that it displays the computed amount before save
 - [ ] Edit: all settings prefilled. Delete: recalculated + connection cleared
 
 ### Step 7: Salesforce Revenue (if Salesforce connected)
 - [ ] Same pattern → date field selector (CloseDate default)
 - [ ] Micro copy: "Salesforce — $X,XXX"
+- [ ] On the Source step, confirm `Reconnect` appears on the first step only and `Connected to ...` is not repeated on later steps
+- [ ] Confirm `Total Revenue only (no Pipeline card)` appears above `Total Revenue + Pipeline (Proxy)`
+- [ ] Move from `Pipeline` to `Revenue`
+- [ ] Confirm the `Pipeline` step icon turns green/completed once you move past it
+- [ ] Confirm the Crosswalk step does not show a redundant `Refresh values` action
+- [ ] Open the Salesforce revenue source in edit mode
+- [ ] Change the selected deal values in Crosswalk
+- [ ] Go to the final review step
+- [ ] Confirm `Total Revenue (to date)` refreshes to the new computed amount for the edited deal selection
+- [ ] Save the edit
+- [ ] Confirm the existing Salesforce micro copy/source row is updated in place
+- [ ] Confirm save does **not** create a second additive Salesforce revenue micro copy entry under `Total Revenue`
 
 ### Step 8: Shopify Revenue (if Shopify connected)
 - [ ] "+" → Shopify → domain + token → campaign field → revenue metric → Save
@@ -772,6 +832,8 @@ Checkpoint after Journey 8:
 - [ ] CSV with no matching campaigns → 0 rows, $0
 - [ ] Sheets token expired → reconnect message
 - [ ] Edit passes sourceId → no duplicate created
+- [ ] Salesforce revenue edit save passes source identity through to the save path → existing source updates instead of adding a new micro copy row
+- [ ] Salesforce review totals prefer fresh preview totals over stale stored totals in edit mode
 - [ ] HubSpot with 0 matching deals → $0 (warning shown)
 - [ ] Multiple CRMs → both contribute to total
 

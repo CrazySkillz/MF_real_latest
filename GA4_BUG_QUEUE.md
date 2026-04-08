@@ -285,6 +285,19 @@ Status: `Done`
 
 ### 8. `Ad Comparison` tab is still implemented as campaign comparison rather than true ad/creative comparison
 
+Status: `Done`
+
+- Resolution:
+  - no code change was made
+  - current behavior was reviewed and confirmed to be correct for the current GA4 implementation
+  - this was reclassified as a naming/product-language consideration rather than a functional bug
+- Manual result:
+  - tab behavior is correct for comparing the GA4 campaigns selected for the connected GA4 property
+  - current scoping and calculations behave as expected
+- Current decision:
+  - keep the `Ad Comparison` title for now
+  - avoid renaming at this stage to prevent unnecessary UI/documentation ripple effects and possible inconsistencies
+
 - Severity: `P2`
 - Area: `GA4 Ad Comparison`
 - Affected docs:
@@ -307,6 +320,21 @@ Status: `Done`
 
 ### 9. `Ad Comparison` revenue selector behavior is narrower than likely user expectation
 
+Status: `Done`
+
+- Resolution:
+  - no code change was made
+  - current behavior was reviewed and confirmed to be internally consistent with the current GA4 comparison model
+  - this was reclassified as a later product/attribution decision rather than a current bug fix
+- Manual/product conclusion:
+  - row-level comparison currently uses GA4 campaign-attributed revenue only
+  - imported revenue is available only at the total/source-breakdown level
+  - changing dropdown `Revenue` to mean all-source revenue would require a deliberate attribution model to avoid fake precision or double-counting
+- Current decision:
+  - keep the current implementation for now
+  - preserve the existing disclosure that imported revenue cannot currently be split by campaign
+  - treat any future change here as a scoped enhancement, not a stabilization fix
+
 - Severity: `P2`
 - Area: `GA4 Ad Comparison / Financial attribution`
 - Affected docs:
@@ -326,6 +354,21 @@ Status: `Done`
   - no double-counting across imported sources
 
 ### 10. Scheduled/server-rendered GA4 reports are less complete than the live ad hoc renderer
+
+Status: `Done`
+
+- Resolution:
+  - no code change was made
+  - current behavior was reviewed and confirmed to be a client-vs-server report-rendering parity gap, not a localized stabilization bug
+  - this was reclassified as a later reporting enhancement
+- Product/technical conclusion:
+  - the client-side GA4 report renderer is already richer for `Overview`, `Ad Comparison`, `Insights`, and custom compositions
+  - the shared scheduled/server-rendered path is currently strongest for `KPIs` and `Benchmarks`
+  - closing the gap would require broader GA4-specific server-renderer work rather than a small safe bug fix
+- Current decision:
+  - keep the current implementation for now
+  - preserve the existing documentation caveat in `GA4/REPORTS.md`
+  - treat scheduled/ad hoc report parity as a later enhancement, not part of the current stabilization pass
 
 - Severity: `P2`
 - Area: `GA4 Reports`
@@ -348,6 +391,20 @@ Status: `Done`
 
 ### 11. Custom report builder only supports top-level section toggles, not nested subsection selection
 
+Status: `Done`
+
+- Resolution:
+  - no code change was made
+  - current behavior was reviewed and confirmed to be a deliberate top-level-only report composition model, not a localized bug
+  - this was reclassified as a later product enhancement
+- Product/technical conclusion:
+  - the current custom-report UI, saved configuration shape, and report renderer all support only top-level section toggles
+  - subsection selection would require coordinated work across the custom-report UI, configuration model, ad hoc renderer, and likely scheduled/server renderer
+- Current decision:
+  - keep the current implementation for now
+  - preserve the existing documentation note in `GA4/REPORTS.md`
+  - treat subsection selection as a later report-builder enhancement, not part of the current stabilization pass
+
 - Severity: `P3`
 - Area: `GA4 Reports / Custom Report`
 - Affected docs:
@@ -369,6 +426,16 @@ Status: `Done`
 
 ### 12. `Dashboard` still needs refinement as a polished client-level overview layer
 
+Status: `Done`
+
+- Resolution:
+  - no code change was made
+  - current behavior was reviewed and confirmed to be a known current-state refinement area rather than a stabilization bug
+- Current decision:
+  - keep the current implementation for now
+  - preserve the current architecture and routing documented in `ARCHITECTURE_USER_JOURNEY.md`
+  - treat Dashboard polish/refinement as later product work, not part of the current GA4 stabilization pass
+
 - Severity: `P3`
 - Area: `Client Dashboard / App shell`
 - Affected docs:
@@ -386,6 +453,16 @@ Status: `Done`
 
 ### 13. Freestyle Chat is still in progress
 
+Status: `Done`
+
+- Resolution:
+  - no code change was made
+  - current behavior was reviewed and confirmed to be an in-progress product surface rather than a stabilization bug
+- Current decision:
+  - keep the current implementation for now
+  - preserve the intended campaign-scoped chat architecture documented in `ARCHITECTURE_USER_JOURNEY.md`
+  - treat Freestyle Chat completion as later feature work, not part of the current GA4 stabilization pass
+
 - Severity: `P3`
 - Area: `Campaign-level analytics / future GA4-adjacent work`
 - Affected docs:
@@ -400,6 +477,257 @@ Status: `Done`
   - campaign context scope
   - no interference with platform-specific analytics
 
+### 14. CSV spend edit should support campaign-value remapping without forced re-upload, and `Update spend` should only enable after a real edit
+
+Status: `Done`
+
+- Resolution:
+  - CSV spend imports now persist enough imported-row data to support later recalculation from stored data
+  - CSV spend edit can recalculate without re-upload when only campaign-value selection changes and the stored dataset is available
+  - `Update spend` is disabled on initial open and only enables after a meaningful change
+- Current decision:
+  - keep this behavior as the intended CSV spend edit model for newly imported CSV spend sources
+  - if mapped columns change or the stored import dataset is unavailable, re-upload is still required
+
+- Severity: `P1`
+- Area: `GA4 Spend sources / CSV edit workflow`
+- Affected docs:
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - users can reopen a CSV spend source, change campaign-value selection, and recalculate without forcing a re-upload when the original stored dataset is available
+  - `Update spend` should remain disabled until a meaningful edit is made
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - re-upload-only editing was too restrictive for the intended spend-source workflow
+  - an always-enabled `Update spend` button incorrectly implied there were unsaved changes
+- Root cause area:
+  - CSV spend import persistence
+  - CSV spend edit-mode button state
+- Required regression checks:
+  - create a CSV spend source and reopen it in edit mode
+  - confirm `Update spend` is initially disabled
+  - change selected campaign values and confirm `Update spend` enables
+  - restore the original selection and confirm `Update spend` disables again
+
+### 15. Google Sheets spend import should require campaign values when a campaign identifier column is selected, and `Update spend` should only enable after a real edit
+
+Status: `Done`
+
+- Resolution:
+  - Google Sheets spend import now blocks the unsafe case where a campaign identifier column is selected but no campaign values are chosen
+  - Google Sheets spend edit now keeps `Update spend` disabled until a meaningful change is made
+- Current decision:
+  - keep this behavior as the intended Google Sheets spend import/edit model
+
+- Severity: `P1`
+- Area: `GA4 Spend sources / Google Sheets workflow`
+- Affected docs:
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - if a Google Sheets campaign identifier column is selected and matching values are available, import should require at least one selected campaign value
+  - `Update spend` should remain disabled until a meaningful edit is made
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - importing an entire sheet while appearing to use a campaign filter was a data-integrity risk
+  - an always-enabled `Update spend` button incorrectly implied there were unsaved changes
+- Root cause area:
+  - Google Sheets spend import validation
+  - Google Sheets spend edit-mode button state
+- Required regression checks:
+  - select a campaign identifier column and confirm `Import spend` is blocked until a campaign value is chosen
+  - create a Google Sheets spend source and reopen it in edit mode
+  - confirm `Update spend` is initially disabled
+  - change selected campaign values and confirm `Update spend` enables
+  - restore the original selection and confirm `Update spend` disables again
+
+### 16. CSV revenue import should require campaign values when a campaign column is selected, and the CSV revenue mapping step should not crash
+
+Status: `Done`
+
+- Resolution:
+  - CSV revenue import now keeps `Import revenue` disabled until at least one campaign value is selected when a campaign column is chosen
+  - the CSV revenue mapping step no longer throws the runtime error caused by calling a helper before initialization
+- Current decision:
+  - keep this behavior as the intended CSV revenue import model
+
+- Severity: `P1`
+- Area: `GA4 Revenue sources / CSV workflow`
+- Affected docs:
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - if a CSV revenue campaign column is selected and matching values are available, import should require at least one selected campaign value
+  - opening the CSV revenue mapping step should not crash
+  - selecting a date column should enable daily-history behavior, not automatic refresh
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - importing an entire CSV while appearing to use a campaign filter was a data-integrity risk
+  - the runtime error blocked Journey 8 revenue testing entirely
+- Root cause area:
+  - CSV revenue import button state
+  - CSV revenue mapping-step helper initialization order
+- Required regression checks:
+  - upload a CSV revenue file and click `Next`
+  - confirm the mapping step opens without a runtime error
+  - select a campaign column and confirm `Import revenue` is blocked until a campaign value is chosen
+  - select one or more campaign values and confirm `Import revenue` enables
+
+### 17. CSV revenue edit should support safe campaign-value remapping without forced re-upload, and `Update revenue` should only enable after a real edit
+
+Status: `Done`
+
+- Resolution:
+  - CSV revenue edit now reopens directly into the mapping screen when stored preview/import data is available
+  - CSV revenue can recalculate without re-upload when only campaign-value selection changes
+  - structural mapping changes still require re-upload
+  - `Update revenue` is disabled on initial open and only enables after a meaningful change
+- Current decision:
+  - keep this behavior as the intended CSV revenue edit model for newly imported CSV revenue sources
+
+- Severity: `P1`
+- Area: `GA4 Revenue sources / CSV edit workflow`
+- Affected docs:
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - users can reopen a CSV revenue source, change campaign-value selection, and recalculate without forcing a re-upload when the original stored dataset is available
+  - `Update revenue` should remain disabled until a meaningful edit is made
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - re-upload-only editing was too restrictive for the intended revenue-source workflow
+  - an always-enabled `Update revenue` button incorrectly implied there were unsaved changes
+  - a blank edit state prevented the CSV revenue flow from matching CSV spend behavior
+- Root cause area:
+  - CSV revenue import persistence
+  - CSV revenue edit-mode initialization
+  - CSV revenue edit-mode button state
+- Required regression checks:
+  - create a CSV revenue source and reopen it in edit mode
+  - confirm the mapping screen opens with preview loaded
+  - confirm `Update revenue` is initially disabled
+  - change selected campaign values and confirm `Update revenue` enables
+  - restore the original selection and confirm `Update revenue` disables again
+
+### 18. Google Sheets revenue should require campaign values when a campaign column is selected, and `Update revenue` should only enable after a real edit
+
+Status: `Done`
+
+- Resolution:
+  - Google Sheets revenue import now keeps `Import revenue` disabled until at least one campaign value is selected when a campaign column is chosen
+  - the mapping step now blocks the same unsafe case with a validation message
+  - the Date column was moved underneath the top Campaign/Revenue mapping row with no logic changes
+  - Google Sheets revenue edit now restores the saved date column and keeps `Update revenue` disabled until a meaningful change is made
+- Current decision:
+  - keep this behavior as the intended Google Sheets revenue import/edit model
+
+- Severity: `P1`
+- Area: `GA4 Revenue sources / Google Sheets workflow`
+- Affected docs:
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - if a Google Sheets revenue campaign column is selected and matching values are available, import should require at least one selected campaign value
+  - selecting a date column should enable daily-history behavior, not automatic syncing by itself
+  - `Update revenue` should remain disabled until a meaningful edit is made
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - importing an entire sheet while appearing to use a campaign filter was a data-integrity risk
+  - the previous layout made the date-field placement less clear than the core Campaign/Revenue mapping row
+  - an always-enabled `Update revenue` button incorrectly implied there were unsaved changes
+- Root cause area:
+  - Google Sheets revenue import button state
+  - Google Sheets revenue mapping-step validation
+  - Google Sheets revenue edit-mode button state
+- Required regression checks:
+  - select a campaign column and confirm `Import revenue` is blocked until a campaign value is chosen
+  - select one or more campaign values and confirm `Import revenue` enables
+  - create a Google Sheets revenue source and reopen it in edit mode
+  - confirm `Update revenue` is initially disabled
+  - change selected campaign values and confirm `Update revenue` enables
+  - restore the original selection and confirm `Update revenue` disables again
+
+### 19. HubSpot revenue wizard first-screen and review UX needed stabilization
+
+Status: `Done`
+
+- Resolution:
+  - `Reconnect` was moved into a stable header/action area on the first HubSpot screen
+  - the first HubSpot screen no longer uses the unnecessary vertical scrollbar behavior from the shared scroll body
+  - the HubSpot `Date field` copy now explains what it actually controls in the current revenue model
+  - `Save Mappings` now shows a single `Total Revenue (to date)` display and preloads the computed amount before save
+- Current decision:
+  - keep the current HubSpot revenue logic
+  - treat these changes as UI/summary stabilization only, not a change to mapping or save behavior
+
+- Severity: `P1`
+- Area: `GA4 Revenue sources / HubSpot wizard UX`
+- Affected docs:
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - the first HubSpot screen should feel stable and intentional, without delayed Reconnect rendering or unnecessary scrollbar behavior
+  - the Date field should be understandable to users as the HubSpot date property that controls which deals count in the revenue total
+  - `Save Mappings` should show one `Total Revenue (to date)` value and it should display the computed amount before save
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - delayed action rendering and extra scroll behavior made the first HubSpot screen feel broken
+  - the Date field meaning was not clear enough for users
+  - duplicate/blank revenue summary states reduced trust in the final review step
+- Root cause area:
+  - HubSpot wizard action placement
+  - shared scroll-container behavior on the first step
+  - HubSpot review-summary preview path
+- Required regression checks:
+  - confirm `Reconnect` renders immediately in the header on the first HubSpot screen
+  - confirm the first HubSpot screen does not show an unnecessary vertical scrollbar
+- confirm the Date field copy clearly explains its purpose
+- confirm `Save Mappings` shows one `Total Revenue (to date)` value with the computed amount before save
+
+### 20. Salesforce revenue edit flow must preserve source identity and refresh review totals from fresh preview data
+
+Status: `Done`
+
+- Resolution:
+  - Salesforce edit mode now passes the existing revenue `sourceId` through the revenue modal into the Salesforce wizard and into the save request payload
+  - the Salesforce save route now updates/replaces the existing revenue source and its records in edit mode instead of creating a second additive source row
+  - Salesforce review-step `Total Revenue (to date)` now refreshes from current preview inputs and prefers fresh preview totals over stale stored `lastTotalRevenue`
+- Current decision:
+  - keep Salesforce create behavior additive for brand-new sources
+  - keep Salesforce edit behavior update-in-place for existing sources
+  - treat stable `sourceId` propagation and fresh-preview review precedence as required template behavior for future CRM-style edit flows
+
+- Severity: `P1`
+- Area: `GA4 Revenue sources / Salesforce edit workflow`
+- Affected docs:
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - editing an existing Salesforce revenue source should update that existing source, not create a second micro copy/source row
+  - changing selected deal values in edit mode should update the final review-step `Total Revenue (to date)` before save
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - stale review totals reduced trust in the final review step
+  - missing `sourceId` in the edit save payload caused the backend to take the create-new-source branch
+  - the Total Revenue card then showed an added Salesforce micro copy/source entry instead of updating the edited amount
+- Root cause area:
+  - Salesforce edit save payload omitted `sourceId`
+  - Salesforce save route therefore fell into the additive create branch
+  - review total precedence/caching allowed stored `lastTotalRevenue` to override fresh preview data
+- Required regression checks:
+  - open an existing Salesforce revenue source in edit mode
+  - change selected deal values and confirm the final review total updates before save
+  - save the edit and confirm the existing Salesforce source row updates in place
+  - confirm no second Salesforce micro copy/source row is added under `Total Revenue`
+
 ## Severity View
 
 - `P0`
@@ -411,6 +739,13 @@ Status: `Done`
   - 5. benchmark post-refresh alert path
   - 6. GA4 KPI post-refresh cleanup
   - 7. misleading Overview table copy
+  - 14. CSV spend edit recalculation and dirty-state guard
+  - 15. Google Sheets spend validation and dirty-state guard
+  - 16. CSV revenue validation and runtime guard
+  - 17. CSV revenue edit recalculation and dirty-state guard
+  - 18. Google Sheets revenue validation, layout, and dirty-state guard
+  - 19. HubSpot wizard UX stabilization
+  - 20. Salesforce edit source-identity and review-total refresh
 - `P2`
   - 8. Ad Comparison is still campaign-comparison-based
   - 9. Ad Comparison revenue selector expectation gap

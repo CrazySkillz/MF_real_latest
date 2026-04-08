@@ -582,20 +582,31 @@ export function SalesforceRevenueWizard(props: {
     return raw === "conversion_value";
   }, [mode, initialMappingConfig]);
 
-  // Fire preview once when entering review step without stored revenue (e.g., old configs missing lastTotalRevenue)
-  const reviewPreviewFiredRef = useRef(false);
+  // Re-fire preview when the review-driving mapping changes so edit mode totals stay fresh.
+  const reviewPreviewKey = useMemo(
+    () =>
+      JSON.stringify({
+        step,
+        campaignField,
+        revenueField,
+        selectedValues: [...selectedValues].sort(),
+        pipelineEnabled,
+        pipelineStageName,
+        days,
+      }),
+    [step, campaignField, revenueField, selectedValues, pipelineEnabled, pipelineStageName, days]
+  );
+  const reviewPreviewFiredKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (step !== "review") return;
-    if (reviewPreviewFiredRef.current) return;
+    if (reviewPreviewFiredKeyRef.current === reviewPreviewKey) return;
     if (lastSaveResult?.totalRevenue != null) return;
-    const stored = Number(initialMappingConfig?.lastTotalRevenue);
-    if (Number.isFinite(stored)) return;
     if (previewHeaders.length > 0) return; // preview already loaded
     if (!isConnected || isConnecting || !campaignField || selectedValues.length === 0) return;
-    reviewPreviewFiredRef.current = true;
+    reviewPreviewFiredKeyRef.current = reviewPreviewKey;
     void preview().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, isConnected, isConnecting]);
+  }, [step, isConnected, isConnecting, reviewPreviewKey, lastSaveResult, previewHeaders.length, campaignField, selectedValues.length]);
 
   // Revenue amount for the review step: prefer save result, then stored config, then preview data
   // Returns a number (including 0) when data is available, null when no data yet

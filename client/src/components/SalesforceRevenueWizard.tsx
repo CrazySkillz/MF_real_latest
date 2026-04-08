@@ -601,17 +601,23 @@ export function SalesforceRevenueWizard(props: {
     if (step !== "review") return;
     if (reviewPreviewFiredKeyRef.current === reviewPreviewKey) return;
     if (lastSaveResult?.totalRevenue != null) return;
-    if (previewHeaders.length > 0) return; // preview already loaded
     if (!isConnected || isConnecting || !campaignField || selectedValues.length === 0) return;
     reviewPreviewFiredKeyRef.current = reviewPreviewKey;
     void preview().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, isConnected, isConnecting, reviewPreviewKey, lastSaveResult, previewHeaders.length, campaignField, selectedValues.length]);
+  }, [step, isConnected, isConnecting, reviewPreviewKey, lastSaveResult, campaignField, selectedValues.length]);
 
   // Revenue amount for the review step: prefer save result, then stored config, then preview data
   // Returns a number (including 0) when data is available, null when no data yet
   const reviewRevenue = useMemo(() => {
     if (lastSaveResult?.totalRevenue != null) return Number(lastSaveResult.totalRevenue);
+    if (previewHeaders.length > 0) {
+      const amtIdx = previewHeaders.findIndex((h) => h.toLowerCase() === "amount" || h === revenueField);
+      if (amtIdx >= 0) {
+        return previewRows.reduce((acc, row) => acc + (Number(row[amtIdx]) || 0), 0);
+      }
+      return 0;
+    }
     const stored = Number(initialMappingConfig?.lastTotalRevenue);
     if (Number.isFinite(stored)) return stored;
     // Preview completed (headers set) — compute from rows even if 0

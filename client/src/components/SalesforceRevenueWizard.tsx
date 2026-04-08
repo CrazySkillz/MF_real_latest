@@ -882,8 +882,8 @@ export function SalesforceRevenueWizard(props: {
           const isPipelineStep = s.id === "pipeline";
           const isDisabled = isPipelineStep && !pipelineEnabled;
           const isActive = !isDisabled && s.id === step;
-          // Don't mark disabled optional steps as completed
-          const isCompleted = !isDisabled && index < currentStepIndex;
+          // Once the user has moved past the Pipeline position, keep it visually in the completed path.
+          const isCompleted = isPipelineStep ? index < currentStepIndex : !isDisabled && index < currentStepIndex;
           // Keep connector progress accurate so the bar doesn't look broken
           const isConnectorCompleted = index < currentStepIndex;
           return (
@@ -1168,9 +1168,9 @@ export function SalesforceRevenueWizard(props: {
                     ? <>Mapped: <strong>{campaignMappings.length}</strong> of {uniqueValues.length} values</>
                     : <>Selected: <strong>{selectedValues.length}</strong></>}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => void fetchUniqueValues(campaignField)} disabled={valuesLoading}>
+                {false && <Button variant="outline" size="sm" onClick={() => void fetchUniqueValues(campaignField)} disabled={valuesLoading}>
                   {valuesLoading ? "Refreshing…" : "Refresh values"}
-                </Button>
+                </Button>}
               </div>
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (
@@ -1496,4 +1496,3 @@ export function SalesforceRevenueWizard(props: {
     </div>
   );
 }
-

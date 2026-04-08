@@ -971,7 +971,7 @@ export function SalesforceRevenueWizard(props: {
             </CardTitle>
 
             {/* Reconnect only on campaign-field step — other steps don't need it */}
-            {step === "campaign-field" ? (
+            {step === "value-source" ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -987,17 +987,18 @@ export function SalesforceRevenueWizard(props: {
             )}
           </div>
           <CardDescription>
-            {/* Reserve space for connection label to avoid layout shift when async status arrives */}
-            <div className="text-xs text-muted-foreground mb-1 min-h-[16px] flex items-center gap-1">
-              {!statusLoading && isConnected && connectedLabel ? (
-                <>
-                  <span className="whitespace-nowrap">Connected to:</span>
-                  <strong className="min-w-0 flex-1 truncate">{connectedLabel}</strong>
-                </>
-              ) : (
-                <span className="opacity-0 whitespace-nowrap">Connected to: Placeholder</span>
-              )}
-            </div>
+            {step === "value-source" ? (
+              <div className="text-xs text-muted-foreground mb-1 min-h-[16px] flex items-center gap-1">
+                {!statusLoading && isConnected && connectedLabel ? (
+                  <>
+                    <span className="whitespace-nowrap">Connected to:</span>
+                    <strong className="min-w-0 flex-1 truncate">{connectedLabel}</strong>
+                  </>
+                ) : (
+                  <span className="opacity-0 whitespace-nowrap">Connected to: Placeholder</span>
+                )}
+              </div>
+            ) : null}
             {step === "value-source" &&
               (isLegacyConversionValueConfig
                 ? "Choose what Salesforce should provide for this campaign."
@@ -1044,20 +1045,20 @@ export function SalesforceRevenueWizard(props: {
                 className="space-y-2"
               >
                 <div className="flex items-start gap-2">
-                  <RadioGroupItem id="sf-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
-                  <label htmlFor="sf-mode-revenue-pipeline" className="cursor-pointer">
-                    <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
-                    <div className="text-xs text-muted-foreground leading-snug">
-                      Total Revenue comes from mapped Opportunity Amounts (to date). Adds a Pipeline (Proxy) card using a stage like Proposal as an early signal.
-                    </div>
-                  </label>
-                </div>
-                <div className="flex items-start gap-2">
                   <RadioGroupItem id="sf-mode-revenue-only" value="revenue_only" className="mt-0.5" />
                   <label htmlFor="sf-mode-revenue-only" className="cursor-pointer">
                     <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
                     <div className="text-xs text-muted-foreground leading-snug">
                       Imports revenue-to-date from mapped Opportunity Amounts. No Pipeline (Proxy) section in Overview.
+                    </div>
+                  </label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem id="sf-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
+                  <label htmlFor="sf-mode-revenue-pipeline" className="cursor-pointer">
+                    <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
+                    <div className="text-xs text-muted-foreground leading-snug">
+                      Total Revenue comes from mapped Opportunity Amounts (to date). Adds a Pipeline (Proxy) card using a stage like Proposal as an early signal.
                     </div>
                   </label>
                 </div>
@@ -1495,5 +1496,4 @@ export function SalesforceRevenueWizard(props: {
     </div>
   );
 }
-
 

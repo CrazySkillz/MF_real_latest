@@ -2012,6 +2012,15 @@ export default function GA4Metrics() {
   // GA4 page: Total Revenue = GA4 native revenue + any imported revenue (manual, CSV, Sheets, CRM).
   // This matches what executives expect: the full revenue picture for this campaign.
   const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;
+  const revenueSourceLabels = useMemo(() => {
+    const labels: string[] = [];
+    if (ga4HasRevenueMetric) labels.push("GA4 native revenue");
+    for (const s of Array.isArray(revenueDisplaySources) ? revenueDisplaySources : []) {
+      const label = String((s as any)?.displayName || revenueSourceTypeLabel(String((s as any)?.sourceType || ""))).trim();
+      if (label && !labels.includes(label)) labels.push(label);
+    }
+    return labels;
+  }, [ga4HasRevenueMetric, revenueDisplaySources]);
   const financialConversions = Math.max(Number((ga4ToDateResp as any)?.totals?.conversions || 0), dailySummedTotals.conversions);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
@@ -5972,9 +5981,6 @@ export default function GA4Metrics() {
                               <div className="text-2xl font-bold text-foreground">
                                 {formatMoney(Number(financialSpend || 0))}
                               </div>
-                              <div className="text-xs text-muted-foreground/70 mt-1">
-                                Source: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "—"}
-                              </div>
                             </CardContent>
                           </Card>
                           <Card>
@@ -5982,9 +5988,6 @@ export default function GA4Metrics() {
                               <div className="text-sm font-medium text-muted-foreground/70">Revenue</div>
                               <div className="text-2xl font-bold text-foreground">
                                 {formatMoney(Number(financialRevenue || 0))}
-                              </div>
-                              <div className="text-xs text-muted-foreground/70 mt-1">
-                                {ga4HasRevenueMetric ? "From GA4 revenue metric" : "Imported revenue (used when GA4 revenue is missing)"}
                               </div>
                             </CardContent>
                           </Card>
@@ -5994,7 +5997,6 @@ export default function GA4Metrics() {
                               <div className={`text-2xl font-bold ${(financialRevenue - financialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {formatMoney(financialRevenue - financialSpend)}
                               </div>
-                              <div className="text-xs text-muted-foreground/70 mt-1">Revenue − Spend</div>
                             </CardContent>
                           </Card>
                           <Card>
@@ -6003,7 +6005,6 @@ export default function GA4Metrics() {
                               <div className="text-2xl font-bold text-foreground">
                                 {Number(financialROAS || 0).toFixed(2)}x
                               </div>
-                              <div className="text-xs text-muted-foreground/70 mt-1">Revenue ÷ Spend</div>
                             </CardContent>
                           </Card>
                           <Card>
@@ -6012,7 +6013,6 @@ export default function GA4Metrics() {
                               <div className="text-2xl font-bold text-foreground">
                                 {formatPercentage(Number(financialROI || 0))}
                               </div>
-                              <div className="text-xs text-muted-foreground/70 mt-1">(Revenue − Spend) ÷ Spend</div>
                             </CardContent>
                           </Card>
                         </div>
@@ -6026,11 +6026,7 @@ export default function GA4Metrics() {
                             </div>
                             <div>
                               <span className="font-medium">Revenue</span>:{" "}
-                              {ga4HasRevenueMetric
-                                ? "GA4 native revenue"
-                                : activeRevenueSource
-                                  ? `Imported (${String((activeRevenueSource as any)?.displayName || (activeRevenueSource as any)?.sourceType || "revenue source")})`
-                                  : "Not connected"}
+                              {revenueSourceLabels.length > 0 ? revenueSourceLabels.join(" + ") : "Not connected"}
                             </div>
                           </div>
                         </div>

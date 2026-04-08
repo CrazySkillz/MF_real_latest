@@ -880,7 +880,7 @@ export function SalesforceRevenueWizard(props: {
         {steps.map((s, index) => {
           const StepIcon = s.icon;
           const isPipelineStep = s.id === "pipeline";
-          const isDisabled = isPipelineStep && !pipelineEnabled;
+          const isDisabled = isPipelineStep && !pipelineEnabled && index >= currentStepIndex;
           const isActive = !isDisabled && s.id === step;
           // Once the user has moved past the Pipeline position, keep it visually in the completed path.
           const isCompleted = isPipelineStep ? index < currentStepIndex : !isDisabled && index < currentStepIndex;
@@ -890,24 +890,24 @@ export function SalesforceRevenueWizard(props: {
             <div key={s.id} className="flex items-center flex-1">
               <div className="flex flex-col items-center flex-1">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isDisabled
-                      ? "bg-muted border-border text-muted-foreground/70"
-                      : isActive
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${isActive
                         ? "bg-blue-600 border-blue-600 text-white"
                         : isCompleted
                           ? "bg-green-600 border-green-600 text-white"
+                          : isDisabled
+                            ? "bg-muted border-border text-muted-foreground/70"
                           : "bg-muted border-border dark:border-slate-600 text-muted-foreground/70"
                     }`}
                 >
                   {!isDisabled && isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
                 </div>
                 <p
-                  className={`text-xs mt-2 text-center whitespace-nowrap ${isDisabled
-                      ? "text-muted-foreground/70"
-                      : isActive
+                  className={`text-xs mt-2 text-center whitespace-nowrap ${isActive
                         ? "text-blue-600 font-medium"
                         : isCompleted
                           ? "text-green-600"
+                          : isDisabled
+                            ? "text-muted-foreground/70"
                           : "text-muted-foreground/70"
                     }`}
                 >

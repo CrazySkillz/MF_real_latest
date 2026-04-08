@@ -1084,6 +1084,11 @@ export function SalesforceRevenueWizard(props: {
                   </label>
                 </div>
               </RadioGroup>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800 p-3">
+                <p className="text-xs text-amber-800 dark:text-amber-200">
+                  Only add Salesforce revenue if these opportunities are <strong>NOT</strong> already tracked as GA4 ecommerce transactions. Adding the same revenue from both sources will double-count your total.
+                </p>
+              </div>
               <div className="text-xs text-muted-foreground">
                 {salesforceSourceMode === "revenue_plus_pipeline"
                   ? "Next, you’ll choose which Opportunity stage should count as 'pipeline created'."
@@ -1364,12 +1369,6 @@ export function SalesforceRevenueWizard(props: {
 
               <div className="text-xs text-muted-foreground">
                 Currency default: one currency per campaign. If mixed currencies are detected, you’ll be asked to filter to one.
-              </div>
-
-              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800 p-3">
-                <p className="text-xs text-amber-800 dark:text-amber-200">
-                  Only add Salesforce revenue if these opportunities are <strong>NOT</strong> already tracked as GA4 ecommerce transactions. Adding the same revenue from both sources will double-count your total.
-                </p>
               </div>
 
               <div className="space-y-2 border-t pt-3">

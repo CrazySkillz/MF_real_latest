@@ -1892,9 +1892,11 @@ export function AddSpendWizardModal(props: {
                     )}
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
-                      <Button onClick={previewSheet} disabled={!selectedSheetConnectionId || isSheetsLoading}>
-                        {isSheetsLoading ? "Loading..." : "Next"}
-                      </Button>
+                      {!showSheetsConnect && sheetsConnections.length > 0 && (
+                        <Button onClick={previewSheet} disabled={!selectedSheetConnectionId || isSheetsLoading}>
+                          {isSheetsLoading ? "Loading..." : "Next"}
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

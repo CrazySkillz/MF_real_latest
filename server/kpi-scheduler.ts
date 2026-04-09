@@ -235,11 +235,36 @@ export async function checkPerformanceAlerts(): Promise<void> {
   console.log('[KPI Scheduler] Checking performance alerts...');
 
   try {
-    const activeKPIs = await db.select()
+    const activeKPIsRaw = await db.select()
       .from(kpis)
       .where(and(
         eq(kpis.alertsEnabled, true)
       ));
+
+    const latestGa4ByCampaignMetric = new Map<string, any>();
+    for (const kpi of activeKPIsRaw) {
+      if (String((kpi as any)?.platformType || '') !== 'google_analytics') continue;
+      const key = `${String((kpi as any)?.campaignId || '')}::${String((kpi as any)?.metric || (kpi as any)?.name || '').trim().toLowerCase()}`;
+      const prev = latestGa4ByCampaignMetric.get(key);
+      const nextUpdatedAt = new Date((kpi as any)?.updatedAt || 0).getTime();
+      const prevUpdatedAt = prev ? new Date((prev as any)?.updatedAt || 0).getTime() : -1;
+      if (!prev || nextUpdatedAt >= prevUpdatedAt) latestGa4ByCampaignMetric.set(key, kpi);
+    }
+
+    const activeKPIs = [];
+    for (const kpi of activeKPIsRaw) {
+      if (String((kpi as any)?.platformType || '') !== 'google_analytics') {
+        activeKPIs.push(kpi);
+        continue;
+      }
+      const key = `${String((kpi as any)?.campaignId || '')}::${String((kpi as any)?.metric || (kpi as any)?.name || '').trim().toLowerCase()}`;
+      const latest = latestGa4ByCampaignMetric.get(key);
+      if (latest && String((latest as any)?.id || '') !== String((kpi as any)?.id || '')) {
+        await resolveKPIAlerts(String((kpi as any).id), 'superseded');
+        continue;
+      }
+      activeKPIs.push(kpi);
+    }
 
     console.log(`[KPI Scheduler] Found ${activeKPIs.length} active KPIs with alerts enabled`);
 

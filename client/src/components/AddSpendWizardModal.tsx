@@ -1869,20 +1869,9 @@ export function AddSpendWizardModal(props: {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <Label>Choose Google Sheet</Label>
-                          <div className="flex items-center gap-2">
-                            <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
-                              Change sheet/tab
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={removeSelectedSheetConnection}
-                              disabled={!selectedSheetConnectionId || isRemovingSheet}
-                            >
-                              {isRemovingSheet ? "Removing..." : "Remove"}
-                            </Button>
-                          </div>
+                          <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
+                            Change sheet/tab
+                          </Button>
                         </div>
                         <Select value={selectedSheetConnectionId} onValueChange={setSelectedSheetConnectionId}>
                           <SelectTrigger>

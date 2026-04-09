@@ -126,11 +126,6 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     }
   });
   
-  if (hasRecentAlert) {
-    console.log(`[KPI Notification] Skipping duplicate alert for KPI: ${kpi.name} (already alerted today)`);
-    return;
-  }
-
   const matchingAlerts = existingAlerts.filter(n => {
     if (!n.metadata) return false;
     try {
@@ -155,6 +150,11 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     } catch {
       // ignore malformed legacy metadata
     }
+  }
+
+  if (hasRecentAlert) {
+    console.log(`[KPI Notification] Skipping duplicate alert for KPI: ${kpi.name} (already alerted today)`);
+    return;
   }
 
   const currentValue = parseLooseNumber(kpi.currentValue);

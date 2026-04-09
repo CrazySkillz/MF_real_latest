@@ -125,8 +125,8 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
       return false;
     }
   });
-  
-  const matchingAlerts = existingAlerts.filter(n => {
+
+  const sameKpiAlerts = existingAlerts.filter(n => {
     if (!n.metadata) return false;
     try {
       const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
@@ -135,7 +135,27 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
       return false;
     }
   });
-  for (const alert of matchingAlerts) {
+  const isInCurrentWindow = (alert: typeof existingAlerts[number]): boolean => {
+    if (!alert.metadata) return false;
+    try {
+      const meta = typeof alert.metadata === 'string' ? JSON.parse(alert.metadata) : alert.metadata;
+      const createdAt = new Date(alert.createdAt);
+      if (windowKey) {
+        return String(meta.kpiId || '') === String(kpi.id) && String(meta.windowKey || "") === windowKey;
+      }
+      return String(meta.kpiId || '') === String(kpi.id) && createdAt >= today;
+    } catch {
+      return false;
+    }
+  };
+  const preservedAlertId = hasRecentAlert
+    ? sameKpiAlerts
+        .filter(isInCurrentWindow)
+        .sort((a, b) => new Date(String(b.createdAt)).getTime() - new Date(String(a.createdAt)).getTime())[0]?.id
+    : null;
+
+  for (const alert of sameKpiAlerts) {
+    if (preservedAlertId && String(alert.id) === String(preservedAlertId)) continue;
     try {
       const meta = typeof alert.metadata === 'string' ? JSON.parse(alert.metadata) : (alert.metadata || {});
       await storage.updateNotification(String(alert.id), {

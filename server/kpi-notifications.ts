@@ -111,17 +111,26 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     .from(notifications)
     .where(eq(notifications.type, 'performance-alert'));
   
-  // Check if there's already an alert for this KPI in the current dedupe window
+  const currentValue = parseLooseNumber(kpi.currentValue);
+  const alertThreshold = kpi.alertThreshold ? parseLooseNumber(kpi.alertThreshold) : null;
+  const targetValue = parseLooseNumber(kpi.targetValue);
+  
+  // Calculate gap
+  const gap = ((targetValue - currentValue) / targetValue) * 100;
+  const gapText = gap > 0 ? `${Math.abs(gap).toFixed(1)}% below` : `${Math.abs(gap).toFixed(1)}% above`;
+  const nextMessage = `Current value (${kpi.currentValue}${kpi.unit}) is ${gapText} your target (${kpi.targetValue}${kpi.unit}). ${alertThreshold ? `Alert threshold: ${alertThreshold}${kpi.unit}` : ''}`;
+
+  // Check if there's already an active same-window alert for this KPI with the same current snapshot
   const hasRecentAlert = existingAlerts.some(n => {
     if (!n.metadata) return false;
     try {
       const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
       if (meta?.resolved) return false;
       const createdAt = new Date(n.createdAt);
-      if (windowKey) {
-        return String(meta.kpiId) === String(kpi.id) && String(meta.windowKey || "") === windowKey;
-      }
-      return String(meta.kpiId) === String(kpi.id) && createdAt >= today;
+      const sameWindow = windowKey
+        ? String(meta.kpiId) === String(kpi.id) && String(meta.windowKey || "") === windowKey
+        : String(meta.kpiId) === String(kpi.id) && createdAt >= today;
+      return sameWindow && String(n.message || '') === nextMessage;
     } catch {
       return false;
     }
@@ -178,14 +187,6 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     return;
   }
 
-  const currentValue = parseLooseNumber(kpi.currentValue);
-  const alertThreshold = kpi.alertThreshold ? parseLooseNumber(kpi.alertThreshold) : null;
-  const targetValue = parseLooseNumber(kpi.targetValue);
-  
-  // Calculate gap
-  const gap = ((targetValue - currentValue) / targetValue) * 100;
-  const gapText = gap > 0 ? `${Math.abs(gap).toFixed(1)}% below` : `${Math.abs(gap).toFixed(1)}% above`;
-
   const actionUrl = buildKPIActionUrl(kpi);
   
   // Fetch campaign name if campaignId exists
@@ -208,7 +209,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
 
   const notification: InsertNotification = {
     title: `⚠️ KPI Alert: ${kpi.name}`,
-    message: `Current value (${kpi.currentValue}${kpi.unit}) is ${gapText} your target (${kpi.targetValue}${kpi.unit}). ${alertThreshold ? `Alert threshold: ${alertThreshold}${kpi.unit}` : ''}`,
+    message: nextMessage,
     type: 'performance-alert',
     priority: kpi.priority === 'high' ? 'high' : 'normal',
     campaignId: kpi.campaignId || undefined,

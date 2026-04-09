@@ -20091,6 +20091,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const kpi = await storage.createKPI(validatedKPI);
 
       // Check alerts immediately so breached thresholds create notifications right away
+      if (String(platformType || '').toLowerCase() === 'google_analytics' && validatedKPI.campaignId) {
+        try {
+          const { runGA4DailyKPIAndBenchmarkJobs } = await import("./ga4-kpi-benchmark-jobs.js");
+          await runGA4DailyKPIAndBenchmarkJobs({ campaignId: String(validatedKPI.campaignId) });
+        } catch (e: any) {
+          console.warn("[KPI Create] GA4 KPI refresh failed:", (e as any)?.message || e);
+        }
+      }
       checkPerformanceAlerts().catch((e) => console.warn("[KPI Create] Alert check failed:", (e as any)?.message || e));
 
       res.json(kpi);
@@ -20147,6 +20155,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Re-check alerts after update (threshold or value may have changed)
+      if (String((okKpi as any)?.platformType || '').toLowerCase() === 'google_analytics' && (okKpi as any)?.campaignId) {
+        try {
+          const { runGA4DailyKPIAndBenchmarkJobs } = await import("./ga4-kpi-benchmark-jobs.js");
+          await runGA4DailyKPIAndBenchmarkJobs({ campaignId: String((okKpi as any).campaignId) });
+        } catch (e: any) {
+          console.warn("[KPI Update] GA4 KPI refresh failed:", (e as any)?.message || e);
+        }
+      }
       checkPerformanceAlerts().catch((e) => console.warn("[KPI Update] Alert check failed:", (e as any)?.message || e));
 
       res.json(updatedKPI);

@@ -689,6 +689,7 @@ Checkpoint after Journey 8:
 - [ ] "+" → HubSpot → OAuth → campaign field → crosswalk → pipeline (optional) → revenue property → date field (Close Date default) → review → Save
 - [ ] Confirm `Reconnect` appears immediately in a stable header/action area on the first screen
 - [ ] Confirm the first HubSpot screen does **not** show an unnecessary vertical scrollbar
+- [ ] Confirm the main double-counting warning appears on the first `Source` step before the user proceeds deeper into the wizard
 - [ ] Micro copy: "HubSpot — $X,XXX"
 - [ ] Non-default date field: "HubSpot · Modified Date"
 - [ ] Confirm the Date field copy makes clear that it controls which HubSpot deal date is used when including/reporting revenue
@@ -699,6 +700,7 @@ Checkpoint after Journey 8:
 - [ ] Same pattern → date field selector (CloseDate default)
 - [ ] Micro copy: "Salesforce — $X,XXX"
 - [ ] On the Source step, confirm `Reconnect` appears on the first step only and `Connected to ...` is not repeated on later steps
+- [ ] Confirm the main double-counting warning appears on the first `Source` step before the user proceeds deeper into the wizard
 - [ ] Confirm `Total Revenue only (no Pipeline card)` appears above `Total Revenue + Pipeline (Proxy)`
 - [ ] Move from `Pipeline` to `Revenue`
 - [ ] Confirm the `Pipeline` step icon turns green/completed once you move past it
@@ -732,8 +734,8 @@ Checkpoint after Journey 8:
 - [ ] **Insights tab**: financial values updated
 
 ### Step 12: Double-Count Prevention Warning
-- [ ] HubSpot wizard Revenue step: amber warning banner visible: "Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions"
-- [ ] Salesforce wizard Revenue step: same amber warning visible
+- [ ] HubSpot wizard Source step: amber warning banner visible before the user continues: "Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions"
+- [ ] Salesforce wizard Source step: same amber warning visible before the user continues
 - [ ] No "Revenue classification" dropdown (removed — hardcoded to offsite)
 
 ---
@@ -749,14 +751,19 @@ Checkpoint after Journey 8:
 - [ ] Revenue/Sessions/ER/CR KPIs → still work
 - [ ] KPI summary: blocked KPIs EXCLUDED from scoring
 - [ ] Create KPI: ROAS/ROI/CPA templates DISABLED again
+- [ ] KPI blocked-state cards do **not** show a `Manage Connected Platforms` CTA
+- [ ] Benchmark blocked-state cards do **not** show a `Manage Connected Platforms` CTA
+- [ ] Blocked Benchmark card message matches the KPI pattern, e.g. `Missing: Spend. This Benchmark is paused until inputs are restored.`
 - [ ] Insights: "Spend missing" integrity check reappears
 
 ### Step 2: Delete ALL revenue sources
-- [ ] Spend = $0, Revenue = $0
-- [ ] **Revenue KPI → "Blocked"**
-- [ ] ROAS/ROI already blocked (no spend)
-- [ ] Only Sessions/ER/CR KPIs remain active
-- [ ] Create KPI: only Sessions/Users/Conversions/ER/CR ENABLED
+- [ ] Delete all imported/manual revenue sources
+- [ ] If GA4 native revenue still exists, **Total Revenue stays above $0** and Revenue-based KPIs remain evaluable
+- [ ] `Total Revenue = $0` only if **all** revenue inputs are gone, including GA4 native revenue
+- [ ] If GA4 native revenue is absent too, **Revenue KPI → "Blocked"**
+- [ ] ROAS/ROI may already be blocked from Step 1 because spend is missing
+- [ ] Sessions/Users/Conversions/ER/CR KPIs remain active
+- [ ] Revenue template becomes disabled only when no GA4 native revenue and no imported revenue remain
 
 ### Step 3: Restore required inputs explicitly
 - [ ] If revenue is missing: click Run Refresh to restore GA4 revenue

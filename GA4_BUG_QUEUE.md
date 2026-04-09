@@ -728,6 +728,43 @@ Status: `Done`
   - save the edit and confirm the existing Salesforce source row updates in place
   - confirm no second Salesforce micro copy/source row is added under `Total Revenue`
 
+### 21. GA4 blocked KPI/Benchmark UI and Journey 9 revenue-deletion expectations needed cleanup
+
+Status: `Done`
+
+- Resolution:
+  - removed the obsolete `Manage Connected Platforms` CTA from blocked KPI and blocked Benchmark sections on the GA4 page
+  - aligned blocked Benchmark card copy with the KPI blocked-state pattern
+  - corrected the manual plan so deleting imported revenue does not imply `Total Revenue = 0` when GA4 native revenue still exists
+  - updated CRM warning expectations so the main double-counting banner is checked on the first `Source` step, not only later in the Revenue step
+- Current decision:
+  - keep blocked-state logic and scoring exclusion unchanged
+  - keep `Total Revenue = 0` as a valid expectation only when both GA4 native revenue and imported revenue are absent
+
+- Severity: `P1`
+- Area: `GA4 KPIs / Benchmarks / Manual test expectations`
+- Affected docs:
+  - `GA4-MANUAL-TEST-PLAN.md`
+  - `GA4/FINANCIAL_SOURCES.md`
+- Expected behavior:
+  - blocked KPI/Benchmark cards should explain missing inputs without obsolete navigation CTAs
+  - blocked Benchmark cards should use the same paused-until-restored wording pattern as blocked KPI cards
+  - Journey 9 should distinguish between deleting imported revenue and deleting all revenue inputs, including GA4 native revenue
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - the old CTA pointed to a path that is no longer part of the product journey
+  - blocked Benchmark copy was inconsistent with blocked KPI copy
+  - the old Journey 9 wording could incorrectly imply that GA4 native revenue was removable through source deletion
+- Root cause area:
+  - stale blocked-state UI copy on the GA4 page
+  - stale manual-plan assumptions about the revenue model
+- Required regression checks:
+  - remove all spend sources and confirm blocked KPI/Benchmark cards show no `Manage Connected Platforms` CTA
+  - confirm blocked Benchmark cards use `Missing: Spend. This Benchmark is paused until inputs are restored.`
+  - delete imported revenue sources while GA4 native revenue still exists and confirm `Total Revenue` stays above zero
+  - verify `Total Revenue = 0` is only expected when GA4 native revenue is absent too
+
 ## Severity View
 
 - `P0`
@@ -746,6 +783,7 @@ Status: `Done`
   - 18. Google Sheets revenue validation, layout, and dirty-state guard
   - 19. HubSpot wizard UX stabilization
   - 20. Salesforce edit source-identity and review-total refresh
+  - 21. blocked-state UI and Journey 9 revenue-model cleanup
 - `P2`
   - 8. Ad Comparison is still campaign-comparison-based
   - 9. Ad Comparison revenue selector expectation gap

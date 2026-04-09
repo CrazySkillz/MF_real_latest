@@ -176,6 +176,7 @@ Important meaning:
 - `Last Modified Date` is useful when the user wants revenue tied to recently updated deals
 - `Created Date` is useful when the user wants revenue tied to when opportunities first entered HubSpot
 - the `Reconnect` action on the first HubSpot screen should render in a stable header/action area, not inside the main source-choice card or a shifting scroll region
+- the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 
 ## Revenue Source 3: Salesforce Journey
 
@@ -201,6 +202,7 @@ Important meaning:
 - this path is sensitive because it can include currency validation and attribution-field matching
 - in edit mode, Salesforce revenue must preserve the existing revenue `sourceId` all the way through the save request so the system updates the existing source instead of creating an additive duplicate
 - Salesforce review-step `Total Revenue (to date)` should prefer fresh preview data from the current edit session over stored `lastTotalRevenue` values from the previous save
+- the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 
 ## Revenue Source 4: Google Sheets Journey
 

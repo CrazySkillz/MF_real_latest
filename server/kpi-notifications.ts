@@ -131,6 +131,32 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     return;
   }
 
+  const matchingAlerts = existingAlerts.filter(n => {
+    if (!n.metadata) return false;
+    try {
+      const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
+      return String(meta.kpiId || '') === String(kpi.id) && !meta.resolved;
+    } catch {
+      return false;
+    }
+  });
+  for (const alert of matchingAlerts) {
+    try {
+      const meta = typeof alert.metadata === 'string' ? JSON.parse(alert.metadata) : (alert.metadata || {});
+      await storage.updateNotification(String(alert.id), {
+        read: true,
+        metadata: JSON.stringify({
+          ...meta,
+          resolved: true,
+          resolvedAt: new Date().toISOString(),
+          resolvedReason: 'superseded',
+        }),
+      } as any);
+    } catch {
+      // ignore malformed legacy metadata
+    }
+  }
+
   const currentValue = parseLooseNumber(kpi.currentValue);
   const alertThreshold = kpi.alertThreshold ? parseLooseNumber(kpi.alertThreshold) : null;
   const targetValue = parseLooseNumber(kpi.targetValue);
@@ -172,6 +198,32 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
 
   await db.insert(notifications).values(notification);
   console.log(`[KPI Notification] Created alert for KPI: ${kpi.name}`);
+}
+
+export async function resolveKPIAlerts(kpiId: string, reason: 'cleared' | 'superseded' = 'cleared'): Promise<void> {
+  const id = String(kpiId || '').trim();
+  if (!id) return;
+  const existingAlerts = await db.select()
+    .from(notifications)
+    .where(eq(notifications.type, 'performance-alert'));
+  for (const alert of existingAlerts) {
+    if (!alert.metadata) continue;
+    try {
+      const meta = typeof alert.metadata === 'string' ? JSON.parse(alert.metadata) : alert.metadata;
+      if (String(meta.kpiId || '') !== id || meta.resolved) continue;
+      await storage.updateNotification(String(alert.id), {
+        read: true,
+        metadata: JSON.stringify({
+          ...meta,
+          resolved: true,
+          resolvedAt: new Date().toISOString(),
+          resolvedReason: reason,
+        }),
+      } as any);
+    } catch {
+      // ignore malformed legacy metadata
+    }
+  }
 }
 
 /**

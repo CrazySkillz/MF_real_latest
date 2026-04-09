@@ -3586,8 +3586,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .innerJoin(campaigns as any, eq((notifications as any).campaignId, (campaigns as any).id))
           .where(eq((campaigns as any).ownerId, actorId))
           .orderBy(desc((notifications as any).createdAt));
-
-        return res.json(rows.map((r: any) => r.n));
+        const visible = rows
+          .map((r: any) => r.n)
+          .filter((n: any) => {
+            if (String(n?.type || '') !== 'performance-alert' || !n?.metadata) return true;
+            try {
+              const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
+              return !meta?.resolved;
+            } catch {
+              return true;
+            }
+          });
+        return res.json(visible);
       }
 
       // In-memory fallback (dev/no-DB): filter using campaign ownership in memory.
@@ -3601,9 +3611,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .filter(Boolean);
 
       const allNotifications = await storage.getNotifications().catch(() => [] as any[]);
-      const list = (Array.isArray(allNotifications) ? allNotifications : []).filter((n: any) =>
-        ownedIds.includes(String((n as any)?.campaignId || ""))
-      );
+      const list = (Array.isArray(allNotifications) ? allNotifications : []).filter((n: any) => {
+        if (!ownedIds.includes(String((n as any)?.campaignId || ""))) return false;
+        if (String((n as any)?.type || '') !== 'performance-alert' || !(n as any)?.metadata) return true;
+        try {
+          const meta = typeof (n as any).metadata === 'string' ? JSON.parse((n as any).metadata) : (n as any).metadata;
+          return !meta?.resolved;
+        } catch {
+          return true;
+        }
+      });
       list.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       return res.json(list);
     } catch (error) {

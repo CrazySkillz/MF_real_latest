@@ -7,6 +7,7 @@ import {
   createKPIAlert,
   createPeriodComplete,
   createTrendAlert,
+  resolveKPIAlerts,
   shouldTriggerAlert
 } from "./kpi-notifications";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
@@ -260,6 +261,7 @@ export async function checkPerformanceAlerts(): Promise<void> {
         await createKPIAlert(kpi);
       } else {
         console.log(`[KPI Scheduler] ❌ No alert needed for: ${kpi.name}`);
+        await resolveKPIAlerts(String(kpi.id), 'cleared');
       }
     }
   } catch (error) {

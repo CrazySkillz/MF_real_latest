@@ -812,6 +812,8 @@ Checkpoint after Journey 8:
 - [ ] Ranking cards update per selected metric
 - [ ] Best Performing ≠ Needs Attention
 - [ ] Users: tooltip warns "non-additive"
+- [ ] If imported revenue exists, Revenue mode surfaces **Total Revenue (All Sources)** explicitly
+- [ ] If imported revenue exists, campaign rows in Revenue mode remain clearly described as GA4-attributed revenue only
 
 ---
 

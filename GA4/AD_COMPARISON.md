@@ -105,6 +105,7 @@ Current limitation:
 
 - the comparison rows currently only contain GA4-attributed revenue at the row level
 - imported external revenue exists at the total/source-breakdown level, not as row-level campaign allocations
+- when `Revenue` is selected, the tab should surface the authoritative total all-source revenue explicitly, while keeping campaign rows labeled as GA4-attributed revenue only
 
 Future implementation note:
 

@@ -24,10 +24,14 @@ export default function Navigation() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [showClearAllDialog, setShowClearAllDialog] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   // Fetch notifications to get unread count
   const { data: allNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
@@ -172,7 +176,16 @@ export default function Navigation() {
         </div>
 
         <div className="flex items-center space-x-4">
-          <Popover>
+          <Popover
+            open={notificationsOpen}
+            onOpenChange={(open) => {
+              setNotificationsOpen(open);
+              if (open) {
+                queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+                queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
+              }
+            }}
+          >
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="relative" data-testid="button-notifications">
                 <Bell className="w-4 h-4" />

@@ -4733,20 +4733,11 @@ export default function GA4Metrics() {
 
                             {kpiTracker.blocked > 0 ? (
                               <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <div className="font-semibold text-foreground">Some KPIs are Blocked</div>
-                                    <div className="text-sm text-foreground/80/60 mt-1">
-                                      {kpiTracker.blocked} KPI{kpiTracker.blocked === 1 ? "" : "s"} can’t be evaluated because Spend and/or Revenue was removed.
-                                      Blocked KPIs are excluded from performance scoring to avoid misleading executives.
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <Link href={`/campaigns/${campaignId}#overview`}>
-                                      <Button type="button" variant="outline" size="sm">
-                                        Manage Connected Platforms
-                                      </Button>
-                                    </Link>
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-foreground">Some KPIs are Blocked</div>
+                                  <div className="text-sm text-foreground/80/60 mt-1">
+                                    {kpiTracker.blocked} KPI{kpiTracker.blocked === 1 ? "" : "s"} can’t be evaluated because Spend and/or Revenue was removed.
+                                    Blocked KPIs are excluded from performance scoring to avoid misleading executives.
                                   </div>
                                 </div>
                               </div>
@@ -4933,13 +4924,6 @@ export default function GA4Metrics() {
                                         {isBlocked ? (
                                           <div className="mt-4 text-sm text-muted-foreground/70">
                                             Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This KPI is paused until inputs are restored.
-                                            <div className="mt-2">
-                                              <Link href={`/campaigns/${campaignId}#overview`}>
-                                                <Button type="button" variant="outline" size="sm">
-                                                  Manage Connected Platforms
-                                                </Button>
-                                              </Link>
-                                            </div>
                                           </div>
                                         ) : null}
                                       </CardContent>
@@ -5516,20 +5500,11 @@ export default function GA4Metrics() {
 
                           {benchmarkTracker.blocked > 0 ? (
                             <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="font-semibold text-foreground">Some Benchmarks are Blocked</div>
-                                  <div className="text-sm text-foreground/80/60 mt-1">
-                                    {benchmarkTracker.blocked} benchmark{benchmarkTracker.blocked === 1 ? "" : "s"} can’t be evaluated because Spend and/or Revenue was removed.
-                                    Blocked benchmarks are excluded from performance scoring to avoid misleading executives.
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <Link href={`/campaigns/${campaignId}#overview`}>
-                                    <Button type="button" variant="outline" size="sm">
-                                      Manage Connected Platforms
-                                    </Button>
-                                  </Link>
+                              <div className="min-w-0">
+                                <div className="font-semibold text-foreground">Some Benchmarks are Blocked</div>
+                                <div className="text-sm text-foreground/80/60 mt-1">
+                                  {benchmarkTracker.blocked} benchmark{benchmarkTracker.blocked === 1 ? "" : "s"} can’t be evaluated because Spend and/or Revenue was removed.
+                                  Blocked benchmarks are excluded from performance scoring to avoid misleading executives.
                                 </div>
                               </div>
                             </div>
@@ -5682,13 +5657,6 @@ export default function GA4Metrics() {
                                             </div>
                                             <div className="text-sm text-muted-foreground/70 mt-1">
                                               Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. Restore inputs to resume accurate tracking.
-                                            </div>
-                                            <div className="mt-2">
-                                              <Link href={`/campaigns/${campaignId}#overview`}>
-                                                <Button type="button" variant="outline" size="sm">
-                                                  Manage Connected Platforms
-                                                </Button>
-                                              </Link>
                                             </div>
                                           </div>
                                         );

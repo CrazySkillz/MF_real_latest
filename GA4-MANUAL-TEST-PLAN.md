@@ -326,6 +326,7 @@ Checkpoint after Journey 3:
 - [ ] **Conversions ≈ 2,648** (simulation 2,592 + 1 day of 56)
 - [ ] **Revenue ≈ $244,552** (simulation $240,352 + 1 day of $4,200)
 - [ ] Values AGGREGATE — simulation baseline + Run Refresh increments, not replaced
+- [ ] If GA4 native revenue exists, the `GA4 Revenue` micro copy row under `Total Revenue` updates to the refreshed aggregated GA4 amount for the selected GA4 scope
 - [ ] Financial templates (ROAS/ROI/CPA) still DISABLED — need spend
 
 ### Step 2: Add spend via Add Spend wizard
@@ -603,12 +604,14 @@ Checkpoint after Journey 7:
 - [ ] **Insights tab**: financial row updated
 
 ### Step 10: Add Google Sheets Spend
+- [ ] In the initial connect substate, confirm there is **no** redundant footer `Next` button before a connected sheet/tab is selected
 - [ ] "+" → Sheets → authenticate → select sheet → map Spend column
 - [ ] Select a campaign identifier column and leave all campaign values unselected
 - [ ] Confirm `Import spend` is blocked/disabled until at least one campaign value is selected
 - [ ] Select one or more campaign values → Save
 - [ ] Micro copy: "Google Sheets — $X,XXX" (NOT the spreadsheet name)
 - [ ] Click edit (pencil) on the Google Sheets source
+- [ ] Confirm the chooser does **not** show an in-flow `Remove` action
 - [ ] Confirm `Update spend` is **disabled** immediately on open before any changes are made
 - [ ] Deselect one campaign value while keeping one valid campaign selected
 - [ ] Confirm `Update spend` becomes enabled after the mapping change
@@ -647,6 +650,8 @@ Checkpoint after Journey 8:
 - [ ] **KPIs tab**: Revenue KPI current value increased, ROAS KPI current value increased
 - [ ] **Benchmarks tab**: ROAS Benchmark current value increased
 - [ ] **Insights tab**: Executive Financials revenue updated, Data Summary revenue updated
+- [ ] **Insights tab**: Executive Financials cards do **not** show repeated per-card micro copy under Spend/Revenue/Profit/ROAS/ROI
+- [ ] **Insights tab**: shared `Sources used` provenance lists the full active revenue source set, not only the first imported source
 
 ### Step 4: Add CSV Revenue
 - [ ] "+" → CSV → upload → map Revenue + Campaign columns
@@ -720,6 +725,7 @@ Checkpoint after Journey 8:
 - [ ] All shown in micro copy with individual amounts
 - [ ] **Sum of ALL micro copy amounts = Total Revenue card** (exact match)
 - [ ] ROAS/ROI/Profit all reflect cumulative total revenue
+- [ ] **Insights tab**: `Sources used` Revenue line shows the full active revenue source set, not just the first imported source
 
 ### Step 10: Edit a revenue source
 - [ ] Click edit (pencil) on Manual source → change amount → Save
@@ -766,7 +772,8 @@ Checkpoint after Journey 8:
 - [ ] Revenue template becomes disabled only when no GA4 native revenue and no imported revenue remain
 
 ### Step 3: Restore required inputs explicitly
-- [ ] If revenue is missing: click Run Refresh to restore GA4 revenue
+- [ ] If GA4 native revenue is expected for this campaign and the GA4 connection/scope is still valid, click `Run Refresh` to repopulate fresh GA4 revenue data
+- [ ] If this campaign/property truly has no GA4 revenue, `Run Refresh` will **not** create revenue; restore revenue by adding an imported revenue source instead
 - [ ] If spend is missing: add a spend source again via the "+" Spend flow
 - [ ] After the required inputs exist again, blocked KPIs should become unblocked
 - [ ] Templates should re-enable only when their required inputs exist again

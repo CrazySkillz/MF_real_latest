@@ -765,6 +765,47 @@ Status: `Done`
   - delete imported revenue sources while GA4 native revenue still exists and confirm `Total Revenue` stays above zero
   - verify `Total Revenue = 0` is only expected when GA4 native revenue is absent too
 
+### 22. Insights financial provenance and Google Sheets spend chooser UI needed cleanup
+
+Status: `Done`
+
+- Resolution:
+  - removed repeated per-card microcopy under the Insights `Executive financials` cards
+  - kept provenance in the shared `Sources used` area instead of repeating it under `Spend`, `Revenue`, `Profit`, `ROAS`, and `ROI`
+  - fixed Revenue provenance so it lists the full active revenue source set instead of only the first imported/manual source
+  - removed the obsolete in-flow `Remove` action from the Google Sheets spend chooser
+  - hid the redundant footer `Next` button in the Google Sheets spend connect substate while preserving progression once a real sheet/tab is being selected
+- Current decision:
+  - keep provenance consolidated in shared source-footer areas for future financial-card surfaces
+  - keep Google Sheets spend chooser actions minimal: `Connect Google Sheets` or `Change sheet/tab`, but no redundant `Remove`/`Next` clutter in the connect substate
+
+- Severity: `P2`
+- Area: `GA4 Insights / Google Sheets spend chooser`
+- Affected docs:
+  - `GA4/INSIGHTS.md`
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - Insights `Executive financials` should present financial values cleanly and keep provenance in one shared footer
+  - Revenue provenance should reflect the full active revenue-source set used in the total
+  - Google Sheets spend chooser should avoid redundant controls while preserving the real connect/select/import path
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - repeated per-card provenance created unnecessary UI noise in an executive-facing section
+  - showing only one revenue source in shared provenance under-described the actual revenue model
+  - obsolete chooser actions made the Google Sheets spend flow look busier and less intentional than needed
+- Root cause area:
+  - hardcoded per-card financial microcopy in Insights
+  - Revenue provenance using a narrower active-source reference than the full revenue source set
+  - Google Sheets spend chooser rendering obsolete action controls in the connect state
+- Required regression checks:
+  - confirm Insights `Executive financials` shows no repeated per-card provenance copy
+  - confirm `Sources used` Revenue lists the full active source set
+  - confirm Google Sheets spend connect substate shows no `Remove` button
+  - confirm Google Sheets spend connect substate shows no redundant footer `Next`
+  - confirm real sheet/tab selection still progresses normally
+
 ## Severity View
 
 - `P0`
@@ -788,6 +829,7 @@ Status: `Done`
   - 8. Ad Comparison is still campaign-comparison-based
   - 9. Ad Comparison revenue selector expectation gap
   - 10. scheduled/server-rendered report completeness gap
+  - 22. Insights provenance and Google Sheets spend chooser cleanup
 - `P3`
   - 11. custom report subsection selection gap
   - 12. Dashboard refinement

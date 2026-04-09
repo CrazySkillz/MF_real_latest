@@ -39,6 +39,8 @@ Important clarification:
 - some campaigns may not have GA4-native revenue available at all
 - in those cases, users may rely entirely on imported external revenue sources
 - the GA4 revenue metric is optional to the overall campaign revenue model; external revenue import is a valid primary path
+- when GA4 native revenue exists, refresh should update the GA4-native aggregated revenue amount for the campaign's selected GA4 scope
+- the `GA4 Revenue` source row under `Total Revenue` should show that full aggregated GA4 amount, not a partial or single-day figure
 
 ### Latest Day Revenue
 
@@ -410,6 +412,8 @@ Important current-state note:
 - in the current spend UI, Google Sheets is treated as a spend-to-date import flow rather than a user-configured daily-date mapping flow
 - Google Sheets spend is eligible for scheduled auto-refresh after setup
 - if the user selects a campaign identifier column and matching values are available, at least one campaign value must be selected before import
+- the connect substate should progress through `Connect Google Sheets`; it should not render a redundant footer `Next` button before a connected sheet/tab is actually being selected
+- the chooser should keep `Change sheet/tab` but should not expose an in-flow `Remove` action in this Google Sheets spend experience
 
 ## Spend Source 5: CSV Journey
 
@@ -464,6 +468,8 @@ Important meaning:
 
 - edit/delete actions operate on source definitions and their records
 - they do not directly edit the total card value
+- executive-facing provenance should be consolidated in shared source rows / `Sources used` areas rather than repeated as per-card microcopy under every financial card
+- revenue provenance should enumerate the full active revenue source set, including GA4 native revenue when present, instead of only the first imported/manual revenue source
 
 ## Edit And Delete Pattern
 

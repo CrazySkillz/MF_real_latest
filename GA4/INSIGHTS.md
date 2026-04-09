@@ -37,6 +37,8 @@ Important meaning:
 
 - it is built from the same financial model as the Overview cards
 - it is the executive-facing campaign finance summary
+- provenance belongs in the shared `Sources used` footer for the section, not as repeated microcopy under each individual `Spend`, `Revenue`, `Profit`, `ROAS`, or `ROI` card
+- the Revenue provenance line should list the full active revenue-source set used in the totals, including the GA4-native revenue row when GA4 native revenue exists
 
 ## Data Integrity And Configuration Checks
 
@@ -105,6 +107,63 @@ Important meaning:
 - some trend modes need more history than others
 - `Users` is currently only available in `Daily` mode in the present implementation
 
+## Trends Current-State Observation
+
+The current `Trends` implementation is not just a test-mode chart.
+
+Current code-path meaning:
+
+- in test mode, the tab can render from simulated GA4 daily data
+- in production mode, the tab is intended to render from persisted GA4 daily facts for the selected GA4 property and the campaign's selected GA4 campaign scope
+- if persisted daily rows are missing, the current backend attempts an on-demand backfill from the real GA4 Data API and then persists those rows
+- the chart and comparison tables are then built from those persisted daily rows
+
+Important meaning:
+
+- this should populate accurately in production if the GA4 connection is valid and daily facts are being ingested/persisted correctly
+- this is not a mock-only design
+- the main production risk is operational freshness and history availability, not that the Trends UI is hardwired to simulated data
+
+## GA4 Insights Trends Production-Readiness Checklist
+
+Use this checklist after the full GA4 manual-user-journey pass is complete.
+
+Data availability:
+
+- confirm the campaign has a valid GA4 access-token connection
+- confirm the correct GA4 property is selected
+- confirm the campaign's GA4 campaign filter/scope is correct
+- confirm persisted GA4 daily rows exist for the campaign/property
+
+History sufficiency:
+
+- confirm `Daily` has at least `2` days of history
+- confirm `7d` has at least `14` days of history
+- confirm `30d` has at least `60` days of history
+- confirm `Monthly` has at least `2` calendar months if month-over-month comparison is expected
+
+Metric integrity:
+
+- confirm daily rows contain expected values for `sessions`, `users`, `pageviews`, `conversions`, `revenue`, and `engagementRate`
+- confirm `Users` is only exposed in `Daily` mode
+- confirm `7d`, `30d`, and `Monthly` values are coherent with the daily rows they summarize
+
+Refresh/freshness:
+
+- confirm the GA4 daily scheduler is running in the deployed environment
+- confirm an empty daily-facts table can be backfilled on demand from the real GA4 Data API
+- confirm `Run refresh` and normal refetch paths do not leave Trends stale relative to refreshed GA4 daily rows
+
+Error handling:
+
+- confirm expired or invalid GA4 tokens surface a reconnect/reauthorization path
+- confirm missing-history states show clear UI guidance rather than misleading zeroes
+
+Cross-tab consistency:
+
+- confirm Insights `Trends` uses the same persisted GA4 daily facts as other daily-value GA4 surfaces
+- confirm Insights trend totals remain coherent with Overview and KPI/Benchmark context after refresh
+
 ## What Changed, What To Do Next
 
 Each current finding includes:
@@ -119,6 +178,29 @@ Important meaning:
 - the findings list is a merged output from one insights engine
 - it combines integrity/config checks, KPI context, benchmark context, anomaly signals, and financial/performance context
 - not every item is a negative alert; the list can also contain positive or informational items
+
+## Current Limits Of Recommendations
+
+The current `What changed, what to do next` section is rule-based and logically grounded, but it should be treated as executive directional guidance rather than a fully causal diagnostic engine.
+
+Current meaning:
+
+- findings are generated from explicit rules, thresholds, KPI/Benchmark state, GA4 daily history, and simple channel heuristics
+- recommendations are intended to suggest a sensible starting point for investigation
+- recommendations do not prove root cause
+
+Important current limits:
+
+- revenue-related recommendations are only partially aligned with the app's full financial model when imported revenue is important
+- GA4 channel/revenue observations are based on GA4-attributed campaign/channel data, not a full attributed allocation of all imported external revenue
+- if a campaign relies heavily on imported revenue, executive financial totals may still be correct while some revenue-change guidance remains more GA4-specific than full-funnel
+- informational revenue averages are directionally useful, but less rigorous when imported revenue is snapshot-style rather than true daily history
+
+Practical interpretation:
+
+- trust the section as a consistent rule-driven summary layer
+- use it to prioritize what to inspect next
+- do not treat it as definitive causal attribution
 
 ## Data Summary
 

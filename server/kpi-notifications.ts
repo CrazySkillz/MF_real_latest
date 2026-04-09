@@ -116,6 +116,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     if (!n.metadata) return false;
     try {
       const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
+      if (meta?.resolved) return false;
       const createdAt = new Date(n.createdAt);
       if (windowKey) {
         return String(meta.kpiId) === String(kpi.id) && String(meta.windowKey || "") === windowKey;

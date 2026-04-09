@@ -117,6 +117,18 @@ export default function Navigation() {
     }
   };
 
+  const formatBellNotificationBody = (notification: Notification) => {
+    const message = String(notification.message || "").trim();
+    if (notification.type !== "performance-alert") {
+      return { lead: message, threshold: "" };
+    }
+    const parts = message.split(" Alert threshold: ");
+    return {
+      lead: parts[0] || message,
+      threshold: parts[1] ? `Alert threshold: ${parts[1]}` : "",
+    };
+  };
+
   const handleNotificationClick = (notification: Notification) => {
     // Mark as read
     if (!notification.read) {
@@ -236,6 +248,9 @@ export default function Navigation() {
                 ) : (
                   <div className="divide-y">
                     {notifications.map((notification) => (
+                      (() => {
+                        const body = formatBellNotificationBody(notification);
+                        return (
                       <div
                         key={notification.id}
                         role="button"
@@ -258,15 +273,20 @@ export default function Navigation() {
                             <p className={`text-sm font-medium ${!notification.read ? 'text-foreground' : 'text-foreground/80/60'}`}>
                               {notification.title}
                             </p>
+                            {notification.campaignName && (
+                              <p className="text-xs mt-0.5 text-muted-foreground/70">
+                                Campaign: {notification.campaignName}
+                              </p>
+                            )}
                             <p className={`text-xs mt-0.5 ${!notification.read ? 'text-muted-foreground/70' : 'text-muted-foreground'}`}>
-                              {notification.message}
+                              {body.lead}
                             </p>
+                            {body.threshold && (
+                              <p className={`text-xs mt-0.5 ${!notification.read ? 'text-muted-foreground/70' : 'text-muted-foreground'}`}>
+                                {body.threshold}
+                              </p>
+                            )}
                             <div className="flex items-center gap-2 mt-1">
-                              {notification.campaignName && (
-                                <span className="text-xs text-muted-foreground/70">
-                                  Campaign: {notification.campaignName}
-                                </span>
-                              )}
                               <span className="text-xs text-muted-foreground/70">
                                 {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                               </span>
@@ -294,6 +314,8 @@ export default function Navigation() {
                           )}
                         </div>
                       </div>
+                        );
+                      })()
                     ))}
                   </div>
                 )}

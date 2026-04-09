@@ -205,6 +205,61 @@ Columns:
 - `Users`
 - `Revenue`
 
+## Overview Tables Current-State Observation
+
+The current `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` tables are not intended to be test-only surfaces.
+
+Current code-path meaning:
+
+- in test mode, these tables can render from simulated GA4 responses
+- in production mode, they are intended to render from real GA4-backed query paths for the selected GA4 property and the campaign's saved GA4 campaign scope
+- `Run Refresh` is a test/mock validation tool, but the production table-population model is still the real GA4 query path, not a mock-only design
+
+Important meaning:
+
+- these tables should populate and update accurately in production if GA4 connection, property selection, campaign scoping, and GA4 tagging are correct
+- if a table looks wrong in production, the likely problem is scoping, tagging, or upstream GA4 data quality, not that the UI is inherently test-only
+
+## Overview Tables Production-Readiness Checklist
+
+Use this checklist after the full GA4 manual-user-journey pass is complete.
+
+Connection and scope:
+
+- confirm the campaign has a valid GA4 access-token connection
+- confirm the correct GA4 property is selected
+- confirm the campaign's saved GA4 campaign filter/scope is correct
+
+Campaign Breakdown:
+
+- confirm rows populate from the selected GA4 property and campaign scope
+- confirm `Sessions`, `Users`, `Conversions`, and `Revenue` are coherent with GA4 for that scope
+- confirm the table is not interpreted as imported-revenue allocation; revenue here should remain GA4-attributed row revenue
+
+Landing Pages:
+
+- confirm rows populate for the same GA4 property and campaign scope
+- confirm `Source/Medium`, `Sessions`, `Users`, `Conversions`, and `Revenue` look coherent for that scope
+- confirm page rows are not unexpectedly mixing unrelated campaigns due to bad GA4 campaign tagging/filtering
+
+Conversion Events:
+
+- confirm rows populate for the same GA4 property and campaign scope
+- confirm `Conversions`, `Event count`, `Users`, and `Revenue` are coherent with GA4 event tracking for that scope
+- confirm conversion-event naming and totals reflect real GA4 configuration rather than stale or misconfigured events
+
+Freshness and updates:
+
+- confirm table queries refetch successfully after normal page refetch/reload
+- confirm test-mode `Run Refresh` updates these tables during validation
+- confirm production freshness expectations are based on real GA4 fetches and refetches, not the mock-refresh tool
+
+Data quality:
+
+- confirm UTM campaign naming is clean enough for `Campaign Breakdown` grouping
+- confirm landing-page tracking is correct in GA4
+- confirm conversion events are configured and firing correctly in GA4
+
 ## Current-State Note
 
 The current implementation uses mixed but intentional data paths:

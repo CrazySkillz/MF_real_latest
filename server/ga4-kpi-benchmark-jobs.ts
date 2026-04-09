@@ -28,6 +28,80 @@ const parseGA4CampaignFilter = (raw: any): string | string[] | undefined => {
   return s;
 };
 
+const normalizePropertyIdForMock = (pid: string) => {
+  const raw = String(pid || "").trim();
+  if (!raw) return raw;
+  const m = raw.match(/properties\/(\d+)/i);
+  if (m && m[1]) return m[1];
+  return raw.replace(/^\/+/, "");
+};
+
+const isYesopMockProperty = (pid: string) => {
+  const v = String(pid || "").trim().toLowerCase();
+  const normalized = normalizePropertyIdForMock(v).toLowerCase();
+  return v === "yesop" || normalized === "yesop" || normalized === "498536418";
+};
+
+const isNoRevenueFilter = (raw: any): boolean => {
+  const s = String(raw || "").toLowerCase();
+  return s.includes("no_revenue") || s.includes("no-revenue") || s.includes("no revenue") || s.includes("no_rev") || s.includes("no-rev");
+};
+
+const getYesopMockBaselineTotals = (campaignId: string, ga4CampaignFilter: any, noRevenue: boolean) => {
+  const campaignProfiles: Record<string, { scale: number; engagementDelta: number }> = {
+    "yesop-brand": { scale: 1.0, engagementDelta: 0.0 },
+    "yesop-prospecting": { scale: 0.6, engagementDelta: -0.08 },
+    "yesop-retargeting": { scale: 0.35, engagementDelta: 0.12 },
+    "yesop-email": { scale: 0.25, engagementDelta: 0.05 },
+    "yesop-social": { scale: 0.5, engagementDelta: -0.04 },
+  };
+  const utmToProfile: Record<string, string> = {
+    "yesop_brand_search": "yesop-brand",
+    "yesop_prospecting": "yesop-prospecting",
+    "yesop_retargeting": "yesop-retargeting",
+    "yesop_email_nurture": "yesop-email",
+    "yesop_paid_social": "yesop-social",
+  };
+  const resolveFilterNames = () => {
+    const raw = String(ga4CampaignFilter || "").trim();
+    if (!raw) return [] as string[];
+    if (raw.startsWith("[") && raw.endsWith("]")) {
+      try {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) return arr.map((v: any) => String(v || "").trim().toLowerCase()).filter(Boolean);
+      } catch {
+        // ignore invalid JSON and treat as a single value
+      }
+    }
+    return [raw.toLowerCase()];
+  };
+
+  const filterNames = resolveFilterNames();
+  let profilesToSum: Array<{ scale: number; engagementDelta: number }> = [];
+  if (campaignProfiles[campaignId]) {
+    profilesToSum = [campaignProfiles[campaignId]];
+  } else if (filterNames.length > 0) {
+    profilesToSum = filterNames
+      .map((name) => utmToProfile[name])
+      .filter(Boolean)
+      .map((id) => campaignProfiles[id])
+      .filter(Boolean);
+  }
+  if (profilesToSum.length === 0) profilesToSum = [{ scale: 1.0, engagementDelta: 0 }];
+
+  const totalScale = profilesToSum.reduce((s, p) => s + p.scale, 0);
+  const weightedEngDelta = profilesToSum.reduce((s, p) => s + p.engagementDelta * p.scale, 0) / (totalScale || 1);
+  const scale = totalScale || 1;
+  return {
+    users: Math.round(31800 * scale),
+    sessions: Math.round(41000 * scale),
+    pageviews: Math.round(123400 * scale),
+    conversions: Math.round(1620 * scale),
+    revenue: Number(((noRevenue ? 0 : 150220.15) * scale).toFixed(2)),
+    engagementRate: Math.min(1, Math.max(0, 0.57 + weightedEngDelta)),
+  };
+};
+
 
 const toRecordedAtUtc = (yyyyMmDd: string) => new Date(`${yyyyMmDd}T23:59:59.000Z`);
 
@@ -167,7 +241,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
       })();
 
-      const toDateRows = await storage.getGA4DailyMetrics(campaignId, propertyId, "2000-01-01", date).catch(() => []);
+      const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
+      const toDateRows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDateUsed, date).catch(() => []);
       let sessionsToDate = 0;
       let usersToDate = 0;
       let conversionsToDate = 0;
@@ -181,63 +256,68 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         ga4RevenueToDate += Number((r as any)?.revenue || 0) || 0;
       }
 
-      try {
-        const conn = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any);
-        if (conn && conn.method === "access_token" && conn.accessToken) {
-          const attempt = async (token: string) => {
-            return await ga4Service.getTotalsWithRevenue(propertyId, token, startDateUsed, date, campaignFilter);
-          };
-          try {
-            const res = await attempt(String(conn.accessToken));
-            sessionsToDate = Number(res?.totals?.sessions || sessionsToDate) || 0;
-            usersToDate = Number(res?.totals?.users || usersToDate) || 0;
-            conversionsToDate = Number(res?.totals?.conversions || conversionsToDate) || 0;
-            pageviewsToDate = Number(res?.totals?.pageviews || pageviewsToDate) || 0;
-            ga4RevenueToDate = Number(res?.totals?.revenue || ga4RevenueToDate) || 0;
-          } catch (e: any) {
-            const msg = String(e?.message || "");
-            const isAuth =
-              msg.includes('"code": 401') ||
-              msg.toLowerCase().includes("unauthenticated") ||
-              msg.toLowerCase().includes("invalid authentication credentials") ||
-              msg.toLowerCase().includes("request had invalid authentication credentials") ||
-              msg.toLowerCase().includes("invalid_grant") ||
-              msg.includes("401") ||
-              msg.includes("403");
-            if (isAuth && conn.refreshToken) {
-              const refresh = await ga4Service.refreshAccessToken(
-                String(conn.refreshToken),
-                conn.clientId || undefined,
-                conn.clientSecret || undefined
-              );
-              await storage.updateGA4ConnectionTokens(conn.id, {
-                accessToken: refresh.access_token,
-                refreshToken: String(conn.refreshToken),
-                expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
-              });
-              const res = await attempt(String(refresh.access_token));
+      if (isYesopMockProperty(propertyId)) {
+        const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter, noRevenue);
+        sessionsToDate += baseline.sessions;
+        usersToDate += baseline.users;
+        conversionsToDate += baseline.conversions;
+        pageviewsToDate += baseline.pageviews;
+        ga4RevenueToDate += baseline.revenue;
+      } else {
+        try {
+          const conn = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any);
+          if (conn && conn.method === "access_token" && conn.accessToken) {
+            const attempt = async (token: string) => {
+              return await ga4Service.getTotalsWithRevenue(propertyId, token, startDateUsed, date, campaignFilter);
+            };
+            try {
+              const res = await attempt(String(conn.accessToken));
               sessionsToDate = Number(res?.totals?.sessions || sessionsToDate) || 0;
               usersToDate = Number(res?.totals?.users || usersToDate) || 0;
               conversionsToDate = Number(res?.totals?.conversions || conversionsToDate) || 0;
               pageviewsToDate = Number(res?.totals?.pageviews || pageviewsToDate) || 0;
               ga4RevenueToDate = Number(res?.totals?.revenue || ga4RevenueToDate) || 0;
+            } catch (e: any) {
+              const msg = String(e?.message || "");
+              const isAuth =
+                msg.includes('"code": 401') ||
+                msg.toLowerCase().includes("unauthenticated") ||
+                msg.toLowerCase().includes("invalid authentication credentials") ||
+                msg.toLowerCase().includes("request had invalid authentication credentials") ||
+                msg.toLowerCase().includes("invalid_grant") ||
+                msg.includes("401") ||
+                msg.includes("403");
+              if (isAuth && conn.refreshToken) {
+                const refresh = await ga4Service.refreshAccessToken(
+                  String(conn.refreshToken),
+                  conn.clientId || undefined,
+                  conn.clientSecret || undefined
+                );
+                await storage.updateGA4ConnectionTokens(conn.id, {
+                  accessToken: refresh.access_token,
+                  refreshToken: String(conn.refreshToken),
+                  expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
+                });
+                const res = await attempt(String(refresh.access_token));
+                sessionsToDate = Number(res?.totals?.sessions || sessionsToDate) || 0;
+                usersToDate = Number(res?.totals?.users || usersToDate) || 0;
+                conversionsToDate = Number(res?.totals?.conversions || conversionsToDate) || 0;
+                pageviewsToDate = Number(res?.totals?.pageviews || pageviewsToDate) || 0;
+                ga4RevenueToDate = Number(res?.totals?.revenue || ga4RevenueToDate) || 0;
+              }
             }
           }
+        } catch {
+          // ignore and keep fallback
         }
-      } catch {
-        // ignore and keep fallback
       }
 
-      // Imported revenue-to-date is stored as a single snapshot record dated "yesterday (UTC)".
+      // Imported revenue-to-date is stored as a single snapshot record dated "yesterday (UTC)". 
       // Summing from a wide range yields the same number.
       const importedRevenueTotals = await storage.getRevenueTotalForRange(campaignId, "2000-01-01", date).catch(() => ({ totalRevenue: 0 }));
       // Use actual spend records (not the denormalized campaign.spend field which can be stale)
       const spendTotalResult = await storage.getSpendTotalForRange(campaignId, "2000-01-01", date).catch(() => ({ totalSpend: 0 }));
       const spendToDate = Number((spendTotalResult as any)?.totalSpend || 0) || 0;
-
-      const rawFilter = String((campaign as any)?.ga4CampaignFilter || "").toLowerCase();
-      const forceNoRevenue = rawFilter.includes("no_rev") || rawFilter.includes("no-rev") || rawFilter.includes("no revenue");
-      if (forceNoRevenue) ga4RevenueToDate = 0;
 
       const inputs = {
         users: Math.round(usersToDate || 0),

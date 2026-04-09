@@ -5651,12 +5651,8 @@ export default function GA4Metrics() {
                                       if (isBlocked) {
                                         return (
                                           <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
-                                            <div className="flex items-center justify-between">
-                                              <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Progress</span>
-                                              <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Blocked</span>
-                                            </div>
                                             <div className="text-sm text-muted-foreground/70 mt-1">
-                                              Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. Restore inputs to resume accurate tracking.
+                                              Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This Benchmark is paused until inputs are restored.
                                             </div>
                                           </div>
                                         );

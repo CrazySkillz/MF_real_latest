@@ -118,7 +118,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   // Calculate gap
   const gap = ((targetValue - currentValue) / targetValue) * 100;
   const gapText = gap > 0 ? `${Math.abs(gap).toFixed(1)}% below` : `${Math.abs(gap).toFixed(1)}% above`;
-  const nextMessage = `Current value (${kpi.currentValue}${kpi.unit}) is ${gapText} your target (${kpi.targetValue}${kpi.unit}). ${alertThreshold ? `Alert threshold: ${alertThreshold}${kpi.unit}` : ''}`;
+  const nextMessage = `Current value (${kpi.currentValue} ${kpi.unit}) is ${gapText} your target (${kpi.targetValue} ${kpi.unit})${alertThreshold ? `. Alert threshold: ${alertThreshold} ${kpi.unit}` : ''}`;
 
   // Check if there's already an active same-window alert for this KPI with the same current snapshot
   const hasRecentAlert = existingAlerts.some(n => {

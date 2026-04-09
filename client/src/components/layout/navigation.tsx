@@ -122,7 +122,7 @@ export default function Navigation() {
     if (notification.type !== "performance-alert") {
       return { lead: message, threshold: "" };
     }
-    const parts = message.split(" Alert threshold: ");
+    const parts = message.split(/\.?\s*Alert threshold:\s*/);
     return {
       lead: parts[0] || message,
       threshold: parts[1] ? `Alert threshold: ${parts[1]}` : "",

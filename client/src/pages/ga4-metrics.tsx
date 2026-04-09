@@ -3630,42 +3630,64 @@ export default function GA4Metrics() {
   const campaignBreakdownAgg = useMemo(() => {
     const rows = Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
     const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
-    let rawTotalSessions = 0, rawTotalConversions = 0, rawTotalRevenue = 0;
+    let rawTotalSessions = 0, rawTotalUsers = 0, rawTotalConversions = 0, rawTotalRevenue = 0;
     for (const r of rows) {
       const name = String((r as any)?.campaign || "(not set)").trim();
       const existing = byName.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
       const s = Number((r as any)?.sessions || 0);
+      const u = Number((r as any)?.users || 0);
       const c = Number((r as any)?.conversions || 0);
       const rev = Number((r as any)?.revenue || 0);
       existing.sessions += s;
-      existing.users += Number((r as any)?.users || 0);
+      existing.users += u;
       existing.conversions += c;
       existing.revenue += rev;
       rawTotalSessions += s;
+      rawTotalUsers += u;
       rawTotalConversions += c;
       rawTotalRevenue += rev;
       byName.set(name, existing);
     }
-    // Scale to match breakdownTotals (which includes Run Refresh data)
-    const sessScale = rawTotalSessions > 0 ? breakdownTotals.sessions / rawTotalSessions : 1;
-    const convScale = rawTotalConversions > 0 ? breakdownTotals.conversions / rawTotalConversions : 1;
+    const scaleIntsExactly = (items: Array<{ value: number }>, target: number) => {
+      const safeTarget = Math.max(0, Math.round(Number(target || 0)));
+      const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.value || 0)), 0);
+      if (total <= 0) return items.map(() => 0);
+      const raw = items.map((item) => (Math.max(0, Number(item.value || 0)) * safeTarget) / total);
+      const base = raw.map((value) => Math.floor(value));
+      let remainder = safeTarget - base.reduce((sum, value) => sum + value, 0);
+      const order = raw
+        .map((value, index) => ({ index, frac: value - base[index] }))
+        .sort((a, b) => b.frac - a.frac);
+      for (let i = 0; i < order.length && remainder > 0; i += 1, remainder -= 1) {
+        base[order[i].index] += 1;
+      }
+      return base;
+    };
+
+    const filteredRows = Array.from(byName.values())
+      .filter(c => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(c.name.trim().toLowerCase()));
+
+    const scaledSessions = scaleIntsExactly(filteredRows.map(c => ({ value: c.sessions })), breakdownTotals.sessions);
+    const scaledUsers = scaleIntsExactly(filteredRows.map(c => ({ value: c.users })), breakdownTotals.users);
+    const scaledConversions = scaleIntsExactly(filteredRows.map(c => ({ value: c.conversions })), breakdownTotals.conversions);
     const revScale = rawTotalRevenue > 0 ? breakdownTotals.revenue / rawTotalRevenue : 1;
-    return Array.from(byName.values())
-      .map(c => {
-        const scaledSessions = Math.round(c.sessions * sessScale);
-        const scaledConversions = Math.round(c.conversions * convScale);
+
+    return filteredRows
+      .map((c, index) => {
+        const nextSessions = scaledSessions[index] || 0;
+        const nextUsers = scaledUsers[index] || 0;
+        const nextConversions = scaledConversions[index] || 0;
         const scaledRevenue = Number((c.revenue * revScale).toFixed(2));
         return {
           ...c,
-          sessions: scaledSessions,
-          conversions: scaledConversions,
+          sessions: nextSessions,
+          conversions: nextConversions,
           revenue: scaledRevenue,
-          users: Math.round(c.users * sessScale), // approximate
-          conversionRate: scaledSessions > 0 ? (scaledConversions / scaledSessions) * 100 : 0,
-          revenuePerSession: scaledSessions > 0 ? scaledRevenue / scaledSessions : 0,
+          users: nextUsers,
+          conversionRate: nextSessions > 0 ? (nextConversions / nextSessions) * 100 : 0,
+          revenuePerSession: nextSessions > 0 ? scaledRevenue / nextSessions : 0,
         };
       })
-      .filter(c => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(c.name.trim().toLowerCase()))
       .sort((a, b) => b.sessions - a.sessions);
   }, [ga4Breakdown, importedGA4CampaignNames, breakdownTotals]);
 

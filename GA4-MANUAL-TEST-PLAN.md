@@ -246,7 +246,7 @@ Checkpoint after Journey 1:
   - **"Spend missing"** integrity insight should appear (revenue exists but no spend)
 
 ### Step 12: Verify Ad Comparison tab
-- [ ] Click the **Campaigns** tab (this is the current Ad Comparison view in the product)
+- [ ] Click the **Ad Comparison** tab
 - [ ] Campaign breakdown table visible with data from simulation
 
 ---
@@ -790,9 +790,13 @@ Checkpoint after Journey 8:
 - [ ] Tooltip: "Alert Threshold Breached" + Current + Threshold + condition
 - [ ] **Notifications bell**: badge count increased
 - [ ] **/notifications page**: new entry
+- [ ] Bell/page current value matches the live KPI card current value
+- [ ] If older duplicate KPI rows exist for the same GA4 campaign + metric, only the latest row is allowed to produce the active alert
+- [ ] Reopening the bell reflects the current server state (old resolved alerts do not linger from stale client cache)
 
 ### Step 2: Run Refresh → dedup
 - [ ] If still breached: NO duplicate notification (same calendar day)
+- [ ] If a fresher same-day alert supersedes an older one, the older notification is hidden from the active bell/feed
 
 ### Step 3: Non-breached alert
 - [ ] Create KPI with threshold well below current
@@ -803,7 +807,7 @@ Checkpoint after Journey 8:
 
 ## Journey 11: Ad Comparison
 
-- [ ] Open the current **Campaigns** tab (this is the current Ad Comparison surface)
+- [ ] Open the **Ad Comparison** tab
 - [ ] Switch metrics: Sessions, Conversions, Revenue, CR, Users
 - [ ] Ranking cards update per selected metric
 - [ ] Best Performing ≠ Needs Attention

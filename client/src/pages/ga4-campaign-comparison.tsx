@@ -112,6 +112,7 @@ export default function GA4CampaignComparison({
   }, [allocationSummary.matchedByRow, campaignBreakdownAgg, selectedMetric]);
 
   const revenueModeWithImportedSources = selectedMetric === "revenue" && (hasImportedRevenue || allocationSummary.matchedExternalRevenue > 0);
+  const tableRevenueSummaryVisible = hasImportedRevenue || allocationSummary.matchedExternalRevenue > 0 || allocationSummary.unallocatedExternalRevenue > 0;
 
   const sortedByMetric = useMemo(() => {
     return [...comparisonRows].sort((a, b) => {
@@ -378,7 +379,7 @@ export default function GA4CampaignComparison({
                   </tr>
                 </thead>
                 <tbody>
-                  {revenueModeWithImportedSources && allocationSummary.unallocatedExternalRevenue > 0 && (
+                  {tableRevenueSummaryVisible && allocationSummary.unallocatedExternalRevenue > 0 && (
                     <tr className="border-b bg-amber-50/60 dark:bg-amber-900/10">
                       <td className="px-2 py-2 text-muted-foreground tabular-nums"></td>
                       <td className="px-2 py-2 font-medium text-foreground">Unallocated External Revenue</td>
@@ -407,7 +408,7 @@ export default function GA4CampaignComparison({
                       </tr>
                     );
                   })}
-                  {revenueModeWithImportedSources && (
+                  {tableRevenueSummaryVisible && (
                     <tr className="bg-muted/30 font-bold">
                       <td className="px-2 py-2 text-muted-foreground tabular-nums"></td>
                       <td className="px-2 py-2 font-medium text-foreground">Total Revenue (All Sources)</td>

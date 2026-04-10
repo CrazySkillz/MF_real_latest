@@ -209,21 +209,11 @@ export default function GA4CampaignComparison({
   return (
     <TooltipProvider>
     <div className="space-y-6">
-      {/* Header with metric selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* Header */}
+      <div>
         <div>
           <h3 className="text-lg font-semibold text-foreground">Ad Comparison</h3>
           <p className="text-sm text-muted-foreground/70">Compare performance across your GA4 campaigns</p>
-        </div>
-        <div className="min-w-[220px]">
-          <Select value={selectedMetric} onValueChange={onMetricChange}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Sort by metric" /></SelectTrigger>
-            <SelectContent>
-              {METRIC_OPTIONS.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label} (High to Low)</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -241,7 +231,7 @@ export default function GA4CampaignComparison({
                   {bestPerforming.name}
                 </div>
                 <div className="text-sm text-muted-foreground/70 mt-1">
-                  {fmtMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric}{revenueModeWithImportedSources ? " (matched external included)" : ""} &middot; {formatPct(bestPerforming.conversionRate)} CR
+                  {fmtMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric} &middot; {formatPct(bestPerforming.conversionRate)} CR
                 </div>
               </CardContent>
             </Card>
@@ -280,6 +270,17 @@ export default function GA4CampaignComparison({
           )}
         </div>
       )}
+
+      <div className="min-w-[220px] sm:max-w-[280px]">
+        <Select value={selectedMetric} onValueChange={onMetricChange}>
+          <SelectTrigger className="h-9"><SelectValue placeholder="Sort by metric" /></SelectTrigger>
+          <SelectContent>
+            {METRIC_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label} (High to Low)</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* Bar chart */}
       <Card>

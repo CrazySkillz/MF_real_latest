@@ -118,13 +118,12 @@ export default function GA4CampaignComparison({
   }, [revenueDisplaySources]);
 
   const comparisonRows = useMemo(() => {
-    if (selectedMetric !== "revenue") return campaignBreakdownAgg;
     return campaignBreakdownAgg.map((row) => {
       const matchedExternal = allocationSummary.matchedByRow.get(row.name) || 0;
       const revenue = Number((row.revenue + matchedExternal).toFixed(2));
       return { ...row, revenue, revenuePerSession: row.sessions > 0 ? revenue / row.sessions : 0 };
     });
-  }, [allocationSummary.matchedByRow, campaignBreakdownAgg, selectedMetric]);
+  }, [allocationSummary.matchedByRow, campaignBreakdownAgg]);
 
   const revenueModeWithImportedSources = selectedMetric === "revenue" && (hasImportedRevenue || allocationSummary.matchedExternalRevenue > 0);
   const tableRevenueSummaryVisible = hasImportedRevenue || allocationSummary.matchedExternalRevenue > 0 || allocationSummary.unallocatedExternalRevenue > 0;

@@ -816,6 +816,12 @@ Checkpoint after Journey 8:
 - [ ] If imported revenue exists, Revenue mode surfaces **Total Revenue (All Sources)** explicitly
 - [ ] If a source has exact campaign-value matches to GA4 campaign rows, those matched external amounts are included in the relevant Revenue rows
 - [ ] If some external revenue does not match a GA4 campaign row exactly, it appears as **Unallocated External Revenue**
+- [ ] For each active external revenue source used on this campaign, verify its top-level source amount appears correctly in `Revenue Breakdown`
+- [ ] For each source with saved exact campaign-value matches, verify the indented per-campaign subsection values under that source match the saved source allocation totals
+- [ ] For each source with exact campaign-value matches, verify those same matched amounts propagate into the correct campaign rows in `All Campaigns`
+- [ ] For each source with unmatched revenue, verify that unmatched remainder does not get added to a campaign row and is preserved as `Unallocated External Revenue`
+- [ ] Verify the sum of all source rows in `Revenue Breakdown` still reconciles to `Total Revenue`
+- [ ] Verify the matched revenue shown in the `Revenue Breakdown` subsections is consistent with the campaign-row increases seen in `All Campaigns`
 - [ ] In `All Campaigns`, `Unallocated External Revenue` appears immediately above `Total Revenue (All Sources)` after the campaign rows
 - [ ] That `All Campaigns` summary block remains visible even when the selected metric is not `Revenue`
 - [ ] In `Revenue Breakdown`, each external source with saved `campaignValueRevenueTotals` shows an indented per-campaign subsection directly under the source row

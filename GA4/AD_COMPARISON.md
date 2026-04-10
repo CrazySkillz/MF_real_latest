@@ -52,6 +52,7 @@ Important meaning:
 - `Best Performing` changes when the selected metric changes
 - `Most Efficient` and `Needs Attention` are currently driven by conversion-rate logic, not by the selected dropdown metric
 - these cards summarize campaign rows, not true ad or creative entities
+- the `Best Performing` card should not add extra explanatory suffixes like `(matched external included)` in its label line
 
 ## Current Metrics
 
@@ -67,6 +68,7 @@ Important meaning:
 
 - the selected metric controls ranking, chart ordering, and the `Best Performing` card
 - it does not currently redefine the logic for `Most Efficient` or `Needs Attention`
+- when `Revenue` is selected, the chart may also include `Unallocated External Revenue` as a separate non-campaign bar when that remainder exists
 
 ## All Campaigns Section
 
@@ -85,6 +87,8 @@ Important meaning:
 - external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`
 - when present, `Unallocated External Revenue` should render in the summary block immediately above `Total Revenue (All Sources)`, after the ranked campaign rows
 - that summary block should remain visible in `All Campaigns` even when the selected metric is not `Revenue`
+- `Total Revenue (All Sources)` should remain the final summary row in the table
+- the summary rows should use clean blank cells in non-Revenue columns instead of placeholder dashes
 
 ## Revenue Breakdown Section
 
@@ -96,9 +100,11 @@ The `Revenue Breakdown` section shows:
 Important meaning:
 
 - this is total-source revenue provenance
+- source names should render in normal foreground text, not muted placeholder styling
 - source rows may include indented per-campaign subsections when the source has saved exact `campaignValueRevenueTotals`
 - those subsection rows must use only the stored exact source values; they must not invent or proportionally allocate revenue
 - the standalone `Unallocated External Revenue` row should not be duplicated here when that amount is already represented in the source subsection
+- `Total Revenue` should render as the last row in the table
 
 ## Revenue Metric Note
 

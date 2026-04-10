@@ -21,7 +21,8 @@ Important meaning:
 
 The current tab contains:
 
-- a top summary-card row under the metric dropdown
+- a top summary-card row
+- a metric dropdown directly below the summary cards
 - metric-based ranking
 - top-performer callout pattern
 - comparison chart
@@ -82,6 +83,8 @@ Important meaning:
 
 - `Revenue` here is GA4 revenue attributed to the GA4 campaign row plus any external revenue that can be matched safely by exact campaign-value match
 - external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`
+- when present, `Unallocated External Revenue` should render in the summary block immediately above `Total Revenue (All Sources)`, after the ranked campaign rows
+- that summary block should remain visible in `All Campaigns` even when the selected metric is not `Revenue`
 
 ## Revenue Breakdown Section
 
@@ -93,7 +96,9 @@ The `Revenue Breakdown` section shows:
 Important meaning:
 
 - this is total-source revenue provenance
-- it is not a per-campaign allocation table
+- source rows may include indented per-campaign subsections when the source has saved exact `campaignValueRevenueTotals`
+- those subsection rows must use only the stored exact source values; they must not invent or proportionally allocate revenue
+- the standalone `Unallocated External Revenue` row should not be duplicated here when that amount is already represented in the source subsection
 
 ## Revenue Metric Note
 

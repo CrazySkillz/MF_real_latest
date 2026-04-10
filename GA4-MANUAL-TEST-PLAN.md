@@ -810,11 +810,16 @@ Checkpoint after Journey 8:
 - [ ] Open the **Ad Comparison** tab
 - [ ] Switch metrics: Sessions, Conversions, Revenue, CR, Users
 - [ ] Ranking cards update per selected metric
+- [ ] Metric dropdown renders below the three summary cards
 - [ ] Best Performing ≠ Needs Attention
 - [ ] Users: tooltip warns "non-additive"
 - [ ] If imported revenue exists, Revenue mode surfaces **Total Revenue (All Sources)** explicitly
 - [ ] If a source has exact campaign-value matches to GA4 campaign rows, those matched external amounts are included in the relevant Revenue rows
 - [ ] If some external revenue does not match a GA4 campaign row exactly, it appears as **Unallocated External Revenue**
+- [ ] In `All Campaigns`, `Unallocated External Revenue` appears immediately above `Total Revenue (All Sources)` after the campaign rows
+- [ ] That `All Campaigns` summary block remains visible even when the selected metric is not `Revenue`
+- [ ] In `Revenue Breakdown`, each external source with saved `campaignValueRevenueTotals` shows an indented per-campaign subsection directly under the source row
+- [ ] `Revenue Breakdown` does not show a duplicate standalone `Unallocated External Revenue` row when that value is already represented in the source subsection
 - [ ] `Total Revenue (All Sources)` still matches Overview after matched and unallocated revenue are shown
 
 ---

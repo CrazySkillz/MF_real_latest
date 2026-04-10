@@ -43,6 +43,8 @@ Important clarification:
 - the `GA4 Revenue` source row under `Total Revenue` should show that full aggregated GA4 amount, not a partial or single-day figure
 - for GA4 `Ad Comparison`, external revenue may be added into campaign rows only when the source saves real campaign-identifying values that match GA4 campaign rows exactly
 - any external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`, not proportionally distributed
+- in the GA4 `Ad Comparison` Revenue Breakdown table, a source may show an indented per-campaign subsection from its saved exact `campaignValueRevenueTotals`
+- that subsection should use the stored source values directly and should not be duplicated by a separate standalone unallocated row when the same amount is already represented there
 
 ### Latest Day Revenue
 

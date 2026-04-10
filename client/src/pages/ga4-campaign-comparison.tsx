@@ -31,7 +31,7 @@ interface GA4CampaignComparisonProps {
   formatNumber: (n: number) => string;
   formatMoney: (n: number) => string;
   totalRevenue?: number;
-  revenueDisplaySources?: Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number | null }>;
+  revenueDisplaySources?: Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number | null; mappingConfig?: any }>;
 }
 
 const METRIC_OPTIONS = [
@@ -60,11 +60,55 @@ export default function GA4CampaignComparison({
   totalRevenue = 0,
   revenueDisplaySources = [],
 }: GA4CampaignComparisonProps) {
+  const normalizeCampaignKey = (value: string) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 
   const ga4Revenue = useMemo(() => campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0), [campaignBreakdownAgg]);
   const importedRevenue = totalRevenue - ga4Revenue;
   const hasImportedRevenue = importedRevenue > 0;
-  const revenueModeWithImportedSources = selectedMetric === "revenue" && hasImportedRevenue;
+  const allocationSummary = useMemo(() => {
+    const rowCounts = new Map<string, number>();
+    const rowNameByKey = new Map<string, string>();
+    for (const row of campaignBreakdownAgg) {
+      const key = normalizeCampaignKey(row.name);
+      if (!key) continue;
+      rowCounts.set(key, (rowCounts.get(key) || 0) + 1);
+      if (!rowNameByKey.has(key)) rowNameByKey.set(key, row.name);
+    }
+
+    const matchedByRow = new Map<string, number>();
+    let matchedExternalRevenue = 0;
+    for (const source of revenueDisplaySources) {
+      const cfg = (source as any)?.mappingConfig;
+      const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+      for (const item of totals) {
+        const campaignValue = String(item?.campaignValue || "").trim();
+        const revenue = Number(item?.revenue || 0);
+        const key = normalizeCampaignKey(campaignValue);
+        if (!key || !(revenue > 0) || rowCounts.get(key) !== 1) continue;
+        const rowName = rowNameByKey.get(key);
+        if (!rowName) continue;
+        matchedByRow.set(rowName, (matchedByRow.get(rowName) || 0) + revenue);
+        matchedExternalRevenue += revenue;
+      }
+    }
+
+    return {
+      matchedByRow,
+      matchedExternalRevenue: Number(matchedExternalRevenue.toFixed(2)),
+      unallocatedExternalRevenue: Math.max(0, Number((importedRevenue - matchedExternalRevenue).toFixed(2))),
+    };
+  }, [campaignBreakdownAgg, importedRevenue, revenueDisplaySources]);
+
+  const comparisonRows = useMemo(() => {
+    if (selectedMetric !== "revenue") return campaignBreakdownAgg;
+    return campaignBreakdownAgg.map((row) => {
+      const matchedExternal = allocationSummary.matchedByRow.get(row.name) || 0;
+      const revenue = Number((row.revenue + matchedExternal).toFixed(2));
+      return { ...row, revenue, revenuePerSession: row.sessions > 0 ? revenue / row.sessions : 0 };
+    });
+  }, [allocationSummary.matchedByRow, campaignBreakdownAgg, selectedMetric]);
+
+  const revenueModeWithImportedSources = selectedMetric === "revenue" && (hasImportedRevenue || allocationSummary.matchedExternalRevenue > 0);
 
   const RevenueBanner = () => hasImportedRevenue ? (
     <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-900 dark:text-amber-100 flex items-start gap-2">
@@ -72,18 +116,18 @@ export default function GA4CampaignComparison({
       <div>
         <span className="font-medium">Total Revenue: {formatMoney(totalRevenue)}</span>
         <span className="text-xs ml-1">(GA4: {formatMoney(ga4Revenue)} + other sources: {formatMoney(importedRevenue)})</span>
-        <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-300">Per-campaign breakdown shows GA4-attributed revenue only. Imported revenue cannot be split by campaign.</p>
+        <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-300">Exact external revenue matches are added into campaign rows when source campaign values match GA4 campaign rows. Remaining external revenue stays unallocated.</p>
       </div>
     </div>
   ) : null;
 
   const sortedByMetric = useMemo(() => {
-    return [...campaignBreakdownAgg].sort((a, b) => {
+    return [...comparisonRows].sort((a, b) => {
       const av = Number((a as any)[selectedMetric] || 0);
       const bv = Number((b as any)[selectedMetric] || 0);
       return bv - av;
     });
-  }, [campaignBreakdownAgg, selectedMetric]);
+  }, [comparisonRows, selectedMetric]);
 
   const chartData = useMemo(() => {
     return sortedByMetric.slice(0, 10).map(c => ({
@@ -94,12 +138,12 @@ export default function GA4CampaignComparison({
   }, [sortedByMetric, selectedMetric]);
 
   const bestPerforming = useMemo(() => {
-    return [...campaignBreakdownAgg].sort((a, b) => {
+    return [...comparisonRows].sort((a, b) => {
       const av = Number((a as any)[selectedMetric] || 0);
       const bv = Number((b as any)[selectedMetric] || 0);
       return bv - av;
     })[0];
-  }, [campaignBreakdownAgg, selectedMetric]);
+  }, [comparisonRows, selectedMetric]);
 
   const mostEfficient = useMemo(() => {
     return [...campaignBreakdownAgg].filter(c => c.sessions > 0).sort((a, b) => b.conversionRate - a.conversionRate)[0];
@@ -190,7 +234,7 @@ export default function GA4CampaignComparison({
                   {bestPerforming.name}
                 </div>
                 <div className="text-sm text-muted-foreground/70 mt-1">
-                  {fmtMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric}{revenueModeWithImportedSources ? " (GA4-attributed)" : ""} &middot; {formatPct(bestPerforming.conversionRate)} CR
+                  {fmtMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric}{revenueModeWithImportedSources ? " (matched external included)" : ""} &middot; {formatPct(bestPerforming.conversionRate)} CR
                 </div>
               </CardContent>
             </Card>
@@ -239,7 +283,7 @@ export default function GA4CampaignComparison({
           <CardTitle>Top Campaigns by {METRIC_LABELS[selectedMetric] || selectedMetric}</CardTitle>
           <CardDescription>
             Up to 10 campaigns sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}
-            {revenueModeWithImportedSources ? " (campaign rows remain GA4-attributed; total all-source revenue is shown separately)." : ""}
+            {revenueModeWithImportedSources ? " (exact matched external revenue is included in rows; unmatched external revenue stays separate)." : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -298,7 +342,7 @@ export default function GA4CampaignComparison({
           <CardTitle>All Campaigns</CardTitle>
           <CardDescription>
             Full comparison sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}
-            {revenueModeWithImportedSources ? " • first row shows all-source total; campaign rows remain GA4-attributed revenue only" : ""}
+            {revenueModeWithImportedSources ? " • first row shows all-source total; only exact matched external revenue is added to campaign rows" : ""}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
@@ -338,6 +382,17 @@ export default function GA4CampaignComparison({
                       <td className="px-2 py-2 text-right tabular-nums">—</td>
                       <td className="px-2 py-2 text-right tabular-nums">—</td>
                       <td className="px-2 py-2 text-right tabular-nums">{formatMoney(totalRevenue)}</td>
+                    </tr>
+                  )}
+                  {revenueModeWithImportedSources && allocationSummary.unallocatedExternalRevenue > 0 && (
+                    <tr className="border-b bg-amber-50/60 dark:bg-amber-900/10">
+                      <td className="px-2 py-2 text-muted-foreground tabular-nums">—</td>
+                      <td className="px-2 py-2 font-medium text-foreground">Unallocated External Revenue</td>
+                      <td className="px-2 py-2 text-right tabular-nums">—</td>
+                      <td className="px-2 py-2 text-right tabular-nums">—</td>
+                      <td className="px-2 py-2 text-right tabular-nums">—</td>
+                      <td className="px-2 py-2 text-right tabular-nums">—</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{formatMoney(allocationSummary.unallocatedExternalRevenue)}</td>
                     </tr>
                   )}
                   {sortedByMetric.map((c, idx) => {
@@ -395,6 +450,12 @@ export default function GA4CampaignComparison({
                     <td className="px-3 py-2 text-right tabular-nums">{formatMoney(Number(s.revenue))}</td>
                   </tr>
                 ))}
+                {allocationSummary.unallocatedExternalRevenue > 0 && (
+                  <tr className="border-b last:border-b-0 bg-amber-50/60 dark:bg-amber-900/10">
+                    <td className="px-3 py-2 text-foreground">Unallocated External Revenue (included above)</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(allocationSummary.unallocatedExternalRevenue)}</td>
+                  </tr>
+                )}
                 {revenueDisplaySources.filter(s => s.revenue != null && Number(s.revenue) > 0).length === 0 && !hasImportedRevenue && (
                   <tr>
                     <td colSpan={2} className="px-3 py-2 text-center text-muted-foreground text-xs italic">No additional revenue sources</td>

@@ -813,7 +813,9 @@ Checkpoint after Journey 8:
 - [ ] Best Performing ≠ Needs Attention
 - [ ] Users: tooltip warns "non-additive"
 - [ ] If imported revenue exists, Revenue mode surfaces **Total Revenue (All Sources)** explicitly
-- [ ] If imported revenue exists, campaign rows in Revenue mode remain clearly described as GA4-attributed revenue only
+- [ ] If a source has exact campaign-value matches to GA4 campaign rows, those matched external amounts are included in the relevant Revenue rows
+- [ ] If some external revenue does not match a GA4 campaign row exactly, it appears as **Unallocated External Revenue**
+- [ ] `Total Revenue (All Sources)` still matches Overview after matched and unallocated revenue are shown
 
 ---
 

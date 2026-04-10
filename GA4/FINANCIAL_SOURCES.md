@@ -41,6 +41,8 @@ Important clarification:
 - the GA4 revenue metric is optional to the overall campaign revenue model; external revenue import is a valid primary path
 - when GA4 native revenue exists, refresh should update the GA4-native aggregated revenue amount for the campaign's selected GA4 scope
 - the `GA4 Revenue` source row under `Total Revenue` should show that full aggregated GA4 amount, not a partial or single-day figure
+- for GA4 `Ad Comparison`, external revenue may be added into campaign rows only when the source saves real campaign-identifying values that match GA4 campaign rows exactly
+- any external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`, not proportionally distributed
 
 ### Latest Day Revenue
 

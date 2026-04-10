@@ -80,8 +80,8 @@ The `All Campaigns` table includes:
 
 Important meaning:
 
-- `Revenue` here is GA4 revenue attributed to the GA4 campaign row
-- imported revenue is not allocated per campaign in this table
+- `Revenue` here is GA4 revenue attributed to the GA4 campaign row plus any external revenue that can be matched safely by exact campaign-value match
+- external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`
 
 ## Revenue Breakdown Section
 
@@ -103,9 +103,9 @@ Intended UX expectation:
 
 Current limitation:
 
-- the comparison rows currently only contain GA4-attributed revenue at the row level
-- imported external revenue exists at the total/source-breakdown level, not as row-level campaign allocations
-- when `Revenue` is selected, the tab should surface the authoritative total all-source revenue explicitly, while keeping campaign rows labeled as GA4-attributed revenue only
+- only sources with real campaign-identifying mappings can contribute external revenue into campaign rows
+- matching is exact normalized campaign-value matching only; no proportional or inferred attribution is allowed
+- imported external revenue that does not match a GA4 campaign row exactly, or matches ambiguously, must remain visible as `Unallocated External Revenue`
 
 Future implementation note:
 
@@ -137,6 +137,7 @@ Important meaning:
 
 - this tab does not currently have a separate ad-performance storage model
 - it depends on GA4 campaign-breakdown data and revenue-source inputs
+- external row allocation is derived from saved source mapping metadata, not from a separate attribution model
 
 ## Current-State Note
 

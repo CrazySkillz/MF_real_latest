@@ -2066,6 +2066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const conversionValues: number[] = [];
         const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
         const dailyRevenueMap = new Map<string, number>(); // date -> revenue
+        const campaignValueRevenueTotals = new Map<string, number>();
 
         for (const row of parsedRows) {
           if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -2086,6 +2087,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!(revenue > 0)) continue;
             kept++;
             totalRevenueToDate += revenue;
+            if (campaignCol) {
+              const key = String((row as any)[campaignCol] ?? "").trim();
+              if (key) campaignValueRevenueTotals.set(key, (campaignValueRevenueTotals.get(key) || 0) + revenue);
+            }
 
             // Track daily revenue if date column provided
             if (dateCol) {
@@ -2126,6 +2131,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           csvHeaders: parsedHeaders,
           csvSampleRows: parsedRows.slice(0, 25),
           csvRowCount: rowCountForResponse,
+          campaignValueRevenueTotals: campaignCol
+            ? Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+                campaignValue,
+                revenue: Number(revenue.toFixed(2)),
+              }))
+            : null,
+          allocationMethod: campaignCol ? "ga4_campaign_exact_match_v1" : null,
         };
         delete (normalizedMapping as any).sourceId; // don't persist sourceId in mappingConfig
 
@@ -2461,6 +2473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalRevenueToDate = 0;
       const conversionValues: number[] = [];
       const dailyRevenueMap = new Map<string, number>(); // date -> revenue
+      const campaignValueRevenueTotals = new Map<string, number>();
 
       for (const row of rows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -2477,6 +2490,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (revenue > 0) {
             totalRevenueToDate += revenue;
             rowKept = true;
+            if (campaignCol) {
+              const key = String((row as any)[campaignCol] ?? "").trim();
+              if (key) campaignValueRevenueTotals.set(key, (campaignValueRevenueTotals.get(key) || 0) + revenue);
+            }
 
             // Track daily revenue if date column provided
             if (dateCol) {
@@ -2512,6 +2529,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connectionId,
         spreadsheetId: conn.spreadsheetId,
         sheetName: conn.sheetName,
+        campaignValueRevenueTotals: campaignCol
+          ? Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+              campaignValue,
+              revenue: Number(revenue.toFixed(2)),
+            }))
+          : null,
+        allocationMethod: campaignCol ? "ga4_campaign_exact_match_v1" : null,
         lastSyncedAt: new Date().toISOString(),
       });
 
@@ -12392,6 +12416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversionValues: number[] = [];
       // Per-LinkedIn-campaign revenue tracking: key is "date:urn"
       const revenueByDateAndCampaign = new Map<string, number>();
+      const campaignValueRevenueTotals = new Map<string, number>();
 
       // Best-effort: if the org doesn't expose CurrencyIsoCode (no multi-currency), attempt to read org default currency.
       const fetchOrgDefaultCurrency = async (): Promise<string | null> => {
@@ -12471,14 +12496,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const rRaw = readField(rec, revenue);
         const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
         if (Number.isFinite(r)) totalRevenue += r;
+        const campaignValue = String(readField(rec, attribField) || "").trim();
+        if (Number.isFinite(r) && campaignValue) {
+          campaignValueRevenueTotals.set(campaignValue, (campaignValueRevenueTotals.get(campaignValue) || 0) + r);
+        }
         const closeDate = rec?.[dateFieldChoice] ? String(rec[dateFieldChoice]).slice(0, 10) : '';
         if (closeDate && Number.isFinite(r)) {
           revenueByDate.set(closeDate, (revenueByDate.get(closeDate) || 0) + r);
 
           // Track per-LinkedIn-campaign revenue when campaignMappings exist
           if (campaignMappings.length > 0) {
-            const recCrmValue = String(readField(rec, attribField) || "").trim();
-            const mapping = campaignMappings.find(m => m.crmValue === recCrmValue);
+            const mapping = campaignMappings.find(m => m.crmValue === campaignValue);
             if (mapping) {
               const key = `${closeDate}:${mapping.linkedinCampaignUrn}`;
               revenueByDateAndCampaign.set(key, (revenueByDateAndCampaign.get(key) || 0) + r);
@@ -12777,6 +12805,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineEnabled: !!pipelineEnabled,
           pipelineStageName: pipelineEnabled && pipelineStageName ? pipelineStageName : null,
           pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
+          campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+            campaignValue,
+            revenue: Number(revenue.toFixed(2)),
+          })),
+          allocationMethod: "ga4_campaign_exact_match_v1",
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         };
 
@@ -13458,6 +13491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversionValues: number[] = [];
       // Per-LinkedIn-campaign revenue tracking when campaignMappings are provided
       const revenueByLinkedinCampaign = new Map<string, number>();
+      const campaignValueRevenueTotals = new Map<string, number>();
 
       let after: string | undefined;
       let pages = 0;
@@ -13504,11 +13538,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
           if (!Number.isFinite(r)) continue;
           totalRevenue += r;
+          const campaignValue = String(props[campaignProp] || "").trim();
+          if (campaignValue) campaignValueRevenueTotals.set(campaignValue, (campaignValueRevenueTotals.get(campaignValue) || 0) + r);
 
           // Track per-LinkedIn-campaign revenue when campaignMappings exist
           if (campaignMappings.length > 0) {
-            const dealCrmValue = String(props[campaignProp] || "").trim();
-            const mapping = campaignMappings.find(m => m.crmValue === dealCrmValue);
+            const mapping = campaignMappings.find(m => m.crmValue === campaignValue);
             if (mapping) {
               const urn = mapping.linkedinCampaignUrn;
               revenueByLinkedinCampaign.set(urn, (revenueByLinkedinCampaign.get(urn) || 0) + r);
@@ -13677,6 +13712,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenueClassification,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastSyncedAt: new Date().toISOString(),
+          campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+            campaignValue,
+            revenue: Number(revenue.toFixed(2)),
+          })),
+          allocationMethod: "ga4_campaign_exact_match_v1",
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         });
 
@@ -26411,6 +26451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let presentmentTotal = 0;
       const presentmentCurrencies = new Set<string>();
       const selectedSet = new Set(selected);
+      const campaignValueRevenueTotals = new Map<string, number>();
       for (const o of orders) {
         const v = getFieldValue(o).trim();
         if (!v || !selectedSet.has(v)) continue;
@@ -26418,6 +26459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const amt = getOrderAmounts(o);
         if (amt.shopCurrency) matchedCurrencies.add(amt.shopCurrency);
         totalRevenue += amt.shopAmount;
+        campaignValueRevenueTotals.set(v, (campaignValueRevenueTotals.get(v) || 0) + amt.shopAmount);
         if (amt.presentmentAmount !== null) {
           presentmentTotal += amt.presentmentAmount;
           if (amt.presentmentCurrency) presentmentCurrencies.add(amt.presentmentCurrency);
@@ -26529,6 +26571,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastMatchedOrderCount: matchedOrders.length,
           lastSyncedAt: new Date().toISOString(),
           currency: matchedCurrency,
+          campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+            campaignValue,
+            revenue: Number(revenue.toFixed(2)),
+          })),
+          allocationMethod: "ga4_campaign_exact_match_v1",
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         });
 

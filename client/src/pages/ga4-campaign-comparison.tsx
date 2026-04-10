@@ -475,12 +475,6 @@ export default function GA4CampaignComparison({
                     ))}
                   </Fragment>
                 ))}
-                {allocationSummary.unallocatedExternalRevenue > 0 && (
-                  <tr className="border-b last:border-b-0 bg-amber-50/60 dark:bg-amber-900/10">
-                    <td className="px-3 py-2 text-foreground">Unallocated External Revenue</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(allocationSummary.unallocatedExternalRevenue)}</td>
-                  </tr>
-                )}
                 {revenueDisplaySources.filter(s => s.revenue != null && Number(s.revenue) > 0).length === 0 && !hasImportedRevenue && (
                   <tr>
                     <td colSpan={2} className="px-3 py-2 text-center text-muted-foreground text-xs italic">No additional revenue sources</td>

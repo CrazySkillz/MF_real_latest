@@ -78,7 +78,10 @@ export default function GA4CampaignComparison({
     const matchedByRow = new Map<string, number>();
     let matchedExternalRevenue = 0;
     for (const source of revenueDisplaySources) {
-      const cfg = (source as any)?.mappingConfig;
+      const rawCfg = (source as any)?.mappingConfig;
+      const cfg = typeof rawCfg === "string"
+        ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })()
+        : rawCfg;
       const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
       for (const item of totals) {
         const campaignValue = String(item?.campaignValue || "").trim();

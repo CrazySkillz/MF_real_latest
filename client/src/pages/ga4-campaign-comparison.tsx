@@ -121,13 +121,28 @@ export default function GA4CampaignComparison({
     });
   }, [comparisonRows, selectedMetric]);
 
+  const chartRows = useMemo(() => {
+    if (selectedMetric !== "revenue" || allocationSummary.unallocatedExternalRevenue <= 0) return sortedByMetric;
+    return [
+      ...sortedByMetric,
+      {
+        name: "Unallocated External Revenue",
+        sessions: 0,
+        users: 0,
+        conversions: 0,
+        conversionRate: 0,
+        revenue: allocationSummary.unallocatedExternalRevenue,
+      },
+    ].sort((a, b) => b.revenue - a.revenue);
+  }, [allocationSummary.unallocatedExternalRevenue, selectedMetric, sortedByMetric]);
+
   const chartData = useMemo(() => {
-    return sortedByMetric.slice(0, 10).map(c => ({
+    return chartRows.slice(0, 10).map(c => ({
       name: c.name.length > 30 ? c.name.slice(0, 28) + "..." : c.name,
       fullName: c.name,
       value: Number((c as any)[selectedMetric] || 0),
     }));
-  }, [sortedByMetric, selectedMetric]);
+  }, [chartRows, selectedMetric]);
 
   const bestPerforming = useMemo(() => {
     return [...comparisonRows].sort((a, b) => {
@@ -364,12 +379,12 @@ export default function GA4CampaignComparison({
                 <tbody>
                   {revenueModeWithImportedSources && allocationSummary.unallocatedExternalRevenue > 0 && (
                     <tr className="border-b bg-amber-50/60 dark:bg-amber-900/10">
-                      <td className="px-2 py-2 text-muted-foreground tabular-nums">—</td>
+                      <td className="px-2 py-2 text-muted-foreground tabular-nums"></td>
                       <td className="px-2 py-2 font-medium text-foreground">Unallocated External Revenue</td>
-                      <td className="px-2 py-2 text-right tabular-nums">—</td>
-                      <td className="px-2 py-2 text-right tabular-nums">—</td>
-                      <td className="px-2 py-2 text-right tabular-nums">—</td>
-                      <td className="px-2 py-2 text-right tabular-nums">—</td>
+                      <td className="px-2 py-2 text-right tabular-nums"></td>
+                      <td className="px-2 py-2 text-right tabular-nums"></td>
+                      <td className="px-2 py-2 text-right tabular-nums"></td>
+                      <td className="px-2 py-2 text-right tabular-nums"></td>
                       <td className="px-2 py-2 text-right tabular-nums">{formatMoney(allocationSummary.unallocatedExternalRevenue)}</td>
                     </tr>
                   )}
@@ -425,23 +440,19 @@ export default function GA4CampaignComparison({
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b font-bold bg-muted/30">
-                  <td className="px-3 py-2.5 text-foreground">Total Revenue</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{formatMoney(totalRevenue > 0 ? totalRevenue : ga4Revenue)}</td>
-                </tr>
                 <tr className="border-b">
                   <td className="px-3 py-2 text-foreground">GA4 Revenue</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4Revenue)}</td>
                 </tr>
                 {revenueDisplaySources.filter(s => s.revenue != null && Number(s.revenue) > 0).map((s) => (
                   <tr key={s.sourceId} className="border-b last:border-b-0">
-                    <td className="px-3 py-2 text-muted-foreground">{s.displayName || s.sourceType}</td>
+                    <td className="px-3 py-2 text-foreground">{s.displayName || s.sourceType}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{formatMoney(Number(s.revenue))}</td>
                   </tr>
                 ))}
                 {allocationSummary.unallocatedExternalRevenue > 0 && (
                   <tr className="border-b last:border-b-0 bg-amber-50/60 dark:bg-amber-900/10">
-                    <td className="px-3 py-2 text-foreground">Unallocated External Revenue (included above)</td>
+                    <td className="px-3 py-2 text-foreground">Unallocated External Revenue</td>
                     <td className="px-3 py-2 text-right tabular-nums">{formatMoney(allocationSummary.unallocatedExternalRevenue)}</td>
                   </tr>
                 )}
@@ -450,6 +461,10 @@ export default function GA4CampaignComparison({
                     <td colSpan={2} className="px-3 py-2 text-center text-muted-foreground text-xs italic">No additional revenue sources</td>
                   </tr>
                 )}
+                <tr className="border-b font-bold bg-muted/30 last:border-b-0">
+                  <td className="px-3 py-2.5 text-foreground">Total Revenue</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{formatMoney(totalRevenue > 0 ? totalRevenue : ga4Revenue)}</td>
+                </tr>
               </tbody>
             </table>
           </div>

@@ -3,7 +3,7 @@
  * Extracted component for comparing campaign performance metrics.
  * Follows the same pattern as Google Ads Campaign Comparison and LinkedIn Ad Comparison.
  */
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
@@ -101,6 +101,21 @@ export default function GA4CampaignComparison({
       unallocatedExternalRevenue: Math.max(0, Number((importedRevenue - matchedExternalRevenue).toFixed(2))),
     };
   }, [campaignBreakdownAgg, importedRevenue, revenueDisplaySources]);
+
+  const sourceRevenueBreakdowns = useMemo(() => {
+    return new Map(
+      revenueDisplaySources.map((source) => {
+        const rawCfg = (source as any)?.mappingConfig;
+        const cfg = typeof rawCfg === "string"
+          ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })()
+          : rawCfg;
+        const totals = Array.isArray(cfg?.campaignValueRevenueTotals)
+          ? cfg.campaignValueRevenueTotals.filter((item: any) => Number(item?.revenue || 0) > 0)
+          : [];
+        return [source.sourceId, totals] as const;
+      }),
+    );
+  }, [revenueDisplaySources]);
 
   const comparisonRows = useMemo(() => {
     if (selectedMetric !== "revenue") return campaignBreakdownAgg;
@@ -447,10 +462,18 @@ export default function GA4CampaignComparison({
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4Revenue)}</td>
                 </tr>
                 {revenueDisplaySources.filter(s => s.revenue != null && Number(s.revenue) > 0).map((s) => (
-                  <tr key={s.sourceId} className="border-b last:border-b-0">
-                    <td className="px-3 py-2 text-foreground">{s.displayName || s.sourceType}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(Number(s.revenue))}</td>
-                  </tr>
+                  <Fragment key={s.sourceId}>
+                    <tr key={s.sourceId} className="border-b">
+                      <td className="px-3 py-2 text-foreground">{s.displayName || s.sourceType}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatMoney(Number(s.revenue))}</td>
+                    </tr>
+                    {(sourceRevenueBreakdowns.get(s.sourceId) || []).map((item: any) => (
+                      <tr key={`${s.sourceId}-${String(item?.campaignValue || "")}`} className="border-b bg-muted/20">
+                        <td className="px-3 py-2 pl-8 text-muted-foreground">{String(item?.campaignValue || "")}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatMoney(Number(item?.revenue || 0))}</td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
                 {allocationSummary.unallocatedExternalRevenue > 0 && (
                   <tr className="border-b last:border-b-0 bg-amber-50/60 dark:bg-amber-900/10">

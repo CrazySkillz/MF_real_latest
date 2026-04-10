@@ -113,17 +113,6 @@ export default function GA4CampaignComparison({
 
   const revenueModeWithImportedSources = selectedMetric === "revenue" && (hasImportedRevenue || allocationSummary.matchedExternalRevenue > 0);
 
-  const RevenueBanner = () => hasImportedRevenue ? (
-    <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-900 dark:text-amber-100 flex items-start gap-2">
-      <Info className="w-4 h-4 shrink-0 mt-0.5" />
-      <div>
-        <span className="font-medium">Total Revenue: {formatMoney(totalRevenue)}</span>
-        <span className="text-xs ml-1">(GA4: {formatMoney(ga4Revenue)} + other sources: {formatMoney(importedRevenue)})</span>
-        <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-300">Exact external revenue matches are added into campaign rows when source campaign values match GA4 campaign rows. Remaining external revenue stays unallocated.</p>
-      </div>
-    </div>
-  ) : null;
-
   const sortedByMetric = useMemo(() => {
     return [...comparisonRows].sort((a, b) => {
       const av = Number((a as any)[selectedMetric] || 0);
@@ -277,9 +266,6 @@ export default function GA4CampaignComparison({
         </div>
       )}
 
-      {/* Revenue banner — shown prominently when imported revenue exists */}
-      {selectedMetric === "revenue" && <RevenueBanner />}
-
       {/* Bar chart */}
       <Card>
         <CardHeader>
@@ -345,7 +331,7 @@ export default function GA4CampaignComparison({
           <CardTitle>All Campaigns</CardTitle>
           <CardDescription>
             Full comparison sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}
-            {revenueModeWithImportedSources ? " • first row shows all-source total; only exact matched external revenue is added to campaign rows" : ""}
+            {revenueModeWithImportedSources ? " • exact matched external revenue is added to campaign rows; unmatched external revenue stays separate" : ""}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
@@ -376,17 +362,6 @@ export default function GA4CampaignComparison({
                   </tr>
                 </thead>
                 <tbody>
-                  {revenueModeWithImportedSources && (
-                    <tr className="border-b bg-muted/30 font-bold">
-                      <td className="px-2 py-2 text-muted-foreground tabular-nums">—</td>
-                      <td className="px-2 py-2 font-medium text-foreground">Total Revenue (All Sources)</td>
-                      <td className="px-2 py-2 text-right tabular-nums">—</td>
-                      <td className="px-2 py-2 text-right tabular-nums">—</td>
-                      <td className="px-2 py-2 text-right tabular-nums">—</td>
-                      <td className="px-2 py-2 text-right tabular-nums">—</td>
-                      <td className="px-2 py-2 text-right tabular-nums">{formatMoney(totalRevenue)}</td>
-                    </tr>
-                  )}
                   {revenueModeWithImportedSources && allocationSummary.unallocatedExternalRevenue > 0 && (
                     <tr className="border-b bg-amber-50/60 dark:bg-amber-900/10">
                       <td className="px-2 py-2 text-muted-foreground tabular-nums">—</td>
@@ -416,6 +391,17 @@ export default function GA4CampaignComparison({
                       </tr>
                     );
                   })}
+                  {revenueModeWithImportedSources && (
+                    <tr className="bg-muted/30 font-bold">
+                      <td className="px-2 py-2 text-muted-foreground tabular-nums"></td>
+                      <td className="px-2 py-2 font-medium text-foreground">Total Revenue (All Sources)</td>
+                      <td className="px-2 py-2 text-right tabular-nums"></td>
+                      <td className="px-2 py-2 text-right tabular-nums"></td>
+                      <td className="px-2 py-2 text-right tabular-nums"></td>
+                      <td className="px-2 py-2 text-right tabular-nums"></td>
+                      <td className="px-2 py-2 text-right tabular-nums">{formatMoney(totalRevenue)}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -3691,6 +3691,27 @@ export default function GA4Metrics() {
       .sort((a, b) => b.sessions - a.sessions);
   }, [ga4Breakdown, importedGA4CampaignNames, breakdownTotals]);
 
+  const campaignBreakdownMatchedExternalRevenue = useMemo(() => {
+    const rowNameByKey = new Map<string, string>();
+    for (const row of campaignBreakdownAgg) {
+      const key = String(row.name || "").trim().toLowerCase().replace(/\s+/g, " ");
+      if (key) rowNameByKey.set(key, row.name);
+    }
+    const matched = new Map<string, number>();
+    for (const source of revenueDisplaySources) {
+      const rawCfg = (source as any)?.mappingConfig;
+      const cfg = typeof rawCfg === "string" ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })() : rawCfg;
+      const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+      for (const item of totals) {
+        const key = String(item?.campaignValue || "").trim().toLowerCase().replace(/\s+/g, " ");
+        const revenue = Number(item?.revenue || 0);
+        const rowName = rowNameByKey.get(key);
+        if (rowName && revenue > 0) matched.set(rowName, (matched.get(rowName) || 0) + revenue);
+      }
+    }
+    return matched;
+  }, [campaignBreakdownAgg, revenueDisplaySources]);
+
   const selectedPeriodLabel = ga4ReportDate ? `Daily (UTC: ${ga4ReportDate})` : "Daily";
 
   const provenanceLastUpdated =
@@ -4413,16 +4434,19 @@ export default function GA4Metrics() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {campaignBreakdownAgg.map((c, idx) => (
-                                      <tr key={c.name || idx} className="border-b last:border-b-0">
-                                        <td className="px-2 py-2 truncate" title={c.name}>{c.name}</td>
-                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.sessions)}</td>
-                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.users)}</td>
-                                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.conversions)}</td>
-                                        <td className="px-2 py-2 text-right tabular-nums">{formatPct(c.conversionRate)}</td>
-                                        <td className="px-2 py-2 text-right tabular-nums">{formatMoney(c.revenue)}</td>
-                                      </tr>
-                                    ))}
+                                    {campaignBreakdownAgg.map((c, idx) => {
+                                      const revenue = Number((c.revenue + (campaignBreakdownMatchedExternalRevenue.get(c.name) || 0)).toFixed(2));
+                                      return (
+                                        <tr key={c.name || idx} className="border-b last:border-b-0">
+                                          <td className="px-2 py-2 truncate" title={c.name}>{c.name}</td>
+                                          <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.sessions)}</td>
+                                          <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.users)}</td>
+                                          <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.conversions)}</td>
+                                          <td className="px-2 py-2 text-right tabular-nums">{formatPct(c.conversionRate)}</td>
+                                          <td className="px-2 py-2 text-right tabular-nums">{formatMoney(revenue)}</td>
+                                        </tr>
+                                      );
+                                    })}
                                   </tbody>
                                 </table>
                               </div>

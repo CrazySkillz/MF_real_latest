@@ -816,10 +816,13 @@ Checkpoint after Journey 8:
 - [ ] If imported revenue exists, Revenue mode surfaces **Total Revenue (All Sources)** explicitly
 - [ ] If a source has exact campaign-value matches to GA4 campaign rows, those matched external amounts are included in the relevant Revenue rows
 - [ ] If some external revenue does not match a GA4 campaign row exactly, it appears as **Unallocated External Revenue**
-- [ ] For each active external revenue source used on this campaign, verify its top-level source amount appears correctly in `Revenue Breakdown`
-- [ ] For each source with saved exact campaign-value matches, verify the indented per-campaign subsection values under that source match the saved source allocation totals
-- [ ] For each source with exact campaign-value matches, verify those same matched amounts propagate into the correct campaign rows in `All Campaigns`
-- [ ] For each source with unmatched revenue, verify that unmatched remainder does not get added to a campaign row and is preserved as `Unallocated External Revenue`
+- [ ] If **CSV revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
+- [ ] If **Google Sheets revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
+- [ ] If **HubSpot revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
+- [ ] If **Salesforce revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
+- [ ] If **Shopify revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
+- [ ] If **Manual revenue** is active, verify it contributes to `Total Revenue (All Sources)` but does not invent campaign-row allocations; if shown in Ad Comparison it should remain effectively unallocated
+- [ ] For any active source with unmatched revenue, verify that unmatched remainder does not get added to a campaign row and is preserved as `Unallocated External Revenue`
 - [ ] Verify the sum of all source rows in `Revenue Breakdown` still reconciles to `Total Revenue`
 - [ ] Verify the matched revenue shown in the `Revenue Breakdown` subsections is consistent with the campaign-row increases seen in `All Campaigns`
 - [ ] In `All Campaigns`, `Unallocated External Revenue` appears immediately above `Total Revenue (All Sources)` after the campaign rows
@@ -827,6 +830,52 @@ Checkpoint after Journey 8:
 - [ ] In `Revenue Breakdown`, each external source with saved `campaignValueRevenueTotals` shows an indented per-campaign subsection directly under the source row
 - [ ] `Revenue Breakdown` does not show a duplicate standalone `Unallocated External Revenue` row when that value is already represented in the source subsection
 - [ ] `Total Revenue (All Sources)` still matches Overview after matched and unallocated revenue are shown
+
+### Journey 11 Revenue Propagation Standard
+
+Use this standard whenever an external revenue source is added, edited, or deleted. Do not treat Ad Comparison as the only validation surface.
+
+For each active revenue source type, validate the source independently:
+
+- [ ] CSV revenue: add/edit/delete the source and verify every related revenue surface updates from the CSV source amount and saved campaign-value mappings
+- [ ] Google Sheets revenue: add/edit/delete the source and verify every related revenue surface updates from the sheet source amount and saved campaign-value mappings
+- [ ] HubSpot revenue: add/edit/delete the source and verify every related revenue surface updates from the HubSpot deal amount and saved campaign-value mappings
+- [ ] Salesforce revenue: add/edit/delete the source and verify every related revenue surface updates from the Salesforce opportunity amount and saved campaign-value mappings
+- [ ] Shopify revenue: add/edit/delete the source and verify every related revenue surface updates from the Shopify order amount and saved campaign-value mappings
+- [ ] Manual revenue: add/edit/delete the source and verify it updates all-source totals without inventing campaign-row allocations
+
+For each add/edit/delete action above, validate all related revenue surfaces:
+
+- [ ] Overview `Total Revenue` card equals GA4 native revenue plus all active imported revenue sources
+- [ ] Overview revenue source rows/microcopy show the correct source amount and do not duplicate edited sources
+- [ ] Overview `Campaign Breakdown` revenue values remain GA4-attributed unless that section explicitly documents external revenue allocation
+- [ ] Overview `Landing Pages` revenue values remain GA4-attributed unless that section explicitly documents external revenue allocation
+- [ ] Overview `Conversion Events` revenue values remain GA4-attributed unless that section explicitly documents external revenue allocation
+- [ ] KPIs tab: Revenue KPI current value matches Overview `Total Revenue`
+- [ ] KPIs tab: ROAS and ROI KPI current values use Overview all-source revenue as the numerator
+- [ ] KPIs tab: Revenue/ROAS/ROI blocked or enabled states update when revenue availability changes
+- [ ] Benchmarks tab: Revenue Benchmark current value matches Overview `Total Revenue`
+- [ ] Benchmarks tab: ROAS and ROI Benchmark current values use Overview all-source revenue as the numerator
+- [ ] Benchmarks tab: Revenue/ROAS/ROI blocked or enabled states update when revenue availability changes
+- [ ] Ad Comparison `All Campaigns`: exact matched source revenue is added only to matching campaign rows
+- [ ] Ad Comparison `All Campaigns`: unmatched source revenue is not added to any campaign row and remains `Unallocated External Revenue`
+- [ ] Ad Comparison `All Campaigns`: `Unallocated External Revenue` appears immediately above `Total Revenue (All Sources)` after the campaign rows
+- [ ] Ad Comparison `All Campaigns`: the summary block remains visible even when the selected metric is not `Revenue`
+- [ ] Ad Comparison `Revenue Breakdown`: each source top-level amount matches the source amount
+- [ ] Ad Comparison `Revenue Breakdown`: each source with saved `campaignValueRevenueTotals` shows an indented per-campaign subsection directly under the source row
+- [ ] Ad Comparison `Revenue Breakdown`: subsection values match the saved campaign-value revenue totals and reconcile to the campaign-row increases in `All Campaigns`
+- [ ] Ad Comparison `Revenue Breakdown`: no duplicate standalone `Unallocated External Revenue` row appears when the value is already represented in a source subsection
+- [ ] Ad Comparison `Revenue Breakdown`: `Total Revenue` is the final row and matches Overview `Total Revenue`
+- [ ] Insights Executive Financials revenue matches Overview `Total Revenue`
+- [ ] Reports generated after the change use the updated revenue values from the current tab state
+
+Required reconciliation checks:
+
+- [ ] `Overview Total Revenue = GA4 Revenue + sum(active imported revenue source amounts)`
+- [ ] `Ad Comparison Total Revenue (All Sources) = Overview Total Revenue`
+- [ ] `Ad Comparison matched campaign-row external revenue + Unallocated External Revenue = imported external revenue`, within normal rounding tolerance
+- [ ] Editing a source replaces the old source amount; it must not create a duplicate source row or duplicate microcopy
+- [ ] Deleting a source removes only that source's contribution; unrelated source amounts and allocations remain intact
 
 ---
 

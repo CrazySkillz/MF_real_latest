@@ -3109,8 +3109,8 @@ export default function GA4Metrics() {
       out.push({
         id: "financial:ga4_revenue_present_import_ignored",
         severity: "low",
-        title: "GA4 revenue is present (imported revenue is ignored for platform financials)",
-        description: "To avoid double counting, when GA4 revenue is available we use GA4 revenue for platform financials and ignore imported revenue in these calculations.",
+        title: "GA4 and imported revenue are both included",
+        description: "Imported revenue is included alongside GA4 revenue in Total Revenue. Confirm imported sources are not already tracked as GA4 ecommerce to avoid double counting.",
       });
     }
 

@@ -834,7 +834,6 @@ export function AddRevenueWizardModal(props: {
     if (step === "csv_map") return setStep("csv");
     if (step === "sheets_map") {
       setSheetsBackToChooser(true);
-      setSheetsConnectionId(""); // Clear so auto-advance doesn't immediately push back to sheets_map
       return setStep("sheets_choose");
     }
     if (step === "hubspot") {
@@ -1993,6 +1992,7 @@ export function AddRevenueWizardModal(props: {
                               Change sheet/tab
                             </Button>
                             <Button
+                              className="hidden"
                               type="button"
                               variant="outline"
                               size="sm"

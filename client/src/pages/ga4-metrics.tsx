@@ -3107,7 +3107,7 @@ export default function GA4Metrics() {
 
     if (ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0) {
       out.push({
-        id: "financial:ga4_revenue_present_import_ignored",
+        id: "info:ga4_revenue_and_imported_revenue_included",
         severity: "low",
         title: "GA4 and imported revenue are both included",
         description: "Imported revenue is included alongside GA4 revenue in Total Revenue. Confirm imported sources are not already tracked as GA4 ecommerce to avoid double counting.",

@@ -604,10 +604,10 @@ export function HubSpotRevenueWizard(props: {
         {steps.map((s, index) => {
           const StepIcon = s.icon;
           const isPipelineStep = s.id === "pipeline";
-          const isDisabled = isPipelineStep && !pipelineEnabled;
+          const isDisabled = isPipelineStep && !pipelineEnabled && index >= currentStepIndex;
           const isActive = !isDisabled && s.id === step;
-          // Don't mark disabled optional steps as "completed"
-          const isCompleted = !isDisabled && index < currentStepIndex;
+          // Once the user has moved past the Pipeline position, keep it visually in the completed path.
+          const isCompleted = isPipelineStep ? index < currentStepIndex : !isDisabled && index < currentStepIndex;
           // But keep the connector progress accurate so the bar doesn't look "broken"
           const isConnectorCompleted = index < currentStepIndex;
           return (

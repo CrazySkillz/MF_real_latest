@@ -848,9 +848,9 @@ For each add/edit/delete action above, validate all related revenue surfaces:
 
 - [ ] Overview `Total Revenue` card equals GA4 native revenue plus all active imported revenue sources
 - [ ] Overview revenue source rows/microcopy show the correct source amount and do not duplicate edited sources
-- [ ] Overview `Campaign Breakdown` revenue values remain GA4-attributed unless that section explicitly documents external revenue allocation
-- [ ] Overview `Landing Pages` revenue values remain GA4-attributed unless that section explicitly documents external revenue allocation
-- [ ] Overview `Conversion Events` revenue values remain GA4-attributed unless that section explicitly documents external revenue allocation
+- [ ] Overview `Campaign Breakdown` revenue values include exact campaign-matched imported revenue only when saved source campaign values match GA4 campaign rows
+- [ ] Overview `Landing Pages` revenue values remain GA4-native (`totalRevenue` / fallback `purchaseRevenue`) and do not receive campaign-only imported revenue
+- [ ] Overview `Conversion Events` revenue values remain GA4-native (`totalRevenue` / fallback `purchaseRevenue`) and do not receive campaign-only imported revenue
 - [ ] KPIs tab: Revenue KPI current value matches Overview `Total Revenue`
 - [ ] KPIs tab: ROAS and ROI KPI current values use Overview all-source revenue as the numerator
 - [ ] KPIs tab: Revenue/ROAS/ROI blocked or enabled states update when revenue availability changes

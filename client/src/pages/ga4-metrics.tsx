@@ -4464,7 +4464,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative for this GA4 property and this campaign&apos;s selected GA4 campaign scope — where users land and which pages drive outcomes</p>
+                        <p className="text-sm text-muted-foreground/70">Cumulative for this GA4 property and this campaign&apos;s selected GA4 campaign scope — Revenue is GA4-native only, not campaign-matched imported revenue</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -4528,7 +4528,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Conversion Events</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative for this GA4 property and this campaign&apos;s selected GA4 campaign scope — which conversion events are driving results</p>
+                        <p className="text-sm text-muted-foreground/70">Cumulative for this GA4 property and this campaign&apos;s selected GA4 campaign scope — Revenue is GA4-native only, not campaign-matched imported revenue</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">

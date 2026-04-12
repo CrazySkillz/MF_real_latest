@@ -1991,10 +1991,11 @@ export default function GA4Metrics() {
   }, [revenueSourcesResp, revenueBreakdownResp]);
   const pipelineProxyData = useMemo(() => {
     const sourceDefs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
-    const crmSource = sourceDefs.find((s: any) => {
+    const findCrmSource = (sources: any[]) => sources.find((s: any) => {
       const sourceType = String(s?.sourceType || "").toLowerCase();
       return s?.isActive !== false && (sourceType === "salesforce" || sourceType === "hubspot");
     });
+    const crmSource = findCrmSource(sourceDefs) || findCrmSource(Array.isArray(revenueDisplaySources) ? revenueDisplaySources : []);
     const crmSourceType = String(crmSource?.sourceType || "").toLowerCase();
     const crmCfg = typeof crmSource?.mappingConfig === "string"
       ? (() => { try { return JSON.parse(crmSource.mappingConfig); } catch { return {}; } })()
@@ -2007,7 +2008,7 @@ export default function GA4Metrics() {
     if (crmSourceType === "salesforce") return withProvenance(salesforcePipelineProxyData, "Salesforce");
     if (crmSourceType === "hubspot") return withProvenance(hubspotPipelineProxyData, "HubSpot");
     return null;
-  }, [hubspotPipelineProxyData, revenueSourcesResp, salesforcePipelineProxyData]);
+  }, [hubspotPipelineProxyData, revenueDisplaySources, revenueSourcesResp, salesforcePipelineProxyData]);
   // Availability flags for UI gating (KPI/Benchmark templates):
   // - Spend is "available" if a spend source exists (even if value is 0).
   // - Revenue is "available" if GA4 has a revenue metric configured OR an imported revenue source exists.

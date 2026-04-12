@@ -4205,7 +4205,10 @@ export default function GA4Metrics() {
                         <p className="text-sm text-muted-foreground/70">Financial performance and return on investment</p>
                       </div>
                       {/* Revenue & Spend cards — always show when any financial data exists */}
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
+                      <div className="space-y-5">
+                        <div>
+                          <h4 className="text-sm font-semibold text-foreground mb-2">Revenue</h4>
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {/* Total Revenue — with "+" add, per-source microcopy, edit/trash (mirrors Spend pattern) */}
                         <Card>
                           <CardContent className="p-5">
@@ -4314,12 +4317,14 @@ export default function GA4Metrics() {
                               <p className="text-2xl font-bold text-foreground mt-1">
                                 {formatMoney(Number(pipelineProxyData.totalToDate || 0))}
                               </p>
-                              <p className="text-xs text-muted-foreground/70 mt-1">
-                                {pipelineProxyData.pipelineStageLabel || "Selected stage"} open-stage signal
-                              </p>
                             </CardContent>
                           </Card>
                         )}
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-foreground mb-2">Spend</h4>
+                          <div className="grid gap-4 md:grid-cols-2">
                         {/* Total Spend */}
                         <Card>
                           <CardContent className="p-5">
@@ -4396,7 +4401,11 @@ export default function GA4Metrics() {
                             </p>
                           </CardContent>
                         </Card>
+                          </div>
+                        </div>
                       </div>
+                      <div className="mt-5">
+                        <h4 className="text-sm font-semibold text-foreground mb-2">Performance</h4>
                       {/* Profit/ROAS/ROI/CPA — only when both revenue and spend exist */}
                       {financialSpend > 0 && financialRevenue > 0 ? (
                         <div className="grid gap-4 md:grid-cols-4">
@@ -4453,6 +4462,7 @@ export default function GA4Metrics() {
                           </div>
                         </div>
                       ) : null}
+                      </div>
                     </div>
 
                     {/* Campaign Breakdown */}

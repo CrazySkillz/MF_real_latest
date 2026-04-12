@@ -155,7 +155,14 @@ export function HubSpotRevenueWizard(props: {
   }, [campaignId, mode, initialMappingConfig, isLinkedIn]);
 
   const steps = useMemo(() => {
-    return [
+    return pipelineEnabled ? [
+      { id: "value-source" as const, label: "Source", icon: DollarSign },
+      { id: "campaign-field" as const, label: "Campaign field", icon: Target },
+      { id: "pipeline" as const, label: "Pipeline", icon: Target },
+      { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
+      { id: "revenue" as const, label: "Revenue", icon: DollarSign },
+      { id: "review" as const, label: "Save", icon: ClipboardCheck },
+    ] : [
       { id: "value-source" as const, label: "Source", icon: DollarSign },
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
@@ -165,7 +172,7 @@ export function HubSpotRevenueWizard(props: {
       { id: "revenue" as const, label: "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ];
-  }, []);
+  }, [pipelineEnabled]);
 
   const currentStepIndex = useMemo(() => {
     const idx = steps.findIndex((s) => s.id === step);
@@ -210,7 +217,7 @@ export function HubSpotRevenueWizard(props: {
       const resp = await fetch(
         `/api/hubspot/${campaignId}/deals/unique-values?property=${encodeURIComponent(propertyName)}&days=${encodeURIComponent(
           String(days)
-        )}&limit=300`,
+        )}&limit=300${pipelineEnabled && pipelineStageId ? `&pipelineStageId=${encodeURIComponent(pipelineStageId)}` : ""}`,
         { credentials: "include" }
       );
       const json = await resp.json().catch(() => ({}));
@@ -522,10 +529,7 @@ export function HubSpotRevenueWizard(props: {
         });
         return;
       }
-      if (!((mode === "edit" || initialMappingConfig) && selectedValues.length > 0)) {
-        await fetchUniqueValues(campaignProperty);
-      }
-      setStep("crosswalk");
+      setStep(pipelineEnabled ? "pipeline" : "crosswalk");
       return;
     }
     if (step === "crosswalk") {
@@ -537,19 +541,22 @@ export function HubSpotRevenueWizard(props: {
         });
         return;
       }
-      setStep(pipelineEnabled ? "pipeline" : "revenue");
+      setStep("revenue");
       return;
     }
     if (step === "pipeline") {
       if (!pipelineStageId) {
         toast({
           title: "Select a pipeline stage",
-          description: "Choose the HubSpot stage that should count as 'pipeline created'.",
+          description: "Choose the open HubSpot stage to use for Pipeline Proxy.",
           variant: "destructive",
         });
         return;
       }
-      setStep("revenue");
+      if (pipelineEnabled || !((mode === "edit" || initialMappingConfig) && selectedValues.length > 0)) {
+        await fetchUniqueValues(campaignProperty);
+      }
+      setStep("crosswalk");
       return;
     }
     if (step === "revenue") {
@@ -578,9 +585,9 @@ export function HubSpotRevenueWizard(props: {
     if (step === "campaign-field") {
       return setStep("value-source");
     }
-    if (step === "crosswalk") return setStep("campaign-field");
-    if (step === "pipeline") return setStep("crosswalk");
-    if (step === "revenue") return setStep(pipelineEnabled ? "pipeline" : "crosswalk");
+    if (step === "pipeline") return setStep("campaign-field");
+    if (step === "crosswalk") return setStep(pipelineEnabled ? "pipeline" : "campaign-field");
+    if (step === "revenue") return setStep("crosswalk");
     if (step === "review") return setStep("revenue");
     if (step === "complete") return setStep("review");
   };
@@ -702,9 +709,11 @@ export function HubSpotRevenueWizard(props: {
                   ? `${connectStatusLabel ? `Connected: ${connectStatusLabel}. ` : ""}Select the HubSpot deal field that identifies which deals belong to this MimoSaaS campaign.`
                   : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
             {step === "crosswalk" &&
-              `Select the value(s) from "${campaignPropertyLabel}" that should map to this MimoSaaS campaign. (The value does not need to match the MimoSaaS campaign name.)`}
+              (pipelineEnabled
+                ? `Select the HubSpot campaign values to include from "${campaignPropertyLabel}". Closed Won matches contribute to Total Revenue. Matches in the selected Pipeline Proxy stage contribute to Pipeline Proxy.`
+                : `Select the value(s) from "${campaignPropertyLabel}" that should map to this MimoSaaS campaign. (The value does not need to match the MimoSaaS campaign name.)`)}
             {step === "pipeline" &&
-              "Choose the HubSpot stage to apply to the selected campaign values. This provides a separate daily Pipeline Proxy signal and is not included in Total Revenue."}
+              "Choose the open stage to use for Pipeline Proxy. This filters the selected campaign values and is not included in Total Revenue."}
             {step === "revenue" &&
               "Select the HubSpot field that represents deal amount."}
             {step === "review" && "Review the settings below, then save mappings."}
@@ -784,7 +793,7 @@ export function HubSpotRevenueWizard(props: {
 
                   <div className="text-xs text-muted-foreground">
                     {hubspotSourceMode === "revenue_plus_pipeline"
-                      ? "Next, you’ll choose which Pipeline stage should count as 'pipeline created'."
+                      ? "Next, you’ll choose the open HubSpot stage to use for Pipeline Proxy."
                       : "Next, you’ll map HubSpot deals to this campaign."}
                   </div>
                 </div>
@@ -854,6 +863,11 @@ export function HubSpotRevenueWizard(props: {
 
             {step === "crosswalk" && (
               <div className="flex flex-col gap-3 min-h-0">
+                {pipelineEnabled && (
+                  <div className="text-xs text-muted-foreground">
+                    Values shown include confirmed revenue deals and deals currently in <strong>{pipelineStageLabel || "the selected Pipeline Proxy stage"}</strong>. Confirmed matches contribute to <strong>Total Revenue</strong>; selected-stage matches contribute to <strong>Pipeline Proxy</strong>.
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-2 shrink-0">
                   <div className="text-sm text-muted-foreground">
                     {isLinkedIn && linkedinCampaigns.length > 0
@@ -969,7 +983,7 @@ export function HubSpotRevenueWizard(props: {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Stage that counts as 'pipeline created'</Label>
+                    <Label>Pipeline Proxy stage</Label>
                     <Select
                       value={pipelineStageId}
                       onValueChange={(v) => {
@@ -986,6 +1000,8 @@ export function HubSpotRevenueWizard(props: {
                         }
                         const hit = flat.find((x) => x.id === v);
                         setPipelineStageLabel(hit?.label || "");
+                        crosswalkFetchedRef.current = false;
+                        setUniqueValues([]);
                       }}
                       disabled={pipelinesLoading}
                     >

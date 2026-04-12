@@ -147,7 +147,14 @@ export function SalesforceRevenueWizard(props: {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const steps = useMemo(
-    () => [
+    () => pipelineEnabled ? [
+      { id: "value-source" as const, label: "Source", icon: DollarSign },
+      { id: "campaign-field" as const, label: "Campaign field", icon: Target },
+      { id: "pipeline" as const, label: "Pipeline", icon: Target },
+      { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
+      { id: "revenue" as const, label: "Revenue", icon: DollarSign },
+      { id: "review" as const, label: "Save", icon: ClipboardCheck },
+    ] : [
       { id: "value-source" as const, label: "Source", icon: DollarSign },
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
@@ -156,7 +163,7 @@ export function SalesforceRevenueWizard(props: {
       { id: "revenue" as const, label: "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ],
-    []
+    [pipelineEnabled]
   );
 
   const currentStepIndex = useMemo(() => {
@@ -302,7 +309,7 @@ export function SalesforceRevenueWizard(props: {
       const resp = await fetch(
         `/api/salesforce/${campaignId}/opportunities/unique-values?field=${encodeURIComponent(fieldName)}&days=${encodeURIComponent(
           String(days)
-        )}&limit=300`,
+        )}&limit=300${pipelineEnabled && pipelineStageName ? `&pipelineStageName=${encodeURIComponent(pipelineStageName)}` : ""}`,
         { credentials: "include" }
       );
       const json = await resp.json().catch(() => ({}));
@@ -799,16 +806,7 @@ export function SalesforceRevenueWizard(props: {
         });
         return;
       }
-      // Fetch unique values for the crosswalk step (edit mode also fetches so user can change selection)
-      if (!crosswalkFetchedRef.current) {
-        try {
-          await fetchUniqueValues(campaignField);
-          crosswalkFetchedRef.current = true;
-        } catch {
-          if (selectedValues.length > 0) setValuesError(null);
-        }
-      }
-      setStep("crosswalk");
+      setStep(pipelineEnabled ? "pipeline" : "crosswalk");
       return;
     }
     if (step === "crosswalk") {
@@ -823,19 +821,27 @@ export function SalesforceRevenueWizard(props: {
         });
         return;
       }
-      setStep(pipelineEnabled ? "pipeline" : "revenue");
+      setStep("revenue");
       return;
     }
     if (step === "pipeline") {
       if (!pipelineStageName) {
         toast({
           title: "Select a pipeline stage",
-          description: "Choose the Opportunity stage that should count as 'pipeline created'.",
+          description: "Choose the open Opportunity stage to use for Pipeline Proxy.",
           variant: "destructive",
         });
         return;
       }
-      setStep("revenue");
+      if (!crosswalkFetchedRef.current) {
+        try {
+          await fetchUniqueValues(campaignField);
+          crosswalkFetchedRef.current = true;
+        } catch {
+          if (selectedValues.length > 0) setValuesError(null);
+        }
+      }
+      setStep("crosswalk");
       return;
     }
     if (step === "revenue") {
@@ -879,9 +885,9 @@ export function SalesforceRevenueWizard(props: {
     if (step === "campaign-field") {
       return setStep("value-source");
     }
-    if (step === "crosswalk") return setStep("campaign-field");
-    if (step === "pipeline") return setStep("crosswalk");
-    if (step === "revenue") return setStep(pipelineEnabled ? "pipeline" : "crosswalk");
+    if (step === "pipeline") return setStep("campaign-field");
+    if (step === "crosswalk") return setStep(pipelineEnabled ? "pipeline" : "campaign-field");
+    if (step === "revenue") return setStep("crosswalk");
     if (step === "review") return setStep("revenue");
     if (step === "complete") return setStep("review");
   };
@@ -1034,9 +1040,11 @@ export function SalesforceRevenueWizard(props: {
             {step === "campaign-field" &&
               "Select the Salesforce Opportunity field that identifies which deals belong to this MimoSaaS campaign."}
             {step === "crosswalk" &&
-              `Select the value(s) from "${campaignFieldLabel}" that should map to this MimoSaaS campaign.`}
+              (pipelineEnabled
+                ? `Select the Salesforce campaign values to include from "${campaignFieldLabel}". Closed Won matches contribute to Total Revenue. Matches in the selected Pipeline Proxy stage contribute to Pipeline Proxy.`
+                : `Select the value(s) from "${campaignFieldLabel}" that should map to this MimoSaaS campaign.`)}
             {step === "pipeline" &&
-              "Choose the Opportunity stage to apply to the selected campaign values. This provides a separate daily Pipeline Proxy signal and is not included in Total Revenue."}
+              "Choose the open stage to use for Pipeline Proxy. This filters the selected campaign values and is not included in Total Revenue."}
             {step === "revenue" &&
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Select the Opportunity field that represents conversion value per conversion (estimated value)."
@@ -1098,7 +1106,7 @@ export function SalesforceRevenueWizard(props: {
               </div>
               <div className="text-xs text-muted-foreground">
                 {salesforceSourceMode === "revenue_plus_pipeline"
-                  ? "Next, you’ll choose which Opportunity stage should count as 'pipeline created'."
+                  ? "Next, you’ll choose the open Opportunity stage to use for Pipeline Proxy."
                   : "Next, you’ll map Salesforce Opportunities to this campaign."}
               </div>
             </div>
@@ -1190,9 +1198,12 @@ export function SalesforceRevenueWizard(props: {
           {step === "crosswalk" && (
             <div className="space-y-3">
               <div className="text-xs text-muted-foreground">
-                Values shown are <strong>Closed Won</strong> only — they contribute to <strong>Total Revenue</strong> (confirmed).
-                {pipelineEnabled && (
-                  <> On the next step, <strong>Pipeline (Proxy)</strong> lets you add anticipated revenue from open opportunities.</>
+                {pipelineEnabled ? (
+                  <>
+                    Values shown include <strong>Closed Won</strong> opportunities and opportunities currently in <strong>{pipelineStageLabel || pipelineStageName || "the selected Pipeline Proxy stage"}</strong>. Closed Won matches contribute to <strong>Total Revenue</strong>; selected-stage matches contribute to <strong>Pipeline Proxy</strong>.
+                  </>
+                ) : (
+                  <>Values shown are <strong>Closed Won</strong> only — they contribute to <strong>Total Revenue</strong> (confirmed).</>
                 )}
               </div>
               <div className="flex items-center justify-between gap-2">
@@ -1306,13 +1317,15 @@ export function SalesforceRevenueWizard(props: {
                   Pipeline (Proxy) is <span className="font-medium">not</span> Closed Won revenue. It’s an early indicator (Opportunities currently in a stage like Proposal/Negotiation).
                 </div>
                 <div className="space-y-2">
-                  <Label>Stage that counts as 'pipeline created'</Label>
+                  <Label>Pipeline Proxy stage</Label>
                   <Select
                     value={pipelineStageName}
                     onValueChange={(v) => {
                       setPipelineStageName(v);
                       const hit = stages.find((s) => s.value === v);
                       setPipelineStageLabel(hit?.label || v);
+                      crosswalkFetchedRef.current = false;
+                      setUniqueValues([]);
                     }}
                     disabled={stagesLoading}
                   >

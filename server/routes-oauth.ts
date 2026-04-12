@@ -12023,6 +12023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const field = String(req.query.field || '').trim();
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '200'), 10) || 200, 10), 500);
       const days = Math.min(Math.max(parseInt(String(req.query.days || '90'), 10) || 90, 1), 3650);
+      const pipelineStageName = String(req.query.pipelineStageName || '').trim();
 
       if (!field) return res.status(400).json({ error: 'Missing field' });
 
@@ -12094,6 +12095,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           nextUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
           pages += 1;
+        }
+      }
+
+      if (pipelineStageName) {
+        const escapedStage = pipelineStageName.replace(/'/g, "\\'");
+        const soqlPipeline =
+          `SELECT ${field}, COUNT(Id) c ` +
+          `FROM Opportunity ` +
+          `WHERE StageName = '${escapedStage}' AND ${field} != null ` +
+          `GROUP BY ${field} ` +
+          `ORDER BY COUNT(Id) DESC ` +
+          `LIMIT ${Math.min(limit, 500)}`;
+        const pipelineResp = await fetch(`${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlPipeline)}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const pipelineJson: any = await pipelineResp.json().catch(() => ({}));
+        if (pipelineResp.ok && Array.isArray(pipelineJson?.records)) {
+          for (const r of pipelineJson.records) {
+            const raw = readField(r, field);
+            const v = raw === undefined || raw === null ? '' : String(raw).trim();
+            if (!v) continue;
+            const c = Number(r?.c);
+            counts.set(v, (counts.get(v) || 0) + (Number.isFinite(c) ? c : 1));
+          }
+        } else {
+          const soqlPipelineScan =
+            `SELECT Id, ${field} ` +
+            `FROM Opportunity ` +
+            `WHERE StageName = '${escapedStage}' AND ${field} != null ` +
+            `LIMIT 2000`;
+          let nextPipelineUrl: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlPipelineScan)}`;
+          let pipelinePages = 0;
+          while (nextPipelineUrl && pipelinePages < 10) {
+            const resp = await fetch(nextPipelineUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+            const json: any = await resp.json().catch(() => ({}));
+            if (!resp.ok) break;
+            const recs = Array.isArray(json?.records) ? json.records : [];
+            for (const rec of recs) {
+              const raw = readField(rec, field);
+              const v = raw === undefined || raw === null ? '' : String(raw).trim();
+              if (!v) continue;
+              counts.set(v, (counts.get(v) || 0) + 1);
+            }
+            nextPipelineUrl = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
+            pipelinePages += 1;
+          }
         }
       }
 
@@ -13344,6 +13389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const property = String(req.query.property || '').trim();
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '200'), 10) || 200, 10), 500);
       const days = Math.min(Math.max(parseInt(String(req.query.days || '90'), 10) || 90, 1), 3650);
+      const pipelineStageId = String(req.query.pipelineStageId || '').trim();
 
       if (!property) {
         return res.status(400).json({ error: 'Missing property' });
@@ -13352,7 +13398,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
       // Default filters (LinkedIn exec UX): include non-lost deals over recent activity window
-      // so new/updated deals show up immediately in the Crosswalk list.
+      // so new/updated deals show up immediately in the Crosswalk list. When Pipeline Proxy
+      // mode passes a stage, use confirmed/won stages plus that exact proxy stage.
       let stageIds: string[] = [];
       try {
         const pipelinesResp = await fetch('https://api.hubapi.com/crm/v3/pipelines/deals', {
@@ -13361,7 +13408,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const pipelinesJson: any = await pipelinesResp.json().catch(() => ({}));
         if (pipelinesResp.ok) {
           const pipelines = Array.isArray(pipelinesJson?.results) ? pipelinesJson.results : [];
-          const derived = deriveDefaultNonLostStageIds(pipelines);
+          const derived = pipelineStageId
+            ? Array.from(new Set([...deriveDefaultClosedWonStageIds(pipelines), pipelineStageId]))
+            : deriveDefaultNonLostStageIds(pipelines);
           if (derived.length > 0) stageIds = derived;
         }
       } catch {

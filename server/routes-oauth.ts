@@ -13224,7 +13224,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenue: Number(revenue.toFixed(2)),
         }));
         if (conn?.id) await storage.updateSalesforceConnection(String(conn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
-        if (pipelineSource?.id) await storage.updateRevenueSource(String(pipelineSource.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+        if (pipelineSource?.id) {
+          let sourceCfg: any = {};
+          try {
+            sourceCfg = pipelineSource?.mappingConfig ? JSON.parse(String(pipelineSource.mappingConfig)) : {};
+          } catch {
+            sourceCfg = {};
+          }
+          await storage.updateRevenueSource(String(pipelineSource.id), {
+            mappingConfig: JSON.stringify({ ...sourceCfg, ...nextCfg, campaignValueRevenueTotals: sourceCfg.campaignValueRevenueTotals }),
+          } as any);
+        }
       } catch {
         // ignore
       }

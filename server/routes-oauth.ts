@@ -12965,7 +12965,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Prefer cached value if present and in correct mode.
       const cached = Number(cfg.pipelineTotalToDate || 0);
       const cachedMode = cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null;
-      if (Number.isFinite(cached) && cached > 0 && cachedMode === "current_stage") {
+      const cachedValueTotals = Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
+      if (Number.isFinite(cached) && cached > 0 && cachedMode === "current_stage" && cachedValueTotals.length > 0) {
         return res.json({
           success: true,
           pipelineEnabled: true,
@@ -12973,6 +12974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency) : null,
           lastUpdatedAt: cfg.pipelineLastUpdatedAt ? String(cfg.pipelineLastUpdatedAt) : null,
           totalToDate: cached,
+          pipelineValueRevenueTotals: cachedValueTotals,
           mode: cachedMode,
           warning: cfg.pipelineWarning ? String(cfg.pipelineWarning) : null,
         });
@@ -13002,10 +13004,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const escapedStage = stageName.replace(/'/g, "\\'");
       let totalToDate = 0;
       const currencies = new Set<string>();
+      const pipelineValueRevenueTotals = new Map<string, number>();
+      const readField = (rec: any, path: string): any => {
+        if (!rec || !path) return undefined;
+        if (Object.prototype.hasOwnProperty.call(rec, path)) return rec[path];
+        const parts = String(path).split(".").filter(Boolean);
+        let cur: any = rec;
+        for (const p of parts) {
+          if (!cur) return undefined;
+          cur = cur[p];
+        }
+        return cur;
+      };
 
       const runQuery = async (includeCurrency: boolean): Promise<void> => {
         const soql =
-          `SELECT Id, ${revenueField}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
+          `SELECT Id, ${attribField}, ${revenueField}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
           `FROM Opportunity ` +
           `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted}) ` +
           `LIMIT 2000`;
@@ -13019,7 +13033,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           for (const rec of recs) {
             const rRaw = rec?.[revenueField];
             const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
-            if (Number.isFinite(amt)) totalToDate += amt;
+            if (Number.isFinite(amt)) {
+              totalToDate += amt;
+              const campaignValue = String(readField(rec, attribField) || "").trim();
+              if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
+            }
             if (includeCurrency) {
               const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
               if (c) currencies.add(c);
@@ -13059,6 +13077,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nextCfg.pipelineLastUpdatedAt = lastUpdatedAt;
         nextCfg.pipelineProxyMode = "current_stage";
         nextCfg.pipelineWarning = warning;
+        nextCfg.pipelineValueRevenueTotals = Array.from(pipelineValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+          campaignValue,
+          revenue: Number(revenue.toFixed(2)),
+        }));
         if (conn?.id) await storage.updateSalesforceConnection(String(conn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
       } catch {
         // ignore
@@ -13071,6 +13093,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency,
         lastUpdatedAt,
         totalToDate: Number(Number(totalToDate || 0).toFixed(2)),
+        pipelineValueRevenueTotals: Array.from(pipelineValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+          campaignValue,
+          revenue: Number(revenue.toFixed(2)),
+        })),
         mode: "current_stage",
         warning,
       });
@@ -13174,7 +13200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const cached = Number(cfg.pipelineTotalToDate || 0);
         const cachedMode = cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null;
-        if (!Number.isFinite(cached) || cached <= 0 || cachedMode !== 'current_stage') {
+        if (!Number.isFinite(cached) || cached <= 0 || cachedMode !== 'current_stage' || !Array.isArray(cfg.pipelineValueRevenueTotals)) {
           const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
           const campaignProp = String(cfg.campaignProperty || "").trim();
           const selectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
@@ -13182,6 +13208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const pipelineStageId = String(cfg.pipelineStageId || "").trim();
 
           let totalToDate = 0;
+          const pipelineValueRevenueTotals = new Map<string, number>();
           let currencies = new Set<string>();
           const mode: 'current_stage' = 'current_stage';
           const warning: string | null = null;
@@ -13216,6 +13243,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
                 if (c) currencies.add(c);
                 totalToDate += amt;
+                const campaignValue = String(props?.[campaignProp] || '').trim();
+                if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
               }
               after3 = json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
               if (!after3) break;
@@ -13226,12 +13255,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const lastUpdatedAt = new Date().toISOString();
           if (currencies.size > 1) {
             cfg.pipelineTotalToDate = 0;
+            cfg.pipelineValueRevenueTotals = [];
             cfg.pipelineCurrency = null;
             cfg.pipelineLastUpdatedAt = lastUpdatedAt;
             cfg.pipelineProxyMode = mode;
             cfg.pipelineWarning = `Multiple currencies found for pipeline proxy (${Array.from(currencies).join(', ')}). Filter HubSpot to a single currency to enable pipeline proxy.`;
           } else {
             cfg.pipelineTotalToDate = Number(Number(totalToDate || 0).toFixed(2));
+            cfg.pipelineValueRevenueTotals = Array.from(pipelineValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+              campaignValue,
+              revenue: Number(revenue.toFixed(2)),
+            }));
             cfg.pipelineCurrency = currencies.size === 1 ? Array.from(currencies)[0] : null;
             cfg.pipelineLastUpdatedAt = lastUpdatedAt;
             cfg.pipelineProxyMode = mode;
@@ -13275,6 +13309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency) : null,
         lastUpdatedAt: cfg.pipelineLastUpdatedAt ? String(cfg.pipelineLastUpdatedAt) : null,
         totalToDate: Number(cfg.pipelineTotalToDate || 0),
+        pipelineValueRevenueTotals: Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [],
         mode: cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null,
         warning: cfg.pipelineWarning ? String(cfg.pipelineWarning) : null,
       });

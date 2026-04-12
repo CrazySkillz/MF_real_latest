@@ -1967,12 +1967,18 @@ export default function GA4Metrics() {
     const defs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
     const defsMap = new Map<string, any>();
     for (const d of defs) if (d) defsMap.set(String(d.id), d);
+    const defsByType = new Map<string, any>();
+    for (const d of defs) {
+      const type = String(d?.sourceType || "").toLowerCase();
+      if (!type) continue;
+      defsByType.set(type, defsByType.has(type) ? null : d);
+    }
 
     const breakdownSources = Array.isArray((revenueBreakdownResp as any)?.sources) ? (revenueBreakdownResp as any).sources : [];
     if (breakdownSources.length > 0) {
       return breakdownSources.map((s: any) => ({
         ...s,
-        mappingConfig: defsMap.get(String(s.sourceId))?.mappingConfig || null,
+        mappingConfig: defsMap.get(String(s.sourceId))?.mappingConfig || defsByType.get(String(s.sourceType || "").toLowerCase())?.mappingConfig || null,
       }));
     }
     return defs.filter((d: any) => d?.isActive !== false).map((d: any) => ({
@@ -1994,8 +2000,16 @@ export default function GA4Metrics() {
       return cfg.pipelineEnabled === true && hasStage;
     });
     const crmSourceType = String(crmSource?.sourceType || "").toLowerCase();
-    if (crmSourceType === "salesforce") return salesforcePipelineProxyData;
-    if (crmSourceType === "hubspot") return hubspotPipelineProxyData;
+    const crmCfg = typeof crmSource?.mappingConfig === "string"
+      ? (() => { try { return JSON.parse(crmSource.mappingConfig); } catch { return {}; } })()
+      : (crmSource?.mappingConfig || {});
+    const withProvenance = (data: any, label: string) => data?.success ? {
+      ...data,
+      providerLabel: label,
+      selectedValues: Array.isArray(crmCfg.selectedValues) ? crmCfg.selectedValues.map((v: any) => String(v)).filter(Boolean) : [],
+    } : data;
+    if (crmSourceType === "salesforce") return withProvenance(salesforcePipelineProxyData, "Salesforce");
+    if (crmSourceType === "hubspot") return withProvenance(hubspotPipelineProxyData, "HubSpot");
     return null;
   }, [hubspotPipelineProxyData, revenueDisplaySources, salesforcePipelineProxyData]);
   // Availability flags for UI gating (KPI/Benchmark templates):
@@ -4326,11 +4340,17 @@ export default function GA4Metrics() {
                               <p className="text-2xl font-bold text-foreground mt-1">
                                 {formatMoney(Number(pipelineProxyData.totalToDate || 0))}
                               </p>
-                              {pipelineProxyData.pipelineStageLabel && (
-                                <p className="text-xs text-muted-foreground/70 mt-1">
-                                  {pipelineProxyData.pipelineStageLabel}
-                                </p>
-                              )}
+                              <p className="text-xs text-muted-foreground/70 mt-1">
+                                {[
+                                  pipelineProxyData.providerLabel,
+                                  pipelineProxyData.pipelineStageLabel,
+                                  ...(Array.isArray(pipelineProxyData.pipelineValueRevenueTotals) && pipelineProxyData.pipelineValueRevenueTotals.length > 0
+                                    ? pipelineProxyData.pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
+                                    : Array.isArray(pipelineProxyData.selectedValues) && pipelineProxyData.selectedValues.length > 0
+                                      ? [`Selected values: ${pipelineProxyData.selectedValues.join(", ")}`]
+                                      : []),
+                                ].filter(Boolean).join(" · ")}
+                              </p>
                             </CardContent>
                           </Card>
                         )}

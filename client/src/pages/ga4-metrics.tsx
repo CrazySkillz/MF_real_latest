@@ -1968,17 +1968,27 @@ export default function GA4Metrics() {
     const defsMap = new Map<string, any>();
     for (const d of defs) if (d) defsMap.set(String(d.id), d);
     const defsByType = new Map<string, any>();
+    const defsWithCampaignTotalsByType = new Map<string, any>();
     for (const d of defs) {
       const type = String(d?.sourceType || "").toLowerCase();
       if (!type) continue;
       defsByType.set(type, defsByType.has(type) ? null : d);
+      const cfg = typeof d?.mappingConfig === "string"
+        ? (() => { try { return JSON.parse(d.mappingConfig); } catch { return null; } })()
+        : d?.mappingConfig;
+      if (Array.isArray(cfg?.campaignValueRevenueTotals) && cfg.campaignValueRevenueTotals.length > 0) {
+        defsWithCampaignTotalsByType.set(type, d);
+      }
     }
 
     const breakdownSources = Array.isArray((revenueBreakdownResp as any)?.sources) ? (revenueBreakdownResp as any).sources : [];
     if (breakdownSources.length > 0) {
       return breakdownSources.map((s: any) => ({
         ...s,
-        mappingConfig: defsMap.get(String(s.sourceId))?.mappingConfig || defsByType.get(String(s.sourceType || "").toLowerCase())?.mappingConfig || null,
+        mappingConfig: defsMap.get(String(s.sourceId))?.mappingConfig
+          || defsWithCampaignTotalsByType.get(String(s.sourceType || "").toLowerCase())?.mappingConfig
+          || defsByType.get(String(s.sourceType || "").toLowerCase())?.mappingConfig
+          || null,
       }));
     }
     return defs.filter((d: any) => d?.isActive !== false).map((d: any) => ({

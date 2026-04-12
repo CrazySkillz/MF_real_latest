@@ -3807,9 +3807,10 @@ export default function GA4Metrics() {
   }, [ga4Breakdown, importedGA4CampaignNames, breakdownTotals]);
 
   const campaignBreakdownMatchedExternalRevenue = useMemo(() => {
+    const normalizeCampaignKey = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
     const rowNameByKey = new Map<string, string>();
     for (const row of campaignBreakdownAgg) {
-      const key = String(row.name || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const key = normalizeCampaignKey(row.name);
       if (key) rowNameByKey.set(key, row.name);
     }
     const matched = new Map<string, number>();
@@ -3818,7 +3819,7 @@ export default function GA4Metrics() {
       const cfg = typeof rawCfg === "string" ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })() : rawCfg;
       const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
       for (const item of totals) {
-        const key = String(item?.campaignValue || "").trim().toLowerCase().replace(/\s+/g, " ");
+        const key = normalizeCampaignKey(item?.campaignValue);
         const revenue = Number(item?.revenue || 0);
         const rowName = rowNameByKey.get(key);
         if (rowName && revenue > 0) matched.set(rowName, (matched.get(rowName) || 0) + revenue);

@@ -1991,26 +1991,39 @@ export default function GA4Metrics() {
   }, [revenueSourcesResp, revenueBreakdownResp]);
   const pipelineProxyData = useMemo(() => {
     const sourceDefs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
+    const parseMappingConfig = (source: any) => typeof source?.mappingConfig === "string"
+      ? (() => { try { return JSON.parse(source.mappingConfig); } catch { return {}; } })()
+      : (source?.mappingConfig || {});
+    const hasPipelineConfig = (source: any) => {
+      const cfg = parseMappingConfig(source);
+      return cfg?.pipelineEnabled === true && !!(cfg.pipelineStageLabel || cfg.pipelineStageName || cfg.pipelineStageId);
+    };
     const findCrmSource = (sources: any[]) => sources.find((s: any) => {
       const sourceType = String(s?.sourceType || "").toLowerCase();
-      return s?.isActive !== false && (sourceType === "salesforce" || sourceType === "hubspot");
+      return s?.isActive !== false && (sourceType === "salesforce" || sourceType === "hubspot") && hasPipelineConfig(s);
     });
     const crmSource = findCrmSource(sourceDefs) || findCrmSource(Array.isArray(revenueDisplaySources) ? revenueDisplaySources : []);
     const crmSourceType = String(crmSource?.sourceType || "").toLowerCase();
-    const crmCfg = typeof crmSource?.mappingConfig === "string"
-      ? (() => { try { return JSON.parse(crmSource.mappingConfig); } catch { return {}; } })()
-      : (crmSource?.mappingConfig || {});
+    const crmCfg = parseMappingConfig(crmSource);
     const selectedValues = Array.isArray(crmCfg.selectedValues) ? crmCfg.selectedValues.map((v: any) => String(v)).filter(Boolean) : [];
     const pipelineStageLabel = crmCfg.pipelineStageLabel || crmCfg.pipelineStageName || crmCfg.pipelineStageId || null;
+    const pipelineValueRevenueTotals = Array.isArray(crmCfg.pipelineValueRevenueTotals) ? crmCfg.pipelineValueRevenueTotals : [];
+    const fallbackTotal = Number(crmCfg.pipelineTotalToDate || 0) || pipelineValueRevenueTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
     const sourcePipelineFallback = crmCfg.pipelineEnabled && pipelineStageLabel ? {
       success: true,
-      totalToDate: Number(crmCfg.pipelineTotalToDate || 0),
+      totalToDate: fallbackTotal,
       pipelineStageLabel,
-      pipelineValueRevenueTotals: Array.isArray(crmCfg.pipelineValueRevenueTotals) ? crmCfg.pipelineValueRevenueTotals : [],
+      pipelineValueRevenueTotals,
     } : null;
+    const normalizeTotal = (data: any) => {
+      if (!data?.success) return data;
+      const dataTotals = Array.isArray(data.pipelineValueRevenueTotals) ? data.pipelineValueRevenueTotals : [];
+      const dataTotal = Number(data.totalToDate || 0) || dataTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
+      return { ...data, totalToDate: dataTotal };
+    };
     const withProvenance = (data: any, label: string) => data?.success ? {
       ...sourcePipelineFallback,
-      ...data,
+      ...normalizeTotal(data),
       providerLabel: label,
       selectedValues,
     } : sourcePipelineFallback ? {

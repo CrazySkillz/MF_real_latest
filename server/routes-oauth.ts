@@ -12737,6 +12737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch { }
       }
 
+      let pipelineProxyFields: any = {};
       const sfConn: any = await storage.getSalesforceConnection(campaignId);
       if (sfConn) {
         const rcRaw = String(revenueClassification || '').trim();
@@ -12762,6 +12763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineLastUpdatedAt: null,
           pipelineProxyMode: null,
           pipelineWarning: null,
+          pipelineValueRevenueTotals: [],
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         };
 
@@ -12771,11 +12773,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             let pipelineToDate = 0;
             const pipelineCurrencies = new Set<string>();
+            const pipelineValueRevenueTotals = new Map<string, number>();
             const escapedStage = String(pipelineStageName).replace(/'/g, "\\'");
 
             const runQuery = async (includeCurrency: boolean): Promise<void> => {
               const soql =
-                `SELECT Id, ${revenue}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
+                `SELECT Id, ${attribField}, ${revenue}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
                 `FROM Opportunity ` +
                 `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted}) ` +
                 `LIMIT 2000`;
@@ -12789,7 +12792,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 for (const rec of recs) {
                   const rRaw = readField(rec, revenue);
                   const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
-                  if (Number.isFinite(amt)) pipelineToDate += amt;
+                  if (Number.isFinite(amt)) {
+                    pipelineToDate += amt;
+                    const campaignValue = String(readField(rec, attribField) || "").trim();
+                    if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
+                  }
                   if (includeCurrency) {
                     const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
                     if (c) pipelineCurrencies.add(c);
@@ -12817,12 +12824,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               mappingConfig.pipelineLastUpdatedAt = new Date().toISOString();
               mappingConfig.pipelineProxyMode = "current_stage";
               mappingConfig.pipelineWarning = `Multiple currencies found for pipeline proxy (${Array.from(pipelineCurrencies).join(", ")}). Filter Salesforce to a single currency to enable pipeline proxy.`;
+              mappingConfig.pipelineValueRevenueTotals = [];
             } else {
               mappingConfig.pipelineTotalToDate = Number(pipelineToDate.toFixed(2));
               mappingConfig.pipelineCurrency = pipelineCurrencies.size === 1 ? Array.from(pipelineCurrencies)[0] : null;
               mappingConfig.pipelineLastUpdatedAt = new Date().toISOString();
               mappingConfig.pipelineProxyMode = "current_stage";
               mappingConfig.pipelineWarning = null;
+              mappingConfig.pipelineValueRevenueTotals = Array.from(pipelineValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+                campaignValue,
+                revenue: Number(revenue.toFixed(2)),
+              }));
             }
           } catch {
             mappingConfig.pipelineTotalToDate = 0;
@@ -12830,8 +12842,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             mappingConfig.pipelineLastUpdatedAt = new Date().toISOString();
             mappingConfig.pipelineProxyMode = "current_stage";
             mappingConfig.pipelineWarning = "Failed to compute pipeline proxy.";
+            mappingConfig.pipelineValueRevenueTotals = [];
           }
         }
+        pipelineProxyFields = {
+          pipelineTotalToDate: mappingConfig.pipelineTotalToDate,
+          pipelineCurrency: mappingConfig.pipelineCurrency,
+          pipelineLastUpdatedAt: mappingConfig.pipelineLastUpdatedAt,
+          pipelineProxyMode: mappingConfig.pipelineProxyMode,
+          pipelineWarning: mappingConfig.pipelineWarning,
+          pipelineValueRevenueTotals: mappingConfig.pipelineValueRevenueTotals,
+        };
         await storage.updateSalesforceConnection(sfConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }
 
@@ -12853,6 +12874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineEnabled: !!pipelineEnabled,
           pipelineStageName: pipelineEnabled && pipelineStageName ? pipelineStageName : null,
           pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
+          ...(pipelineEnabled ? pipelineProxyFields : {}),
           campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
             campaignValue,
             revenue: Number(revenue.toFixed(2)),
@@ -12963,6 +12985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfgContext === 'linkedin' || cfgContext === 'meta' || cfgContext === 'ga4'
           ? [cfgContext as any, ...(['ga4', 'linkedin', 'meta'] as const).filter((c) => c !== cfgContext)]
           : ['ga4', 'linkedin', 'meta'];
+      let pipelineSource: any = null;
       for (const context of contexts) {
         const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
         const source = (Array.isArray(sources) ? sources : []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'salesforce');
@@ -12971,6 +12994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const sourceCfg = JSON.parse(String(source.mappingConfig));
           if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageName) {
             cfg = sourceCfg;
+            pipelineSource = source;
             break;
           }
         } catch {
@@ -13102,6 +13126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenue: Number(revenue.toFixed(2)),
         }));
         if (conn?.id) await storage.updateSalesforceConnection(String(conn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+        if (pipelineSource?.id) await storage.updateRevenueSource(String(pipelineSource.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
       } catch {
         // ignore
       }
@@ -13214,6 +13239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfgContext === 'linkedin' || cfgContext === 'meta' || cfgContext === 'ga4'
           ? [cfgContext as any, ...(['ga4', 'linkedin', 'meta'] as const).filter((c) => c !== cfgContext)]
           : ['ga4', 'linkedin', 'meta'];
+      let pipelineSource: any = null;
       for (const context of contexts) {
         const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
         const source = (Array.isArray(sources) ? sources : []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'hubspot');
@@ -13222,6 +13248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const sourceCfg = JSON.parse(String(source.mappingConfig));
           if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageId) {
             cfg = sourceCfg;
+            pipelineSource = source;
             break;
           }
         } catch {
@@ -13315,6 +13342,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (conn?.id) {
             await storage.updateHubspotConnection(String(conn.id), { mappingConfig: JSON.stringify(cfg) } as any);
           }
+          if (pipelineSource?.id) {
+            await storage.updateRevenueSource(String(pipelineSource.id), { mappingConfig: JSON.stringify(cfg) } as any);
+          }
         }
       } catch {
         recomputeFailed = true;
@@ -13335,6 +13365,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cfg.pipelineLastUpdatedAt = cfg.pipelineLastUpdatedAt || new Date().toISOString();
           if (conn?.id) {
             await storage.updateHubspotConnection(String(conn.id), { mappingConfig: JSON.stringify(cfg) } as any);
+          }
+          if (pipelineSource?.id) {
+            await storage.updateRevenueSource(String(pipelineSource.id), { mappingConfig: JSON.stringify(cfg) } as any);
           }
         }
       } catch {
@@ -13743,6 +13776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Persist mapping config on the active HubSpot connection
+      let pipelineProxyFields: any = {};
       const hubspotConn: any = await storage.getHubspotConnection(campaignId);
       if (hubspotConn) {
         const rcRaw = String(revenueClassification || '').trim();
@@ -13774,6 +13808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             let pipelineToDate = 0;
             let pipelineCurrencies = new Set<string>();
+            const pipelineValueRevenueTotals = new Map<string, number>();
             let pipelineProxyMode: 'current_stage' = 'current_stage';
             let pipelineProxyWarning: string | null = null;
 
@@ -13809,6 +13844,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
                 if (c) pipelineCurrencies.add(c);
                 pipelineToDate += amt;
+                const campaignValue = String(props?.[campaignProp] || '').trim();
+                if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
               }
 
               after3 = json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
@@ -13824,17 +13861,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
               (mappingConfig as any).pipelineProxyMode = pipelineProxyMode;
               (mappingConfig as any).pipelineWarning =
                 `Multiple currencies found for pipeline proxy (${Array.from(pipelineCurrencies).join(', ')}). Filter HubSpot to a single currency to enable pipeline proxy.`;
+              (mappingConfig as any).pipelineValueRevenueTotals = [];
             } else {
               (mappingConfig as any).pipelineCurrency = pipelineCurrencies.size === 1 ? Array.from(pipelineCurrencies)[0] : null;
               (mappingConfig as any).pipelineLastUpdatedAt = new Date().toISOString();
               (mappingConfig as any).pipelineTotalToDate = Number(pipelineToDate.toFixed(2));
               (mappingConfig as any).pipelineProxyMode = pipelineProxyMode;
               (mappingConfig as any).pipelineWarning = pipelineProxyWarning;
+              (mappingConfig as any).pipelineValueRevenueTotals = Array.from(pipelineValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+                campaignValue,
+                revenue: Number(revenue.toFixed(2)),
+              }));
             }
           } catch {
             // ignore (proxy is optional)
           }
         }
+        pipelineProxyFields = {
+          pipelineTotalToDate: (mappingConfig as any).pipelineTotalToDate,
+          pipelineCurrency: (mappingConfig as any).pipelineCurrency,
+          pipelineLastUpdatedAt: (mappingConfig as any).pipelineLastUpdatedAt,
+          pipelineProxyMode: (mappingConfig as any).pipelineProxyMode,
+          pipelineWarning: (mappingConfig as any).pipelineWarning,
+          pipelineValueRevenueTotals: (mappingConfig as any).pipelineValueRevenueTotals,
+        };
         await storage.updateHubspotConnection(hubspotConn.id, { mappingConfig: JSON.stringify(mappingConfig) } as any);
       }
 
@@ -13865,6 +13915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineEnabled: pipelineEnabled,
           pipelineStageId: pipelineEnabled && pipelineStageId ? pipelineStageId : null,
           pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
+          ...(pipelineEnabled ? pipelineProxyFields : {}),
           revenueClassification,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastSyncedAt: new Date().toISOString(),

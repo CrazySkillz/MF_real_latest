@@ -96,6 +96,7 @@ export function HubSpotRevenueWizard(props: {
   const [valuesLoading, setValuesLoading] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
   const [reviewPreviewRevenue, setReviewPreviewRevenue] = useState<number | null>(null);
+  const [reviewPipelineProxyAmount, setReviewPipelineProxyAmount] = useState<number | null>(null);
 
   // Revenue amount for the review step: prefer saved result, then live preview, then stored config
   const reviewRevenue = useMemo(() => {
@@ -412,6 +413,7 @@ export function HubSpotRevenueWizard(props: {
   useEffect(() => {
     reviewPreviewFiredRef.current = false;
     setReviewPreviewRevenue(null);
+    setReviewPipelineProxyAmount(null);
   }, [campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn, campaignMappings]);
 
   useEffect(() => {
@@ -445,6 +447,7 @@ export function HubSpotRevenueWizard(props: {
         const json = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(json?.error || "Failed to preview HubSpot revenue");
         setReviewPreviewRevenue(Number(json?.totalRevenue || 0));
+        setReviewPipelineProxyAmount(json?.pipelinePreviewTotal == null ? null : Number(json.pipelinePreviewTotal || 0));
       } catch {
         // Keep the review usable even if preview fails.
       }
@@ -701,7 +704,7 @@ export function HubSpotRevenueWizard(props: {
             {step === "crosswalk" &&
               `Select the value(s) from "${campaignPropertyLabel}" that should map to this MimoSaaS campaign. (The value does not need to match the MimoSaaS campaign name.)`}
             {step === "pipeline" &&
-              "Choose the HubSpot stage that should count as 'pipeline created'. This provides a daily signal alongside daily spend."}
+              "Choose the HubSpot stage to apply to the selected campaign values. This provides a separate daily Pipeline Proxy signal and is not included in Total Revenue."}
             {step === "revenue" &&
               "Select the HubSpot field that represents deal amount."}
             {step === "review" && "Review the settings below, then save mappings."}
@@ -1135,6 +1138,14 @@ export function HubSpotRevenueWizard(props: {
                         <div className="text-xs text-muted-foreground/70">Pipeline proxy</div>
                         <div className="font-medium text-foreground">
                           {pipelineStageLabel || pipelineStageId || "—"}
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-foreground">
+                          {reviewPipelineProxyAmount != null
+                            ? `$${Number(reviewPipelineProxyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : "—"}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground/70">
+                          Open-stage early signal. Not included in Total Revenue.
                         </div>
                       </div>
                     )}

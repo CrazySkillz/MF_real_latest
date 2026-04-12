@@ -695,10 +695,16 @@ Checkpoint after Journey 8:
 - [ ] Confirm `Reconnect` appears immediately in a stable header/action area on the first screen
 - [ ] Confirm the first HubSpot screen does **not** show an unnecessary vertical scrollbar
 - [ ] Confirm the main double-counting warning appears on the first `Source` step before the user proceeds deeper into the wizard
+- [ ] If `Total Revenue + Pipeline (Proxy)` is selected, choose campaign values such as `yesop_brand_search` and `yesop_prospecting`, then choose a pipeline/deal stage such as `Proposal/Price Quote`
+- [ ] Confirm the Pipeline step copy explains that the stage filters the already selected campaign values
+- [ ] Confirm the final review step shows the selected Pipeline Proxy stage label, current Pipeline Proxy amount, and a note that it is not included in Total Revenue
 - [ ] Micro copy: "HubSpot — $X,XXX"
 - [ ] Non-default date field: "HubSpot · Modified Date"
 - [ ] Confirm the Date field copy makes clear that it controls which HubSpot deal date is used when including/reporting revenue
 - [ ] Confirm `Save Mappings` shows a single `Total Revenue (to date)` value and that it displays the computed amount before save
+- [ ] After save, confirm Overview shows a separate `Pipeline Proxy` card with the selected stage label and amount
+- [ ] Confirm the Pipeline Proxy amount does not change Total Revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
+- [ ] If `Total Revenue only (no Pipeline card)` is selected, confirm no Pipeline Proxy review details or Overview card appear
 - [ ] Edit: all settings prefilled. Delete: recalculated + connection cleared
 
 ### Step 7: Salesforce Revenue (if Salesforce connected)
@@ -710,6 +716,13 @@ Checkpoint after Journey 8:
 - [ ] Move from `Pipeline` to `Revenue`
 - [ ] Confirm the `Pipeline` step icon turns green/completed once you move past it
 - [ ] Confirm the Crosswalk step does not show a redundant `Refresh values` action
+- [ ] If `Total Revenue + Pipeline (Proxy)` is selected, choose campaign/opportunity values such as `yesop_brand_search` and `yesop_prospecting`, then choose an Opportunity stage such as `Proposal/Price Quote`
+- [ ] Confirm the Pipeline step copy explains that the stage filters the already selected campaign/opportunity values
+- [ ] Confirm changing the selected Crosswalk values changes both the Total Revenue preview and Pipeline Proxy preview where matching CRM records exist
+- [ ] Confirm the final review step shows the selected Pipeline Proxy stage label, current Pipeline Proxy amount, and a note that it is not included in Total Revenue
+- [ ] After save, confirm Overview shows a separate `Pipeline Proxy` card with the selected stage label and amount
+- [ ] Confirm the Pipeline Proxy amount does not change Total Revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
+- [ ] If `Total Revenue only (no Pipeline card)` is selected, confirm no Pipeline Proxy review details or Overview card appear
 - [ ] Open the Salesforce revenue source in edit mode
 - [ ] Change the selected deal values in Crosswalk
 - [ ] Go to the final review step
@@ -1036,6 +1049,8 @@ Required reconciliation checks:
 - [ ] Connect real HubSpot account via OAuth
 - [ ] Complete the wizard: campaign field → crosswalk → revenue property → date field
 - [ ] Verify deal count + revenue total match what you see in HubSpot
+- [ ] If Pipeline Proxy is enabled, select a real open deal stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
+- [ ] Verify the HubSpot Pipeline Proxy amount is not included in confirmed Total Revenue or downstream performance metrics
 - [ ] **Create a new deal in HubSpot** with known amount
 - [ ] Wait for next scheduler run → verify revenue increased by that amount
 - [ ] Verify ROAS/Revenue KPIs updated
@@ -1044,6 +1059,8 @@ Required reconciliation checks:
 - [ ] Connect real Salesforce account via OAuth
 - [ ] Complete wizard: campaign field → revenue field → date field
 - [ ] Verify opportunity count + revenue match Salesforce
+- [ ] If Pipeline Proxy is enabled, select a real open Opportunity stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
+- [ ] Verify the Salesforce Pipeline Proxy amount is not included in confirmed Total Revenue or downstream performance metrics
 - [ ] Create a new Closed Won opportunity in Salesforce
 - [ ] Wait for scheduler → verify revenue updated
 

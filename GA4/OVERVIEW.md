@@ -14,15 +14,19 @@ The platform-level GA4 `Overview` tab contains:
   - `Conversions`
   - `Engagement Rate`
   - `Conv. Rate`
-- Financial cards
-  - `Total Revenue`
-  - `Latest Day Revenue`
-  - `Total Spend`
-  - `Latest Day Spend`
-  - `Profit`
-  - `ROAS`
-  - `ROI`
-  - `CPA`
+- Revenue & Financial section
+  - `Revenue`
+    - `Total Revenue`
+    - `Latest Day Revenue`
+    - `Pipeline Proxy` when configured
+  - `Spend`
+    - `Total Spend`
+    - `Latest Day Spend`
+  - `Performance`
+    - `Profit`
+    - `ROAS`
+    - `ROI`
+    - `CPA`
 - Tables
   - `Campaign Breakdown`
   - `Landing Pages`
@@ -127,6 +131,12 @@ Important meaning:
 
 Financial-card detail lives in `GA4/FINANCIAL_SOURCES.md`.
 
+Visible layout:
+
+- `Revenue` contains `Total Revenue`, `Latest Day Revenue`, and optional `Pipeline Proxy`
+- `Spend` contains `Total Spend` and `Latest Day Spend`
+- `Performance` contains `Profit`, `ROAS`, `ROI`, and `CPA`
+
 High-level rule:
 
 - `Total Revenue` is additive:
@@ -140,8 +150,16 @@ Pipeline Proxy rule:
 
 - Pipeline Proxy may appear in the Revenue & Financial area when a HubSpot or Salesforce revenue source was saved with `Total Revenue + Pipeline (Proxy)`
 - it displays the configured open-stage/deal-stage total from the CRM pipeline proxy endpoint
+- the card should show the title, amount, and selected CRM stage label so users can see which stage produced the proxy value
+- the card should not show explanatory stage microcopy such as `Contract Sent open-stage signal`
 - it is not confirmed revenue
 - it must not feed `Profit`, `ROAS`, `ROI`, `CPA`, KPIs, Benchmarks, Ad Comparison, Insights, or Reports unless a future product change explicitly redefines that metric
+
+CRM Pipeline Proxy example:
+
+- if the CRM wizard selected campaign values `yesop_brand_search` and `yesop_prospecting`, the Pipeline Proxy card is scoped to those same selected values
+- if the selected stage is `Proposal/Price Quote`, the card amount is the open CRM pipeline amount for those selected campaign values in that stage
+- Total Revenue remains confirmed/won revenue only and must not include the Pipeline Proxy amount
 
 Reference note:
 

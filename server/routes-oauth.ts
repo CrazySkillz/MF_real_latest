@@ -13581,11 +13581,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'conversionValueProperty is required when valueSource=conversion_value' });
       }
 
+      const computeHubspotPipelinePreview = async (): Promise<number | null> => {
+        if (!pipelineEnabled || !pipelineStageId) return null;
+        let total = 0;
+        let afterPipeline: string | undefined;
+        let pipelinePages = 0;
+        while (pipelinePages < MAX_HUBSPOT_PAGES) {
+          const json = await hubspotSearchDeals(accessToken, {
+            filterGroups: [{ filters: [
+              { propertyName: campaignProp, operator: 'IN', values: selected },
+              { propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] },
+            ] }],
+            properties: [campaignProp, revenueProp, 'dealstage'],
+            limit: 100,
+            after: afterPipeline,
+          });
+          for (const d of Array.isArray(json?.results) ? json.results : []) {
+            const raw = d?.properties?.[revenueProp];
+            const amt = raw === undefined || raw === null ? NaN : Number(String(raw).replace(/[^0-9.\-]/g, ''));
+            if (Number.isFinite(amt)) total += amt;
+          }
+          afterPipeline = json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
+          if (!afterPipeline) break;
+          pipelinePages += 1;
+        }
+        return Number(total.toFixed(2));
+      };
+
       if (previewOnly) {
+        const pipelinePreviewTotal = await computeHubspotPipelinePreview();
         return res.json({
           success: true,
           previewOnly: true,
           totalRevenue: Number(totalRevenue.toFixed(2)),
+          pipelinePreviewTotal,
         });
       }
 

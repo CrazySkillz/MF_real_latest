@@ -633,6 +633,13 @@ export function SalesforceRevenueWizard(props: {
     return null;
   }, [lastSaveResult, initialMappingConfig, previewRows, previewHeaders, revenueField]);
 
+  const reviewPipelineProxyAmount = useMemo(() => {
+    if (!pipelineEnabled || pipelinePreviewHeaders.length === 0) return null;
+    const amtIdx = pipelinePreviewHeaders.findIndex((h) => h.toLowerCase() === "amount" || h === revenueField);
+    if (amtIdx < 0) return null;
+    return pipelinePreviewRows.reduce((acc, row) => acc + (Number(String(row[amtIdx] || "").replace(/[^0-9.\-]/g, "")) || 0), 0);
+  }, [pipelineEnabled, pipelinePreviewHeaders, pipelinePreviewRows, revenueField]);
+
   const campaignFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === campaignField);
     return f?.label || campaignField || "Campaign field";
@@ -1029,7 +1036,7 @@ export function SalesforceRevenueWizard(props: {
             {step === "crosswalk" &&
               `Select the value(s) from "${campaignFieldLabel}" that should map to this MimoSaaS campaign.`}
             {step === "pipeline" &&
-              "Choose the Opportunity stage that should count as 'pipeline created'. This provides a daily signal alongside daily spend."}
+              "Choose the Opportunity stage to apply to the selected campaign values. This provides a separate daily Pipeline Proxy signal and is not included in Total Revenue."}
             {step === "revenue" &&
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Select the Opportunity field that represents conversion value per conversion (estimated value)."
@@ -1435,6 +1442,16 @@ export function SalesforceRevenueWizard(props: {
                       <div className="text-xs text-muted-foreground/70">Pipeline proxy</div>
                       <div className="font-medium text-foreground">
                         {pipelineStageLabel || pipelineStageName || "---"}
+                      </div>
+                      <div className="mt-1 text-sm font-medium text-foreground">
+                        {reviewPipelineProxyAmount != null
+                          ? `$${Number(reviewPipelineProxyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : previewLoading
+                            ? "Loading..."
+                            : "---"}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground/70">
+                        Open-stage early signal. Not included in Total Revenue.
                       </div>
                     </div>
                   )}

@@ -23,6 +23,23 @@ Required pattern:
 7. GA4 card queries refetch
 8. the cards and source rows repopulate from the updated state
 
+Visible Overview layout:
+
+- `Revenue` subsection:
+  - `Total Revenue`
+  - `Latest Day Revenue`
+  - `Pipeline Proxy` when configured
+- `Spend` subsection:
+  - `Total Spend`
+  - `Latest Day Spend`
+- `Performance` subsection:
+  - `Profit`
+  - `ROAS`
+  - `ROI`
+  - `CPA`
+
+This layout is presentation-only. It must not change financial source-of-truth, source rows, edit/delete behavior, or calculations.
+
 ## Revenue Computation
 
 ### Total Revenue
@@ -93,6 +110,27 @@ The following are derived outputs:
 - `CPA = Spend / Conversions`
 
 If spend or revenue is missing, downstream metrics may be blocked or call out missing prerequisites.
+
+Pipeline Proxy rule:
+
+- Pipeline Proxy is a separate Revenue subsection card when HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` is configured
+- it should show the card title, amount, and selected CRM stage label without additional explanatory stage microcopy
+- it is not included in `Total Revenue`, `Profit`, `ROAS`, `ROI`, `CPA`, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
+
+Pipeline Proxy selection model:
+
+- the campaign/crosswalk values selected in the CRM wizard define which CRM records belong to the current MimoSaaS campaign
+- the Pipeline Proxy stage is then applied as a second filter to those same selected CRM records
+- confirmed/won records from the selected campaign values contribute to `Total Revenue`
+- open records from the selected campaign values that are currently in the selected Pipeline Proxy stage contribute to the separate `Pipeline Proxy` card
+- Pipeline Proxy is an early signal only; it must never be added into confirmed revenue or performance calculations
+
+Example:
+
+- if the user selects `yesop_brand_search` and `yesop_prospecting` as campaign values, those two values define the eligible CRM deal/opportunity set for this MimoSaaS campaign
+- if the user then selects `Proposal/Price Quote` as the Pipeline Proxy stage, the proxy amount includes only open CRM records for `yesop_brand_search` or `yesop_prospecting` that are currently in `Proposal/Price Quote`
+- closed/won CRM records for `yesop_brand_search` or `yesop_prospecting` remain part of `Total Revenue`
+- open CRM records in other stages, or records for other campaign values, do not contribute to this Pipeline Proxy amount
 
 ## The Six `Total Revenue +` Options
 
@@ -166,12 +204,13 @@ The user journey is:
 4. once authenticated, the HubSpot revenue wizard opens
 5. the user chooses the HubSpot campaign property used to identify matching records
 6. the user selects the matching property value or values for this campaign
-7. the user chooses the HubSpot revenue property
-8. the user chooses the date field / lookback window used for the import
-9. optionally, the user configures pipeline-related settings if that path is enabled
-10. the system saves a HubSpot revenue source with the mapping configuration
-11. the system materializes normalized revenue records for the matched HubSpot records
-12. campaign financial values are recomputed and the GA4 cards/source rows refetch
+7. if `Total Revenue + Pipeline (Proxy)` is selected, the user chooses the HubSpot pipeline/deal stage to apply to those selected campaign values
+8. the user chooses the HubSpot revenue property
+9. the user chooses the date field / lookback window used for the import
+10. the final review step shows confirmed Total Revenue separately from Pipeline Proxy stage and amount
+11. the system saves a HubSpot revenue source with the mapping configuration
+12. the system materializes normalized revenue records for the matched HubSpot records
+13. campaign financial values are recomputed and the GA4 cards/source rows refetch
 
 Important meaning:
 
@@ -181,7 +220,9 @@ Important meaning:
 - `Close Date` is the default for finance-style won-revenue reporting
 - `Last Modified Date` is useful when the user wants revenue tied to recently updated deals
 - `Created Date` is useful when the user wants revenue tied to when opportunities first entered HubSpot
-- if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal and must not be added into Total Revenue
+- if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
+- the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path
+- the final review step should show Pipeline Proxy stage, amount, and a note that it is not included in Total Revenue
 - the `Reconnect` action on the first HubSpot screen should render in a stable header/action area, not inside the main source-choice card or a shifting scroll region
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 
@@ -195,13 +236,14 @@ The user journey is:
 4. once authenticated, the Salesforce revenue wizard opens
 5. the user chooses the Salesforce campaign/attribution field used to identify matching opportunities
 6. the user selects the matching value or values for this campaign
-7. the user chooses the Salesforce revenue field
-8. the user chooses the date field / lookback window used for import
-9. optional pipeline settings can be configured where supported
-10. the system validates the mapping and currency requirements
-11. the system saves a Salesforce revenue source with the mapping configuration
-12. the system materializes normalized revenue records for the matched Salesforce opportunities
-13. campaign financial values are recomputed and the GA4 cards/source rows refetch
+7. if `Total Revenue + Pipeline (Proxy)` is selected, the user chooses the Salesforce Opportunity stage to apply to those selected campaign values
+8. the user chooses the Salesforce revenue field
+9. the user chooses the date field / lookback window used for import
+10. the final review step shows confirmed Total Revenue separately from Pipeline Proxy stage and amount
+11. the system validates the mapping and currency requirements
+12. the system saves a Salesforce revenue source with the mapping configuration
+13. the system materializes normalized revenue records for the matched Salesforce opportunities
+14. campaign financial values are recomputed and the GA4 cards/source rows refetch
 
 Important meaning:
 
@@ -209,7 +251,9 @@ Important meaning:
 - this path is sensitive because it can include currency validation and attribution-field matching
 - in edit mode, Salesforce revenue must preserve the existing revenue `sourceId` all the way through the save request so the system updates the existing source instead of creating an additive duplicate
 - Salesforce review-step `Total Revenue (to date)` should prefer fresh preview data from the current edit session over stored `lastTotalRevenue` values from the previous save
-- if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal and must not be added into Total Revenue
+- if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
+- the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path
+- the final review step should show Pipeline Proxy stage, amount, and a note that it is not included in Total Revenue
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 
 ## Revenue Source 4: Google Sheets Journey

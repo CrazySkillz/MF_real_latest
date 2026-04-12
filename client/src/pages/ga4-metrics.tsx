@@ -4317,6 +4317,11 @@ export default function GA4Metrics() {
                               <p className="text-2xl font-bold text-foreground mt-1">
                                 {formatMoney(Number(pipelineProxyData.totalToDate || 0))}
                               </p>
+                              {pipelineProxyData.pipelineStageLabel && (
+                                <p className="text-xs text-muted-foreground/70 mt-1">
+                                  {pipelineProxyData.pipelineStageLabel}
+                                </p>
+                              )}
                             </CardContent>
                           </Card>
                         )}

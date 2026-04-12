@@ -1990,14 +1990,10 @@ export default function GA4Metrics() {
     }));
   }, [revenueSourcesResp, revenueBreakdownResp]);
   const pipelineProxyData = useMemo(() => {
-    const crmSource = revenueDisplaySources.find((s: any) => {
+    const sourceDefs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
+    const crmSource = sourceDefs.find((s: any) => {
       const sourceType = String(s?.sourceType || "").toLowerCase();
-      if (sourceType !== "salesforce" && sourceType !== "hubspot") return false;
-      const cfg = typeof s?.mappingConfig === "string"
-        ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return {}; } })()
-        : (s?.mappingConfig || {});
-      const hasStage = sourceType === "salesforce" ? !!cfg.pipelineStageName : !!cfg.pipelineStageId;
-      return cfg.pipelineEnabled === true && hasStage;
+      return s?.isActive !== false && (sourceType === "salesforce" || sourceType === "hubspot");
     });
     const crmSourceType = String(crmSource?.sourceType || "").toLowerCase();
     const crmCfg = typeof crmSource?.mappingConfig === "string"
@@ -2011,7 +2007,7 @@ export default function GA4Metrics() {
     if (crmSourceType === "salesforce") return withProvenance(salesforcePipelineProxyData, "Salesforce");
     if (crmSourceType === "hubspot") return withProvenance(hubspotPipelineProxyData, "HubSpot");
     return null;
-  }, [hubspotPipelineProxyData, revenueDisplaySources, salesforcePipelineProxyData]);
+  }, [hubspotPipelineProxyData, revenueSourcesResp, salesforcePipelineProxyData]);
   // Availability flags for UI gating (KPI/Benchmark templates):
   // - Spend is "available" if a spend source exists (even if value is 0).
   // - Revenue is "available" if GA4 has a revenue metric configured OR an imported revenue source exists.

@@ -1991,6 +1991,11 @@ export default function GA4Metrics() {
   }, [revenueSourcesResp, revenueBreakdownResp]);
   const pipelineProxyData = useMemo(() => {
     const sourceDefs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
+    const scopedCampaignValues = Array.isArray(selectedGa4CampaignFilterList)
+      ? selectedGa4CampaignFilterList.map((v: any) => String(v || "").trim()).filter(Boolean)
+      : [];
+    const normalizeValue = (value: any) => String(value || "").trim().toLowerCase();
+    const scopedCampaignSet = new Set(scopedCampaignValues.map(normalizeValue).filter(Boolean));
     const parseMappingConfig = (source: any) => typeof source?.mappingConfig === "string"
       ? (() => { try { return JSON.parse(source.mappingConfig); } catch { return {}; } })()
       : (source?.mappingConfig || {});
@@ -1998,43 +2003,78 @@ export default function GA4Metrics() {
       const cfg = parseMappingConfig(source);
       return cfg?.pipelineEnabled === true && !!(cfg.pipelineStageLabel || cfg.pipelineStageName || cfg.pipelineStageId);
     };
-    const findCrmSource = (sources: any[]) => sources.find((s: any) => {
-      const sourceType = String(s?.sourceType || "").toLowerCase();
-      return s?.isActive !== false && (sourceType === "salesforce" || sourceType === "hubspot") && hasPipelineConfig(s);
-    });
+    const getSourceScopeValues = (source: any) => {
+      const cfg = parseMappingConfig(source);
+      const selected = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v || "").trim()).filter(Boolean) : [];
+      const totals = Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
+      const totalValues = totals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean);
+      return Array.from(new Set([...selected, ...totalValues]));
+    };
+    const sourceMatchesGa4Scope = (source: any) => {
+      if (scopedCampaignSet.size === 0) return true;
+      return getSourceScopeValues(source).some((value) => scopedCampaignSet.has(normalizeValue(value)));
+    };
+    const findCrmSource = (sources: any[]) => {
+      const eligible = sources.filter((s: any) => {
+        const sourceType = String(s?.sourceType || "").toLowerCase();
+        return s?.isActive !== false && (sourceType === "salesforce" || sourceType === "hubspot") && hasPipelineConfig(s);
+      });
+      return eligible.find(sourceMatchesGa4Scope) || eligible[0] || null;
+    };
     const crmSource = findCrmSource(sourceDefs) || findCrmSource(Array.isArray(revenueDisplaySources) ? revenueDisplaySources : []);
     const crmSourceType = String(crmSource?.sourceType || "").toLowerCase();
     const crmCfg = parseMappingConfig(crmSource);
     const selectedValues = Array.isArray(crmCfg.selectedValues) ? crmCfg.selectedValues.map((v: any) => String(v)).filter(Boolean) : [];
     const pipelineStageLabel = crmCfg.pipelineStageLabel || crmCfg.pipelineStageName || crmCfg.pipelineStageId || null;
     const pipelineValueRevenueTotals = Array.isArray(crmCfg.pipelineValueRevenueTotals) ? crmCfg.pipelineValueRevenueTotals : [];
-    const fallbackTotal = Number(crmCfg.pipelineTotalToDate || 0) || pipelineValueRevenueTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
+    const scopedPipelineValueRevenueTotals = scopedCampaignSet.size > 0
+      ? pipelineValueRevenueTotals.filter((item: any) => scopedCampaignSet.has(normalizeValue(item?.campaignValue)))
+      : pipelineValueRevenueTotals;
+    const scopedSelectedValues = scopedCampaignSet.size > 0
+      ? selectedValues.filter((value: any) => scopedCampaignSet.has(normalizeValue(value)))
+      : selectedValues;
+    const scopedFallbackTotal = scopedPipelineValueRevenueTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
+    const fallbackTotal = scopedFallbackTotal || Number(crmCfg.pipelineTotalToDate || 0);
     const sourcePipelineFallback = crmCfg.pipelineEnabled && pipelineStageLabel ? {
       success: true,
       totalToDate: fallbackTotal,
       pipelineStageLabel,
-      pipelineValueRevenueTotals,
+      pipelineValueRevenueTotals: scopedPipelineValueRevenueTotals,
     } : null;
     const normalizeTotal = (data: any) => {
       if (!data?.success) return data;
       const dataTotals = Array.isArray(data.pipelineValueRevenueTotals) ? data.pipelineValueRevenueTotals : [];
-      const dataTotal = Number(data.totalToDate || 0) || dataTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
-      return { ...data, totalToDate: dataTotal };
+      const scopedDataTotals = scopedCampaignSet.size > 0
+        ? dataTotals.filter((item: any) => scopedCampaignSet.has(normalizeValue(item?.campaignValue)))
+        : dataTotals;
+      const scopedDataTotal = scopedDataTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
+      const dataTotal = scopedCampaignSet.size > 0 ? scopedDataTotal : (scopedDataTotal || Number(data.totalToDate || 0));
+      return { ...data, totalToDate: dataTotal, pipelineValueRevenueTotals: scopedDataTotals };
     };
-    const withProvenance = (data: any, label: string) => data?.success ? {
+    const withProvenance = (data: any, label: string) => {
+      if (data?.success) {
+        const normalized = normalizeTotal(data);
+        return {
+          ...sourcePipelineFallback,
+          ...normalized,
+          totalToDate: Number(normalized?.totalToDate || 0) || Number(sourcePipelineFallback?.totalToDate || 0),
+          pipelineValueRevenueTotals: Array.isArray(normalized?.pipelineValueRevenueTotals) && normalized.pipelineValueRevenueTotals.length > 0
+            ? normalized.pipelineValueRevenueTotals
+            : sourcePipelineFallback?.pipelineValueRevenueTotals || [],
+          providerLabel: label,
+          selectedValues: scopedSelectedValues.length > 0 ? scopedSelectedValues : scopedCampaignValues,
+        };
+      }
+      return sourcePipelineFallback ? {
       ...sourcePipelineFallback,
-      ...normalizeTotal(data),
       providerLabel: label,
-      selectedValues,
-    } : sourcePipelineFallback ? {
-      ...sourcePipelineFallback,
-      providerLabel: label,
-      selectedValues,
-    } : data;
+      selectedValues: scopedSelectedValues.length > 0 ? scopedSelectedValues : scopedCampaignValues,
+      } : data;
+    };
     if (crmSourceType === "salesforce") return withProvenance(salesforcePipelineProxyData, "Salesforce");
     if (crmSourceType === "hubspot") return withProvenance(hubspotPipelineProxyData, "HubSpot");
     return null;
-  }, [hubspotPipelineProxyData, revenueDisplaySources, revenueSourcesResp, salesforcePipelineProxyData]);
+  }, [hubspotPipelineProxyData, revenueDisplaySources, revenueSourcesResp, salesforcePipelineProxyData, selectedGa4CampaignFilterList]);
   // Availability flags for UI gating (KPI/Benchmark templates):
   // - Spend is "available" if a spend source exists (even if value is 0).
   // - Revenue is "available" if GA4 has a revenue metric configured OR an imported revenue source exists.

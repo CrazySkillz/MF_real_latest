@@ -2027,29 +2027,18 @@ export default function GA4Metrics() {
     const selectedValues = Array.isArray(crmCfg.selectedValues) ? crmCfg.selectedValues.map((v: any) => String(v)).filter(Boolean) : [];
     const pipelineStageLabel = crmCfg.pipelineStageLabel || crmCfg.pipelineStageName || crmCfg.pipelineStageId || null;
     const pipelineValueRevenueTotals = Array.isArray(crmCfg.pipelineValueRevenueTotals) ? crmCfg.pipelineValueRevenueTotals : [];
-    const scopedPipelineValueRevenueTotals = scopedCampaignSet.size > 0
-      ? pipelineValueRevenueTotals.filter((item: any) => scopedCampaignSet.has(normalizeValue(item?.campaignValue)))
-      : pipelineValueRevenueTotals;
-    const scopedSelectedValues = scopedCampaignSet.size > 0
-      ? selectedValues.filter((value: any) => scopedCampaignSet.has(normalizeValue(value)))
-      : selectedValues;
-    const scopedFallbackTotal = scopedPipelineValueRevenueTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
-    const fallbackTotal = scopedCampaignSet.size > 0 ? scopedFallbackTotal : Number(crmCfg.pipelineTotalToDate || 0);
+    const fallbackTotal = Number(crmCfg.pipelineTotalToDate || 0);
     const sourcePipelineFallback = crmCfg.pipelineEnabled && pipelineStageLabel ? {
       success: true,
       totalToDate: fallbackTotal,
       pipelineStageLabel,
-      pipelineValueRevenueTotals: scopedPipelineValueRevenueTotals,
+      pipelineValueRevenueTotals,
     } : null;
     const normalizeTotal = (data: any) => {
       if (!data?.success) return data;
       const dataTotals = Array.isArray(data.pipelineValueRevenueTotals) ? data.pipelineValueRevenueTotals : [];
-      const scopedDataTotals = scopedCampaignSet.size > 0
-        ? dataTotals.filter((item: any) => scopedCampaignSet.has(normalizeValue(item?.campaignValue)))
-        : dataTotals;
-      const scopedDataTotal = scopedDataTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
-      const dataTotal = scopedCampaignSet.size > 0 ? scopedDataTotal : (scopedDataTotal || Number(data.totalToDate || 0));
-      return { ...data, totalToDate: dataTotal, pipelineValueRevenueTotals: scopedDataTotals };
+      const totalsSum = dataTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
+      return { ...data, totalToDate: Number(data.totalToDate || 0) || totalsSum, pipelineValueRevenueTotals: dataTotals };
     };
     const withProvenance = (data: any, label: string) => {
       if (data?.success) {
@@ -2062,13 +2051,13 @@ export default function GA4Metrics() {
             ? normalized.pipelineValueRevenueTotals
             : sourcePipelineFallback?.pipelineValueRevenueTotals || [],
           providerLabel: label,
-          selectedValues: scopedPipelineValueRevenueTotals.length > 0 ? scopedSelectedValues : [],
+          selectedValues: pipelineValueRevenueTotals.length > 0 ? selectedValues : [],
         };
       }
       return sourcePipelineFallback ? {
       ...sourcePipelineFallback,
       providerLabel: label,
-      selectedValues: scopedPipelineValueRevenueTotals.length > 0 ? scopedSelectedValues : [],
+      selectedValues: pipelineValueRevenueTotals.length > 0 ? selectedValues : [],
       } : data;
     };
     if (crmSourceType === "salesforce") return withProvenance(salesforcePipelineProxyData, "Salesforce");

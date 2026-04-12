@@ -1011,8 +1011,8 @@ export function SalesforceRevenueWizard(props: {
                 variant="ghost"
                 size="sm"
                 onClick={() => void openOAuthWindow()}
-                disabled={isConnecting || statusLoading || !isConnected}
-                className={`${!statusLoading && isConnected ? "" : "opacity-0 pointer-events-none"} min-w-[116px]`}
+                disabled={isConnecting || statusLoading}
+                className={`${!statusLoading ? "" : "opacity-0 pointer-events-none"} min-w-[116px]`}
               >
                 {isConnecting ? "Reconnecting…" : "Reconnect"}
               </Button>

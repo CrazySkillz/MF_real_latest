@@ -2034,7 +2034,7 @@ export default function GA4Metrics() {
       ? selectedValues.filter((value: any) => scopedCampaignSet.has(normalizeValue(value)))
       : selectedValues;
     const scopedFallbackTotal = scopedPipelineValueRevenueTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
-    const fallbackTotal = scopedFallbackTotal || Number(crmCfg.pipelineTotalToDate || 0);
+    const fallbackTotal = scopedCampaignSet.size > 0 ? scopedFallbackTotal : Number(crmCfg.pipelineTotalToDate || 0);
     const sourcePipelineFallback = crmCfg.pipelineEnabled && pipelineStageLabel ? {
       success: true,
       totalToDate: fallbackTotal,
@@ -2062,13 +2062,13 @@ export default function GA4Metrics() {
             ? normalized.pipelineValueRevenueTotals
             : sourcePipelineFallback?.pipelineValueRevenueTotals || [],
           providerLabel: label,
-          selectedValues: scopedSelectedValues.length > 0 ? scopedSelectedValues : scopedCampaignValues,
+          selectedValues: scopedPipelineValueRevenueTotals.length > 0 ? scopedSelectedValues : [],
         };
       }
       return sourcePipelineFallback ? {
       ...sourcePipelineFallback,
       providerLabel: label,
-      selectedValues: scopedSelectedValues.length > 0 ? scopedSelectedValues : scopedCampaignValues,
+      selectedValues: scopedPipelineValueRevenueTotals.length > 0 ? scopedSelectedValues : [],
       } : data;
     };
     if (crmSourceType === "salesforce") return withProvenance(salesforcePipelineProxyData, "Salesforce");

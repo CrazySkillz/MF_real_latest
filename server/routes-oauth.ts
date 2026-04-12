@@ -13076,7 +13076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
         if (Number.isFinite(amt)) {
           totalToDate += amt;
-          const campaignValue = matchSelectedCampaignValue(readField(rec, attribField));
+          const campaignValue = matchSelectedCampaignValue(readField(rec, attribField)) || matchSelectedCampaignValue(rec?.Name);
           if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
         }
         if (includeCurrency) {
@@ -13086,8 +13086,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const runQuery = async (includeCurrency: boolean): Promise<void> => {
+        const fields = Array.from(new Set(["Id", "Name", attribField, revenueField, ...(includeCurrency ? ["CurrencyIsoCode"] : [])]));
         const soql =
-          `SELECT Id, ${attribField}, ${revenueField}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
+          `SELECT ${fields.join(", ")} ` +
           `FROM Opportunity ` +
           `WHERE StageName = '${escapedStage}' AND ${attribField} IN (${quoted}) ` +
           `LIMIT 2000`;
@@ -13106,10 +13107,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
       const runStageScan = async (includeCurrency: boolean): Promise<void> => {
+        const fields = Array.from(new Set(["Id", "Name", attribField, revenueField, ...(includeCurrency ? ["CurrencyIsoCode"] : [])]));
         const soql =
-          `SELECT Id, ${attribField}, ${revenueField}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
+          `SELECT ${fields.join(", ")} ` +
           `FROM Opportunity ` +
-          `WHERE StageName = '${escapedStage}' AND ${attribField} != null ` +
+          `WHERE StageName = '${escapedStage}' ` +
           `LIMIT 2000`;
         let next: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
         let pages = 0;
@@ -13119,7 +13121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
           const recs = Array.isArray(json?.records) ? json.records : [];
           for (const rec of recs) {
-            if (matchSelectedCampaignValue(readField(rec, attribField))) addPipelineRecord(rec, includeCurrency);
+            if (matchSelectedCampaignValue(readField(rec, attribField)) || matchSelectedCampaignValue(rec?.Name)) addPipelineRecord(rec, includeCurrency);
           }
           next = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
           pages += 1;

@@ -660,6 +660,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return s;
   };
 
+  const getGA4CampaignFilterValues = (raw: any): string[] => {
+    const parsed = parseGA4CampaignFilter(raw);
+    return Array.isArray(parsed)
+      ? parsed.map((v) => String(v || "").trim()).filter(Boolean)
+      : parsed
+        ? [String(parsed).trim()].filter(Boolean)
+        : [];
+  };
+
   const normalizePropertyIdForMock = (pid: string) => {
     const raw = String(pid || "").trim();
     if (!raw) return raw;
@@ -13029,9 +13038,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const version = process.env.SALESFORCE_API_VERSION || "v59.0";
       const attribField = String(cfg.campaignField || "").trim();
       const selected: string[] = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
+      const camp = await storage.getCampaign(campaignId).catch(() => null as any);
+      const pipelineSelected = Array.from(new Set([...selected, ...getGA4CampaignFilterValues((camp as any)?.ga4CampaignFilter)]));
       const revenueField = String(cfg.revenueField || "Amount").trim() || "Amount";
       const stageName = String(cfg.pipelineStageName || "").trim();
-      if (!attribField || selected.length === 0 || !stageName) {
+      if (!attribField || pipelineSelected.length === 0 || !stageName) {
         return res.json({
           success: true,
           pipelineEnabled: true,
@@ -13044,7 +13055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(",");
+      const quoted = pipelineSelected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(",");
       const escapedStage = stageName.replace(/'/g, "\\'");
       let totalToDate = 0;
       const currencies = new Set<string>();
@@ -13061,7 +13072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return cur;
       };
       const normalizeCampaignValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-      const selectedByKey = new Map(selected.map((value) => [normalizeCampaignValue(value), value]));
+      const selectedByKey = new Map(pipelineSelected.map((value) => [normalizeCampaignValue(value), value]));
       const matchSelectedCampaignValue = (raw: any): string | null => {
         const key = normalizeCampaignValue(raw);
         if (!key) return null;
@@ -13316,6 +13327,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
           const campaignProp = String(cfg.campaignProperty || "").trim();
           const selectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
+          const camp = await storage.getCampaign(campaignId).catch(() => null as any);
+          const pipelineSelectedValues = Array.from(new Set([...selectedValues, ...getGA4CampaignFilterValues((camp as any)?.ga4CampaignFilter)]));
           const revenueProp = String(cfg.revenueProperty || "amount").trim() || "amount";
           const pipelineStageId = String(cfg.pipelineStageId || "").trim();
 
@@ -13325,7 +13338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const mode: 'current_stage' = 'current_stage';
           const warning: string | null = null;
 
-          if (campaignProp && pipelineStageId && selectedValues.length > 0) {
+          if (campaignProp && pipelineStageId && pipelineSelectedValues.length > 0) {
             let after3: string | undefined;
             let pages3 = 0;
             let seen3 = 0;
@@ -13334,7 +13347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 filterGroups: [
                   {
                     filters: [
-                      { propertyName: campaignProp, operator: 'IN', values: selectedValues },
+                      { propertyName: campaignProp, operator: 'IN', values: pipelineSelectedValues },
                       { propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] },
                     ],
                   },

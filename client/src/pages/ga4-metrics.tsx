@@ -1787,6 +1787,30 @@ export default function GA4Metrics() {
     },
   });
 
+  const { data: hubspotPipelineProxyData } = useQuery<any>({
+    queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    retry: false,
+    queryFn: async () => {
+      const resp = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+
+  const { data: salesforcePipelineProxyData } = useQuery<any>({
+    queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    retry: false,
+    queryFn: async () => {
+      const resp = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+
   // Note: In GA4 daily mode we do NOT auto-fallback to LinkedIn spend.
   // For accuracy, spend must come from explicit spend sources (CSV/Sheets/manual/connector) that materialize daily spend rows.
 
@@ -1959,6 +1983,12 @@ export default function GA4Metrics() {
       mappingConfig: d.mappingConfig,
     }));
   }, [revenueSourcesResp, revenueBreakdownResp]);
+  const pipelineProxyData = useMemo(() => {
+    const crmSource = revenueDisplaySources.find((s: any) => s?.sourceType === "salesforce" || s?.sourceType === "hubspot");
+    if (crmSource?.sourceType === "salesforce") return salesforcePipelineProxyData;
+    if (crmSource?.sourceType === "hubspot") return hubspotPipelineProxyData;
+    return salesforcePipelineProxyData?.success ? salesforcePipelineProxyData : hubspotPipelineProxyData;
+  }, [hubspotPipelineProxyData, revenueDisplaySources, salesforcePipelineProxyData]);
   // Availability flags for UI gating (KPI/Benchmark templates):
   // - Spend is "available" if a spend source exists (even if value is 0).
   // - Revenue is "available" if GA4 has a revenue metric configured OR an imported revenue source exists.
@@ -4274,6 +4304,22 @@ export default function GA4Metrics() {
                             </p>
                           </CardContent>
                         </Card>
+                        {pipelineProxyData?.success && (
+                          <Card>
+                            <CardContent className="p-5">
+                              <div className="flex items-start justify-between">
+                                <p className="text-sm font-medium text-muted-foreground/70">Pipeline Proxy</p>
+                                <Target className="h-4 w-4 text-muted-foreground/70" />
+                              </div>
+                              <p className="text-2xl font-bold text-foreground mt-1">
+                                {formatMoney(Number(pipelineProxyData.totalToDate || 0))}
+                              </p>
+                              <p className="text-xs text-muted-foreground/70 mt-1">
+                                {pipelineProxyData.pipelineStageLabel || "Selected stage"} open-stage signal
+                              </p>
+                            </CardContent>
+                          </Card>
+                        )}
                         {/* Total Spend */}
                         <Card>
                           <CardContent className="p-5">

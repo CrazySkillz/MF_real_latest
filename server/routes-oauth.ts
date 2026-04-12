@@ -26,6 +26,7 @@ import { sql } from "drizzle-orm";
 import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign } from "./auto-refresh-scheduler";
+import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
@@ -1070,8 +1071,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res: any,
     campaignIdRaw: unknown
   ): Promise<any | null> => {
-    const actorId = getActorId(req);
-    if (!actorId) {
+    const internalAutoRefresh = isInternalAutoRefreshRequest(req);
+    const actorId = internalAutoRefresh ? "" : getActorId(req);
+    if (!internalAutoRefresh && !actorId) {
       res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
       return null;
     }
@@ -1088,6 +1090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(404).json({ success: false, message: "Campaign not found" });
       return null;
     }
+    if (internalAutoRefresh) return campaign;
 
     const ownerId = String((campaign as any).ownerId || "").trim();
     if (!ownerId) {

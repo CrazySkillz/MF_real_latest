@@ -5085,6 +5085,13 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         <p className="text-sm text-muted-foreground/70">Profit</p>
                                         <p className={`text-2xl font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(profit)}</p>
                                       </div>
+                                      {pipelineProxyData?.success && (
+                                        <div>
+                                          <p className="text-sm text-muted-foreground/70">Pipeline Proxy</p>
+                                          <p className="text-2xl font-bold text-foreground">{formatCurrency(Number(pipelineProxyData.totalToDate || 0))}</p>
+                                          <p className="text-xs text-muted-foreground/70 mt-1">{pipelineProxyData.pipelineStageLabel || 'Selected stage'} {pipelineProxyEntityNoun} signal</p>
+                                        </div>
+                                      )}
                                     </div>
                                   </CardContent>
                                 </Card>

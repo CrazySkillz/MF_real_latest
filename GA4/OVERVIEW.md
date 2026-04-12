@@ -131,9 +131,17 @@ High-level rule:
 
 - `Total Revenue` is additive:
   `Total Revenue = GA4-native revenue + imported campaign revenue`
+- `Pipeline Proxy`, when configured from HubSpot or Salesforce, is a separate early-signal card and is not included in `Total Revenue`
 - spend cards come only from explicit spend sources attached to the campaign
 - GA4 itself does not provide spend for this page's spend cards
 - profit and efficiency metrics are derived outputs, not manually stored totals
+
+Pipeline Proxy rule:
+
+- Pipeline Proxy may appear in the Revenue & Financial area when a HubSpot or Salesforce revenue source was saved with `Total Revenue + Pipeline (Proxy)`
+- it displays the configured open-stage/deal-stage total from the CRM pipeline proxy endpoint
+- it is not confirmed revenue
+- it must not feed `Profit`, `ROAS`, `ROI`, `CPA`, KPIs, Benchmarks, Ad Comparison, Insights, or Reports unless a future product change explicitly redefines that metric
 
 Reference note:
 

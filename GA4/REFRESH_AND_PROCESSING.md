@@ -63,6 +63,14 @@ Current eligible sources include:
 - Meta spend through `ad_platforms`
 - Google Ads spend through `ad_platforms`
 
+CRM auto-reprocess rule:
+
+- saved HubSpot and Salesforce mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard
+- the scheduler may use an internal same-process authorization path for its own loopback requests
+- public HubSpot and Salesforce save-mapping endpoints must still require normal user authentication and campaign access
+- refreshed CRM revenue should update materialized revenue records and recomputed campaign financial state
+- refreshed Pipeline Proxy values remain separate early-signal values and must not be added into confirmed Total Revenue
+
 ## After Overview Refresh: KPI Recompute And Alert Checks
 
 Required order:
@@ -76,6 +84,8 @@ Required order:
 Important meaning:
 
 - KPI alerts must run only after both the KPI grid state and the KPI `Executive snapshot` state are coherent with the latest recomputed values
+- for GA4 mock/test flows, the stored KPI value used by alerts must be refreshed from the same total-construction model as the live KPI cards
+- if duplicate GA4 KPI rows exist for the same `campaign + metric`, only the newest row should remain eligible to emit the active alert
 
 ## After Overview Refresh: Benchmark Recompute And Alert Checks
 

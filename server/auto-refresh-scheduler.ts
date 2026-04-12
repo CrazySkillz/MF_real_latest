@@ -17,6 +17,7 @@ import { storage } from "./storage";
 import { refreshAllLinkedInData } from "./linkedin-scheduler";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
+import { getInternalAutoRefreshToken } from "./internal-request-auth";
 
 type AnyRecord = Record<string, any>;
 
@@ -33,7 +34,7 @@ async function postJson(path: string, body: AnyRecord): Promise<{ ok: boolean; s
   const url = `${getServerBaseUrl()}${path.startsWith("/") ? "" : "/"}${path}`;
   const resp = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-internal-auto-refresh-token": getInternalAutoRefreshToken() },
     body: JSON.stringify(body || {}),
   });
   const text = await resp.text().catch(() => "");

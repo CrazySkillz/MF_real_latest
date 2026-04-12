@@ -12958,6 +12958,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = {};
       }
 
+      if (!cfg?.pipelineEnabled || !cfg?.pipelineStageName) {
+        const contexts: Array<'ga4' | 'linkedin' | 'meta'> = ['ga4', 'linkedin', 'meta'];
+        for (const context of contexts) {
+          const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
+          const source = (Array.isArray(sources) ? sources : []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'salesforce');
+          if (!source?.mappingConfig) continue;
+          try {
+            const sourceCfg = JSON.parse(String(source.mappingConfig));
+            if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageName) {
+              cfg = sourceCfg;
+              break;
+            }
+          } catch {
+            // ignore malformed source mapping
+          }
+        }
+      }
+
       if (!cfg || cfg.pipelineEnabled !== true || !cfg.pipelineStageName) {
         return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for this campaign." });
       }
@@ -13187,6 +13205,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = conn?.mappingConfig ? JSON.parse(String(conn.mappingConfig)) : {};
       } catch {
         cfg = {};
+      }
+
+      if (!cfg?.pipelineEnabled || !cfg?.pipelineStageId) {
+        const contexts: Array<'ga4' | 'linkedin' | 'meta'> = ['ga4', 'linkedin', 'meta'];
+        for (const context of contexts) {
+          const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
+          const source = (Array.isArray(sources) ? sources : []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'hubspot');
+          if (!source?.mappingConfig) continue;
+          try {
+            const sourceCfg = JSON.parse(String(source.mappingConfig));
+            if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageId) {
+              cfg = sourceCfg;
+              break;
+            }
+          } catch {
+            // ignore malformed source mapping
+          }
+        }
       }
 
       if (!cfg || cfg.pipelineEnabled !== true || !cfg.pipelineStageId) {

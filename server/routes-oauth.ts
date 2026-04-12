@@ -13231,8 +13231,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch {
             sourceCfg = {};
           }
+          let confirmedCampaignTotals = Array.isArray(sourceCfg.campaignValueRevenueTotals) ? sourceCfg.campaignValueRevenueTotals : [];
+          if (confirmedCampaignTotals.length === 0 && attribField && selected.length > 0 && revenueField) {
+            try {
+              const confirmedTotals = new Map<string, number>();
+              const dateField = String(sourceCfg.dateField || cfg.dateField || "CloseDate").trim() || "CloseDate";
+              const days = Math.min(Math.max(parseInt(String(sourceCfg.days || cfg.days || 90), 10) || 90, 1), 3650);
+              const confirmedQuoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(",");
+              const confirmedFields = Array.from(new Set(["Id", attribField, revenueField]));
+              const soql =
+                `SELECT ${confirmedFields.join(", ")} ` +
+                `FROM Opportunity ` +
+                `WHERE IsWon = true AND ${dateField} = LAST_N_DAYS:${days} AND ${attribField} IN (${confirmedQuoted}) ` +
+                `LIMIT 2000`;
+              let next: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+              let pages = 0;
+              while (next && pages < 10) {
+                const resp = await fetchWithTimeout(next, { headers: { Authorization: `Bearer ${accessToken}` } });
+                const json: any = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
+                const recs = Array.isArray(json?.records) ? json.records : [];
+                for (const rec of recs) {
+                  const campaignValue = String(readField(rec, attribField) || "").trim();
+                  const rawRevenue = readField(rec, revenueField);
+                  const revenue = rawRevenue === undefined || rawRevenue === null ? NaN : Number(String(rawRevenue).replace(/[^0-9.\-]/g, ""));
+                  if (campaignValue && Number.isFinite(revenue)) {
+                    confirmedTotals.set(campaignValue, (confirmedTotals.get(campaignValue) || 0) + revenue);
+                  }
+                }
+                next = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
+                pages += 1;
+              }
+              confirmedCampaignTotals = Array.from(confirmedTotals.entries()).map(([campaignValue, revenue]) => ({
+                campaignValue,
+                revenue: Number(revenue.toFixed(2)),
+              }));
+            } catch (error: any) {
+              console.warn("[Salesforce Pipeline Proxy] Failed to restore confirmed campaign totals:", error?.message || error);
+            }
+          }
           await storage.updateRevenueSource(String(pipelineSource.id), {
-            mappingConfig: JSON.stringify({ ...sourceCfg, ...nextCfg, campaignValueRevenueTotals: sourceCfg.campaignValueRevenueTotals }),
+            mappingConfig: JSON.stringify({ ...sourceCfg, ...nextCfg, campaignValueRevenueTotals: confirmedCampaignTotals }),
           } as any);
         }
       } catch {

@@ -12958,21 +12958,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = {};
       }
 
-      if (!cfg?.pipelineEnabled || !cfg?.pipelineStageName) {
-        const contexts: Array<'ga4' | 'linkedin' | 'meta'> = ['ga4', 'linkedin', 'meta'];
-        for (const context of contexts) {
-          const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
-          const source = (Array.isArray(sources) ? sources : []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'salesforce');
-          if (!source?.mappingConfig) continue;
-          try {
-            const sourceCfg = JSON.parse(String(source.mappingConfig));
-            if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageName) {
-              cfg = sourceCfg;
-              break;
-            }
-          } catch {
-            // ignore malformed source mapping
+      const cfgContext = String(cfg?.platformContext || "").toLowerCase();
+      const contexts: Array<'ga4' | 'linkedin' | 'meta'> =
+        cfgContext === 'linkedin' || cfgContext === 'meta' || cfgContext === 'ga4'
+          ? [cfgContext as any, ...(['ga4', 'linkedin', 'meta'] as const).filter((c) => c !== cfgContext)]
+          : ['ga4', 'linkedin', 'meta'];
+      for (const context of contexts) {
+        const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
+        const source = (Array.isArray(sources) ? sources : []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'salesforce');
+        if (!source?.mappingConfig) continue;
+        try {
+          const sourceCfg = JSON.parse(String(source.mappingConfig));
+          if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageName) {
+            cfg = sourceCfg;
+            break;
           }
+        } catch {
+          // ignore malformed source mapping
         }
       }
 
@@ -13207,21 +13209,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = {};
       }
 
-      if (!cfg?.pipelineEnabled || !cfg?.pipelineStageId) {
-        const contexts: Array<'ga4' | 'linkedin' | 'meta'> = ['ga4', 'linkedin', 'meta'];
-        for (const context of contexts) {
-          const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
-          const source = (Array.isArray(sources) ? sources : []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'hubspot');
-          if (!source?.mappingConfig) continue;
-          try {
-            const sourceCfg = JSON.parse(String(source.mappingConfig));
-            if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageId) {
-              cfg = sourceCfg;
-              break;
-            }
-          } catch {
-            // ignore malformed source mapping
+      const cfgContext = String(cfg?.platformContext || "").toLowerCase();
+      const contexts: Array<'ga4' | 'linkedin' | 'meta'> =
+        cfgContext === 'linkedin' || cfgContext === 'meta' || cfgContext === 'ga4'
+          ? [cfgContext as any, ...(['ga4', 'linkedin', 'meta'] as const).filter((c) => c !== cfgContext)]
+          : ['ga4', 'linkedin', 'meta'];
+      for (const context of contexts) {
+        const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
+        const source = (Array.isArray(sources) ? sources : []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'hubspot');
+        if (!source?.mappingConfig) continue;
+        try {
+          const sourceCfg = JSON.parse(String(source.mappingConfig));
+          if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageId) {
+            cfg = sourceCfg;
+            break;
           }
+        } catch {
+          // ignore malformed source mapping
         }
       }
 

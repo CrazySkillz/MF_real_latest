@@ -112,6 +112,19 @@ export default function GA4CampaignComparison({
         const totals = Array.isArray(cfg?.campaignValueRevenueTotals)
           ? cfg.campaignValueRevenueTotals.filter((item: any) => Number(item?.revenue || 0) > 0)
           : [];
+        if (totals.length === 0 && String(source.sourceType || "").toLowerCase() === "salesforce" && Number(source.revenue || 0) > 0) {
+          const pipelineValues = new Set(
+            (Array.isArray(cfg?.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [])
+              .map((item: any) => normalizeCampaignKey(String(item?.campaignValue || "")))
+              .filter(Boolean),
+          );
+          const confirmedCandidates = (Array.isArray(cfg?.selectedValues) ? cfg.selectedValues : [])
+            .map((value: any) => String(value || "").trim())
+            .filter((value: string) => value && !pipelineValues.has(normalizeCampaignKey(value)));
+          if (confirmedCandidates.length === 1) {
+            return [source.sourceId, [{ campaignValue: confirmedCandidates[0], revenue: Number(source.revenue || 0) }]] as const;
+          }
+        }
         return [source.sourceId, totals] as const;
       }),
     );

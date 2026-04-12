@@ -13060,6 +13060,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return cur;
       };
+      const normalizeCampaignValue = (value: any) => String(value || "").trim().toLowerCase();
+      const selectedByKey = new Map(selected.map((value) => [normalizeCampaignValue(value), value]));
+      const matchSelectedCampaignValue = (raw: any): string | null => {
+        const key = normalizeCampaignValue(raw);
+        if (!key) return null;
+        if (selectedByKey.has(key)) return selectedByKey.get(key) || null;
+        for (const [selectedKey, selectedValue] of selectedByKey.entries()) {
+          if (selectedKey && key.includes(selectedKey)) return selectedValue;
+        }
+        return null;
+      };
+      const addPipelineRecord = (rec: any, includeCurrency: boolean): void => {
+        const rRaw = readField(rec, revenueField);
+        const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
+        if (Number.isFinite(amt)) {
+          totalToDate += amt;
+          const campaignValue = matchSelectedCampaignValue(readField(rec, attribField));
+          if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
+        }
+        if (includeCurrency) {
+          const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
+          if (c) currencies.add(c);
+        }
+      };
 
       const runQuery = async (includeCurrency: boolean): Promise<void> => {
         const soql =
@@ -13075,17 +13099,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
           const recs = Array.isArray(json?.records) ? json.records : [];
           for (const rec of recs) {
-            const rRaw = rec?.[revenueField];
-            const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
-            if (Number.isFinite(amt)) {
-              totalToDate += amt;
-              const campaignValue = String(readField(rec, attribField) || "").trim();
-              if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
-            }
-            if (includeCurrency) {
-              const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
-              if (c) currencies.add(c);
-            }
+            addPipelineRecord(rec, includeCurrency);
+          }
+          next = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
+          pages += 1;
+        }
+      };
+      const runStageScan = async (includeCurrency: boolean): Promise<void> => {
+        const soql =
+          `SELECT Id, ${attribField}, ${revenueField}${includeCurrency ? ", CurrencyIsoCode" : ""} ` +
+          `FROM Opportunity ` +
+          `WHERE StageName = '${escapedStage}' AND ${attribField} != null ` +
+          `LIMIT 2000`;
+        let next: string | null = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+        let pages = 0;
+        while (next && pages < 10) {
+          const resp = await fetchWithTimeout(next, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const json: any = await resp.json().catch(() => ({}));
+          if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
+          const recs = Array.isArray(json?.records) ? json.records : [];
+          for (const rec of recs) {
+            if (matchSelectedCampaignValue(readField(rec, attribField))) addPipelineRecord(rec, includeCurrency);
           }
           next = json?.nextRecordsUrl ? `${instanceUrl}${json.nextRecordsUrl}` : null;
           pages += 1;
@@ -13100,6 +13134,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await runQuery(false);
         } else {
           throw e;
+        }
+      }
+      if (totalToDate <= 0 && pipelineValueRevenueTotals.size === 0) {
+        try {
+          await runStageScan(currencies.size > 0);
+        } catch (e: any) {
+          const msg = String(e?.message || "").toLowerCase();
+          if (msg.includes("no such column") && msg.includes("currencyisocode")) await runStageScan(false);
+          else throw e;
         }
       }
 

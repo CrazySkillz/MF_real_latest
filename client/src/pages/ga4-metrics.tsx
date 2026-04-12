@@ -1984,10 +1984,19 @@ export default function GA4Metrics() {
     }));
   }, [revenueSourcesResp, revenueBreakdownResp]);
   const pipelineProxyData = useMemo(() => {
-    const crmSource = revenueDisplaySources.find((s: any) => s?.sourceType === "salesforce" || s?.sourceType === "hubspot");
-    if (crmSource?.sourceType === "salesforce") return salesforcePipelineProxyData;
-    if (crmSource?.sourceType === "hubspot") return hubspotPipelineProxyData;
-    return salesforcePipelineProxyData?.success ? salesforcePipelineProxyData : hubspotPipelineProxyData;
+    const crmSource = revenueDisplaySources.find((s: any) => {
+      const sourceType = String(s?.sourceType || "").toLowerCase();
+      if (sourceType !== "salesforce" && sourceType !== "hubspot") return false;
+      const cfg = typeof s?.mappingConfig === "string"
+        ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return {}; } })()
+        : (s?.mappingConfig || {});
+      const hasStage = sourceType === "salesforce" ? !!cfg.pipelineStageName : !!cfg.pipelineStageId;
+      return cfg.pipelineEnabled === true && hasStage;
+    });
+    const crmSourceType = String(crmSource?.sourceType || "").toLowerCase();
+    if (crmSourceType === "salesforce") return salesforcePipelineProxyData;
+    if (crmSourceType === "hubspot") return hubspotPipelineProxyData;
+    return null;
   }, [hubspotPipelineProxyData, revenueDisplaySources, salesforcePipelineProxyData]);
   // Availability flags for UI gating (KPI/Benchmark templates):
   // - Spend is "available" if a spend source exists (even if value is 0).
@@ -4663,8 +4672,12 @@ export default function GA4Metrics() {
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
                       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+                      queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
+                      queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                       queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+                      queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
+                      queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
                     }}
                   />
                   <AlertDialog open={!!deletingSpendSourceId} onOpenChange={(open) => { if (!open) setDeletingSpendSourceId(null); }}>
@@ -4731,8 +4744,12 @@ export default function GA4Metrics() {
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
                               queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
+                              queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
+                              queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
                               queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+                              queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
+                              queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
                               toast({ title: "Revenue source removed", description: "Total Revenue has been recalculated." });
                             } catch (e: any) {
                               console.error(e);

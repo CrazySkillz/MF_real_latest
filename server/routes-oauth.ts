@@ -13039,10 +13039,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const attribField = String(cfg.campaignField || "").trim();
       const selected: string[] = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
       const camp = await storage.getCampaign(campaignId).catch(() => null as any);
-      const pipelineSelected = Array.from(new Set([...selected, ...getGA4CampaignFilterValues((camp as any)?.ga4CampaignFilter)]));
+      const ga4CampaignValues = getGA4CampaignFilterValues((camp as any)?.ga4CampaignFilter);
+      const pipelineSelected = Array.from(new Set([...selected, ...ga4CampaignValues]));
       const revenueField = String(cfg.revenueField || "Amount").trim() || "Amount";
       const stageName = String(cfg.pipelineStageName || "").trim();
+      console.log("[Salesforce Pipeline Proxy][Trace] start", {
+        campaignId,
+        campaignField: attribField,
+        revenueField,
+        selectedValues: selected,
+        ga4CampaignValues,
+        pipelineSelected,
+        pipelineStageName: stageName,
+        pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
+      });
       if (!attribField || pipelineSelected.length === 0 || !stageName) {
+        console.log("[Salesforce Pipeline Proxy][Trace] incomplete-config", {
+          campaignId,
+          hasCampaignField: !!attribField,
+          selectedValuesCount: selected.length,
+          ga4CampaignValuesCount: ga4CampaignValues.length,
+          pipelineSelectedCount: pipelineSelected.length,
+          hasStageName: !!stageName,
+        });
         return res.json({
           success: true,
           pipelineEnabled: true,
@@ -13060,6 +13079,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalToDate = 0;
       const currencies = new Set<string>();
       const pipelineValueRevenueTotals = new Map<string, number>();
+      let directRecordCount = 0;
+      let stageScanRecordCount = 0;
+      let matchedRecordCount = 0;
       const readField = (rec: any, path: string): any => {
         if (!rec || !path) return undefined;
         if (Object.prototype.hasOwnProperty.call(rec, path)) return rec[path];
@@ -13088,7 +13110,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (Number.isFinite(amt)) {
           totalToDate += amt;
           const campaignValue = matchSelectedCampaignValue(readField(rec, attribField)) || matchSelectedCampaignValue(rec?.Name);
-          if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
+          if (campaignValue) {
+            matchedRecordCount += 1;
+            pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
+          }
         }
         if (includeCurrency) {
           const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
@@ -13110,6 +13135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const json: any = await resp.json().catch(() => ({}));
           if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
           const recs = Array.isArray(json?.records) ? json.records : [];
+          directRecordCount += recs.length;
           for (const rec of recs) {
             addPipelineRecord(rec, includeCurrency);
           }
@@ -13131,6 +13157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const json: any = await resp.json().catch(() => ({}));
           if (!resp.ok) throw new Error(String(json?.[0]?.message || json?.message || ""));
           const recs = Array.isArray(json?.records) ? json.records : [];
+          stageScanRecordCount += recs.length;
           for (const rec of recs) {
             if (matchSelectedCampaignValue(readField(rec, attribField)) || matchSelectedCampaignValue(rec?.Name)) addPipelineRecord(rec, includeCurrency);
           }
@@ -13168,6 +13195,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency = null;
         warning = `Multiple currencies found for pipeline proxy (${Array.from(currencies).join(", ")}). Filter Salesforce to a single currency to enable pipeline proxy.`;
       }
+      console.log("[Salesforce Pipeline Proxy][Trace] result", {
+        campaignId,
+        pipelineStageName: stageName,
+        pipelineSelected,
+        directRecordCount,
+        stageScanRecordCount,
+        matchedRecordCount,
+        computedTotal: Number(Number(totalToDate || 0).toFixed(2)),
+        campaignValueTotals: Array.from(pipelineValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+          campaignValue,
+          revenue: Number(revenue.toFixed(2)),
+        })),
+        currencies: Array.from(currencies),
+        warning,
+      });
 
       // Best-effort persist back to mappingConfig so future loads are fast.
       try {

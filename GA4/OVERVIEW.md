@@ -149,11 +149,13 @@ High-level rule:
 Pipeline Proxy rule:
 
 - Pipeline Proxy may appear in the Revenue & Financial area when a HubSpot or Salesforce revenue source was saved with `Total Revenue + Pipeline (Proxy)`
-- it displays the configured open-stage/deal-stage total from the CRM pipeline proxy endpoint
-- the card should show the title, amount, and selected CRM stage label so users can see which stage produced the proxy value
+- the render condition is the active CRM revenue source configuration, not only the separate pipeline proxy endpoint response
+- when the endpoint returns a fresh value, the card should use that value; if the endpoint path is stale or unavailable, the card may still render from the active source's saved Pipeline Proxy config
+- the card should show the title, amount, selected CRM stage label, provider, and selected/contributing campaign values where available
 - the card should not show explanatory stage microcopy such as `Contract Sent open-stage signal`
 - it is not confirmed revenue
 - it must not feed `Profit`, `ROAS`, `ROI`, `CPA`, KPIs, Benchmarks, Ad Comparison, Insights, or Reports unless a future product change explicitly redefines that metric
+- deleting or deactivating the associated HubSpot/Salesforce revenue source must remove the Pipeline Proxy card from Overview
 
 CRM Pipeline Proxy example:
 

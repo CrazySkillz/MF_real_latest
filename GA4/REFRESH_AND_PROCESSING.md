@@ -70,6 +70,7 @@ CRM auto-reprocess rule:
 - public HubSpot and Salesforce save-mapping endpoints must still require normal user authentication and campaign access
 - refreshed CRM revenue should update materialized revenue records and recomputed campaign financial state
 - refreshed Pipeline Proxy values remain separate early-signal values and must not be added into confirmed Total Revenue
+- Overview Pipeline Proxy visibility should be anchored to the active saved CRM revenue source config; refreshed endpoint data may update the amount/provenance, but a stale endpoint response must not hide an otherwise configured active Pipeline Proxy card
 
 ## After Overview Refresh: KPI Recompute And Alert Checks
 

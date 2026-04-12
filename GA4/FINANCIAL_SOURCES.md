@@ -114,12 +114,15 @@ If spend or revenue is missing, downstream metrics may be blocked or call out mi
 Pipeline Proxy rule:
 
 - Pipeline Proxy is a separate Revenue subsection card when HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` is configured
-- it should show the card title, amount, and selected CRM stage label without additional explanatory stage microcopy
+- it should show the card title, amount, source provider, selected CRM stage label, and selected/contributing campaign values where available
+- Overview should render it from the active CRM revenue source configuration and enrich it with endpoint data when available; it must not disappear solely because the separate proxy endpoint is stale
 - it is not included in `Total Revenue`, `Profit`, `ROAS`, `ROI`, `CPA`, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
 
 Pipeline Proxy selection model:
 
 - the campaign/crosswalk values selected in the CRM wizard define which CRM records belong to the current MimoSaaS campaign
+- in revenue-only mode, Crosswalk values should represent confirmed/won revenue values only
+- in `Total Revenue + Pipeline (Proxy)` mode, Crosswalk must allow selecting both confirmed/won campaign values and eligible open-stage campaign values needed for Pipeline Proxy
 - the Pipeline Proxy stage is then applied as a second filter to those same selected CRM records
 - confirmed/won records from the selected campaign values contribute to `Total Revenue`
 - open records from the selected campaign values that are currently in the selected Pipeline Proxy stage contribute to the separate `Pipeline Proxy` card
@@ -131,6 +134,7 @@ Example:
 - if the user then selects `Proposal/Price Quote` as the Pipeline Proxy stage, the proxy amount includes only open CRM records for `yesop_brand_search` or `yesop_prospecting` that are currently in `Proposal/Price Quote`
 - closed/won CRM records for `yesop_brand_search` or `yesop_prospecting` remain part of `Total Revenue`
 - open CRM records in other stages, or records for other campaign values, do not contribute to this Pipeline Proxy amount
+- if `yesop_prospecting` exists only as an open `Proposal/Price Quote` record, Proxy mode must still make it selectable so the user can include it in Pipeline Proxy
 
 ## The Six `Total Revenue +` Options
 

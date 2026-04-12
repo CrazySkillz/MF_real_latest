@@ -825,6 +825,8 @@ Status: `Done`
   - 19. HubSpot wizard UX stabilization
   - 20. Salesforce edit source-identity and review-total refresh
   - 21. blocked-state UI and Journey 9 revenue-model cleanup
+  - 23. GA4 KPI notification current-value and duplicate-row stabilization
+  - 24. CRM Pipeline Proxy Overview visibility and provenance stabilization
 - `P2`
   - 8. Ad Comparison is still campaign-comparison-based
   - 9. Ad Comparison revenue selector expectation gap
@@ -845,3 +847,60 @@ For every bug in this queue:
 4. run the targeted regression checks listed above
 5. use `GA4-MANUAL-TEST-PLAN.md` for retest coverage
 6. do not move to the next bug until the current one is verified
+
+## 23. GA4 KPI notification current-value and duplicate-row stabilization
+
+- Severity: `P1`
+- Area: `GA4 KPIs / Notifications`
+- Affected docs:
+  - `GA4/KPIS.md`
+  - `GA4/REFRESH_AND_PROCESSING.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - GA4 KPI notifications should show the same current value as the live GA4 KPI card for that KPI
+  - old resolved KPI alerts should not remain visible in the active bell/feed
+  - duplicate active GA4 KPI rows for the same campaign + metric should not emit competing active alerts
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - users could see a stale `3550` KPI alert while the live card correctly showed `72660`
+  - duplicate GA4 KPI rows created competing alerts for the same metric
+  - the bell could continue showing stale client-cached notifications after the server had already resolved them
+- Root cause area:
+  - stored GA4 KPI alert snapshots in mock/test mode were refreshed from DB daily rows only instead of the same baseline-plus-refresh total model used by the live GA4 cards
+  - KPI alert supersession operated per `kpiId`, while duplicate GA4 KPI rows existed for the same campaign + metric
+  - the bell relied on cached notification data long enough to show already-resolved alerts
+- Required regression checks:
+  - confirm a breached GA4 KPI alert current value matches the live KPI card current value
+  - confirm only the newest GA4 KPI row for a duplicate campaign + metric emits the active alert
+  - confirm older superseded KPI alerts are hidden from `/api/notifications`
+  - confirm reopening the bell shows current server state and does not linger on resolved KPI alerts
+
+## 24. CRM Pipeline Proxy Overview visibility and provenance stabilization
+
+- Severity: `P1`
+- Area: `GA4 Overview / CRM revenue sources`
+- Affected docs:
+  - `GA4/OVERVIEW.md`
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4/REFRESH_AND_PROCESSING.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - a saved active HubSpot or Salesforce revenue source using `Total Revenue + Pipeline (Proxy)` shows a separate Overview `Pipeline Proxy` card
+  - the card shows provider, selected stage, amount, and selected/contributing campaign values where available
+  - the card remains separate from confirmed `Total Revenue` and downstream financial/KPI/Benchmark/Ad Comparison/Insights/Reports calculations
+  - deleting or deactivating the associated CRM revenue source removes the Pipeline Proxy card
+- Current behavior:
+  - resolved
+- Why this mattered:
+  - users could save a valid Pipeline Proxy source and still see no `Pipeline Proxy` card in Overview
+  - the card visibility was too dependent on the separate proxy endpoint returning a fresh `success` response
+  - source provenance needed to stay visible so users can understand which CRM source, stage, and campaign values produced the proxy signal
+- Root cause area:
+  - Overview render gating used endpoint success as the only card trigger instead of also honoring the active saved CRM source config
+- Required regression checks:
+  - save Salesforce or HubSpot with `Total Revenue + Pipeline (Proxy)` and confirm the Overview card appears
+  - confirm the card still appears when the active source has saved Pipeline Proxy config but the endpoint/cache path has not returned fresh data yet
+  - confirm provider, stage, amount, and selected/contributing values display where available
+  - confirm revenue-only mode does not show the card
+  - delete the CRM revenue source and confirm the card disappears

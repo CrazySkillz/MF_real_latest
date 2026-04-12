@@ -170,6 +170,9 @@ Important meaning:
 - they should not lag behind the KPI grid
 - any change that affects KPI current value, target value, progress, or status should trigger recomputation of the tracker counts and `Avg. Progress`
 - KPI alerts should evaluate after KPI recomputation, not before
+- GA4 KPI alerts must use the same current-value source as the live GA4 KPI cards
+- duplicate active GA4 KPIs for the same `campaign + metric` must not emit competing active alerts; the latest row should win
+- the bell / Notifications center should refetch current notification state when opened so resolved alerts do not linger from client cache
 
 ## Current-State Note
 

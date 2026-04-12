@@ -479,9 +479,9 @@ export function ShopifyRevenueWizard(props: {
             )}
           </CardTitle>
           <CardDescription>
-            {step === "campaign-field" && `Choose how MetricMind should attribute Shopify orders to this ${isLinkedIn ? "LinkedIn" : "campaign"}.`}
+            {step === "campaign-field" && `Choose how MimoSaaS should attribute Shopify orders to this ${isLinkedIn ? "LinkedIn" : "campaign"}.`}
             {step === "crosswalk" && "Select the Shopify value(s) that map to this campaign."}
-            {step === "revenue" && "Choose what revenue field MetricMind should sum from matched orders."}
+            {step === "revenue" && "Choose what revenue field MimoSaaS should sum from matched orders."}
             {step === "review" && "Confirm your selections and process revenue metrics."}
             {step === "complete" &&
               (isLinkedIn

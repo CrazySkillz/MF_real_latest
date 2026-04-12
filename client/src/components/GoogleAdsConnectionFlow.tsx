@@ -274,7 +274,7 @@ export function GoogleAdsConnectionFlow({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Select Google Ads Campaigns</CardTitle>
-          <CardDescription>Choose which campaigns to include in this MetricMind campaign. Only selected campaigns' metrics will be imported.</CardDescription>
+          <CardDescription>Choose which campaigns to include in this MimoSaaS campaign. Only selected campaigns' metrics will be imported.</CardDescription>
         </CardHeader>
         <CardContent>
           {loadingCampaigns ? (

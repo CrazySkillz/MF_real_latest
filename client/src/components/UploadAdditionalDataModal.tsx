@@ -968,7 +968,7 @@ export function UploadAdditionalDataModal({
                               View Salesforce data (read-only)
                             </Label>
                             <p className="text-sm text-muted-foreground/70">
-                              Connect Salesforce and view Opportunities in MetricMind.
+                              Connect Salesforce and view Opportunities in MimoSaaS.
                             </p>
                           </div>
                         </div>
@@ -1073,7 +1073,7 @@ export function UploadAdditionalDataModal({
                             View Shopify data (read-only)
                           </Label>
                           <p className="text-sm text-muted-foreground/70">
-                            Connect Shopify and browse Orders in MetricMind.
+                            Connect Shopify and browse Orders in MimoSaaS.
                           </p>
                         </div>
                       </div>
@@ -1165,4 +1165,3 @@ export function UploadAdditionalDataModal({
     </Dialog>
   );
 }
-

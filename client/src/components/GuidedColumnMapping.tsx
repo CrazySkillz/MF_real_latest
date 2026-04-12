@@ -703,7 +703,7 @@ export function GuidedColumnMapping({
               "Select the column that identifies your campaign across the selected tabs. We’ll automatically detect whether it’s a Campaign Name or Campaign ID."
             )}
             {currentStep === 'crosswalk' && (
-              "Select the specific Campaign ID/Name value from your sheet that corresponds to this MetricMind campaign."
+              "Select the specific Campaign ID/Name value from your sheet that corresponds to this MimoSaaS campaign."
             )}
             {currentStep === 'revenue' && (
               "Which column contains conversion value (value per conversion)? If conversion value is not available, select the revenue column so we can calculate it."
@@ -797,7 +797,7 @@ export function GuidedColumnMapping({
             <div className="space-y-4">
               <div className="p-3 rounded-lg bg-muted border border-border">
                 <p className="text-sm text-foreground/80/60">
-                  <strong>MetricMind Campaign:</strong> {campaignName}
+                  <strong>MimoSaaS Campaign:</strong> {campaignName}
                 </p>
               </div>
 
@@ -1109,5 +1109,4 @@ export function GuidedColumnMapping({
     </div>
   );
 }
-
 

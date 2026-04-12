@@ -629,7 +629,7 @@ export function ColumnMappingInterface({
                               <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded border border-amber-200 dark:border-amber-800">
                                 <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
                                 <span>
-                                  💡 <strong>Tip:</strong> Use the same campaign name in Google Sheets as your MetricMind campaign name ("<strong>{campaignName}</strong>") for more accurate conversion value calculation.
+                                  💡 <strong>Tip:</strong> Use the same campaign name in Google Sheets as your MimoSaaS campaign name ("<strong>{campaignName}</strong>") for more accurate conversion value calculation.
                                 </span>
                               </div>
                             </div>

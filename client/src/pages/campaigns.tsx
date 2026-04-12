@@ -943,7 +943,7 @@ function DataConnectorsStep({ onComplete, onBack, isLoading, campaignData, onLin
             <DialogHeader>
               <DialogTitle>Select GA4 campaigns to track</DialogTitle>
               <DialogDescription>
-                Choose one or more GA4 <strong>campaignName</strong> values you want this MetricMind campaign to track.
+                Choose one or more GA4 <strong>campaignName</strong> values you want this MimoSaaS campaign to track.
               </DialogDescription>
             </DialogHeader>
 

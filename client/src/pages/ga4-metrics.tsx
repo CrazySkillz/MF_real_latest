@@ -522,7 +522,7 @@ export default function GA4Metrics() {
         credentials: "include",
         body: JSON.stringify({
           ...data,
-          campaignId, // Scope KPI to this MetricMind campaign
+          campaignId, // Scope KPI to this MimoSaaS campaign
           // Prefer the user-visible current value (prefilled live when selecting a template).
           // Fallback to the computed value if for any reason the field is empty.
           currentValue: stripNumberFormatting((data as any)?.currentValue) || calculatedValue,
@@ -7728,7 +7728,7 @@ export default function GA4Metrics() {
           <DialogHeader>
             <DialogTitle>Select GA4 campaigns to import</DialogTitle>
             <DialogDescription>
-              Choose one or more GA4 campaign values to scope this MetricMind campaign. If you select none, we’ll track all campaigns in the selected property.
+              Choose one or more GA4 campaign values to scope this MimoSaaS campaign. If you select none, we’ll track all campaigns in the selected property.
             </DialogDescription>
           </DialogHeader>
 

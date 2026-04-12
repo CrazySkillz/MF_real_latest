@@ -217,7 +217,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
           <CardDescription>
             <strong>What this does:</strong> Simulates what an external system (like Shopify) would send when a conversion happens.
             <br />
-            <strong>Example:</strong> Customer buys a $149.99 product → Shopify sends {"{"}"value": 149.99{"}"} → MetricMind records it.
+            <strong>Example:</strong> Customer buys a $149.99 product → Shopify sends {"{"}"value": 149.99{"}"} → MimoSaaS records it.
             <br />
             <strong>You're doing:</strong> Manually entering the data that would normally be sent automatically.
           </CardDescription>
@@ -377,7 +377,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
             <div>
               <strong className="text-green-900 dark:text-green-200">2. Webhook Updates It Automatically:</strong>
               <p className="text-green-800 dark:text-green-300 mt-1">
-                When you send webhook events (or real systems send them), MetricMind automatically calculates the 
+                When you send webhook events (or real systems send them), MimoSaaS automatically calculates the 
                 <strong> average conversion value</strong> from recent events and <strong>updates the Campaign Settings field</strong>.
               </p>
             </div>
@@ -420,7 +420,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
                   This lets you verify the webhook works before connecting real systems.
                 </p>
                 <p>
-                  <strong>3. Result:</strong> When you send a test event, MetricMind stores it just like a real conversion. 
+                  <strong>3. Result:</strong> When you send a test event, MimoSaaS stores it just like a real conversion. 
                   The campaign's average conversion value is automatically updated, and revenue metrics use the actual values.
                 </p>
               </div>
@@ -431,4 +431,3 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
     </div>
   );
 }
-

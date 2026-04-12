@@ -173,8 +173,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       toast({
         title: "GA4 campaign(s) selected",
         description: values.length === 1
-          ? "MetricMind will now filter GA4 analytics to this campaign only."
-          : `MetricMind will now filter GA4 analytics to ${values.length} campaigns.`,
+          ? "MimoSaaS will now filter GA4 analytics to this campaign only."
+          : `MimoSaaS will now filter GA4 analytics to ${values.length} campaigns.`,
       });
       onConnectionSuccess?.();
     } catch (e: any) {

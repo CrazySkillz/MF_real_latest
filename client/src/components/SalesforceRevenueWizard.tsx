@@ -395,7 +395,7 @@ export function SalesforceRevenueWizard(props: {
         toast({
           title: "Salesforce Connected",
           description: connectOnly
-            ? "Connection saved. You can now view Salesforce data in MetricMind."
+            ? "Connection saved. You can now view Salesforce data in MimoSaaS."
             : "Now select the Opportunity field used to attribute deals to this campaign.",
         });
         if (connectOnly) {
@@ -1025,9 +1025,9 @@ export function SalesforceRevenueWizard(props: {
                 ? "Choose what Salesforce should provide for this campaign."
                 : "Choose whether Salesforce should provide Total Revenue only, or Total Revenue + Pipeline (Proxy).")}
             {step === "campaign-field" &&
-              "Select the Salesforce Opportunity field that identifies which deals belong to this MetricMind campaign."}
+              "Select the Salesforce Opportunity field that identifies which deals belong to this MimoSaaS campaign."}
             {step === "crosswalk" &&
-              `Select the value(s) from "${campaignFieldLabel}" that should map to this MetricMind campaign.`}
+              `Select the value(s) from "${campaignFieldLabel}" that should map to this MimoSaaS campaign.`}
             {step === "pipeline" &&
               "Choose the Opportunity stage that should count as 'pipeline created'. This provides a daily signal alongside daily spend."}
             {step === "revenue" &&
@@ -1045,7 +1045,7 @@ export function SalesforceRevenueWizard(props: {
         <CardContent className="space-y-4">
           {step === "value-source" && (
             <div className="rounded-lg border bg-card p-4 space-y-2">
-              <div className="text-sm font-medium">What do you want MetricMind to pull from Salesforce?</div>
+              <div className="text-sm font-medium">What do you want MimoSaaS to pull from Salesforce?</div>
               <div className="text-xs text-muted-foreground/70 mb-2">
                 <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.
               </div>
@@ -1325,7 +1325,7 @@ export function SalesforceRevenueWizard(props: {
                     </SelectContent>
                   </Select>
                   <div className="text-xs text-muted-foreground">
-                    MetricMind will sum Opportunity Amounts for Opportunities currently in this stage (stage subset).
+                    MimoSaaS will sum Opportunity Amounts for Opportunities currently in this stage (stage subset).
                   </div>
                 </div>
               </div>

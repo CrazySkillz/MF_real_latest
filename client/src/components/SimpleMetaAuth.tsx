@@ -131,7 +131,7 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
             Select Meta Campaigns
           </CardTitle>
           <CardDescription>
-            Choose which campaigns to include in this MetricMind campaign. Only selected campaigns' metrics will be imported.
+            Choose which campaigns to include in this MimoSaaS campaign. Only selected campaigns' metrics will be imported.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -295,4 +295,3 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
     </Card>
   );
 }
-

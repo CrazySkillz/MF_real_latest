@@ -2000,10 +2000,23 @@ export default function GA4Metrics() {
     const crmCfg = typeof crmSource?.mappingConfig === "string"
       ? (() => { try { return JSON.parse(crmSource.mappingConfig); } catch { return {}; } })()
       : (crmSource?.mappingConfig || {});
+    const selectedValues = Array.isArray(crmCfg.selectedValues) ? crmCfg.selectedValues.map((v: any) => String(v)).filter(Boolean) : [];
+    const pipelineStageLabel = crmCfg.pipelineStageLabel || crmCfg.pipelineStageName || crmCfg.pipelineStageId || null;
+    const sourcePipelineFallback = crmCfg.pipelineEnabled && pipelineStageLabel ? {
+      success: true,
+      totalToDate: Number(crmCfg.pipelineTotalToDate || 0),
+      pipelineStageLabel,
+      pipelineValueRevenueTotals: Array.isArray(crmCfg.pipelineValueRevenueTotals) ? crmCfg.pipelineValueRevenueTotals : [],
+    } : null;
     const withProvenance = (data: any, label: string) => data?.success ? {
+      ...sourcePipelineFallback,
       ...data,
       providerLabel: label,
-      selectedValues: Array.isArray(crmCfg.selectedValues) ? crmCfg.selectedValues.map((v: any) => String(v)).filter(Boolean) : [],
+      selectedValues,
+    } : sourcePipelineFallback ? {
+      ...sourcePipelineFallback,
+      providerLabel: label,
+      selectedValues,
     } : data;
     if (crmSourceType === "salesforce") return withProvenance(salesforcePipelineProxyData, "Salesforce");
     if (crmSourceType === "hubspot") return withProvenance(hubspotPipelineProxyData, "HubSpot");

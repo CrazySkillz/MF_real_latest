@@ -1994,7 +1994,7 @@ export default function GA4Metrics() {
     const scopedCampaignValues = Array.isArray(selectedGa4CampaignFilterList)
       ? selectedGa4CampaignFilterList.map((v: any) => String(v || "").trim()).filter(Boolean)
       : [];
-    const normalizeValue = (value: any) => String(value || "").trim().toLowerCase();
+    const normalizeValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
     const scopedCampaignSet = new Set(scopedCampaignValues.map(normalizeValue).filter(Boolean));
     const parseMappingConfig = (source: any) => typeof source?.mappingConfig === "string"
       ? (() => { try { return JSON.parse(source.mappingConfig); } catch { return {}; } })()

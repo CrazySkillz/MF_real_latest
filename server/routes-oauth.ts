@@ -13060,7 +13060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return cur;
       };
-      const normalizeCampaignValue = (value: any) => String(value || "").trim().toLowerCase();
+      const normalizeCampaignValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
       const selectedByKey = new Map(selected.map((value) => [normalizeCampaignValue(value), value]));
       const matchSelectedCampaignValue = (raw: any): string | null => {
         const key = normalizeCampaignValue(raw);

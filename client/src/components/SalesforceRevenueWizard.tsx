@@ -35,6 +35,7 @@ export function SalesforceRevenueWizard(props: {
     pipelineEnabled?: boolean;
     pipelineStageName?: string;
     pipelineStageLabel?: string;
+    pipelineTotalToDate?: number;
     lastTotalRevenue?: number;
     dateField?: string;
   } | null;
@@ -637,11 +638,17 @@ export function SalesforceRevenueWizard(props: {
   }, [lastSaveResult, initialMappingConfig, previewRows, previewHeaders, revenueField]);
 
   const reviewPipelineProxyAmount = useMemo(() => {
-    if (!pipelineEnabled || pipelinePreviewHeaders.length === 0) return null;
-    const amtIdx = pipelinePreviewHeaders.findIndex((h) => h.toLowerCase() === "amount" || h === revenueField);
-    if (amtIdx < 0) return null;
-    return pipelinePreviewRows.reduce((acc, row) => acc + (Number(String(row[amtIdx] || "").replace(/[^0-9.\-]/g, "")) || 0), 0);
-  }, [pipelineEnabled, pipelinePreviewHeaders, pipelinePreviewRows, revenueField]);
+    if (!pipelineEnabled) return null;
+    if (pipelinePreviewHeaders.length > 0) {
+      const amtIdx = pipelinePreviewHeaders.findIndex((h) => h.toLowerCase() === "amount" || h === revenueField);
+      if (amtIdx >= 0) {
+        return pipelinePreviewRows.reduce((acc, row) => acc + (Number(String(row[amtIdx] || "").replace(/[^0-9.\-]/g, "")) || 0), 0);
+      }
+      return 0;
+    }
+    const stored = Number(initialMappingConfig?.pipelineTotalToDate);
+    return Number.isFinite(stored) ? stored : null;
+  }, [pipelineEnabled, pipelinePreviewHeaders, pipelinePreviewRows, revenueField, initialMappingConfig]);
 
   const campaignFieldLabel = useMemo(() => {
     const f = fields.find((x) => x.name === campaignField);

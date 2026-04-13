@@ -117,6 +117,7 @@ export function AddRevenueWizardModal(props: {
     pipelineEnabled?: boolean;
     pipelineStageName?: string;
     pipelineStageLabel?: string;
+    pipelineTotalToDate?: number;
     lastTotalRevenue?: number;
     dateField?: string;
   }>(null);
@@ -568,6 +569,7 @@ export function AddRevenueWizardModal(props: {
         pipelineEnabled: config?.pipelineEnabled === true,
         pipelineStageName: config?.pipelineStageName ? String(config.pipelineStageName) : undefined,
         pipelineStageLabel: config?.pipelineStageLabel ? String(config.pipelineStageLabel) : undefined,
+        pipelineTotalToDate: Number.isFinite(Number(config?.pipelineTotalToDate)) ? Number(config.pipelineTotalToDate) : undefined,
         lastTotalRevenue: Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue)
           : Number.isFinite(Number(initialSource?.revenue)) ? Number(initialSource.revenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,

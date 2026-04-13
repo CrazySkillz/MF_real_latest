@@ -2084,6 +2084,13 @@ export default function GA4Metrics() {
       pipelineStageLabel: Array.from(new Set(entries.map((entry: any) => String(entry?.pipelineStageLabel || "").trim()).filter(Boolean))).join(" + "),
       pipelineValueRevenueTotals: Array.from(totalsByCampaign.entries()).map(([campaignValue, revenue]) => ({ campaignValue, revenue })),
       selectedValues: Array.from(new Set(entries.flatMap((entry: any) => Array.isArray(entry.selectedValues) ? entry.selectedValues : []))),
+      providerEntries: entries.map((entry: any) => ({
+        providerLabel: entry.providerLabel,
+        pipelineStageLabel: entry.pipelineStageLabel,
+        campaignValues: Array.isArray(entry.pipelineValueRevenueTotals) && entry.pipelineValueRevenueTotals.length > 0
+          ? entry.pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
+          : Array.isArray(entry.selectedValues) ? entry.selectedValues.map((value: any) => String(value || "").trim()).filter(Boolean) : [],
+      })),
     };
   }, [hubspotPipelineProxyData, revenueDisplaySources, revenueSourcesResp, salesforcePipelineProxyData, selectedGa4CampaignFilterList]);
   // Availability flags for UI gating (KPI/Benchmark templates):
@@ -4419,17 +4426,31 @@ export default function GA4Metrics() {
                               <p className="text-2xl font-bold text-foreground mt-1">
                                 {formatMoney(Number(pipelineProxyData.totalToDate || 0))}
                               </p>
-                              <p className="text-xs text-muted-foreground/70 mt-1">
-                                {[
-                                  pipelineProxyData.providerLabel,
-                                  pipelineProxyData.pipelineStageLabel,
-                                  ...(Array.isArray(pipelineProxyData.pipelineValueRevenueTotals) && pipelineProxyData.pipelineValueRevenueTotals.length > 0
-                                    ? pipelineProxyData.pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
-                                    : Array.isArray(pipelineProxyData.selectedValues) && pipelineProxyData.selectedValues.length > 0
-                                      ? [`Selected values: ${pipelineProxyData.selectedValues.join(", ")}`]
-                                      : []),
-                                ].filter(Boolean).join(" · ")}
-                              </p>
+                              <div className="text-xs text-muted-foreground/70 mt-1 space-y-1">
+                                {Array.isArray(pipelineProxyData.providerEntries) && pipelineProxyData.providerEntries.length > 0 ? (
+                                  pipelineProxyData.providerEntries.map((entry: any, idx: number) => (
+                                    <p key={`${entry?.providerLabel || "provider"}-${idx}`}>
+                                      {[
+                                        entry?.providerLabel ? `${entry.providerLabel}:` : null,
+                                        Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0 ? entry.campaignValues.join(", ") : null,
+                                        entry?.pipelineStageLabel ? `- ${entry.pipelineStageLabel}` : null,
+                                      ].filter(Boolean).join(" ")}
+                                    </p>
+                                  ))
+                                ) : (
+                                  <p>
+                                    {[
+                                      pipelineProxyData.providerLabel,
+                                      pipelineProxyData.pipelineStageLabel,
+                                      ...(Array.isArray(pipelineProxyData.pipelineValueRevenueTotals) && pipelineProxyData.pipelineValueRevenueTotals.length > 0
+                                        ? pipelineProxyData.pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
+                                        : Array.isArray(pipelineProxyData.selectedValues) && pipelineProxyData.selectedValues.length > 0
+                                          ? [`Selected values: ${pipelineProxyData.selectedValues.join(", ")}`]
+                                          : []),
+                                    ].filter(Boolean).join(" · ")}
+                                  </p>
+                                )}
+                              </div>
                             </CardContent>
                           </Card>
                         )}

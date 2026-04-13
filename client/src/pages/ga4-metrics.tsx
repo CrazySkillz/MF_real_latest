@@ -4431,12 +4431,12 @@ export default function GA4Metrics() {
                                   pipelineProxyData.providerEntries.map((entry: any, idx: number) => (
                                     <div key={`${entry?.providerLabel || "provider"}-${idx}`} className="space-y-0.5">
                                       <p className="font-medium text-foreground/90">{entry?.providerLabel || "Provider"}</p>
-                                      {Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0 ? (
-                                        <p>{entry.campaignValues.join(", ")}</p>
-                                      ) : null}
-                                      {entry?.pipelineStageLabel ? (
-                                        <p>{entry.pipelineStageLabel}</p>
-                                      ) : null}
+                                      <p>
+                                        {[
+                                          Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0 ? entry.campaignValues.join(", ") : null,
+                                          entry?.pipelineStageLabel ? `- ${entry.pipelineStageLabel}` : null,
+                                        ].filter(Boolean).join(" ")}
+                                      </p>
                                     </div>
                                   ))
                                 ) : (

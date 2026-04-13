@@ -177,13 +177,9 @@ export function SalesforceRevenueWizard(props: {
     const resp = await fetch(`/api/salesforce/${campaignId}/status`, { credentials: "include" });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(json?.error || "Failed to check Salesforce connection");
-    if (json?.connected) {
-      setOrgName(json?.orgName || null);
-      setOrgId(json?.orgId || null);
-      return true;
-    }
-    setOrgName(null);
-    setOrgId(null);
+    setOrgName(json?.orgName || null);
+    setOrgId(json?.orgId || null);
+    if (json?.connected) return true;
     return false;
   };
 

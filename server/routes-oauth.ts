@@ -11919,8 +11919,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const conn: any = await storage.getSalesforceConnection(campaignId);
-      if (!conn || !conn.isActive || !conn.accessToken || !conn.instanceUrl) {
-        return res.json({ connected: false });
+      if (!conn || !conn.isActive || !conn.instanceUrl) {
+        return res.json({
+          connected: false,
+          connectionId: conn?.id || null,
+          orgId: conn?.orgId || null,
+          orgName: conn?.orgName || null,
+          instanceUrl: conn?.instanceUrl || null,
+        });
+      }
+      if (!conn.accessToken) {
+        return res.json({
+          connected: false,
+          connectionId: conn.id,
+          orgId: conn.orgId,
+          orgName: conn.orgName,
+          instanceUrl: conn.instanceUrl,
+        });
       }
       // Check if token is expired or expiring within 5 minutes
       const isExpiring = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
@@ -11930,11 +11945,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await refreshSalesforceToken(conn);
           } catch (err) {
             console.error('[Salesforce Status] Token refresh failed:', err);
-            return res.json({ connected: false });
+            return res.json({
+              connected: false,
+              connectionId: conn.id,
+              orgId: conn.orgId,
+              orgName: conn.orgName,
+              instanceUrl: conn.instanceUrl,
+            });
           }
         } else {
           // Token expired and no refresh token — connection is unusable
-          return res.json({ connected: false });
+          return res.json({
+            connected: false,
+            connectionId: conn.id,
+            orgId: conn.orgId,
+            orgName: conn.orgName,
+            instanceUrl: conn.instanceUrl,
+          });
         }
       }
       res.json({

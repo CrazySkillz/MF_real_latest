@@ -202,6 +202,13 @@ Do not patch symptoms without understanding the source.
 Do not implement speculative "likely fixes".
 If root cause is not confirmed yet, do not change code.
 
+For data/provenance bugs, prove the exact data-loss boundary before editing:
+
+- trace the value from save/materialization to persisted source config/records to API response to frontend merge to final render
+- verify whether the missing value was never created, was overwritten later, was omitted from an API response, was lost during a frontend join, or was hidden by render logic
+- do not patch the visible UI until the lost boundary is known
+- if existing production data was already damaged, fix the forward path and add the smallest safe self-heal/fallback for existing damaged records only when it uses exact source data and does not invent allocation
+
 ## Validation Requirements
 
 Before considering a fix complete:

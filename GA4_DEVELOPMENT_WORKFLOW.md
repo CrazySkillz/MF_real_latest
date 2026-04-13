@@ -127,6 +127,22 @@ For each bug:
 6. verify the bug is fixed
 7. run regression checks before moving on
 
+For GA4 revenue/source-provenance bugs, explicitly trace where the data is lost:
+
+1. source save or refresh path
+2. persisted source `mappingConfig` and materialized records
+3. API response used by the tab
+4. frontend merge/join layer
+5. final table/card render
+
+Do not start by patching table/card display. First prove whether the value was never created, was overwritten by a later refresh endpoint, was omitted by the API, was dropped during a frontend join, or was hidden by render conditions.
+
+Recent lesson:
+
+- the Salesforce `Revenue Breakdown` campaign row took too long because fixes chased UI symptoms before proving where `campaignValueRevenueTotals` disappeared
+- the correct trace was `Salesforce save -> revenue source mappingConfig -> pipeline proxy persistence overwrite -> revenue-sources/revenue-breakdown merge -> Revenue Breakdown render`
+- future fixes should name the specific missing field first, then trace that field end-to-end before editing
+
 Do not batch many unrelated fixes together.
 
 Do not refactor while bug fixing.

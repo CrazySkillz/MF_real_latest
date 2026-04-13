@@ -12427,7 +12427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // We'll try with CurrencyIsoCode first, then fall back without it if Salesforce reports INVALID_FIELD.
       const buildSoql = (includeCurrency: boolean) =>
         // Salesforce does not allow aliasing non-aggregate expressions in SOQL.
-        `SELECT Id, ${dateFieldChoice}, ${revenue}${effectiveValueSource === 'conversion_value' ? `, ${convValueField}` : ''}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
+        `SELECT Id, ${attribField}, ${dateFieldChoice}, ${revenue}${effectiveValueSource === 'conversion_value' ? `, ${convValueField}` : ''}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
         `FROM Opportunity ` +
         // Use IsWon instead of StageName. Stage labels vary per org.
         `WHERE IsWon = true AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +

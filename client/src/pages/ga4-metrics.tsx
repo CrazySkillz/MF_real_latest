@@ -3732,11 +3732,16 @@ export default function GA4Metrics() {
   ]);
 
   // Collect GA4 campaign names from all imported campaigns (for filtering Ad Comparison)
+  const normalizeCampaignKey = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+
   const importedGA4CampaignNames = useMemo(() => {
     const names = new Set<string>();
     for (const c of (allCampaigns || [])) {
       const filters = parseStoredGa4CampaignFilter((c as any)?.ga4CampaignFilter);
-      for (const f of filters) names.add(f.trim().toLowerCase());
+      for (const f of filters) {
+        const key = normalizeCampaignKey(f);
+        if (key) names.add(key);
+      }
     }
     return names;
   }, [allCampaigns]);
@@ -3780,7 +3785,7 @@ export default function GA4Metrics() {
     };
 
     const filteredRows = Array.from(byName.values())
-      .filter(c => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(c.name.trim().toLowerCase()));
+      .filter(c => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(c.name)));
 
     const scaledSessions = scaleIntsExactly(filteredRows.map(c => ({ value: c.sessions })), breakdownTotals.sessions);
     const scaledUsers = scaleIntsExactly(filteredRows.map(c => ({ value: c.users })), breakdownTotals.users);
@@ -3807,7 +3812,6 @@ export default function GA4Metrics() {
   }, [ga4Breakdown, importedGA4CampaignNames, breakdownTotals]);
 
   const campaignBreakdownMatchedExternalRevenue = useMemo(() => {
-    const normalizeCampaignKey = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
     const rowNameByKey = new Map<string, string>();
     for (const row of campaignBreakdownAgg) {
       const key = normalizeCampaignKey(row.name);

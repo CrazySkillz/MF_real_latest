@@ -547,6 +547,8 @@ The required pattern is:
 - `Salesforce` revenue edit must update the existing revenue source and replace that source's materialized records rather than creating a second additive source row
 - for CRM edit flows, stable source identity is required: the existing `sourceId` must survive modal -> wizard -> save payload -> save route
 - review-step totals in CRM edit flows should refresh from the current preview inputs and should not let stale saved totals override fresh preview totals
+- Salesforce confirmed campaign-level provenance depends on `mappingConfig.campaignValueRevenueTotals`; Pipeline Proxy refresh/persistence must preserve that confirmed field and must not replace it with `pipelineValueRevenueTotals`
+- if an Ad Comparison or Overview provenance row is missing, trace the field `campaignValueRevenueTotals` from CRM save -> persisted revenue source -> `/revenue-sources` response -> frontend merge -> table render before changing UI
 - `Manual` edit should overwrite the saved snapshot amount and then recompute downstream values
 
 ### Campaign Filter Meaning For CSV And Google Sheets

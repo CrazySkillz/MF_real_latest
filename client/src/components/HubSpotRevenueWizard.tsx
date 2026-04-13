@@ -217,7 +217,7 @@ export function HubSpotRevenueWizard(props: {
       const resp = await fetch(
         `/api/hubspot/${campaignId}/deals/unique-values?property=${encodeURIComponent(propertyName)}&days=${encodeURIComponent(
           String(days)
-        )}&limit=300${pipelineEnabled && pipelineStageId ? `&pipelineStageId=${encodeURIComponent(pipelineStageId)}` : ""}`,
+        )}&limit=300${!pipelineEnabled ? "&revenueOnly=1" : ""}${pipelineEnabled && pipelineStageId ? `&pipelineStageId=${encodeURIComponent(pipelineStageId)}` : ""}`,
         { credentials: "include" }
       );
       const json = await resp.json().catch(() => ({}));

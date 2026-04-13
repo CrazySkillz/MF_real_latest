@@ -13649,6 +13649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '200'), 10) || 200, 10), 500);
       const days = Math.min(Math.max(parseInt(String(req.query.days || '90'), 10) || 90, 1), 3650);
       const pipelineStageId = String(req.query.pipelineStageId || '').trim();
+      const revenueOnly = String(req.query.revenueOnly || '').trim() === '1';
 
       if (!property) {
         return res.status(400).json({ error: 'Missing property' });
@@ -13667,7 +13668,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const pipelinesJson: any = await pipelinesResp.json().catch(() => ({}));
         if (pipelinesResp.ok) {
           const pipelines = Array.isArray(pipelinesJson?.results) ? pipelinesJson.results : [];
-          const derived = pipelineStageId
+          const derived = revenueOnly
+            ? deriveDefaultClosedWonStageIds(pipelines)
+            : pipelineStageId
             ? Array.from(new Set([...deriveDefaultClosedWonStageIds(pipelines), pipelineStageId]))
             : deriveDefaultNonLostStageIds(pipelines);
           if (derived.length > 0) stageIds = derived;

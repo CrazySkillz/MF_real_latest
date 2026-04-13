@@ -6615,7 +6615,7 @@ export default function GA4Metrics() {
                     </Card>
 
                     {/* Data Summary — always visible when data exists */}
-                    {(breakdownTotals.sessions > 0 || breakdownTotals.revenue > 0) && (
+                    {(breakdownTotals.sessions > 0 || financialRevenue > 0) && (
                       <Card className="border-border">
                         <CardHeader className="pb-3">
                           <CardTitle className="text-base">Data Summary</CardTitle>
@@ -6643,12 +6643,12 @@ export default function GA4Metrics() {
                                 </p>
                               </div>
                             )}
-                            {breakdownTotals.revenue > 0 && (
+                            {financialRevenue > 0 && (
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Revenue</p>
-                                <p className="text-xl font-bold text-foreground mt-1">{formatMoney(breakdownTotals.revenue)}</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{formatMoney(financialRevenue)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  ~{formatMoney(breakdownTotals.revenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg
+                                  ~{formatMoney(financialRevenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg
                                 </p>
                               </div>
                             )}

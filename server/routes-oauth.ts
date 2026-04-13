@@ -13418,9 +13418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!Number.isFinite(cached) || cached <= 0 || cachedMode !== 'current_stage' || !Array.isArray(cfg.pipelineValueRevenueTotals)) {
           const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
           const campaignProp = String(cfg.campaignProperty || "").trim();
-          const selectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
-          const camp = await storage.getCampaign(campaignId).catch(() => null as any);
-          const pipelineSelectedValues = Array.from(new Set([...selectedValues, ...getGA4CampaignFilterValues((camp as any)?.ga4CampaignFilter)]));
+          const pipelineSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
           const revenueProp = String(cfg.revenueProperty || "amount").trim() || "amount";
           const pipelineStageId = String(cfg.pipelineStageId || "").trim();
 
@@ -13498,30 +13496,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch {
         recomputeFailed = true;
-      }
-
-      // Final fallback (token/error only): if recompute failed and we have a last-known revenue total,
-      // show that instead of $0. Avoid using Total Revenue as a "proxy" when the stage query succeeded
-      // (a real 0 can be valid if no deals are currently in that stage).
-      try {
-        const proxyNow = Number(cfg.pipelineTotalToDate || 0);
-        const lastKnown = Number(cfg.lastTotalRevenue || 0);
-        if (recomputeFailed && (!Number.isFinite(proxyNow) || proxyNow <= 0) && Number.isFinite(lastKnown) && lastKnown > 0) {
-          cfg.pipelineTotalToDate = Number(Number(lastKnown).toFixed(2));
-          cfg.pipelineProxyMode = 'revenue_total_fallback';
-          cfg.pipelineWarning =
-            cfg.pipelineWarning ||
-            'Showing last-known total (HubSpot refresh required to recompute pipeline proxy).';
-          cfg.pipelineLastUpdatedAt = cfg.pipelineLastUpdatedAt || new Date().toISOString();
-          if (conn?.id) {
-            await storage.updateHubspotConnection(String(conn.id), { mappingConfig: JSON.stringify(cfg) } as any);
-          }
-          if (pipelineSource?.id) {
-            await storage.updateRevenueSource(String(pipelineSource.id), { mappingConfig: JSON.stringify(cfg) } as any);
-          }
-        }
-      } catch {
-        // ignore
       }
 
       res.json({

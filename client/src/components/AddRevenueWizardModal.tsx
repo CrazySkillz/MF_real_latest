@@ -219,6 +219,7 @@ export function AddRevenueWizardModal(props: {
   // OAuth status (for skipping re-auth on click) vs imported status (for "Connected" badge)
   const [crmOAuth, setCrmOAuth] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmStatus, setCrmStatus] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
+  const [crmHasSource, setCrmHasSource] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmConnecting, setCrmConnecting] = useState<string | null>(null);
   useEffect(() => {
     if (!open || hideCrmSources) return;
@@ -235,6 +236,11 @@ export function AddRevenueWizardModal(props: {
       // "Connected" badge only when an active revenue source exists for this platform
       const revSources: any[] = Array.isArray(dsResp?.revenueSources) ? dsResp.revenueSources : [];
       const hasSource = (type: string) => revSources.some((s: any) => s?.sourceType === type && s?.isActive !== false);
+      setCrmHasSource({
+        hubspot: hasSource("hubspot"),
+        salesforce: hasSource("salesforce"),
+        shopify: hasSource("shopify"),
+      });
       setCrmStatus({
         hubspot: hubspotOAuth && hasSource("hubspot"),
         salesforce: salesforceOAuth && hasSource("salesforce"),
@@ -1394,11 +1400,13 @@ export function AddRevenueWizardModal(props: {
                               </AlertDialogContent>
                             </AlertDialog>
                           </span>
+                        ) : crmHasSource.salesforce ? (
+                          <span className="ml-auto text-xs font-normal text-amber-600 dark:text-amber-400">Reconnect required</span>
                         ) : (
                           <span className="ml-auto text-xs font-normal text-muted-foreground/70">Not connected</span>
                         )}
                       </CardTitle>
-                      <CardDescription>{crmStatus.salesforce ? "Attribute opportunity revenue to this campaign." : "Connect Salesforce to import opportunity revenue."}</CardDescription>
+                      <CardDescription>{crmStatus.salesforce ? "Attribute opportunity revenue to this campaign." : crmHasSource.salesforce ? "Reconnect Salesforce to refresh this revenue source." : "Connect Salesforce to import opportunity revenue."}</CardDescription>
                     </CardHeader>
                   </Card>
                 )}

@@ -2745,6 +2745,22 @@ export default function GA4Metrics() {
       sectionTitle("Insights", C.insights);
       const items = Array.isArray(insights) ? insights : [];
       const availableDays = Number(insightsRollups?.availableDays || 0);
+      const trendMetric = insightsTrendMetric;
+      const trendIsRate = trendMetric === "engagementRate";
+      const trendIsMoney = trendMetric === "revenue";
+      const trendMetricLabels: Record<string, string> = {
+        sessions: "Sessions", users: "Users", conversions: "Conversions",
+        revenue: "Revenue", pageviews: "Page Views", engagementRate: "Engagement Rate",
+      };
+      const trendFmtValue = (v: any) => {
+        const n = Number(v || 0);
+        if (trendIsMoney) return formatMoney(n);
+        if (trendIsRate) return formatPct(n);
+        return formatNumber(n);
+      };
+      const trendDeltaPct = (curVal: number, prevVal: number) => prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : curVal > 0 ? 100 : 0;
+      const trendDailyRows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];
+      const trendSorted = [...trendDailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
       checkPage(24);
       const insightSummaryCards: [string, string][] = [
         ["Revenue", fC(Number(financialRevenue || 0))],
@@ -2769,6 +2785,129 @@ export default function GA4Metrics() {
         y += 22;
       }
       y += 2;
+
+      if (trendSorted.length >= 2) {
+        const trendChartData: { date: string; value: number }[] = [];
+        if (insightsTrendMode === "daily") {
+          let dailyChartRows = trendSorted.slice(-30);
+          while (dailyChartRows.length > 0 && Number(dailyChartRows[0]?.[trendMetric] || 0) === 0) dailyChartRows = dailyChartRows.slice(1);
+          dailyChartRows.forEach((r: any) => trendChartData.push({
+            date: String(r.date || "").slice(5),
+            value: trendIsRate ? Number((Number(r[trendMetric] || 0) * 100).toFixed(2)) : Number(r[trendMetric] || 0),
+          }));
+        } else if (insightsTrendMode === "monthly") {
+          const monthMap = new Map<string, any[]>();
+          for (const r of trendSorted) {
+            const ym = String(r.date).slice(0, 7);
+            if (!monthMap.has(ym)) monthMap.set(ym, []);
+            monthMap.get(ym)!.push(r);
+          }
+          [...monthMap.keys()].sort().forEach((ym) => {
+            const rows = monthMap.get(ym)!;
+            const value = trendIsRate
+              ? (() => {
+                  const totalSessions = rows.reduce((s: number, r: any) => s + Number(r.sessions || 0), 0);
+                  const totalEngaged = rows.reduce((s: number, r: any) => s + Number(r.engagedSessions || r.sessions * Number(r.engagementRate || 0) || 0), 0);
+                  return totalSessions > 0 ? (totalEngaged / totalSessions) * 100 : 0;
+                })()
+              : rows.reduce((s: number, r: any) => s + Number(r[trendMetric] || 0), 0);
+            const [yr, mo] = ym.split("-");
+            trendChartData.push({ date: `${new Date(Number(yr), Number(mo) - 1).toLocaleString("en-US", { month: "short" })} '${yr.slice(2)}`, value: Number(value.toFixed(2)) });
+          });
+        } else {
+          const windowDays = insightsTrendMode === "7d" ? 7 : 30;
+          const chartRows = trendSorted.slice(Math.max(0, trendSorted.length - windowDays * 2));
+          for (let i = windowDays - 1; i < chartRows.length; i++) {
+            const slice = chartRows.slice(i - windowDays + 1, i + 1);
+            const value = trendIsRate
+              ? (() => {
+                  const totalSessions = slice.reduce((s: number, r: any) => s + Number(r.sessions || 0), 0);
+                  const totalEngaged = slice.reduce((s: number, r: any) => s + Number(r.engagedSessions || r.sessions * Number(r.engagementRate || 0) || 0), 0);
+                  return totalSessions > 0 ? (totalEngaged / totalSessions) * 100 : 0;
+                })()
+              : slice.reduce((s: number, r: any) => s + Number(r[trendMetric] || 0), 0);
+            trendChartData.push({ date: String(chartRows[i].date || "").slice(5), value: Number(value.toFixed(2)) });
+          }
+        }
+
+        if (trendChartData.length > 1) {
+          sectionTitle("Trends", C.insights);
+          checkPage(74);
+          doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+          doc.roundedRect(MX, y, CW, 44, 3, 3, "FD");
+          doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+          doc.text(`${trendMetricLabels[trendMetric] || trendMetric} · ${insightsTrendMode === "daily" ? "Daily" : insightsTrendMode === "monthly" ? "Monthly" : insightsTrendMode}`, MX + 6, y + 7);
+          const chartX = MX + 8, chartY = y + 12, chartW = CW - 16, chartH = 24;
+          const vals = trendChartData.map((p) => Number(p.value || 0));
+          const minVal = Math.min(...vals), maxVal = Math.max(...vals);
+          const range = maxVal - minVal || 1;
+          doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+          doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH);
+          doc.line(chartX, chartY, chartX, chartY + chartH);
+          if (insightsTrendMode === "monthly") {
+            const barW = Math.max(4, chartW / Math.max(trendChartData.length * 1.8, 1));
+            trendChartData.forEach((p, idx) => {
+              const px = chartX + idx * (chartW / Math.max(trendChartData.length, 1)) + 2;
+              const barH = Math.max(1, ((Number(p.value || 0) - minVal) / range) * (chartH - 2));
+              doc.setFillColor(...C.insights);
+              doc.rect(px, chartY + chartH - barH, barW, barH, "F");
+            });
+          } else {
+            doc.setDrawColor(...C.insights); doc.setLineWidth(0.8);
+            trendChartData.forEach((p, idx) => {
+              const px = chartX + (idx * chartW) / Math.max(trendChartData.length - 1, 1);
+              const py = chartY + chartH - ((Number(p.value || 0) - minVal) / range) * (chartH - 2) - 1;
+              if (idx > 0) {
+                const prev = trendChartData[idx - 1];
+                const prevX = chartX + ((idx - 1) * chartW) / Math.max(trendChartData.length - 1, 1);
+                const prevY = chartY + chartH - ((Number(prev.value || 0) - minVal) / range) * (chartH - 2) - 1;
+                doc.line(prevX, prevY, px, py);
+              }
+              doc.setFillColor(...C.insights);
+              doc.circle(px, py, 0.7, "F");
+            });
+          }
+          doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+          doc.text(trendChartData[0]?.date || "", chartX, chartY + chartH + 5);
+          doc.text(trendChartData[trendChartData.length - 1]?.date || "", chartX + chartW, chartY + chartH + 5, { align: "right" });
+          doc.text(trendFmtValue(maxVal), chartX + chartW, chartY + 1, { align: "right" });
+          doc.text(trendFmtValue(minVal), chartX + chartW, chartY + chartH - 1, { align: "right" });
+          y += 50;
+
+          const trendRows: string[][] = insightsTrendMode === "daily"
+            ? trendSorted.slice(-14).reverse().map((r: any, idx: number) => {
+                const curVal = trendIsRate ? Number(r[trendMetric] || 0) * 100 : Number(r[trendMetric] || 0);
+                const sortedIdx = trendSorted.length - 1 - idx;
+                const prevRow = sortedIdx > 0 ? trendSorted[sortedIdx - 1] : null;
+                const prevVal = prevRow ? (trendIsRate ? Number(prevRow[trendMetric] || 0) * 100 : Number(prevRow[trendMetric] || 0)) : 0;
+                const delta = prevRow ? trendDeltaPct(curVal, prevVal) : NaN;
+                return [String(r.date || ""), trendFmtValue(curVal), prevRow ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
+              })
+            : insightsTrendMode === "monthly"
+              ? trendChartData.slice().reverse().slice(0, 12).map((row, idx, arr) => {
+                  const prev = idx < arr.length - 1 ? arr[idx + 1] : null;
+                  const delta = prev ? trendDeltaPct(row.value, prev.value) : NaN;
+                  return [row.date, trendFmtValue(row.value), prev ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
+                })
+              : (() => {
+                  const cur = insightsTrendMode === "7d" ? insightsRollups.last7 : insightsRollups.last30;
+                  const prior = insightsTrendMode === "7d" ? insightsRollups.prior7 : insightsRollups.prior30;
+                  const getVal = (rollup: any) => trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
+                  const curVal = getVal(cur), priorVal = getVal(prior);
+                  const delta = trendDeltaPct(curVal, priorVal);
+                  return [
+                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, trendFmtValue(curVal), `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`],
+                    [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, trendFmtValue(priorVal), "baseline"],
+                  ];
+                })();
+          addSimpleTable(
+            "Trend Table",
+            ["DATE / WINDOW", trendMetricLabels[trendMetric] || trendMetric, "VS PRIOR"],
+            trendRows,
+            [96, 46, 34]
+          );
+        }
+      }
 
       if (availableDays >= 3) {
         checkPage(24);

@@ -116,6 +116,9 @@ Pipeline Proxy rule:
 - Pipeline Proxy is a separate Revenue subsection card when HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` is configured
 - it should show the card title, amount, source provider, selected CRM stage label, and selected/contributing campaign values where available
 - Overview should render it from the active CRM revenue source configuration and enrich it with endpoint data when available; it must not disappear solely because the separate proxy endpoint is stale
+- if both HubSpot and Salesforce are active with Pipeline Proxy for the same GA4 campaign, the single Overview Pipeline Proxy card should aggregate both exact proxy totals
+- when multiple CRM providers contribute, provenance should render as separate provider blocks rather than one flattened merged sentence
+- HubSpot Pipeline Proxy must use only the HubSpot wizard's saved selected campaign values and selected stage; it must not broaden to GA4 campaign filter values and must never fall back to confirmed `lastTotalRevenue`
 - it is not included in `Total Revenue`, `Profit`, `ROAS`, `ROI`, `CPA`, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
 
 Pipeline Proxy selection model:
@@ -229,6 +232,8 @@ Important meaning:
 - the final review step should show Pipeline Proxy stage, amount, and a note that it is not included in Total Revenue
 - the `Reconnect` action on the first HubSpot screen should render in a stable header/action area, not inside the main source-choice card or a shifting scroll region
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
+- HubSpot OAuth should request offline access / refresh capability so the connection can survive access-token expiry after connect or reconnect
+- in GA4 `Total Revenue only` mode, the Crosswalk unique-values list should show only values backed by confirmed/Closed Won deals so users cannot select open-stage-only values that would contribute `$0` to confirmed revenue
 
 ## Revenue Source 3: Salesforce Journey
 
@@ -259,6 +264,9 @@ Important meaning:
 - the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path
 - the final review step should show Pipeline Proxy stage, amount, and a note that it is not included in Total Revenue
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
+- if Salesforce is disconnected in edit mode, the review step should still show the saved Pipeline Proxy stage and saved proxy amount until live preview becomes available again
+- if a saved Salesforce revenue source exists but live OAuth is down, the `Add revenue source` chooser should show `Reconnect required` rather than `Not connected`
+- if Salesforce is disconnected, the wizard should still show the persisted Salesforce org/account label instead of `—`
 
 ## Revenue Source 4: Google Sheets Journey
 
@@ -548,6 +556,7 @@ The required pattern is:
 - for CRM edit flows, stable source identity is required: the existing `sourceId` must survive modal -> wizard -> save payload -> save route
 - review-step totals in CRM edit flows should refresh from the current preview inputs and should not let stale saved totals override fresh preview totals
 - Salesforce confirmed campaign-level provenance depends on `mappingConfig.campaignValueRevenueTotals`; Pipeline Proxy refresh/persistence must preserve that confirmed field and must not replace it with `pipelineValueRevenueTotals`
+- Salesforce confirmed campaign-level provenance is built from exact confirmed Opportunity records and requires the save/materialization query to select the attribution field as well as filter by it
 - if an Ad Comparison or Overview provenance row is missing, trace the field `campaignValueRevenueTotals` from CRM save -> persisted revenue source -> `/revenue-sources` response -> frontend merge -> table render before changing UI
 - `Manual` edit should overwrite the saved snapshot amount and then recompute downstream values
 

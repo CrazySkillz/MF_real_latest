@@ -142,6 +142,8 @@ Recent lesson:
 - the Salesforce `Revenue Breakdown` campaign row took too long because fixes chased UI symptoms before proving where `campaignValueRevenueTotals` disappeared
 - the correct trace was `Salesforce save -> revenue source mappingConfig -> pipeline proxy persistence overwrite -> revenue-sources/revenue-breakdown merge -> Revenue Breakdown render`
 - future fixes should name the specific missing field first, then trace that field end-to-end before editing
+- for CRM label/status bugs, also prove whether the value is missing in persisted connection metadata, omitted by the status API when disconnected, or cleared by the frontend after a `connected:false` response before changing UI copy
+- for wizard-selection bugs, also prove that the selection list endpoint uses the same eligibility rules as the save/materialization path; do not let Crosswalk expose values that the confirmed save path will later exclude
 
 Do not batch many unrelated fixes together.
 

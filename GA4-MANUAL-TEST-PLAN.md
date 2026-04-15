@@ -83,7 +83,7 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - KPIs: current values and Executive snapshot still match
 - Benchmarks: current values and Executive snapshot still match
 - Ad Comparison: selected metric and ranking still update
-- Insights: Executive Financials and findings still reflect current values
+- Insights: Executive Financials, Data Summary, and findings still reflect current values
 - Reports: on-demand output still reflects current tab state
 - Connected source rows: edit/delete still recompute totals correctly
 
@@ -240,6 +240,7 @@ Checkpoint after Journey 1:
 - [ ] Click the **Insights** tab
 - [ ] Scroll to **Executive Financials** section: Revenue ≈ $240,352, Spend = $0
 - [ ] Scroll to **Data Summary** section: Sessions/Conversions/CR/Revenue cards populated
+- [ ] `Data Summary -> Revenue` matches Overview / Executive Financials revenue, including imported revenue after revenue-source changes
 - [ ] **Channel Breakdown table**: shows traffic channels from simulation
 - [ ] Scroll to **What changed, what to do next** section:
   - Informational insights with blue **"Info"** badge (not "Low")
@@ -699,11 +700,13 @@ Checkpoint after Journey 8:
 - [ ] Confirm Proxy mode makes both confirmed/won values and eligible open-stage values selectable; a campaign value that exists only in the selected open stage must not be hidden from Crosswalk
 - [ ] Confirm the Pipeline step copy explains that the stage filters the already selected campaign values
 - [ ] Confirm the final review step shows the selected Pipeline Proxy stage label, current Pipeline Proxy amount, and a note that it is not included in Total Revenue
+- [ ] Disconnect HubSpot temporarily and reopen edit mode: confirm the review step still shows the saved Pipeline Proxy stage and saved proxy amount fallback if live preview is unavailable
 - [ ] Micro copy: "HubSpot — $X,XXX"
 - [ ] Non-default date field: "HubSpot · Modified Date"
 - [ ] Confirm the Date field copy makes clear that it controls which HubSpot deal date is used when including/reporting revenue
 - [ ] Confirm `Save Mappings` shows a single `Total Revenue (to date)` value and that it displays the computed amount before save
 - [ ] After save, confirm Overview shows a separate `Pipeline Proxy` card with provider, selected stage label, amount, and selected/contributing campaign values where available
+- [ ] If both HubSpot and Salesforce Pipeline Proxy are active, confirm the card total aggregates both providers and the microcopy renders separate provider blocks rather than a single flattened sentence
 - [ ] Confirm the `Pipeline Proxy` card remains visible for the active HubSpot source even if the separate proxy endpoint/cache path has not returned fresh data yet
 - [ ] Delete or deactivate the HubSpot revenue source and confirm the `Pipeline Proxy` card disappears
 - [ ] Confirm the Pipeline Proxy amount does not change Total Revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
@@ -724,12 +727,15 @@ Checkpoint after Journey 8:
 - [ ] Confirm the Pipeline step copy explains that the stage filters the already selected campaign/opportunity values
 - [ ] Confirm changing the selected Crosswalk values changes both the Total Revenue preview and Pipeline Proxy preview where matching CRM records exist
 - [ ] Confirm the final review step shows the selected Pipeline Proxy stage label, current Pipeline Proxy amount, and a note that it is not included in Total Revenue
+- [ ] Disconnect Salesforce temporarily and reopen edit mode: confirm the review step still shows the saved Pipeline Proxy stage and saved proxy amount fallback if live preview is unavailable
 - [ ] After save, confirm Overview shows a separate `Pipeline Proxy` card with provider, selected stage label, amount, and selected/contributing campaign values where available
+- [ ] If both Salesforce and HubSpot Pipeline Proxy are active, confirm the card total aggregates both providers and the microcopy renders separate provider blocks rather than a single flattened sentence
 - [ ] Confirm the `Pipeline Proxy` card remains visible for the active Salesforce source even if the separate proxy endpoint/cache path has not returned fresh data yet
 - [ ] Delete or deactivate the Salesforce revenue source and confirm the `Pipeline Proxy` card disappears
 - [ ] Confirm the Pipeline Proxy amount does not change Total Revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
 - [ ] If `Total Revenue only (no Pipeline card)` is selected, confirm no Pipeline Proxy review details or Overview card appear
 - [ ] Open the Salesforce revenue source in edit mode
+- [ ] Confirm the Source/review path still shows the persisted Salesforce account/org label even if the Salesforce connection is currently disconnected
 - [ ] Change the selected deal values in Crosswalk
 - [ ] Go to the final review step
 - [ ] Confirm `Total Revenue (to date)` refreshes to the new computed amount for the edited deal selection
@@ -1054,6 +1060,7 @@ Required reconciliation checks:
 ### HubSpot (real connection)
 - [ ] Connect real HubSpot account via OAuth
 - [ ] Complete the wizard: campaign field → crosswalk → revenue property → date field
+- [ ] In `Total Revenue only` mode, verify Crosswalk shows only values backed by confirmed/Closed Won deals
 - [ ] Verify deal count + revenue total match what you see in HubSpot
 - [ ] If Pipeline Proxy is enabled, select a real open deal stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
 - [ ] Confirm the Overview `Pipeline Proxy` card appears because the saved HubSpot source is active, and does not depend only on a fresh proxy endpoint response
@@ -1066,6 +1073,8 @@ Required reconciliation checks:
 - [ ] Connect real Salesforce account via OAuth
 - [ ] Complete wizard: campaign field → revenue field → date field
 - [ ] Verify opportunity count + revenue match Salesforce
+- [ ] If the saved Salesforce source exists but auth is down, the revenue-source chooser shows `Reconnect required` rather than `Not connected`
+- [ ] In disconnected edit mode, the Source step still shows the persisted Salesforce org/account label
 - [ ] If Pipeline Proxy is enabled, select a real open Opportunity stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
 - [ ] Confirm the Overview `Pipeline Proxy` card appears because the saved Salesforce source is active, and does not depend only on a fresh proxy endpoint response
 - [ ] Verify the Salesforce Pipeline Proxy amount is not included in confirmed Total Revenue or downstream performance metrics

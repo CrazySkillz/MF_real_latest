@@ -71,6 +71,13 @@ CRM auto-reprocess rule:
 - refreshed CRM revenue should update materialized revenue records and recomputed campaign financial state
 - refreshed Pipeline Proxy values remain separate early-signal values and must not be added into confirmed Total Revenue
 - Overview Pipeline Proxy visibility should be anchored to the active saved CRM revenue source config; refreshed endpoint data may update the amount/provenance, but a stale endpoint response must not hide an otherwise configured active Pipeline Proxy card
+- if both HubSpot and Salesforce have active Pipeline Proxy configuration, the Overview card should aggregate both providers' exact proxy totals while keeping provider-specific provenance blocks in the card microcopy
+
+CRM token continuity rule:
+
+- HubSpot and Salesforce reconnect flows should request offline/refresh capability so scheduled refresh and on-demand proxy/status endpoints do not drop out after short-lived access-token expiry
+- if a CRM connection is temporarily disconnected but the saved source is still active, display surfaces may fall back to persisted org/stage/proxy metadata for clarity, but those fallbacks must not be treated as fresh live data
+- if a saved Salesforce revenue source exists but live auth is down, source-selection surfaces should communicate `Reconnect required` rather than `Not connected`
 
 ## After Overview Refresh: KPI Recompute And Alert Checks
 

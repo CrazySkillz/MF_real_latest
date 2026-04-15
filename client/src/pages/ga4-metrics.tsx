@@ -2763,6 +2763,29 @@ export default function GA4Metrics() {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No KPIs configured yet.", MX + 8, y); y += 12;
       } else {
+        checkPage(30);
+        const kpiTrackerCards: [string, string][] = [
+          ["Total KPIs", String(kpiTracker.total || 0)],
+          ["Above Target", String(kpiTracker.above || 0)],
+          ["On Track", String(kpiTracker.near || 0)],
+          ["Below Target", String(kpiTracker.below || 0)],
+          ["Avg. Progress", `${Number(kpiTracker.avgPct || 0).toFixed(1)}%`],
+        ];
+        const trackerW = (CW - 8) / 3;
+        for (let i = 0; i < kpiTrackerCards.length; i += 3) {
+          for (let c = 0; c < 3 && i + c < kpiTrackerCards.length; c++) {
+            const [lbl, val] = kpiTrackerCards[i + c];
+            const cx = MX + c * (trackerW + 4);
+            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+            doc.roundedRect(cx, y, trackerW, 18, 3, 3, "FD");
+            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            doc.text(lbl.toUpperCase(), cx + 5, y + 6);
+            doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(val, cx + 5, y + 13);
+          }
+          y += 22;
+        }
+        y += 2;
         for (const k of items) {
           const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
           if (deps.missing.length > 0) {
@@ -2815,14 +2838,14 @@ export default function GA4Metrics() {
           doc.setFillColor(...C.cardBg);
           doc.roundedRect(MX + 8, boxY, bw, 12, 2, 2, "F");
           doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-          doc.text("CURRENT", MX + 12, boxY + 4);
+          doc.text(`CURRENT (${String(k?.unit || "%")})`, MX + 12, boxY + 4);
           doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
           doc.text(formatNumberByUnit(String(liveVal || "0"), String(k?.unit || "%")), MX + 12, boxY + 10);
           // Target
           doc.setFillColor(...C.cardBg);
           doc.roundedRect(MX + 12 + bw, boxY, bw, 12, 2, 2, "F");
           doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-          doc.text("TARGET", MX + 16 + bw, boxY + 4);
+          doc.text(`TARGET (${String(k?.unit || "%")})`, MX + 16 + bw, boxY + 4);
           doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
           doc.text(formatNumberByUnit(String(t.effectiveTarget || ""), String(k?.unit || "%")), MX + 16 + bw, boxY + 10);
 
@@ -2838,6 +2861,8 @@ export default function GA4Metrics() {
           // Percentage text
           doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
           doc.text(`${p.attainmentPct.toFixed(1)}%`, MX + 12 + barW, barY + 4);
+          doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+          doc.text(`Progress: ${p.fillPct.toFixed(1)}%`, MX + 8, barY + 10);
 
           // Status badge
           doc.setFillColor(...statusCol);
@@ -2860,6 +2885,29 @@ export default function GA4Metrics() {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No benchmarks configured yet.", MX + 8, y); y += 12;
       } else {
+        checkPage(30);
+        const benchmarkTrackerCards: [string, string][] = [
+          ["Total Benchmarks", String(benchmarkTracker.total || 0)],
+          ["On Track", String(benchmarkTracker.onTrack || 0)],
+          ["Needs Attention", String(benchmarkTracker.needsAttention || 0)],
+          ["Behind", String(benchmarkTracker.behind || 0)],
+          ["Avg. Progress", `${Number(benchmarkTracker.avgPct || 0).toFixed(1)}%`],
+        ];
+        const trackerW = (CW - 8) / 3;
+        for (let i = 0; i < benchmarkTrackerCards.length; i += 3) {
+          for (let c = 0; c < 3 && i + c < benchmarkTrackerCards.length; c++) {
+            const [lbl, val] = benchmarkTrackerCards[i + c];
+            const cx = MX + c * (trackerW + 4);
+            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+            doc.roundedRect(cx, y, trackerW, 18, 3, 3, "FD");
+            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            doc.text(lbl.toUpperCase(), cx + 5, y + 6);
+            doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(val, cx + 5, y + 13);
+          }
+          y += 22;
+        }
+        y += 2;
         for (const b of items) {
           const deps = getMissingDependenciesForMetric(String((b as any)?.metric || ""));
           if (deps.missing.length > 0) {
@@ -2898,13 +2946,13 @@ export default function GA4Metrics() {
           const bbw = (CW - 24) / 2;
           doc.setFillColor(...C.cardBg); doc.roundedRect(MX + 8, bbY, bbw, 10, 2, 2, "F");
           doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-          doc.text("CURRENT", MX + 12, bbY + 4);
+          doc.text(`CURRENT (${String((b as any)?.unit || "%")})`, MX + 12, bbY + 4);
           doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
           doc.text(formatBenchmarkValue(currentLive, (b as any)?.unit), MX + 12, bbY + 9);
 
           doc.setFillColor(...C.cardBg); doc.roundedRect(MX + 12 + bbw, bbY, bbw, 10, 2, 2, "F");
           doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-          doc.text("BENCHMARK", MX + 16 + bbw, bbY + 4);
+          doc.text(`BENCHMARK (${String((b as any)?.unit || "%")})`, MX + 16 + bbw, bbY + 4);
           doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
           doc.text(formatBenchmarkValue((b as any)?.benchmarkValue || "0", (b as any)?.unit), MX + 16 + bbw, bbY + 9);
 
@@ -2918,6 +2966,8 @@ export default function GA4Metrics() {
           }
           doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
           doc.text(`${p.pct.toFixed(1)}%`, MX + 12 + pbarW, pbarY + 4);
+          doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+          doc.text(`Progress: ${Math.min(p.pct, 100).toFixed(1)}%`, MX + 8, pbarY + 10);
 
           // Status badge
           doc.setFillColor(...statusCol);

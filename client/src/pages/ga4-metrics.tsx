@@ -2439,77 +2439,103 @@ export default function GA4Metrics() {
       const roi = spend > 0 ? ((rev - spend) / spend) * 100 : 0;
       const cpa = convTot > 0 ? spend / convTot : 0;
       const cr = sess > 0 ? (conv / sess) * 100 : 0;
-
-      // Hero metrics row (Revenue + Spend large)
-      checkPage(32);
-      const heroW = (CW - 6) / 2;
-      for (let i = 0; i < 2; i++) {
-        const hx = MX + i * (heroW + 6);
-        const [label, val, accent] = i === 0
-          ? ["Total Revenue", fC(rev), C.success]
-          : ["Total Spend", fC(spend), C.accent];
-        doc.setFillColor(...C.white);
-        doc.setDrawColor(...C.cardBorder);
-        doc.roundedRect(hx, y, heroW, 28, 4, 4, "FD");
-        // Accent dot
-        doc.setFillColor(...(accent as C3));
-        doc.circle(hx + 8, y + 9, 2.5, "F");
-        // Label
-        doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
-        doc.text(label, hx + 14, y + 10);
-        // Value
-        doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-        doc.text(val, hx + 8, y + 22);
-      }
-      y += 34;
-
-      // Metric grid: 3 columns
-      const metrics3: [string, string][] = [
-        ["ROAS", fP(roas)], ["ROI", fP(roi)], ["CPA", fC(cpa)],
-        ["Conversions", fN(conv)], ["Conv Rate", fP(cr)], ["Users", fN(users)],
-        ["Sessions", fN(sess)], ["Engagement", fP(engRate)],
-      ];
-      const colW = (CW - 8) / 3;
-      const cellH = 24;
-      for (let i = 0; i < metrics3.length; i += 3) {
-        checkPage(cellH + 4);
-        for (let c = 0; c < 3 && i + c < metrics3.length; c++) {
-          const [lbl, val] = metrics3[i + c];
-          const cx = MX + c * (colW + 4);
-          doc.setFillColor(...C.white);
-          doc.setDrawColor(...C.cardBorder);
-          doc.roundedRect(cx, y, colW, cellH, 3, 3, "FD");
-          doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-          doc.text(lbl.toUpperCase(), cx + 6, y + 8);
-          doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-          doc.text(val, cx + 6, y + 18);
+      const subheading = (title: string) => {
+        checkPage(10);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...C.text);
+        doc.text(title, MX, y + 5);
+        y += 10;
+      };
+      const metricCards = (items: [string, string][], cols: number, cellH = 24) => {
+        const width = (CW - (cols - 1) * 4) / cols;
+        for (let i = 0; i < items.length; i += cols) {
+          checkPage(cellH + 4);
+          for (let c = 0; c < cols && i + c < items.length; c++) {
+            const [lbl, val] = items[i + c];
+            const cx = MX + c * (width + 4);
+            doc.setFillColor(...C.white);
+            doc.setDrawColor(...C.cardBorder);
+            doc.roundedRect(cx, y, width, cellH, 3, 3, "FD");
+            doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            doc.text(lbl.toUpperCase(), cx + 6, y + 8);
+            doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(val, cx + 6, y + 18);
+          }
+          y += cellH + 4;
         }
-        y += cellH + 4;
-      }
-      y += 6;
+      };
+      const sourceRows = (title: string, rows: [string, string][]) => {
+        if (rows.length === 0) return;
+        checkPage(12 + rows.length * 6);
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...C.textTert);
+        doc.text(`${title} SOURCES`, MX + 2, y + 4);
+        y += 8;
+        rows.forEach(([label, val]) => {
+          doc.setFontSize(7);
+          doc.setTextColor(...C.textSec);
+          doc.text(trunc(label, 34), MX + 4, y + 3.5);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(...C.text);
+          doc.text(val, MX + CW - 4, y + 3.5, { align: "right" });
+          doc.setFont("helvetica", "normal");
+          y += 6;
+        });
+        y += 2;
+      };
 
+      subheading("Summary");
+      metricCards([
+        ["Sessions", fN(sess)],
+        ["Users", fN(users)],
+        ["Conversions", fN(conv)],
+        ["Engagement Rate", fP(engRate)],
+        ["Conv. Rate", fP(cr)],
+      ], 3);
+      y += 2;
+
+      subheading("Revenue & Financial");
+      subheading("Revenue");
       const latestDayRevenue = Number(ga4LatestDayRevenue || 0) + Number(revenueDailyResp?.totalRevenue || 0);
-      const latestDaySpend = Number(spendDailyResp?.totalSpend || 0);
-      const overviewDetails: [string, string][] = [
+      const revenueCards: [string, string][] = [
+        ["Total Revenue", fC(rev)],
         ["Latest Day Revenue", fC(latestDayRevenue)],
-        ["Latest Day Spend", fC(latestDaySpend)],
       ];
-      if (pipelineProxyData?.success) {
-        overviewDetails.push(["Pipeline Proxy", fC(Number(pipelineProxyData.totalToDate || 0))]);
-      }
-      const detailW = (CW - 8) / Math.min(overviewDetails.length, 3);
-      checkPage(30);
-      overviewDetails.forEach(([label, val], i) => {
-        const dx = MX + i * (detailW + 4);
-        doc.setFillColor(...C.white);
-        doc.setDrawColor(...C.cardBorder);
-        doc.roundedRect(dx, y, detailW, 24, 3, 3, "FD");
-        doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-        doc.text(label.toUpperCase(), dx + 6, y + 8);
-        doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-        doc.text(val, dx + 6, y + 18);
-      });
-      y += 30;
+      if (pipelineProxyData?.success) revenueCards.push(["Pipeline Proxy", fC(Number(pipelineProxyData.totalToDate || 0))]);
+      metricCards(revenueCards, Math.min(revenueCards.length, 3));
+      sourceRows("Revenue", [
+        ...(ga4RevenueForFinancials > 0 ? [["GA4 Revenue", fC(ga4RevenueForFinancials)] as [string, string]] : []),
+        ...revenueDisplaySources.map((s: any) => {
+          const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
+          const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
+          const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
+            ? ` · ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
+            : "";
+          return [String(s.displayName || revenueSourceTypeLabel(s.sourceType)) + dateLabel, fC(Number(s.revenue != null ? s.revenue : rev))] as [string, string];
+        }),
+      ]);
+
+      subheading("Spend");
+      const latestDaySpend = Number(spendDailyResp?.totalSpend || 0);
+      metricCards([
+        ["Total Spend", fC(spend)],
+        ["Latest Day Spend", fC(latestDaySpend)],
+      ], 2);
+      sourceRows("Spend", spendDisplaySources.map((s: any) => [
+        String(s.displayName || spendSourceTypeLabel(s.sourceType)),
+        fC(Number(s.spend != null ? s.spend : spend)),
+      ] as [string, string]));
+
+      subheading("Performance");
+      metricCards([
+        ["Profit", fC(rev - spend)],
+        ["ROAS", `${Number(financialROAS || 0).toFixed(2)}x`],
+        ["ROI", fP(roi)],
+        ["CPA", convTot > 0 ? fC(cpa) : "—"],
+      ], 4);
+      y += 2;
 
       const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[]) => {
         if (rows.length === 0) return;

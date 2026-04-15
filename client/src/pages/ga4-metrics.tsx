@@ -2439,8 +2439,8 @@ export default function GA4Metrics() {
       const roi = spend > 0 ? ((rev - spend) / spend) * 100 : 0;
       const cpa = convTot > 0 ? spend / convTot : 0;
       const cr = sess > 0 ? (conv / sess) * 100 : 0;
-      const subheading = (title: string) => {
-        checkPage(10);
+      const subheading = (title: string, keepWithNext = 28) => {
+        checkPage(10 + keepWithNext);
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...C.text);
@@ -2496,7 +2496,7 @@ export default function GA4Metrics() {
       ], 3);
       y += 2;
 
-      subheading("Revenue & Financial");
+      subheading("Revenue & Financial", 10);
       subheading("Revenue");
       const latestDayRevenue = Number(ga4LatestDayRevenue || 0) + Number(revenueDailyResp?.totalRevenue || 0);
       const revenueCards: [string, string][] = [
@@ -2539,8 +2539,8 @@ export default function GA4Metrics() {
 
       const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[]) => {
         if (rows.length === 0) return;
+        checkPage(36);
         sectionTitle(title, C.overview);
-        checkPage(10);
         doc.setFillColor(...C.cardBg);
         doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
         doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);

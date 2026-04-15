@@ -2383,6 +2383,34 @@ export default function GA4Metrics() {
     const fC = (n: number) => `${cur} ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const fP = (n: number) => formatPct(Number(n || 0));
     const fN = (n: number) => `${Math.round(Number(n || 0)).toLocaleString()}`;
+    const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[]) => {
+      if (rows.length === 0) return;
+      checkPage(36);
+      sectionTitle(title, C.overview);
+      doc.setFillColor(...C.cardBg);
+      doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
+      doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
+      let x = MX + 4;
+      headers.forEach((h, idx) => {
+        doc.text(h, x, y + 5.5, idx === 0 ? undefined : { align: "right" });
+        x += widths[idx];
+      });
+      y += 10;
+      rows.forEach((row) => {
+        checkPage(9);
+        doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+        doc.line(MX, y - 1.5, MX + CW, y - 1.5);
+        let colX = MX + 4;
+        row.forEach((cell, idx) => {
+          doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
+          const value = idx === 0 ? trunc(cell, 28) : cell;
+          doc.text(value, colX, y + 3.5, idx === 0 ? undefined : { align: "right" });
+          colX += widths[idx];
+        });
+        y += 8;
+      });
+      y += 4;
+    };
 
     const reportName = String(opts.reportName || ga4ReportForm.name || "GA4 Report").trim() || "GA4 Report";
     const reportType = String(opts.reportType || "overview");
@@ -2536,35 +2564,6 @@ export default function GA4Metrics() {
         ["CPA", convTot > 0 ? fC(cpa) : "—"],
       ], 4);
       y += 2;
-
-      const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[]) => {
-        if (rows.length === 0) return;
-        checkPage(36);
-        sectionTitle(title, C.overview);
-        doc.setFillColor(...C.cardBg);
-        doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
-        doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
-        let x = MX + 4;
-        headers.forEach((h, idx) => {
-          doc.text(h, x, y + 5.5, idx === 0 ? undefined : { align: "right" });
-          x += widths[idx];
-        });
-        y += 10;
-        rows.forEach((row) => {
-          checkPage(9);
-          doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
-          doc.line(MX, y - 1.5, MX + CW, y - 1.5);
-          let colX = MX + 4;
-          row.forEach((cell, idx) => {
-            doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-            const value = idx === 0 ? trunc(cell, 28) : cell;
-            doc.text(value, colX, y + 3.5, idx === 0 ? undefined : { align: "right" });
-            colX += widths[idx];
-          });
-          y += 8;
-        });
-        y += 4;
-      };
 
       addSimpleTable(
         "Campaign Breakdown",

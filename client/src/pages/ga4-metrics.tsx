@@ -2487,6 +2487,97 @@ export default function GA4Metrics() {
         y += cellH + 4;
       }
       y += 6;
+
+      const latestDayRevenue = Number(ga4LatestDayRevenue || 0) + Number(revenueDailyResp?.totalRevenue || 0);
+      const latestDaySpend = Number(spendDailyResp?.totalSpend || 0);
+      const overviewDetails: [string, string][] = [
+        ["Latest Day Revenue", fC(latestDayRevenue)],
+        ["Latest Day Spend", fC(latestDaySpend)],
+      ];
+      if (pipelineProxyData?.success) {
+        overviewDetails.push(["Pipeline Proxy", fC(Number(pipelineProxyData.totalToDate || 0))]);
+      }
+      const detailW = (CW - 8) / Math.min(overviewDetails.length, 3);
+      checkPage(30);
+      overviewDetails.forEach(([label, val], i) => {
+        const dx = MX + i * (detailW + 4);
+        doc.setFillColor(...C.white);
+        doc.setDrawColor(...C.cardBorder);
+        doc.roundedRect(dx, y, detailW, 24, 3, 3, "FD");
+        doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+        doc.text(label.toUpperCase(), dx + 6, y + 8);
+        doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+        doc.text(val, dx + 6, y + 18);
+      });
+      y += 30;
+
+      const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[]) => {
+        if (rows.length === 0) return;
+        sectionTitle(title, C.overview);
+        checkPage(10);
+        doc.setFillColor(...C.cardBg);
+        doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
+        doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
+        let x = MX + 4;
+        headers.forEach((h, idx) => {
+          doc.text(h, x, y + 5.5, idx === 0 ? undefined : { align: "right" });
+          x += widths[idx];
+        });
+        y += 10;
+        rows.forEach((row) => {
+          checkPage(9);
+          doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+          doc.line(MX, y - 1.5, MX + CW, y - 1.5);
+          let colX = MX + 4;
+          row.forEach((cell, idx) => {
+            doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
+            const value = idx === 0 ? trunc(cell, 28) : cell;
+            doc.text(value, colX, y + 3.5, idx === 0 ? undefined : { align: "right" });
+            colX += widths[idx];
+          });
+          y += 8;
+        });
+        y += 4;
+      };
+
+      addSimpleTable(
+        "Campaign Breakdown",
+        ["CAMPAIGN", "SESSIONS", "USERS", "CONV", "REVENUE"],
+        (Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : []).slice(0, 15).map((c: any) => [
+          String(c?.name || "(not set)"),
+          fN(Number(c?.sessions || 0)),
+          fN(Number(c?.users || 0)),
+          fN(Number(c?.conversions || 0)),
+          fC(Number((Number(c?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(c?.name || "")) || 0)).toFixed(2))),
+        ]),
+        [76, 24, 22, 22, 40]
+      );
+
+      addSimpleTable(
+        "Landing Pages",
+        ["LANDING PAGE", "SESSIONS", "USERS", "CONV", "REVENUE"],
+        (Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : []).slice(0, 15).map((r: any) => [
+          String(r?.landingPage || "(not set)"),
+          fN(Number(r?.sessions || 0)),
+          fN(Number(r?.users || 0)),
+          fN(Number(r?.conversions || 0)),
+          fC(Number(r?.revenue || 0)),
+        ]),
+        [76, 24, 22, 22, 40]
+      );
+
+      addSimpleTable(
+        "Conversion Events",
+        ["EVENT", "CONV", "EVENTS", "USERS", "REVENUE"],
+        (Array.isArray(ga4ConversionEvents?.rows) ? ga4ConversionEvents.rows : []).slice(0, 15).map((r: any) => [
+          String(r?.eventName || "(not set)"),
+          fN(Number(r?.conversions || 0)),
+          fN(Number(r?.eventCount || 0)),
+          fN(Number(r?.users || 0)),
+          fC(Number(r?.revenue || 0)),
+        ]),
+        [76, 22, 24, 22, 40]
+      );
     }
 
     // ========== AD COMPARISON ==========
@@ -5986,9 +6077,9 @@ export default function GA4Metrics() {
                           setGa4ReportForm({
                             name: "",
                             description: "",
-                            reportType: "overview",
+                            reportType: "",
                             configuration: {
-                              sections: { overview: true, kpis: false, benchmarks: false, ads: false, insights: false },
+                              sections: { overview: false, kpis: false, benchmarks: false, ads: false, insights: false },
                             },
                             scheduleEnabled: false,
                             scheduleFrequency: "daily",

@@ -2614,8 +2614,27 @@ export default function GA4Metrics() {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No campaign breakdown data available.", MX + 8, y); y += 12;
       } else {
+        const adSummaryCards: [string, string][] = [
+          ["Selected Metric", METRIC_LABELS[selectedMetric] || selectedMetric],
+          ["Total", fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
+          ["Campaigns", String(sortedByMetric.length)],
+        ];
+        const sumW = (CW - 8) / 3;
+        checkPage(24);
+        for (let i = 0; i < adSummaryCards.length; i++) {
+          const [lbl, val] = adSummaryCards[i];
+          const cx = MX + i * (sumW + 4);
+          doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+          doc.roundedRect(cx, y, sumW, 18, 3, 3, "FD");
+          doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+          doc.text(lbl.toUpperCase(), cx + 5, y + 6);
+          doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+          doc.text(trunc(val, 22), cx + 5, y + 13);
+        }
+        y += 24;
+
         const sorted = [...rows].sort((a: any, b: any) => Number(b?.sessions || 0) - Number(a?.sessions || 0));
-        const top = sorted.slice(0, 15);
+        const top = sortedByMetric.slice(0, 20);
         const colXs = [MX + 4, MX + 80, MX + 105, MX + 126, MX + 146, MX + CW - 8];
 
         // Table header
@@ -2653,9 +2672,9 @@ export default function GA4Metrics() {
           doc.text(fP(rate), colXs[5], y + 4);
           y += 8;
         }
-        if (sorted.length > top.length) {
+        if (sortedByMetric.length > top.length) {
           doc.setFontSize(7); doc.setTextColor(...C.textTert);
-          doc.text(`+ ${sorted.length - top.length} more campaigns`, MX + 4, y + 3); y += 8;
+          doc.text(`+ ${sortedByMetric.length - top.length} more campaigns`, MX + 4, y + 3); y += 8;
         }
 
         // Best / Worst cards
@@ -2685,6 +2704,38 @@ export default function GA4Metrics() {
           doc.text(trunc(String(worst?.campaign || ""), 28), wx + 13, y + 14);
           y += 24;
         }
+
+        if (tableRevenueSummaryVisible) {
+          y += 4;
+          sectionTitle("Revenue Breakdown", C.ads);
+          const breakdownRows: string[][] = [
+            ["GA4 Revenue", fC(ga4Revenue)],
+            ...revenueDisplaySources.map((source: any) => [
+              String(source.displayName || source.sourceType || "Source"),
+              fC(Number(source.revenue || 0)),
+            ]),
+          ];
+          if (allocationSummary.unallocatedExternalRevenue > 0) {
+            breakdownRows.push(["Unallocated External Revenue", fC(allocationSummary.unallocatedExternalRevenue)]);
+          }
+          breakdownRows.push(["Total Revenue", fC(totalRevenue)]);
+          checkPage(10);
+          doc.setFillColor(...C.cardBg);
+          doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
+          doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
+          doc.text("SOURCE", MX + 4, y + 5.5);
+          doc.text("AMOUNT", MX + CW - 4, y + 5.5, { align: "right" });
+          y += 10;
+          for (const row of breakdownRows) {
+            checkPage(8);
+            doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+            doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
+            doc.setFontSize(8); doc.setFont("helvetica", row[0] === "Total Revenue" ? "bold" : "normal"); doc.setTextColor(...C.text);
+            doc.text(trunc(row[0], 42), MX + 4, y + 4);
+            doc.text(row[1], MX + CW - 4, y + 4, { align: "right" });
+            y += 8;
+          }
+        }
       }
       y += 6;
     }
@@ -2693,6 +2744,51 @@ export default function GA4Metrics() {
     if (sections.insights) {
       sectionTitle("Insights", C.insights);
       const items = Array.isArray(insights) ? insights : [];
+      const availableDays = Number(insightsRollups?.availableDays || 0);
+      checkPage(24);
+      const insightSummaryCards: [string, string][] = [
+        ["Revenue", fC(Number(financialRevenue || 0))],
+        ["Spend", fC(Number(financialSpend || 0))],
+        ["Profit", fC(Number(financialRevenue || 0) - Number(financialSpend || 0))],
+        ["ROAS", `${Number(financialROAS || 0).toFixed(2)}x`],
+        ["Days of Data", String(availableDays)],
+      ];
+      const sumW = (CW - 8) / 3;
+      for (let i = 0; i < insightSummaryCards.length; i += 3) {
+        checkPage(22);
+        for (let c = 0; c < 3 && i + c < insightSummaryCards.length; c++) {
+          const [lbl, val] = insightSummaryCards[i + c];
+          const cx = MX + c * (sumW + 4);
+          doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+          doc.roundedRect(cx, y, sumW, 18, 3, 3, "FD");
+          doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+          doc.text(lbl.toUpperCase(), cx + 5, y + 6);
+          doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+          doc.text(trunc(val, 22), cx + 5, y + 13);
+        }
+        y += 22;
+      }
+      y += 2;
+
+      if (availableDays >= 3) {
+        checkPage(24);
+        doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+        doc.roundedRect(MX, y, CW, 18, 3, 3, "FD");
+        doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+        doc.text("Trend Snapshot", MX + 6, y + 6);
+        doc.setFontSize(7.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+        const trendText = availableDays >= 14
+          ? `Last 7d vs prior 7d: Sessions ${formatNumber(insightsRollups.last7.sessions)} vs ${formatNumber(insightsRollups.prior7.sessions)}, Revenue ${formatMoney(insightsRollups.last7.revenue)} vs ${formatMoney(insightsRollups.prior7.revenue)}, Conversions ${formatNumber(insightsRollups.last7.conversions)} vs ${formatNumber(insightsRollups.prior7.conversions)}.`
+          : `Last 3d vs prior 3d: Sessions ${formatNumber(insightsRollups.last3.sessions)} vs ${formatNumber(insightsRollups.prior3.sessions)}, Revenue ${formatMoney(insightsRollups.last3.revenue)} vs ${formatMoney(insightsRollups.prior3.revenue)}, Conversions ${formatNumber(insightsRollups.last3.conversions)} vs ${formatNumber(insightsRollups.prior3.conversions)}.`;
+        const trendLines = doc.splitTextToSize(trendText, CW - 12);
+        let ty = y + 11;
+        for (const line of trendLines.slice(0, 3)) {
+          doc.text(line, MX + 6, ty);
+          ty += 4;
+        }
+        y += 22;
+      }
+
       if (items.length === 0) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No insights available at this time.", MX + 8, y); y += 12;

@@ -1395,8 +1395,8 @@ export default function GA4Metrics() {
   const defaultCustomReportSubsections = useMemo(
     () => ({
       overview: { summary: false, revenue: false, spend: false, performance: false, campaignBreakdown: false, landingPages: false, conversionEvents: false },
-      kpis: { tracker: false, items: false },
-      benchmarks: { tracker: false, items: false },
+      kpis: { items: false },
+      benchmarks: { items: false },
       ads: { summary: false, allCampaigns: false, bestWorst: false, revenueBreakdown: false },
       insights: { summaryCards: false, trends: false, trendSnapshot: false, actions: false },
     }),
@@ -3055,8 +3055,8 @@ export default function GA4Metrics() {
     if (sections.kpis) {
       sectionTitle("Key Performance Indicators", C.kpis);
       const kpiSubsections = customSubsections.kpis || {};
-      const includeKpiTracker = reportType !== "custom" || kpiSubsections.tracker !== false;
-      const includeKpiItems = reportType !== "custom" || kpiSubsections.items !== false;
+      const includeKpiTracker = reportType !== "custom";
+      const includeKpiItems = reportType !== "custom" || kpiSubsections.items === true;
       const items = (Array.isArray(platformKPIs) ? platformKPIs : []).filter((k: any) => !selectedCustomKpiIds || selectedCustomKpiIds.has(String(k.id)));
       if (items.length === 0 && !includeKpiTracker) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
@@ -3186,8 +3186,8 @@ export default function GA4Metrics() {
     if (sections.benchmarks) {
       sectionTitle("Performance Benchmarks", C.benchmarks);
       const benchmarkSubsections = customSubsections.benchmarks || {};
-      const includeBenchmarkTracker = reportType !== "custom" || benchmarkSubsections.tracker !== false;
-      const includeBenchmarkItems = reportType !== "custom" || benchmarkSubsections.items !== false;
+      const includeBenchmarkTracker = reportType !== "custom";
+      const includeBenchmarkItems = reportType !== "custom" || benchmarkSubsections.items === true;
       const items = (Array.isArray(benchmarks) ? benchmarks : []).filter((b: any) => !selectedCustomBenchmarkIds || selectedCustomBenchmarkIds.has(String(b.id)));
       if (items.length === 0 && !includeBenchmarkTracker) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
@@ -7775,7 +7775,7 @@ export default function GA4Metrics() {
                     name: p.name || "Custom Report",
                     configuration: normalizeCustomReportConfig(p.configuration?.sections ? p.configuration : {}),
                   }));
-                  setExpandedCustomReportSections({ overview: true });
+                  setExpandedCustomReportSections({});
                 }}
               >
                 <div className="flex items-start gap-3">
@@ -8073,8 +8073,8 @@ export default function GA4Metrics() {
                         ["landingPages", "Landing Pages"],
                         ["conversionEvents", "Conversion Events"],
                       ] as Array<[string, string]> },
-                      { key: "kpis", label: "KPIs", subsections: [["tracker", "Performance Tracker"]] as Array<[string, string]> },
-                      { key: "benchmarks", label: "Benchmarks", subsections: [["tracker", "Performance Tracker"]] as Array<[string, string]> },
+                      { key: "kpis", label: "KPIs", subsections: [] as Array<[string, string]> },
+                      { key: "benchmarks", label: "Benchmarks", subsections: [] as Array<[string, string]> },
                       { key: "ads", label: "Ad Comparison", subsections: [
                         ["summary", "Top Summary"],
                         ["allCampaigns", "All Campaigns"],
@@ -8385,6 +8385,7 @@ export default function GA4Metrics() {
                     emailRecipients: "",
                     status: "active",
                   });
+                  setExpandedCustomReportSections({});
                   setGa4ReportFormErrors({});
                 }}
               >

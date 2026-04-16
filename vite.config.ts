@@ -27,6 +27,14 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("jspdf") || id.includes("html2canvas")) return "pdf-vendor";
+          if (id.includes("recharts")) return "charts-vendor";
+        },
+      },
+    },
   },
   optimizeDeps: {
     include: ["tailwind-merge", "clsx", "class-variance-authority"],

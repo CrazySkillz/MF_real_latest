@@ -310,7 +310,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     try {
       console.log('[GA4Flow] Selecting property:', selectedProperty, 'for campaign:', campaignId);
       const response = await fetch('/api/ga4/select-property', {
-        method: 'POST', credentials: "include",
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ campaignId, propertyId: selectedProperty, lookbackDays }),

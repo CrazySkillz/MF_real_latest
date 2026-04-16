@@ -1,5 +1,3 @@
-import jsPDF from 'jspdf';
-
 export interface KPIExportData {
   id: string;
   name: string;
@@ -17,7 +15,8 @@ export interface CampaignExportData {
   exportDate: Date;
 }
 
-export function exportCampaignKPIsToPDF(data: CampaignExportData): void {
+export async function exportCampaignKPIsToPDF(data: CampaignExportData): Promise<void> {
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -109,7 +108,8 @@ export interface CampaignBenchmarksExportData {
   exportDate: Date;
 }
 
-export function exportCampaignBenchmarksToPDF(data: CampaignBenchmarksExportData): void {
+export async function exportCampaignBenchmarksToPDF(data: CampaignBenchmarksExportData): Promise<void> {
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;

@@ -183,6 +183,7 @@ export default function GA4Metrics() {
   const [ga4ReportModalStep, setGa4ReportModalStep] = useState<"standard" | "custom">("standard");
   const [editingGA4ReportId, setEditingGA4ReportId] = useState<string | null>(null);
   const [deleteGA4ReportId, setDeleteGA4ReportId] = useState<string | null>(null);
+  const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});
   // Campaign Comparison tab state
   const [campaignComparisonMetric, setCampaignComparisonMetric] = useState<string>("sessions");
   // Insights Trends state
@@ -1388,16 +1389,16 @@ export default function GA4Metrics() {
     },
   });
   const defaultCustomReportSections = useMemo(
-    () => ({ overview: true, kpis: true, benchmarks: true, ads: true, insights: true }),
+    () => ({ overview: false, kpis: false, benchmarks: false, ads: false, insights: false }),
     []
   );
   const defaultCustomReportSubsections = useMemo(
     () => ({
-      overview: { summary: true, revenue: true, spend: true, performance: true, campaignBreakdown: true, landingPages: true, conversionEvents: true },
-      kpis: { tracker: true, items: true },
-      benchmarks: { tracker: true, items: true },
-      ads: { summary: true, allCampaigns: true, bestWorst: true, revenueBreakdown: true },
-      insights: { summaryCards: true, trends: true, trendSnapshot: true, actions: true },
+      overview: { summary: false, revenue: false, spend: false, performance: false, campaignBreakdown: false, landingPages: false, conversionEvents: false },
+      kpis: { tracker: false, items: false },
+      benchmarks: { tracker: false, items: false },
+      ads: { summary: false, allCampaigns: false, bestWorst: false, revenueBreakdown: false },
+      insights: { summaryCards: false, trends: false, trendSnapshot: false, actions: false },
     }),
     []
   );
@@ -1413,8 +1414,8 @@ export default function GA4Metrics() {
       ads: { ...defaultCustomReportSubsections.ads, ...(cfg?.subsections?.ads || {}) },
       insights: { ...defaultCustomReportSubsections.insights, ...(cfg?.subsections?.insights || {}) },
     },
-    selectedKpiIds: Array.isArray(cfg?.selectedKpiIds) && cfg.selectedKpiIds.length > 0 ? cfg.selectedKpiIds.map(String) : allCustomKpiIds,
-    selectedBenchmarkIds: Array.isArray(cfg?.selectedBenchmarkIds) && cfg.selectedBenchmarkIds.length > 0 ? cfg.selectedBenchmarkIds.map(String) : allCustomBenchmarkIds,
+    selectedKpiIds: Array.isArray(cfg?.selectedKpiIds) ? cfg.selectedKpiIds.map(String) : [],
+    selectedBenchmarkIds: Array.isArray(cfg?.selectedBenchmarkIds) ? cfg.selectedBenchmarkIds.map(String) : [],
   });
 
   // Fetch industries list (used for Benchmarks -> Industry type)
@@ -3056,7 +3057,7 @@ export default function GA4Metrics() {
       const kpiSubsections = customSubsections.kpis || {};
       const includeKpiTracker = reportType !== "custom" || kpiSubsections.tracker !== false;
       const includeKpiItems = reportType !== "custom" || kpiSubsections.items !== false;
-      const items = (Array.isArray(platformKPIs) ? platformKPIs : []).filter((k: any) => !selectedCustomKpiIds || selectedCustomKpiIds.size === 0 || selectedCustomKpiIds.has(String(k.id)));
+      const items = (Array.isArray(platformKPIs) ? platformKPIs : []).filter((k: any) => !selectedCustomKpiIds || selectedCustomKpiIds.has(String(k.id)));
       if (items.length === 0 && !includeKpiTracker) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No KPIs selected for this report.", MX + 8, y); y += 12;
@@ -3187,7 +3188,7 @@ export default function GA4Metrics() {
       const benchmarkSubsections = customSubsections.benchmarks || {};
       const includeBenchmarkTracker = reportType !== "custom" || benchmarkSubsections.tracker !== false;
       const includeBenchmarkItems = reportType !== "custom" || benchmarkSubsections.items !== false;
-      const items = (Array.isArray(benchmarks) ? benchmarks : []).filter((b: any) => !selectedCustomBenchmarkIds || selectedCustomBenchmarkIds.size === 0 || selectedCustomBenchmarkIds.has(String(b.id)));
+      const items = (Array.isArray(benchmarks) ? benchmarks : []).filter((b: any) => !selectedCustomBenchmarkIds || selectedCustomBenchmarkIds.has(String(b.id)));
       if (items.length === 0 && !includeBenchmarkTracker) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No benchmarks selected for this report.", MX + 8, y); y += 12;
@@ -7774,6 +7775,7 @@ export default function GA4Metrics() {
                     name: p.name || "Custom Report",
                     configuration: normalizeCustomReportConfig(p.configuration?.sections ? p.configuration : {}),
                   }));
+                  setExpandedCustomReportSections({ overview: true });
                 }}
               >
                 <div className="flex items-start gap-3">
@@ -8089,31 +8091,28 @@ export default function GA4Metrics() {
                       const cfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
                       const checked = !!cfg.sections?.[s.key];
                       const subsectionCfg = cfg.subsections?.[s.key] || {};
+                      const isExpanded = !!expandedCustomReportSections[s.key];
                       return (
                         <div key={s.key} className="rounded-md border border-border p-3 space-y-2">
-                          <label className="flex items-center gap-2 font-medium">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
-                                nextCfg.sections[s.key] = e.target.checked;
-                                setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
-                              }}
-                            />
+                          <button
+                            type="button"
+                            className={`w-full text-left font-medium ${checked ? "text-foreground" : "text-muted-foreground/80"}`}
+                            onClick={() => setExpandedCustomReportSections((p) => ({ ...p, [s.key]: !p[s.key] }))}
+                          >
                             {s.label}
-                          </label>
-                          {checked && (
+                          </button>
+                          {isExpanded && (
                             <div className="pl-6 space-y-2">
                               <div className="grid grid-cols-2 gap-2 text-sm">
                                 {s.subsections.map(([subKey, subLabel]) => (
                                   <label key={subKey} className="flex items-center gap-2">
                                     <input
                                       type="checkbox"
-                                      checked={subsectionCfg[subKey] !== false}
+                                      checked={subsectionCfg[subKey] === true}
                                       onChange={(e) => {
                                         const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
                                         nextCfg.subsections[s.key] = { ...(nextCfg.subsections?.[s.key] || {}), [subKey]: e.target.checked };
+                                        nextCfg.sections[s.key] = Object.values(nextCfg.subsections[s.key] || {}).some(Boolean);
                                         setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
                                       }}
                                     />
@@ -8127,7 +8126,7 @@ export default function GA4Metrics() {
                                   <div className="grid grid-cols-2 gap-2 text-sm">
                                     {(Array.isArray(platformKPIs) ? platformKPIs : []).map((k: any) => {
                                       const cfgKpis = normalizeCustomReportConfig(ga4ReportForm.configuration).selectedKpiIds || [];
-                                      const isChecked = cfgKpis.length === 0 || cfgKpis.includes(String(k.id));
+                                      const isChecked = cfgKpis.includes(String(k.id));
                                       return (
                                         <label key={String(k.id)} className="flex items-center gap-2">
                                           <input
@@ -8138,6 +8137,8 @@ export default function GA4Metrics() {
                                               const nextIds = new Set((nextCfg.selectedKpiIds || allCustomKpiIds).map(String));
                                               if (e.target.checked) nextIds.add(String(k.id)); else nextIds.delete(String(k.id));
                                               nextCfg.selectedKpiIds = [...nextIds];
+                                              nextCfg.subsections.kpis = { ...(nextCfg.subsections?.kpis || {}), items: nextCfg.selectedKpiIds.length > 0 };
+                                              nextCfg.sections.kpis = Object.values(nextCfg.subsections.kpis || {}).some(Boolean);
                                               setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
                                             }}
                                           />
@@ -8154,7 +8155,7 @@ export default function GA4Metrics() {
                                   <div className="grid grid-cols-2 gap-2 text-sm">
                                     {(Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => {
                                       const cfgBenchmarks = normalizeCustomReportConfig(ga4ReportForm.configuration).selectedBenchmarkIds || [];
-                                      const isChecked = cfgBenchmarks.length === 0 || cfgBenchmarks.includes(String(b.id));
+                                      const isChecked = cfgBenchmarks.includes(String(b.id));
                                       return (
                                         <label key={String(b.id)} className="flex items-center gap-2">
                                           <input
@@ -8165,6 +8166,8 @@ export default function GA4Metrics() {
                                               const nextIds = new Set((nextCfg.selectedBenchmarkIds || allCustomBenchmarkIds).map(String));
                                               if (e.target.checked) nextIds.add(String(b.id)); else nextIds.delete(String(b.id));
                                               nextCfg.selectedBenchmarkIds = [...nextIds];
+                                              nextCfg.subsections.benchmarks = { ...(nextCfg.subsections?.benchmarks || {}), items: nextCfg.selectedBenchmarkIds.length > 0 };
+                                              nextCfg.sections.benchmarks = Object.values(nextCfg.subsections.benchmarks || {}).some(Boolean);
                                               setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
                                             }}
                                           />

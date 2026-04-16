@@ -8395,7 +8395,7 @@ export default function GA4Metrics() {
               <div className="flex items-center gap-2">
                 <Button
                   disabled={!ga4ReportForm.name || !ga4ReportForm.reportType || createGA4ReportMutation.isPending || updateGA4ReportMutation.isPending}
-                  onClick={() => {
+                  onClick={async () => {
                     if (ga4ReportForm.scheduleEnabled) {
                       // Scheduled report: validate, save to library
                       if (!validateGA4ScheduledReportFields()) return;
@@ -8419,12 +8419,24 @@ export default function GA4Metrics() {
                       updateGA4ReportMutation.mutate({ reportId: editingGA4ReportId, payload });
                     } else {
                       // Generate and download immediately (don't save to library)
-                      downloadGA4Report({
-                        reportType: ga4ReportForm.reportType || "overview",
-                        configuration: ga4ReportForm.configuration,
-                        reportName: ga4ReportForm.name || undefined,
-                      });
-                      setShowGA4ReportModal(false);
+                      if (ga4ReportForm.reportType === "custom" && !Object.values(normalizeCustomReportConfig(ga4ReportForm.configuration).sections || {}).some(Boolean)) {
+                        toast({ title: "Select at least one custom report section", variant: "destructive" });
+                        return;
+                      }
+                      try {
+                        await downloadGA4Report({
+                          reportType: ga4ReportForm.reportType || "overview",
+                          configuration: ga4ReportForm.configuration,
+                          reportName: ga4ReportForm.name || undefined,
+                        });
+                        setShowGA4ReportModal(false);
+                      } catch (error: any) {
+                        toast({
+                          title: "Failed to generate report",
+                          description: error?.message || "An unexpected error occurred",
+                          variant: "destructive",
+                        });
+                      }
                     }
                   }}
                   className="gap-2"

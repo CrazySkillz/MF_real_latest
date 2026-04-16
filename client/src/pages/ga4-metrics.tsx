@@ -2663,12 +2663,67 @@ export default function GA4Metrics() {
       const includeAdsBestWorst = reportType !== "custom" || adsSubsections.bestWorst !== false;
       const includeAdsRevenueBreakdown = reportType !== "custom" || adsSubsections.revenueBreakdown !== false;
       const rows = Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : [];
+      const selectedMetric = campaignComparisonMetric;
+      const metricLabels: Record<string, string> = {
+        sessions: "Sessions",
+        users: "Users",
+        conversions: "Conversions",
+        revenue: "Revenue",
+        conversionRate: "Conversion Rate",
+      };
+      const fmtMetricValue = (metric: string, value: number) => {
+        if (metric === "revenue") return fC(value);
+        if (metric === "conversionRate") return fP(value);
+        return fN(value);
+      };
+      const normalizeCampaignKey = (value: string) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const rowCounts = new Map<string, number>();
+      const rowNameByKey = new Map<string, string>();
+      rows.forEach((row: any) => {
+        const key = normalizeCampaignKey(row?.name || "");
+        if (!key) return;
+        rowCounts.set(key, (rowCounts.get(key) || 0) + 1);
+        if (!rowNameByKey.has(key)) rowNameByKey.set(key, row.name);
+      });
+      const matchedByRow = new Map<string, number>();
+      let matchedExternalRevenue = 0;
+      revenueDisplaySources.forEach((source: any) => {
+        const rawCfg = source?.mappingConfig;
+        const cfg = typeof rawCfg === "string" ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })() : rawCfg;
+        const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+        totals.forEach((item: any) => {
+          const campaignValue = String(item?.campaignValue || "").trim();
+          const revenue = Number(item?.revenue || 0);
+          const key = normalizeCampaignKey(campaignValue);
+          if (!key || !(revenue > 0) || rowCounts.get(key) !== 1) return;
+          const rowName = rowNameByKey.get(key);
+          if (!rowName) return;
+          matchedByRow.set(rowName, (matchedByRow.get(rowName) || 0) + revenue);
+          matchedExternalRevenue += revenue;
+        });
+      });
+      const unallocatedExternalRevenue = Math.max(0, Number((importedRevenueForFinancials - matchedExternalRevenue).toFixed(2)));
+      const comparisonRows = rows.map((row: any) => {
+        const adjustedRevenue = Number((Number(row?.revenue || 0) + Number(matchedByRow.get(row?.name || "") || 0)).toFixed(2));
+        return { ...row, revenue: adjustedRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? adjustedRevenue / Number(row.sessions || 0) : 0 };
+      });
+      const sortedByMetric = [...comparisonRows].sort((a: any, b: any) => Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0));
+      const totalMetric = selectedMetric === "conversionRate"
+        ? (() => {
+            const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
+            const totalConversions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversions || 0), 0);
+            return totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
+          })()
+        : selectedMetric === "revenue" && financialRevenue > 0
+          ? financialRevenue
+          : sortedByMetric.reduce((sum: number, c: any) => sum + Number((c as any)?.[selectedMetric] || 0), 0);
+      const tableRevenueSummaryVisible = importedRevenueForFinancials > 0 || matchedExternalRevenue > 0 || unallocatedExternalRevenue > 0;
       if (rows.length === 0) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No campaign breakdown data available.", MX + 8, y); y += 12;
       } else {
         const adSummaryCards: [string, string][] = [
-          ["Selected Metric", METRIC_LABELS[selectedMetric] || selectedMetric],
+          ["Selected Metric", metricLabels[selectedMetric] || selectedMetric],
           ["Total", fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
           ["Campaigns", String(sortedByMetric.length)],
         ];
@@ -2714,7 +2769,7 @@ export default function GA4Metrics() {
             doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
             doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
             doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-            doc.text(trunc(String(r?.campaign || "(not set)"), 35), colXs[0], y + 4);
+            doc.text(trunc(String(r?.name || r?.campaign || "(not set)"), 35), colXs[0], y + 4);
             doc.setTextColor(...C.textSec);
             doc.text(fN(s), colXs[1], y + 4);
             doc.text(fN(u), colXs[2], y + 4);
@@ -2743,7 +2798,7 @@ export default function GA4Metrics() {
           doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.success);
           doc.text("BEST", MX + 13, y + 7);
           doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-          doc.text(trunc(String(best?.campaign || ""), 28), MX + 13, y + 14);
+          doc.text(trunc(String(best?.name || best?.campaign || ""), 28), MX + 13, y + 14);
 
           // Worst
           const wx = MX + halfW + 6;
@@ -2753,7 +2808,7 @@ export default function GA4Metrics() {
           doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.danger);
           doc.text("LOWEST", wx + 13, y + 7);
           doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-          doc.text(trunc(String(worst?.campaign || ""), 28), wx + 13, y + 14);
+          doc.text(trunc(String(worst?.name || worst?.campaign || ""), 28), wx + 13, y + 14);
           y += 24;
         }
 
@@ -2767,10 +2822,10 @@ export default function GA4Metrics() {
               fC(Number(source.revenue || 0)),
             ]),
           ];
-          if (allocationSummary.unallocatedExternalRevenue > 0) {
-            breakdownRows.push(["Unallocated External Revenue", fC(allocationSummary.unallocatedExternalRevenue)]);
+          if (unallocatedExternalRevenue > 0) {
+            breakdownRows.push(["Unallocated External Revenue", fC(unallocatedExternalRevenue)]);
           }
-          breakdownRows.push(["Total Revenue", fC(totalRevenue)]);
+          breakdownRows.push(["Total Revenue", fC(financialRevenue)]);
           checkPage(10);
           doc.setFillColor(...C.cardBg);
           doc.roundedRect(MX, y, CW, 8, 2, 2, "F");

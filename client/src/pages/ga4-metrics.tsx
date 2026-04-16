@@ -1387,6 +1387,35 @@ export default function GA4Metrics() {
       return response.json();
     },
   });
+  const defaultCustomReportSections = useMemo(
+    () => ({ overview: true, kpis: true, benchmarks: true, ads: true, insights: true }),
+    []
+  );
+  const defaultCustomReportSubsections = useMemo(
+    () => ({
+      overview: { summary: true, revenue: true, spend: true, performance: true, campaignBreakdown: true, landingPages: true, conversionEvents: true },
+      kpis: { tracker: true, items: true },
+      benchmarks: { tracker: true, items: true },
+      ads: { summary: true, allCampaigns: true, bestWorst: true, revenueBreakdown: true },
+      insights: { summaryCards: true, trends: true, trendSnapshot: true, actions: true },
+    }),
+    []
+  );
+  const allCustomKpiIds = useMemo(() => (Array.isArray(platformKPIs) ? platformKPIs : []).map((k: any) => String(k.id)), [platformKPIs]);
+  const allCustomBenchmarkIds = useMemo(() => (Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => String(b.id)), [benchmarks]);
+  const normalizeCustomReportConfig = (cfg: any = {}) => ({
+    ...cfg,
+    sections: { ...defaultCustomReportSections, ...(cfg?.sections || {}) },
+    subsections: {
+      overview: { ...defaultCustomReportSubsections.overview, ...(cfg?.subsections?.overview || {}) },
+      kpis: { ...defaultCustomReportSubsections.kpis, ...(cfg?.subsections?.kpis || {}) },
+      benchmarks: { ...defaultCustomReportSubsections.benchmarks, ...(cfg?.subsections?.benchmarks || {}) },
+      ads: { ...defaultCustomReportSubsections.ads, ...(cfg?.subsections?.ads || {}) },
+      insights: { ...defaultCustomReportSubsections.insights, ...(cfg?.subsections?.insights || {}) },
+    },
+    selectedKpiIds: Array.isArray(cfg?.selectedKpiIds) && cfg.selectedKpiIds.length > 0 ? cfg.selectedKpiIds.map(String) : allCustomKpiIds,
+    selectedBenchmarkIds: Array.isArray(cfg?.selectedBenchmarkIds) && cfg.selectedBenchmarkIds.length > 0 ? cfg.selectedBenchmarkIds.map(String) : allCustomBenchmarkIds,
+  });
 
   // Fetch industries list (used for Benchmarks -> Industry type)
   const { data: industryData } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
@@ -2452,10 +2481,21 @@ export default function GA4Metrics() {
       reportType === "custom"
         ? (cfg?.sections || { overview: true })
         : { overview: reportType === "overview", kpis: reportType === "kpis", benchmarks: reportType === "benchmarks", ads: reportType === "ads", insights: reportType === "insights" };
+    const customSubsections = reportType === "custom" ? normalizeCustomReportConfig(cfg).subsections || {} : {};
+    const selectedCustomKpiIds = reportType === "custom" ? new Set((normalizeCustomReportConfig(cfg).selectedKpiIds || []).map(String)) : null;
+    const selectedCustomBenchmarkIds = reportType === "custom" ? new Set((normalizeCustomReportConfig(cfg).selectedBenchmarkIds || []).map(String)) : null;
 
     // ========== OVERVIEW ==========
     if (sections.overview) {
       sectionTitle("Performance Overview", C.overview);
+      const overviewSubsections = customSubsections.overview || {};
+      const includeOverviewSummary = reportType !== "custom" || overviewSubsections.summary !== false;
+      const includeOverviewRevenue = reportType !== "custom" || overviewSubsections.revenue !== false;
+      const includeOverviewSpend = reportType !== "custom" || overviewSubsections.spend !== false;
+      const includeOverviewPerformance = reportType !== "custom" || overviewSubsections.performance !== false;
+      const includeOverviewCampaignBreakdown = reportType !== "custom" || overviewSubsections.campaignBreakdown !== false;
+      const includeOverviewLandingPages = reportType !== "custom" || overviewSubsections.landingPages !== false;
+      const includeOverviewConversionEvents = reportType !== "custom" || overviewSubsections.conversionEvents !== false;
       const spend = Number(financialSpend || 0);
       const rev = Number(financialRevenue || 0);
       const convTot = Number(financialConversions || 0);
@@ -2514,18 +2554,21 @@ export default function GA4Metrics() {
         y += 2;
       };
 
-      subheading("Summary");
-      metricCards([
-        ["Sessions", fN(sess)],
-        ["Users", fN(users)],
-        ["Conversions", fN(conv)],
-        ["Engagement Rate", fP(engRate)],
-        ["Conv. Rate", fP(cr)],
-      ], 3);
-      y += 2;
+      if (includeOverviewSummary) {
+        subheading("Summary");
+        metricCards([
+          ["Sessions", fN(sess)],
+          ["Users", fN(users)],
+          ["Conversions", fN(conv)],
+          ["Engagement Rate", fP(engRate)],
+          ["Conv. Rate", fP(cr)],
+        ], 3);
+        y += 2;
+      }
 
-      subheading("Revenue & Financial", 10);
-      subheading("Revenue");
+      if (includeOverviewRevenue || includeOverviewSpend || includeOverviewPerformance) subheading("Revenue & Financial", 10);
+      if (includeOverviewRevenue) {
+        subheading("Revenue");
       const latestDayRevenue = Number(ga4LatestDayRevenue || 0) + Number(revenueDailyResp?.totalRevenue || 0);
       const revenueCards: [string, string][] = [
         ["Total Revenue", fC(rev)],
@@ -2544,7 +2587,9 @@ export default function GA4Metrics() {
           return [String(s.displayName || revenueSourceTypeLabel(s.sourceType)) + dateLabel, fC(Number(s.revenue != null ? s.revenue : rev))] as [string, string];
         }),
       ]);
+      }
 
+      if (includeOverviewSpend) {
       subheading("Spend");
       const latestDaySpend = Number(spendDailyResp?.totalSpend || 0);
       metricCards([
@@ -2555,7 +2600,9 @@ export default function GA4Metrics() {
         String(s.displayName || spendSourceTypeLabel(s.sourceType)),
         fC(Number(s.spend != null ? s.spend : spend)),
       ] as [string, string]));
+      }
 
+      if (includeOverviewPerformance) {
       subheading("Performance");
       metricCards([
         ["Profit", fC(rev - spend)],
@@ -2564,8 +2611,9 @@ export default function GA4Metrics() {
         ["CPA", convTot > 0 ? fC(cpa) : "—"],
       ], 4);
       y += 2;
+      }
 
-      addSimpleTable(
+      if (includeOverviewCampaignBreakdown) addSimpleTable(
         "Campaign Breakdown",
         ["CAMPAIGN", "SESSIONS", "USERS", "CONV", "REVENUE"],
         (Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : []).slice(0, 15).map((c: any) => [
@@ -2578,7 +2626,7 @@ export default function GA4Metrics() {
         [76, 24, 22, 22, 40]
       );
 
-      addSimpleTable(
+      if (includeOverviewLandingPages) addSimpleTable(
         "Landing Pages",
         ["LANDING PAGE", "SESSIONS", "USERS", "CONV", "REVENUE"],
         (Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : []).slice(0, 15).map((r: any) => [
@@ -2591,7 +2639,7 @@ export default function GA4Metrics() {
         [76, 24, 22, 22, 40]
       );
 
-      addSimpleTable(
+      if (includeOverviewConversionEvents) addSimpleTable(
         "Conversion Events",
         ["EVENT", "CONV", "EVENTS", "USERS", "REVENUE"],
         (Array.isArray(ga4ConversionEvents?.rows) ? ga4ConversionEvents.rows : []).slice(0, 15).map((r: any) => [
@@ -2608,6 +2656,11 @@ export default function GA4Metrics() {
     // ========== AD COMPARISON ==========
     if (sections.ads) {
       sectionTitle("Ad Comparison", C.ads);
+      const adsSubsections = customSubsections.ads || {};
+      const includeAdsSummary = reportType !== "custom" || adsSubsections.summary !== false;
+      const includeAdsAllCampaigns = reportType !== "custom" || adsSubsections.allCampaigns !== false;
+      const includeAdsBestWorst = reportType !== "custom" || adsSubsections.bestWorst !== false;
+      const includeAdsRevenueBreakdown = reportType !== "custom" || adsSubsections.revenueBreakdown !== false;
       const rows = Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : [];
       if (rows.length === 0) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
@@ -2618,66 +2671,65 @@ export default function GA4Metrics() {
           ["Total", fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
           ["Campaigns", String(sortedByMetric.length)],
         ];
-        const sumW = (CW - 8) / 3;
-        checkPage(24);
-        for (let i = 0; i < adSummaryCards.length; i++) {
-          const [lbl, val] = adSummaryCards[i];
-          const cx = MX + i * (sumW + 4);
-          doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
-          doc.roundedRect(cx, y, sumW, 18, 3, 3, "FD");
-          doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-          doc.text(lbl.toUpperCase(), cx + 5, y + 6);
-          doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-          doc.text(trunc(val, 22), cx + 5, y + 13);
+        if (includeAdsSummary) {
+          const sumW = (CW - 8) / 3;
+          checkPage(24);
+          for (let i = 0; i < adSummaryCards.length; i++) {
+            const [lbl, val] = adSummaryCards[i];
+            const cx = MX + i * (sumW + 4);
+            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+            doc.roundedRect(cx, y, sumW, 18, 3, 3, "FD");
+            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            doc.text(lbl.toUpperCase(), cx + 5, y + 6);
+            doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(trunc(val, 22), cx + 5, y + 13);
+          }
+          y += 24;
         }
-        y += 24;
 
         const sorted = [...rows].sort((a: any, b: any) => Number(b?.sessions || 0) - Number(a?.sessions || 0));
         const top = sortedByMetric.slice(0, 20);
         const colXs = [MX + 4, MX + 80, MX + 105, MX + 126, MX + 146, MX + CW - 8];
 
         // Table header
-        checkPage(14);
-        doc.setFillColor(...C.cardBg);
-        doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
-        doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
-        doc.text("CAMPAIGN", colXs[0], y + 5.5);
-        doc.text("SESSIONS", colXs[1], y + 5.5);
-        doc.text("USERS", colXs[2], y + 5.5);
-        doc.text("CONV", colXs[3], y + 5.5);
-        doc.text("REVENUE", colXs[4], y + 5.5);
-        doc.text("CR", colXs[5], y + 5.5);
-        y += 10;
-
-        // Rows
-        for (let i = 0; i < top.length; i++) {
-          checkPage(9);
-          const r = top[i] as any;
-          const s = Number(r?.sessions || 0), u = Number(r?.users || 0);
-          const cv = Number(r?.conversions || 0), rv = Number(r?.revenue || 0);
-          const rate = s > 0 ? (cv / s) * 100 : 0;
-
-          // Subtle divider
-          doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
-          doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
-
-          doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-          doc.text(trunc(String(r?.campaign || "(not set)"), 35), colXs[0], y + 4);
-          doc.setTextColor(...C.textSec);
-          doc.text(fN(s), colXs[1], y + 4);
-          doc.text(fN(u), colXs[2], y + 4);
-          doc.text(fN(cv), colXs[3], y + 4);
-          doc.text(fC(rv), colXs[4], y + 4);
-          doc.text(fP(rate), colXs[5], y + 4);
-          y += 8;
-        }
-        if (sortedByMetric.length > top.length) {
-          doc.setFontSize(7); doc.setTextColor(...C.textTert);
-          doc.text(`+ ${sortedByMetric.length - top.length} more campaigns`, MX + 4, y + 3); y += 8;
+        if (includeAdsAllCampaigns) {
+          checkPage(14);
+          doc.setFillColor(...C.cardBg);
+          doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
+          doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
+          doc.text("CAMPAIGN", colXs[0], y + 5.5);
+          doc.text("SESSIONS", colXs[1], y + 5.5);
+          doc.text("USERS", colXs[2], y + 5.5);
+          doc.text("CONV", colXs[3], y + 5.5);
+          doc.text("REVENUE", colXs[4], y + 5.5);
+          doc.text("CR", colXs[5], y + 5.5);
+          y += 10;
+          for (let i = 0; i < top.length; i++) {
+            checkPage(9);
+            const r = top[i] as any;
+            const s = Number(r?.sessions || 0), u = Number(r?.users || 0);
+            const cv = Number(r?.conversions || 0), rv = Number(r?.revenue || 0);
+            const rate = s > 0 ? (cv / s) * 100 : 0;
+            doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+            doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
+            doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
+            doc.text(trunc(String(r?.campaign || "(not set)"), 35), colXs[0], y + 4);
+            doc.setTextColor(...C.textSec);
+            doc.text(fN(s), colXs[1], y + 4);
+            doc.text(fN(u), colXs[2], y + 4);
+            doc.text(fN(cv), colXs[3], y + 4);
+            doc.text(fC(rv), colXs[4], y + 4);
+            doc.text(fP(rate), colXs[5], y + 4);
+            y += 8;
+          }
+          if (sortedByMetric.length > top.length) {
+            doc.setFontSize(7); doc.setTextColor(...C.textTert);
+            doc.text(`+ ${sortedByMetric.length - top.length} more campaigns`, MX + 4, y + 3); y += 8;
+          }
         }
 
         // Best / Worst cards
-        if (sorted.length > 1) {
+        if (includeAdsBestWorst && sorted.length > 1) {
           y += 4; checkPage(22);
           const best = sorted[0] as any;
           const worst = sorted[sorted.length - 1] as any;
@@ -2704,11 +2756,11 @@ export default function GA4Metrics() {
           y += 24;
         }
 
-        if (tableRevenueSummaryVisible) {
+        if (includeAdsRevenueBreakdown && tableRevenueSummaryVisible) {
           y += 4;
           sectionTitle("Revenue Breakdown", C.ads);
           const breakdownRows: string[][] = [
-            ["GA4 Revenue", fC(ga4Revenue)],
+            ["GA4 Revenue", fC(ga4RevenueForFinancials)],
             ...revenueDisplaySources.map((source: any) => [
               String(source.displayName || source.sourceType || "Source"),
               fC(Number(source.revenue || 0)),
@@ -2742,6 +2794,11 @@ export default function GA4Metrics() {
     // ========== INSIGHTS ==========
     if (sections.insights) {
       sectionTitle("Insights", C.insights);
+      const insightsSubsections = customSubsections.insights || {};
+      const includeInsightsSummaryCards = reportType !== "custom" || insightsSubsections.summaryCards !== false;
+      const includeInsightsTrends = reportType !== "custom" || insightsSubsections.trends !== false;
+      const includeInsightsTrendSnapshot = reportType !== "custom" || insightsSubsections.trendSnapshot !== false;
+      const includeInsightsActions = reportType !== "custom" || insightsSubsections.actions !== false;
       const items = Array.isArray(insights) ? insights : [];
       const availableDays = Number(insightsRollups?.availableDays || 0);
       const trendMetric = insightsTrendMetric;
@@ -2760,7 +2817,6 @@ export default function GA4Metrics() {
       const trendDeltaPct = (curVal: number, prevVal: number) => prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : curVal > 0 ? 100 : 0;
       const trendDailyRows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];
       const trendSorted = [...trendDailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
-      checkPage(24);
       const insightSummaryCards: [string, string][] = [
         ["Revenue", fC(Number(financialRevenue || 0))],
         ["Spend", fC(Number(financialSpend || 0))],
@@ -2768,24 +2824,27 @@ export default function GA4Metrics() {
         ["ROAS", `${Number(financialROAS || 0).toFixed(2)}x`],
         ["Days of Data", String(availableDays)],
       ];
-      const sumW = (CW - 8) / 3;
-      for (let i = 0; i < insightSummaryCards.length; i += 3) {
-        checkPage(22);
-        for (let c = 0; c < 3 && i + c < insightSummaryCards.length; c++) {
-          const [lbl, val] = insightSummaryCards[i + c];
-          const cx = MX + c * (sumW + 4);
-          doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
-          doc.roundedRect(cx, y, sumW, 18, 3, 3, "FD");
-          doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-          doc.text(lbl.toUpperCase(), cx + 5, y + 6);
-          doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-          doc.text(trunc(val, 22), cx + 5, y + 13);
+      if (includeInsightsSummaryCards) {
+        checkPage(24);
+        const sumW = (CW - 8) / 3;
+        for (let i = 0; i < insightSummaryCards.length; i += 3) {
+          checkPage(22);
+          for (let c = 0; c < 3 && i + c < insightSummaryCards.length; c++) {
+            const [lbl, val] = insightSummaryCards[i + c];
+            const cx = MX + c * (sumW + 4);
+            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+            doc.roundedRect(cx, y, sumW, 18, 3, 3, "FD");
+            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            doc.text(lbl.toUpperCase(), cx + 5, y + 6);
+            doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(trunc(val, 22), cx + 5, y + 13);
+          }
+          y += 22;
         }
-        y += 22;
+        y += 2;
       }
-      y += 2;
 
-      if (trendSorted.length >= 2) {
+      if (includeInsightsTrends && trendSorted.length >= 2) {
         const trendChartData: { date: string; value: number }[] = [];
         if (insightsTrendMode === "daily") {
           let dailyChartRows = trendSorted.slice(-30);
@@ -2908,7 +2967,7 @@ export default function GA4Metrics() {
         }
       }
 
-      if (availableDays >= 3) {
+      if (includeInsightsTrendSnapshot && availableDays >= 3) {
         checkPage(24);
         doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
         doc.roundedRect(MX, y, CW, 18, 3, 3, "FD");
@@ -2927,7 +2986,9 @@ export default function GA4Metrics() {
         y += 22;
       }
 
-      if (items.length === 0) {
+      if (!includeInsightsActions) {
+        y += 4;
+      } else if (items.length === 0) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No insights available at this time.", MX + 8, y); y += 12;
       } else {
@@ -2992,35 +3053,44 @@ export default function GA4Metrics() {
     // ========== KPIs ==========
     if (sections.kpis) {
       sectionTitle("Key Performance Indicators", C.kpis);
-      const items = Array.isArray(platformKPIs) ? platformKPIs : [];
-      if (items.length === 0) {
+      const kpiSubsections = customSubsections.kpis || {};
+      const includeKpiTracker = reportType !== "custom" || kpiSubsections.tracker !== false;
+      const includeKpiItems = reportType !== "custom" || kpiSubsections.items !== false;
+      const items = (Array.isArray(platformKPIs) ? platformKPIs : []).filter((k: any) => !selectedCustomKpiIds || selectedCustomKpiIds.size === 0 || selectedCustomKpiIds.has(String(k.id)));
+      if (items.length === 0 && !includeKpiTracker) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
-        doc.text("No KPIs configured yet.", MX + 8, y); y += 12;
+        doc.text("No KPIs selected for this report.", MX + 8, y); y += 12;
       } else {
-        checkPage(30);
-        const kpiTrackerCards: [string, string][] = [
-          ["Total KPIs", String(kpiTracker.total || 0)],
-          ["Above Target", String(kpiTracker.above || 0)],
-          ["On Track", String(kpiTracker.near || 0)],
-          ["Below Target", String(kpiTracker.below || 0)],
-          ["Avg. Progress", `${Number(kpiTracker.avgPct || 0).toFixed(1)}%`],
-        ];
-        const trackerW = (CW - 8) / 3;
-        for (let i = 0; i < kpiTrackerCards.length; i += 3) {
-          for (let c = 0; c < 3 && i + c < kpiTrackerCards.length; c++) {
-            const [lbl, val] = kpiTrackerCards[i + c];
-            const cx = MX + c * (trackerW + 4);
-            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
-            doc.roundedRect(cx, y, trackerW, 18, 3, 3, "FD");
-            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-            doc.text(lbl.toUpperCase(), cx + 5, y + 6);
-            doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-            doc.text(val, cx + 5, y + 13);
+        if (includeKpiTracker) {
+          checkPage(30);
+          const kpiTrackerCards: [string, string][] = [
+            ["Total KPIs", String(kpiTracker.total || 0)],
+            ["Above Target", String(kpiTracker.above || 0)],
+            ["On Track", String(kpiTracker.near || 0)],
+            ["Below Target", String(kpiTracker.below || 0)],
+            ["Avg. Progress", `${Number(kpiTracker.avgPct || 0).toFixed(1)}%`],
+          ];
+          const trackerW = (CW - 8) / 3;
+          for (let i = 0; i < kpiTrackerCards.length; i += 3) {
+            for (let c = 0; c < 3 && i + c < kpiTrackerCards.length; c++) {
+              const [lbl, val] = kpiTrackerCards[i + c];
+              const cx = MX + c * (trackerW + 4);
+              doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+              doc.roundedRect(cx, y, trackerW, 18, 3, 3, "FD");
+              doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+              doc.text(lbl.toUpperCase(), cx + 5, y + 6);
+              doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+              doc.text(val, cx + 5, y + 13);
+            }
+            y += 22;
           }
-          y += 22;
+          y += 2;
         }
-        y += 2;
-        for (const k of items) {
+        if (includeKpiItems && items.length === 0) {
+          doc.setFontSize(10); doc.setTextColor(...C.textSec);
+          doc.text("No KPIs selected for this report.", MX + 8, y); y += 12;
+        }
+        for (const k of includeKpiItems ? items : []) {
           const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
           if (deps.missing.length > 0) {
             checkPage(20);
@@ -3114,35 +3184,44 @@ export default function GA4Metrics() {
     // ========== BENCHMARKS ==========
     if (sections.benchmarks) {
       sectionTitle("Performance Benchmarks", C.benchmarks);
-      const items = Array.isArray(benchmarks) ? benchmarks : [];
-      if (items.length === 0) {
+      const benchmarkSubsections = customSubsections.benchmarks || {};
+      const includeBenchmarkTracker = reportType !== "custom" || benchmarkSubsections.tracker !== false;
+      const includeBenchmarkItems = reportType !== "custom" || benchmarkSubsections.items !== false;
+      const items = (Array.isArray(benchmarks) ? benchmarks : []).filter((b: any) => !selectedCustomBenchmarkIds || selectedCustomBenchmarkIds.size === 0 || selectedCustomBenchmarkIds.has(String(b.id)));
+      if (items.length === 0 && !includeBenchmarkTracker) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
-        doc.text("No benchmarks configured yet.", MX + 8, y); y += 12;
+        doc.text("No benchmarks selected for this report.", MX + 8, y); y += 12;
       } else {
-        checkPage(30);
-        const benchmarkTrackerCards: [string, string][] = [
-          ["Total Benchmarks", String(benchmarkTracker.total || 0)],
-          ["On Track", String(benchmarkTracker.onTrack || 0)],
-          ["Needs Attention", String(benchmarkTracker.needsAttention || 0)],
-          ["Behind", String(benchmarkTracker.behind || 0)],
-          ["Avg. Progress", `${Number(benchmarkTracker.avgPct || 0).toFixed(1)}%`],
-        ];
-        const trackerW = (CW - 8) / 3;
-        for (let i = 0; i < benchmarkTrackerCards.length; i += 3) {
-          for (let c = 0; c < 3 && i + c < benchmarkTrackerCards.length; c++) {
-            const [lbl, val] = benchmarkTrackerCards[i + c];
-            const cx = MX + c * (trackerW + 4);
-            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
-            doc.roundedRect(cx, y, trackerW, 18, 3, 3, "FD");
-            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-            doc.text(lbl.toUpperCase(), cx + 5, y + 6);
-            doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-            doc.text(val, cx + 5, y + 13);
+        if (includeBenchmarkTracker) {
+          checkPage(30);
+          const benchmarkTrackerCards: [string, string][] = [
+            ["Total Benchmarks", String(benchmarkTracker.total || 0)],
+            ["On Track", String(benchmarkTracker.onTrack || 0)],
+            ["Needs Attention", String(benchmarkTracker.needsAttention || 0)],
+            ["Behind", String(benchmarkTracker.behind || 0)],
+            ["Avg. Progress", `${Number(benchmarkTracker.avgPct || 0).toFixed(1)}%`],
+          ];
+          const trackerW = (CW - 8) / 3;
+          for (let i = 0; i < benchmarkTrackerCards.length; i += 3) {
+            for (let c = 0; c < 3 && i + c < benchmarkTrackerCards.length; c++) {
+              const [lbl, val] = benchmarkTrackerCards[i + c];
+              const cx = MX + c * (trackerW + 4);
+              doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+              doc.roundedRect(cx, y, trackerW, 18, 3, 3, "FD");
+              doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+              doc.text(lbl.toUpperCase(), cx + 5, y + 6);
+              doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+              doc.text(val, cx + 5, y + 13);
+            }
+            y += 22;
           }
-          y += 22;
+          y += 2;
         }
-        y += 2;
-        for (const b of items) {
+        if (includeBenchmarkItems && items.length === 0) {
+          doc.setFontSize(10); doc.setTextColor(...C.textSec);
+          doc.text("No benchmarks selected for this report.", MX + 8, y); y += 12;
+        }
+        for (const b of includeBenchmarkItems ? items : []) {
           const deps = getMissingDependenciesForMetric(String((b as any)?.metric || ""));
           if (deps.missing.length > 0) {
             checkPage(20);
@@ -6456,7 +6535,7 @@ export default function GA4Metrics() {
                                       let cfg: any = { sections: { overview: true } };
                                       try {
                                         const parsed = r.configuration ? JSON.parse(String(r.configuration)) : {};
-                                        if (parsed?.sections) cfg = parsed;
+                                        if (parsed?.sections) cfg = String(r.reportType || "overview") === "custom" ? normalizeCustomReportConfig(parsed) : parsed;
                                       } catch {
                                         // keep default
                                       }
@@ -6479,7 +6558,7 @@ export default function GA4Metrics() {
                                       let cfg: any = { sections: { overview: true } };
                                       try {
                                         const parsed = r.configuration ? JSON.parse(String(r.configuration)) : {};
-                                        if (parsed?.sections) cfg = parsed;
+                                        if (parsed?.sections) cfg = String(r.reportType || "overview") === "custom" ? normalizeCustomReportConfig(parsed) : parsed;
                                       } catch {
                                         // keep default
                                       }
@@ -7693,9 +7772,7 @@ export default function GA4Metrics() {
                     ...p,
                     reportType: "custom",
                     name: p.name || "Custom Report",
-                    configuration: p.configuration?.sections
-                      ? p.configuration
-                      : { sections: { overview: true, kpis: true, benchmarks: true, ads: true, insights: true } },
+                    configuration: normalizeCustomReportConfig(p.configuration?.sections ? p.configuration : {}),
                   }));
                 }}
               >
@@ -7983,28 +8060,124 @@ export default function GA4Metrics() {
 
                 <div className="border rounded-lg p-4 border-border">
                   <div className="text-sm font-medium text-foreground/80/60 mb-3">Sections</div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="space-y-4 text-sm">
                     {[
-                      { key: "overview", label: "Overview" },
-                      { key: "kpis", label: "KPIs Snapshot" },
-                      { key: "benchmarks", label: "Benchmarks Snapshot" },
-                      { key: "ads", label: "Ad Comparison" },
-                      { key: "insights", label: "Insights" },
+                      { key: "overview", label: "Overview", subsections: [
+                        ["summary", "Summary"],
+                        ["revenue", "Revenue"],
+                        ["spend", "Spend"],
+                        ["performance", "Performance"],
+                        ["campaignBreakdown", "Campaign Breakdown"],
+                        ["landingPages", "Landing Pages"],
+                        ["conversionEvents", "Conversion Events"],
+                      ] as Array<[string, string]> },
+                      { key: "kpis", label: "KPIs", subsections: [["tracker", "Performance Tracker"]] as Array<[string, string]> },
+                      { key: "benchmarks", label: "Benchmarks", subsections: [["tracker", "Performance Tracker"]] as Array<[string, string]> },
+                      { key: "ads", label: "Ad Comparison", subsections: [
+                        ["summary", "Top Summary"],
+                        ["allCampaigns", "All Campaigns"],
+                        ["bestWorst", "Best / Lowest"],
+                        ["revenueBreakdown", "Revenue Breakdown"],
+                      ] as Array<[string, string]> },
+                      { key: "insights", label: "Insights", subsections: [
+                        ["summaryCards", "Summary Cards"],
+                        ["trends", "Trends"],
+                        ["trendSnapshot", "Trend Snapshot"],
+                        ["actions", "Insights List"],
+                      ] as Array<[string, string]> },
                     ].map((s) => {
-                      const checked = !!ga4ReportForm.configuration?.sections?.[s.key];
+                      const cfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
+                      const checked = !!cfg.sections?.[s.key];
+                      const subsectionCfg = cfg.subsections?.[s.key] || {};
                       return (
-                        <label key={s.key} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(e) => {
-                              const next = { ...(ga4ReportForm.configuration?.sections || {}) };
-                              next[s.key] = e.target.checked;
-                              setGa4ReportForm((p) => ({ ...p, configuration: { ...(p.configuration || {}), sections: next } }));
-                            }}
-                          />
-                          {s.label}
-                        </label>
+                        <div key={s.key} className="rounded-md border border-border p-3 space-y-2">
+                          <label className="flex items-center gap-2 font-medium">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
+                                nextCfg.sections[s.key] = e.target.checked;
+                                setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
+                              }}
+                            />
+                            {s.label}
+                          </label>
+                          {checked && (
+                            <div className="pl-6 space-y-2">
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                {s.subsections.map(([subKey, subLabel]) => (
+                                  <label key={subKey} className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={subsectionCfg[subKey] !== false}
+                                      onChange={(e) => {
+                                        const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
+                                        nextCfg.subsections[s.key] = { ...(nextCfg.subsections?.[s.key] || {}), [subKey]: e.target.checked };
+                                        setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
+                                      }}
+                                    />
+                                    {subLabel}
+                                  </label>
+                                ))}
+                              </div>
+                              {s.key === "kpis" && (
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground/70">Select KPIs</div>
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    {(Array.isArray(platformKPIs) ? platformKPIs : []).map((k: any) => {
+                                      const cfgKpis = normalizeCustomReportConfig(ga4ReportForm.configuration).selectedKpiIds || [];
+                                      const isChecked = cfgKpis.length === 0 || cfgKpis.includes(String(k.id));
+                                      return (
+                                        <label key={String(k.id)} className="flex items-center gap-2">
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                              const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
+                                              const nextIds = new Set((nextCfg.selectedKpiIds || allCustomKpiIds).map(String));
+                                              if (e.target.checked) nextIds.add(String(k.id)); else nextIds.delete(String(k.id));
+                                              nextCfg.selectedKpiIds = [...nextIds];
+                                              setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
+                                            }}
+                                          />
+                                          {String(k.name || k.metric || "KPI")}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                              {s.key === "benchmarks" && (
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground/70">Select Benchmarks</div>
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    {(Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => {
+                                      const cfgBenchmarks = normalizeCustomReportConfig(ga4ReportForm.configuration).selectedBenchmarkIds || [];
+                                      const isChecked = cfgBenchmarks.length === 0 || cfgBenchmarks.includes(String(b.id));
+                                      return (
+                                        <label key={String(b.id)} className="flex items-center gap-2">
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                              const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
+                                              const nextIds = new Set((nextCfg.selectedBenchmarkIds || allCustomBenchmarkIds).map(String));
+                                              if (e.target.checked) nextIds.add(String(b.id)); else nextIds.delete(String(b.id));
+                                              nextCfg.selectedBenchmarkIds = [...nextIds];
+                                              setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
+                                            }}
+                                          />
+                                          {String(b.name || b.metric || "Benchmark")}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>

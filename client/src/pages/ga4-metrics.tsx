@@ -2394,8 +2394,8 @@ export default function GA4Metrics() {
       doc.text(new Date().toLocaleDateString(), PW - MX, 287, { align: "right" });
     };
 
-    const sectionTitle = (title: string, color: C3) => {
-      checkPage(18);
+    const sectionTitle = (title: string, color: C3, keepWithNext = 0) => {
+      checkPage(18 + keepWithNext);
       // Left accent bar + title
       doc.setFillColor(...color);
       doc.roundedRect(MX, y, 3, 12, 1, 1, "F");
@@ -2494,7 +2494,7 @@ export default function GA4Metrics() {
 
     // ========== OVERVIEW ==========
     if (sections.overview) {
-      sectionTitle("Performance Overview", C.overview);
+      sectionTitle("Performance Overview", C.overview, 24);
       const overviewSubsections = customSubsections.overview || {};
       const includeOverviewSummary = reportType !== "custom" || overviewSubsections.summary !== false;
       const includeOverviewRevenue = reportType !== "custom" || overviewSubsections.revenue !== false;
@@ -2662,7 +2662,7 @@ export default function GA4Metrics() {
 
     // ========== AD COMPARISON ==========
     if (sections.ads) {
-      sectionTitle("Ad Comparison", C.ads);
+      sectionTitle("Ad Comparison", C.ads, 24);
       const adsSubsections = customSubsections.ads || {};
       const includeAdsSummary = reportType !== "custom" || adsSubsections.summary !== false;
       const includeAdsAllCampaigns = reportType !== "custom" || adsSubsections.allCampaigns !== false;
@@ -2866,7 +2866,7 @@ export default function GA4Metrics() {
 
     // ========== INSIGHTS ==========
     if (sections.insights) {
-      sectionTitle("Insights", C.insights);
+      sectionTitle("Insights", C.insights, 24);
       const insightsSubsections = customSubsections.insights || {};
       const includeInsightsSummaryCards = reportType !== "custom" || insightsSubsections.summaryCards !== false;
       const includeInsightsTrends = reportType !== "custom" || insightsSubsections.trends !== false;
@@ -3105,7 +3105,7 @@ export default function GA4Metrics() {
 
     // ========== KPIs ==========
     if (sections.kpis) {
-      sectionTitle("Key Performance Indicators", C.kpis);
+      sectionTitle("Key Performance Indicators", C.kpis, 60);
       const kpiSubsections = customSubsections.kpis || {};
       const includeKpiTracker = reportType !== "custom";
       const includeKpiItems = reportType !== "custom" || kpiSubsections.items === true;
@@ -3236,7 +3236,7 @@ export default function GA4Metrics() {
 
     // ========== BENCHMARKS ==========
     if (sections.benchmarks) {
-      sectionTitle("Performance Benchmarks", C.benchmarks);
+      sectionTitle("Performance Benchmarks", C.benchmarks, 60);
       const benchmarkSubsections = customSubsections.benchmarks || {};
       const includeBenchmarkTracker = reportType !== "custom";
       const includeBenchmarkItems = reportType !== "custom" || benchmarkSubsections.items === true;
@@ -8130,7 +8130,7 @@ export default function GA4Metrics() {
                       { key: "ads", label: "Ad Comparison", subsections: [
                         ["summary", "Top Summary"],
                         ["allCampaigns", "All Campaigns"],
-                        ["bestWorst", "Best / Lowest"],
+                        ["bestWorst", "Best Performing / Most Efficient / Needs Attention"],
                         ["revenueBreakdown", "Revenue Breakdown"],
                       ] as Array<[string, string]> },
                       { key: "insights", label: "Insights", subsections: [

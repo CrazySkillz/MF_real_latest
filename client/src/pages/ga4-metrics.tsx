@@ -2447,6 +2447,39 @@ export default function GA4Metrics() {
       });
       y += 4;
     };
+    const wrapPdfText = (text: string, maxWidth: number) => {
+      const parts = String(text || "").split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let current = "";
+      const pushChunked = (value: string) => {
+        let chunk = "";
+        for (const ch of value) {
+          const next = `${chunk}${ch}`;
+          if (chunk && doc.getTextWidth(next) > maxWidth) {
+            lines.push(chunk);
+            chunk = ch;
+          } else {
+            chunk = next;
+          }
+        }
+        current = chunk;
+      };
+      for (const part of parts) {
+        const next = current ? `${current} ${part}` : part;
+        if (doc.getTextWidth(next) <= maxWidth) {
+          current = next;
+        } else if (!current) {
+          pushChunked(part);
+        } else {
+          lines.push(current);
+          current = "";
+          if (doc.getTextWidth(part) <= maxWidth) current = part;
+          else pushChunked(part);
+        }
+      }
+      if (current) lines.push(current);
+      return lines;
+    };
 
     const reportName = String(opts.reportName || ga4ReportForm.name || "GA4 Report").trim() || "GA4 Report";
     const reportType = String(opts.reportType || "overview");
@@ -3076,8 +3109,12 @@ export default function GA4Metrics() {
           const rec = trunc(String((item as any)?.recommendation || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
           const recText = rec ? `→ ${rec}` : "";
 
-          const descL = desc ? doc.splitTextToSize(desc, CW - 28).length : 0;
-          const recL = recText ? doc.splitTextToSize(recText, CW - 28).length : 0;
+          doc.setFontSize(8); doc.setFont("helvetica", "normal");
+          const descLines = desc ? wrapPdfText(desc, CW - 28) : [];
+          doc.setFont("helvetica", "italic");
+          const recLines = recText ? wrapPdfText(recText, CW - 28) : [];
+          const descL = descLines.length;
+          const recL = recLines.length;
           const ch = 16 + descL * 4.5 + (recL > 0 ? recL * 4.5 + 4 : 0) + 4;
           checkPage(ch + 4);
 
@@ -3107,15 +3144,13 @@ export default function GA4Metrics() {
           // Description
           if (desc) {
             doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
-            const dl = doc.splitTextToSize(desc, CW - 28);
-            for (const l of dl) { doc.text(l, MX + 8, iy); iy += 4.5; }
+            for (const l of descLines) { doc.text(l, MX + 8, iy); iy += 4.5; }
           }
           // Recommendation
           if (rec) {
             iy += 2;
             doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(...C.insights);
-            const rl = doc.splitTextToSize(recText, CW - 28);
-            for (const l of rl) { doc.text(l, MX + 8, iy); iy += 4.5; }
+            for (const l of recLines) { doc.text(l, MX + 8, iy); iy += 4.5; }
           }
           y += ch + 4;
         }

@@ -1397,7 +1397,7 @@ export default function GA4Metrics() {
       overview: { summary: false, revenue: false, spend: false, performance: false, campaignBreakdown: false, landingPages: false, conversionEvents: false },
       kpis: { items: false },
       benchmarks: { items: false },
-      ads: { summary: false, allCampaigns: false, bestWorst: false, revenueBreakdown: false },
+      ads: { topCampaigns: false, allCampaigns: false, bestWorst: false, revenueBreakdown: false },
       insights: { summaryCards: false, trends: false, dataSummary: false, actions: false },
     }),
     []
@@ -1411,7 +1411,11 @@ export default function GA4Metrics() {
       overview: { ...defaultCustomReportSubsections.overview, ...(cfg?.subsections?.overview || {}) },
       kpis: { ...defaultCustomReportSubsections.kpis, ...(cfg?.subsections?.kpis || {}) },
       benchmarks: { ...defaultCustomReportSubsections.benchmarks, ...(cfg?.subsections?.benchmarks || {}) },
-      ads: { ...defaultCustomReportSubsections.ads, ...(cfg?.subsections?.ads || {}) },
+      ads: {
+        ...defaultCustomReportSubsections.ads,
+        ...(cfg?.subsections?.ads || {}),
+        topCampaigns: cfg?.subsections?.ads?.topCampaigns === true || cfg?.subsections?.ads?.summary === true,
+      },
       insights: { ...defaultCustomReportSubsections.insights, ...(cfg?.subsections?.insights || {}) },
     },
     selectedKpiIds: Array.isArray(cfg?.selectedKpiIds) ? cfg.selectedKpiIds.map(String) : [],
@@ -2697,7 +2701,7 @@ export default function GA4Metrics() {
     if (sections.ads) {
       sectionTitle("Ad Comparison", C.ads, 24);
       const adsSubsections = customSubsections.ads || {};
-      const includeAdsSummary = reportType !== "custom" || adsSubsections.summary !== false;
+      const includeAdsTopCampaigns = reportType !== "custom" || adsSubsections.topCampaigns === true || adsSubsections.summary === true;
       const includeAdsAllCampaigns = reportType !== "custom" || adsSubsections.allCampaigns !== false;
       const includeAdsBestWorst = reportType !== "custom" || adsSubsections.bestWorst !== false;
       const includeAdsRevenueBreakdown = reportType !== "custom" || adsSubsections.revenueBreakdown !== false;
@@ -2766,7 +2770,7 @@ export default function GA4Metrics() {
           ["Total", fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
           ["Campaigns", String(sortedByMetric.length)],
         ];
-        if (includeAdsSummary) {
+        if (includeAdsTopCampaigns) {
           const sumW = (CW - 8) / 3;
           checkPage(24);
           for (let i = 0; i < adSummaryCards.length; i++) {
@@ -2780,6 +2784,36 @@ export default function GA4Metrics() {
             doc.text(trunc(val, 22), cx + 5, y + 13);
           }
           y += 24;
+
+          const chartData = sortedByMetric.slice(0, 10).map((row: any) => ({
+            name: trunc(String(row?.name || row?.campaign || "(not set)"), 22),
+            value: Number((row as any)?.[selectedMetric] || 0),
+          }));
+          if (chartData.length > 0) {
+            checkPage(56);
+            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+            doc.roundedRect(MX, y, CW, 44, 3, 3, "FD");
+            doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(`Top Campaigns by ${metricLabels[selectedMetric] || selectedMetric}`, MX + 6, y + 7);
+            const chartX = MX + 8, chartY = y + 12, chartW = CW - 16, chartH = 24;
+            const vals = chartData.map((p) => Number(p.value || 0));
+            const maxVal = Math.max(...vals, 1);
+            const barW = Math.max(4, chartW / Math.max(chartData.length * 1.8, 1));
+            doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+            doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH);
+            doc.line(chartX, chartY, chartX, chartY + chartH);
+            chartData.forEach((p, idx) => {
+              const px = chartX + idx * (chartW / Math.max(chartData.length, 1)) + 2;
+              const barH = Math.max(1, (Number(p.value || 0) / maxVal) * (chartH - 2));
+              doc.setFillColor(...C.ads);
+              doc.rect(px, chartY + chartH - barH, barW, barH, "F");
+            });
+            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            doc.text(chartData[0]?.name || "", chartX, chartY + chartH + 5);
+            doc.text(chartData[chartData.length - 1]?.name || "", chartX + chartW, chartY + chartH + 5, { align: "right" });
+            doc.text(fmtMetricValue(selectedMetric, maxVal), chartX + chartW, chartY + 1, { align: "right" });
+            y += 50;
+          }
         }
 
         const sorted = [...rows].sort((a: any, b: any) => Number(b?.sessions || 0) - Number(a?.sessions || 0));
@@ -8187,7 +8221,7 @@ export default function GA4Metrics() {
                       { key: "kpis", label: "KPIs", subsections: [] as Array<[string, string]> },
                       { key: "benchmarks", label: "Benchmarks", subsections: [] as Array<[string, string]> },
                       { key: "ads", label: "Ad Comparison", subsections: [
-                        ["summary", "Top Summary"],
+                        ["topCampaigns", "Top Campaigns"],
                         ["allCampaigns", "All Campaigns"],
                         ["bestWorst", "Best Performing / Most Efficient / Needs Attention"],
                         ["revenueBreakdown", "Revenue Breakdown"],

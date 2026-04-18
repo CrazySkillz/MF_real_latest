@@ -3051,9 +3051,10 @@ export default function GA4Metrics() {
           const title = String((item as any)?.title || "");
           const desc = String((item as any)?.description || "");
           const rec = String((item as any)?.recommendation || "");
+          const recText = rec ? `→ ${rec}` : "";
 
           const descL = desc ? doc.splitTextToSize(desc, CW - 24).length : 0;
-          const recL = rec ? doc.splitTextToSize(rec, CW - 28).length : 0;
+          const recL = recText ? doc.splitTextToSize(recText, CW - 24).length : 0;
           const ch = 16 + descL * 4.5 + (recL > 0 ? recL * 4.5 + 4 : 0) + 4;
           checkPage(ch + 4);
 
@@ -3090,8 +3091,8 @@ export default function GA4Metrics() {
           if (rec) {
             iy += 2;
             doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(...C.insights);
-            const rl = doc.splitTextToSize(rec, CW - 28);
-            for (const l of rl) { doc.text(`\u2192 ${l}`, MX + 8, iy); iy += 4.5; }
+            const rl = doc.splitTextToSize(recText, CW - 24);
+            for (const l of rl) { doc.text(l, MX + 8, iy); iy += 4.5; }
           }
           y += ch + 4;
         }

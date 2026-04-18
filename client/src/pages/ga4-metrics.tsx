@@ -1398,7 +1398,7 @@ export default function GA4Metrics() {
       kpis: { items: false },
       benchmarks: { items: false },
       ads: { summary: false, allCampaigns: false, bestWorst: false, revenueBreakdown: false },
-      insights: { summaryCards: false, trends: false, trendSnapshot: false, actions: false },
+      insights: { summaryCards: false, trends: false, actions: false },
     }),
     []
   );
@@ -2415,6 +2415,12 @@ export default function GA4Metrics() {
     const fN = (n: number) => `${Math.round(Number(n || 0)).toLocaleString()}`;
     const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[]) => {
       if (rows.length === 0) return;
+      const fullSectionHeight = 18 + 10 + rows.length * 8 + 4;
+      if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
+        addPageFooter();
+        doc.addPage();
+        y = 18;
+      }
       checkPage(36);
       sectionTitle(title, C.overview);
       doc.setFillColor(...C.cardBg);
@@ -2785,30 +2791,41 @@ export default function GA4Metrics() {
         }
 
         // Best / Worst cards
-        if (includeAdsBestWorst && sorted.length > 1) {
+        if (includeAdsBestWorst && sortedByMetric.length > 1) {
           y += 4; checkPage(22);
-          const best = sorted[0] as any;
-          const worst = sorted[sorted.length - 1] as any;
-          const halfW = (CW - 6) / 2;
+          const best = sortedByMetric[0] as any;
+          const mostEfficient = [...comparisonRows].filter((r: any) => Number(r?.sessions || 0) > 0).sort((a: any, b: any) => Number(b?.conversionRate || 0) - Number(a?.conversionRate || 0))[0] as any;
+          const lowest = sortedByMetric[sortedByMetric.length - 1] as any;
+          const colW = (CW - 8) / 3;
 
           // Best
           doc.setFillColor(...C.white); doc.setDrawColor(...C.success);
-          doc.setLineWidth(0.6); doc.roundedRect(MX, y, halfW, 18, 3, 3, "FD"); doc.setLineWidth(0.3);
+          doc.setLineWidth(0.6); doc.roundedRect(MX, y, colW, 18, 3, 3, "FD"); doc.setLineWidth(0.3);
           doc.setFillColor(...C.success); doc.circle(MX + 8, y + 9, 2, "F");
           doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.success);
           doc.text("BEST", MX + 13, y + 7);
           doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
           doc.text(trunc(String(best?.name || best?.campaign || ""), 28), MX + 13, y + 14);
 
-          // Worst
-          const wx = MX + halfW + 6;
+          // Most Efficient
+          const ex = MX + colW + 4;
+          doc.setFillColor(...C.white); doc.setDrawColor(...C.info);
+          doc.setLineWidth(0.6); doc.roundedRect(ex, y, colW, 18, 3, 3, "FD"); doc.setLineWidth(0.3);
+          doc.setFillColor(...C.info); doc.circle(ex + 8, y + 9, 2, "F");
+          doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.info);
+          doc.text("MOST EFFICIENT", ex + 13, y + 7);
+          doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
+          doc.text(trunc(String(mostEfficient?.name || mostEfficient?.campaign || ""), 22), ex + 13, y + 14);
+
+          // Lowest
+          const wx = MX + (colW + 4) * 2;
           doc.setFillColor(...C.white); doc.setDrawColor(...C.danger);
-          doc.setLineWidth(0.6); doc.roundedRect(wx, y, halfW, 18, 3, 3, "FD"); doc.setLineWidth(0.3);
+          doc.setLineWidth(0.6); doc.roundedRect(wx, y, colW, 18, 3, 3, "FD"); doc.setLineWidth(0.3);
           doc.setFillColor(...C.danger); doc.circle(wx + 8, y + 9, 2, "F");
           doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.danger);
           doc.text("LOWEST", wx + 13, y + 7);
           doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-          doc.text(trunc(String(worst?.name || worst?.campaign || ""), 28), wx + 13, y + 14);
+          doc.text(trunc(String(lowest?.name || lowest?.campaign || ""), 22), wx + 13, y + 14);
           y += 24;
         }
 
@@ -2853,7 +2870,6 @@ export default function GA4Metrics() {
       const insightsSubsections = customSubsections.insights || {};
       const includeInsightsSummaryCards = reportType !== "custom" || insightsSubsections.summaryCards !== false;
       const includeInsightsTrends = reportType !== "custom" || insightsSubsections.trends !== false;
-      const includeInsightsTrendSnapshot = reportType !== "custom" || insightsSubsections.trendSnapshot !== false;
       const includeInsightsActions = reportType !== "custom" || insightsSubsections.actions !== false;
       const items = Array.isArray(insights) ? insights : [];
       const availableDays = Number(insightsRollups?.availableDays || 0);
@@ -3021,25 +3037,6 @@ export default function GA4Metrics() {
             [96, 46, 34]
           );
         }
-      }
-
-      if (includeInsightsTrendSnapshot && availableDays >= 3) {
-        checkPage(24);
-        doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
-        doc.roundedRect(MX, y, CW, 18, 3, 3, "FD");
-        doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-        doc.text("Trend Snapshot", MX + 6, y + 6);
-        doc.setFontSize(7.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
-        const trendText = availableDays >= 14
-          ? `Last 7d vs prior 7d: Sessions ${formatNumber(insightsRollups.last7.sessions)} vs ${formatNumber(insightsRollups.prior7.sessions)}, Revenue ${formatMoney(insightsRollups.last7.revenue)} vs ${formatMoney(insightsRollups.prior7.revenue)}, Conversions ${formatNumber(insightsRollups.last7.conversions)} vs ${formatNumber(insightsRollups.prior7.conversions)}.`
-          : `Last 3d vs prior 3d: Sessions ${formatNumber(insightsRollups.last3.sessions)} vs ${formatNumber(insightsRollups.prior3.sessions)}, Revenue ${formatMoney(insightsRollups.last3.revenue)} vs ${formatMoney(insightsRollups.prior3.revenue)}, Conversions ${formatNumber(insightsRollups.last3.conversions)} vs ${formatNumber(insightsRollups.prior3.conversions)}.`;
-        const trendLines = doc.splitTextToSize(trendText, CW - 12);
-        let ty = y + 11;
-        for (const line of trendLines.slice(0, 3)) {
-          doc.text(line, MX + 6, ty);
-          ty += 4;
-        }
-        y += 22;
       }
 
       if (!includeInsightsActions) {
@@ -8139,7 +8136,6 @@ export default function GA4Metrics() {
                       { key: "insights", label: "Insights", subsections: [
                         ["summaryCards", "Summary Cards"],
                         ["trends", "Trends"],
-                        ["trendSnapshot", "Trend Snapshot"],
                         ["actions", "Insights List"],
                       ] as Array<[string, string]> },
                     ].map((s) => {
@@ -8177,7 +8173,6 @@ export default function GA4Metrics() {
                               </div>
                               {s.key === "kpis" && (
                                 <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground/70">Select KPIs</div>
                                   <div className="grid grid-cols-2 gap-2 text-sm">
                                     {(Array.isArray(platformKPIs) ? platformKPIs : []).map((k: any) => {
                                       const cfgKpis = normalizeCustomReportConfig(ga4ReportForm.configuration).selectedKpiIds || [];
@@ -8206,7 +8201,6 @@ export default function GA4Metrics() {
                               )}
                               {s.key === "benchmarks" && (
                                 <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground/70">Select Benchmarks</div>
                                   <div className="grid grid-cols-2 gap-2 text-sm">
                                     {(Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => {
                                       const cfgBenchmarks = normalizeCustomReportConfig(ga4ReportForm.configuration).selectedBenchmarkIds || [];

@@ -3134,7 +3134,7 @@ export default function GA4Metrics() {
       } else {
         const top = items.slice(0, 12);
         if (!insightsOnlyActions) {
-          sectionTitle("What changed, what to do next", C.insights, 16);
+          sectionTitle("What changed, what to do next", C.insights, 24);
         }
         const insightCardTextWidth = CW - 40;
         for (const item of top) {
@@ -8211,9 +8211,7 @@ export default function GA4Metrics() {
                     {[
                       { key: "overview", label: "Overview", subsections: [
                         ["summary", "Summary"],
-                        ["revenue", "Revenue"],
-                        ["spend", "Spend"],
-                        ["performance", "Performance"],
+                        ["financial", "Revenue & Financial"],
                         ["campaignBreakdown", "Campaign Breakdown"],
                         ["landingPages", "Landing Pages"],
                         ["conversionEvents", "Conversion Events"],
@@ -8221,9 +8219,9 @@ export default function GA4Metrics() {
                       { key: "kpis", label: "KPIs", subsections: [] as Array<[string, string]> },
                       { key: "benchmarks", label: "Benchmarks", subsections: [] as Array<[string, string]> },
                       { key: "ads", label: "Ad Comparison", subsections: [
+                        ["bestWorst", "Best Performing / Most Efficient / Needs Attention"],
                         ["topCampaigns", "Top Campaigns"],
                         ["allCampaigns", "All Campaigns"],
-                        ["bestWorst", "Best Performing / Most Efficient / Needs Attention"],
                         ["revenueBreakdown", "Revenue Breakdown"],
                       ] as Array<[string, string]> },
                       { key: "insights", label: "Insights", subsections: [
@@ -8253,10 +8251,19 @@ export default function GA4Metrics() {
                                   <label key={subKey} className="flex items-center gap-2">
                                     <input
                                       type="checkbox"
-                                      checked={subsectionCfg[subKey] === true}
+                                      checked={s.key === "overview" && subKey === "financial"
+                                        ? subsectionCfg.revenue === true && subsectionCfg.spend === true && subsectionCfg.performance === true
+                                        : subsectionCfg[subKey] === true}
                                       onChange={(e) => {
                                         const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
-                                        nextCfg.subsections[s.key] = { ...(nextCfg.subsections?.[s.key] || {}), [subKey]: e.target.checked };
+                                        nextCfg.subsections[s.key] = s.key === "overview" && subKey === "financial"
+                                          ? {
+                                              ...(nextCfg.subsections?.[s.key] || {}),
+                                              revenue: e.target.checked,
+                                              spend: e.target.checked,
+                                              performance: e.target.checked,
+                                            }
+                                          : { ...(nextCfg.subsections?.[s.key] || {}), [subKey]: e.target.checked };
                                         nextCfg.sections[s.key] = Object.values(nextCfg.subsections[s.key] || {}).some(Boolean);
                                         setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
                                       }}

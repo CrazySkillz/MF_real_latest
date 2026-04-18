@@ -3102,17 +3102,17 @@ export default function GA4Metrics() {
         if (!insightsOnlyActions) {
           sectionTitle("What changed, what to do next", C.insights, 16);
         }
+        const insightCardTextWidth = CW - 40;
         for (const item of top) {
           const sev = String((item as any)?.severity || "info").toLowerCase();
           const title = String((item as any)?.title || "");
           const desc = trunc(String((item as any)?.description || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
           const rec = trunc(String((item as any)?.recommendation || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
-          const recText = rec ? `→ ${rec}` : "";
+          const recText = rec ? `Next step: ${rec}` : "";
 
           doc.setFontSize(8); doc.setFont("helvetica", "normal");
-          const descLines = desc ? wrapPdfText(desc, CW - 28) : [];
-          doc.setFont("helvetica", "italic");
-          const recLines = recText ? wrapPdfText(recText, CW - 28) : [];
+          const descLines = desc ? wrapPdfText(desc, insightCardTextWidth) : [];
+          const recLines = recText ? wrapPdfText(recText, insightCardTextWidth) : [];
           const descL = descLines.length;
           const recL = recLines.length;
           const ch = 16 + descL * 4.5 + (recL > 0 ? recL * 4.5 + 4 : 0) + 4;
@@ -3149,7 +3149,7 @@ export default function GA4Metrics() {
           // Recommendation
           if (rec) {
             iy += 2;
-            doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(...C.insights);
+            doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
             for (const l of recLines) { doc.text(l, MX + 8, iy); iy += 4.5; }
           }
           y += ch + 4;
@@ -8720,3 +8720,4 @@ export default function GA4Metrics() {
     </div>
   );
 }
+

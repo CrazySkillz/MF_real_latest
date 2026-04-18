@@ -102,6 +102,21 @@ async function buildPdfAttachmentForReport(args: {
 }): Promise<Buffer | null> {
   const { report, windowStart, windowEnd, campaignName } = args;
   try {
+    if (String((report as any)?.platformType || "") === "google_analytics") {
+      const ga4ReportType = String((report as any)?.reportType || "").toLowerCase();
+      if (ga4ReportType === "overview" || ga4ReportType === "ads" || ga4ReportType === "insights" || ga4ReportType === "custom") {
+        const { buildGA4ScheduledPdfAttachment } = await import("./ga4-scheduled-report-pdf.js");
+        const ga4Pdf = await buildGA4ScheduledPdfAttachment({
+          report,
+          reportName: String((report as any)?.name || "GA4 Report"),
+          windowStart,
+          windowEnd,
+          campaignName,
+        });
+        if (ga4Pdf) return ga4Pdf;
+      }
+    }
+
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
 

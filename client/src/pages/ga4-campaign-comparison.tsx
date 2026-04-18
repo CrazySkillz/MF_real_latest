@@ -313,7 +313,7 @@ export default function GA4CampaignComparison({
       {/* Bar chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Top Campaigns by {METRIC_LABELS[selectedMetric] || selectedMetric}</CardTitle>
+          <CardTitle className="text-lg">Top Campaigns by {METRIC_LABELS[selectedMetric] || selectedMetric}</CardTitle>
           <CardDescription>
             Up to 10 campaigns sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}
             {revenueModeWithImportedSources ? " (exact matched external revenue is included in rows; unmatched external revenue stays separate)." : ""}
@@ -372,7 +372,7 @@ export default function GA4CampaignComparison({
       {/* Full comparison table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Campaigns</CardTitle>
+          <CardTitle className="text-lg">All Campaigns</CardTitle>
           <CardDescription>
             Full comparison sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}
             {revenueModeWithImportedSources ? " • exact matched external revenue is added to campaign rows; unmatched external revenue stays separate" : ""}
@@ -456,7 +456,7 @@ export default function GA4CampaignComparison({
       {/* Revenue Breakdown sub-table */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Revenue Breakdown</CardTitle>
+          <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
           <CardDescription>Total revenue across all sources</CardDescription>
         </CardHeader>
         <CardContent>

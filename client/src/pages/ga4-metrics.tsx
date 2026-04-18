@@ -1398,7 +1398,7 @@ export default function GA4Metrics() {
       kpis: { items: false },
       benchmarks: { items: false },
       ads: { summary: false, allCampaigns: false, bestWorst: false, revenueBreakdown: false },
-      insights: { summaryCards: false, trends: false, actions: false },
+      insights: { summaryCards: false, trends: false, dataSummary: false, actions: false },
     }),
     []
   );
@@ -2870,6 +2870,7 @@ export default function GA4Metrics() {
       const insightsSubsections = customSubsections.insights || {};
       const includeInsightsSummaryCards = reportType !== "custom" || insightsSubsections.summaryCards !== false;
       const includeInsightsTrends = reportType !== "custom" || insightsSubsections.trends !== false;
+      const includeInsightsDataSummary = reportType !== "custom" || insightsSubsections.dataSummary !== false;
       const includeInsightsActions = reportType !== "custom" || insightsSubsections.actions !== false;
       const items = Array.isArray(insights) ? insights : [];
       const availableDays = Number(insightsRollups?.availableDays || 0);
@@ -2914,6 +2915,24 @@ export default function GA4Metrics() {
           y += 22;
         }
         y += 2;
+      }
+
+      if (includeInsightsDataSummary && (breakdownTotals.sessions > 0 || financialRevenue > 0)) {
+        addSimpleTable(
+          "Data Summary",
+          ["METRIC", "VALUE", "DETAIL"],
+          [
+            ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), `~${formatNumber(Math.round(breakdownTotals.sessions / Math.max(insightsRollups?.availableDays || 1, 1)))}/day avg`]] : []),
+            ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""]] : []),
+            ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), `~${formatMoney(financialRevenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg`]] : []),
+            ...(channelAnalysis?.topSessionChannel ? [["Top Channel", String(channelAnalysis.topSessionChannel.label || ""), `${channelAnalysis.topSessionShare.toFixed(0)}% of sessions`]] : []),
+            ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""]] : []),
+            ...(financialRevenue > 0 && financialSpend > 0 ? [["Profit", formatMoney(financialRevenue - financialSpend), ""]] : []),
+            ...(financialROAS > 0 ? [["ROAS", `${financialROAS.toFixed(2)}x`, ""]] : []),
+            ...(breakdownTotals.conversions > 0 && financialSpend > 0 ? [["CPA", formatMoney(financialSpend / breakdownTotals.conversions), ""]] : []),
+          ],
+          [56, 42, 78]
+        );
       }
 
       if (includeInsightsTrends && trendSorted.length >= 2) {
@@ -7152,7 +7171,7 @@ export default function GA4Metrics() {
                     {(breakdownTotals.sessions > 0 || financialRevenue > 0) && (
                       <Card className="border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-base">Data Summary</CardTitle>
+                          <CardTitle>Data Summary</CardTitle>
                           <CardDescription>
                             Campaign performance at a glance ({insightsRollups?.availableDays || 0} days of data)
                           </CardDescription>
@@ -8135,9 +8154,10 @@ export default function GA4Metrics() {
                         ["revenueBreakdown", "Revenue Breakdown"],
                       ] as Array<[string, string]> },
                       { key: "insights", label: "Insights", subsections: [
-                        ["summaryCards", "Summary Cards"],
+                        ["summaryCards", "Executive Financials"],
                         ["trends", "Trends"],
-                        ["actions", "Insights List"],
+                        ["dataSummary", "Data Summary"],
+                        ["actions", "What changed, what to do next"],
                       ] as Array<[string, string]> },
                     ].map((s) => {
                       const cfg = normalizeCustomReportConfig(ga4ReportForm.configuration);

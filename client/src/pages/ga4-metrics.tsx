@@ -2866,12 +2866,13 @@ export default function GA4Metrics() {
 
     // ========== INSIGHTS ==========
     if (sections.insights) {
-      sectionTitle("Insights", C.insights, 24);
       const insightsSubsections = customSubsections.insights || {};
       const includeInsightsSummaryCards = reportType !== "custom" || insightsSubsections.summaryCards !== false;
       const includeInsightsTrends = reportType !== "custom" || insightsSubsections.trends !== false;
       const includeInsightsDataSummary = reportType !== "custom" || insightsSubsections.dataSummary !== false;
       const includeInsightsActions = reportType !== "custom" || insightsSubsections.actions !== false;
+      const insightsOnlyActions = reportType === "custom" && includeInsightsActions && !includeInsightsSummaryCards && !includeInsightsTrends && !includeInsightsDataSummary;
+      sectionTitle(insightsOnlyActions ? "What changed, what to do next" : "Insights", C.insights, 24);
       const items = Array.isArray(insights) ? insights : [];
       const availableDays = Number(insightsRollups?.availableDays || 0);
       const trendMetric = insightsTrendMetric;
@@ -3065,15 +3066,18 @@ export default function GA4Metrics() {
         doc.text("No insights available at this time.", MX + 8, y); y += 12;
       } else {
         const top = items.slice(0, 12);
+        if (!insightsOnlyActions) {
+          sectionTitle("What changed, what to do next", C.insights, 16);
+        }
         for (const item of top) {
           const sev = String((item as any)?.severity || "info").toLowerCase();
           const title = String((item as any)?.title || "");
-          const desc = String((item as any)?.description || "");
-          const rec = String((item as any)?.recommendation || "");
+          const desc = trunc(String((item as any)?.description || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
+          const rec = trunc(String((item as any)?.recommendation || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
           const recText = rec ? `→ ${rec}` : "";
 
-          const descL = desc ? doc.splitTextToSize(desc, CW - 24).length : 0;
-          const recL = recText ? doc.splitTextToSize(recText, CW - 24).length : 0;
+          const descL = desc ? doc.splitTextToSize(desc, CW - 28).length : 0;
+          const recL = recText ? doc.splitTextToSize(recText, CW - 28).length : 0;
           const ch = 16 + descL * 4.5 + (recL > 0 ? recL * 4.5 + 4 : 0) + 4;
           checkPage(ch + 4);
 
@@ -3103,14 +3107,14 @@ export default function GA4Metrics() {
           // Description
           if (desc) {
             doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
-            const dl = doc.splitTextToSize(desc, CW - 24);
+            const dl = doc.splitTextToSize(desc, CW - 28);
             for (const l of dl) { doc.text(l, MX + 8, iy); iy += 4.5; }
           }
           // Recommendation
           if (rec) {
             iy += 2;
             doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(...C.insights);
-            const rl = doc.splitTextToSize(recText, CW - 24);
+            const rl = doc.splitTextToSize(recText, CW - 28);
             for (const l of rl) { doc.text(l, MX + 8, iy); iy += 4.5; }
           }
           y += ch + 4;

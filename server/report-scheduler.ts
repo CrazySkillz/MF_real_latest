@@ -424,9 +424,14 @@ function isReportDueNow(report: ReportWithCampaign, now: Date): { due: boolean; 
 function getReportViewUrl(report: ReportWithCampaign): string {
   const baseUrl = process.env.APP_URL || 'https://metricmind.app';
   if (report.campaignId) {
+    if (report.platformType === 'google_analytics') {
+      return `${baseUrl}/campaigns/${report.campaignId}/ga4-metrics?tab=reports`;
+    }
     return `${baseUrl}/campaigns/${report.campaignId}/linkedin-analytics?tab=reports`;
   }
-  return `${baseUrl}/linkedin-analytics?tab=reports`;
+  return report.platformType === 'google_analytics'
+    ? `${baseUrl}/reports`
+    : `${baseUrl}/linkedin-analytics?tab=reports`;
 }
 
 /**
@@ -501,12 +506,15 @@ async function sendReportEmail(
       kpis: 'KPIs Report',
       benchmarks: 'Benchmarks Report',
       ads: 'Ad Comparison Report',
+      insights: 'Insights Report',
       custom: 'Custom Report'
     };
 
-    const reportLabel = reportTypeLabels[report.reportType] || 'LinkedIn Analytics Report';
+    const reportLabel = reportTypeLabels[report.reportType]
+      || (report.platformType === 'google_analytics' ? 'GA4 Report' : 'LinkedIn Analytics Report');
     const viewUrl = getReportViewUrl(report);
     const baseUrl = process.env.APP_URL || 'https://metricmind.app';
+    const manageReportsUrl = report.campaignId ? viewUrl : `${baseUrl}/reports`;
 
     const frequencyLabels: Record<string, string> = {
       daily: 'Daily',
@@ -670,7 +678,7 @@ async function sendReportEmail(
               </div>
               
               <div class="note">
-                <strong>💡 Note:</strong> This report contains real-time data from your LinkedIn campaigns. 
+                <strong>💡 Note:</strong> This report contains the latest available data for your selected platform and campaign scope. 
                 For the most up-to-date metrics and interactive visualizations, please view the report in your dashboard.
               </div>
               
@@ -684,7 +692,7 @@ async function sendReportEmail(
               <p><strong>MetricMind</strong> – Executive Marketing Analytics</p>
               <p style="margin: 10px 0;">
                 <a href="${baseUrl}">Dashboard</a> · 
-                <a href="${baseUrl}/linkedin-analytics?tab=reports">Manage Reports</a>
+                <a href="${manageReportsUrl}">Manage Reports</a>
               </p>
               <p style="margin-top: 20px; font-size: 12px;">
                 This is an automated email. If you no longer wish to receive these reports, 
@@ -964,8 +972,11 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
 
     // If not found, try platform reports
     if (!report) {
-      const allReports = await storage.getPlatformReports('linkedin');
-      report = allReports.find(r => r.id === reportId);
+      for (const platformType of ['linkedin', 'google_analytics']) {
+        const allReports = await storage.getPlatformReports(platformType);
+        report = allReports.find(r => r.id === reportId);
+        if (report) break;
+      }
       console.log(`[Report Scheduler] Found report via getPlatformReports: ${report ? 'YES' : 'NO'}`);
     }
 
@@ -975,7 +986,10 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       // Debug: List all available reports
       try {
         const linkedInReports = await storage.getLinkedInReports();
-        const platformReports = await storage.getPlatformReports('linkedin');
+        const platformReports = [
+          ...(await storage.getPlatformReports('linkedin')),
+          ...(await storage.getPlatformReports('google_analytics')),
+        ];
         console.log(`[Report Scheduler] DEBUG - Available LinkedIn reports: ${linkedInReports.length}`);
         console.log(`[Report Scheduler] DEBUG - Available platform reports: ${platformReports.length}`);
         if (linkedInReports.length > 0) {

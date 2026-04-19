@@ -2773,46 +2773,7 @@ export default function GA4Metrics() {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No campaign breakdown data available.", MX + 8, y); y += 12;
       } else {
-        const sorted = [...rows].sort((a: any, b: any) => Number(b?.sessions || 0) - Number(a?.sessions || 0));
-        const top = sortedByMetric.slice(0, 20);
-        const colXs = [MX + 4, MX + 80, MX + 105, MX + 126, MX + 146, MX + CW - 8];
-
-        // Table header
-        if (includeAdsAllCampaigns) {
-          checkPage(14);
-          doc.setFillColor(...C.cardBg);
-          doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
-          doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
-          doc.text("CAMPAIGN", colXs[0], y + 5.5);
-          doc.text("SESSIONS", colXs[1], y + 5.5);
-          doc.text("USERS", colXs[2], y + 5.5);
-          doc.text("CONV", colXs[3], y + 5.5);
-          doc.text("REVENUE", colXs[4], y + 5.5);
-          doc.text("CR", colXs[5], y + 5.5);
-          y += 10;
-          for (let i = 0; i < top.length; i++) {
-            checkPage(9);
-            const r = top[i] as any;
-            const s = Number(r?.sessions || 0), u = Number(r?.users || 0);
-            const cv = Number(r?.conversions || 0), rv = Number(r?.revenue || 0);
-            const rate = s > 0 ? (cv / s) * 100 : 0;
-            doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
-            doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
-            doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-            doc.text(trunc(String(r?.name || r?.campaign || "(not set)"), 35), colXs[0], y + 4);
-            doc.setTextColor(...C.textSec);
-            doc.text(fN(s), colXs[1], y + 4);
-            doc.text(fN(u), colXs[2], y + 4);
-            doc.text(fN(cv), colXs[3], y + 4);
-            doc.text(fC(rv), colXs[4], y + 4);
-            doc.text(fP(rate), colXs[5], y + 4);
-            y += 8;
-          }
-          if (sortedByMetric.length > top.length) {
-            doc.setFontSize(7); doc.setTextColor(...C.textTert);
-            doc.text(`+ ${sortedByMetric.length - top.length} more campaigns`, MX + 4, y + 3); y += 8;
-          }
-        }
+        const colXs = [MX + 4, MX + 18, MX + 82, MX + 104, MX + 124, MX + 144, MX + CW - 8];
 
         // Performance rankings
         if (includeAdsBestWorst && sortedByMetric.length > 1) {
@@ -2906,6 +2867,62 @@ export default function GA4Metrics() {
           y += 24;
         }
 
+        // All Campaigns table
+        if (includeAdsAllCampaigns) {
+          checkPage(14);
+          doc.setFillColor(...C.cardBg);
+          doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
+          doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
+          doc.text("#", colXs[0], y + 5.5);
+          doc.text("CAMPAIGN", colXs[1], y + 5.5);
+          doc.text("SESSIONS", colXs[2], y + 5.5);
+          doc.text("USERS", colXs[3], y + 5.5);
+          doc.text("CONV", colXs[4], y + 5.5);
+          doc.text("REVENUE", colXs[5], y + 5.5);
+          doc.text("CR", colXs[6], y + 5.5);
+          y += 10;
+          for (let i = 0; i < sortedByMetric.length; i++) {
+            checkPage(9);
+            const r = sortedByMetric[i] as any;
+            const s = Number(r?.sessions || 0), u = Number(r?.users || 0);
+            const cv = Number(r?.conversions || 0), rv = Number(r?.revenue || 0);
+            const rate = s > 0 ? (cv / s) * 100 : 0;
+            doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+            doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
+            doc.setFontSize(8); doc.setFont("helvetica", "normal");
+            doc.setTextColor(...C.textSec);
+            doc.text(String(i + 1), colXs[0], y + 4);
+            doc.setTextColor(...C.text);
+            doc.text(trunc(String(r?.name || r?.campaign || "(not set)"), 28), colXs[1], y + 4);
+            doc.setTextColor(...C.textSec);
+            doc.text(fN(s), colXs[2], y + 4);
+            doc.text(fN(u), colXs[3], y + 4);
+            doc.text(fN(cv), colXs[4], y + 4);
+            doc.text(fC(rv), colXs[5], y + 4);
+            doc.text(fP(rate), colXs[6], y + 4);
+            y += 8;
+          }
+          if (tableRevenueSummaryVisible && unallocatedExternalRevenue > 0) {
+            checkPage(9);
+            doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+            doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
+            doc.setFontSize(8); doc.setFont("helvetica", "normal");
+            doc.setTextColor(...C.text);
+            doc.text("Unallocated External Revenue", colXs[1], y + 4);
+            doc.text(fC(unallocatedExternalRevenue), colXs[5], y + 4);
+            y += 8;
+          }
+          if (tableRevenueSummaryVisible) {
+            checkPage(9);
+            doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+            doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
+            doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text("Total Revenue (All Sources)", colXs[1], y + 4);
+            doc.text(fC(financialRevenue > 0 ? financialRevenue : ga4RevenueForFinancials), colXs[5], y + 4);
+            y += 8;
+          }
+        }
+
         if (includeAdsRevenueBreakdown && tableRevenueSummaryVisible) {
           y += 4;
           sectionTitle("Revenue Breakdown", C.ads);
@@ -2976,6 +2993,7 @@ export default function GA4Metrics() {
         ["Days of Data", String(availableDays)],
       ];
       if (includeInsightsSummaryCards) {
+        sectionTitle("Executive Financials", C.insights);
         checkPage(24);
         const sumW = (CW - 8) / 3;
         for (let i = 0; i < insightSummaryCards.length; i += 3) {
@@ -2993,24 +3011,6 @@ export default function GA4Metrics() {
           y += 22;
         }
         y += 2;
-      }
-
-      if (includeInsightsDataSummary && (breakdownTotals.sessions > 0 || financialRevenue > 0)) {
-        addSimpleTable(
-          "Data Summary",
-          ["METRIC", "VALUE", "DETAIL"],
-          [
-            ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), `~${formatNumber(Math.round(breakdownTotals.sessions / Math.max(insightsRollups?.availableDays || 1, 1)))}/day avg`]] : []),
-            ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""]] : []),
-            ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), `~${formatMoney(financialRevenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg`]] : []),
-            ...(channelAnalysis?.topSessionChannel ? [["Top Channel", String(channelAnalysis.topSessionChannel.label || ""), `${channelAnalysis.topSessionShare.toFixed(0)}% of sessions`]] : []),
-            ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""]] : []),
-            ...(financialRevenue > 0 && financialSpend > 0 ? [["Profit", formatMoney(financialRevenue - financialSpend), ""]] : []),
-            ...(financialROAS > 0 ? [["ROAS", `${financialROAS.toFixed(2)}x`, ""]] : []),
-            ...(breakdownTotals.conversions > 0 && financialSpend > 0 ? [["CPA", formatMoney(financialSpend / breakdownTotals.conversions), ""]] : []),
-          ],
-          [56, 42, 78]
-        );
       }
 
       if (includeInsightsTrends && trendSorted.length >= 2) {
@@ -3134,6 +3134,45 @@ export default function GA4Metrics() {
             [96, 46, 34]
           );
         }
+      }
+
+      if (includeInsightsDataSummary && (breakdownTotals.sessions > 0 || financialRevenue > 0)) {
+        addSimpleTable(
+          "Data Summary",
+          ["METRIC", "VALUE", "DETAIL"],
+          [
+            ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), `~${formatNumber(Math.round(breakdownTotals.sessions / Math.max(insightsRollups?.availableDays || 1, 1)))}/day avg`]] : []),
+            ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""]] : []),
+            ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), `~${formatMoney(financialRevenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg`]] : []),
+            ...(channelAnalysis?.topSessionChannel ? [["Top Channel", String(channelAnalysis.topSessionChannel.label || ""), `${channelAnalysis.topSessionShare.toFixed(0)}% of sessions`]] : []),
+            ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""]] : []),
+            ...(financialRevenue > 0 && financialSpend > 0 ? [["Profit", formatMoney(financialRevenue - financialSpend), ""]] : []),
+            ...(financialROAS > 0 ? [["ROAS", `${financialROAS.toFixed(2)}x`, ""]] : []),
+            ...(breakdownTotals.conversions > 0 && financialSpend > 0 ? [["CPA", formatMoney(financialSpend / breakdownTotals.conversions), ""]] : []),
+          ],
+          [56, 42, 78]
+        );
+      }
+
+      if (!insightsOnlyActions) {
+        const insightTrackerCards: [string, string, C3][] = [
+          ["Total Insights", String(items.length), C.text],
+          ["High Priority", String(items.filter((i: any) => i?.severity === "high").length), C.danger],
+          ["Needs Attention", String(items.filter((i: any) => i?.severity === "medium").length), C.warning],
+        ];
+        const trackerW = (CW - 8) / 3;
+        checkPage(24);
+        for (let i = 0; i < insightTrackerCards.length; i++) {
+          const [lbl, val, color] = insightTrackerCards[i];
+          const cx = MX + i * (trackerW + 4);
+          doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+          doc.roundedRect(cx, y, trackerW, 18, 3, 3, "FD");
+          doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+          doc.text(lbl.toUpperCase(), cx + 5, y + 6);
+          doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...color);
+          doc.text(trunc(val, 22), cx + 5, y + 13);
+        }
+        y += 24;
       }
 
       if (!includeInsightsActions) {

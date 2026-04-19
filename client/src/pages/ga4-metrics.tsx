@@ -2938,17 +2938,23 @@ export default function GA4Metrics() {
 
         if (includeAdsRevenueBreakdown && tableRevenueSummaryVisible) {
           y += 4;
-          const breakdownRows: string[][] = [
-            ["GA4 Revenue", fC(ga4RevenueForFinancials)],
-            ...revenueDisplaySources.map((source: any) => [
-              String(source.displayName || source.sourceType || "Source"),
-              fC(Number(source.revenue || 0)),
-            ]),
+          const breakdownRows: { label: string; amount: string; muted?: boolean; bold?: boolean }[] = [
+            { label: "GA4 Revenue", amount: fC(ga4RevenueForFinancials) },
+            ...revenueDisplaySources
+              .filter((source: any) => source.revenue != null && Number(source.revenue) > 0)
+              .flatMap((source: any) => [
+                {
+                  label: String(source.displayName || source.sourceType || "Source"),
+                  amount: fC(Number(source.revenue || 0)),
+                },
+                ...(sourceRevenueBreakdowns.get(source.sourceId) || []).map((item: any) => ({
+                  label: String(item?.campaignValue || ""),
+                  amount: fC(Number(item?.revenue || 0)),
+                  muted: true,
+                })),
+              ]),
           ];
-          if (unallocatedExternalRevenue > 0) {
-            breakdownRows.push(["Unallocated External Revenue", fC(unallocatedExternalRevenue)]);
-          }
-          breakdownRows.push(["Total Revenue", fC(financialRevenue)]);
+          breakdownRows.push({ label: "Total Revenue", amount: fC(financialRevenue), bold: true });
           const fullSectionHeight = 18 + 10 + breakdownRows.length * 8 + 4;
           if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
             addPageFooter();
@@ -2967,9 +2973,9 @@ export default function GA4Metrics() {
             checkPage(8);
             doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
             doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
-            doc.setFontSize(8); doc.setFont("helvetica", row[0] === "Total Revenue" ? "bold" : "normal"); doc.setTextColor(...C.text);
-            doc.text(trunc(row[0], 42), MX + 4, y + 4);
-            doc.text(row[1], MX + CW - 4, y + 4, { align: "right" });
+            doc.setFontSize(8); doc.setFont("helvetica", row.bold ? "bold" : "normal"); doc.setTextColor(...(row.muted ? C.textSec : C.text));
+            doc.text(trunc(row.label, 42), MX + (row.muted ? 8 : 4), y + 4);
+            doc.text(row.amount, MX + CW - 4, y + 4, { align: "right" });
             y += 8;
           }
         }

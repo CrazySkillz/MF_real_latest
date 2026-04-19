@@ -2819,33 +2819,45 @@ export default function GA4Metrics() {
 
         if (includeAdsTopCampaigns) {
           const chartData = sortedByMetric.slice(0, 10).map((row: any) => ({
-            name: trunc(String(row?.name || row?.campaign || "(not set)"), 22),
+            name: String(row?.name || row?.campaign || "(not set)"),
             value: Number((row as any)?.[selectedMetric] || 0),
           }));
           if (chartData.length > 0) {
-            checkPage(60);
+            checkPage(70);
             doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
-            doc.roundedRect(MX, y, CW, 44, 3, 3, "FD");
+            doc.roundedRect(MX, y, CW, 52, 3, 3, "FD");
             doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
             doc.text(`Top Campaigns by ${metricLabels[selectedMetric] || selectedMetric}`, MX + 6, y + 7);
-            const chartX = MX + 40, chartY = y + 12, chartW = CW - 48, chartH = 24;
+            const chartX = MX + 40, chartY = y + 15, chartW = CW - 48, chartH = 19;
             const vals = chartData.map((p) => Number(p.value || 0));
             const maxVal = Math.max(...vals, 1);
-            const barW = Math.max(4, chartW / Math.max(chartData.length * 1.8, 1));
+            const slotW = chartW / Math.max(chartData.length, 1);
+            const barW = Math.max(12, Math.min(28, slotW * 0.56));
             doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
             doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH);
             doc.line(chartX, chartY, chartX, chartY + chartH);
             chartData.forEach((p, idx) => {
-              const px = chartX + idx * (chartW / Math.max(chartData.length, 1)) + 2;
+              const px = chartX + idx * slotW + (slotW - barW) / 2;
               const barH = Math.max(1, (Number(p.value || 0) / maxVal) * (chartH - 2));
               doc.setFillColor(...C.ads);
               doc.rect(px, chartY + chartH - barH, barW, barH, "F");
-              doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-              doc.text(trunc(p.name, 14), px + barW / 2, chartY + chartH + 5, { align: "center" });
+              const labelText = fmtMetricValue(selectedMetric, Number(p.value || 0));
+              const labelInsideBar = barH >= 8;
+              doc.setFontSize(5.5); doc.setFont("helvetica", "bold");
+              doc.setTextColor(...(labelInsideBar ? C.white : C.text));
+              doc.text(labelText, px + barW / 2, labelInsideBar ? chartY + chartH - barH + 4 : chartY + chartH - barH - 1.5, { align: "center" });
+              const nameLines = doc.splitTextToSize(p.name, Math.max(slotW - 4, 18)).slice(0, 2) as string[];
+              if (nameLines.length > 1 && doc.getTextWidth(nameLines[1]) > slotW - 4) {
+                nameLines[1] = trunc(nameLines[1], 18);
+              }
+              doc.setFontSize(5.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
+              nameLines.forEach((line, lineIdx) => {
+                doc.text(line, px + barW / 2, chartY + chartH + 5 + lineIdx * 4, { align: "center" });
+              });
             });
             doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
             doc.text(fmtMetricValue(selectedMetric, maxVal), chartX + chartW, chartY + 1, { align: "right" });
-            y += 50;
+            y += 58;
           }
 
           const adSummaryCards: [string, string][] = [
@@ -3118,6 +3130,59 @@ export default function GA4Metrics() {
           doc.text(trendFmtValue(maxVal), chartX + chartW, chartY + 1, { align: "right" });
           doc.text(trendFmtValue(minVal), chartX + chartW, chartY + chartH - 1, { align: "right" });
           y += 50;
+
+          const trendRows: string[][] = insightsTrendMode === "daily"
+            ? trendSorted.slice(-14).reverse().map((r: any, idx: number) => {
+                const curVal = trendIsRate ? Number(r[trendMetric] || 0) * 100 : Number(r[trendMetric] || 0);
+                const sortedIdx = trendSorted.length - 1 - idx;
+                const prevRow = sortedIdx > 0 ? trendSorted[sortedIdx - 1] : null;
+                const prevVal = prevRow ? (trendIsRate ? Number(prevRow[trendMetric] || 0) * 100 : Number(prevRow[trendMetric] || 0)) : 0;
+                const delta = prevRow ? trendDeltaPct(curVal, prevVal) : NaN;
+                return [String(r.date || ""), trendFmtValue(curVal), prevRow ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
+              })
+            : insightsTrendMode === "monthly"
+              ? trendChartData.slice().reverse().slice(0, 12).map((row, idx, arr) => {
+                  const prev = idx < arr.length - 1 ? arr[idx + 1] : null;
+                  const delta = prev ? trendDeltaPct(row.value, prev.value) : NaN;
+                  return [row.date, trendFmtValue(row.value), prev ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
+                })
+              : (() => {
+                  const cur = insightsTrendMode === "7d" ? insightsRollups.last7 : insightsRollups.last30;
+                  const prior = insightsTrendMode === "7d" ? insightsRollups.prior7 : insightsRollups.prior30;
+                  const getVal = (rollup: any) => trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
+                  const curVal = getVal(cur), priorVal = getVal(prior);
+                  const delta = trendDeltaPct(curVal, priorVal);
+                  return [
+                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, trendFmtValue(curVal), `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`],
+                    [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, trendFmtValue(priorVal), "baseline"],
+                  ];
+                })();
+          if (trendRows.length > 0) {
+            const fullSectionHeight = 10 + trendRows.length * 8 + 4;
+            if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
+              addPageFooter();
+              doc.addPage();
+              y = 18;
+            }
+            checkPage(10);
+            doc.setFillColor(...C.cardBg);
+            doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
+            doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
+            doc.text("DATE / WINDOW", MX + 4, y + 5.5);
+            doc.text(trendMetricLabels[trendMetric] || trendMetric, MX + 100, y + 5.5, { align: "right" });
+            doc.text("VS PRIOR", MX + CW - 4, y + 5.5, { align: "right" });
+            y += 10;
+            for (const row of trendRows) {
+              checkPage(8);
+              doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+              doc.line(MX + 2, y - 1, MX + CW - 2, y - 1);
+              doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
+              doc.text(trunc(row[0], 34), MX + 4, y + 4);
+              doc.text(row[1], MX + 100, y + 4, { align: "right" });
+              doc.text(row[2], MX + CW - 4, y + 4, { align: "right" });
+              y += 8;
+            }
+          }
 
         }
       }

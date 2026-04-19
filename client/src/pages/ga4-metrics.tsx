@@ -4627,6 +4627,21 @@ export default function GA4Metrics() {
     return matched;
   }, [campaignBreakdownAgg, revenueDisplaySources]);
 
+  const sourceRevenueBreakdowns = useMemo(() => {
+    return new Map(
+      revenueDisplaySources.map((source: any) => {
+        const rawCfg = source?.mappingConfig;
+        const cfg = typeof rawCfg === "string"
+          ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })()
+          : rawCfg;
+        const totals = Array.isArray(cfg?.campaignValueRevenueTotals)
+          ? cfg.campaignValueRevenueTotals.filter((item: any) => Number(item?.revenue || 0) > 0)
+          : [];
+        return [String(source?.sourceId || ""), totals];
+      }),
+    );
+  }, [revenueDisplaySources]);
+
   const selectedPeriodLabel = ga4ReportDate ? `Daily (UTC: ${ga4ReportDate})` : "Daily";
 
   const provenanceLastUpdated =

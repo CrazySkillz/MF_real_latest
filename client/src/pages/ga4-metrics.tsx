@@ -2823,12 +2823,12 @@ export default function GA4Metrics() {
             value: Number((row as any)?.[selectedMetric] || 0),
           }));
           if (chartData.length > 0) {
-            checkPage(56);
+            checkPage(60);
             doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
             doc.roundedRect(MX, y, CW, 44, 3, 3, "FD");
             doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
             doc.text(`Top Campaigns by ${metricLabels[selectedMetric] || selectedMetric}`, MX + 6, y + 7);
-            const chartX = MX + 8, chartY = y + 12, chartW = CW - 16, chartH = 24;
+            const chartX = MX + 40, chartY = y + 12, chartW = CW - 48, chartH = 24;
             const vals = chartData.map((p) => Number(p.value || 0));
             const maxVal = Math.max(...vals, 1);
             const barW = Math.max(4, chartW / Math.max(chartData.length * 1.8, 1));
@@ -2838,12 +2838,12 @@ export default function GA4Metrics() {
             chartData.forEach((p, idx) => {
               const px = chartX + idx * (chartW / Math.max(chartData.length, 1)) + 2;
               const barH = Math.max(1, (Number(p.value || 0) / maxVal) * (chartH - 2));
+              doc.setFontSize(6); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+              doc.text(trunc(p.name, 10), px + barW / 2, chartY + chartH + 5, { align: "center" });
               doc.setFillColor(...C.ads);
               doc.rect(px, chartY + chartH - barH, barW, barH, "F");
             });
             doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-            doc.text(chartData[0]?.name || "", chartX, chartY + chartH + 5);
-            doc.text(chartData[chartData.length - 1]?.name || "", chartX + chartW, chartY + chartH + 5, { align: "right" });
             doc.text(fmtMetricValue(selectedMetric, maxVal), chartX + chartW, chartY + 1, { align: "right" });
             y += 50;
           }
@@ -2869,6 +2869,7 @@ export default function GA4Metrics() {
 
         // All Campaigns table
         if (includeAdsAllCampaigns) {
+          sectionTitle("All Campaigns", C.ads);
           checkPage(14);
           doc.setFillColor(...C.cardBg);
           doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
@@ -2925,7 +2926,6 @@ export default function GA4Metrics() {
 
         if (includeAdsRevenueBreakdown && tableRevenueSummaryVisible) {
           y += 4;
-          sectionTitle("Revenue Breakdown", C.ads);
           const breakdownRows: string[][] = [
             ["GA4 Revenue", fC(ga4RevenueForFinancials)],
             ...revenueDisplaySources.map((source: any) => [
@@ -2937,6 +2937,13 @@ export default function GA4Metrics() {
             breakdownRows.push(["Unallocated External Revenue", fC(unallocatedExternalRevenue)]);
           }
           breakdownRows.push(["Total Revenue", fC(financialRevenue)]);
+          const fullSectionHeight = 18 + 10 + breakdownRows.length * 8 + 4;
+          if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
+            addPageFooter();
+            doc.addPage();
+            y = 18;
+          }
+          sectionTitle("Revenue Breakdown", C.ads);
           checkPage(10);
           doc.setFillColor(...C.cardBg);
           doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
@@ -2986,11 +2993,11 @@ export default function GA4Metrics() {
       const trendDailyRows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];
       const trendSorted = [...trendDailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
       const insightSummaryCards: [string, string][] = [
-        ["Revenue", fC(Number(financialRevenue || 0))],
         ["Spend", fC(Number(financialSpend || 0))],
+        ["Revenue", fC(Number(financialRevenue || 0))],
         ["Profit", fC(Number(financialRevenue || 0) - Number(financialSpend || 0))],
         ["ROAS", `${Number(financialROAS || 0).toFixed(2)}x`],
-        ["Days of Data", String(availableDays)],
+        ["ROI", fP(Number(financialROI || 0))],
       ];
       if (includeInsightsSummaryCards) {
         sectionTitle("Executive Financials", C.insights);
@@ -3011,6 +3018,17 @@ export default function GA4Metrics() {
           y += 22;
         }
         y += 2;
+        const spendSourcesText = spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Not connected";
+        const revenueSourcesText = revenueSourceLabels.length > 0 ? revenueSourceLabels.join(" + ") : "Not connected";
+        checkPage(18);
+        doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
+        doc.text("SOURCES USED", MX + 2, y + 4);
+        y += 8;
+        doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+        doc.text(`Spend: ${trunc(spendSourcesText, 70)}`, MX + 4, y + 3.5);
+        y += 6;
+        doc.text(`Revenue: ${trunc(revenueSourcesText, 70)}`, MX + 4, y + 3.5);
+        y += 6;
       }
 
       if (includeInsightsTrends && trendSorted.length >= 2) {

@@ -2751,6 +2751,14 @@ export default function GA4Metrics() {
         return { ...row, revenue: adjustedRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? adjustedRevenue / Number(row.sessions || 0) : 0 };
       });
       const sortedByMetric = [...comparisonRows].sort((a: any, b: any) => Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0));
+      const bestPerforming = sortedByMetric[0] as any;
+      const mostEfficient = [...comparisonRows]
+        .filter((r: any) => Number(r?.sessions || 0) > 0)
+        .sort((a: any, b: any) => Number(b?.conversionRate || 0) - Number(a?.conversionRate || 0))[0] as any;
+      const needsAttention = [...comparisonRows]
+        .filter((r: any) => Number(r?.sessions || 0) > 0)
+        .sort((a: any, b: any) => Number(a?.conversionRate || 0) - Number(b?.conversionRate || 0))
+        .find((r: any) => String(r?.name || "") !== String(bestPerforming?.name || "")) as any;
       const totalMetric = selectedMetric === "conversionRate"
         ? (() => {
             const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
@@ -2765,57 +2773,6 @@ export default function GA4Metrics() {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No campaign breakdown data available.", MX + 8, y); y += 12;
       } else {
-        const adSummaryCards: [string, string][] = [
-          ["Selected Metric", metricLabels[selectedMetric] || selectedMetric],
-          ["Total", fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
-          ["Campaigns", String(sortedByMetric.length)],
-        ];
-        if (includeAdsTopCampaigns) {
-          const sumW = (CW - 8) / 3;
-          checkPage(24);
-          for (let i = 0; i < adSummaryCards.length; i++) {
-            const [lbl, val] = adSummaryCards[i];
-            const cx = MX + i * (sumW + 4);
-            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
-            doc.roundedRect(cx, y, sumW, 18, 3, 3, "FD");
-            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-            doc.text(lbl.toUpperCase(), cx + 5, y + 6);
-            doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-            doc.text(trunc(val, 22), cx + 5, y + 13);
-          }
-          y += 24;
-
-          const chartData = sortedByMetric.slice(0, 10).map((row: any) => ({
-            name: trunc(String(row?.name || row?.campaign || "(not set)"), 22),
-            value: Number((row as any)?.[selectedMetric] || 0),
-          }));
-          if (chartData.length > 0) {
-            checkPage(56);
-            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
-            doc.roundedRect(MX, y, CW, 44, 3, 3, "FD");
-            doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-            doc.text(`Top Campaigns by ${metricLabels[selectedMetric] || selectedMetric}`, MX + 6, y + 7);
-            const chartX = MX + 8, chartY = y + 12, chartW = CW - 16, chartH = 24;
-            const vals = chartData.map((p) => Number(p.value || 0));
-            const maxVal = Math.max(...vals, 1);
-            const barW = Math.max(4, chartW / Math.max(chartData.length * 1.8, 1));
-            doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
-            doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH);
-            doc.line(chartX, chartY, chartX, chartY + chartH);
-            chartData.forEach((p, idx) => {
-              const px = chartX + idx * (chartW / Math.max(chartData.length, 1)) + 2;
-              const barH = Math.max(1, (Number(p.value || 0) / maxVal) * (chartH - 2));
-              doc.setFillColor(...C.ads);
-              doc.rect(px, chartY + chartH - barH, barW, barH, "F");
-            });
-            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-            doc.text(chartData[0]?.name || "", chartX, chartY + chartH + 5);
-            doc.text(chartData[chartData.length - 1]?.name || "", chartX + chartW, chartY + chartH + 5, { align: "right" });
-            doc.text(fmtMetricValue(selectedMetric, maxVal), chartX + chartW, chartY + 1, { align: "right" });
-            y += 50;
-          }
-        }
-
         const sorted = [...rows].sort((a: any, b: any) => Number(b?.sessions || 0) - Number(a?.sessions || 0));
         const top = sortedByMetric.slice(0, 20);
         const colXs = [MX + 4, MX + 80, MX + 105, MX + 126, MX + 146, MX + CW - 8];
@@ -2857,42 +2814,95 @@ export default function GA4Metrics() {
           }
         }
 
-        // Best / Worst cards
+        // Performance rankings
         if (includeAdsBestWorst && sortedByMetric.length > 1) {
-          y += 4; checkPage(22);
-          const best = sortedByMetric[0] as any;
-          const mostEfficient = [...comparisonRows].filter((r: any) => Number(r?.sessions || 0) > 0).sort((a: any, b: any) => Number(b?.conversionRate || 0) - Number(a?.conversionRate || 0))[0] as any;
-          const lowest = sortedByMetric[sortedByMetric.length - 1] as any;
+          y += 4; checkPage(28);
           const colW = (CW - 8) / 3;
 
-          // Best
-          doc.setFillColor(...C.white); doc.setDrawColor(...C.success);
-          doc.setLineWidth(0.6); doc.roundedRect(MX, y, colW, 18, 3, 3, "FD"); doc.setLineWidth(0.3);
-          doc.setFillColor(...C.success); doc.circle(MX + 8, y + 9, 2, "F");
-          doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.success);
-          doc.text("BEST", MX + 13, y + 7);
-          doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-          doc.text(trunc(String(best?.name || best?.campaign || ""), 28), MX + 13, y + 14);
+          const rankCards = [
+            {
+              title: "BEST PERFORMING",
+              name: String(bestPerforming?.name || bestPerforming?.campaign || ""),
+              detail: `${fmtMetricValue(selectedMetric, Number((bestPerforming as any)?.[selectedMetric] || 0))} ${metricLabels[selectedMetric] || selectedMetric} · ${fP(Number(bestPerforming?.conversionRate || 0))} CR`,
+              color: C.success,
+              x: MX,
+            },
+            {
+              title: "MOST EFFICIENT",
+              name: String(mostEfficient?.name || mostEfficient?.campaign || ""),
+              detail: `${fP(Number(mostEfficient?.conversionRate || 0))} CR · ${fC(Number(mostEfficient?.revenue || 0))} revenue`,
+              color: C.info,
+              x: MX + colW + 4,
+            },
+            {
+              title: "NEEDS ATTENTION",
+              name: String(needsAttention?.name || needsAttention?.campaign || ""),
+              detail: `${fP(Number(needsAttention?.conversionRate || 0))} CR · ${fN(Number(needsAttention?.sessions || 0))} sessions`,
+              color: C.danger,
+              x: MX + (colW + 4) * 2,
+            },
+          ];
+          rankCards.forEach((card) => {
+            doc.setFillColor(...C.white); doc.setDrawColor(...card.color);
+            doc.setLineWidth(0.6); doc.roundedRect(card.x, y, colW, 24, 3, 3, "FD"); doc.setLineWidth(0.3);
+            doc.setFillColor(...card.color); doc.circle(card.x + 8, y + 9, 2, "F");
+            doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...card.color);
+            doc.text(card.title, card.x + 13, y + 7);
+            doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(trunc(card.name, 22), card.x + 13, y + 14);
+            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+            doc.text(trunc(card.detail, 32), card.x + 13, y + 20);
+          });
+          y += 30;
+        }
 
-          // Most Efficient
-          const ex = MX + colW + 4;
-          doc.setFillColor(...C.white); doc.setDrawColor(...C.info);
-          doc.setLineWidth(0.6); doc.roundedRect(ex, y, colW, 18, 3, 3, "FD"); doc.setLineWidth(0.3);
-          doc.setFillColor(...C.info); doc.circle(ex + 8, y + 9, 2, "F");
-          doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.info);
-          doc.text("MOST EFFICIENT", ex + 13, y + 7);
-          doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-          doc.text(trunc(String(mostEfficient?.name || mostEfficient?.campaign || ""), 22), ex + 13, y + 14);
+        if (includeAdsTopCampaigns) {
+          const chartData = sortedByMetric.slice(0, 10).map((row: any) => ({
+            name: trunc(String(row?.name || row?.campaign || "(not set)"), 22),
+            value: Number((row as any)?.[selectedMetric] || 0),
+          }));
+          if (chartData.length > 0) {
+            checkPage(56);
+            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+            doc.roundedRect(MX, y, CW, 44, 3, 3, "FD");
+            doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(`Top Campaigns by ${metricLabels[selectedMetric] || selectedMetric}`, MX + 6, y + 7);
+            const chartX = MX + 8, chartY = y + 12, chartW = CW - 16, chartH = 24;
+            const vals = chartData.map((p) => Number(p.value || 0));
+            const maxVal = Math.max(...vals, 1);
+            const barW = Math.max(4, chartW / Math.max(chartData.length * 1.8, 1));
+            doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+            doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH);
+            doc.line(chartX, chartY, chartX, chartY + chartH);
+            chartData.forEach((p, idx) => {
+              const px = chartX + idx * (chartW / Math.max(chartData.length, 1)) + 2;
+              const barH = Math.max(1, (Number(p.value || 0) / maxVal) * (chartH - 2));
+              doc.setFillColor(...C.ads);
+              doc.rect(px, chartY + chartH - barH, barW, barH, "F");
+            });
+            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            doc.text(chartData[0]?.name || "", chartX, chartY + chartH + 5);
+            doc.text(chartData[chartData.length - 1]?.name || "", chartX + chartW, chartY + chartH + 5, { align: "right" });
+            doc.text(fmtMetricValue(selectedMetric, maxVal), chartX + chartW, chartY + 1, { align: "right" });
+            y += 50;
+          }
 
-          // Lowest
-          const wx = MX + (colW + 4) * 2;
-          doc.setFillColor(...C.white); doc.setDrawColor(...C.danger);
-          doc.setLineWidth(0.6); doc.roundedRect(wx, y, colW, 18, 3, 3, "FD"); doc.setLineWidth(0.3);
-          doc.setFillColor(...C.danger); doc.circle(wx + 8, y + 9, 2, "F");
-          doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.danger);
-          doc.text("LOWEST", wx + 13, y + 7);
-          doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
-          doc.text(trunc(String(lowest?.name || lowest?.campaign || ""), 22), wx + 13, y + 14);
+          const adSummaryCards: [string, string][] = [
+            [selectedMetric === "revenue" ? "Total Revenue (All Sources)" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
+            ["Campaigns Compared", String(sortedByMetric.length)],
+          ];
+          const sumW = (CW - 4) / 2;
+          checkPage(24);
+          for (let i = 0; i < adSummaryCards.length; i++) {
+            const [lbl, val] = adSummaryCards[i];
+            const cx = MX + i * (sumW + 4);
+            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+            doc.roundedRect(cx, y, sumW, 18, 3, 3, "FD");
+            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            doc.text(trunc(lbl.toUpperCase(), 30), cx + 5, y + 6);
+            doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(trunc(val, 22), cx + 5, y + 13);
+          }
           y += 24;
         }
 
@@ -6803,7 +6813,7 @@ export default function GA4Metrics() {
 
                     <Card className="border-border">
                       <CardHeader>
-                        <CardTitle>Executive financials</CardTitle>
+                        <CardTitle className="text-lg">Executive Financials</CardTitle>
                         <CardDescription>
                           Uses spend-to-date and GA4 revenue-to-date (or imported revenue-to-date when GA4 revenue is missing).
                           {(ga4ToDateResp as any)?.startDate ? ` Range: ${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}.` : ""}
@@ -6874,7 +6884,7 @@ export default function GA4Metrics() {
                       <CardHeader>
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                           <div>
-                            <CardTitle>Trends</CardTitle>
+                            <CardTitle className="text-lg">Trends</CardTitle>
                             <CardDescription>
                               Daily shows day-by-day values. 7d/30d show rolling daily averages. Monthly compares calendar months.
                             </CardDescription>
@@ -7244,7 +7254,7 @@ export default function GA4Metrics() {
                     {(breakdownTotals.sessions > 0 || financialRevenue > 0) && (
                       <Card className="border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle>Data Summary</CardTitle>
+                          <CardTitle className="text-lg">Data Summary</CardTitle>
                           <CardDescription>
                             Campaign performance at a glance ({insightsRollups?.availableDays || 0} days of data)
                           </CardDescription>
@@ -7410,7 +7420,7 @@ export default function GA4Metrics() {
 
                     <Card className="border-border">
                       <CardHeader>
-                        <CardTitle>What changed, what to do next</CardTitle>
+                        <CardTitle className="text-lg">What changed, what to do next</CardTitle>
                         <CardDescription>
                           We compare the last 7 days vs the previous 7 days (when enough daily history exists) and cross-check KPI/Benchmark performance.
                         </CardDescription>

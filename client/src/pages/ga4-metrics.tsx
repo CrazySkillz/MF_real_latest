@@ -2838,10 +2838,10 @@ export default function GA4Metrics() {
             chartData.forEach((p, idx) => {
               const px = chartX + idx * (chartW / Math.max(chartData.length, 1)) + 2;
               const barH = Math.max(1, (Number(p.value || 0) / maxVal) * (chartH - 2));
-              doc.setFontSize(6); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
-              doc.text(trunc(p.name, 10), px + barW / 2, chartY + chartH + 5, { align: "center" });
               doc.setFillColor(...C.ads);
               doc.rect(px, chartY + chartH - barH, barW, barH, "F");
+              doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.text);
+              doc.text(trunc(p.name, 14), px + barW / 2, chartY + chartH + 5, { align: "center" });
             });
             doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
             doc.text(fmtMetricValue(selectedMetric, maxVal), chartX + chartW, chartY + 1, { align: "right" });
@@ -3119,57 +3119,69 @@ export default function GA4Metrics() {
           doc.text(trendFmtValue(minVal), chartX + chartW, chartY + chartH - 1, { align: "right" });
           y += 50;
 
-          const trendRows: string[][] = insightsTrendMode === "daily"
-            ? trendSorted.slice(-14).reverse().map((r: any, idx: number) => {
-                const curVal = trendIsRate ? Number(r[trendMetric] || 0) * 100 : Number(r[trendMetric] || 0);
-                const sortedIdx = trendSorted.length - 1 - idx;
-                const prevRow = sortedIdx > 0 ? trendSorted[sortedIdx - 1] : null;
-                const prevVal = prevRow ? (trendIsRate ? Number(prevRow[trendMetric] || 0) * 100 : Number(prevRow[trendMetric] || 0)) : 0;
-                const delta = prevRow ? trendDeltaPct(curVal, prevVal) : NaN;
-                return [String(r.date || ""), trendFmtValue(curVal), prevRow ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
-              })
-            : insightsTrendMode === "monthly"
-              ? trendChartData.slice().reverse().slice(0, 12).map((row, idx, arr) => {
-                  const prev = idx < arr.length - 1 ? arr[idx + 1] : null;
-                  const delta = prev ? trendDeltaPct(row.value, prev.value) : NaN;
-                  return [row.date, trendFmtValue(row.value), prev ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
-                })
-              : (() => {
-                  const cur = insightsTrendMode === "7d" ? insightsRollups.last7 : insightsRollups.last30;
-                  const prior = insightsTrendMode === "7d" ? insightsRollups.prior7 : insightsRollups.prior30;
-                  const getVal = (rollup: any) => trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
-                  const curVal = getVal(cur), priorVal = getVal(prior);
-                  const delta = trendDeltaPct(curVal, priorVal);
-                  return [
-                    [`Last ${insightsTrendMode === "7d" ? 7 : 30} days`, trendFmtValue(curVal), `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`],
-                    [`Prior ${insightsTrendMode === "7d" ? 7 : 30} days`, trendFmtValue(priorVal), "baseline"],
-                  ];
-                })();
-          addSimpleTable(
-            "Trend Table",
-            ["DATE / WINDOW", trendMetricLabels[trendMetric] || trendMetric, "VS PRIOR"],
-            trendRows,
-            [96, 46, 34]
-          );
         }
       }
 
       if (includeInsightsDataSummary && (breakdownTotals.sessions > 0 || financialRevenue > 0)) {
-        addSimpleTable(
-          "Data Summary",
-          ["METRIC", "VALUE", "DETAIL"],
-          [
-            ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), `~${formatNumber(Math.round(breakdownTotals.sessions / Math.max(insightsRollups?.availableDays || 1, 1)))}/day avg`]] : []),
-            ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""]] : []),
-            ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), `~${formatMoney(financialRevenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg`]] : []),
-            ...(channelAnalysis?.topSessionChannel ? [["Top Channel", String(channelAnalysis.topSessionChannel.label || ""), `${channelAnalysis.topSessionShare.toFixed(0)}% of sessions`]] : []),
-            ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""]] : []),
-            ...(financialRevenue > 0 && financialSpend > 0 ? [["Profit", formatMoney(financialRevenue - financialSpend), ""]] : []),
-            ...(financialROAS > 0 ? [["ROAS", `${financialROAS.toFixed(2)}x`, ""]] : []),
-            ...(breakdownTotals.conversions > 0 && financialSpend > 0 ? [["CPA", formatMoney(financialSpend / breakdownTotals.conversions), ""]] : []),
-          ],
-          [56, 42, 78]
-        );
+        sectionTitle("Data Summary", C.insights);
+        const renderInsightDataCards = (items: [string, string, string][], cols = 4) => {
+          const cardW = (CW - (cols - 1) * 4) / cols;
+          for (let i = 0; i < items.length; i += cols) {
+            checkPage(22);
+            for (let c = 0; c < cols && i + c < items.length; c++) {
+              const [lbl, val, detail] = items[i + c];
+              const cx = MX + c * (cardW + 4);
+              doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+              doc.roundedRect(cx, y, cardW, 18, 3, 3, "FD");
+              doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+              doc.text(lbl.toUpperCase(), cx + 5, y + 6);
+              doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+              doc.text(trunc(val, 22), cx + 5, y + 12);
+              if (detail) {
+                doc.setFontSize(6); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+                doc.text(trunc(detail, 30), cx + 5, y + 16);
+              }
+            }
+            y += 22;
+          }
+        };
+        const primaryDataCards: [string, string, string][] = [
+          ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), `~${formatNumber(Math.round(breakdownTotals.sessions / Math.max(insightsRollups?.availableDays || 1, 1)))}/day avg`]] : []),
+          ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""]] : []),
+          ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), `~${formatMoney(financialRevenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg`]] : []),
+          ...(channelAnalysis?.topSessionChannel ? [["Top Channel", String(channelAnalysis.topSessionChannel.label || ""), `${channelAnalysis.topSessionShare.toFixed(0)}% of sessions · ${channelAnalysis.channelCount} channels`]] : []),
+        ];
+        const secondaryDataCards: [string, string, string][] = [
+          ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""]] : []),
+          ...(financialRevenue > 0 && financialSpend > 0 ? [["Profit", formatMoney(financialRevenue - financialSpend), ""]] : []),
+          ...(financialROAS > 0 ? [["ROAS", `${financialROAS.toFixed(2)}x`, ""]] : []),
+          ...(breakdownTotals.conversions > 0 && financialSpend > 0 ? [["CPA", formatMoney(financialSpend / breakdownTotals.conversions), ""]] : []),
+        ];
+        if (primaryDataCards.length > 0) renderInsightDataCards(primaryDataCards, 4);
+        if (secondaryDataCards.length > 0) renderInsightDataCards(secondaryDataCards, 4);
+        if (channelAnalysis?.channels && channelAnalysis.channels.length >= 1) {
+          const sessScale = channelAnalysis.totalSessions > 0 ? breakdownTotals.sessions / channelAnalysis.totalSessions : 1;
+          const convScale = (channelAnalysis.channels.reduce((s: number, c: any) => s + c.conversions, 0) || 1);
+          const convScaleFactor = breakdownTotals.conversions > 0 ? breakdownTotals.conversions / convScale : 1;
+          addSimpleTable(
+            "Channel Breakdown",
+            ["CHANNEL", "SESSIONS", "SHARE", "CONVERSIONS", "CONV. RATE"],
+            channelAnalysis.channels.map((ch: any) => {
+              const scaledSessions = Math.round(Number(ch?.sessions || 0) * sessScale);
+              const scaledConversions = Math.round(Number(ch?.conversions || 0) * convScaleFactor);
+              const share = breakdownTotals.sessions > 0 ? (scaledSessions / breakdownTotals.sessions * 100) : 0;
+              const cr = scaledSessions > 0 ? (scaledConversions / scaledSessions * 100) : 0;
+              return [
+                String(ch?.label || ""),
+                formatNumber(scaledSessions),
+                `${share.toFixed(0)}%`,
+                formatNumber(scaledConversions),
+                formatPct(cr),
+              ];
+            }),
+            [72, 24, 18, 28, 30]
+          );
+        }
       }
 
       if (!insightsOnlyActions) {

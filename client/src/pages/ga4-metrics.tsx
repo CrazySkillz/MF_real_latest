@@ -2698,6 +2698,7 @@ export default function GA4Metrics() {
     }
 
     // ========== AD COMPARISON ==========
+    const renderAdsSection = () => {
     if (sections.ads) {
       sectionTitle("Ad Comparison", C.ads, 24);
       const adsSubsections = customSubsections.ads || {};
@@ -2982,8 +2983,10 @@ export default function GA4Metrics() {
       }
       y += 6;
     }
+    };
 
     // ========== INSIGHTS ==========
+    const renderInsightsSection = () => {
     if (sections.insights) {
       const insightsSubsections = customSubsections.insights || {};
       const includeInsightsSummaryCards = reportType !== "custom" || insightsSubsections.summaryCards !== false;
@@ -3345,6 +3348,7 @@ export default function GA4Metrics() {
       }
       y += 4;
     }
+    };
 
     // ========== KPIs ==========
     if (sections.kpis) {
@@ -3590,6 +3594,9 @@ export default function GA4Metrics() {
       }
       y += 4;
     }
+
+    renderAdsSection();
+    renderInsightsSection();
 
     // Footer on last page
     addPageFooter();

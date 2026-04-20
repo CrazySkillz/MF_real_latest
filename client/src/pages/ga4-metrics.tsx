@@ -8411,30 +8411,50 @@ export default function GA4Metrics() {
                           </button>
                           {isExpanded && (
                             <div className="pl-6 space-y-2">
-                              <div className="grid grid-cols-2 gap-2 text-sm">
-                                {s.subsections.map(([subKey, subLabel]) => (
-                                  <label key={subKey} className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={s.key === "overview" && subKey === "financial"
-                                        ? subsectionCfg.revenue === true && subsectionCfg.spend === true && subsectionCfg.performance === true
-                                        : subsectionCfg[subKey] === true}
-                                      onChange={(e) => {
-                                        const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
-                                        nextCfg.subsections[s.key] = s.key === "overview" && subKey === "financial"
-                                          ? {
-                                              ...(nextCfg.subsections?.[s.key] || {}),
-                                              revenue: e.target.checked,
-                                              spend: e.target.checked,
-                                              performance: e.target.checked,
-                                            }
-                                          : { ...(nextCfg.subsections?.[s.key] || {}), [subKey]: e.target.checked };
-                                        nextCfg.sections[s.key] = Object.values(nextCfg.subsections[s.key] || {}).some(Boolean);
-                                        setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
-                                      }}
-                                    />
-                                    {subLabel}
-                                  </label>
+                              <div className={s.key === "overview" ? "grid grid-cols-2 gap-x-6 gap-y-2 text-sm" : "grid grid-cols-2 gap-2 text-sm"}>
+                                {((s.key === "overview")
+                                  ? [
+                                      [["summary", "Summary"], ["financial", "Revenue & Financial"], ["campaignBreakdown", "Campaign Breakdown"]],
+                                      [["landingPages", "Landing Pages"], ["conversionEvents", "Conversion Events"]],
+                                    ]
+                                  : (s.key === "ads")
+                                    ? [
+                                        [["bestWorst", "Best Performing / Most Efficient / Needs Attention"], ["topCampaigns", "Top Campaigns"]],
+                                        [["allCampaigns", "All Campaigns"], ["revenueBreakdown", "Revenue Breakdown"]],
+                                      ]
+                                    : (s.key === "insights")
+                                      ? [
+                                          [["summaryCards", "Executive Financials"], ["trends", "Trends"]],
+                                          [["dataSummary", "Data Summary"], ["actions", "What changed, what to do next"]],
+                                        ]
+                                  : [s.subsections]
+                                ).map((column, columnIdx) => (
+                                  <div key={`${s.key}-col-${columnIdx}`} className="space-y-2">
+                                    {column.map(([subKey, subLabel]) => (
+                                      <label key={subKey} className="flex items-center gap-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={s.key === "overview" && subKey === "financial"
+                                            ? subsectionCfg.revenue === true && subsectionCfg.spend === true && subsectionCfg.performance === true
+                                            : subsectionCfg[subKey] === true}
+                                          onChange={(e) => {
+                                            const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
+                                            nextCfg.subsections[s.key] = s.key === "overview" && subKey === "financial"
+                                              ? {
+                                                  ...(nextCfg.subsections?.[s.key] || {}),
+                                                  revenue: e.target.checked,
+                                                  spend: e.target.checked,
+                                                  performance: e.target.checked,
+                                                }
+                                              : { ...(nextCfg.subsections?.[s.key] || {}), [subKey]: e.target.checked };
+                                            nextCfg.sections[s.key] = Object.values(nextCfg.subsections[s.key] || {}).some(Boolean);
+                                            setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
+                                          }}
+                                        />
+                                        {subLabel}
+                                      </label>
+                                    ))}
+                                  </div>
                                 ))}
                               </div>
                               {s.key === "kpis" && (

@@ -176,6 +176,15 @@ High-risk shared dependencies include:
 - Reports output
 - refresh and recomputation behavior
 
+For Reports-specific fixes, also verify:
+
+- standard-template PDF section order matches the live tab order
+- custom-report PDF major section order matches the custom report section picker order:
+  `Overview -> KPIs -> Benchmarks -> Ad Comparison -> Insights`
+- custom-report subsection selection is respected
+- custom report picker layout changes do not silently change saved config meaning
+- scheduled/server-generated GA4 attachments and ad hoc downloads still use the same report configuration semantics
+
 ## Step 5B: Add Automated Regression Coverage For High-Risk Bugs
 
 After a bug is manually verified, add automated regression coverage when the bug is:

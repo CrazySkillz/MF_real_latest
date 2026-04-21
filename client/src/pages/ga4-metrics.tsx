@@ -1899,7 +1899,10 @@ export default function GA4Metrics() {
   const spendDailyYesterday = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    return d.toISOString().slice(0, 10);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }, []);
   const { data: spendDailyYesterdayResp } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/spend-daily`, spendDailyYesterday],
@@ -2756,8 +2759,12 @@ export default function GA4Metrics() {
       const mostEfficient = [...comparisonRows]
         .filter((r: any) => Number(r?.sessions || 0) > 0)
         .sort((a: any, b: any) => Number(b?.conversionRate || 0) - Number(a?.conversionRate || 0))[0] as any;
-      const needsAttention = [...comparisonRows]
-        .filter((r: any) => Number(r?.sessions || 0) > 0)
+      const comparisonRowsWithSessions = [...comparisonRows].filter((r: any) => Number(r?.sessions || 0) > 0);
+      const meaningfulSessionFloor = Math.max(25, Math.ceil(Math.max(...comparisonRowsWithSessions.map((r: any) => Number(r?.sessions || 0)), 0) * 0.1));
+      const needsAttentionPool = comparisonRowsWithSessions.some((r: any) => Number(r?.sessions || 0) >= meaningfulSessionFloor)
+        ? comparisonRowsWithSessions.filter((r: any) => Number(r?.sessions || 0) >= meaningfulSessionFloor)
+        : comparisonRowsWithSessions;
+      const needsAttention = needsAttentionPool
         .sort((a: any, b: any) => Number(a?.conversionRate || 0) - Number(b?.conversionRate || 0))
         .find((r: any) => String(r?.name || "") !== String(bestPerforming?.name || "")) as any;
       const totalMetric = selectedMetric === "conversionRate"

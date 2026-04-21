@@ -102,11 +102,14 @@ Intended behavior:
 - `Latest Day Revenue` should show the previous day's total revenue for the campaign across all applicable revenue sources
 - `Latest Day Spend` should show the previous day's total spend for the campaign across all applicable spend sources
 
-Current-state note:
+Current implementation:
 
-- `Latest Day Revenue` is currently built from the GA4-selected report day plus imported revenue for that same day, rather than simply using the previous day's total across all relevant revenue sources
-- `Latest Day Spend` is intended to represent the previous day's total spend for the campaign across all applicable spend sources, but the current implementation uses a narrower `today else yesterday` check
-- treat these differences as current-state implementation issues to fix later, not as the desired long-term template
+- both cards use the previous complete local day
+- `Latest Day Revenue` combines:
+  - GA4-native daily revenue for that day
+  - imported revenue from all active sources that have real daily revenue records for that same day
+- `Latest Day Spend` sums all active sources that have real daily spend records for that same day
+- these cards must not invent daily values for sources that do not have records on that date
 
 ### Summary Cards
 

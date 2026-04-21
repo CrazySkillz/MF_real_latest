@@ -45,12 +45,17 @@ In the current implementation, these cards mean:
 - `Most Efficient`
   The campaign row with the highest conversion rate among rows with sessions.
 - `Needs Attention`
-  The campaign row with the lowest conversion rate among rows with sessions, while avoiding duplication with `Best Performing` when possible.
+  The campaign row with the lowest conversion rate among meaningful-volume rows, while avoiding duplication with `Best Performing` when possible.
 
 Important meaning:
 
 - `Best Performing` changes when the selected metric changes
 - `Most Efficient` and `Needs Attention` are currently driven by conversion-rate logic, not by the selected dropdown metric
+- `Needs Attention` should ignore tiny low-signal campaigns when a more meaningful weak performer exists
+- current meaningful-volume rule:
+  - rows must have sessions
+  - prefer rows at or above `max(25 sessions, 10% of the largest campaign's sessions)`
+  - if no row meets that floor, fall back to the prior lowest-conversion-rate behavior
 - these cards summarize campaign rows, not true ad or creative entities
 - the `Best Performing` card should not add extra explanatory suffixes like `(matched external included)` in its label line
 
@@ -84,6 +89,9 @@ The `All Campaigns` table includes:
 Important meaning:
 
 - `Revenue` here is GA4 revenue attributed to the GA4 campaign row plus any external revenue that can be matched safely by exact campaign-value match
+- `Users` should keep its explanatory tooltip because campaign-row user counts are directional, not perfectly additive unique-person totals
+- the tooltip should use plain language:
+  `Users are estimated per campaign row. The same person can appear in more than one row, so row totals may be higher than the true number of unique users.`
 - external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`
 - when present, `Unallocated External Revenue` should render in the summary block immediately above `Total Revenue (All Sources)`, after the ranked campaign rows
 - that summary block should remain visible in `All Campaigns` even when the selected metric is not `Revenue`

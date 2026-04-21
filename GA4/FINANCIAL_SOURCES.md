@@ -69,10 +69,12 @@ Intended behavior:
 
 - `Latest Day Revenue` should show the previous day's total revenue for the campaign across all applicable revenue sources
 
-Current-state note:
+Current implementation:
 
-- parts of the current implementation still use a narrower report-day-based approach
-- that implementation detail should not be treated as the design template
+- use the previous complete local day
+- include every active revenue source that has real daily revenue records for that day
+- include GA4-native daily revenue for that same day
+- do not invent daily values for snapshot-only sources that have no record on that date
 
 ## Spend Computation
 
@@ -88,17 +90,18 @@ Intended behavior:
 
 - `Latest Day Spend` should show the previous day's total spend for the campaign across all applicable spend sources
 
-Current-state note:
-
-- parts of the current implementation still use narrower date-selection logic
-- that implementation detail should not be treated as the design template
-
 `Latest Day Spend` is driven by materialized spend records for the relevant day.
 
 This includes:
 
 - daily imported spend rows
 - snapshot-style records where a source does not provide daily history
+
+Current implementation:
+
+- use the previous complete local day
+- include every active spend source that has real daily spend records for that day
+- do not invent a latest-day value when no record exists for that date
 
 ## Derived Financial Metrics
 

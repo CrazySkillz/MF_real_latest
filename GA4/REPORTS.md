@@ -54,47 +54,47 @@ Expected meaning:
 - `Ad Comparison` should represent the comparison reporting layer
 - `Insights` should represent the insight/reporting narrative layer
 
+Current standard-template output rule:
+
+- each standard template PDF should mirror the same tab substance and section order as the corresponding live GA4 tab as closely as the current PDF renderer allows
+- `Overview` should follow the live Overview order
+- `KPIs` should follow the live KPI order
+- `Benchmarks` should follow the live Benchmark order
+- `Ad Comparison` should follow the live Ad Comparison order
+- `Insights` should follow the live Insights order
+
 ## Custom Report
 
 Current custom sections:
 
 - `Overview`
-- `KPIs Snapshot`
-- `Benchmarks Snapshot`
+- `KPIs`
+- `Benchmarks`
 - `Ad Comparison`
 - `Insights`
 
-Intended future pattern:
+Current custom subsection model:
 
-- the custom-report builder should show each major GA4 tab as a parent section
-- under each parent section, the user should be able to select specific subsections to include
-- example:
-  - `Overview`
-    - `Summary`
-    - `Revenue & Financial`
-    - `Campaign Breakdown`
-    - `Landing Pages`
-    - `Conversion Events`
-- the same subsection-selection model should apply to the other GA4 tabs where that granularity is useful
-- expected examples by tab:
-  - `KPIs`
-    - show the campaign's KPI list so users can tick specific KPIs to include
-    - optionally include the KPI `Executive snapshot`
-  - `Benchmarks`
-    - show the campaign's benchmark list so users can tick specific benchmarks to include
-    - optionally include the Benchmark `Executive snapshot`
-  - `Ad Comparison`
-    - `Top summary cards`
-    - `Ranked comparison chart`
-    - `All Campaigns`
-    - `Revenue Breakdown`
-  - `Insights`
-    - `Executive summary`
-    - `Executive financials`
-    - `Data Summary`
-    - `Trends`
-    - `What changed, what to do next`
-- this would let users build a truly tailored executive report rather than only toggling whole top-level tab sections on or off
+- `Overview`
+  - `Summary`
+  - `Revenue & Financial`
+  - `Campaign Breakdown`
+  - `Landing Pages`
+  - `Conversion Events`
+- `KPIs`
+  - specific KPI items only
+- `Benchmarks`
+  - specific benchmark items only
+- `Ad Comparison`
+  - `Best Performing / Most Efficient / Needs Attention`
+  - `Top Campaigns`
+  - `All Campaigns`
+  - `Revenue Breakdown`
+- `Insights`
+  - `Executive Financials`
+  - `Trends`
+  - `Data Summary`
+  - `What changed, what to do next`
 
 Important meaning:
 
@@ -102,13 +102,17 @@ Important meaning:
 - custom reports store report configuration, not frozen analytics values
 - actual report values should come from refreshed GA4 tab inputs when the report is generated or sent
 - future work should preserve section-based composition
+- top-level custom sections are parent headers, not checkboxes
+- subsection checkboxes default to unchecked for new custom reports
+- KPI and Benchmark selection is item-based
+- subsection picker layout is presentation only; saved report meaning comes from the checked subsection keys and selected KPI/Benchmark ids
 
-Current-state note:
+Custom report output order rule:
 
-- the current implementation only exposes top-level section checkboxes
-- it does not yet expose nested subsection checkboxes under each tab
-- it does not yet expose KPI-by-KPI or benchmark-by-benchmark selection inside the custom report flow
-- this should be treated as a future enhancement to the custom-report builder, not the current behavior
+- the custom report PDF should print major sections in this order:
+  `Overview -> KPIs -> Benchmarks -> Ad Comparison -> Insights`
+- within a selected section, the PDF should print the chosen subsections in that section's built-in subsection order
+- custom report output should not invent a separate report-only ordering model unless the saved configuration explicitly stores one in the future
 
 ## Naming And Description
 
@@ -124,6 +128,8 @@ Current behavior:
 - creating a new unscheduled report surfaces a `Generate & Download report` link/action so the user can download it immediately
 - those ad hoc downloads do not necessarily create a persistent library entry
 - existing saved reports can also be downloaded again
+- custom-report generation should require at least one selected section before download
+- the modal should remain open if generation fails so the user can correct the issue
 
 Important meaning:
 
@@ -154,7 +160,7 @@ The current backend supports:
 - schedule validation
 - scheduled email sending
 - report snapshots
-- test-send behavior
+- scheduled attachment generation
 
 Current implementation detail:
 
@@ -186,15 +192,20 @@ Aligned:
 - ad hoc GA4 downloads are rendered client-side from live GA4 page state
 - once the tab inputs are refreshed, on-demand GA4 downloads reflect the refreshed values
 - scheduled report storage, snapshots, and email sending are real backend features
+- server-side scheduled/test-send GA4 PDF generation now exists for:
+  - `Overview`
+  - `Ad Comparison`
+  - `Insights`
+  - `Custom`
+- `Custom` server-side rendering reuses those same section renderers and respects the saved selected sections/subsections
+- standard-template and custom-report PDFs should now be evaluated for section parity against the live tab, not against older lightweight cover-page output
 
 Important caveats:
 
 - saved report configurations do not have their own recompute job
-- ad hoc client-side GA4 report generation is currently richer than the shared scheduled/server-rendered path
 - the current `Ad Comparison` report output reflects the current GA4 comparison implementation, which is campaign-row comparison rather than true ad/creative-level reporting
-- scheduled/server-generated PDF output is strongest for `KPIs` and `Benchmarks`
-- for some other report types in the shared scheduler path, the generated PDF is still lightweight compared with the richer client-side GA4 PDF renderer
 - the shared scheduler and report-link helper still contain legacy LinkedIn-oriented infrastructure details
+- email delivery timing/provider behavior still depends on scheduler execution and runtime email infrastructure, but the GA4 attachment path is no longer intentionally header-only for `Overview`, `Ad Comparison`, `Insights`, or `Custom`
 
 ## Report Library Meaning
 

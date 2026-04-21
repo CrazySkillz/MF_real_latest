@@ -1188,47 +1188,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const isEligibleForLatestDaySpend = (source: any): boolean => {
-    const sourceType = String(source?.sourceType || "").trim().toLowerCase();
-    let mapping: any = null;
-    try {
-      mapping = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : null;
-    } catch {
-      mapping = null;
-    }
-
-    if (sourceType === "manual" || sourceType === "csv" || sourceType === "linkedin_api" || sourceType === "connector_derived") {
-      return false;
-    }
-
-    if (sourceType === "google_sheets") {
-      return !!String(mapping?.dateColumn || "").trim();
-    }
-
-    if (sourceType === "ad_platforms") {
-      return !mapping;
-    }
-
-    return true;
+    return !!source;
   };
 
   const isEligibleForLatestDayRevenue = (source: any): boolean => {
-    const sourceType = String(source?.sourceType || "").trim().toLowerCase();
-    let mapping: any = null;
-    try {
-      mapping = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : null;
-    } catch {
-      mapping = null;
-    }
-
-    if (sourceType === "manual" || sourceType === "hubspot") {
-      return false;
-    }
-
-    if (sourceType === "csv" || sourceType === "google_sheets") {
-      return !!String(mapping?.dateColumn || "").trim();
-    }
-
-    return true;
+    return !!source;
   };
 
   // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).
@@ -1662,47 +1626,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // NOTE: /api/campaigns/:id/revenue-to-date is defined above (campaign start -> yesterday).
-  // Keep exactly one handler to avoid inconsistent revenue totals.
-
-  // Daily revenue total (strict daily values; used as fallback when GA4 revenue is 0)
-  app.get("/api/campaigns/:id/revenue-daily", async (req, res) => {
-    try {
-      res.setHeader("Cache-Control", "no-store");
-      const campaignId = req.params.id;
-      const date = String(req.query.date || "").trim();
-      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
-      if (!platformContext) return;
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
-      }
-      const [sources, breakdown] = await Promise.all([
-        storage.getRevenueSources(campaignId, platformContext as any).catch(() => [] as any[]),
-        storage.getRevenueBreakdownBySource(campaignId, date, date, platformContext as any).catch(() => [] as any[]),
-      ]);
-      const eligibleSourceIds = new Set(
-        (Array.isArray(sources) ? sources : [])
-          .filter((source: any) => source && source.isActive !== false && isEligibleForLatestDayRevenue(source))
-          .map((source: any) => String(source.id))
-      );
-      const eligibleBreakdown = (Array.isArray(breakdown) ? breakdown : []).filter((row: any) =>
-        eligibleSourceIds.has(String(row?.sourceId || ""))
-      );
-      const totalRevenue = eligibleBreakdown.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0);
-      const currency = eligibleBreakdown.find((row: any) => row?.currency)?.currency;
-      res.json({
-        success: true,
-        platformContext,
-        date,
-        totalRevenue: Number(totalRevenue.toFixed(2)),
-        currency,
-        sourceIds: eligibleBreakdown.map((row: any) => String(row.sourceId)),
-      });
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to fetch daily revenue" });
-    }
-  });
 
   const deactivateRevenueSourcesForCampaign = async (
     campaignId: string,

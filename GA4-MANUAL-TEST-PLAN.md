@@ -85,6 +85,9 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Ad Comparison: selected metric and ranking still update
 - Insights: Executive Financials, Data Summary, and findings still reflect current values
 - Reports: on-demand output still reflects current tab state
+- Reports: standard-template PDF section order mirrors the live tab order
+- Reports: custom-report PDF major section order is `Overview -> KPIs -> Benchmarks -> Ad Comparison -> Insights`
+- Reports: custom-report subsection selection is respected and unchecked subsections are excluded
 - Connected source rows: edit/delete still recompute totals correctly
 
 ## Stop Rules
@@ -837,7 +840,8 @@ Checkpoint after Journey 8:
 - [ ] Ranking cards update per selected metric
 - [ ] Metric dropdown renders below the three summary cards
 - [ ] Best Performing ≠ Needs Attention
-- [ ] Users: tooltip warns "non-additive"
+- [ ] Needs Attention does not choose a tiny trivial campaign when a larger weak performer exists
+- [ ] Users: tooltip explains that the same person can appear in more than one campaign row, so row totals may be higher than the true number of unique users
 - [ ] If imported revenue exists, Revenue mode surfaces **Total Revenue (All Sources)** explicitly
 - [ ] If a source has exact campaign-value matches to GA4 campaign rows, those matched external amounts are included in the relevant Revenue rows
 - [ ] If some external revenue does not match a GA4 campaign row exactly, it appears as **Unallocated External Revenue**

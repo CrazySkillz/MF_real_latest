@@ -185,7 +185,12 @@ export default function GA4CampaignComparison({
   }, [campaignBreakdownAgg]);
 
   const needsAttention = useMemo(() => {
-    const sorted = [...campaignBreakdownAgg].filter(c => c.sessions > 0).sort((a, b) => a.conversionRate - b.conversionRate);
+    const rowsWithSessions = [...campaignBreakdownAgg].filter(c => c.sessions > 0);
+    const meaningfulSessionFloor = Math.max(25, Math.ceil(Math.max(...rowsWithSessions.map(c => c.sessions), 0) * 0.1));
+    const pool = rowsWithSessions.some(c => c.sessions >= meaningfulSessionFloor)
+      ? rowsWithSessions.filter(c => c.sessions >= meaningfulSessionFloor)
+      : rowsWithSessions;
+    const sorted = pool.sort((a, b) => a.conversionRate - b.conversionRate);
     // Avoid showing the same campaign as both Best Performing and Needs Attention
     const candidate = sorted[0];
     if (candidate && candidate.name === bestPerforming?.name && sorted.length > 1) return sorted[1];
@@ -349,7 +354,7 @@ export default function GA4CampaignComparison({
                     <Info className="w-3.5 h-3.5 text-amber-500 cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                    <p className="text-xs">User counts are approximate. GA4 users are non-additive — the same user visiting across multiple days, devices, or traffic sources is counted in each breakdown row. Per-campaign and total user counts may be higher than actual unique users.</p>
+                    <p className="text-xs">User counts are approximate. GA4 users are non-additive â€” the same user visiting across multiple days, devices, or traffic sources is counted in each breakdown row. Per-campaign and total user counts may be higher than actual unique users.</p>
                   </TooltipContent>
                 </UITooltip>
               )}
@@ -375,7 +380,7 @@ export default function GA4CampaignComparison({
           <CardTitle className="text-lg">All Campaigns</CardTitle>
           <CardDescription>
             Full comparison sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}
-            {revenueModeWithImportedSources ? " • exact matched external revenue is added to campaign rows; unmatched external revenue stays separate" : ""}
+            {revenueModeWithImportedSources ? " â€¢ exact matched external revenue is added to campaign rows; unmatched external revenue stays separate" : ""}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
@@ -395,7 +400,7 @@ export default function GA4CampaignComparison({
                             <Info className="w-3 h-3 text-amber-500 cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                            <p className="text-xs">Approximate — users are non-additive across breakdown dimensions (dates, devices, sources). Actual unique users may be lower.</p>
+                            <p className="text-xs">Approximate â€” users are non-additive across breakdown dimensions (dates, devices, sources). Actual unique users may be lower.</p>
                           </TooltipContent>
                         </UITooltip>
                       </div>

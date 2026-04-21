@@ -155,13 +155,14 @@ What is true today:
 - Ad Comparison refreshes indirectly from refreshed inputs
 - Insights refreshes indirectly from refreshed inputs
 - report outputs are generated from already-refreshed tab inputs rather than from a report-only metrics pipeline
+- scheduled/server-generated GA4 reports now have dedicated server-side rendering for `Overview`, `Ad Comparison`, `Insights`, and `Custom`, using saved report config plus existing refreshed GA4 inputs
 
 What is not yet fully consolidated:
 
 - there is not one single GA4-only orchestrator that updates every tab in one explicit pipeline
 - some immediate post-refresh behavior still relies on a generic KPI refresh helper
 - immediate benchmark alert checks are not mirrored as completely as KPI alert checks in the same auto-refresh path
-- scheduled/server-generated report rendering is not yet as GA4-complete as the live client-side ad hoc report renderer
+- scheduled email delivery still depends on shared scheduler/runtime email infrastructure rather than a GA4-only delivery path
 
 ## Snapshot Inputs That Do Not Auto-Refresh
 

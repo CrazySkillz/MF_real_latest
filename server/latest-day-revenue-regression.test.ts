@@ -15,19 +15,27 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).not.toContain("const revenueDailyDate = ga4ReportDate || spendDailyYesterday;");
   });
 
-  it("revenue-daily endpoints filter out snapshot-style revenue sources", () => {
+  it("revenue-daily endpoints use strict daily records rather than source-type exclusions", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),
       "utf-8"
     );
 
     expect(routesFile).toContain("const isEligibleForLatestDayRevenue = (source: any): boolean => {");
-    expect(routesFile).toContain('sourceType === "manual"');
-    expect(routesFile).toContain('sourceType === "hubspot"');
-    expect(routesFile).toContain('sourceType === "csv" || sourceType === "google_sheets"');
-    expect(routesFile).toContain('return !!String(mapping?.dateColumn || "").trim();');
+    expect(routesFile).toContain("return !!source;");
     expect(routesFile).toContain('isEligibleForLatestDayRevenue(source)');
     expect(routesFile).toContain('storage.getRevenueBreakdownBySource(campaignId, date, date, "ga4")');
-    expect(routesFile).toContain('storage.getRevenueBreakdownBySource(campaignId, date, date, platformContext as any)');
+  });
+
+  it("spend-daily endpoints use strict daily records rather than source-type exclusions", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(routesFile).toContain("const isEligibleForLatestDaySpend = (source: any): boolean => {");
+    expect(routesFile).toContain("return !!source;");
+    expect(routesFile).toContain('isEligibleForLatestDaySpend(source)');
+    expect(routesFile).toContain('storage.getSpendBreakdownBySource(campaignId, date, date)');
   });
 });

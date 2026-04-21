@@ -5424,7 +5424,21 @@ export default function GA4Metrics() {
                                     <tr>
                                       <th className="text-left font-medium px-2 py-2">Campaign</th>
                                       <th className="text-right font-medium px-2 py-2 w-[90px]">Sessions</th>
-                                      <th className="text-right font-medium px-2 py-2 w-[80px]">Users</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[80px]">
+                                        <div className="flex items-center justify-end gap-1">
+                                          Users
+                                          <UITooltip>
+                                            <TooltipTrigger asChild>
+                                              <button type="button" className="inline-flex">
+                                                <AlertCircle className="w-3.5 h-3.5 text-muted-foreground/70" />
+                                              </button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                              Users are estimated per row. The same person can appear in more than one row, so row totals may be higher than the true number of unique users.
+                                            </TooltipContent>
+                                          </UITooltip>
+                                        </div>
+                                      </th>
                                       <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
                                       <th className="text-right font-medium px-2 py-2 w-[100px]">Conv Rate</th>
                                       <th className="text-right font-medium px-2 py-2 w-[100px]">Revenue</th>
@@ -5476,7 +5490,16 @@ export default function GA4Metrics() {
                                     <th className="text-right p-3">
                                       <div className="flex items-center justify-end gap-1">
                                         Users
-                                        <AlertCircle className="w-3.5 h-3.5 text-muted-foreground/70" title="Non-additive: Unique users can appear on multiple landing pages" />
+                                        <UITooltip>
+                                          <TooltipTrigger asChild>
+                                            <button type="button" className="inline-flex">
+                                              <AlertCircle className="w-3.5 h-3.5 text-muted-foreground/70" />
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                            Users are estimated per row. The same person can appear in more than one row, so row totals may be higher than the true number of unique users.
+                                          </TooltipContent>
+                                        </UITooltip>
                                       </div>
                                     </th>
                                     <th className="text-right p-3">Conversions</th>
@@ -5537,7 +5560,21 @@ export default function GA4Metrics() {
                                     <th className="text-left p-3 w-[36%]">Event</th>
                                     <th className="text-right p-3">Conversions</th>
                                     <th className="text-right p-3">Event count</th>
-                                    <th className="text-right p-3">Users</th>
+                                    <th className="text-right p-3">
+                                      <div className="flex items-center justify-end gap-1">
+                                        Users
+                                        <UITooltip>
+                                          <TooltipTrigger asChild>
+                                            <button type="button" className="inline-flex">
+                                              <AlertCircle className="w-3.5 h-3.5 text-muted-foreground/70" />
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                            Users are estimated per row. The same person can appear in more than one row, so row totals may be higher than the true number of unique users.
+                                          </TooltipContent>
+                                        </UITooltip>
+                                      </div>
+                                    </th>
                                     <th className="text-right p-3">Revenue</th>
                                   </tr>
                                 </thead>

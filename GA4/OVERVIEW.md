@@ -130,6 +130,14 @@ Important meaning:
 - they are scoped to the GA4 property and GA4 campaign filter selected for this app campaign
 - they are not populated from imported revenue or spend sources
 
+Important `Users` rule:
+
+- the top `Users` card represents the overall deduplicated GA4 user total for the selected campaign scope
+- it should be treated as the best overall unique-user number on the Overview page
+- it is not additive across dates, which is why the implementation prefers the GA4 to-date user total over the summed GA4 daily rows
+- the top `Users` card may show a short clarification tooltip:
+  `Deduplicated GA4 users for the selected campaign scope.`
+
 ### Financial Cards
 
 Financial-card detail lives in `GA4/FINANCIAL_SOURCES.md`.
@@ -216,6 +224,8 @@ Important clarification:
 - exact campaign-matched imported revenue may be added only when a source saves real campaign-value mappings that match a GA4 campaign row
 - it is not a proportional allocation of imported external revenue
 - campaign financial cards and campaign-breakdown revenue should not be treated as interchangeable numbers
+- `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
+- the same person can appear in more than one campaign row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
 
 ### Landing Pages
 
@@ -237,6 +247,8 @@ Important meaning:
 - it is not a rollup across unrelated campaigns in the property
 - the `Revenue` column is GA4-native row revenue from GA4 `totalRevenue`, or fallback `purchaseRevenue`
 - campaign-matched imported revenue is not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
+- `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
+- the same person can appear on more than one landing-page row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
 
 ### Conversion Events
 
@@ -254,6 +266,8 @@ Important meaning:
 
 - the `Revenue` column is GA4-native row revenue from GA4 `totalRevenue`, or fallback `purchaseRevenue`
 - campaign-matched imported revenue is not allocated into event rows unless a future source provides real event-level identifiers that can be matched safely
+- `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
+- the same person can appear in more than one conversion-event row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
 
 ## Overview Tables Current-State Observation
 

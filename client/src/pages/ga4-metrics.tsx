@@ -5077,7 +5077,19 @@ export default function GA4Metrics() {
                         </Card>
                         <Card>
                           <CardContent className="p-5">
-                            <p className="text-sm font-medium text-muted-foreground/70">Users</p>
+                            <div className="flex items-center gap-1">
+                              <p className="text-sm font-medium text-muted-foreground/70">Users</p>
+                              <UITooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" className="inline-flex">
+                                    <AlertCircle className="w-3.5 h-3.5 text-muted-foreground/70" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                  Deduplicated GA4 users for the selected campaign scope.
+                                </TooltipContent>
+                              </UITooltip>
+                            </div>
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
                             </p>

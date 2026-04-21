@@ -90,6 +90,14 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Reports: custom-report subsection selection is respected and unchecked subsections are excluded
 - Connected source rows: edit/delete still recompute totals correctly
 
+Important `Users` interpretation rule:
+
+- the top Overview `Users` card is the overall deduplicated GA4 user total for the selected campaign scope
+- the top Overview `Users` card may show a short clarification tooltip:
+  `Deduplicated GA4 users for the selected campaign scope.`
+- `Users` in `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` are row-level breakdown values
+- the same person can appear in more than one row, so table `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
+
 ## Stop Rules
 
 Pause the current run and log the issue if:
@@ -216,6 +224,7 @@ Checkpoint after Journey 1:
 | Revenue | ≈ $87,489 | ≈ $174,979 | ≈ $240,352 |
 
 - [ ] **If you chose 90 days**: Sessions ≈ 65,600, Users ≈ 50,880, Conversions ≈ 2,592, Revenue ≈ $240,352
+- [ ] Overview `Users` card tooltip says: `Deduplicated GA4 users for the selected campaign scope.`
 - [ ] **Spend = $0.00** — "Add Spend" button visible (GA4 does NOT track spend)
 - [ ] **"+" icon** visible on both Spend and Revenue cards
 - [ ] **ROAS = N/A or $0** (cannot calculate without spend)
@@ -880,6 +889,8 @@ For each add/edit/delete action above, validate all related revenue surfaces:
 - [ ] Overview `Campaign Breakdown` revenue values include exact campaign-matched imported revenue only when saved source campaign values match GA4 campaign rows
 - [ ] Overview `Landing Pages` revenue values remain GA4-native (`totalRevenue` / fallback `purchaseRevenue`) and do not receive campaign-only imported revenue
 - [ ] Overview `Conversion Events` revenue values remain GA4-native (`totalRevenue` / fallback `purchaseRevenue`) and do not receive campaign-only imported revenue
+- [ ] Overview top `Users` card remains the deduplicated overall GA4 user total for the selected scope
+- [ ] Overview table `Users` values are treated as row-level directional counts and are not expected to sum or reconcile exactly to the top `Users` card
 - [ ] KPIs tab: Revenue KPI current value matches Overview `Total Revenue`
 - [ ] KPIs tab: ROAS and ROI KPI current values use Overview all-source revenue as the numerator
 - [ ] KPIs tab: Revenue/ROAS/ROI blocked or enabled states update when revenue availability changes

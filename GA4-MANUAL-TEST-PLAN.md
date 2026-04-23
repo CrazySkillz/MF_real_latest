@@ -121,13 +121,13 @@ When you connect a mock GA4 property with yesop_brand_search + yesop_prospecting
   - Users = 31,800 × 1.6 = **50,880**
 - For **30 days**: Sessions ≈ 22,520, Revenue ≈ $87,489, Conversions ≈ 885, Users ≈ 17,280
 - For **60 days**: Sessions ≈ 45,040, Revenue ≈ $174,979, Conversions ≈ 1,770, Users ≈ 34,560
-- **Spend = $0** (GA4 never imports spend — spend comes from ad platforms or manual entry)
+- **Spend = $0** (GA4 never imports spend — spend comes from ad platforms, Google Sheets, or CSV import)
 
 **2. Run Refresh (manual button, adds 1 day per click)**
 Simulates what happens in production when the **GA4 daily scheduler** runs:
 - Fetches daily metrics from Google Analytics API (sessions, users, conversions, revenue)
 - Revenue is included because GA4 tracks ecommerce/purchase events
-- **Spend is NOT included** — in production, spend arrives when the user adds it via the Add Spend wizard (manual, CSV, Sheets, or connecting an ad platform). After an ad platform is connected, its scheduler updates spend daily.
+- **Spend is NOT included** — in production, spend arrives when the user adds it via the Add Spend wizard (CSV, Sheets, or connecting an ad platform). After an ad platform is connected, its scheduler updates spend daily.
 
 In the mock system, each click uses fixed daily values from the two selected campaigns:
 
@@ -152,7 +152,6 @@ Note:
 
 **3. Add Spend (user action via "+" button on Spend card)**
 Spend arrives when the user explicitly adds it:
-- **Manual entry**: type an amount directly
 - **CSV upload**: upload a CSV with spend data
 - **Google Sheets**: connect a spreadsheet with spend data
 - **Ad platforms (test mode)**: LinkedIn/Meta/Google Ads with mock campaign data
@@ -746,6 +745,7 @@ Checkpoint after Journey 8:
 - [ ] Delete or deactivate the Salesforce revenue source and confirm the `Pipeline Proxy` card disappears
 - [ ] Confirm the Pipeline Proxy amount does not change Total Revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
 - [ ] If `Total Revenue only (no Pipeline card)` is selected, confirm no Pipeline Proxy review details or Overview card appear
+- [ ] If the stored Salesforce access token is missing but a refresh token still exists, confirm the chooser/status path recovers the connection before falling back to `Reconnect required`
 - [ ] Open the Salesforce revenue source in edit mode
 - [ ] Confirm the Source/review path still shows the persisted Salesforce account/org label even if the Salesforce connection is currently disconnected
 - [ ] Change the selected deal values in Crosswalk
@@ -1009,17 +1009,17 @@ Required reconciliation checks:
 - [ ] **No revenue-related insights** should appear (no "Revenue Behind Target" etc.)
 - [ ] Informational insights about sessions/engagement should still appear
 
-### Step 6: Add manual revenue → templates unlock
+### Step 6: Add revenue via import/connector → templates unlock
 - [ ] Go to **Overview** tab → click **"+"** on Revenue card
-- [ ] Select **Manual** → enter **$10,000** → Save
-- [ ] Revenue card now shows **$10,000**
+- [ ] Add revenue via **CSV**, **Google Sheets**, or a supported connector → Save
+- [ ] Revenue card now shows the imported/connected amount
 - [ ] Click **KPIs** tab → **Create KPI**
 - [ ] **Revenue** template — NOW ENABLED
 - [ ] **ROAS/ROI** — still DISABLED (no spend yet)
 
-### Step 7: Add manual spend → all templates unlock
+### Step 7: Add spend via import/connector → all templates unlock
 - [ ] Go to **Overview** tab → click **"+"** on Spend card
-- [ ] Select **Manual** → enter **$3,000** → Save
+- [ ] Add spend via **CSV**, **Google Sheets**, or a supported ad platform → Save
 - [ ] Click **KPIs** tab → **Create KPI**
 - [ ] **ROAS, ROI, CPA** — ALL NOW ENABLED
 - [ ] Create a ROAS KPI to verify it calculates correctly
@@ -1089,6 +1089,7 @@ Required reconciliation checks:
 - [ ] Complete wizard: campaign field → revenue field → date field
 - [ ] Verify opportunity count + revenue match Salesforce
 - [ ] If the saved Salesforce source exists but auth is down, the revenue-source chooser shows `Reconnect required` rather than `Not connected`
+- [ ] If the stored Salesforce access token is missing but the refresh token is still valid, the chooser/status path recovers the connection and does not incorrectly stay in `Reconnect required`
 - [ ] In disconnected edit mode, the Source step still shows the persisted Salesforce org/account label
 - [ ] If Pipeline Proxy is enabled, select a real open Opportunity stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
 - [ ] Confirm the Overview `Pipeline Proxy` card appears because the saved Salesforce source is active, and does not depend only on a fresh proxy endpoint response

@@ -142,7 +142,7 @@ Example:
 - open CRM records in other stages, or records for other campaign values, do not contribute to this Pipeline Proxy amount
 - if `yesop_prospecting` exists only as an open `Proposal/Price Quote` record, Proxy mode must still make it selectable so the user can include it in Pipeline Proxy
 
-## The Six `Total Revenue +` Options
+## The Five `Total Revenue +` Options
 
 Revenue source options:
 
@@ -151,31 +151,31 @@ Revenue source options:
 3. `Salesforce`
 4. `Google Sheets`
 5. `Upload CSV`
-6. `Manual`
 
 When the user clicks `+` on the `Total Revenue` card:
 
 1. the revenue-source modal opens
-2. the user sees these six options
+2. the user sees these five options
 3. selecting an option starts a source-specific workflow
 
 Important meaning:
 
-- these are six distinct user journeys
+- these are five distinct user journeys
 - they are not six labels pointing to one generic "add revenue" action
 - future development should preserve the source-specific flow for each option
+- direct `Manual` revenue entry is no longer selectable for new source creation
+- existing stored manual revenue sources must still render, continue contributing to totals, and remain editable/deletable until explicitly removed
 
 ### Revenue Workflow Meaning
 
 - `Shopify`, `HubSpot`, and `Salesforce` are connection + attribution/mapping workflows, not simple value entry
 - `Google Sheets` and `CSV` are preview + mapping + import workflows
-- `Manual` is a direct campaign revenue-entry workflow
 
 Production direction note:
 
-- `Manual` is being retained during the current GA4 validation/manual-testing phase
-- after the full GA4 user-journey test pass is complete, the intended production direction is to remove `Manual` entirely
+- new direct `Manual` revenue entry has been removed from the production revenue-source picker
 - the reason is data-quality and data-integrity protection: unrestricted manual revenue entry creates avoidable provenance, duplication, and audit-risk issues
+- existing stored manual revenue sources are still supported for continuity until the user edits or removes them
 
 Executive-UX note:
 
@@ -271,6 +271,8 @@ Important meaning:
 - if a saved Salesforce revenue source exists but live OAuth is down, the `Add revenue source` chooser should show `Reconnect required` rather than `Not connected`
 - if Salesforce is disconnected, the wizard should still show the persisted Salesforce org/account label instead of `—`
 
+- Salesforce status recovery should attempt refresh-token recovery before source-selection surfaces fall back to `Reconnect required`
+
 ## Revenue Source 4: Google Sheets Journey
 
 The user journey is:
@@ -346,12 +348,12 @@ The user journey is:
 
 Important meaning:
 
-- `Manual` is a direct value-entry workflow
+- existing stored `Manual` is a direct value-entry workflow
 - unlike CRM and sheet-based options, it is not an attribution or import mapping process
 - it behaves more like a manually maintained revenue snapshot and is best treated as a higher-friction, less automated path
 - it should be treated as a temporary validation/testing path rather than a long-term production workflow
 
-## The Six `Total Spend +` Options
+## The Five `Total Spend +` Options
 
 Spend source options:
 
@@ -360,29 +362,27 @@ Spend source options:
 3. `Google Ads`
 4. `Google Sheets`
 5. `Upload CSV`
-6. `Manual`
 
 When the user clicks `+` on the `Total Spend` card:
 
 1. the spend-source modal opens
-2. the user sees these six options
+2. the user sees these five options
 3. selecting an option starts a source-specific workflow
 
 ### Spend Workflow Meaning
 
 - `LinkedIn Ads`, `Meta / Facebook`, and `Google Ads` are connector-based spend workflows with campaign selection inside the modal
 - `Google Sheets` and `CSV` are preview + mapping + import workflows
-- `Manual` is a direct spend-entry workflow
 
 Production direction note:
 
-- `Manual` is being retained during the current GA4 validation/manual-testing phase
-- after the full GA4 user-journey test pass is complete, the intended production direction is to remove `Manual` entirely
+- new direct `Manual` spend entry has been removed from the production spend-source picker
 - the reason is data-quality and data-integrity protection: unrestricted manual spend entry creates avoidable provenance, duplication, and audit-risk issues
+- existing stored manual spend sources are still supported for continuity until the user edits or removes them
 
 Important meaning:
 
-- these are six distinct spend-source journeys
+- these are five distinct spend-source journeys
 - they are not six labels pointing to one generic "add spend" action
 - some ad-platform paths support `Test mode` so users can validate the flow with mock data before using live connector data
 
@@ -578,8 +578,8 @@ The required pattern is:
 - `Meta / Facebook` and `Google Ads` spend currently use connected-platform selection flows, but their current persisted spend handling is still more snapshot-like than a fully specialized connector pipeline
 - `Upload CSV` revenue is a manual snapshot source and requires re-upload for updates
 - `Upload CSV` spend is a manual snapshot source for import cadence, but spend-source edit can recalculate from the stored imported dataset when only campaign-value selection changes
-- `Manual` revenue/spend is a manual snapshot source and requires direct manual updates
-- planned production direction: remove `Manual` after the current GA4 validation cycle is complete
+- existing stored `Manual` revenue/spend remains a manual snapshot source and requires direct manual updates
+- new direct `Manual` source creation is no longer available from the production pickers
 
 ### Financial Source-Of-Truth Hierarchy
 
@@ -612,8 +612,7 @@ The current implementation is intentionally hybrid:
 
 Planned production direction:
 
-- `Manual` is currently retained to support testing and validation
-- once the full GA4 manual-user-journey pass is complete, `Manual` should be removed from production revenue and spend source options
-- `CSV` may still remain as a structured manual import path, but unrestricted direct manual entry should not remain a general production option
+- `Manual` has now been removed from new production revenue and spend source selection
+- `CSV` remains as the structured manual import path, while existing stored manual sources continue working until removed
 
 Future work must preserve financial provenance and recomputation accuracy.

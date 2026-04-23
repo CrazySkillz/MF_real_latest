@@ -78,6 +78,7 @@ CRM token continuity rule:
 - HubSpot and Salesforce reconnect flows should request offline/refresh capability so scheduled refresh and on-demand proxy/status endpoints do not drop out after short-lived access-token expiry
 - if a CRM connection is temporarily disconnected but the saved source is still active, display surfaces may fall back to persisted org/stage/proxy metadata for clarity, but those fallbacks must not be treated as fresh live data
 - if a saved Salesforce revenue source exists but live auth is down, source-selection surfaces should communicate `Reconnect required` rather than `Not connected`
+- Salesforce status recovery should attempt refresh-token recovery when a refresh token exists, even if the stored access token is missing, before reporting `connected: false`
 
 ## After Overview Refresh: KPI Recompute And Alert Checks
 
@@ -177,5 +178,7 @@ These behave more like snapshot inputs unless the user updates them again.
 
 Important meaning:
 
-- they do not participate in scheduled daily source refresh on their own
-- they are still included in recomputed totals until the user edits, replaces, or deletes them
+- new direct `Manual` source creation is no longer available from the production revenue/spend pickers
+- existing stored `Manual` sources do not participate in scheduled daily source refresh on their own
+- `Upload CSV` sources do not participate in scheduled daily source refresh on their own
+- existing stored snapshot sources are still included in recomputed totals until the user edits, replaces, or deletes them

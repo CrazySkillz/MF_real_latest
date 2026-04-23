@@ -14321,8 +14321,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   async function getSalesforceAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; instanceUrl: string; connectionId: string }> {
     const conn: any = await storage.getSalesforceConnection(campaignId);
-    if (!conn || !conn.accessToken || !conn.instanceUrl) throw new Error('No Salesforce connection found');
+    if (!conn || !conn.instanceUrl) throw new Error('No Salesforce connection found');
     let accessToken = conn.accessToken;
+    if (!accessToken) {
+      if (conn.refreshToken) {
+        accessToken = await refreshSalesforceToken(conn);
+      } else {
+        throw new Error('Salesforce access token missing and no refresh token available. Please reconnect Salesforce.');
+      }
+    }
     const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
     if (shouldRefresh) {
       if (conn.refreshToken) {

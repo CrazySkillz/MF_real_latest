@@ -979,10 +979,7 @@ export default function GA4Metrics() {
       metric && metric !== "__custom__"
         ? String(getLiveBenchmarkCurrentValue(metric))
         : String(benchmark.currentValue ?? "");
-    const normalizedType =
-      String((benchmark as any)?.benchmarkType || "").toLowerCase() === "goal"
-        ? "custom"
-        : (benchmark as any)?.benchmarkType || "industry";
+    const normalizedType = "custom";
     setSelectedBenchmarkTemplate(metric ? { metric } : null);
     setNewBenchmark({
       name: benchmark.name || "",
@@ -1103,10 +1100,7 @@ export default function GA4Metrics() {
         metric && metric !== "__custom__"
           ? String(getLiveBenchmarkCurrentValue(metric))
           : String((editingBenchmark as any).currentValue ?? "");
-      const normalizedType =
-        String((editingBenchmark as any)?.benchmarkType || "").toLowerCase() === "goal"
-          ? "custom"
-          : (editingBenchmark as any)?.benchmarkType || "industry";
+      const normalizedType = "custom";
       setSelectedBenchmarkTemplate(metric ? { metric } : null);
       setNewBenchmark({
         name: editingBenchmark.name || "",
@@ -6331,78 +6325,15 @@ export default function GA4Metrics() {
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <div className="text-sm font-medium text-foreground/80/60">Benchmark Type *</div>
-                                <Select
-                                  value={newBenchmark.benchmarkType || "custom"}
-                                  onValueChange={(v) => {
-                                    if (v === "custom") {
-                                      // Custom Value: leave Benchmark Value empty so user can enter it manually.
-                                      setNewBenchmark({ ...newBenchmark, benchmarkType: v, industry: "", benchmarkValue: "" });
-                                      return;
-                                    }
-                                    // Industry suggestion: clear benchmark value until industry is selected.
-                                    setNewBenchmark({ ...newBenchmark, benchmarkType: v, benchmarkValue: "", industry: "" });
-                                  }}
-                                >
+                                <Select value="custom" onValueChange={() => {}}>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select type" />
                                   </SelectTrigger>
                                   <SelectContent className="z-[10000]">
-                                    <SelectItem value="industry">Industry suggestion (optional)</SelectItem>
                                     <SelectItem value="custom">Custom Value</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
-
-                              {newBenchmark.benchmarkType === "industry" && (
-                                <div className="space-y-2">
-                                  <div className="text-sm font-medium text-foreground/80/60">Industry</div>
-                                  <Select
-                                    value={newBenchmark.industry}
-                                    onValueChange={async (industry) => {
-                                      setNewBenchmark({ ...newBenchmark, industry });
-                                      if (!industry || !newBenchmark.metric) return;
-                                      try {
-                                        const resp = await fetch(
-                                          `/api/industry-benchmarks/${encodeURIComponent(industry)}/${encodeURIComponent(newBenchmark.metric)}`
-                                        );
-                                        if (!resp.ok) {
-                                          setNewBenchmark((prev) => ({ ...prev, benchmarkValue: "" }));
-                                          return;
-                                        }
-                                        const data = await resp.json().catch(() => null);
-                                        if (data && typeof data.value !== "undefined") {
-                                          setNewBenchmark((prev) => ({
-                                            ...prev,
-                                            benchmarkValue: formatNumberByUnit(String(data.value), String(prev.unit || data.unit || "%")),
-                                            unit: prev.unit || data.unit || prev.unit,
-                                          }));
-                                        }
-                                      } catch {
-                                        // ignore - industry benchmarks are best-effort
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select industry" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-64 z-[10000]">
-                                      {(industries || []).length === 0 ? (
-                                        <SelectItem value="__none__" disabled>
-                                          No industries loaded (refresh page or try again)
-                                        </SelectItem>
-                                      ) : null}
-                                      {(industries || []).map((i) => (
-                                        <SelectItem key={i.value} value={i.value}>
-                                          {i.label}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <div className="text-xs text-muted-foreground/70">
-                                    Selecting an industry will auto-fill a suggested Benchmark Value for the chosen metric.
-                                  </div>
-                                </div>
-                              )}
                             </div>
 
                             {/* Alert Settings */}

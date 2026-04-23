@@ -144,6 +144,8 @@ Recent lesson:
 - future fixes should name the specific missing field first, then trace that field end-to-end before editing
 - for CRM label/status bugs, also prove whether the value is missing in persisted connection metadata, omitted by the status API when disconnected, or cleared by the frontend after a `connected:false` response before changing UI copy
 - for wizard-selection bugs, also prove that the selection list endpoint uses the same eligibility rules as the save/materialization path; do not let Crosswalk expose values that the confirmed save path will later exclude
+- for Salesforce OAuth durability bugs, prove whether the callback actually received `refresh_token`, what `scope` Salesforce returned, and whether an existing stored refresh token was available to preserve before changing reconnect or status logic
+- if diagnostics show `scope: 'api'` with no returned `refresh_token`, stop app-side guessing and fix the Salesforce Connected App OAuth scopes/policies first
 
 Do not batch many unrelated fixes together.
 

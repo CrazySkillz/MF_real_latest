@@ -89,6 +89,8 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Reports: custom-report PDF major section order is `Overview -> KPIs -> Benchmarks -> Ad Comparison -> Insights`
 - Reports: custom-report subsection selection is respected and unchecked subsections are excluded
 - Connected source rows: edit/delete still recompute totals correctly
+- Salesforce reconnect: after fixing Connected App OAuth scopes/policies, reconnect should complete without the `Salesforce did not return a refresh token` error
+- Salesforce reconnect stability: after a successful reconnect, the source should remain connected after page refresh and later token expiry, not fall back to `Reconnect required`
 
 Important `Users` interpretation rule:
 
@@ -97,6 +99,19 @@ Important `Users` interpretation rule:
   `Deduplicated GA4 users for the selected campaign scope.`
 - `Users` in `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` are row-level breakdown values
 - the same person can appear in more than one row, so table `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
+
+Important Salesforce reconnect evidence rule:
+
+- if reconnect fails, check server logs before changing code
+- if logs show `hasReturnedRefreshToken: false`, `hasExistingRefreshToken: false`, and `scope: 'api'`, the problem is the Salesforce Connected App configuration, not later token loss in the app
+- a stable Salesforce reconnect requires Connected App selected scopes to include:
+  - `api`
+  - `refresh_token, offline_access`
+  - `id`
+  - `web`
+- a stable Salesforce reconnect also requires:
+  - `Refresh token is valid until revoked`
+  - an IP relaxation setting compatible with the deployed app environment
 
 ## Stop Rules
 

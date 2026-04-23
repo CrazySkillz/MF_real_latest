@@ -272,6 +272,16 @@ Important meaning:
 - if Salesforce is disconnected, the wizard should still show the persisted Salesforce org/account label instead of `—`
 
 - Salesforce status recovery should attempt refresh-token recovery before source-selection surfaces fall back to `Reconnect required`
+- Salesforce callback/save behavior must reject a reconnect that returns no durable refresh token and no existing stored refresh token to preserve; the app must not silently save another short-lived connection
+- if reconnect diagnostics show `scope: 'api'`, `hasReturnedRefreshToken: false`, and `hasExistingRefreshToken: false`, the root cause is the Salesforce Connected App OAuth configuration rather than later token loss in the app
+- the Salesforce Connected App should include at least these selected OAuth scopes:
+  - `Manage user data via APIs (api)`
+  - `Perform requests at any time (refresh_token, offline_access)`
+  - `Access the identity URL service (id, profile, email, address, phone)`
+  - `Manage user data via Web browsers (web)`
+- the Salesforce Connected App should use a durable refresh token policy, preferably `Refresh token is valid until revoked`
+- for cloud-hosted environments like Render, the Salesforce Connected App IP relaxation should be permissive enough to avoid cloud IP churn breaking reconnect stability; `Relax IP restrictions` is the most stable option
+- if a fragile older Salesforce revenue source was created before durable refresh-token issuance was fixed, the user should create a new Salesforce revenue source from the durable connection rather than continue relying on that older fragile source
 
 ## Revenue Source 4: Google Sheets Journey
 

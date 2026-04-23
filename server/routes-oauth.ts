@@ -6657,6 +6657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `client_id=${encodeURIComponent(clientId)}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `scope=${encodeURIComponent(scope)}&` +
+        `prompt=consent&` +
         `code_challenge=${encodeURIComponent(codeChallenge)}&` +
         `code_challenge_method=S256&` +
         `state=${encodeURIComponent(state)}`;

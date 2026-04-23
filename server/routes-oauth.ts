@@ -6640,8 +6640,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Default to the minimum needed for this integration.
       // NOTE: we include "id" so we can call the identity/userinfo endpoints to reliably detect user/org currency.
       // We also request offline_access because some Salesforce org/app setups only issue refresh tokens when offline access is explicitly requested.
-      // You can override via env var if your org allows/needs more (e.g. "api id refresh_token offline_access").
-      const scope = String(process.env.SALESFORCE_OAUTH_SCOPE || process.env.SALESFORCE_OAUTH_SCOPES || 'api id refresh_token offline_access').trim();
+      // Include "web" in the default scope because Salesforce expects browser-based integrations to request it alongside api + refresh access.
+      // You can override via env var if your org allows/needs more (e.g. "api id web refresh_token offline_access").
+      const scope = String(process.env.SALESFORCE_OAUTH_SCOPE || process.env.SALESFORCE_OAUTH_SCOPES || 'api id web refresh_token offline_access').trim();
 
       // PKCE
       cleanupSalesforcePkce();

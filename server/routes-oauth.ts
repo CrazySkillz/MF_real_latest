@@ -6845,6 +6845,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expiresAt = tokens.issued_at ? new Date(Number(tokens.issued_at) + 2 * 60 * 60 * 1000) : undefined; // conservative 2h
 
       const existing = await storage.getSalesforceConnection(campaignId);
+      const durableRefreshToken = tokens.refresh_token || existing?.refreshToken || null;
+      if (!durableRefreshToken) {
+        throw new Error('Salesforce did not return a refresh token. Reconnect cannot be completed durably. Check the Connected App refresh-token/offline-access policy and try again.');
+      }
       if (existing) {
         await storage.updateSalesforceConnection(existing.id, {
           accessToken: tokens.access_token,
@@ -6861,7 +6865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createSalesforceConnection({
           campaignId,
           accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
+          refreshToken: durableRefreshToken,
           clientId,
           clientSecret,
           expiresAt,

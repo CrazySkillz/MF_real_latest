@@ -1436,7 +1436,7 @@ export function AddRevenueWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("manual")}>
+                <Card className="hidden" onClick={() => setStep("manual")}>
                   <CardHeader>
                     <CardTitle className="text-lg">Manual</CardTitle>
                     <CardDescription>

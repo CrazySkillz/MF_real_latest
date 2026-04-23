@@ -11852,13 +11852,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       if (!conn.accessToken) {
-        return res.json({
-          connected: false,
-          connectionId: conn.id,
-          orgId: conn.orgId,
-          orgName: conn.orgName,
-          instanceUrl: conn.instanceUrl,
-        });
+        if (conn.refreshToken) {
+          try {
+            await refreshSalesforceToken(conn);
+          } catch (err) {
+            console.error('[Salesforce Status] Token refresh failed:', err);
+            return res.json({
+              connected: false,
+              connectionId: conn.id,
+              orgId: conn.orgId,
+              orgName: conn.orgName,
+              instanceUrl: conn.instanceUrl,
+            });
+          }
+        } else {
+          return res.json({
+            connected: false,
+            connectionId: conn.id,
+            orgId: conn.orgId,
+            orgName: conn.orgName,
+            instanceUrl: conn.instanceUrl,
+          });
+        }
       }
       // Check if token is expired or expiring within 5 minutes
       const isExpiring = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);

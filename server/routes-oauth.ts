@@ -5165,6 +5165,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Also delete any associated GA4 connection
       await storage.deleteGA4Connection(campaignId);
 
+      try {
+        const notifs = await storage.getNotifications().catch(() => []);
+        await Promise.all(
+          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
+            if (String((n as any)?.campaignId || "") === String(campaignId)) {
+              await storage.deleteNotification(String((n as any).id));
+            }
+          })
+        );
+      } catch (e) {
+        console.warn("[Campaign Delete] Failed to cascade delete campaign notifications:", e);
+      }
+
       res.json({ success: true, message: "Campaign deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete campaign" });
@@ -18596,6 +18609,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       await storage.deleteMetaKPI(kpiId);
+      try {
+        const notifs = await storage.getNotifications().catch(() => []);
+        await Promise.all(
+          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
+            const metaRaw = (n as any)?.metadata;
+            if (!metaRaw) return;
+            try {
+              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
+              if (String(meta?.kpiId || "") === String(kpiId)) {
+                await storage.deleteNotification(String((n as any).id));
+              }
+            } catch {}
+          })
+        );
+      } catch (e) {
+        console.warn("[Meta KPI Delete] Failed to cascade delete KPI notifications:", e);
+      }
       res.json({ success: true });
     } catch (error: any) {
       console.error('[Meta KPIs] Delete error:', error);
@@ -19275,6 +19305,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       await storage.deleteMetaBenchmark(benchmarkId);
+      try {
+        const notifs = await storage.getNotifications().catch(() => []);
+        await Promise.all(
+          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
+            const metaRaw = (n as any)?.metadata;
+            if (!metaRaw) return;
+            try {
+              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
+              if (String(meta?.benchmarkId || "") === String(benchmarkId)) {
+                await storage.deleteNotification(String((n as any).id));
+              }
+            } catch {}
+          })
+        );
+      } catch (e) {
+        console.warn("[Meta Benchmark Delete] Failed to cascade delete benchmark notifications:", e);
+      }
       res.json({ success: true });
     } catch (error: any) {
       console.error('[Meta Benchmarks] Delete error:', error);
@@ -20703,6 +20750,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "KPI not found" });
       }
 
+      try {
+        const notifs = await storage.getNotifications().catch(() => []);
+        await Promise.all(
+          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
+            const metaRaw = (n as any)?.metadata;
+            if (!metaRaw) return;
+            try {
+              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
+              if (String(meta?.kpiId || "") === String(kpiId)) {
+                await storage.deleteNotification(String((n as any).id));
+              }
+            } catch {}
+          })
+        );
+      } catch (e) {
+        console.warn("[Campaign KPI Delete] Failed to cascade delete KPI notifications:", e);
+      }
+
       res.json({ message: "KPI deleted successfully", success: true });
     } catch (error) {
       console.error('KPI deletion error:', error);
@@ -21279,6 +21344,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Benchmark not found" });
       }
 
+      try {
+        const notifs = await storage.getNotifications().catch(() => []);
+        await Promise.all(
+          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
+            const metaRaw = (n as any)?.metadata;
+            if (!metaRaw) return;
+            try {
+              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
+              if (String(meta?.benchmarkId || "") === String(benchmarkId)) {
+                await storage.deleteNotification(String((n as any).id));
+              }
+            } catch {}
+          })
+        );
+      } catch (e) {
+        console.warn("[Platform Benchmark Delete] Failed to cascade delete benchmark notifications:", e);
+      }
+
       res.json({ message: "Benchmark deleted successfully", success: true });
     } catch (error) {
       console.error('Platform benchmark deletion error:', error);
@@ -21790,6 +21873,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!success) {
         return res.status(404).json({ message: "Benchmark not found" });
+      }
+
+      try {
+        const notifs = await storage.getNotifications().catch(() => []);
+        await Promise.all(
+          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
+            const metaRaw = (n as any)?.metadata;
+            if (!metaRaw) return;
+            try {
+              const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
+              if (String(meta?.benchmarkId || "") === String(id)) {
+                await storage.deleteNotification(String((n as any).id));
+              }
+            } catch {}
+          })
+        );
+      } catch (e) {
+        console.warn("[Benchmark Delete] Failed to cascade delete benchmark notifications:", e);
       }
 
       res.json({ success: true, message: "Benchmark deleted successfully" });

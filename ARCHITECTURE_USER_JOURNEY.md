@@ -94,6 +94,25 @@ The concrete top-of-funnel journey should be understood as:
 7. the new client appears under the `Clients` section in the left nav
 8. clicking the client should route the user to that client's `Dashboard`
 
+### Left Sidebar Pattern
+
+The left sidebar has two navigation layers:
+
+- global main-nav items
+- client-specific submenu items under each client
+
+Current intended pattern:
+
+- `Home` and `Notifications` are global main-nav items
+- `Dashboard`, `Campaigns`, `Audiences`, and `Reports` are client-scoped submenu items
+- `Connected Platforms` is a status section below the main navigation, not a route group
+
+Important meaning:
+
+- `Notifications` is not client-submenu navigation
+- the `Notifications` page is a global surface that aggregates notifications across campaigns
+- users can filter that page by campaign after opening it
+
 ### Current-State Note: Dashboard
 
 The `Dashboard` should be treated as the client-level overview layer for that client's campaigns.

@@ -12,24 +12,29 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, Trash2, Mail, MailOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Notification } from "@shared/schema";
+import { Campaign, Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
+import { useClient } from "@/lib/clientContext";
 
 export default function Notifications() {
   const [searchTerm, setSearchTerm] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [readFilter, setReadFilter] = useState("all");
-  const [campaignFilter, setCampaignFilter] = useState("all");
+  const [clientFilter, setClientFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const { clients } = useClient();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
+  });
+  const { data: campaigns = [] } = useQuery<Campaign[]>({
+    queryKey: ["/api/campaigns"],
   });
 
   const setReadStateMutation = useMutation({
@@ -89,7 +94,8 @@ export default function Notifications() {
     const matchesRead = readFilter === "all" || 
                        (readFilter === "unread" && !notification.read) || 
                        (readFilter === "read" && notification.read);
-    const matchesCampaign = campaignFilter === "all" || notification.campaignName === campaignFilter;
+    const campaignClientId = campaigns.find(c => c.id === notification.campaignId)?.clientId || null;
+    const matchesClient = clientFilter === "all" || campaignClientId === clientFilter;
 
     let matchesDate = true;
     if (dateFilter !== "all") {
@@ -114,11 +120,16 @@ export default function Notifications() {
       }
     }
 
-    return matchesSearch && matchesPriority && matchesRead && matchesCampaign && matchesDate;
+    return matchesSearch && matchesPriority && matchesRead && matchesClient && matchesDate;
   });
 
-  // Get unique campaign names for filter dropdown
-  const uniqueCampaigns = Array.from(new Set(notifications.map(n => n.campaignName).filter(Boolean)));
+  const uniqueClientIds = Array.from(
+    new Set(
+      notifications
+        .map(n => campaigns.find(c => c.id === n.campaignId)?.clientId)
+        .filter(Boolean)
+    )
+  );
 
   // Pagination
   const totalPages = Math.ceil(filteredNotifications.length / itemsPerPage);
@@ -129,7 +140,7 @@ export default function Notifications() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, priorityFilter, readFilter, campaignFilter, dateFilter]);
+  }, [searchTerm, priorityFilter, readFilter, clientFilter, dateFilter]);
 
   // Adjust current page if it's now out of bounds (after deletion)
   useEffect(() => {
@@ -262,16 +273,16 @@ export default function Notifications() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="campaign-filter">Campaign</Label>
-                    <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-                      <SelectTrigger data-testid="select-campaign-filter">
-                        <SelectValue placeholder="All campaigns" />
+                    <Label htmlFor="client-filter">Client</Label>
+                    <Select value={clientFilter} onValueChange={setClientFilter}>
+                      <SelectTrigger data-testid="select-client-filter">
+                        <SelectValue placeholder="All clients" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Campaigns</SelectItem>
-                        {uniqueCampaigns.map((campaign) => (
-                          <SelectItem key={campaign} value={campaign || ""}>
-                            {campaign}
+                        <SelectItem value="all">All Clients</SelectItem>
+                        {uniqueClientIds.map((clientId) => (
+                          <SelectItem key={clientId} value={clientId || ""}>
+                            {clients.find(c => c.id === clientId)?.name || clientId}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -6636,13 +6636,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Default login domain (can be overridden to test.salesforce.com later)
       const authBase = (process.env.SALESFORCE_AUTH_BASE_URL || 'https://login.salesforce.com').replace(/\/+$/, '');
-      // Some orgs reject certain scope combos (we've seen invalid_scope for refresh_token).
-      // Default to the minimum needed for this integration.
-      // NOTE: we include "id" so we can call the identity/userinfo endpoints to reliably detect user/org currency.
-      // We also request offline_access because some Salesforce org/app setups only issue refresh tokens when offline access is explicitly requested.
-      // Include "web" in the default scope because Salesforce expects browser-based integrations to request it alongside api + refresh access.
-      // You can override via env var if your org allows/needs more (e.g. "api id web refresh_token offline_access").
-      const scope = String(process.env.SALESFORCE_OAUTH_SCOPE || process.env.SALESFORCE_OAUTH_SCOPES || 'api id web refresh_token offline_access').trim();
+      // Let the Connected App issue its configured OAuth scopes by default.
+      // If a deployment needs an explicit override, it can still provide one via env.
+      const scope = String(process.env.SALESFORCE_OAUTH_SCOPE || process.env.SALESFORCE_OAUTH_SCOPES || '').trim();
 
       // PKCE
       cleanupSalesforcePkce();
@@ -6657,7 +6653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `response_type=code&` +
         `client_id=${encodeURIComponent(clientId)}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `scope=${encodeURIComponent(scope)}&` +
+        `${scope ? `scope=${encodeURIComponent(scope)}&` : ''}` +
         `prompt=consent&` +
         `code_challenge=${encodeURIComponent(codeChallenge)}&` +
         `code_challenge_method=S256&` +
@@ -6808,6 +6804,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }),
       });
       const tokens: any = await tokenResp.json().catch(() => ({}));
+      console.log('[Salesforce OAuth] Token exchange result', {
+        campaignId,
+        ok: tokenResp.ok,
+        status: tokenResp.status,
+        hasAccessToken: !!tokens?.access_token,
+        hasRefreshToken: !!tokens?.refresh_token,
+        hasInstanceUrl: !!tokens?.instance_url,
+        scope: tokens?.scope || null,
+        tokenType: tokens?.token_type || null,
+        issuedAt: tokens?.issued_at || null,
+        responseKeys: Object.keys(tokens || {}).sort(),
+      });
       if (!tokenResp.ok || !tokens.access_token || !tokens.instance_url) {
         throw new Error(tokens?.error_description || tokens?.error || 'Failed to obtain Salesforce access token');
       }
@@ -6849,6 +6857,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await storage.getSalesforceConnection(campaignId);
       const durableRefreshToken = tokens.refresh_token || existing?.refreshToken || null;
       if (!durableRefreshToken) {
+        console.error('[Salesforce OAuth] Missing durable refresh token after callback', {
+          campaignId,
+          hasReturnedRefreshToken: !!tokens?.refresh_token,
+          hasExistingRefreshToken: !!existing?.refreshToken,
+          scope: tokens?.scope || null,
+          responseKeys: Object.keys(tokens || {}).sort(),
+        });
         throw new Error('Salesforce did not return a refresh token. Reconnect cannot be completed durably. Check the Connected App refresh-token/offline-access policy and try again.');
       }
       if (existing) {
@@ -14313,6 +14328,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }),
     });
     const json: any = await resp.json().catch(() => ({}));
+    console.log('[Salesforce OAuth] Refresh token result', {
+      connectionId: connection?.id || null,
+      ok: resp.ok,
+      status: resp.status,
+      hasAccessToken: !!json?.access_token,
+      hasInstanceUrl: !!json?.instance_url,
+      scope: json?.scope || null,
+      responseKeys: Object.keys(json || {}).sort(),
+    });
     if (!resp.ok || !json.access_token) {
       throw new Error(json?.error_description || json?.error || 'Failed to refresh Salesforce access token');
     }

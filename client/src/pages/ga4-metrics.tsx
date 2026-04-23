@@ -6321,21 +6321,6 @@ export default function GA4Metrics() {
                               </div>
                             </div>
 
-                            {/* Benchmark Type */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <div className="text-sm font-medium text-foreground/80/60">Benchmark Type *</div>
-                                <Select value="custom" onValueChange={() => {}}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select type" />
-                                  </SelectTrigger>
-                                  <SelectContent className="z-[10000]">
-                                    <SelectItem value="custom">Custom Value</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
                             {/* Alert Settings */}
                             <div className="space-y-4 pt-4 border-t">
                               <div className="flex items-center space-x-2">

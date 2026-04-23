@@ -21252,6 +21252,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Benchmark not found" });
       }
 
+      try {
+        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
+        await checkBenchmarkPerformanceAlerts();
+      } catch (e: any) { console.warn("[Platform Benchmark Update] Alert check failed:", (e as any)?.message || e); }
+
       res.json(benchmark);
     } catch (error) {
       console.error('Platform benchmark update error:', error);
@@ -21762,6 +21767,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
+
+      try {
+        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
+        await checkBenchmarkPerformanceAlerts();
+      } catch (e: any) { console.warn("[Benchmark Update] Alert check failed:", (e as any)?.message || e); }
 
       res.json(benchmark);
     } catch (error) {

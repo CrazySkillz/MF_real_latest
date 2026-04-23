@@ -260,6 +260,7 @@ Checkpoint after Journey 1:
 - [ ] Click the **Benchmarks** tab
 - [ ] Click **Create Benchmark** button
 - [ ] Same pattern: Revenue ENABLED, ROAS/ROI/CPA DISABLED
+- [ ] The modal does **not** show a `Benchmark Type` field
 - [ ] Close the dialog
 
 ### Step 11: Verify Insights tab

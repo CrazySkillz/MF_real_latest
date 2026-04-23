@@ -181,4 +181,3 @@ The current codebase is broadly aligned with that model, but the implementation 
 - live page rendering uses current GA4-backed values
 - stored KPI values and history are maintained by background GA4 jobs
 - some immediate post-refresh behavior still routes through a generic KPI refresh helper
-- KPI notification navigation still has legacy LinkedIn-style URL behavior in shared notification code

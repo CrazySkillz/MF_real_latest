@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This file defines the GA4 `Benchmarks` tab, benchmark creation flow, industry autofill, progress rules, gating, alerts, and refresh behavior.
+This file defines the GA4 `Benchmarks` tab, benchmark creation flow, progress rules, gating, alerts, and refresh behavior.
 
 ## Benchmark Tab Structure
 
@@ -28,7 +28,7 @@ Executive snapshot cards:
 2. user chooses a benchmark metric or custom benchmark
 3. the app prefills the latest current value from live GA4-backed calculations
 4. if `Custom` is selected, the user enters the benchmark value
-5. optionally, the user selects an industry for benchmark autofill
+5. the user enters a custom benchmark value
 6. the benchmark is saved to this campaign and platform scope
 
 Important meaning:
@@ -37,14 +37,15 @@ Important meaning:
 - it is not the same as a KPI target or campaign goal
 - benchmarks answer "how do we compare?" rather than "what are we trying to hit?"
 
-## Industry Benchmark Autofill
+## Benchmark Target Source
 
-Industry selection is an autofill aid.
+GA4 Benchmarks now use custom benchmark values only.
 
 Important meaning:
 
-- industry autofill helps seed a benchmark value
+- the user enters the benchmark value explicitly
 - the benchmark still belongs to this campaign after save
+- GA4 does not present industry-autofill benchmark suggestions in the create/edit flow
 
 ## Benchmark Grid Behavior
 
@@ -56,6 +57,8 @@ Each benchmark shows:
 - status
 - edit action
 - delete action
+
+The GA4 benchmark card no longer shows a separate `Source` tile when the benchmark is custom, because custom entry is now the default GA4 benchmark path.
 
 The benchmark grid is the detailed record of benchmark state.
 
@@ -138,7 +141,7 @@ Users can enable benchmark alerts with:
 Expected behavior:
 
 - benchmarks with alerts enabled show a warning indicator on the benchmark card
-- breached benchmarks show a red pulsing circle indicator on the KPI card
+- breached benchmarks show a red pulsing circle indicator on the benchmark card
 - breached benchmark alerts should appear in the bell icon and notifications center
 - email delivery is optional
 

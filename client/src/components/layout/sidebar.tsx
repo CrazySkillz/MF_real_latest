@@ -34,7 +34,6 @@ export default function Sidebar() {
     { path: "/campaigns", label: "Campaigns", icon: Target },
     { path: "/audiences", label: "Audiences", icon: Users },
     { path: "/reports", label: "Reports", icon: FileText },
-    { path: "/notifications", label: "Notifications", icon: Bell },
   ];
 
   const handleClientClick = (clientId: string) => {
@@ -57,6 +56,12 @@ export default function Sidebar() {
             <div className={`nav-link ${location === "/" ? "nav-link-active" : "nav-link-inactive"}`}>
               <Home className="w-5 h-5" />
               <span>Home</span>
+            </div>
+          </Link>
+          <Link href="/notifications">
+            <div className={`nav-link ${location === "/notifications" ? "nav-link-active" : "nav-link-inactive"}`}>
+              <Bell className="w-5 h-5" />
+              <span>Notifications</span>
             </div>
           </Link>
         </nav>

@@ -6640,8 +6640,8 @@ export default function GA4Metrics() {
                                       </div>
                                     </div>
 
-                                    {/* 3-column metrics grid */}
-                                    <div className="grid gap-4 md:grid-cols-3 mb-4">
+                                    {/* 2-column metrics grid */}
+                                    <div className="grid gap-4 md:grid-cols-2 mb-4">
                                       <div className="p-3 bg-muted rounded-lg">
                                         <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current Value</div>
                                         <div className="text-lg font-bold text-foreground">
@@ -6652,12 +6652,6 @@ export default function GA4Metrics() {
                                         <div className="text-sm font-medium text-muted-foreground/70 mb-1">Benchmark Value</div>
                                         <div className="text-lg font-bold text-foreground">
                                           {formatBenchmarkValue(benchmark.benchmarkValue, benchmark.unit)}
-                                        </div>
-                                      </div>
-                                      <div className="p-3 bg-muted rounded-lg">
-                                        <div className="text-sm font-medium text-muted-foreground/70 mb-1">Source</div>
-                                        <div className="text-lg font-bold text-foreground">
-                                          {benchmark.industry ? `Industry (${benchmark.industry})` : benchmark.source || "Custom"}
                                         </div>
                                       </div>
                                     </div>

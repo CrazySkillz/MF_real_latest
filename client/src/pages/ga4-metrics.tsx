@@ -1397,7 +1397,7 @@ export default function GA4Metrics() {
     const prefix = activeTab === "kpis" ? "ga4-kpi-" : "ga4-benchmark-";
     const el = document.getElementById(`${prefix}${highlightedItemId}`);
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.scrollIntoView({ behavior: "auto", block: "start" });
     const timer = window.setTimeout(() => setHighlightedItemId(""), 3000);
     return () => window.clearTimeout(timer);
   }, [activeTab, highlightedItemId, platformKPIs, benchmarks]);
@@ -5878,7 +5878,7 @@ export default function GA4Metrics() {
                                     <Card
                                       key={kpi.id}
                                       id={`ga4-kpi-${kpi.id}`}
-                                      className={highlightedItemId === String(kpi.id) ? "border-primary ring-2 ring-primary/40" : "border-border"}
+                                      className="border-border"
                                     >
                                       <CardContent className="p-5">
                                         <div className="flex items-start justify-between gap-3">
@@ -6558,7 +6558,7 @@ export default function GA4Metrics() {
                                 <Card
                                   key={benchmark.id}
                                   id={`ga4-benchmark-${benchmark.id}`}
-                                  className={highlightedItemId === String(benchmark.id) ? "border-primary ring-2 ring-primary/40" : "border-border"}
+                                  className="border-border"
                                 >
                                   <CardContent className="p-5">
                                     <div className="flex items-start justify-between mb-4">

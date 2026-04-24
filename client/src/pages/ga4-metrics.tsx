@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries } from "@tanstack/react-query";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useMemo } from "react";
 import { useRoute } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, RefreshCw, Loader2, Activity, Info, Trophy } from "lucide-react";
 import { Link } from "wouter";
@@ -1392,7 +1392,14 @@ export default function GA4Metrics() {
       return response.json();
     },
   });
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!highlightedItemId || !["kpis", "benchmarks"].includes(activeTab)) return;
+    const sectionId = activeTab === "kpis" ? "ga4-kpis-section" : "ga4-benchmarks-section";
+    const sectionEl = document.getElementById(sectionId);
+    if (!sectionEl) return;
+    sectionEl.scrollIntoView({ behavior: "auto", block: "start" });
+  }, [activeTab, highlightedItemId]);
+  useLayoutEffect(() => {
     if (!highlightedItemId || !["kpis", "benchmarks"].includes(activeTab)) return;
     const prefix = activeTab === "kpis" ? "ga4-kpi-" : "ga4-benchmark-";
     const el = document.getElementById(`${prefix}${highlightedItemId}`);
@@ -5755,7 +5762,7 @@ export default function GA4Metrics() {
                   </AlertDialog>
                 </TabsContent>
 
-                <TabsContent value="kpis" className="fade-in">
+                <TabsContent value="kpis" id="ga4-kpis-section" className="fade-in">
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -6056,7 +6063,7 @@ export default function GA4Metrics() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="benchmarks" className="fade-in">
+                <TabsContent value="benchmarks" id="ga4-benchmarks-section" className="fade-in">
                   <div className="space-y-6">
                     <AlertDialog open={showDeleteBenchmarkDialog} onOpenChange={setShowDeleteBenchmarkDialog}>
                       <AlertDialogContent className="bg-card border-border">

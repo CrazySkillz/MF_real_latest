@@ -63,6 +63,7 @@ interface GA4Metrics {
 const SELECT_UNIT = "__select_unit__";
 const BENCHMARK_DESC_MAX = 200;
 const KPI_DESC_MAX = 200;
+const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights", "reports"] as const;
 
 const kpiFormSchema = z.object({
   name: z.string().min(1, "KPI name is required"),
@@ -146,7 +147,7 @@ export default function GA4Metrics() {
   const campaignId = params?.id;
   const initialSearchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const initialTabParam = initialSearchParams.get("tab");
-  const initialTab = initialTabParam && ["overview", "kpis", "benchmarks", "ads", "insights"].includes(initialTabParam)
+  const initialTab = initialTabParam && VALID_GA4_TABS.includes(initialTabParam as any)
     ? initialTabParam
     : "overview";
   const initialHighlight = initialSearchParams.get("highlight") || "";

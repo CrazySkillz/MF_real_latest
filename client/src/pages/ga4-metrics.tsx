@@ -144,9 +144,19 @@ const ENGAGEMENT_METRICS = new Set(["engagementrate", "engagement rate"]);
 export default function GA4Metrics() {
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
+  const initialSearchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const initialTabParam = initialSearchParams.get("tab");
+  const initialTab = initialTabParam && ["overview", "kpis", "benchmarks", "ads", "insights"].includes(initialTabParam)
+    ? initialTabParam
+    : "overview";
+  const initialHighlight = initialSearchParams.get("highlight") || "";
 
   // Scroll to top on mount (smooth transition from campaign detail)
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => {
+    if (!initialHighlight || !["kpis", "benchmarks"].includes(initialTab)) {
+      window.scrollTo(0, 0);
+    }
+  }, []);
 
   // GA4 UI now operates on strict daily values (persisted server-side).
   // We keep an internal lookback window for charts/supporting reports, but there is no user-selectable date range.
@@ -155,17 +165,8 @@ export default function GA4Metrics() {
   // dateRange MUST match the daily lookback so Summary totals equal the sum of daily rows.
   // GA4_DAILY_LOOKBACK_DAYS is computed after allGA4Connections query loads (see below)
   const dateRange = "90days";
-  const [activeTab, setActiveTab] = useState<string>("overview");
-  const [highlightedItemId, setHighlightedItemId] = useState<string>("");
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get("tab");
-    const highlight = params.get("highlight");
-    if (tab && ["overview", "kpis", "benchmarks", "ads", "insights"].includes(tab)) {
-      setActiveTab(tab);
-    }
-    if (highlight) setHighlightedItemId(highlight);
-  }, []);
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const [showGa4CampaignPicker, setShowGa4CampaignPicker] = useState(false);
   const [ga4CampaignSearch, setGa4CampaignSearch] = useState("");

@@ -166,15 +166,6 @@ export default function GA4Metrics() {
     }
     if (highlight) setHighlightedItemId(highlight);
   }, []);
-  useEffect(() => {
-    if (!highlightedItemId || !["kpis", "benchmarks"].includes(activeTab)) return;
-    const prefix = activeTab === "kpis" ? "ga4-kpi-" : "ga4-benchmark-";
-    const el = document.getElementById(`${prefix}${highlightedItemId}`);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-    const timer = window.setTimeout(() => setHighlightedItemId(""), 3000);
-    return () => window.clearTimeout(timer);
-  }, [activeTab, highlightedItemId, platformKPIs, benchmarks]);
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const [showGa4CampaignPicker, setShowGa4CampaignPicker] = useState(false);
   const [ga4CampaignSearch, setGa4CampaignSearch] = useState("");
@@ -1401,6 +1392,15 @@ export default function GA4Metrics() {
       return response.json();
     },
   });
+  useEffect(() => {
+    if (!highlightedItemId || !["kpis", "benchmarks"].includes(activeTab)) return;
+    const prefix = activeTab === "kpis" ? "ga4-kpi-" : "ga4-benchmark-";
+    const el = document.getElementById(`${prefix}${highlightedItemId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timer = window.setTimeout(() => setHighlightedItemId(""), 3000);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, highlightedItemId, platformKPIs, benchmarks]);
   const defaultCustomReportSections = useMemo(
     () => ({ overview: false, kpis: false, benchmarks: false, ads: false, insights: false }),
     []

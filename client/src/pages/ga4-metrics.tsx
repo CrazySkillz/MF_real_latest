@@ -1394,19 +1394,19 @@ export default function GA4Metrics() {
   });
   useLayoutEffect(() => {
     if (!highlightedItemId || !["kpis", "benchmarks"].includes(activeTab)) return;
-    const sectionId = activeTab === "kpis" ? "ga4-kpis-section" : "ga4-benchmarks-section";
-    const sectionEl = document.getElementById(sectionId);
-    if (!sectionEl) return;
-    sectionEl.scrollIntoView({ behavior: "auto", block: "start" });
-  }, [activeTab, highlightedItemId]);
-  useLayoutEffect(() => {
-    if (!highlightedItemId || !["kpis", "benchmarks"].includes(activeTab)) return;
     const prefix = activeTab === "kpis" ? "ga4-kpi-" : "ga4-benchmark-";
     const el = document.getElementById(`${prefix}${highlightedItemId}`);
     if (!el) return;
-    el.scrollIntoView({ behavior: "auto", block: "start" });
-    const timer = window.setTimeout(() => setHighlightedItemId(""), 3000);
-    return () => window.clearTimeout(timer);
+    let timer: number | undefined;
+    const frame = window.requestAnimationFrame(() => {
+      const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - 96);
+      window.scrollTo({ top, behavior: "auto" });
+      timer = window.setTimeout(() => setHighlightedItemId(""), 3000);
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (timer) window.clearTimeout(timer);
+    };
   }, [activeTab, highlightedItemId, platformKPIs, benchmarks]);
   const defaultCustomReportSections = useMemo(
     () => ({ overview: false, kpis: false, benchmarks: false, ads: false, insights: false }),

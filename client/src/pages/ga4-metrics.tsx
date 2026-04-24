@@ -156,6 +156,12 @@ export default function GA4Metrics() {
   // GA4_DAILY_LOOKBACK_DAYS is computed after allGA4Connections query loads (see below)
   const dateRange = "90days";
   const [activeTab, setActiveTab] = useState<string>("overview");
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab && ["overview", "kpis", "benchmarks", "ads", "insights"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, []);
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const [showGa4CampaignPicker, setShowGa4CampaignPicker] = useState(false);
   const [ga4CampaignSearch, setGa4CampaignSearch] = useState("");

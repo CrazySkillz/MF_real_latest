@@ -405,21 +405,34 @@ export default function Notifications() {
                                       setReadStateMutation.mutate({ notificationId: notification.id, read: true });
                                       
                                       const campaignId = notification.campaignId;
+                                      if (campaignId && (metadata?.kpiId || metadata?.benchmarkId)) {
+                                        try {
+                                          const rawUrl = String(metadata?.actionUrl || "");
+                                          const baseUrl = rawUrl
+                                            ? new URL(rawUrl, window.location.origin)
+                                            : new URL(`/campaigns/${campaignId}/ga4-metrics`, window.location.origin);
+                                          const isBenchmark = Boolean(metadata?.benchmarkId);
+                                          baseUrl.searchParams.set("tab", isBenchmark ? "benchmarks" : "kpis");
+                                          baseUrl.searchParams.set("highlight", String(isBenchmark ? metadata.benchmarkId : metadata.kpiId));
+                                          setLocation(`${baseUrl.pathname}${baseUrl.search}`);
+                                          return;
+                                        } catch {
+                                          // Fall through to existing non-URL-safe fallback below
+                                        }
+                                      }
                                       if (metadata?.actionUrl) {
                                         setLocation(String(metadata.actionUrl));
+                                      } else if (campaignId) {
+                                        const url = metadata?.benchmarkId
+                                          ? `/campaigns/${campaignId}/ga4-metrics?tab=benchmarks&highlight=${metadata.benchmarkId}`
+                                          : `/campaigns/${campaignId}/ga4-metrics?tab=kpis&highlight=${metadata?.kpiId || ''}`;
+                                        setLocation(url);
                                       } else {
-                                        if (campaignId) {
-                                          const url = metadata?.benchmarkId
-                                            ? `/campaigns/${campaignId}/ga4-metrics?tab=benchmarks&highlight=${metadata.benchmarkId}`
-                                            : `/campaigns/${campaignId}/ga4-metrics?tab=kpis&highlight=${metadata?.kpiId || ''}`;
-                                          setLocation(url);
-                                        } else {
-                                          toast({
-                                            title: "Error",
-                                            description: "Cannot navigate to alert - link not available",
-                                            variant: "destructive",
-                                          });
-                                        }
+                                        toast({
+                                          title: "Error",
+                                          description: "Cannot navigate to alert - link not available",
+                                          variant: "destructive",
+                                        });
                                       }
                                     }}
                                     className="bg-purple-600 hover:bg-purple-700"

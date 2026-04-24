@@ -6428,7 +6428,7 @@ export default function GA4Metrics() {
                                         </SelectContent>
                                       </Select>
                                       <p className="text-xs text-muted-foreground/70">
-                                        First breach alerts now. Then reminders repeat hourly, daily, or weekly while it stays unresolved.
+                                        Bell and Notifications keep one active alert record. This setting controls reminder emails while the breach stays unresolved.
                                       </p>
                                     </div>
                                     <div className="space-y-2">
@@ -7978,7 +7978,7 @@ export default function GA4Metrics() {
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground/70">
-                          First breach alerts now. Then reminders repeat hourly, daily, or weekly while it stays unresolved.
+                          Bell and Notifications keep one active alert record. This setting controls reminder emails while the breach stays unresolved.
                         </p>
                       </div>
 

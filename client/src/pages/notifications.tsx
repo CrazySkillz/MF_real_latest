@@ -389,11 +389,11 @@ export default function Notifications() {
                         </div>
                         
                         <div className="flex items-center space-x-2">
-                          {/* View KPI Button - if notification has KPI metadata */}
+                          {/* View alert button */}
                           {(() => {
                             try {
                               const metadata = notification.metadata ? JSON.parse(notification.metadata) : null;
-                              if (metadata?.kpiId) {
+                              if (metadata?.kpiId || metadata?.benchmarkId) {
                                 return (
                                   <Button
                                     variant="default"
@@ -404,37 +404,28 @@ export default function Notifications() {
                                       
                                       setReadStateMutation.mutate({ notificationId: notification.id, read: true });
                                       
-                                      // Use actionUrl from metadata if available, otherwise fallback.
-                                      // Avoid legacy non-campaign /linkedin-analytics links when campaignId is known.
+                                      const campaignId = notification.campaignId;
                                       if (metadata?.actionUrl) {
-                                        const actionUrl = String(metadata.actionUrl || '');
-                                        if (actionUrl.startsWith('/linkedin-analytics') && campaignId) {
-                                          const suffix = actionUrl.replace(/^\/linkedin-analytics/, '');
-                                          setLocation(
-                                            `/campaigns/${encodeURIComponent(String(campaignId))}/linkedin-analytics${suffix}`
-                                          );
-                                        } else {
-                                          setLocation(actionUrl);
-                                        }
+                                        setLocation(String(metadata.actionUrl));
                                       } else {
-                                        // Fallback to campaign-based navigation
-                                        const campaignId = notification.campaignId;
                                         if (campaignId) {
-                                          const url = `/campaigns/${campaignId}/linkedin-analytics?tab=kpis&highlight=${metadata?.kpiId || ''}`;
+                                          const url = metadata?.benchmarkId
+                                            ? `/campaigns/${campaignId}/ga4-metrics?tab=benchmarks&highlight=${metadata.benchmarkId}`
+                                            : `/campaigns/${campaignId}/ga4-metrics?tab=kpis&highlight=${metadata?.kpiId || ''}`;
                                           setLocation(url);
                                         } else {
                                           toast({
                                             title: "Error",
-                                            description: "Cannot navigate to KPI - link not available",
+                                            description: "Cannot navigate to alert - link not available",
                                             variant: "destructive",
                                           });
                                         }
                                       }
                                     }}
                                     className="bg-purple-600 hover:bg-purple-700"
-                                    data-testid={`button-view-kpi-${notification.id}`}
+                                    data-testid={`button-view-alert-${notification.id}`}
                                   >
-                                    View KPI →
+                                    {metadata?.benchmarkId ? "View Benchmark" : "View KPI"}
                                   </Button>
                                 );
                               }

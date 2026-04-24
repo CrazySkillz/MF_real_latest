@@ -111,7 +111,7 @@ Important meaning:
 
 - `Notifications` is not client-submenu navigation
 - the `Notifications` page is a global surface that aggregates notifications across campaigns
-- users can filter that page by campaign after opening it
+- users can filter that page by client after opening it
 
 ### Current-State Note: Dashboard
 

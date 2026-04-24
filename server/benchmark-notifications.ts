@@ -31,6 +31,15 @@ async function getLinkedInWindowKey(campaignId: string): Promise<string | null> 
   }
 }
 
+function getInAppAlertCooldownMs(entity: any): number | null {
+  const platform = String((entity as any)?.platformType || "").trim().toLowerCase();
+  if (platform !== "google_analytics") return null;
+  const frequency = String((entity as any)?.alertFrequency || "daily").trim().toLowerCase();
+  if (frequency === "immediate") return 60 * 60 * 1000;
+  if (frequency === "weekly") return 7 * 24 * 60 * 60 * 1000;
+  return 24 * 60 * 60 * 1000;
+}
+
 function shouldTriggerBenchmarkAlert(opts: {
   currentValue: number;
   thresholdValue: number;
@@ -93,6 +102,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     if (!Number.isFinite(currentValue)) continue;
 
     const condition = (String(b.alertCondition || "below") as any) as 'below' | 'above' | 'equals';
+    const cooldownMs = getInAppAlertCooldownMs(b);
     if (!shouldTriggerBenchmarkAlert({ currentValue, thresholdValue, condition })) continue;
 
     // For LinkedIn test-mode, dedupe per simulated day instead of per real day.
@@ -135,7 +145,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
         if (windowKey) {
           return String(meta?.benchmarkId || "") === String(b.id) && String(meta?.windowKey || "") === windowKey;
         }
-        return String(meta?.benchmarkId || "") === String(b.id) && createdAt >= today;
+        return String(meta?.benchmarkId || "") === String(b.id) && (cooldownMs !== null ? createdAt.getTime() >= Date.now() - cooldownMs : createdAt >= today);
       } catch {
         return false;
       }

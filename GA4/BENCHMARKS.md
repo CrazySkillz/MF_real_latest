@@ -138,12 +138,22 @@ Users can enable benchmark alerts with:
 - frequency
 - optional email list
 
+Alert frequency meaning:
+
+- `Immediate`
+  First breach alerts now, then repeats at most once per hour while still unresolved.
+- `Daily`
+  First breach alerts now, then repeats at most once per day while still unresolved.
+- `Weekly`
+  First breach alerts now, then repeats at most once per week while still unresolved.
+
 Expected behavior:
 
 - benchmarks with alerts enabled show a warning indicator on the benchmark card
 - breached benchmarks show a red pulsing circle indicator on the benchmark card
 - breached benchmark alerts should appear in the bell icon and notifications center
 - email delivery is optional
+- the selected `Alert Frequency` should apply to both in-app notifications and email alerts
 
 ## Benchmark Background Refresh Pattern
 
@@ -180,4 +190,3 @@ The current implementation is broadly aligned, with these caveats:
 - live page display uses current GA4-backed values
 - stored benchmark `currentValue` and history are refreshed by GA4 background jobs
 - benchmark recomputation after refresh is present
-- immediate benchmark alert checks are not mirrored as completely as KPI alert checks in the same auto-refresh path

@@ -89,6 +89,9 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Reports: custom-report PDF major section order is `Overview -> KPIs -> Benchmarks -> Ad Comparison -> Insights`
 - Reports: custom-report subsection selection is respected and unchecked subsections are excluded
 - Connected source rows: edit/delete still recompute totals correctly
+- Notifications: `View KPI` and `View Benchmark` open the correct GA4 tab and scroll/highlight the correct card
+- Notifications: page filter uses `Client`, not `Campaign`
+- Alerts: `Immediate` repeats at most hourly, `Daily` at most daily, and `Weekly` at most weekly for both in-app notifications and email
 - Salesforce reconnect: after fixing Connected App OAuth scopes/policies, reconnect should complete without the `Salesforce did not return a refresh token` error
 - Salesforce reconnect stability: after a successful reconnect, the source should remain connected after page refresh and later token expiry, not fall back to `Reconnect required`
 

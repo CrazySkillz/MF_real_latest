@@ -135,12 +135,22 @@ Users can enable alerts with:
 - frequency: `immediate`, `daily`, `weekly`
 - optional comma-separated email recipients
 
+Alert frequency meaning:
+
+- `Immediate`
+  First breach alerts now, then repeats at most once per hour while still unresolved.
+- `Daily`
+  First breach alerts now, then repeats at most once per day while still unresolved.
+- `Weekly`
+  First breach alerts now, then repeats at most once per week while still unresolved.
+
 Expected behavior:
 
 - KPIs with alerts enabled show a warning indicator on the KPI card
 - breached KPIs show a red pulsing circle indicator on the KPI card
 - breached KPI alerts should appear in the bell icon and notifications center
 - email delivery is optional
+- the selected `Alert Frequency` should apply to both in-app notifications and email alerts
 
 ## KPI Background Refresh Pattern
 

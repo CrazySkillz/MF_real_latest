@@ -156,12 +156,25 @@ export default function GA4Metrics() {
   // GA4_DAILY_LOOKBACK_DAYS is computed after allGA4Connections query loads (see below)
   const dateRange = "90days";
   const [activeTab, setActiveTab] = useState<string>("overview");
+  const [highlightedItemId, setHighlightedItemId] = useState<string>("");
   useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get("tab");
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    const highlight = params.get("highlight");
     if (tab && ["overview", "kpis", "benchmarks", "ads", "insights"].includes(tab)) {
       setActiveTab(tab);
     }
+    if (highlight) setHighlightedItemId(highlight);
   }, []);
+  useEffect(() => {
+    if (!highlightedItemId || !["kpis", "benchmarks"].includes(activeTab)) return;
+    const prefix = activeTab === "kpis" ? "ga4-kpi-" : "ga4-benchmark-";
+    const el = document.getElementById(`${prefix}${highlightedItemId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timer = window.setTimeout(() => setHighlightedItemId(""), 3000);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, highlightedItemId, platformKPIs, benchmarks]);
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const [showGa4CampaignPicker, setShowGa4CampaignPicker] = useState(false);
   const [ga4CampaignSearch, setGa4CampaignSearch] = useState("");
@@ -5862,7 +5875,11 @@ export default function GA4Metrics() {
                                   const { Icon, color } = getKpiIcon(metricKey);
 
                                   return (
-                                    <Card key={kpi.id} className="border-border">
+                                    <Card
+                                      key={kpi.id}
+                                      id={`ga4-kpi-${kpi.id}`}
+                                      className={highlightedItemId === String(kpi.id) ? "border-primary ring-2 ring-primary/40" : "border-border"}
+                                    >
                                       <CardContent className="p-5">
                                         <div className="flex items-start justify-between gap-3">
                                           <div className="flex items-start gap-3">
@@ -6389,7 +6406,7 @@ export default function GA4Metrics() {
                                         </SelectContent>
                                       </Select>
                                       <p className="text-xs text-muted-foreground/70">
-                                        Controls how often you're notified while the alert condition stays true.
+                                        First breach alerts now. Then reminders repeat hourly, daily, or weekly while it stays unresolved.
                                       </p>
                                     </div>
                                     <div className="space-y-2">
@@ -6538,7 +6555,11 @@ export default function GA4Metrics() {
                                 const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
                                 const isBlocked = deps.missing.length > 0;
                                 return (
-                                <Card key={benchmark.id} className="border-border">
+                                <Card
+                                  key={benchmark.id}
+                                  id={`ga4-benchmark-${benchmark.id}`}
+                                  className={highlightedItemId === String(benchmark.id) ? "border-primary ring-2 ring-primary/40" : "border-border"}
+                                >
                                   <CardContent className="p-5">
                                     <div className="flex items-start justify-between mb-4">
                                       <div className="flex-1">
@@ -7935,7 +7956,7 @@ export default function GA4Metrics() {
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground/70">
-                          Controls how often you're notified while the alert condition stays true.
+                          First breach alerts now. Then reminders repeat hourly, daily, or weekly while it stays unresolved.
                         </p>
                       </div>
 

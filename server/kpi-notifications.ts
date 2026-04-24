@@ -50,6 +50,15 @@ function buildKPIActionUrl(kpi: KPI): string {
     : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
 }
 
+function getInAppAlertCooldownMs(entity: any): number | null {
+  const platform = String((entity as any)?.platformType || "").trim().toLowerCase();
+  if (platform !== "google_analytics") return null;
+  const frequency = String((entity as any)?.alertFrequency || "daily").trim().toLowerCase();
+  if (frequency === "immediate") return 60 * 60 * 1000;
+  if (frequency === "weekly") return 7 * 24 * 60 * 60 * 1000;
+  return 24 * 60 * 60 * 1000;
+}
+
 /**
  * Create a monthly reminder notification
  * Triggered on 1st of month for monthly KPIs
@@ -87,6 +96,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   // - LinkedIn test-mode: prevent duplicates per simulated day (windowKey == latest daily metrics date)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const cooldownMs = getInAppAlertCooldownMs(kpi);
   let windowKey: string | null = null;
   try {
     if (kpi.campaignId) {
@@ -120,7 +130,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   const gapText = gap > 0 ? `${Math.abs(gap).toFixed(1)}% below` : `${Math.abs(gap).toFixed(1)}% above`;
   const nextMessage = `Current value (${kpi.currentValue} ${kpi.unit}) is ${gapText} your target (${kpi.targetValue} ${kpi.unit})${alertThreshold ? `. Alert threshold: ${alertThreshold} ${kpi.unit}` : ''}`;
 
-  // Check if there's already an active same-window alert for this KPI with the same current snapshot
+  // Check if there's already an active alert for this KPI inside the current dedupe window
   const hasRecentAlert = existingAlerts.some(n => {
     if (!n.metadata) return false;
     try {
@@ -129,8 +139,8 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
       const createdAt = new Date(n.createdAt);
       const sameWindow = windowKey
         ? String(meta.kpiId) === String(kpi.id) && String(meta.windowKey || "") === windowKey
-        : String(meta.kpiId) === String(kpi.id) && createdAt >= today;
-      return sameWindow && String(n.message || '') === nextMessage;
+        : String(meta.kpiId) === String(kpi.id) && (cooldownMs !== null ? createdAt.getTime() >= Date.now() - cooldownMs : createdAt >= today);
+      return sameWindow;
     } catch {
       return false;
     }
@@ -153,7 +163,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
       if (windowKey) {
         return String(meta.kpiId || '') === String(kpi.id) && String(meta.windowKey || "") === windowKey;
       }
-      return String(meta.kpiId || '') === String(kpi.id) && createdAt >= today;
+      return String(meta.kpiId || '') === String(kpi.id) && (cooldownMs !== null ? createdAt.getTime() >= Date.now() - cooldownMs : createdAt >= today);
     } catch {
       return false;
     }
@@ -183,7 +193,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   }
 
   if (hasRecentAlert) {
-    console.log(`[KPI Notification] Skipping duplicate alert for KPI: ${kpi.name} (already alerted today)`);
+    console.log(`[KPI Notification] Skipping duplicate alert for KPI: ${kpi.name} (already alerted within cooldown window)`);
     return;
   }
 

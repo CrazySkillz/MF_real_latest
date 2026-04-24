@@ -167,6 +167,19 @@ export default function GA4Metrics() {
   const dateRange = "90days";
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);
+  const handleActiveTabChange = useCallback((nextTab: string) => {
+    setActiveTab(nextTab);
+    setHighlightedItemId("");
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (nextTab === "overview") {
+      url.searchParams.delete("tab");
+    } else {
+      url.searchParams.set("tab", nextTab);
+    }
+    url.searchParams.delete("highlight");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+  }, []);
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   const [showGa4CampaignPicker, setShowGa4CampaignPicker] = useState(false);
   const [ga4CampaignSearch, setGa4CampaignSearch] = useState("");
@@ -5042,7 +5055,7 @@ export default function GA4Metrics() {
           ) : (
             <>
               {/* Charts and Detailed Analytics */}
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <Tabs value={activeTab} onValueChange={handleActiveTabChange} className="space-y-6">
                 <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>

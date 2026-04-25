@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo } from "react";
-import { useRoute } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, RefreshCw, Loader2, Activity, Info, Trophy } from "lucide-react";
 import { Link } from "wouter";
 import { SiGoogle } from "react-icons/si";
@@ -143,6 +143,7 @@ const CPA_METRICS = new Set(["cpa"]);
 const ENGAGEMENT_METRICS = new Set(["engagementrate", "engagement rate"]);
 
 export default function GA4Metrics() {
+  const [location] = useLocation();
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
   const initialSearchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
@@ -168,6 +169,17 @@ export default function GA4Metrics() {
   const dateRange = "90days";
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const nextSearchParams = new URLSearchParams(window.location.search);
+    const nextTabParam = nextSearchParams.get("tab");
+    const nextTab = nextTabParam && VALID_GA4_TABS.includes(nextTabParam as any)
+      ? nextTabParam
+      : "overview";
+    const nextHighlight = nextSearchParams.get("highlight") || "";
+    setActiveTab((prev) => (prev === nextTab ? prev : nextTab));
+    setHighlightedItemId((prev) => (prev === nextHighlight ? prev : nextHighlight));
+  }, [location]);
   const handleActiveTabChange = useCallback((nextTab: string) => {
     setActiveTab(nextTab);
     setHighlightedItemId("");

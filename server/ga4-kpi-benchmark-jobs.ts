@@ -227,7 +227,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         daily = await storage.getGA4DailyMetrics(campaignId, propertyId, date, date).catch(() => []);
       }
 
-      const row = Array.isArray(daily) ? (daily as any[])[0] : null;
+      let row = Array.isArray(daily) ? (daily as any[])[0] : null;
+      if (!row) {
+        row = await storage.getLatestGA4DailyMetric(campaignId, propertyId).catch(() => null as any);
+      }
       if (!row) continue;
 
       // Build GA4 to-date totals (campaign lifetime) for accurate financial KPIs (ROAS/ROI/CPA).

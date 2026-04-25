@@ -418,6 +418,21 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
     }
   }
 
+  if (opts?.campaignId && processed > 0) {
+    try {
+      const { checkPerformanceAlerts } = await import("./kpi-scheduler.js");
+      await checkPerformanceAlerts();
+    } catch (e: any) {
+      console.warn("[GA4 KPI/Benchmarks] KPI alert reconciliation failed:", e?.message || e);
+    }
+    try {
+      const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
+      await checkBenchmarkPerformanceAlerts();
+    } catch (e: any) {
+      console.warn("[GA4 KPI/Benchmarks] Benchmark alert reconciliation failed:", e?.message || e);
+    }
+  }
+
   return { date, campaignsProcessed: processed, kpisRecorded, benchmarksRecorded };
 }
 

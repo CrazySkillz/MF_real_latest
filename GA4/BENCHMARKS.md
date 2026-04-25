@@ -157,11 +157,15 @@ Expected behavior:
 - email delivery is optional
 - the selected `Alert Frequency` controls reminder emails, not duplicate in-app notification rows
 - when email alerts are enabled and the benchmark is already breached on create/update, the first email should send immediately
+- if a breached GA4 benchmark has no active in-app notification row, the next GA4 KPI/Benchmark recompute or daily scheduler cycle should restore exactly one active bell / Notifications alert row
+- opening the bell, opening Notifications, or simply loading the GA4 page should not be relied on as the reconciliation trigger for restoring a missing GA4 in-app alert row
 - if the benchmark unit is `count`, alert text should omit the literal word `count` in bell, Notifications, and email output
 - alert text should use the same human-readable number style as benchmark cards rather than raw parenthesized decimals
 - example alert text:
+  `Client: Test_client`
   `Campaign: myGA4`
-  `Current value 72,660 is below the alert threshold 75,000`
+  `Current value: 72,660`
+  `Alert threshold value: 75,000`
 
 ## Benchmark Background Refresh Pattern
 
@@ -190,6 +194,7 @@ Important meaning:
 - they should not lag behind the benchmark grid
 - any change that affects current value, benchmark value, progress, or status should trigger recomputation of tracker counts and `Avg. Progress`
 - benchmark alerts should evaluate after benchmark recomputation, not before
+- if the exact report-date GA4 daily row is missing, GA4 benchmark recomputation should fall back to the latest available GA4 daily row for that campaign/property rather than skipping alert reconciliation entirely
 
 ## Current-State Note
 

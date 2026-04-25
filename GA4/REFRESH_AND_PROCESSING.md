@@ -96,6 +96,7 @@ Important meaning:
 
 - KPI alerts must run only after both the KPI grid state and the KPI `Executive snapshot` state are coherent with the latest recomputed values
 - for GA4 mock/test flows, the stored KPI value used by alerts must be refreshed from the same total-construction model as the live KPI cards
+- if the exact report-date daily row is missing for a GA4 campaign, the GA4 KPI recompute path should fall back to the latest available persisted GA4 daily row instead of skipping that campaign's alert reconciliation
 - if duplicate GA4 KPI rows exist for the same `campaign + metric`, only the newest row should remain eligible to emit the active alert
 
 ## After Overview Refresh: Benchmark Recompute And Alert Checks
@@ -111,6 +112,7 @@ Required order:
 Important meaning:
 
 - Benchmark alerts must run only after both the benchmark grid state and the Benchmark `Executive snapshot` state are coherent with the latest recomputed values
+- if the exact report-date daily row is missing for a GA4 campaign, the GA4 benchmark recompute path should fall back to the latest available persisted GA4 daily row instead of skipping that campaign's alert reconciliation
 
 ## Ad Comparison Refresh
 
@@ -155,6 +157,7 @@ What is true today:
 
 - Overview freshness is updated through the GA4 daily scheduler plus external-value auto-refresh processing
 - GA4 KPI and Benchmark recomputation is triggered by GA4-specific jobs
+- when a GA4 KPI/Benchmark recompute runs for a campaign, breached GA4 KPIs and Benchmarks should restore exactly one active in-app alert row if the row is missing
 - Ad Comparison refreshes indirectly from refreshed inputs
 - Insights refreshes indirectly from refreshed inputs
 - report outputs are generated from already-refreshed tab inputs rather than from a report-only metrics pipeline
@@ -166,6 +169,7 @@ What is not yet fully consolidated:
 - some immediate post-refresh behavior still relies on a generic KPI refresh helper
 - immediate benchmark alert checks are not mirrored as completely as KPI alert checks in the same auto-refresh path
 - scheduled email delivery still depends on shared scheduler/runtime email infrastructure rather than a GA4-only delivery path
+- opening the bell, opening Notifications, or simply loading the GA4 page is not itself a backfill trigger for missing GA4 in-app alert rows; reconciliation happens when the existing GA4 recompute / scheduler paths run
 
 ## Snapshot Inputs That Do Not Auto-Refresh
 

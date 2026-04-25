@@ -34,6 +34,11 @@ Recommended process:
 4. use `Run Refresh` when the bug touches calculations, freshness, KPIs, Benchmarks, Insights, or Reports
 5. only continue to the next journey after the fixed area and regression sweep both pass
 
+Important alert-recovery rule:
+
+- for older GA4 campaigns, a missing bell / Notifications alert should be validated after a real GA4 recompute or scheduler cycle, not only after opening the page
+- if the campaign is still breached and has no active in-app alert row, the next GA4 KPI/Benchmark recompute should restore exactly one active alert row
+
 ## Test Preconditions
 
 Before starting a fresh run:
@@ -93,7 +98,8 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Bell: clicking a KPI or Benchmark alert opens the correct GA4 tab and exact card, including when already on the same campaign page
 - Notifications: page filter uses `Client`, not `Campaign`
 - Alerts: bell + Notifications keep one active in-app alert record per unresolved breach; the first breached KPI/Benchmark email sends immediately on save, and `Immediate`, `Daily`, and `Weekly` control later reminder email cadence
-- Alerts: bell, Notifications, and email text use threshold-focused wording with card-style number formatting instead of raw decimal/parenthesized values
+- Alerts: bell, Notifications, and email text use card-style number formatting with `Client:`, `Campaign:`, `Current value:`, and `Alert threshold value:` labels instead of raw decimal/parenthesized values
+- Alerts: if a GA4 KPI/Benchmark card is breached but its in-app alert row is missing, the alert should return after the next GA4 recompute / scheduler cycle; simply opening the bell, Notifications, or GA4 page should not be treated as the backfill trigger
 - Salesforce reconnect: after fixing Connected App OAuth scopes/policies, reconnect should complete without the `Salesforce did not return a refresh token` error
 - Salesforce reconnect stability: after a successful reconnect, the source should remain connected after page refresh and later token expiry, not fall back to `Reconnect required`
 

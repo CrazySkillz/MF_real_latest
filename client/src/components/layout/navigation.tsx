@@ -151,6 +151,11 @@ export default function Navigation() {
     };
   };
 
+  const navigateFromBell = (url: string) => {
+    setNotificationsOpen(false);
+    requestAnimationFrame(() => setLocation(url));
+  };
+
   const handleNotificationClick = (notification: Notification) => {
     // Mark as read
     if (!notification.read) {
@@ -183,7 +188,7 @@ export default function Navigation() {
           baseUrl.pathname = `/campaigns/${campaignId}/${platformPath}`;
           baseUrl.searchParams.set('tab', isBenchmark ? 'benchmarks' : 'kpis');
           baseUrl.searchParams.set('highlight', itemId);
-          setLocation(`${baseUrl.pathname}${baseUrl.search}`);
+          navigateFromBell(`${baseUrl.pathname}${baseUrl.search}`);
           return;
         } catch {
           // Fall through to legacy handling below
@@ -197,19 +202,19 @@ export default function Navigation() {
       if (actionUrl.startsWith('/linkedin-analytics') && notification.campaignId) {
         // Rewrite legacy actionUrl -> campaign-scoped route
         const suffix = actionUrl.replace(/^\/linkedin-analytics/, '');
-        setLocation(`/campaigns/${encodeURIComponent(String(notification.campaignId))}/linkedin-analytics${suffix}`);
+        navigateFromBell(`/campaigns/${encodeURIComponent(String(notification.campaignId))}/linkedin-analytics${suffix}`);
         return;
       }
-      setLocation(actionUrl);
+      navigateFromBell(actionUrl);
       return;
     }
 
     // Fallback: campaign-scoped KPI tab when possible; otherwise send to Notifications center.
     if (notification.campaignId) {
-      setLocation(`/campaigns/${encodeURIComponent(String(notification.campaignId))}/linkedin-analytics?tab=kpis`);
+      navigateFromBell(`/campaigns/${encodeURIComponent(String(notification.campaignId))}/linkedin-analytics?tab=kpis`);
       return;
     }
-    setLocation('/notifications');
+    navigateFromBell('/notifications');
   };
 
   return (

@@ -91,7 +91,7 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Connected source rows: edit/delete still recompute totals correctly
 - Notifications: `View KPI` and `View Benchmark` open the correct GA4 tab and scroll/highlight the correct card
 - Notifications: page filter uses `Client`, not `Campaign`
-- Alerts: `Immediate` repeats at most hourly, `Daily` at most daily, and `Weekly` at most weekly for both in-app notifications and email
+- Alerts: bell + Notifications keep one active in-app alert record per unresolved breach; `Immediate`, `Daily`, and `Weekly` control reminder email cadence
 - Salesforce reconnect: after fixing Connected App OAuth scopes/policies, reconnect should complete without the `Salesforce did not return a refresh token` error
 - Salesforce reconnect stability: after a successful reconnect, the source should remain connected after page refresh and later token expiry, not fall back to `Reconnect required`
 
@@ -851,8 +851,9 @@ Checkpoint after Journey 8:
 - [ ] Reopening the bell reflects the current server state (old resolved alerts do not linger from stale client cache)
 
 ### Step 2: Run Refresh → dedup
-- [ ] If still breached: NO duplicate notification (same calendar day)
-- [ ] If a fresher same-day alert supersedes an older one, the older notification is hidden from the active bell/feed
+- [ ] If still breached: NO duplicate in-app notification row is created
+- [ ] The bell and `/notifications` keep one active alert record for the unresolved breach
+- [ ] Dismissing the alert removes the current notification record only
 
 ### Step 3: Non-breached alert
 - [ ] Create KPI with threshold well below current

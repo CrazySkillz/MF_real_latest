@@ -303,7 +303,8 @@ export default function Navigation() {
                                 e.stopPropagation();
                                 deleteNotificationMutation.mutate(notification.id);
                               }}
-                              aria-label="Delete notification"
+                              aria-label="Dismiss notification"
+                              title="Dismiss this alert"
                               data-testid={`button-delete-notification-popover-${notification.id}`}
                             >
                               <Trash2 className="w-4 h-4" />

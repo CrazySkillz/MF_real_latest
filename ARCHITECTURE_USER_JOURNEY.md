@@ -112,6 +112,7 @@ Important meaning:
 - `Notifications` is not client-submenu navigation
 - the `Notifications` page is a global surface that aggregates notifications across campaigns
 - users can filter that page by client after opening it
+- dismissing a notification hides the current alert record only; it does not resolve the underlying KPI or benchmark breach
 
 ### Current-State Note: Dashboard
 

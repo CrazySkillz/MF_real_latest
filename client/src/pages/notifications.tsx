@@ -478,6 +478,8 @@ export default function Notifications() {
                             size="sm"
                             onClick={() => deleteNotificationMutation.mutate(notification.id)}
                             disabled={deleteNotificationMutation.isPending}
+                            aria-label="Dismiss notification"
+                            title="Dismiss this alert"
                             data-testid={`button-delete-${notification.id}`}
                           >
                             <Trash2 className="w-4 h-4 text-red-500" />

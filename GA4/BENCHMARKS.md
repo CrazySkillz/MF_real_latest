@@ -141,11 +141,11 @@ Users can enable benchmark alerts with:
 Alert frequency meaning:
 
 - `Immediate`
-  First breach alerts now, then repeats at most once per hour while still unresolved.
+  First breach alerts now. Bell + Notifications keep one active in-app alert record while the breach remains unresolved. Email reminders can repeat at most once per hour.
 - `Daily`
-  First breach alerts now, then repeats at most once per day while still unresolved.
+  First breach alerts now. Bell + Notifications keep one active in-app alert record while the breach remains unresolved. Email reminders can repeat at most once per day.
 - `Weekly`
-  First breach alerts now, then repeats at most once per week while still unresolved.
+  First breach alerts now. Bell + Notifications keep one active in-app alert record while the breach remains unresolved. Email reminders can repeat at most once per week.
 
 Expected behavior:
 
@@ -153,7 +153,7 @@ Expected behavior:
 - breached benchmarks show a red pulsing circle indicator on the benchmark card
 - breached benchmark alerts should appear in the bell icon and notifications center
 - email delivery is optional
-- the selected `Alert Frequency` should apply to both in-app notifications and email alerts
+- the selected `Alert Frequency` controls reminder emails, not duplicate in-app notification rows
 
 ## Benchmark Background Refresh Pattern
 

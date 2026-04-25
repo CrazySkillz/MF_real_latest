@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { db } from "../db";
-import { emailAlertEvents } from "../../shared/schema.js";
+import { campaigns, clients, emailAlertEvents } from "../../shared/schema.js";
+import { eq } from "drizzle-orm";
 
 interface EmailAuditContext {
   kind: 'alert' | 'report' | 'test' | 'generic';
@@ -321,6 +322,20 @@ class EmailService {
     const subject = `⚠️ Alert: ${data.name} has ${conditionText} threshold`;
     const summaryLine = this.buildAlertSummary(data);
     const thresholdLine = `Alert threshold: ${this.formatAlertDisplayValue(data.thresholdValue, data.unit)}`;
+    let clientName = "";
+    if (db && auditContext?.campaignId) {
+      try {
+        const rows = await db
+          .select({ clientName: clients.name })
+          .from(campaigns)
+          .leftJoin(clients, eq(campaigns.clientId, clients.id))
+          .where(eq(campaigns.id, auditContext.campaignId))
+          .limit(1);
+        clientName = String(rows?.[0]?.clientName || "");
+      } catch {
+        clientName = "";
+      }
+    }
     
     const html = `
       <!DOCTYPE html>
@@ -392,6 +407,7 @@ class EmailService {
             <div class="alert-box">
               <h2 style="margin-top: 0; color: #ef4444;">${data.name}</h2>
               
+              ${clientName ? `<p><strong>Client:</strong> ${clientName}</p>` : ''}
               ${data.campaignName ? `<p><strong>Campaign:</strong> ${data.campaignName}</p>` : ''}
               <p>${summaryLine}</p>
               <p><strong>${thresholdLine}</strong></p>

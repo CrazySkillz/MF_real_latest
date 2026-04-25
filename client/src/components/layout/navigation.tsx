@@ -16,15 +16,17 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useState } from "react";
-import type { Notification } from "@shared/schema";
+import type { Campaign, Notification } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { UserButton } from "@clerk/clerk-react";
+import { useClient } from "@/lib/clientContext";
 
 export default function Navigation() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [showClearAllDialog, setShowClearAllDialog] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { clients } = useClient();
 
   // Fetch notifications to get unread count
   const { data: allNotifications = [] } = useQuery<Notification[]>({
@@ -36,8 +38,15 @@ export default function Navigation() {
   });
 
   const notifications = allNotifications;
+  const { data: campaigns = [] } = useQuery<Campaign[]>({
+    queryKey: ["/api/campaigns"],
+  });
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const getClientNameForNotification = (notification: Notification) => {
+    const campaign = campaigns.find(c => c.id === notification.campaignId);
+    return clients.find(c => c.id === campaign?.clientId)?.name || "";
+  };
 
   // Mark notification as read mutation
   const markAsReadMutation = useMutation({
@@ -310,6 +319,11 @@ export default function Navigation() {
                             <p className={`text-sm font-medium ${!notification.read ? 'text-foreground' : 'text-foreground/80/60'}`}>
                               {notification.title}
                             </p>
+                            {getClientNameForNotification(notification) && (
+                              <p className="text-xs mt-0.5 text-muted-foreground/70">
+                                Client: {getClientNameForNotification(notification)}
+                              </p>
+                            )}
                             {notification.campaignName && (
                               <p className="text-xs mt-0.5 text-muted-foreground/70">
                                 Campaign: {notification.campaignName}

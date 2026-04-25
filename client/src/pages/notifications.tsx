@@ -203,6 +203,10 @@ export default function Notifications() {
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const getClientNameForNotification = (notification: Notification) => {
+    const campaign = campaigns.find(c => c.id === notification.campaignId);
+    return clients.find(c => c.id === campaign?.clientId)?.name || "";
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -374,6 +378,14 @@ export default function Notifications() {
                             </p>
                             
                             <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                              {getClientNameForNotification(notification) && (
+                                <div className="flex items-center space-x-1">
+                                  <span>Client:</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {getClientNameForNotification(notification)}
+                                  </Badge>
+                                </div>
+                              )}
                               {notification.campaignName && (
                                 <div className="flex items-center space-x-1">
                                   <span>Campaign:</span>

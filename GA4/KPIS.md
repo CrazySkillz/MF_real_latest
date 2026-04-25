@@ -149,10 +149,17 @@ Expected behavior:
 - KPIs with alerts enabled show a warning indicator on the KPI card
 - breached KPIs show a red pulsing circle indicator on the KPI card
 - breached KPI alerts should appear in the bell icon and notifications center
+- bell and Notifications `View KPI` navigation should always open the correct campaign, the `KPIs` tab, and the exact KPI card
+- if the user is already on the same GA4 campaign page, the URL change must still switch to the correct KPI tab/item instead of staying on the previously open tab
 - email delivery is optional
 - the selected `Alert Frequency` controls reminder emails, not duplicate in-app notification rows
 - when email alerts are enabled and the KPI is already breached on create/update, the first email should send immediately
 - if the KPI unit is `count`, alert text should omit the literal word `count` in bell, Notifications, and email output
+- alert text should use the same human-readable number style as KPI cards rather than raw parenthesized decimals
+- example alert text:
+  `Campaign: myGA4`
+  `Current value 72,660 is 9.2% below your target 80,000`
+  `Alert threshold: 75,000`
 
 ## KPI Background Refresh Pattern
 

@@ -13,9 +13,47 @@ function parseLooseNumber(input: unknown): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
-function getDisplayUnit(unit: unknown): string {
-  const normalized = String(unit || "").trim().toLowerCase();
-  return normalized === "count" ? "" : String(unit || "");
+function isIsoCurrencyCode(unit: string): boolean {
+  return /^[A-Z]{3}$/.test(String(unit || "").trim());
+}
+
+function formatPct(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  if (rounded === Math.floor(rounded)) return `${Math.round(rounded)}%`;
+  return `${rounded.toFixed(1)}%`;
+}
+
+function formatAlertDisplayValue(input: unknown, unit: unknown): string {
+  const num = parseLooseNumber(input);
+  if (!Number.isFinite(num)) return String(input ?? "");
+  const normalizedUnit = String(unit || "").trim();
+
+  switch (normalizedUnit) {
+    case "%":
+      return formatPct(num);
+    case "$":
+      return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    case "ratio":
+      return `${num.toFixed(2)}x`;
+    case "seconds":
+      return `${num.toFixed(1)}s`;
+    case "count":
+      return num.toLocaleString();
+    default:
+      if (isIsoCurrencyCode(normalizedUnit)) {
+        try {
+          return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: normalizedUnit,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(num);
+        } catch {
+          return num.toLocaleString();
+        }
+      }
+      return num.toLocaleString();
+  }
 }
 
 async function getLinkedInWindowKey(campaignId: string): Promise<string | null> {
@@ -120,12 +158,11 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   const currentValue = parseLooseNumber(kpi.currentValue);
   const alertThreshold = kpi.alertThreshold ? parseLooseNumber(kpi.alertThreshold) : null;
   const targetValue = parseLooseNumber(kpi.targetValue);
-  const displayUnit = getDisplayUnit(kpi.unit);
   
   // Calculate gap
   const gap = ((targetValue - currentValue) / targetValue) * 100;
   const gapText = gap > 0 ? `${Math.abs(gap).toFixed(1)}% below` : `${Math.abs(gap).toFixed(1)}% above`;
-  const nextMessage = `Current value (${kpi.currentValue}${displayUnit}) is ${gapText} your target (${kpi.targetValue}${displayUnit})${alertThreshold ? `. Alert threshold: ${alertThreshold}${displayUnit}` : ''}`;
+  const nextMessage = `Current value ${formatAlertDisplayValue(kpi.currentValue, kpi.unit)} is ${gapText} your target ${formatAlertDisplayValue(kpi.targetValue, kpi.unit)}${alertThreshold ? `. Alert threshold: ${formatAlertDisplayValue(alertThreshold, kpi.unit)}` : ''}`;
 
   // GA4 keeps one active in-app alert record per unresolved breach.
   // Other platforms preserve their existing window-based behavior.

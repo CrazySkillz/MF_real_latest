@@ -125,6 +125,7 @@ class AlertMonitoringService {
       currentValue,
       thresholdValue,
       condition,
+      targetValue: parseFloat(benchmark.benchmarkValue?.toString() || '0'),
       unit: benchmark.unit || undefined,
     }, {
       entityId: benchmark.id,
@@ -267,6 +268,7 @@ class AlertMonitoringService {
             currentValue,
             thresholdValue,
             condition,
+            targetValue: parseFloat(benchmark.benchmarkValue?.toString() || '0'),
             unit: benchmark.unit || undefined,
           }, {
             entityId: benchmark.id,

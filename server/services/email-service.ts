@@ -35,9 +35,58 @@ interface AlertEmailData {
 }
 
 class EmailService {
-  private getDisplayUnit(unit: unknown): string {
-    const normalized = String(unit || "").trim().toLowerCase();
-    return normalized === "count" ? "" : String(unit || "");
+  private isIsoCurrencyCode(unit: string): boolean {
+    return /^[A-Z]{3}$/.test(String(unit || "").trim());
+  }
+
+  private formatPct(value: number): string {
+    const rounded = Math.round(value * 10) / 10;
+    if (rounded === Math.floor(rounded)) return `${Math.round(rounded)}%`;
+    return `${rounded.toFixed(1)}%`;
+  }
+
+  private formatAlertDisplayValue(value: number | undefined, unit: unknown): string {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return String(value ?? "");
+    const normalizedUnit = String(unit || "").trim();
+
+    switch (normalizedUnit) {
+      case "%":
+        return this.formatPct(num);
+      case "$":
+        return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      case "ratio":
+        return `${num.toFixed(2)}x`;
+      case "seconds":
+        return `${num.toFixed(1)}s`;
+      case "count":
+        return num.toLocaleString();
+      default:
+        if (this.isIsoCurrencyCode(normalizedUnit)) {
+          try {
+            return new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: normalizedUnit,
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(num);
+          } catch {
+            return num.toLocaleString();
+          }
+        }
+        return num.toLocaleString();
+    }
+  }
+
+  private buildAlertSummary(data: AlertEmailData): string {
+    const comparisonValue = Number(data.targetValue);
+    const comparisonLabel = data.type === 'benchmark' ? 'benchmark' : 'target';
+    const gapText =
+      Number.isFinite(comparisonValue) && comparisonValue !== 0
+        ? `${Math.abs(((data.currentValue - comparisonValue) / comparisonValue) * 100).toFixed(1)}% ${data.currentValue >= comparisonValue ? 'above' : 'below'}`
+        : `${data.currentValue >= data.thresholdValue ? 'above' : 'below'}`;
+
+    return `Current value ${this.formatAlertDisplayValue(data.currentValue, data.unit)} is ${gapText} your ${comparisonLabel} ${this.formatAlertDisplayValue(comparisonValue, data.unit)}`;
   }
 
   private transporter: any;
@@ -270,7 +319,8 @@ class EmailService {
     }[data.condition];
 
     const subject = `⚠️ Alert: ${data.name} has ${conditionText} threshold`;
-    const displayUnit = this.getDisplayUnit(data.unit);
+    const summaryLine = this.buildAlertSummary(data);
+    const thresholdLine = `Alert threshold: ${this.formatAlertDisplayValue(data.thresholdValue, data.unit)}`;
     
     const html = `
       <!DOCTYPE html>
@@ -342,29 +392,9 @@ class EmailService {
             <div class="alert-box">
               <h2 style="margin-top: 0; color: #ef4444;">${data.name}</h2>
               
-              <div class="metric-row">
-                <span class="metric-label">Current Value:</span>
-                <span class="metric-value">${data.currentValue}${displayUnit}</span>
-              </div>
-              
-              <div class="metric-row">
-                <span class="metric-label">Alert Threshold:</span>
-                <span class="metric-value">${data.thresholdValue}${displayUnit}</span>
-              </div>
-              
-              ${data.targetValue ? `
-              <div class="metric-row">
-                <span class="metric-label">Target Value:</span>
-                <span class="metric-value">${data.targetValue}${displayUnit}</span>
-              </div>
-              ` : ''}
-              
-              ${data.campaignName ? `
-              <div class="metric-row">
-                <span class="metric-label">Campaign:</span>
-                <span class="metric-value">${data.campaignName}</span>
-              </div>
-              ` : ''}
+              ${data.campaignName ? `<p><strong>Campaign:</strong> ${data.campaignName}</p>` : ''}
+              <p>${summaryLine}</p>
+              <p><strong>${thresholdLine}</strong></p>
             </div>
             
             <p style="margin-top: 20px;">

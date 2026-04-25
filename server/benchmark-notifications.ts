@@ -13,9 +13,47 @@ function parseLooseNumber(input: unknown): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
-function getDisplayUnit(unit: unknown): string {
-  const normalized = String(unit || "").trim().toLowerCase();
-  return normalized === "count" ? "" : String(unit || "");
+function isIsoCurrencyCode(unit: string): boolean {
+  return /^[A-Z]{3}$/.test(String(unit || "").trim());
+}
+
+function formatPct(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  if (rounded === Math.floor(rounded)) return `${Math.round(rounded)}%`;
+  return `${rounded.toFixed(1)}%`;
+}
+
+function formatAlertDisplayValue(input: unknown, unit: unknown): string {
+  const num = parseLooseNumber(input);
+  if (!Number.isFinite(num)) return String(input ?? "");
+  const normalizedUnit = String(unit || "").trim();
+
+  switch (normalizedUnit) {
+    case "%":
+      return formatPct(num);
+    case "$":
+      return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    case "ratio":
+      return `${num.toFixed(2)}x`;
+    case "seconds":
+      return `${num.toFixed(1)}s`;
+    case "count":
+      return num.toLocaleString();
+    default:
+      if (isIsoCurrencyCode(normalizedUnit)) {
+        try {
+          return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: normalizedUnit,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(num);
+        } catch {
+          return num.toLocaleString();
+        }
+      }
+      return num.toLocaleString();
+  }
 }
 
 async function getLinkedInWindowKey(campaignId: string): Promise<string | null> {
@@ -162,7 +200,6 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     }
 
     const benchmarkValue = parseLooseNumber(b.benchmarkValue ?? "0");
-    const unit = getDisplayUnit(b.unit);
     const actionUrl = buildBenchmarkActionUrl(b);
 
     const gapText =
@@ -179,7 +216,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
 
     const notification: InsertNotification = {
       title: `⚠️ Benchmark Alert: ${b.name}`,
-      message: `Current value (${Number(currentValue).toFixed(2)}${unit}) is ${gapText} your benchmark (${Number(benchmarkValue || 0).toFixed(2)}${unit}). Alert threshold: ${Number(thresholdValue).toFixed(2)}${unit}`,
+      message: `Current value ${formatAlertDisplayValue(currentValue, b.unit)} is ${gapText} your benchmark ${formatAlertDisplayValue(benchmarkValue || 0, b.unit)}. Alert threshold: ${formatAlertDisplayValue(thresholdValue, b.unit)}`,
       type: "performance-alert",
       priority: "high",
       campaignId: b.campaignId || undefined,

@@ -158,6 +158,30 @@ export default function Navigation() {
       }
     }
 
+    if (metadata && typeof metadata === 'object' && ((metadata as any).kpiId || (metadata as any).benchmarkId)) {
+      const campaignId = notification.campaignId;
+      const rawUrl = String((metadata as any).actionUrl || '');
+      const isBenchmark = Boolean((metadata as any).benchmarkId);
+      const itemId = String(isBenchmark ? (metadata as any).benchmarkId : (metadata as any).kpiId || '');
+
+      if (campaignId && itemId) {
+        try {
+          const baseUrl = rawUrl
+            ? new URL(rawUrl, window.location.origin)
+            : new URL(`/campaigns/${campaignId}/ga4-metrics`, window.location.origin);
+          const isGa4 = baseUrl.pathname.includes('ga4-metrics');
+          const platformPath = isGa4 ? 'ga4-metrics' : 'linkedin-analytics';
+          baseUrl.pathname = `/campaigns/${campaignId}/${platformPath}`;
+          baseUrl.searchParams.set('tab', isBenchmark ? 'benchmarks' : 'kpis');
+          baseUrl.searchParams.set('highlight', itemId);
+          setLocation(`${baseUrl.pathname}${baseUrl.search}`);
+          return;
+        } catch {
+          // Fall through to legacy handling below
+        }
+      }
+    }
+
     // Navigate (prefer actionUrl, but avoid the legacy non-campaign /linkedin-analytics route when possible)
     if (metadata && typeof metadata === 'object' && 'actionUrl' in metadata) {
       const actionUrl = String((metadata as any).actionUrl || '');

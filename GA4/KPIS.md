@@ -138,11 +138,11 @@ Users can enable alerts with:
 Alert frequency meaning:
 
 - `Immediate`
-  First breach alerts now. Bell + Notifications keep one active in-app alert record while the breach remains unresolved. Email reminders can repeat at most once per hour.
+  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the KPI is already breached on create/update, the first email sends immediately. Later reminder emails can repeat at most once per hour.
 - `Daily`
-  First breach alerts now. Bell + Notifications keep one active in-app alert record while the breach remains unresolved. Email reminders can repeat at most once per day.
+  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the KPI is already breached on create/update, the first email sends immediately. Later reminder emails can repeat at most once per day.
 - `Weekly`
-  First breach alerts now. Bell + Notifications keep one active in-app alert record while the breach remains unresolved. Email reminders can repeat at most once per week.
+  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the KPI is already breached on create/update, the first email sends immediately. Later reminder emails can repeat at most once per week.
 
 Expected behavior:
 
@@ -151,6 +151,8 @@ Expected behavior:
 - breached KPI alerts should appear in the bell icon and notifications center
 - email delivery is optional
 - the selected `Alert Frequency` controls reminder emails, not duplicate in-app notification rows
+- when email alerts are enabled and the KPI is already breached on create/update, the first email should send immediately
+- if the KPI unit is `count`, alert text should omit the literal word `count` in bell, Notifications, and email output
 
 ## KPI Background Refresh Pattern
 

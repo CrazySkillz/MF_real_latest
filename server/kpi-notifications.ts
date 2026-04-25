@@ -13,6 +13,11 @@ function parseLooseNumber(input: unknown): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
+function getDisplayUnit(unit: unknown): string {
+  const normalized = String(unit || "").trim().toLowerCase();
+  return normalized === "count" ? "" : String(unit || "");
+}
+
 async function getLinkedInWindowKey(campaignId: string): Promise<string | null> {
   const cid = String(campaignId || "").trim();
   if (!cid) return null;
@@ -115,11 +120,12 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   const currentValue = parseLooseNumber(kpi.currentValue);
   const alertThreshold = kpi.alertThreshold ? parseLooseNumber(kpi.alertThreshold) : null;
   const targetValue = parseLooseNumber(kpi.targetValue);
+  const displayUnit = getDisplayUnit(kpi.unit);
   
   // Calculate gap
   const gap = ((targetValue - currentValue) / targetValue) * 100;
   const gapText = gap > 0 ? `${Math.abs(gap).toFixed(1)}% below` : `${Math.abs(gap).toFixed(1)}% above`;
-  const nextMessage = `Current value (${kpi.currentValue} ${kpi.unit}) is ${gapText} your target (${kpi.targetValue} ${kpi.unit})${alertThreshold ? `. Alert threshold: ${alertThreshold} ${kpi.unit}` : ''}`;
+  const nextMessage = `Current value (${kpi.currentValue}${displayUnit}) is ${gapText} your target (${kpi.targetValue}${displayUnit})${alertThreshold ? `. Alert threshold: ${alertThreshold}${displayUnit}` : ''}`;
 
   // GA4 keeps one active in-app alert record per unresolved breach.
   // Other platforms preserve their existing window-based behavior.

@@ -13,6 +13,11 @@ function parseLooseNumber(input: unknown): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
+function getDisplayUnit(unit: unknown): string {
+  const normalized = String(unit || "").trim().toLowerCase();
+  return normalized === "count" ? "" : String(unit || "");
+}
+
 async function getLinkedInWindowKey(campaignId: string): Promise<string | null> {
   const cid = String(campaignId || "").trim();
   if (!cid) return null;
@@ -157,7 +162,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     }
 
     const benchmarkValue = parseLooseNumber(b.benchmarkValue ?? "0");
-    const unit = String(b.unit || "");
+    const unit = getDisplayUnit(b.unit);
     const actionUrl = buildBenchmarkActionUrl(b);
 
     const gapText =

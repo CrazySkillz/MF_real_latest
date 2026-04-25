@@ -35,6 +35,11 @@ interface AlertEmailData {
 }
 
 class EmailService {
+  private getDisplayUnit(unit: unknown): string {
+    const normalized = String(unit || "").trim().toLowerCase();
+    return normalized === "count" ? "" : String(unit || "");
+  }
+
   private transporter: any;
 
   constructor() {
@@ -265,6 +270,7 @@ class EmailService {
     }[data.condition];
 
     const subject = `⚠️ Alert: ${data.name} has ${conditionText} threshold`;
+    const displayUnit = this.getDisplayUnit(data.unit);
     
     const html = `
       <!DOCTYPE html>
@@ -338,18 +344,18 @@ class EmailService {
               
               <div class="metric-row">
                 <span class="metric-label">Current Value:</span>
-                <span class="metric-value">${data.currentValue}${data.unit || ''}</span>
+                <span class="metric-value">${data.currentValue}${displayUnit}</span>
               </div>
               
               <div class="metric-row">
                 <span class="metric-label">Alert Threshold:</span>
-                <span class="metric-value">${data.thresholdValue}${data.unit || ''}</span>
+                <span class="metric-value">${data.thresholdValue}${displayUnit}</span>
               </div>
               
               ${data.targetValue ? `
               <div class="metric-row">
                 <span class="metric-label">Target Value:</span>
-                <span class="metric-value">${data.targetValue}${data.unit || ''}</span>
+                <span class="metric-value">${data.targetValue}${displayUnit}</span>
               </div>
               ` : ''}
               

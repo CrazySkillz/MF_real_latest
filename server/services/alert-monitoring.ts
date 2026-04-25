@@ -50,6 +50,94 @@ class AlertMonitoringService {
     return recipients.split(',').map(email => email.trim()).filter(email => email.length > 0);
   }
 
+  async sendImmediateKPIAlertIfNeeded(kpiId: string): Promise<boolean> {
+    const [kpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
+    if (!kpi || !kpi.alertsEnabled || !kpi.emailNotifications || !kpi.emailRecipients) return false;
+
+    const frequency = (kpi.alertFrequency || 'daily') as any;
+    const frequencyHours =
+      frequency === 'immediate' ? 1 :
+      frequency === 'weekly' ? 24 * 7 :
+      24;
+    if (this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) return false;
+
+    const currentValue = parseFloat(kpi.currentValue?.toString() || '0');
+    const thresholdValue = parseFloat(kpi.alertThreshold?.toString() || '0');
+    const condition = (kpi.alertCondition || 'below') as 'below' | 'above' | 'equals';
+    if (!this.shouldSendAlert(currentValue, thresholdValue, condition)) return false;
+
+    const recipients = this.parseEmailRecipients(kpi.emailRecipients);
+    if (recipients.length === 0) return false;
+
+    const emailSent = await emailService.sendAlertEmail(recipients, {
+      type: 'kpi',
+      name: kpi.name,
+      currentValue,
+      thresholdValue,
+      condition,
+      targetValue: parseFloat(kpi.targetValue?.toString() || '0'),
+      unit: kpi.unit || undefined,
+    }, {
+      entityId: kpi.id,
+      campaignId: (kpi as any).campaignId || undefined,
+      campaignName: (kpi as any).campaignName || undefined,
+    });
+
+    if (!emailSent) return false;
+
+    await db.update(kpis).set({ lastAlertSent: sql`CURRENT_TIMESTAMP` }).where(eq(kpis.id, kpi.id));
+    await db.insert(kpiAlerts).values({
+      kpiId: kpi.id,
+      alertType: 'threshold_breach',
+      severity: 'high',
+      message: `${kpi.name} has ${condition} threshold of ${thresholdValue}${kpi.unit || ''}`,
+      currentValue: kpi.currentValue,
+      targetValue: kpi.targetValue,
+      thresholdValue: kpi.alertThreshold,
+      isActive: true,
+      emailSent: true,
+    });
+    return true;
+  }
+
+  async sendImmediateBenchmarkAlertIfNeeded(benchmarkId: string): Promise<boolean> {
+    const [benchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, benchmarkId));
+    if (!benchmark || !benchmark.alertsEnabled || !benchmark.emailNotifications || !benchmark.emailRecipients) return false;
+
+    const frequency = (benchmark.alertFrequency || 'daily') as any;
+    const frequencyHours =
+      frequency === 'immediate' ? 1 :
+      frequency === 'weekly' ? 24 * 7 :
+      24;
+    if (this.shouldThrottleAlert(benchmark.lastAlertSent, frequencyHours)) return false;
+
+    const currentValue = parseFloat(benchmark.currentValue?.toString() || '0');
+    const thresholdValue = parseFloat(benchmark.alertThreshold?.toString() || '0');
+    const condition = (benchmark.alertCondition || 'below') as 'below' | 'above' | 'equals';
+    if (!this.shouldSendAlert(currentValue, thresholdValue, condition)) return false;
+
+    const recipients = this.parseEmailRecipients(benchmark.emailRecipients);
+    if (recipients.length === 0) return false;
+
+    const emailSent = await emailService.sendAlertEmail(recipients, {
+      type: 'benchmark',
+      name: benchmark.name,
+      currentValue,
+      thresholdValue,
+      condition,
+      unit: benchmark.unit || undefined,
+    }, {
+      entityId: benchmark.id,
+      campaignId: (benchmark as any).campaignId || undefined,
+      campaignName: (benchmark as any).campaignName || undefined,
+    });
+
+    if (!emailSent) return false;
+
+    await db.update(benchmarks).set({ lastAlertSent: sql`CURRENT_TIMESTAMP` }).where(eq(benchmarks.id, benchmark.id));
+    return true;
+  }
+
   // Check all KPIs for alerts
   async checkKPIAlerts(): Promise<number> {
     try {

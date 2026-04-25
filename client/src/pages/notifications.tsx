@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, Trash2, Mail, MailOpen } from "lucide-react";
+import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, X, Mail, MailOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Campaign, Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -67,19 +67,30 @@ export default function Notifications() {
       const result = await response.json();
       return result;
     },
+    onMutate: async (notificationId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/notifications"] });
+      const previous = queryClient.getQueryData<Notification[]>(["/api/notifications"]);
+      queryClient.setQueryData<Notification[]>(["/api/notifications"], (current = []) =>
+        current.filter((n) => String(n.id) !== String(notificationId))
+      );
+      return { previous };
+    },
+    onError: (_error, _notificationId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["/api/notifications"], context.previous);
+      }
+      toast({
+        title: "Error",
+        description: "Failed to dismiss notification",
+        variant: "destructive",
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       await queryClient.refetchQueries({ queryKey: ["/api/notifications"] });
       toast({
-        title: "Notification deleted",
-        description: "The notification has been deleted.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to delete notification",
-        variant: "destructive",
+        title: "Notification dismissed",
+        description: "The current alert has been dismissed.",
       });
     },
   });
@@ -474,7 +485,7 @@ export default function Notifications() {
                           </Tooltip>
                           
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => deleteNotificationMutation.mutate(notification.id)}
                             disabled={deleteNotificationMutation.isPending}
@@ -482,7 +493,8 @@ export default function Notifications() {
                             title="Dismiss this alert"
                             data-testid={`button-delete-${notification.id}`}
                           >
-                            <Trash2 className="w-4 h-4 text-red-500" />
+                            <X className="w-4 h-4 mr-2" />
+                            Dismiss
                           </Button>
                         </div>
                       </div>

@@ -20523,6 +20523,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       checkPerformanceAlerts().catch((e) => console.warn("[KPI Create] Alert check failed:", (e as any)?.message || e));
+      import("./services/alert-monitoring.js")
+        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateKPIAlertIfNeeded(String((kpi as any)?.id || "")))
+        .catch((e) => console.warn("[KPI Create] Immediate email alert check failed:", (e as any)?.message || e));
 
       res.json(kpi);
     } catch (error) {
@@ -20587,6 +20590,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       checkPerformanceAlerts().catch((e) => console.warn("[KPI Update] Alert check failed:", (e as any)?.message || e));
+      import("./services/alert-monitoring.js")
+        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateKPIAlertIfNeeded(String(kpiId)))
+        .catch((e) => console.warn("[KPI Update] Immediate email alert check failed:", (e as any)?.message || e));
 
       res.json(updatedKPI);
     } catch (error) {
@@ -21285,6 +21291,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const benchmark = await storage.createBenchmark(validatedData);
+      import("./services/alert-monitoring.js")
+        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String((benchmark as any)?.id || "")))
+        .catch((e) => console.warn("[Platform Benchmark Create] Immediate email alert check failed:", (e as any)?.message || e));
       res.status(201).json(benchmark);
     } catch (error) {
       console.error('Platform benchmark creation error:', error);
@@ -21321,6 +21330,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
         await checkBenchmarkPerformanceAlerts();
       } catch (e: any) { console.warn("[Platform Benchmark Update] Alert check failed:", (e as any)?.message || e); }
+      import("./services/alert-monitoring.js")
+        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String(benchmarkId)))
+        .catch((e) => console.warn("[Platform Benchmark Update] Immediate email alert check failed:", (e as any)?.message || e));
 
       res.json(benchmark);
     } catch (error) {
@@ -21818,6 +21830,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
         await checkBenchmarkPerformanceAlerts();
       } catch (e: any) { console.warn("[Benchmark Create] Alert check failed:", (e as any)?.message || e); }
+      import("./services/alert-monitoring.js")
+        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String((benchmark as any)?.id || "")))
+        .catch((e) => console.warn("[Benchmark Create] Immediate email alert check failed:", (e as any)?.message || e));
 
       res.status(201).json(benchmark);
     } catch (error) {
@@ -21855,6 +21870,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
         await checkBenchmarkPerformanceAlerts();
       } catch (e: any) { console.warn("[Benchmark Update] Alert check failed:", (e as any)?.message || e); }
+      import("./services/alert-monitoring.js")
+        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String(id)))
+        .catch((e) => console.warn("[Benchmark Update] Immediate email alert check failed:", (e as any)?.message || e));
 
       res.json(benchmark);
     } catch (error) {

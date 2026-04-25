@@ -1,4 +1,4 @@
-import { Bell, X, AlertCircle, CheckCircle, Info, TrendingUp, Trash2 } from "lucide-react";
+import { Bell, X, AlertCircle, CheckCircle, Info, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -95,6 +95,19 @@ export default function Navigation() {
       });
       if (!res.ok) throw new Error("Failed to delete notification");
       return res.json();
+    },
+    onMutate: async (notificationId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/notifications"] });
+      const previous = queryClient.getQueryData<Notification[]>(["/api/notifications"]);
+      queryClient.setQueryData<Notification[]>(["/api/notifications"], (current = []) =>
+        current.filter((n) => String(n.id) !== String(notificationId))
+      );
+      return { previous };
+    },
+    onError: (_error, _notificationId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["/api/notifications"], context.previous);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -297,7 +310,7 @@ export default function Navigation() {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              className="h-8 px-2 text-muted-foreground hover:text-foreground hover:bg-muted"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -307,7 +320,7 @@ export default function Navigation() {
                               title="Dismiss this alert"
                               data-testid={`button-delete-notification-popover-${notification.id}`}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <X className="w-4 h-4" />
                             </Button>
                           </div>
                           {!notification.read && (

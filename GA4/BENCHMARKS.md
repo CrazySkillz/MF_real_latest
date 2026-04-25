@@ -138,6 +138,11 @@ Users can enable benchmark alerts with:
 - frequency
 - optional email list
 
+Default form behavior:
+
+- new GA4 Benchmark forms should preselect `Immediate` for `Alert Frequency`
+- editing an existing Benchmark should preserve the saved frequency value
+
 Alert frequency meaning:
 
 - `Immediate`

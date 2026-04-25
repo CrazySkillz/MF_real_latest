@@ -135,6 +135,11 @@ Users can enable alerts with:
 - frequency: `immediate`, `daily`, `weekly`
 - optional comma-separated email recipients
 
+Default form behavior:
+
+- new GA4 KPI forms should preselect `Immediate` for `Alert Frequency`
+- editing an existing KPI should preserve the saved frequency value
+
 Alert frequency meaning:
 
 - `Immediate`

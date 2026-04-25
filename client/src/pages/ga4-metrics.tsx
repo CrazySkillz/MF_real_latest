@@ -77,7 +77,7 @@ const kpiFormSchema = z.object({
   alertsEnabled: z.boolean().default(false),
   alertThreshold: z.string().optional(),
   alertCondition: z.enum(["below", "above", "equals"]).default("below"),
-  alertFrequency: z.enum(["immediate", "daily", "weekly"]).default("daily"),
+  alertFrequency: z.enum(["immediate", "daily", "weekly"]).default("immediate"),
   emailNotifications: z.boolean().default(false),
   emailRecipients: z.string().optional(),
 });
@@ -330,7 +330,7 @@ export default function GA4Metrics() {
     alertsEnabled: false,
     alertThreshold: "",
     alertCondition: "below",
-    alertFrequency: "daily",
+    alertFrequency: "immediate",
     emailNotifications: false,
     emailRecipients: "",
   });
@@ -372,7 +372,7 @@ export default function GA4Metrics() {
       alertsEnabled: false,
       alertThreshold: "",
       alertCondition: "below",
-      alertFrequency: "daily",
+      alertFrequency: "immediate",
       emailNotifications: false,
       emailRecipients: "",
     },
@@ -389,7 +389,7 @@ export default function GA4Metrics() {
     alertsEnabled: false,
     alertThreshold: "",
     alertCondition: "below",
-    alertFrequency: "daily",
+    alertFrequency: "immediate",
     emailNotifications: false,
     emailRecipients: "",
   });
@@ -6143,7 +6143,7 @@ export default function GA4Metrics() {
                               alertsEnabled: false,
                               alertThreshold: "",
                               alertCondition: "below",
-                              alertFrequency: "daily",
+                              alertFrequency: "immediate",
                               emailNotifications: false,
                               emailRecipients: "",
                             });

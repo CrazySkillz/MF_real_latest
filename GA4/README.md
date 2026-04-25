@@ -37,7 +37,7 @@ Important meaning:
 - `GA4/KPIS.md`
   Covers KPI creation, display, current-value sourcing, gating, alerts, and KPI refresh behavior.
 - `GA4/BENCHMARKS.md`
-  Covers benchmark creation, industry autofill, status/progress, gating, alerts, and benchmark refresh behavior.
+  Covers benchmark creation, custom benchmark values, status/progress, gating, alerts, and benchmark refresh behavior.
 - `GA4/AD_COMPARISON.md`
   Covers the current comparison tab, its present campaign-comparison implementation, and refresh behavior.
 - `GA4/INSIGHTS.md`

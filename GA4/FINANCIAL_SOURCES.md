@@ -344,20 +344,16 @@ Important meaning:
 - if structural mappings change, such as revenue column, conversion value column, campaign column, date column, or value-source mode, re-upload is still required
 - `Update revenue` should remain disabled until a meaningful edit is made
 
-## Revenue Source 6: Manual Journey
+## Revenue Source 6: Existing Stored Manual Revenue
 
-The user journey is:
+Current production-state rule:
 
-1. user clicks `+` on `Total Revenue`
-2. the modal opens and the user selects `Manual`
-3. the user enters the manual revenue step
-4. the user enters a revenue amount
-5. the system saves a manual revenue source for the campaign
-6. the system materializes a revenue record for that manual entry
-7. campaign financial values are recomputed and the GA4 cards/source rows refetch
+- new direct `Manual` revenue creation is no longer exposed in the GA4 production revenue-source picker
+- existing stored `Manual` revenue sources must still render, continue contributing to totals, and remain editable/deletable until explicitly removed
 
 Important meaning:
 
+- `Manual` revenue is now a continuity/edit path for previously stored sources, not a normal new-source GA4 creation journey
 - existing stored `Manual` is a direct value-entry workflow
 - unlike CRM and sheet-based options, it is not an attribution or import mapping process
 - it behaves more like a manually maintained revenue snapshot and is best treated as a higher-friction, less automated path
@@ -513,24 +509,18 @@ Important meaning:
 - once a CSV spend source has been imported with the persisted edit payload, edit mode can recalculate from the stored imported dataset when the user changes only campaign-value selection
 - if the user changes mapped columns or the original stored dataset is not available, re-upload is still required
 
-## Spend Source 6: Manual Journey
+## Spend Source 6: Existing Stored Manual Spend
 
-The user journey is:
+Current production-state rule:
 
-1. user clicks `+` on `Total Spend`
-2. the modal opens and the user selects `Manual`
-3. the user enters the manual spend step
-4. the user types a spend amount
-5. the user saves the amount
-6. the system saves a manual spend source for the campaign
-7. the system materializes a spend record and recomputes campaign financial values
-8. the GA4 cards and source rows refetch
+- new direct `Manual` spend creation is no longer exposed in the GA4 production spend-source picker
+- existing stored `Manual` spend sources must still render, continue contributing to totals, and remain editable/deletable until explicitly removed
 
 Important meaning:
 
-- `Manual` is a direct spend-entry workflow
+- `Manual` spend is now a continuity/edit path for previously stored sources, not a normal new-source GA4 creation journey
+- existing stored `Manual` is a direct spend-entry workflow
 - it behaves like a manually maintained snapshot, not a refreshable connector
-- the current UI explicitly positions it as best suited for testing/manual fallback rather than automated ongoing sync
 - it should be treated as a temporary validation/testing path rather than a long-term production workflow
 
 ## Source Rows Under The Cards

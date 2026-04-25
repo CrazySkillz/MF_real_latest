@@ -236,7 +236,7 @@ Checkpoint after Journey 1:
 - [ ] Click on "GA4 Test" campaign → opens Campaign Detail page
 - [ ] In the Campaign Detail page, find "Google Analytics" in the Connected Platforms section
 - [ ] Click "View Detailed Analytics" (or the GA4 link in sidebar under the campaign)
-- [ ] **6 tabs now visible**: Overview, KPIs, Benchmarks, Reports, Campaigns, Insights
+- [ ] **6 tabs now visible**: Overview, KPIs, Benchmarks, Ad Comparison, Insights, Reports
 
 ### Step 8: Verify Overview tab — initial simulation data
 - [ ] Click the **Overview** tab (should be selected by default)
@@ -348,7 +348,7 @@ Checkpoint after Journey 2:
 
 ## Journey 3: Run Refresh — Spend Arrives (Unlocks Financial Metrics)
 
-**Why**: GA4 doesn't track spend. In production, spend arrives when the user adds it via the Add Spend wizard (manual entry, CSV, Google Sheets, or connecting an ad platform). Run Refresh only simulates the GA4 scheduler (sessions, conversions, revenue) — it does NOT bring in spend.
+**Why**: GA4 doesn't track spend. In production, spend arrives when the user adds it via the Add Spend wizard (CSV, Google Sheets, or connecting an ad platform). Existing stored manual spend can still contribute if already present, but new direct manual spend creation is no longer exposed in the production GA4 picker. Run Refresh only simulates the GA4 scheduler (sessions, conversions, revenue) — it does NOT bring in spend.
 
 Checkpoint after Journey 3:
 
@@ -371,11 +371,10 @@ Checkpoint after Journey 3:
 
 ### Step 2: Add spend via Add Spend wizard
 - [ ] On the Overview tab, click the **"+"** icon on the Total Spend card
-- [ ] Select **Manual** entry
-- [ ] Enter spend amount: **$5,000.00**
-- [ ] Click Save
+- [ ] Select **Upload CSV**, **Google Sheets**, or a supported ad-platform test-mode path
+- [ ] Import spend totaling **$5,000.00**
 - [ ] **Total Spend = $5,000.00**
-- [ ] Micro copy: **"Manual — $5,000.00"**
+- [ ] Source row / micro copy shows the imported source and **$5,000.00**
 
 ### Step 3: Verify financial metrics unlocked
 - [ ] **ROAS** now calculated (Revenue ÷ $5,000)
@@ -607,15 +606,15 @@ Checkpoint after Journey 7:
 - [ ] Toast: "Test spend imported — Saved USD {amount} from 2 mock campaign(s)"
 - [ ] Micro copy: "LinkedIn Ads — $X,XXX"
 - [ ] No extra UI elements not in production
-- [ ] **Total Spend = Manual + CSV + LinkedIn** (cumulative)
+- [ ] **Total Spend = existing spend + CSV + LinkedIn** (cumulative)
 
 ### Step 5: Add Meta Ads (Test Mode)
 - [ ] Same pattern → "Meta Ads — $X,XXX"
-- [ ] **Total Spend = Manual + CSV + LinkedIn + Meta**
+- [ ] **Total Spend = existing spend + CSV + LinkedIn + Meta**
 
 ### Step 6: Add Google Ads (Test Mode)
 - [ ] Same pattern → "Google Ads — $X,XXX"
-- [ ] **Total Spend = Manual + CSV + LinkedIn + Meta + Google Ads**
+- [ ] **Total Spend = existing spend + CSV + LinkedIn + Meta + Google Ads**
 
 ### Step 7: Verify all sources active
 - [ ] All sources shown in micro copy with individual amounts
@@ -679,10 +678,10 @@ Checkpoint after Journey 8:
 - [ ] **Benchmarks tab**: note ROAS Benchmark current value
 - [ ] **Insights tab**: note Executive Financials revenue, Data Summary revenue
 
-### Step 2: Add Manual Revenue
-- [ ] Overview tab → click "+" on Total Revenue card → select **Manual**
-- [ ] Enter $10,000 → Save
-- [ ] Micro copy: "Manual — $10,000.00"
+### Step 2: Add Revenue
+- [ ] Overview tab → click "+" on Total Revenue card → select **Upload CSV**, **Google Sheets**, or a supported revenue connector
+- [ ] Import $10,000 → Save
+- [ ] Source row / micro copy shows the imported source and $10,000.00
 - [ ] **Total Revenue increased** by $10,000
 
 ### Step 3: Verify propagation after manual revenue
@@ -701,7 +700,7 @@ Checkpoint after Journey 8:
 - [ ] Confirm `Import revenue` is blocked/disabled until at least one campaign value is selected
 - [ ] Select one or more campaign values → Import
 - [ ] Micro copy shows CSV source with amount
-- [ ] **Total Revenue = GA4 native + Manual + CSV**
+- [ ] **Total Revenue = GA4 native + imported revenue sources**
 - [ ] Click edit (pencil) on the CSV revenue source
 - [ ] Confirm it opens directly into the mapping screen with preview loaded
 - [ ] Confirm `Update revenue` is **disabled** immediately on open before any changes are made
@@ -793,7 +792,7 @@ Checkpoint after Journey 8:
 - [ ] **Insights tab**: `Sources used` Revenue line shows the full active revenue source set, not just the first imported source
 
 ### Step 10: Edit a revenue source
-- [ ] Click edit (pencil) on Manual source → change amount → Save
+- [ ] Click edit (pencil) on an existing revenue source → change amount or mapping → Save
 - [ ] Total Revenue recalculated (old amount replaced, not duplicated)
 - [ ] ROAS/Revenue KPIs updated accordingly
 
@@ -814,7 +813,7 @@ Checkpoint after Journey 8:
 ## Journey 9: Delete Sources → KPIs Become Blocked
 
 ### Step 1: Delete ALL spend sources
-- [ ] Delete Manual entry + any ad platform sources + CSV/Sheets sources
+- [ ] Delete one imported spend source + any ad platform sources + CSV/Sheets sources
 - [ ] Spend = $0
 - [ ] **ROAS KPI → "Blocked"**
 - [ ] **ROI KPI → "Blocked"** (if created)
@@ -828,7 +827,7 @@ Checkpoint after Journey 8:
 - [ ] Insights: "Spend missing" integrity check reappears
 
 ### Step 2: Delete ALL revenue sources
-- [ ] Delete all imported/manual revenue sources
+- [ ] Delete all imported revenue sources
 - [ ] If GA4 native revenue still exists, **Total Revenue stays above $0** and Revenue-based KPIs remain evaluable
 - [ ] `Total Revenue = $0` only if **all** revenue inputs are gone, including GA4 native revenue
 - [ ] If GA4 native revenue is absent too, **Revenue KPI → "Blocked"**
@@ -894,7 +893,7 @@ Checkpoint after Journey 8:
 - [ ] If **HubSpot revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
 - [ ] If **Salesforce revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
 - [ ] If **Shopify revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
-- [ ] If **Manual revenue** is active, verify it contributes to `Total Revenue (All Sources)` but does not invent campaign-row allocations; if shown in Ad Comparison it should remain effectively unallocated
+- [ ] If **existing stored Manual revenue** is active, verify it contributes to `Total Revenue (All Sources)` but does not invent campaign-row allocations; if shown in Ad Comparison it should remain effectively unallocated
 - [ ] For any active source with unmatched revenue, verify that unmatched remainder does not get added to a campaign row and is preserved as `Unallocated External Revenue`
 - [ ] Verify the sum of all source rows in `Revenue Breakdown` still reconciles to `Total Revenue`
 - [ ] Verify the matched revenue shown in the `Revenue Breakdown` subsections is consistent with the campaign-row increases seen in `All Campaigns`
@@ -915,7 +914,7 @@ For each active revenue source type, validate the source independently:
 - [ ] HubSpot revenue: add/edit/delete the source and verify every related revenue surface updates from the HubSpot deal amount and saved campaign-value mappings
 - [ ] Salesforce revenue: add/edit/delete the source and verify every related revenue surface updates from the Salesforce opportunity amount and saved campaign-value mappings
 - [ ] Shopify revenue: add/edit/delete the source and verify every related revenue surface updates from the Shopify order amount and saved campaign-value mappings
-- [ ] Manual revenue: add/edit/delete the source and verify it updates all-source totals without inventing campaign-row allocations
+- [ ] Existing stored Manual revenue: if present, edit/delete the source and verify it updates all-source totals without inventing campaign-row allocations
 
 For each add/edit/delete action above, validate all related revenue surfaces:
 
@@ -1060,7 +1059,7 @@ Required reconciliation checks:
 - [ ] Create a ROAS KPI to verify it calculates correctly
 
 ### Step 8: Delete revenue → Revenue/ROAS/ROI become blocked
-- [ ] Go to **Overview** tab → delete the manual revenue source (trash icon)
+- [ ] Go to **Overview** tab → delete the imported revenue source (trash icon)
 - [ ] Revenue = $0 again
 - [ ] Any Revenue/ROAS/ROI KPIs created in Step 7 → **"Blocked"** status
 - [ ] KPI templates for Revenue/ROAS/ROI → DISABLED again
@@ -1188,7 +1187,7 @@ Use this instead of rerunning the full plan after every small fix:
 ## Final Checklist
 
 ### Part A: Mock Testing (Journeys 1-14)
-1. Every number traces to a known source (simulation OR Run Refresh OR manual entry)
+1. Every number traces to a known source (simulation OR Run Refresh OR imported/connected source state)
 2. Run Refresh only adds GA4 data (sessions, conversions, revenue) — NOT spend
 3. Spend arrives via Add Spend wizard, not Run Refresh
 4. Spend/revenue changes propagate to ROAS/ROI/CPA/KPIs/Benchmarks/Insights
@@ -1196,8 +1195,8 @@ Use this instead of rerunning the full plan after every small fix:
 6. Templates DISABLED when required data missing; ENABLED when data exists
 7. Blocked KPIs excluded from scoring + show integrity insight
 8. Notifications created when thresholds breached
-9. All spend sources (Manual/CSV/Sheets/LinkedIn/Meta/Google Ads) work
-10. All revenue sources (GA4/Manual/CSV/Sheets/HubSpot/Salesforce/Shopify) work
+9. All production GA4 spend sources (CSV/Sheets/LinkedIn/Meta/Google Ads) work, and any existing stored Manual spend remains editable/deletable
+10. All production GA4 revenue sources (GA4/CSV/Sheets/HubSpot/Salesforce/Shopify) work, and any existing stored Manual revenue remains editable/deletable
 11. Total Spend = sum of micro copy (exact)
 12. Total Revenue = GA4 onsite + CRM offsite (no double-counting)
 13. Edit spend/revenue sources → no duplicates. Delete → recalculates.
@@ -1208,7 +1207,7 @@ Use this instead of rerunning the full plan after every small fix:
 
 ### Part B: No Revenue Scenario (Journey 15)
 18. Campaign with no GA4 revenue has Revenue/ROAS/ROI templates DISABLED
-19. Adding manual revenue enables Revenue template; adding spend enables ROAS/ROI/CPA
+19. Adding imported/connected revenue enables Revenue template; adding spend enables ROAS/ROI/CPA
 20. Deleting revenue blocks Revenue/ROAS/ROI KPIs
 
 ### Part C: Real Integration Testing (Journey 16)

@@ -158,8 +158,7 @@ Expected behavior:
 - alert text should use the same human-readable number style as KPI cards rather than raw parenthesized decimals
 - example alert text:
   `Campaign: myGA4`
-  `Current value 72,660 is 9.2% below your target 80,000`
-  `Alert threshold: 75,000`
+  `Current value 72,660 is below the alert threshold 75,000`
 
 ## KPI Background Refresh Pattern
 

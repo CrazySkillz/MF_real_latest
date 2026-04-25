@@ -199,13 +199,13 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
       }
     }
 
-    const benchmarkValue = parseLooseNumber(b.benchmarkValue ?? "0");
     const actionUrl = buildBenchmarkActionUrl(b);
-
-    const gapText =
-      Number.isFinite(benchmarkValue) && benchmarkValue > 0
-        ? `${Math.abs(((currentValue - benchmarkValue) / benchmarkValue) * 100).toFixed(1)}% ${currentValue >= benchmarkValue ? "above" : "below"}`
-        : (currentValue >= thresholdValue ? "above" : "below");
+    const directionText =
+      condition === "above"
+        ? "above"
+        : condition === "equals"
+          ? "equal to"
+          : "below";
 
     const metadata = JSON.stringify({
       benchmarkId: b.id,
@@ -216,7 +216,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
 
     const notification: InsertNotification = {
       title: `⚠️ Benchmark Alert: ${b.name}`,
-      message: `Current value ${formatAlertDisplayValue(currentValue, b.unit)} is ${gapText} your benchmark ${formatAlertDisplayValue(benchmarkValue || 0, b.unit)}. Alert threshold: ${formatAlertDisplayValue(thresholdValue, b.unit)}`,
+      message: `Current value ${formatAlertDisplayValue(currentValue, b.unit)} is ${directionText} the alert threshold ${formatAlertDisplayValue(thresholdValue, b.unit)}`,
       type: "performance-alert",
       priority: "high",
       campaignId: b.campaignId || undefined,

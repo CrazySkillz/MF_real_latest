@@ -93,7 +93,7 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Bell: clicking a KPI or Benchmark alert opens the correct GA4 tab and exact card, including when already on the same campaign page
 - Notifications: page filter uses `Client`, not `Campaign`
 - Alerts: bell + Notifications keep one active in-app alert record per unresolved breach; the first breached KPI/Benchmark email sends immediately on save, and `Immediate`, `Daily`, and `Weekly` control later reminder email cadence
-- Alerts: bell, Notifications, and email text use card-style number formatting instead of raw decimal/parenthesized values
+- Alerts: bell, Notifications, and email text use threshold-focused wording with card-style number formatting instead of raw decimal/parenthesized values
 - Salesforce reconnect: after fixing Connected App OAuth scopes/policies, reconnect should complete without the `Salesforce did not return a refresh token` error
 - Salesforce reconnect stability: after a successful reconnect, the source should remain connected after page refresh and later token expiry, not fall back to `Reconnect required`
 
@@ -849,7 +849,7 @@ Checkpoint after Journey 8:
 - [ ] **Notifications bell**: badge count increased
 - [ ] **/notifications page**: new entry
 - [ ] Bell/page current value matches the live KPI card current value
-- [ ] Bell/page alert text uses card-style formatting, e.g. `Current value 72,660 is 9.2% below your target 80,000`
+- [ ] Bell/page alert text uses threshold-focused formatting, e.g. `Current value 72,660 is below the alert threshold 75,000`
 - [ ] If older duplicate KPI rows exist for the same GA4 campaign + metric, only the latest row is allowed to produce the active alert
 - [ ] Reopening the bell reflects the current server state (old resolved alerts do not linger from stale client cache)
 - [ ] Clicking the KPI alert from the bell opens the correct campaign `KPIs` tab and lands on the exact KPI card

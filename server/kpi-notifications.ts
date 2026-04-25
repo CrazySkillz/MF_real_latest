@@ -157,12 +157,15 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   
   const currentValue = parseLooseNumber(kpi.currentValue);
   const alertThreshold = kpi.alertThreshold ? parseLooseNumber(kpi.alertThreshold) : null;
-  const targetValue = parseLooseNumber(kpi.targetValue);
-  
-  // Calculate gap
-  const gap = ((targetValue - currentValue) / targetValue) * 100;
-  const gapText = gap > 0 ? `${Math.abs(gap).toFixed(1)}% below` : `${Math.abs(gap).toFixed(1)}% above`;
-  const nextMessage = `Current value ${formatAlertDisplayValue(kpi.currentValue, kpi.unit)} is ${gapText} your target ${formatAlertDisplayValue(kpi.targetValue, kpi.unit)}${alertThreshold ? `. Alert threshold: ${formatAlertDisplayValue(alertThreshold, kpi.unit)}` : ''}`;
+  const directionText =
+    String(kpi.alertCondition || "below") === "above"
+      ? "above"
+      : String(kpi.alertCondition || "below") === "equals"
+        ? "equal to"
+        : "below";
+  const nextMessage = alertThreshold === null
+    ? `Current value ${formatAlertDisplayValue(kpi.currentValue, kpi.unit)}`
+    : `Current value ${formatAlertDisplayValue(kpi.currentValue, kpi.unit)} is ${directionText} the alert threshold ${formatAlertDisplayValue(alertThreshold, kpi.unit)}`;
 
   // GA4 keeps one active in-app alert record per unresolved breach.
   // Other platforms preserve their existing window-based behavior.

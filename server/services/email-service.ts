@@ -80,14 +80,13 @@ class EmailService {
   }
 
   private buildAlertSummary(data: AlertEmailData): string {
-    const comparisonValue = Number(data.targetValue);
-    const comparisonLabel = data.type === 'benchmark' ? 'benchmark' : 'target';
-    const gapText =
-      Number.isFinite(comparisonValue) && comparisonValue !== 0
-        ? `${Math.abs(((data.currentValue - comparisonValue) / comparisonValue) * 100).toFixed(1)}% ${data.currentValue >= comparisonValue ? 'above' : 'below'}`
-        : `${data.currentValue >= data.thresholdValue ? 'above' : 'below'}`;
-
-    return `Current value ${this.formatAlertDisplayValue(data.currentValue, data.unit)} is ${gapText} your ${comparisonLabel} ${this.formatAlertDisplayValue(comparisonValue, data.unit)}`;
+    const directionText =
+      data.condition === 'above'
+        ? 'above'
+        : data.condition === 'equals'
+          ? 'equal to'
+          : 'below';
+    return `Current value ${this.formatAlertDisplayValue(data.currentValue, data.unit)} is ${directionText} the alert threshold ${this.formatAlertDisplayValue(data.thresholdValue, data.unit)}`;
   }
 
   private transporter: any;
@@ -321,7 +320,6 @@ class EmailService {
 
     const subject = `⚠️ Alert: ${data.name} has ${conditionText} threshold`;
     const summaryLine = this.buildAlertSummary(data);
-    const thresholdLine = `Alert threshold: ${this.formatAlertDisplayValue(data.thresholdValue, data.unit)}`;
     let clientName = "";
     if (db && auditContext?.campaignId) {
       try {
@@ -410,7 +408,6 @@ class EmailService {
               ${clientName ? `<p><strong>Client:</strong> ${clientName}</p>` : ''}
               ${data.campaignName ? `<p><strong>Campaign:</strong> ${data.campaignName}</p>` : ''}
               <p>${summaryLine}</p>
-              <p><strong>${thresholdLine}</strong></p>
             </div>
             
             <p style="margin-top: 20px;">

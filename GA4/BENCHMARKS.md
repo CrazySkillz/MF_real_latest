@@ -161,8 +161,7 @@ Expected behavior:
 - alert text should use the same human-readable number style as benchmark cards rather than raw parenthesized decimals
 - example alert text:
   `Campaign: myGA4`
-  `Current value 72,660 is 9.2% below your benchmark 80,000`
-  `Alert threshold: 75,000`
+  `Current value 72,660 is below the alert threshold 75,000`
 
 ## Benchmark Background Refresh Pattern
 

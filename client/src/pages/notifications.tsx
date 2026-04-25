@@ -207,6 +207,17 @@ export default function Notifications() {
     const campaign = campaigns.find(c => c.id === notification.campaignId);
     return clients.find(c => c.id === campaign?.clientId)?.name || "";
   };
+  const formatNotificationMessage = (notification: Notification) => {
+    const message = String(notification.message || "").trim();
+    if (notification.type !== "performance-alert") {
+      return { lead: message, threshold: "" };
+    }
+    const parts = message.split(/\.?\s*Alert threshold value:\s*/);
+    return {
+      lead: parts[0] || message,
+      threshold: parts[1] ? `Alert threshold value: ${parts[1]}` : "",
+    };
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -350,7 +361,9 @@ export default function Notifications() {
             ) : (
               <>
                 <div className="space-y-4">
-                  {paginatedNotifications.map((notification) => (
+                  {paginatedNotifications.map((notification) => {
+                    const body = formatNotificationMessage(notification);
+                    return (
                   <Card
                     key={notification.id}
                     className={`transition-all hover:shadow-md ${
@@ -373,14 +386,15 @@ export default function Notifications() {
                               {/* Unread state is shown via left blue border + subtle background */}
                             </div>
                             
-                            <p className="text-muted-foreground text-sm mb-2">
-                              {notification.message}
-                            </p>
+                            <div className="text-muted-foreground text-sm mb-2 space-y-1">
+                              <p>{body.lead}</p>
+                              {body.threshold && <p>{body.threshold}</p>}
+                            </div>
                             
                             <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                               {getClientNameForNotification(notification) && (
                                 <div className="flex items-center space-x-1">
-                                  <span>Client:</span>
+                                  <span className="font-semibold text-foreground/80">Client:</span>
                                   <Badge variant="outline" className="text-xs">
                                     {getClientNameForNotification(notification)}
                                   </Badge>
@@ -388,7 +402,7 @@ export default function Notifications() {
                               )}
                               {notification.campaignName && (
                                 <div className="flex items-center space-x-1">
-                                  <span>Campaign:</span>
+                                  <span className="font-semibold text-foreground/80">Campaign:</span>
                                   <Badge variant="outline" className="text-xs">
                                     {notification.campaignName}
                                   </Badge>
@@ -512,7 +526,8 @@ export default function Notifications() {
                       </div>
                     </CardContent>
                   </Card>
-                  ))}
+                  );
+                  })}
                 </div>
 
                 {/* Pagination Controls */}

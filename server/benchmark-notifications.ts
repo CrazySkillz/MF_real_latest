@@ -200,13 +200,6 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     }
 
     const actionUrl = buildBenchmarkActionUrl(b);
-    const directionText =
-      condition === "above"
-        ? "above"
-        : condition === "equals"
-          ? "equal to"
-          : "below";
-
     const metadata = JSON.stringify({
       benchmarkId: b.id,
       alertType: "benchmark-alert",
@@ -216,7 +209,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
 
     const notification: InsertNotification = {
       title: `⚠️ Benchmark Alert: ${b.name}`,
-      message: `Current value ${formatAlertDisplayValue(currentValue, b.unit)} is ${directionText} the alert threshold ${formatAlertDisplayValue(thresholdValue, b.unit)}`,
+      message: `Current value: ${formatAlertDisplayValue(currentValue, b.unit)}. Alert threshold value: ${formatAlertDisplayValue(thresholdValue, b.unit)}`,
       type: "performance-alert",
       priority: "high",
       campaignId: b.campaignId || undefined,

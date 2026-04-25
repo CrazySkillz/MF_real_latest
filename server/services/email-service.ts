@@ -80,13 +80,7 @@ class EmailService {
   }
 
   private buildAlertSummary(data: AlertEmailData): string {
-    const directionText =
-      data.condition === 'above'
-        ? 'above'
-        : data.condition === 'equals'
-          ? 'equal to'
-          : 'below';
-    return `Current value ${this.formatAlertDisplayValue(data.currentValue, data.unit)} is ${directionText} the alert threshold ${this.formatAlertDisplayValue(data.thresholdValue, data.unit)}`;
+    return `Current value: ${this.formatAlertDisplayValue(data.currentValue, data.unit)}`;
   }
 
   private transporter: any;
@@ -408,6 +402,7 @@ class EmailService {
               ${clientName ? `<p><strong>Client:</strong> ${clientName}</p>` : ''}
               ${data.campaignName ? `<p><strong>Campaign:</strong> ${data.campaignName}</p>` : ''}
               <p>${summaryLine}</p>
+              <p>Alert threshold value: ${this.formatAlertDisplayValue(data.thresholdValue, data.unit)}</p>
             </div>
             
             <p style="margin-top: 20px;">

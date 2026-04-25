@@ -144,10 +144,10 @@ export default function Navigation() {
     if (notification.type !== "performance-alert") {
       return { lead: message, threshold: "" };
     }
-    const parts = message.split(/\.?\s*Alert threshold:\s*/);
+    const parts = message.split(/\.?\s*Alert threshold value:\s*/);
     return {
       lead: parts[0] || message,
-      threshold: parts[1] ? `Alert threshold: ${parts[1]}` : "",
+      threshold: parts[1] ? `Alert threshold value: ${parts[1]}` : "",
     };
   };
 
@@ -321,12 +321,12 @@ export default function Navigation() {
                             </p>
                             {getClientNameForNotification(notification) && (
                               <p className="text-xs mt-0.5 text-muted-foreground/70">
-                                Client: {getClientNameForNotification(notification)}
+                                <span className="font-semibold text-foreground/80">Client:</span> {getClientNameForNotification(notification)}
                               </p>
                             )}
                             {notification.campaignName && (
                               <p className="text-xs mt-0.5 text-muted-foreground/70">
-                                Campaign: {notification.campaignName}
+                                <span className="font-semibold text-foreground/80">Campaign:</span> {notification.campaignName}
                               </p>
                             )}
                             <p className={`text-xs mt-0.5 ${!notification.read ? 'text-muted-foreground/70' : 'text-muted-foreground'}`}>

@@ -1192,7 +1192,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const isEligibleForLatestDayRevenue = (source: any): boolean => {
-    return !!source;
+    if (!source) return false;
+    const sourceType = String((source as any)?.sourceType || "").trim().toLowerCase();
+    if (sourceType === "manual" || sourceType === "hubspot") return false;
+    if (sourceType === "csv" || sourceType === "google_sheets") {
+      try {
+        const cfg = (source as any)?.mappingConfig ? JSON.parse(String((source as any).mappingConfig)) : null;
+        return !!String(cfg?.storedDateColumn || cfg?.dateColumn || "").trim();
+      } catch {
+        return false;
+      }
+    }
+    return true;
   };
 
   // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).

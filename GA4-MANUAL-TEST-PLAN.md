@@ -217,6 +217,7 @@ Checkpoint after Journey 1:
 - [ ] You see a 2-column tile grid of platforms
 - [ ] Click **"Google Analytics"** tile → advances to Step 3
 - [ ] Optional regression check: if you return here after connecting GA4, the connected tile should not trap the flow; a **Continue** action should still let you proceed
+- [ ] If you return here from **Confirm**, clicking **Continue** resumes the next correct GA4 step (`Configure`), not the `Confirm` step
 
 ### Step 4: Wizard Step 3 — Authenticate
 - [ ] The IntegratedGA4Auth component appears (for real Google OAuth)

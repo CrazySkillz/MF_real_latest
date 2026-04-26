@@ -560,6 +560,7 @@ The intended campaign creation pattern is:
 3. User clicks `Next`
 4. User lands on the connectors flow
    If the user goes back to Step 1 and returns, already-connected wizard state should remain navigable instead of trapping the user on a connected platform tile.
+   If the user returns from Confirm to Select Platform, `Continue` should resume the next correct step in that platform flow instead of skipping straight back to Confirm.
 5. User connects one or more sources
 6. User clicks the final `Create Campaign` action
    The confirm step should focus on review/finalization only and should not offer a separate `+ Add another platform` shortcut.

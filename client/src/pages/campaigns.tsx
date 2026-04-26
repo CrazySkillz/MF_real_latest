@@ -1369,6 +1369,17 @@ export default function Campaigns() {
     setLinkedInImportComplete(false);
   };
 
+  const handleContinuePlatformSetup = () => {
+    const platformId = selectedWizardPlatform || connectedPlatformsInDialog[0] || null;
+    if (!platformId) return;
+    setSelectedWizardPlatform(platformId);
+    if (platformId === 'google-analytics') {
+      setWizardStep(4);
+      return;
+    }
+    setWizardStep(3);
+  };
+
   const toggleCampaignStatus = (campaign: Campaign) => {
     const newStatus = campaign.status === "active" ? "paused" : "active";
     toggleCampaignStatusMutation.mutate({
@@ -1862,7 +1873,7 @@ export default function Campaigns() {
                           <ArrowLeft className="w-4 h-4 mr-2" /> Back
                         </Button>
                         {connectedPlatformsInDialog.length > 0 && (
-                          <Button type="button" className="ml-auto" onClick={() => setWizardStep(5)}>
+                          <Button type="button" className="ml-auto" onClick={handleContinuePlatformSetup}>
                             Continue
                           </Button>
                         )}

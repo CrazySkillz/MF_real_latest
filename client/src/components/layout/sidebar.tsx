@@ -4,17 +4,9 @@ import {
   Bell,
   Home,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { Integration } from "@shared/schema";
 
 export default function Sidebar() {
   const [location] = useLocation();
-
-  const { data: integrations = [] } = useQuery<Integration[]>({
-    queryKey: ["/api/integrations"],
-  });
-
-  const connectedIntegrations = integrations.filter(integration => integration.connected);
 
   return (
     <aside className="w-64 shrink-0 bg-card border-r border-border/40 flex flex-col min-h-screen">
@@ -40,45 +32,6 @@ export default function Sidebar() {
             </div>
           </Link>
         </nav>
-      </div>
-
-      {/* Integration Status */}
-      <div className="p-5 mt-auto bg-accent/50 border-t border-border/30 m-4 rounded-2xl">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Connected Platforms</h3>
-        <div className="space-y-3">
-          {connectedIntegrations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No platforms connected</p>
-          ) : (
-            connectedIntegrations.map((integration) => {
-              let icon = "fas fa-plug";
-              let iconColor = "text-muted-foreground";
-
-              if (integration.platform === "facebook") {
-                icon = "fab fa-facebook";
-                iconColor = "text-blue-600";
-              } else if (integration.platform === "google-analytics") {
-                icon = "fab fa-google";
-                iconColor = "text-red-500";
-              } else if (integration.platform === "linkedin") {
-                icon = "fab fa-linkedin";
-                iconColor = "text-blue-700";
-              } else if (integration.platform === "twitter") {
-                icon = "fab fa-twitter";
-                iconColor = "text-blue-400";
-              }
-
-              return (
-                <div key={integration.id} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <i className={`${icon} ${iconColor}`}></i>
-                    <span className="text-sm text-foreground">{integration.name}</span>
-                  </div>
-                  <div className={`status-indicator ${integration.connected ? "status-connected" : "status-disconnected"}`}></div>
-                </div>
-              );
-            })
-          )}
-        </div>
       </div>
     </aside>
   );

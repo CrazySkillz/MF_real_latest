@@ -99,7 +99,7 @@ The concrete top-of-funnel journey should be understood as:
 Current intended pattern:
 
 - `Home`, `Notifications`, and `Dashboard` are global main-nav items
-- `Connected Platforms` is a status section below the main navigation, not a route group
+- `Connected Platforms` is not a global sidebar item; it belongs in client/campaign-scoped surfaces such as campaign detail and campaign overview
 
 Important meaning:
 

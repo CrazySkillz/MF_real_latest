@@ -87,29 +87,25 @@ The concrete top-of-funnel journey should be understood as:
 
 1. user signs in through `Clerk`
 2. user lands on the `Welcome / Home` page
-3. the `Welcome / Home` page contains marketing-industry news / information
-4. the user can create a new client by clicking `+` next to `CLIENTS` in the left nav
+3. the `Welcome / Home` page shows one card per client
+4. the user can create a new client from the Home page
 5. a client-creation modal opens
 6. the user enters the client name and clicks `Save`
-7. the new client appears under the `Clients` section in the left nav
-8. clicking the client should route the user to that client's `Dashboard`
+7. the new client appears as a client card on the Home page
+8. clicking a client card should route the user to that client's `Campaigns` page
 
 ### Left Sidebar Pattern
 
-The left sidebar has two navigation layers:
-
-- global main-nav items
-- client-specific submenu items under each client
-
 Current intended pattern:
 
-- `Home` and `Notifications` are global main-nav items
-- `Dashboard`, `Campaigns`, `Audiences`, and `Reports` are client-scoped submenu items
+- `Home`, `Notifications`, and `Dashboard` are global main-nav items
 - `Connected Platforms` is a status section below the main navigation, not a route group
 
 Important meaning:
 
-- `Notifications` is not client-submenu navigation
+- the left sidebar no longer lists client names or a `Clients` section
+- `Notifications` is global navigation
+- `Dashboard` is global navigation
 - the `Notifications` page is a global surface that aggregates notifications across campaigns
 - users can filter that page by client after opening it
 - dismissing a notification hides the current alert record only; it does not resolve the underlying KPI or benchmark breach
@@ -117,13 +113,14 @@ Important meaning:
 
 ### Current-State Note: Dashboard
 
-The `Dashboard` should be treated as the client-level overview layer for that client's campaigns.
+The `Dashboard` should be treated as a global snapshot layer for quick executive-style client-performance review.
 
 The Dashboard still needs refinement.
 
 For now, preserve the current routing and hierarchy:
 
-- `Welcome / Home` -> select/create client -> client `Dashboard` -> `Campaigns` -> campaign-specific analytics
+- `Welcome / Home` -> select/create client -> client `Campaigns` -> campaign-specific analytics
+- `Dashboard` remains a separate global quick-view page users can open from the left nav for cross-client snapshot review
 
 Do not redesign around the Dashboard until that layer is intentionally updated.
 

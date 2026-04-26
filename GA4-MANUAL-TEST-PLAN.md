@@ -198,10 +198,10 @@ Checkpoint after Journey 1:
 
 ### Step 1: Create a fresh campaign + connect GA4
 - [ ] Open MimoSaaS in your browser
-- [ ] In the left sidebar, find your client name (e.g., "Tally" or your test client)
-- [ ] If no client exists: click the "+" button next to "Clients" header in sidebar → enter a client name → Save
-- [ ] Click the client name in sidebar → you're taken to the Dashboard
-- [ ] In sidebar, click "Campaigns" under your client (or navigate to `/campaigns`)
+- [ ] Open the **Home** page
+- [ ] If no client exists: click **Add client** → enter a client name → Save
+- [ ] Click the client card for your test client (e.g., "Tally")
+- [ ] You're taken to the client-scoped campaigns page (or navigate to `/campaigns`)
 - [ ] Click **"New Campaign"** button
 
 ### Step 2: Wizard Step 1 — Campaign Details

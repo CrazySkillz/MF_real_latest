@@ -2044,8 +2044,27 @@ export default function Campaigns() {
                               <div className="flex items-center gap-2 mb-2">
                                 <Button type="button" variant="outline" size="sm" onClick={() => setSelectedGA4CampaignValues(ga4CampaignValues.map(c => c.name))}>Select All</Button>
                                 <Button type="button" variant="outline" size="sm" onClick={() => setSelectedGA4CampaignValues([])}>Clear</Button>
-                                <span className="text-xs text-muted-foreground ml-auto">{selectedGA4CampaignValues.length} of {ga4CampaignValues.length} selected</span>
+                                <span className="text-xs text-muted-foreground ml-auto">
+                                  {wizardGA4TestMode && selectedGA4CampaignValues.includes('no_revenue_test')
+                                    ? 'No revenue test selected'
+                                    : `${selectedGA4CampaignValues.length} of ${ga4CampaignValues.length} selected`}
+                                </span>
                               </div>
+                              {wizardGA4TestMode && (
+                                <div className="rounded-md border border-dashed p-3 space-y-2 bg-muted/20">
+                                  <p className="text-xs text-muted-foreground">
+                                    Test mode only: use a no-GA4-revenue scenario while keeping sessions, users, and conversions populated.
+                                  </p>
+                                  <Button
+                                    type="button"
+                                    variant={selectedGA4CampaignValues.includes('no_revenue_test') ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setSelectedGA4CampaignValues(['no_revenue_test'])}
+                                  >
+                                    Use no revenue test scenario
+                                  </Button>
+                                </div>
+                              )}
                               <div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1">
                                 {ga4CampaignValues.map((c) => {
                                   const checked = selectedGA4CampaignValues.includes(c.name);

@@ -1017,7 +1017,8 @@ Required reconciliation checks:
 - [ ] Click **New Campaign** → enter name: **"No Revenue Test"**
 - [ ] Click **Next** → select **Google Analytics** → use **test data**
 - [ ] In Step 4 (Configure): select the Yesop property, choose **90 days** lookback
-- [ ] In the campaign filter: instead of selecting yesop campaigns, **type** `no_revenue_test` in the text input
+- [ ] In the GA4 campaign-selection step, click the test-mode-only **Use no revenue test scenario** option
+- [ ] Confirm the selector status changes to **No revenue test selected**
 - [ ] Click **Save & Continue** → **Create Campaign**
 
 ### Step 2: Navigate to GA4 Metrics

@@ -555,6 +555,8 @@ The intended campaign creation pattern is:
 
 1. User clicks `Create Campaign`
 2. User enters campaign metadata
+   Campaign name is required; website, label, and budget are optional.
+   Budget should auto-format as the user types.
 3. User clicks `Next`
 4. User lands on the connectors flow
 5. User connects one or more sources

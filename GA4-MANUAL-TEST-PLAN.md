@@ -206,6 +206,9 @@ Checkpoint after Journey 1:
 
 ### Step 2: Wizard Step 1 — Campaign Details
 - [ ] Enter campaign name: **"GA4 Test"**
+- [ ] Optional fields shown: **Client's Website**, **Label**, **Budget**, **Currency**
+- [ ] **Budget** auto-formats as you type
+- [ ] **Start Date** and **End Date** are not shown in this create modal step
 - [ ] Leave other fields at defaults (or fill as desired)
 - [ ] Click **Next** → draft campaign created, advances to Step 2
 

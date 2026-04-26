@@ -1129,7 +1129,7 @@ export default function Campaigns() {
         clientId: selectedClientId || null,
         clientWebsite: data.clientWebsite || null,
         label: data.label || null,
-        budget: data.budget ? parseFloat(data.budget) : null,
+        budget: data.budget ? parseFloat(data.budget.replace(/,/g, '')) : null,
         currency: data.currency || "USD",
         conversionValue: data.conversionValue ? parseFloat(data.conversionValue as any) : null,
         ga4CampaignFilter: (data as any).ga4CampaignFilter || null,
@@ -1622,7 +1622,7 @@ export default function Campaigns() {
               </Button>
 
               <Dialog open={isCreateModalOpen} onOpenChange={handleCreateModalChange}>
-                <DialogContent className={`${wizardStep === 1 ? "sm:max-w-md" : "sm:max-w-2xl"} max-h-[90vh] overflow-hidden flex flex-col`}>
+                <DialogContent className={`${wizardStep === 1 ? "sm:max-w-xl" : "sm:max-w-2xl"} max-h-[90vh] overflow-hidden flex flex-col`}>
                   <DialogHeader className="pb-4 shrink-0">
                     <DialogTitle>
                       {wizardStep === 1 ? "Create New Campaign" :
@@ -1729,14 +1729,13 @@ export default function Campaigns() {
                                   budgetRegister.onChange(e);
                                   const value = e.target.value.replace(/[^0-9.]/g, '');
                                   const parts = value.split('.');
-
-                                  if (parts[1]?.length > 2) {
-                                    const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
-                                    form.setValue("budget", formatted);
-                                    e.target.value = formatted;
-                                  } else {
-                                    form.setValue("budget", value);
-                                  }
+                                  const integerPart = (parts[0] || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                  const decimalPart = parts[1] !== undefined ? parts[1].slice(0, 2) : undefined;
+                                  const formatted = parts.length > 1
+                                    ? `${integerPart}.${decimalPart ?? ''}`
+                                    : integerPart;
+                                  form.setValue("budget", formatted);
+                                  e.target.value = formatted;
                                 }}
                                 onBlur={(e) => {
                                   budgetRegister.onBlur(e);
@@ -1794,32 +1793,6 @@ export default function Campaigns() {
                               <SelectItem value="HKD">HKD - Hong Kong Dollar</SelectItem>
                             </SelectContent>
                           </Select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="startDate">Start Date (optional)</Label>
-                          <Input
-                            id="startDate"
-                            type="date"
-                            {...form.register("startDate")}
-                          />
-                          {form.formState.errors.startDate && (
-                            <p className="text-sm text-destructive">{form.formState.errors.startDate.message}</p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="endDate">End Date (optional)</Label>
-                          <Input
-                            id="endDate"
-                            type="date"
-                            {...form.register("endDate")}
-                          />
-                          {form.formState.errors.endDate && (
-                            <p className="text-sm text-destructive">{form.formState.errors.endDate.message}</p>
-                          )}
                         </div>
                       </div>
 

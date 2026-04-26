@@ -534,11 +534,11 @@ This must remain the standard user journey for campaign creation and access.
 
 ### Campaign Management Entry Point
 
-The user navigates to `Campaigns` from the left sidebar.
+The user reaches `Campaigns` by selecting a client from the `Home` page.
 
 They land on the Campaign Management page, which is client-specific.
 
-The currently selected client in the client context / dropdown determines which campaigns are shown there.
+The currently selected client in client context determines which campaigns are shown there.
 
 That page should:
 

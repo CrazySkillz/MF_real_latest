@@ -235,7 +235,7 @@ Checkpoint after Journey 1:
 ### Step 7: Navigate to GA4 Metrics
 - [ ] Click on "GA4 Test" campaign → opens Campaign Detail page
 - [ ] In the Campaign Detail page, find "Google Analytics" in the Connected Platforms section
-- [ ] Click "View Detailed Analytics" (or the GA4 link in sidebar under the campaign)
+- [ ] Click "View Detailed Analytics"
 - [ ] **6 tabs now visible**: Overview, KPIs, Benchmarks, Ad Comparison, Insights, Reports
 
 ### Step 8: Verify Overview tab — initial simulation data

@@ -211,10 +211,12 @@ Checkpoint after Journey 1:
 - [ ] **Start Date** and **End Date** are not shown in this create modal step
 - [ ] Leave other fields at defaults (or fill as desired)
 - [ ] Click **Next** → draft campaign created, advances to Step 2
+- [ ] Optional regression check: click **Back** to Step 1 later in the wizard and confirm the **Budget** field still shows its formatted display value
 
 ### Step 3: Wizard Step 2 — Select Platform
 - [ ] You see a 2-column tile grid of platforms
 - [ ] Click **"Google Analytics"** tile → advances to Step 3
+- [ ] Optional regression check: if you return here after connecting GA4, the connected tile should not trap the flow; a **Continue** action should still let you proceed
 
 ### Step 4: Wizard Step 3 — Authenticate
 - [ ] The IntegratedGA4Auth component appears (for real Google OAuth)
@@ -232,6 +234,7 @@ Checkpoint after Journey 1:
 
 ### Step 6: Wizard Step 5 — Confirm & Create
 - [ ] Review summary: campaign name "GA4 Test", Google Analytics connected
+- [ ] Confirm there is **no** `+ Add another platform` shortcut on this step
 - [ ] Click **Create Campaign**
 - [ ] Redirected to campaigns list, "GA4 Test" appears
 

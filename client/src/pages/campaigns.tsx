@@ -1271,6 +1271,11 @@ export default function Campaigns() {
     console.log('📋 Industry value:', data.industry);
     setCampaignData(data);
 
+    if (draftCampaignId) {
+      setWizardStep(2);
+      return;
+    }
+
     // Create a real campaign first so connector flows can persist against a valid campaignId.
     // This fixes test-mode LinkedIn import failing with "Campaign not found".
     setDraftFinalized(false);
@@ -1746,7 +1751,7 @@ export default function Campaigns() {
                                     const formatted = parts[1] !== undefined
                                       ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
                                       : `${integerPart}.00`;
-                                    form.setValue("budget", value);
+                                    form.setValue("budget", formatted);
                                     e.target.value = formatted;
                                   }
                                 }}
@@ -1862,10 +1867,15 @@ export default function Campaigns() {
                           );
                         })}
                       </div>
-                      <div className="flex pt-4 border-t">
+                      <div className="flex items-center gap-3 pt-4 border-t">
                         <Button type="button" variant="outline" onClick={() => setWizardStep(1)}>
                           <ArrowLeft className="w-4 h-4 mr-2" /> Back
                         </Button>
+                        {connectedPlatformsInDialog.length > 0 && (
+                          <Button type="button" className="ml-auto" onClick={() => setWizardStep(5)}>
+                            Continue
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -2151,13 +2161,6 @@ export default function Campaigns() {
                           )}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className="text-sm text-primary hover:underline"
-                        onClick={() => { setSelectedWizardPlatform(null); setWizardPlatformConnected(false); setWizardStep(2); }}
-                      >
-                        + Add another platform
-                      </button>
                       <div className="flex items-center gap-3 pt-4 border-t">
                         <Button type="button" variant="outline" className="flex-1" onClick={() => setWizardStep(2)}>
                           <ArrowLeft className="w-4 h-4 mr-2" /> Back

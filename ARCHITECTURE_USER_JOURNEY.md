@@ -559,8 +559,10 @@ The intended campaign creation pattern is:
    Budget should auto-format as the user types.
 3. User clicks `Next`
 4. User lands on the connectors flow
+   If the user goes back to Step 1 and returns, already-connected wizard state should remain navigable instead of trapping the user on a connected platform tile.
 5. User connects one or more sources
 6. User clicks the final `Create Campaign` action
+   The confirm step should focus on review/finalization only and should not offer a separate `+ Add another platform` shortcut.
 7. The system finalizes the campaign and marks it active
 8. The user returns to Campaign Management and sees the new campaign in the list
 9. The user clicks the campaign and lands on the campaign-level Overview

@@ -257,7 +257,7 @@ Checkpoint after Journey 1:
 | Revenue | ≈ $87,489 | ≈ $174,979 | ≈ $240,352 |
 
 - [ ] **If you chose 90 days**: Sessions ≈ 65,600, Users ≈ 50,880, Conversions ≈ 2,592, Revenue ≈ $240,352
-- [ ] Overview `Users` card tooltip says: `Deduplicated GA4 users for the selected campaign scope.`
+- [ ] Overview `Users` card tooltip says: `Unique GA4 users for the selected campaign scope.`
 - [ ] **Spend = $0.00** — "Add Spend" button visible (GA4 does NOT track spend)
 - [ ] **"+" icon** visible on both Spend and Revenue cards
 - [ ] **ROAS = N/A or $0** (cannot calculate without spend)
@@ -740,15 +740,18 @@ Checkpoint after Journey 8:
 - [ ] "+" → HubSpot → OAuth → campaign field → crosswalk → pipeline (optional) → revenue property → date field (Close Date default) → review → Save
 - [ ] Confirm `Reconnect` appears immediately in a stable header/action area on the first screen
 - [ ] Confirm the first HubSpot screen does **not** show an unnecessary vertical scrollbar
-- [ ] Confirm the main double-counting warning appears on the first `Source` step before the user proceeds deeper into the wizard
+- [ ] Confirm the first `Source` step copy says: `Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions.`
+- [ ] Confirm the duplicate warning block is not repeated again at the bottom of the first HubSpot step
 - [ ] If `Total Revenue + Pipeline (Proxy)` is selected, choose campaign values such as `yesop_brand_search` and `yesop_prospecting`, then choose a pipeline/deal stage such as `Proposal/Price Quote`
+- [ ] Confirm the campaign identifier helper tip uses generic campaign/UTM wording rather than LinkedIn-specific wording
+- [ ] Confirm the crosswalk step explains that the selected `Deal Name` value(s) do not need to match the MimoSaaS campaign name exactly
 - [ ] Confirm Proxy mode makes both confirmed/won values and eligible open-stage values selectable; a campaign value that exists only in the selected open stage must not be hidden from Crosswalk
 - [ ] Confirm the Pipeline step copy explains that the stage filters the already selected campaign values
 - [ ] Confirm the final review step shows the selected Pipeline Proxy stage label, current Pipeline Proxy amount, and a note that it is not included in Total Revenue
 - [ ] Disconnect HubSpot temporarily and reopen edit mode: confirm the review step still shows the saved Pipeline Proxy stage and saved proxy amount fallback if live preview is unavailable
 - [ ] Micro copy: "HubSpot — $X,XXX"
 - [ ] Non-default date field: "HubSpot · Modified Date"
-- [ ] Confirm the Date field copy makes clear that it controls which HubSpot deal date is used when including/reporting revenue
+- [ ] Confirm the Date field copy explains which HubSpot date property controls deal inclusion and mentions Close Date, Last Modified Date, and Created Date
 - [ ] Confirm `Save Mappings` shows a single `Total Revenue (to date)` value and that it displays the computed amount before save
 - [ ] After save, confirm Overview shows a separate `Pipeline Proxy` card with provider, selected stage label, amount, and selected/contributing campaign values where available
 - [ ] If both HubSpot and Salesforce Pipeline Proxy are active, confirm the card total aggregates both providers and the microcopy renders separate provider blocks rather than a single flattened sentence

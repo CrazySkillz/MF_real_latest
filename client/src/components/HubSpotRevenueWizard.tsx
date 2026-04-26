@@ -701,7 +701,7 @@ export function HubSpotRevenueWizard(props: {
           </CardTitle>
 	          <CardDescription>
             {step === "value-source" &&
-              "Choose what HubSpot should provide: Total Revenue only, or Total Revenue + Pipeline (Proxy) for an early signal on long sales cycles."}
+              "Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions."}
             {step === "campaign-field" &&
               (statusLoading
                 ? "Checking HubSpot connection…"
@@ -710,8 +710,8 @@ export function HubSpotRevenueWizard(props: {
                   : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
             {step === "crosswalk" &&
               (pipelineEnabled
-                ? `Select the HubSpot campaign values to include from "${campaignPropertyLabel}". Closed Won matches contribute to Total Revenue. Matches in the selected Pipeline Proxy stage contribute to Pipeline Proxy.`
-                : `Select the value(s) from "${campaignPropertyLabel}" that should map to this MimoSaaS campaign. (The value does not need to match the MimoSaaS campaign name.)`)}
+                ? `Select the value(s) from "Deal Name" that should map to this MimoSaaS campaign; the value does not need to match the MimoSaaS campaign name.`
+                : `Select the value(s) from "Deal Name" that should map to this MimoSaaS campaign; the value does not need to match the MimoSaaS campaign name.`)}
             {step === "pipeline" &&
               "Choose the open stage to use for Pipeline Proxy. This filters the selected campaign values and is not included in Total Revenue."}
             {step === "revenue" &&
@@ -785,12 +785,6 @@ export function HubSpotRevenueWizard(props: {
 	                    </RadioGroup>
                   </div>
 
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800 p-3">
-                    <p className="text-xs text-amber-800 dark:text-amber-200">
-                      Only add HubSpot revenue if these deals are <strong>NOT</strong> already tracked as GA4 ecommerce transactions. Adding the same revenue from both sources will double-count your total.
-                    </p>
-                  </div>
-
                   <div className="text-xs text-muted-foreground">
                     {hubspotSourceMode === "revenue_plus_pipeline"
                       ? "Next, you’ll choose the open HubSpot stage to use for Pipeline Proxy."
@@ -854,7 +848,7 @@ export function HubSpotRevenueWizard(props: {
                       </SelectContent>
                     </Select>
                     <div className="text-xs text-muted-foreground">
-                      Tip: pick the HubSpot property your team uses for "LinkedIn campaign" or "UTM campaign".
+                      Tip: pick the HubSpot property your team uses for campaign or UTM attribution.
                     </div>
                   </div>
                 )}
@@ -1090,8 +1084,7 @@ export function HubSpotRevenueWizard(props: {
                     </SelectContent>
 	                  </Select>
 	                  <div className="text-xs text-muted-foreground">
-	                    Controls which HubSpot date property is used to decide which deals are included in this revenue total. Default: Close Date.
-	                    Use Close Date for won-revenue reporting, Last Modified Date for recently updated deals, or Created Date for newly created deals.
+	                    Controls which HubSpot date property is used to decide which deals are included in this revenue total. Default: Close Date for won-revenue reporting, Last Modified Date for recently updated deals, or Created Date for newly created deals.
 	                  </div>
 	                </div>
               </div>

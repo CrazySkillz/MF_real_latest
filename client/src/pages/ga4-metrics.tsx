@@ -4519,7 +4519,7 @@ export default function GA4Metrics() {
           title: `Average daily sessions: ${formatNumber(avgDailySessions)}`,
           description: `Over the last 7 days, your campaign averaged ${formatNumber(avgDailySessions)} sessions per day with a ${cr7}% conversion rate.`,
           recommendation: avgDailyConversions > 0
-            ? `${avgDailyConversions} conversions/day average. Create KPIs to track whether this meets your goals.`
+            ? `Last 7 days average: ${avgDailyConversions} conversions/day. Create KPIs to track whether this meets your goals.`
             : "Set up conversion tracking and KPIs to measure campaign effectiveness.",
         });
       }
@@ -5133,7 +5133,7 @@ export default function GA4Metrics() {
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                  Deduplicated GA4 users for the selected campaign scope.
+                                  Unique GA4 users for the selected campaign scope.
                                 </TooltipContent>
                               </UITooltip>
                             </div>

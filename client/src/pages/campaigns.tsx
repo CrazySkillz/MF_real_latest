@@ -13,7 +13,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -1676,16 +1675,7 @@ export default function Campaigns() {
                   {wizardStep === 1 ? (
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor="name">Campaign Name *</Label>
-                          <div className="group relative">
-                            <Info className="w-4 h-4 text-muted-foreground/70 cursor-help" />
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-2 bg-card text-white text-xs rounded shadow-lg">
-                              <p className="font-medium mb-1">Campaign Name Tip</p>
-                              <p>Using the same campaign name across all data sources (Google Sheets, LinkedIn, etc.) improves automatic conversion value calculation accuracy.</p>
-                            </div>
-                          </div>
-                        </div>
+                        <Label htmlFor="name">Campaign Name *</Label>
                         <Input
                           id="name"
                           placeholder="Enter campaign name"

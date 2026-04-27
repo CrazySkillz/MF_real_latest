@@ -710,8 +710,8 @@ export function HubSpotRevenueWizard(props: {
                   : "Connect HubSpot to load Deal fields and map revenue to this campaign.")}
             {step === "crosswalk" &&
               (pipelineEnabled
-                ? `Select the value(s) from "Deal Name" that should map to this MimoSaaS campaign; the value does not need to match the MimoSaaS campaign name.`
-                : `Select the value(s) from "Deal Name" that should map to this MimoSaaS campaign; the value does not need to match the MimoSaaS campaign name.`)}
+                ? `Select the value(s) from "Deal Name" that should map to this MimoSaaS campaign`
+                : `Select the value(s) from "Deal Name" that should map to this MimoSaaS campaign`)}
             {step === "pipeline" &&
               "Choose the open stage to use for Pipeline Proxy. This filters the selected campaign values and is not included in Total Revenue."}
             {step === "revenue" &&
@@ -721,18 +721,29 @@ export function HubSpotRevenueWizard(props: {
 	              "HubSpot is connected. Your selected revenue input will be used to compute financial metrics."}
 	          </CardDescription>
 	          {step === "value-source" && (
-		            <div className="flex justify-end min-h-8">
-		              <Button
-		                type="button"
-		                variant="link"
-		                className={`px-0 h-auto self-start no-underline hover:no-underline ${statusLoading || !isConnected ? "invisible pointer-events-none" : ""}`}
-		                onClick={() => void openOAuthWindow()}
-		                disabled={statusLoading || !isConnected || isConnecting}
-		                aria-hidden={statusLoading || !isConnected}
-		              >
-		                {isConnecting ? "Reconnecting…" : "Reconnect"}
-		              </Button>
-		            </div>
+	            <div className="flex items-start justify-between min-h-8 gap-3">
+	              <div className="text-xs text-muted-foreground mb-1 min-h-[16px] flex items-center gap-1">
+	                {!statusLoading && isConnected && connectStatusLabel ? (
+	                  <>
+	                    <span className="whitespace-nowrap">Connected to:</span>
+	                    <strong className="min-w-0 flex-1 truncate">{connectStatusLabel}</strong>
+	                  </>
+	                ) : (
+	                  <span className="opacity-0 whitespace-nowrap">Connected to: Placeholder</span>
+	                )}
+	              </div>
+	              <Button
+	                type="button"
+	                variant="ghost"
+	                size="sm"
+	                className={`${!statusLoading && isConnected ? "" : "opacity-0 pointer-events-none"} min-w-[116px]`}
+	                onClick={() => void openOAuthWindow()}
+	                disabled={statusLoading || !isConnected || isConnecting}
+	                aria-hidden={statusLoading || !isConnected}
+	              >
+	                {isConnecting ? "Reconnecting…" : "Reconnect"}
+	              </Button>
+	            </div>
 	          )}
 	        </CardHeader>
 
@@ -1084,7 +1095,7 @@ export function HubSpotRevenueWizard(props: {
                     </SelectContent>
 	                  </Select>
 	                  <div className="text-xs text-muted-foreground">
-	                    Controls which HubSpot date property is used to decide which deals are included in this revenue total. Default: Close Date for won-revenue reporting, Last Modified Date for recently updated deals, or Created Date for newly created deals.
+	                    Controls which date revenue is reported under - default: Close Date.
 	                  </div>
 	                </div>
               </div>
@@ -1162,14 +1173,21 @@ export function HubSpotRevenueWizard(props: {
                     <div>
                       <div className="text-xs text-muted-foreground/70">Selected value(s)</div>
                       <div className="font-medium text-foreground">
-                        {selectedValues.length.toLocaleString()}
+                        {selectedValues.length > 0
+                          ? `${selectedValues.slice(0, 6).join(", ")}${selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}`
+                          : "—"}
                       </div>
-                      {selectedValues.length > 0 ? (
-                        <div className="mt-1 text-xs text-muted-foreground/70">
-                          {selectedValues.slice(0, 6).join(", ")}
-                          {selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}
-                        </div>
-                      ) : null}
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-muted-foreground/70">Date field</div>
+                      <div className="font-medium text-foreground">
+                        {dateField === "hs_lastmodifieddate"
+                          ? "Last Modified Date"
+                          : dateField === "createdate"
+                            ? "Created Date"
+                            : "Close Date"}
+                      </div>
                     </div>
                   </div>
 

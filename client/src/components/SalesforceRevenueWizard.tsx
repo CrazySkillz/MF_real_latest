@@ -198,7 +198,7 @@ export function SalesforceRevenueWizard(props: {
       setRevenueField("Amount");
       setConversionValueField("");
       setValueSource("revenue");
-      setPipelineEnabled(false);
+      setPipelineEnabled(true);
       setPipelineStageName("");
       setPipelineStageLabel("");
       setStages([]);

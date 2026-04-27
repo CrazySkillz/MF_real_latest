@@ -2108,6 +2108,10 @@ export default function GA4Metrics() {
       if (scopedCampaignSet.size === 0) return true;
       return getSourceScopeValues(source).some((value) => scopedCampaignSet.has(normalizeValue(value)));
     };
+    const selectPipelineSource = (sources: any[]) => {
+      const sorted = [...sources].sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
+      return sorted.find(sourceMatchesGa4Scope) || sorted[0] || null;
+    };
     const normalizeTotal = (data: any) => {
       if (!data?.success) return data;
       const dataTotals = Array.isArray(data.pipelineValueRevenueTotals) ? data.pipelineValueRevenueTotals : [];
@@ -2119,7 +2123,7 @@ export default function GA4Metrics() {
         const type = String(s?.sourceType || "").toLowerCase();
         return s?.isActive !== false && type === sourceType && hasPipelineConfig(s);
       });
-      const crmSource = eligible.find(sourceMatchesGa4Scope) || eligible[0] || null;
+      const crmSource = selectPipelineSource(eligible);
       if (!crmSource) return null;
       const crmCfg = parseMappingConfig(crmSource);
       const selectedValues = Array.isArray(crmCfg.selectedValues) ? crmCfg.selectedValues.map((v: any) => String(v)).filter(Boolean) : [];

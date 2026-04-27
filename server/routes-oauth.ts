@@ -1540,8 +1540,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const source = await storage.getRevenueSource(campaignId, sourceId);
       if (!source) return res.status(404).json({ success: false, error: "Revenue source not found" });
       const sourcePlatformContext = String((source as any).platformContext || 'ga4').trim();
+      const sourceType = String((source as any)?.sourceType || "").toLowerCase();
+      let sourceCfg: any = {};
+      try { sourceCfg = (source as any)?.mappingConfig ? JSON.parse(String((source as any).mappingConfig)) : {}; } catch { sourceCfg = {}; }
       await storage.deleteRevenueSource(sourceId);
       await storage.deleteRevenueRecordsBySource(sourceId);
+
+      if ((sourceType === 'hubspot' || sourceType === 'salesforce') && sourceCfg?.pipelineEnabled === true) {
+        const contexts: Array<'ga4' | 'linkedin' | 'meta'> = ['ga4', 'linkedin', 'meta'];
+        const candidates: Array<{ source: any; cfg: any }> = [];
+        for (const context of contexts) {
+          const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
+          for (const candidate of (Array.isArray(sources) ? sources : [])) {
+            if (!candidate?.mappingConfig || String(candidate?.id || "") === sourceId || String(candidate?.sourceType || "").toLowerCase() !== sourceType) continue;
+            try {
+              const cfg = JSON.parse(String(candidate.mappingConfig));
+              const hasPipelineStage = sourceType === 'hubspot' ? !!cfg?.pipelineStageId : !!cfg?.pipelineStageName;
+              if (cfg?.pipelineEnabled === true && hasPipelineStage) candidates.push({ source: candidate, cfg });
+            } catch { /* ignore malformed mapping */ }
+          }
+        }
+        candidates.sort((a, b) => new Date((b.source as any)?.connectedAt || (b.source as any)?.createdAt || 0).getTime() - new Date((a.source as any)?.connectedAt || (a.source as any)?.createdAt || 0).getTime());
+        const owner = candidates[0] || null;
+        try {
+          const conn: any = sourceType === 'hubspot'
+            ? await storage.getHubspotConnection(campaignId)
+            : await storage.getSalesforceConnection(campaignId);
+          if (conn?.id) {
+            let connCfg: any = {};
+            try { connCfg = conn?.mappingConfig ? JSON.parse(String(conn.mappingConfig)) : {}; } catch { connCfg = {}; }
+            const clearedCfg = sourceType === 'hubspot'
+              ? { ...connCfg, pipelineEnabled: false, pipelineStageId: null, pipelineStageLabel: null, pipelineTotalToDate: 0, pipelineCurrency: null, pipelineLastUpdatedAt: null, pipelineProxyMode: null, pipelineWarning: null, pipelineValueRevenueTotals: [] }
+              : { ...connCfg, pipelineEnabled: false, pipelineStageName: null, pipelineStageLabel: null, pipelineTotalToDate: 0, pipelineCurrency: null, pipelineLastUpdatedAt: null, pipelineProxyMode: null, pipelineWarning: null, pipelineValueRevenueTotals: [], campaignValueRevenueTotals: [] };
+            const nextCfg = owner ? { ...connCfg, ...owner.cfg } : clearedCfg;
+            if (sourceType === 'hubspot') await storage.updateHubspotConnection(String(conn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+            else await storage.updateSalesforceConnection(String(conn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+          }
+        } catch { /* ignore */ }
+      }
 
       // Check if this was the last revenue source for the platform context.
       // If so, perform full cleanup so revenue tracking is properly disabled.
@@ -13000,26 +13036,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = {};
       }
 
-      const cfgContext = String(cfg?.platformContext || "").toLowerCase();
-      const contexts: Array<'ga4' | 'linkedin' | 'meta'> =
-        cfgContext === 'linkedin' || cfgContext === 'meta' || cfgContext === 'ga4'
-          ? [cfgContext as any, ...(['ga4', 'linkedin', 'meta'] as const).filter((c) => c !== cfgContext)]
-          : ['ga4', 'linkedin', 'meta'];
-      let pipelineSource: any = null;
-      for (const context of contexts) {
+      const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
+      const scopedGa4CampaignValues = getGA4CampaignFilterValues((campaign as any)?.ga4CampaignFilter);
+      const normalizeValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const scopedCampaignSet = new Set(scopedGa4CampaignValues.map(normalizeValue).filter(Boolean));
+      const sourceMatchesGa4Scope = (sourceCfg: any) => {
+        if (scopedCampaignSet.size === 0) return true;
+        const selectedValues = Array.isArray(sourceCfg?.selectedValues) ? sourceCfg.selectedValues : [];
+        const revenueTotals = Array.isArray(sourceCfg?.pipelineValueRevenueTotals) ? sourceCfg.pipelineValueRevenueTotals : [];
+        return [...selectedValues, ...revenueTotals.map((item: any) => item?.campaignValue)].some((value: any) => scopedCampaignSet.has(normalizeValue(value)));
+      };
+      const candidates: Array<{ source: any; cfg: any }> = [];
+      for (const context of ['ga4', 'linkedin', 'meta'] as const) {
         const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
-        const source = (Array.isArray(sources) ? sources : []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'salesforce');
-        if (!source?.mappingConfig) continue;
-        try {
-          const sourceCfg = JSON.parse(String(source.mappingConfig));
-          if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageName) {
-            cfg = sourceCfg;
-            pipelineSource = source;
-            break;
-          }
-        } catch {
-          // ignore malformed source mapping
+        for (const source of (Array.isArray(sources) ? sources : [])) {
+          if (!source?.mappingConfig || String(source?.sourceType || '').toLowerCase() !== 'salesforce') continue;
+          try {
+            const sourceCfg = JSON.parse(String(source.mappingConfig));
+            if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageName) candidates.push({ source, cfg: sourceCfg });
+          } catch { /* ignore malformed source mapping */ }
         }
+      }
+      candidates.sort((a, b) => new Date((b.source as any)?.connectedAt || (b.source as any)?.createdAt || 0).getTime() - new Date((a.source as any)?.connectedAt || (a.source as any)?.createdAt || 0).getTime());
+      const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || candidates[0] || null;
+      let pipelineSource: any = null;
+      if (selectedPipelineSource) {
+        cfg = selectedPipelineSource.cfg;
+        pipelineSource = selectedPipelineSource.source;
       }
 
       if (!cfg || cfg.pipelineEnabled !== true || !cfg.pipelineStageName) {
@@ -13392,26 +13435,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = {};
       }
 
-      const cfgContext = String(cfg?.platformContext || "").toLowerCase();
-      const contexts: Array<'ga4' | 'linkedin' | 'meta'> =
-        cfgContext === 'linkedin' || cfgContext === 'meta' || cfgContext === 'ga4'
-          ? [cfgContext as any, ...(['ga4', 'linkedin', 'meta'] as const).filter((c) => c !== cfgContext)]
-          : ['ga4', 'linkedin', 'meta'];
-      let pipelineSource: any = null;
-      for (const context of contexts) {
+      const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
+      const scopedGa4CampaignValues = getGA4CampaignFilterValues((campaign as any)?.ga4CampaignFilter);
+      const normalizeValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const scopedCampaignSet = new Set(scopedGa4CampaignValues.map(normalizeValue).filter(Boolean));
+      const sourceMatchesGa4Scope = (sourceCfg: any) => {
+        if (scopedCampaignSet.size === 0) return true;
+        const selectedValues = Array.isArray(sourceCfg?.selectedValues) ? sourceCfg.selectedValues : [];
+        const revenueTotals = Array.isArray(sourceCfg?.pipelineValueRevenueTotals) ? sourceCfg.pipelineValueRevenueTotals : [];
+        return [...selectedValues, ...revenueTotals.map((item: any) => item?.campaignValue)].some((value: any) => scopedCampaignSet.has(normalizeValue(value)));
+      };
+      const candidates: Array<{ source: any; cfg: any }> = [];
+      for (const context of ['ga4', 'linkedin', 'meta'] as const) {
         const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
-        const source = (Array.isArray(sources) ? sources : []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'hubspot');
-        if (!source?.mappingConfig) continue;
-        try {
-          const sourceCfg = JSON.parse(String(source.mappingConfig));
-          if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageId) {
-            cfg = sourceCfg;
-            pipelineSource = source;
-            break;
-          }
-        } catch {
-          // ignore malformed source mapping
+        for (const source of (Array.isArray(sources) ? sources : [])) {
+          if (!source?.mappingConfig || String(source?.sourceType || '').toLowerCase() !== 'hubspot') continue;
+          try {
+            const sourceCfg = JSON.parse(String(source.mappingConfig));
+            if (sourceCfg?.pipelineEnabled === true && sourceCfg?.pipelineStageId) candidates.push({ source, cfg: sourceCfg });
+          } catch { /* ignore malformed source mapping */ }
         }
+      }
+      candidates.sort((a, b) => new Date((b.source as any)?.connectedAt || (b.source as any)?.createdAt || 0).getTime() - new Date((a.source as any)?.connectedAt || (a.source as any)?.createdAt || 0).getTime());
+      const selectedPipelineSource = candidates.find(({ cfg }) => sourceMatchesGa4Scope(cfg)) || candidates[0] || null;
+      let pipelineSource: any = null;
+      if (selectedPipelineSource) {
+        cfg = selectedPipelineSource.cfg;
+        pipelineSource = selectedPipelineSource.source;
       }
 
       if (!cfg || cfg.pipelineEnabled !== true || !cfg.pipelineStageId) {

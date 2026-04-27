@@ -5570,8 +5570,8 @@ export default function GA4Metrics() {
                       <Card>
                         <CardContent className="p-6">
                           {Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0 ? (
-                            <div className="overflow-hidden border rounded-md">
-                              <table className="w-full text-sm table-fixed">
+                            <div className="overflow-x-auto border rounded-md">
+                              <table className="w-full min-w-[980px] text-sm table-fixed">
                                 <thead className="bg-muted border-b">
                                   <tr>
                                     <th className="text-left p-3 w-[34%]">Landing page</th>

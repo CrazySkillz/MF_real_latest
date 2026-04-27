@@ -182,9 +182,8 @@ export function HubSpotRevenueWizard(props: {
   }, [steps, step]);
 
   const connectStatusLabel = useMemo(() => {
-    // UI requirement: show account name (not numeric portal ID)
-    return portalName || null;
-  }, [portalName]);
+    return portalName || (portalId ? `Portal ${portalId}` : null);
+  }, [portalName, portalId]);
 
   const fetchStatus = async () => {
     const resp = await fetch(`/api/hubspot/${campaignId}/status`, { credentials: "include" });

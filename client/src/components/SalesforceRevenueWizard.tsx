@@ -1084,20 +1084,20 @@ export function SalesforceRevenueWizard(props: {
                 className="space-y-2"
               >
                 <div className="flex items-start gap-2">
-                  <RadioGroupItem id="sf-mode-revenue-only" value="revenue_only" className="mt-0.5" />
-                  <label htmlFor="sf-mode-revenue-only" className="cursor-pointer">
-                    <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
-                    <div className="text-xs text-muted-foreground leading-snug">
-                      Imports revenue-to-date from mapped Opportunity Amounts. No Pipeline (Proxy) section in Overview.
-                    </div>
-                  </label>
-                </div>
-                <div className="flex items-start gap-2">
                   <RadioGroupItem id="sf-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
                   <label htmlFor="sf-mode-revenue-pipeline" className="cursor-pointer">
                     <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
                     <div className="text-xs text-muted-foreground leading-snug">
                       Total Revenue comes from mapped Opportunity Amounts (to date). Adds a Pipeline (Proxy) card using a stage like Proposal as an early signal.
+                    </div>
+                  </label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem id="sf-mode-revenue-only" value="revenue_only" className="mt-0.5" />
+                  <label htmlFor="sf-mode-revenue-only" className="cursor-pointer">
+                    <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
+                    <div className="text-xs text-muted-foreground leading-snug">
+                      Imports revenue-to-date from mapped Opportunity Amounts. No Pipeline (Proxy) section in Overview.
                     </div>
                   </label>
                 </div>

@@ -5315,15 +5315,6 @@ export default function GA4Metrics() {
                                       <li key={`${entry?.providerLabel || "provider"}-${idx}`} className="space-y-0.5">
                                         <div className="flex items-start justify-between gap-2">
                                           <p className="font-medium text-foreground/90">{entry?.providerLabel || "Provider"}</p>
-                                          {entry?.sourceId ? (
-                                            <div className="flex items-center gap-1 whitespace-nowrap">
-                                              <button
-                                                onClick={() => { setEditingRevenueSource({ id: entry.sourceId, sourceType: entry.sourceType, displayName: entry.displayName, mappingConfig: entry.mappingConfig }); setShowRevenueDialog(true); }}
-                                                className="p-0.5 rounded hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground transition-all"
-                                                title="Edit"
-                                              ><Edit className="h-3 w-3" /></button>
-                                            </div>
-                                          ) : null}
                                         </div>
                                         <p>
                                           {[

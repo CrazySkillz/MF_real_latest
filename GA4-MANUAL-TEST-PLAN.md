@@ -1058,6 +1058,8 @@ Required reconciliation checks:
 - [ ] Go to **Overview** tab → click **"+"** on Revenue card
 - [ ] Add revenue via **CSV**, **Google Sheets**, or a supported connector → Save
 - [ ] Revenue card now shows the imported/connected amount
+- [ ] If the added source is snapshot-style rather than true daily history, **Latest Day Revenue must NOT immediately mirror that imported total**
+- [ ] `Latest Day Revenue` should populate only when the source provides a real previous-day revenue row
 - [ ] Click **KPIs** tab → **Create KPI**
 - [ ] **Revenue** template — NOW ENABLED
 - [ ] **ROAS/ROI** — still DISABLED (no spend yet)

@@ -700,8 +700,21 @@ export function HubSpotRevenueWizard(props: {
             )}
           </CardTitle>
 	          <CardDescription>
-            {step === "value-source" &&
-              "Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions."}
+            {step === "value-source" && (
+              <div className="space-y-1">
+                <div>Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions.</div>
+                <div className="text-xs text-muted-foreground min-h-[16px] flex items-center gap-1">
+                  {!statusLoading && isConnected && connectStatusLabel ? (
+                    <>
+                      <span className="whitespace-nowrap">Connected to:</span>
+                      <strong className="min-w-0 flex-1 truncate text-foreground">{connectStatusLabel}</strong>
+                    </>
+                  ) : (
+                    <span className="opacity-0 whitespace-nowrap">Connected to: Placeholder</span>
+                  )}
+                </div>
+              </div>
+            )}
             {step === "campaign-field" &&
               (statusLoading
                 ? "Checking HubSpot connection…"
@@ -721,17 +734,7 @@ export function HubSpotRevenueWizard(props: {
 	              "HubSpot is connected. Your selected revenue input will be used to compute financial metrics."}
 	          </CardDescription>
 	          {step === "value-source" && (
-	            <div className="flex items-start justify-between min-h-8 gap-3">
-	              <div className="text-xs text-muted-foreground mb-1 min-h-[16px] flex items-center gap-1">
-	                {!statusLoading && isConnected && connectStatusLabel ? (
-	                  <>
-	                    <span className="whitespace-nowrap">Connected to:</span>
-	                    <strong className="min-w-0 flex-1 truncate">{connectStatusLabel}</strong>
-	                  </>
-	                ) : (
-	                  <span className="opacity-0 whitespace-nowrap">Connected to: Placeholder</span>
-	                )}
-	              </div>
+	            <div className="flex justify-end min-h-8">
 	              <Button
 	                type="button"
 	                variant="ghost"

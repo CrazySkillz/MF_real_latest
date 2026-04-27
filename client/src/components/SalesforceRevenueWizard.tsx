@@ -966,7 +966,7 @@ export function SalesforceRevenueWizard(props: {
               {step === "value-source" && (
                 <>
                   <DollarSign className="w-5 h-5 text-green-600" />
-                  Choose source of truth
+                  What should Salesforce provide?
                 </>
               )}
               {step === "campaign-field" && (
@@ -996,7 +996,7 @@ export function SalesforceRevenueWizard(props: {
               {step === "review" && (
                 <>
                   <ClipboardCheck className="w-5 h-5 text-blue-600" />
-                  Process Revenue Metrics
+                  Save Mappings
                 </>
               )}
               {step === "complete" && (
@@ -1039,7 +1039,7 @@ export function SalesforceRevenueWizard(props: {
             {step === "value-source" &&
               (isLegacyConversionValueConfig
                 ? "Choose what Salesforce should provide for this campaign."
-                : "Choose whether Salesforce should provide Total Revenue only, or Total Revenue + Pipeline (Proxy).")}
+                : "Only add Salesforce revenue if these deals are NOT already tracked as GA4 ecommerce transactions.")}
             {step === "campaign-field" &&
               "Select the Salesforce Opportunity field that identifies which deals belong to this MimoSaaS campaign."}
             {step === "crosswalk" &&
@@ -1102,11 +1102,6 @@ export function SalesforceRevenueWizard(props: {
                   </label>
                 </div>
               </RadioGroup>
-              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800 p-3">
-                <p className="text-xs text-amber-800 dark:text-amber-200">
-                  Only add Salesforce revenue if these opportunities are <strong>NOT</strong> already tracked as GA4 ecommerce transactions. Adding the same revenue from both sources will double-count your total.
-                </p>
-              </div>
               <div className="text-xs text-muted-foreground">
                 {salesforceSourceMode === "revenue_plus_pipeline"
                   ? "Next, you’ll choose the open Opportunity stage to use for Pipeline Proxy."
@@ -1157,25 +1152,12 @@ export function SalesforceRevenueWizard(props: {
                       : campaignField
                         ? (<SelectItem value={campaignField}>{campaignFieldDisplay}</SelectItem>)
                         : null}
-                  </SelectContent>
+                </SelectContent>
                 </Select>
 
                 <div className="text-xs text-muted-foreground">
-                  Tip: this is usually a field like <strong>LinkedIn Campaign</strong> / <strong>UTM Campaign</strong>.{" "}
-                  <strong>Opportunity Name</strong> can work only if your opportunity naming convention contains the campaign value you want to map.
+                  Tip: pick the Salesforce field your team uses for campaign or UTM attribution
                 </div>
-                {pipelineEnabled ? (
-                  <div className="text-xs text-muted-foreground">
-                    Note: this mapping step uses <strong>Closed Won</strong> opportunities (<code>IsWon = true</code>) to calculate{" "}
-                    <strong>Total Revenue</strong>. If you enabled <strong>Pipeline (Proxy)</strong>, deals currently in stages like{" "}
-                    <strong>Proposal</strong> will appear later under the <strong>Pipeline</strong> step and the Overview Pipeline (Proxy) card.
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground">
-                    Note: this mapping step uses <strong>Closed Won</strong> opportunities (<code>IsWon = true</code>) to calculate{" "}
-                    <strong>Total Revenue</strong>.
-                  </div>
-                )}
 
                 {oauthError && (
                   <div className="text-sm text-red-600">
@@ -1206,7 +1188,7 @@ export function SalesforceRevenueWizard(props: {
                     Values shown include <strong>Closed Won</strong> opportunities and opportunities currently in <strong>{pipelineStageLabel || pipelineStageName || "the selected Pipeline Proxy stage"}</strong>. Closed Won matches contribute to <strong>Total Revenue</strong>; selected-stage matches contribute to <strong>Pipeline Proxy</strong>.
                   </>
                 ) : (
-                  <>Values shown are <strong>Closed Won</strong> only — they contribute to <strong>Total Revenue</strong> (confirmed).</>
+                  <>Values shown are <strong>Closed Won</strong> only — they contribute to <strong>Total Revenue</strong>.</>
                 )}
               </div>
               <div className="flex items-center justify-between gap-2">
@@ -1215,9 +1197,9 @@ export function SalesforceRevenueWizard(props: {
                     ? <>Mapped: <strong>{campaignMappings.length}</strong> of {uniqueValues.length} values</>
                     : <>Selected: <strong>{selectedValues.length}</strong></>}
                 </div>
-                {false && <Button variant="outline" size="sm" onClick={() => void fetchUniqueValues(campaignField)} disabled={valuesLoading}>
+                <Button variant="outline" size="sm" onClick={() => void fetchUniqueValues(campaignField)} disabled={valuesLoading}>
                   {valuesLoading ? "Refreshing…" : "Refresh values"}
-                </Button>}
+                </Button>
               </div>
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (
@@ -1395,7 +1377,7 @@ export function SalesforceRevenueWizard(props: {
               </div>
 
               <div className="space-y-2 border-t pt-3">
-                <Label className="text-muted-foreground">Date field <span className="text-xs font-normal">(advanced)</span></Label>
+                <Label className="text-muted-foreground">Date field</Label>
                 <Select value={dateField} onValueChange={setDateField}>
                   <SelectTrigger>
                     <SelectValue />
@@ -1407,7 +1389,7 @@ export function SalesforceRevenueWizard(props: {
                   </SelectContent>
                 </Select>
                 <div className="text-xs text-muted-foreground">
-                  Controls which date revenue is reported under. Default: Close Date.
+                  Controls which date revenue is reported under - default: Close Date.
                 </div>
               </div>
             </div>
@@ -1482,14 +1464,10 @@ export function SalesforceRevenueWizard(props: {
                   <div>
                     <div className="text-xs text-muted-foreground/70">Selected value(s)</div>
                     <div className="font-medium text-foreground">
-                      {selectedValues.length.toLocaleString()}
+                      {selectedValues.length > 0
+                        ? `${selectedValues.slice(0, 6).join(", ")}${selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}`
+                        : "â€”"}
                     </div>
-                    {selectedValues.length > 0 ? (
-                      <div className="mt-1 text-xs text-muted-foreground/70">
-                        {selectedValues.slice(0, 6).join(", ")}
-                        {selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               </div>
@@ -1540,7 +1518,7 @@ export function SalesforceRevenueWizard(props: {
                   (step === "review" && effectiveCurrencyMismatch)
                 }
               >
-                {step === "review" ? (isSaving ? "Processing…" : "Process Revenue Metrics") : "Continue"}
+                {step === "review" ? (isSaving ? "Saving…" : "Save Mappings") : "Continue"}
               </Button>
             </div>
           )}

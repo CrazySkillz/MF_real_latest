@@ -76,6 +76,16 @@ Current implementation:
 - include GA4-native daily revenue for that same day
 - do not invent daily values for snapshot-only sources that have no record on that date
 
+Important clarification:
+
+- snapshot-style imported revenue must still contribute to `Total Revenue`
+- but it must not populate `Latest Day Revenue` just because the source materialized a cumulative or revenue-to-date record on `yesterday (UTC)`
+- only true daily-history sources should populate `Latest Day Revenue`
+- practical examples of snapshot-style revenue for this rule include:
+  - `Manual revenue (to date)`
+  - CRM-style cumulative revenue imports such as HubSpot revenue-to-date
+  - CSV or Google Sheets revenue imports without a real date column
+
 ## Spend Computation
 
 ### Total Spend

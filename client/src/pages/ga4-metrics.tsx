@@ -2144,9 +2144,19 @@ export default function GA4Metrics() {
             : fallback?.pipelineValueRevenueTotals || [],
           providerLabel: label,
           selectedValues: (Array.isArray(normalized?.pipelineValueRevenueTotals) && normalized.pipelineValueRevenueTotals.length > 0) ? selectedValues : (fallback?.selectedValues || []),
+          sourceId: crmSource?.id ? String(crmSource.id) : null,
+          sourceType: crmSource?.sourceType || sourceType,
+          displayName: crmSource?.displayName || label,
+          mappingConfig: crmSource?.mappingConfig || null,
         };
       }
-      return fallback;
+      return fallback ? {
+        ...fallback,
+        sourceId: crmSource?.id ? String(crmSource.id) : null,
+        sourceType: crmSource?.sourceType || sourceType,
+        displayName: crmSource?.displayName || label,
+        mappingConfig: crmSource?.mappingConfig || null,
+      } : null;
     };
     const entries = [
       getPipelineSourceData("salesforce", salesforcePipelineProxyData, "Salesforce"),
@@ -2171,6 +2181,10 @@ export default function GA4Metrics() {
       providerEntries: entries.map((entry: any) => ({
         providerLabel: entry.providerLabel,
         pipelineStageLabel: entry.pipelineStageLabel,
+        sourceId: entry.sourceId || null,
+        sourceType: entry.sourceType || null,
+        displayName: entry.displayName || entry.providerLabel,
+        mappingConfig: entry.mappingConfig || null,
         campaignValues: Array.isArray(entry.pipelineValueRevenueTotals) && entry.pipelineValueRevenueTotals.length > 0
           ? entry.pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
           : Array.isArray(entry.selectedValues) ? entry.selectedValues.map((value: any) => String(value || "").trim()).filter(Boolean) : [],
@@ -5292,17 +5306,35 @@ export default function GA4Metrics() {
                               </p>
                               <div className="text-xs text-muted-foreground/70 mt-1 space-y-2">
                                 {Array.isArray(pipelineProxyData.providerEntries) && pipelineProxyData.providerEntries.length > 0 ? (
-                                  pipelineProxyData.providerEntries.map((entry: any, idx: number) => (
-                                    <div key={`${entry?.providerLabel || "provider"}-${idx}`} className="space-y-0.5">
-                                      <p className="font-medium text-foreground/90">{entry?.providerLabel || "Provider"}</p>
-                                      <p>
-                                        {[
-                                          Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0 ? entry.campaignValues.join(", ") : null,
-                                          entry?.pipelineStageLabel ? `- ${entry.pipelineStageLabel}` : null,
-                                        ].filter(Boolean).join(" ")}
-                                      </p>
-                                    </div>
-                                  ))
+                                  <ul className="space-y-2 pl-4 list-disc">
+                                    {pipelineProxyData.providerEntries.map((entry: any, idx: number) => (
+                                      <li key={`${entry?.providerLabel || "provider"}-${idx}`} className="space-y-0.5">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <p className="font-medium text-foreground/90">{entry?.providerLabel || "Provider"}</p>
+                                          {entry?.sourceId ? (
+                                            <div className="flex items-center gap-1 whitespace-nowrap">
+                                              <button
+                                                onClick={() => { setEditingRevenueSource({ id: entry.sourceId, sourceType: entry.sourceType, displayName: entry.displayName, mappingConfig: entry.mappingConfig }); setShowRevenueDialog(true); }}
+                                                className="p-0.5 rounded hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground transition-all"
+                                                title="Edit"
+                                              ><Edit className="h-3 w-3" /></button>
+                                              <button
+                                                onClick={() => setDeletingRevenueSourceId(entry.sourceId)}
+                                                className="p-0.5 rounded hover:bg-red-50 text-muted-foreground/60 hover:text-red-600 transition-all"
+                                                title="Delete"
+                                              ><Trash2 className="h-3 w-3" /></button>
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                        <p>
+                                          {[
+                                            Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0 ? entry.campaignValues.join(", ") : null,
+                                            entry?.pipelineStageLabel ? `- ${entry.pipelineStageLabel}` : null,
+                                          ].filter(Boolean).join(" ")}
+                                        </p>
+                                      </li>
+                                    ))}
+                                  </ul>
                                 ) : (
                                   <p>
                                     {[
@@ -5500,7 +5532,7 @@ export default function GA4Metrics() {
                                       </th>
                                       <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
                                       <th className="text-right font-medium px-2 py-2 w-[100px]">Conv Rate</th>
-                                      <th className="text-right font-medium px-2 py-2 w-[100px]">GA4 Revenue</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[110px] whitespace-nowrap">GA4 Revenue</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -5563,7 +5595,7 @@ export default function GA4Metrics() {
                                     </th>
                                     <th className="text-right p-3">Conversions</th>
                                     <th className="text-right p-3">Conv. rate</th>
-                                    <th className="text-right p-3">GA4 Revenue</th>
+                                    <th className="text-right p-3 whitespace-nowrap">GA4 Revenue</th>
                                   </tr>
                                 </thead>
                                 <tbody>

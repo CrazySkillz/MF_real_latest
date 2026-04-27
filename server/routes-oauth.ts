@@ -13836,6 +13836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalRevenue = 0;
       const currencies = new Set<string>();
       const conversionValues: number[] = [];
+      const revenueByCloseDate = new Map<string, number>();
       // Per-LinkedIn-campaign revenue tracking when campaignMappings are provided
       const revenueByLinkedinCampaign = new Map<string, number>();
       const campaignValueRevenueTotals = new Map<string, number>();
@@ -13885,6 +13886,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
           if (!Number.isFinite(r)) continue;
           totalRevenue += r;
+          const closeDate = String(props?.closedate || "").trim().slice(0, 10);
+          if (closeDate) revenueByCloseDate.set(closeDate, (revenueByCloseDate.get(closeDate) || 0) + r);
           const campaignValue = String(props[campaignProp] || "").trim();
           if (campaignValue) campaignValueRevenueTotals.set(campaignValue, (campaignValueRevenueTotals.get(campaignValue) || 0) + r);
 
@@ -14170,6 +14173,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // otherwise date-window queries (like LinkedIn's last-30-complete-days) will show a tiny fraction.
         // Instead, materialize a single record on the most recent complete UTC day (yesterday), so
         // range queries include the full to-date amount.
+        if (platformCtx === "ga4" && !pipelineEnabled && revenueByCloseDate.size > 0) {
+          const records = Array.from(revenueByCloseDate.entries())
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([date, revenue]) => ({
+              campaignId,
+              revenueSourceId: String((source as any).id),
+              date,
+              revenue: Number(revenue.toFixed(2)).toFixed(2) as any,
+              currency: cur,
+              sourceType: 'hubspot',
+            } as any));
+          await storage.createRevenueRecords(records);
+        } else {
         const recordDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
         if (campaignMappings.length > 0 && revenueByLinkedinCampaign.size > 0) {
@@ -14204,6 +14220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               sourceType: 'hubspot',
             } as any,
           ]);
+        }
         }
 
         // If HubSpot is being used as a LinkedIn revenue source, revenue is the source of truth.

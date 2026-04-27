@@ -75,7 +75,7 @@ export function HubSpotRevenueWizard(props: {
   // LinkedIn exec flow: HubSpot provides revenue-to-date from deal Amount. Conversion Value is intentionally not offered here.
   const [valueSource, setValueSource] = useState<"revenue">("revenue");
   // Pipeline proxy can be enabled for an exec "early signal" (useful for long sales cycles on any platform).
-  const [pipelineEnabled, setPipelineEnabled] = useState<boolean>(false);
+  const [pipelineEnabled, setPipelineEnabled] = useState<boolean>((initialMappingConfig as any)?.pipelineEnabled === false ? false : true);
   const [pipelineStageId, setPipelineStageId] = useState<string>("");
   const [pipelineStageLabel, setPipelineStageLabel] = useState<string>("");
   const [pipelines, setPipelines] = useState<any[]>([]);
@@ -702,17 +702,13 @@ export function HubSpotRevenueWizard(props: {
 	          <CardDescription>
             {step === "value-source" && (
               <div className="space-y-1">
+                {!statusLoading && isConnected && connectStatusLabel ? (
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <span className="whitespace-nowrap">Connected to:</span>
+                    <strong className="min-w-0 flex-1 truncate text-foreground">{connectStatusLabel}</strong>
+                  </div>
+                ) : null}
                 <div>Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions.</div>
-                <div className="text-xs text-muted-foreground min-h-[16px] flex items-center gap-1">
-                  {!statusLoading && isConnected && connectStatusLabel ? (
-                    <>
-                      <span className="whitespace-nowrap">Connected to:</span>
-                      <strong className="min-w-0 flex-1 truncate text-foreground">{connectStatusLabel}</strong>
-                    </>
-                  ) : (
-                    <span className="opacity-0 whitespace-nowrap">Connected to: Placeholder</span>
-                  )}
-                </div>
               </div>
             )}
             {step === "campaign-field" &&
@@ -779,20 +775,20 @@ export function HubSpotRevenueWizard(props: {
                       className="space-y-2 flex-1"
                     >
 		                      <div className="flex items-start gap-2">
-		                        <RadioGroupItem id="hs-mode-revenue-only" value="revenue_only" className="mt-0.5" />
-		                        <label htmlFor="hs-mode-revenue-only" className="cursor-pointer">
-		                          <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
-		                          <div className="text-xs text-muted-foreground leading-snug">
-		                            Imports revenue-to-date from mapped deal Amounts. No Pipeline (Proxy) section in Overview.
-		                          </div>
-		                        </label>
-		                      </div>
-		                      <div className="flex items-start gap-2">
 		                        <RadioGroupItem id="hs-mode-revenue-pipeline" value="revenue_plus_pipeline" className="mt-0.5" />
 		                        <label htmlFor="hs-mode-revenue-pipeline" className="cursor-pointer">
 		                          <div className="text-sm font-medium leading-snug">Total Revenue + Pipeline (Proxy)</div>
 		                          <div className="text-xs text-muted-foreground leading-snug">
 		                            Total Revenue comes from mapped deal Amounts (to date). Adds a Pipeline (Proxy) card using a stage like SQL as an early signal.
+		                          </div>
+		                        </label>
+		                      </div>
+		                      <div className="flex items-start gap-2">
+		                        <RadioGroupItem id="hs-mode-revenue-only" value="revenue_only" className="mt-0.5" />
+		                        <label htmlFor="hs-mode-revenue-only" className="cursor-pointer">
+		                          <div className="text-sm font-medium leading-snug">Total Revenue only (no Pipeline card)</div>
+		                          <div className="text-xs text-muted-foreground leading-snug">
+		                            Imports revenue-to-date from mapped deal Amounts. No Pipeline (Proxy) section in Overview.
 		                          </div>
 		                        </label>
 		                      </div>

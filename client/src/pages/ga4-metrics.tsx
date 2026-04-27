@@ -5322,11 +5322,6 @@ export default function GA4Metrics() {
                                                 className="p-0.5 rounded hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground transition-all"
                                                 title="Edit"
                                               ><Edit className="h-3 w-3" /></button>
-                                              <button
-                                                onClick={() => setDeletingRevenueSourceId(entry.sourceId)}
-                                                className="p-0.5 rounded hover:bg-red-50 text-muted-foreground/60 hover:text-red-600 transition-all"
-                                                title="Delete"
-                                              ><Trash2 className="h-3 w-3" /></button>
                                             </div>
                                           ) : null}
                                         </div>

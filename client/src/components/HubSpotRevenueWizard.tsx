@@ -1038,7 +1038,7 @@ export function HubSpotRevenueWizard(props: {
                       </SelectContent>
                     </Select>
                     <div className="text-xs text-muted-foreground">
-                      MimoSaaS will sum Deal Amounts for deals currently in this stage (stage subset).
+                      MimoSaaS will sum Deal Amounts for deals currently in this stage.
                     </div>
                   </div>
                 </div>

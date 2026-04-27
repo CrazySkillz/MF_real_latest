@@ -5500,7 +5500,7 @@ export default function GA4Metrics() {
                                       </th>
                                       <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
                                       <th className="text-right font-medium px-2 py-2 w-[100px]">Conv Rate</th>
-                                      <th className="text-right font-medium px-2 py-2 w-[100px]">Revenue</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[100px]">GA4 Revenue</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -5563,7 +5563,7 @@ export default function GA4Metrics() {
                                     </th>
                                     <th className="text-right p-3">Conversions</th>
                                     <th className="text-right p-3">Conv. rate</th>
-                                    <th className="text-right p-3">Revenue</th>
+                                    <th className="text-right p-3">GA4 Revenue</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -5634,7 +5634,7 @@ export default function GA4Metrics() {
                                         </UITooltip>
                                       </div>
                                     </th>
-                                    <th className="text-right p-3">Revenue</th>
+                                    <th className="text-right p-3">GA4 Revenue</th>
                                   </tr>
                                 </thead>
                                 <tbody>

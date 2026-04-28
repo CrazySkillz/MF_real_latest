@@ -2019,6 +2019,14 @@ export default function GA4Metrics() {
     return map[type] || type || "Revenue";
   };
 
+  const revenueSourceDisplayLabel = (source: any) => {
+    const rawLabel = String(source?.displayName || revenueSourceTypeLabel(source?.sourceType) || "").trim();
+    if (String(source?.sourceType || "").trim().toLowerCase() === "ga4" || rawLabel === "GA4 Revenue") {
+      return "Imported GA4 Revenue";
+    }
+    return rawLabel || "Revenue";
+  };
+
   // Merged spend sources for micro copy display: prefer breakdown (has amounts), fallback to source definitions
   const spendDisplaySources = useMemo(() => {
     const defs = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
@@ -2696,7 +2704,7 @@ export default function GA4Metrics() {
           const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
             ? ` · ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
             : "";
-          return [String(s.displayName || revenueSourceTypeLabel(s.sourceType)) + dateLabel, fC(Number(s.revenue != null ? s.revenue : rev))] as [string, string];
+          return [revenueSourceDisplayLabel(s) + dateLabel, fC(Number(s.revenue != null ? s.revenue : rev))] as [string, string];
         }),
       ]);
       }
@@ -5235,8 +5243,8 @@ export default function GA4Metrics() {
                                         : "";
                                       return (
                                         <tr key={s.sourceId} className="group/rev">
-                                          <td className="text-muted-foreground/70 py-0.5 pr-2 max-w-[120px] truncate" title={(s.displayName || revenueSourceTypeLabel(s.sourceType)) + dateLabel}>
-                                            {s.displayName || revenueSourceTypeLabel(s.sourceType)}{dateLabel}
+                                          <td className="text-muted-foreground/70 py-0.5 pr-2 max-w-[120px] truncate" title={revenueSourceDisplayLabel(s) + dateLabel}>
+                                            {revenueSourceDisplayLabel(s)}{dateLabel}
                                           </td>
                                           <td className="text-right font-medium tabular-nums text-foreground/80 py-0.5 whitespace-nowrap">
                                             {s.revenue != null ? formatMoney(s.revenue) : formatMoney(Number(financialRevenue || 0))}

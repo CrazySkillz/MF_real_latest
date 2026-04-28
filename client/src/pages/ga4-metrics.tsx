@@ -6022,7 +6022,7 @@ export default function GA4Metrics() {
                                                   targetValue: formatNumberByUnit(String(kpi?.targetValue || ""), String(kpi?.unit || "%")),
                                                   priority: (kpi?.priority || "medium") as any,
                                                   alertsEnabled: Boolean(kpi?.alertsEnabled ?? false),
-                                                  alertThreshold: kpi?.alertThreshold ? String(kpi.alertThreshold) : "",
+                                                  alertThreshold: kpi?.alertThreshold ? formatNumberByUnit(String(kpi.alertThreshold), String(kpi?.unit || "%")) : "",
                                                   alertCondition: (kpi?.alertCondition || "below") as any,
                                                   alertFrequency: (kpi?.alertFrequency || "daily") as any,
                                                   emailNotifications: Boolean(kpi?.emailNotifications ?? false),

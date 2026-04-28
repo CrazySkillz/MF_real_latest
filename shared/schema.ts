@@ -1419,7 +1419,9 @@ export const insertBenchmarkSchema = createInsertSchema(benchmarks).pick({
   alertThreshold: true,
   alertCondition: true,
   alertsEnabled: true,
+  emailNotifications: true,
   emailRecipients: true,
+  alertFrequency: true,
 });
 
 export const insertBenchmarkHistorySchema = createInsertSchema(benchmarkHistory).pick({

@@ -118,7 +118,7 @@ export function computeKpiValue(metricOrName: string, inputs: {
   engagementRate: number; // 0..1
 }) {
   const m = String(metricOrName || "").trim().toLowerCase();
-  const revenue = inputs.ga4Revenue > 0 ? inputs.ga4Revenue : inputs.importedRevenue;
+  const revenue = inputs.ga4Revenue + inputs.importedRevenue;
 
   if (m === "revenue") return round2(revenue);
   if (m === "total conversions" || m === "conversions") return Math.round(inputs.conversions || 0);

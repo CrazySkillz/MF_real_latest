@@ -961,7 +961,7 @@ export default function GA4Metrics() {
       alertThreshold: newBenchmark.alertsEnabled ? stripNumberFormatting(String(newBenchmark.alertThreshold || "")) : null,
       alertCondition: newBenchmark.alertCondition || "below",
       alertsEnabled: newBenchmark.alertsEnabled || false,
-      alertFrequency: newBenchmark.alertFrequency || "daily",
+      alertFrequency: newBenchmark.alertFrequency || "immediate",
       emailNotifications: newBenchmark.emailNotifications || false,
       emailRecipients: newBenchmark.emailRecipients || "",
     };
@@ -1035,7 +1035,7 @@ export default function GA4Metrics() {
         ? formatNumberByUnit(String((benchmark as any).alertThreshold), String(benchmark.unit || "%"))
         : "",
       alertCondition: (benchmark as any).alertCondition || "below",
-      alertFrequency: (benchmark as any).alertFrequency || "daily",
+      alertFrequency: (benchmark as any).alertFrequency || "immediate",
       emailNotifications: (benchmark as any).emailNotifications || false,
       emailRecipients: (benchmark as any).emailRecipients || "",
     });

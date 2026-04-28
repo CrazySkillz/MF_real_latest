@@ -288,9 +288,9 @@ async function buildGA4ReportPayload(report: any) {
     storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]),
     storage.getSpendSources(campaignId).catch(() => [] as any[]),
     storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "ga4").catch(() => [] as any[]),
-    storage.getSpendBreakdownBySource(campaignId, startDate, new Date().toISOString().slice(0, 10)).catch(() => [] as any[]),
+    storage.getSpendBreakdownBySource(campaignId, startDate, endDate).catch(() => [] as any[]),
     storage.getPlatformKPIs("google_analytics", campaignId).catch(() => [] as any[]),
-    storage.getCampaignBenchmarks(campaignId).catch(() => [] as any[]),
+    storage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]),
   ]);
 
   const ga4ToDate = await withTokenRefresh(connection, async (token) => {

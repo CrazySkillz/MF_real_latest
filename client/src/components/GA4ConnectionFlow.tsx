@@ -151,18 +151,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
 
   const saveCampaignFilter = async () => {
     const values = ga4CampaignFilter.map(v => v.trim()).filter(Boolean);
-    if (values.length === 0) {
-      toast({
-        title: "Campaign filter required",
-        description: "Select at least one GA4 campaign name (typically your utm_campaign value).",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsSavingFilter(true);
     try {
-      const filterValue = values.length === 1 ? values[0] : JSON.stringify(values);
+      const filterValue = values.length === 0 ? null : values.length === 1 ? values[0] : JSON.stringify(values);
       console.log('[GA4Flow] Saving campaign filter:', filterValue);
       await apiRequest("PATCH", `/api/campaigns/${campaignId}`, { ga4CampaignFilter: filterValue });
       console.log('[GA4Flow] Filter saved! Invalidating queries and calling onConnectionSuccess');
@@ -172,7 +163,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
       toast({
         title: "GA4 campaign(s) selected",
-        description: values.length === 1
+        description: values.length === 0
+          ? "MimoSaaS will now track all campaigns in this GA4 property."
+          : values.length === 1
           ? "MimoSaaS will now filter GA4 analytics to this campaign only."
           : `MimoSaaS will now filter GA4 analytics to ${values.length} campaigns.`,
       });
@@ -472,12 +465,14 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
             )}
           </div>
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={saveCampaignFilter} disabled={isSavingFilter || isLoadingCampaigns || ga4CampaignFilter.length === 0}>
+            <Button className="flex-1" onClick={saveCampaignFilter} disabled={isSavingFilter || isLoadingCampaigns}>
               {isSavingFilter ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Importing...
                 </>
+              ) : ga4CampaignFilter.length === 0 ? (
+                'Track all campaigns'
               ) : ga4CampaignFilter.length > 1 ? (
                 `Import ${ga4CampaignFilter.length} campaigns`
               ) : (

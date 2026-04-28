@@ -8214,6 +8214,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!propertyId) {
         return res.status(400).json({ message: "Property ID is required" });
       }
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       // Try to update in-memory realGA4Client (may not have it if OAuth went through ga4:connect flow)
       realGA4Client.setPropertyId(campaignId, propertyId);
@@ -8390,6 +8392,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/ga4-campaign-values", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const dateRange = String(req.query.dateRange || '30days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 200);
@@ -10030,6 +10034,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignId || !propertyId) {
         return res.status(400).json({ error: 'Campaign ID and Property ID are required' });
       }
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       // Look up the GA4 connection from the database by campaignId — use the LATEST connection
       const ga4Connections = await storage.getGA4Connections(campaignId);
@@ -24508,91 +24514,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         error: 'Failed to transfer GA4 connection'
-      });
-    }
-  });
-
-  // Set GA4 property for a campaign (used during initial setup)
-  app.post("/api/campaigns/:id/ga4-property", async (req, res) => {
-    try {
-      const campaignId = req.params.id;
-      const { propertyId } = req.body;
-
-      console.log(`[Set Property] Setting property ${propertyId} for campaign ${campaignId}`);
-
-      if (!propertyId) {
-        return res.status(400).json({
-          success: false,
-          error: "Property ID is required"
-        });
-      }
-
-      // Get connection from real GA4 client
-      const connection = realGA4Client.getConnection(campaignId);
-      if (!connection) {
-        console.log(`[Set Property] No connection found in realGA4Client for ${campaignId}`);
-        return res.status(404).json({
-          success: false,
-          error: "No active GA4 connection found"
-        });
-      }
-
-      // Update property ID in memory
-      realGA4Client.setPropertyId(campaignId, propertyId);
-
-      // Find property name from available properties
-      const propertyName = connection.availableProperties?.find(p => p.id === propertyId)?.name || propertyId;
-      console.log(`[Set Property] Property name: ${propertyName}`);
-
-      // Check if connection already exists in database
-      const existingConnections = await storage.getGA4Connections(campaignId);
-      console.log(`[Set Property] Found ${existingConnections.length} existing connections for ${campaignId}`);
-
-      if (existingConnections.length > 0) {
-        // Update existing connection
-        const existingConnection = existingConnections[0];
-        console.log(`[Set Property] Updating existing connection ${existingConnection.id}`);
-
-        await storage.updateGA4Connection(existingConnection.id, {
-          propertyId,
-          propertyName,
-          isPrimary: true,
-          isActive: true
-        });
-
-        await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
-        console.log(`[Set Property] Connection updated and set as primary`);
-      } else {
-        // Create new connection
-        console.log(`[Set Property] Creating new connection for ${campaignId} with property ${propertyId}`);
-
-        const newConnection = await storage.createGA4Connection({
-          campaignId,
-          propertyId,
-          accessToken: connection.accessToken || '',
-          refreshToken: connection.refreshToken || '',
-          method: 'access_token',
-          propertyName,
-          isPrimary: true,
-          isActive: true,
-          clientId: process.env.GOOGLE_CLIENT_ID || undefined,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET || undefined,
-          expiresAt: connection.expiresAt ? new Date(connection.expiresAt) : undefined
-        });
-
-        await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
-        console.log(`[Set Property] New connection created: ${newConnection.id}, isPrimary: ${newConnection.isPrimary}, isActive: ${newConnection.isActive}`);
-      }
-
-      res.json({
-        success: true,
-        message: "Property set successfully"
-      });
-    } catch (error) {
-      console.error('[Set Property] Error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to set property'
       });
     }
   });

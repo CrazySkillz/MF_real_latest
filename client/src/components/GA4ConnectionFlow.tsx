@@ -120,7 +120,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const loadGa4CampaignValues = async () => {
     setIsLoadingCampaigns(true);
     try {
-      const params = new URLSearchParams({ dateRange: '30days', limit: '50' });
+      const params = new URLSearchParams({ dateRange: '30days', limit: '200' });
       if (selectedProperty) params.set('propertyId', selectedProperty);
       const resp = await fetch(`/api/campaigns/${campaignId}/ga4-campaign-values?${params}`);
       const json = await resp.json().catch(() => null);

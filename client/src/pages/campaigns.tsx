@@ -1575,7 +1575,7 @@ export default function Campaigns() {
         try {
           setIsGA4CampaignLoading(true);
           const valsResp = await fetch(
-            `/api/campaigns/${encodeURIComponent(draftCampaignId)}/ga4-campaign-values?dateRange=30days&limit=50&propertyId=${encodeURIComponent(selectedGA4Property)}`,
+            `/api/campaigns/${encodeURIComponent(draftCampaignId)}/ga4-campaign-values?dateRange=30days&limit=200&propertyId=${encodeURIComponent(selectedGA4Property)}`,
             { credentials: 'include' }
           );
           const valsJson = await valsResp.json().catch(() => null);
@@ -2103,11 +2103,16 @@ export default function Campaigns() {
                             <div className="space-y-2">
                               <Label>GA4 campaignName</Label>
                               <Input
-                                value={selectedGA4CampaignValues[0] || ''}
-                                onChange={(e) => setSelectedGA4CampaignValues(e.target.value ? [e.target.value] : [])}
-                                placeholder="e.g., brand_awareness"
+                                value={selectedGA4CampaignValues.join(", ")}
+                                onChange={(e) => setSelectedGA4CampaignValues(
+                                  e.target.value
+                                    .split(/[,\n]/)
+                                    .map((v) => v.trim())
+                                    .filter(Boolean)
+                                )}
+                                placeholder="e.g., brand_awareness, paid_social_q2"
                               />
-                              <p className="text-xs text-muted-foreground">If GA4 reporting is delayed, enter the expected UTM campaign value.</p>
+                              <p className="text-xs text-muted-foreground">If GA4 reporting is delayed, enter one or more expected UTM campaign values, separated by commas.</p>
                             </div>
                           )}
                           <div className="flex gap-2 pt-2">

@@ -130,11 +130,6 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       }
       const rows = Array.isArray(json.campaigns) ? json.campaigns : [];
       setAvailableCampaigns(rows);
-      // Clear any prefilled filter values that don't match actual GA4 campaigns
-      if (rows.length > 0) {
-        const validNames = new Set(rows.map((c: { name: string }) => c.name));
-        setGa4CampaignFilter(prev => prev.filter(name => validNames.has(name)));
-      }
     } catch (err) {
       console.warn('[GA4] Campaign values fetch error:', err);
     } finally {
@@ -151,9 +146,17 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
 
   const saveCampaignFilter = async () => {
     const values = ga4CampaignFilter.map(v => v.trim()).filter(Boolean);
+    if (values.length === 0) {
+      toast({
+        title: "Select at least one campaign",
+        description: "GA4 setup now requires an explicit campaign selection.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsSavingFilter(true);
     try {
-      const filterValue = values.length === 0 ? null : values.length === 1 ? values[0] : JSON.stringify(values);
+      const filterValue = values.length === 1 ? values[0] : JSON.stringify(values);
       console.log('[GA4Flow] Saving campaign filter:', filterValue);
       await apiRequest("PATCH", `/api/campaigns/${campaignId}`, { ga4CampaignFilter: filterValue });
       console.log('[GA4Flow] Filter saved! Invalidating queries and calling onConnectionSuccess');
@@ -163,9 +166,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
       toast({
         title: "GA4 campaign(s) selected",
-        description: values.length === 0
-          ? "MimoSaaS will now track all campaigns in this GA4 property."
-          : values.length === 1
+        description: values.length === 1
           ? "MimoSaaS will now filter GA4 analytics to this campaign only."
           : `MimoSaaS will now filter GA4 analytics to ${values.length} campaigns.`,
       });
@@ -471,8 +472,6 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Importing...
                 </>
-              ) : ga4CampaignFilter.length === 0 ? (
-                'Track all campaigns'
               ) : ga4CampaignFilter.length > 1 ? (
                 `Import ${ga4CampaignFilter.length} campaigns`
               ) : (

@@ -5474,7 +5474,7 @@ export default function GA4Metrics() {
                         <div className="rounded-lg border border-border bg-muted/40 p-4">
                           <p className="text-sm font-medium text-foreground">Add spend to unlock ROAS / ROI / CPA</p>
                           <p className="text-sm text-muted-foreground/70 mt-1">
-                            To calculate ROAS/ROI/CPA, add spend from any source (ad platform, spreadsheet, or manual entry).
+                            To calculate ROAS/ROI/CPA, add spend from any source (ad platform, spreadsheet, or CSV import).
                           </p>
                           <div className="mt-3">
                             <Button variant="outline" size="sm" onClick={() => setShowSpendDialog(true)}>
@@ -8863,7 +8863,7 @@ export default function GA4Metrics() {
           <DialogHeader>
             <DialogTitle>Select GA4 campaigns to import</DialogTitle>
             <DialogDescription>
-              Choose one or more GA4 campaign values to scope this MimoSaaS campaign. If you select none, we’ll track all campaigns in the selected property.
+              Choose one or more GA4 campaign values to scope this MimoSaaS campaign.
             </DialogDescription>
           </DialogHeader>
 
@@ -8921,15 +8921,7 @@ export default function GA4Metrics() {
               )}
             </div>
 
-            <div className="flex items-center justify-between gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedGa4Campaigns([])}
-                type="button"
-              >
-                Track all campaigns
-              </Button>
-
+            <div className="flex items-center justify-end gap-2">
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setShowGa4CampaignPicker(false)} type="button">
                   Cancel
@@ -8937,8 +8929,10 @@ export default function GA4Metrics() {
                 <Button
                   onClick={async () => {
                     try {
-                      const payload =
-                        selectedGa4Campaigns.length > 0 ? JSON.stringify(selectedGa4Campaigns) : null;
+                      if (selectedGa4Campaigns.length === 0) {
+                        throw new Error("Select at least one GA4 campaign");
+                      }
+                      const payload = JSON.stringify(selectedGa4Campaigns);
                       const resp = await fetch(`/api/campaigns/${campaignId}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },

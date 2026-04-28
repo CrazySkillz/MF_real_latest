@@ -4331,7 +4331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       yesterday.setUTCDate(yesterday.getUTCDate() - 1);
       const dateStr = yesterday.toISOString().slice(0, 10);
 
-      const campaignFilter = campaign.ga4CampaignFilter || campaign.name;
+      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
       try {
         const metrics = await ga4Service.getMetricsWithAutoRefresh(

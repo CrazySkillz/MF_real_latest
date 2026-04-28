@@ -5565,8 +5565,8 @@ export default function GA4Metrics() {
                               <table className="w-full text-sm table-fixed">
                                 <thead className="bg-muted border-b">
                                   <tr>
-                                    <th className="text-left p-3 w-[31%]">Landing page</th>
-                                    <th className="text-left p-3 w-[19%]">Source/Medium</th>
+                                    <th className="text-left p-3 w-[30%]">Landing page</th>
+                                    <th className="text-left p-3 w-[18%]">Source/Medium</th>
                                     <th className="text-right p-3 w-[10%]">Sessions</th>
                                     <th className="text-right p-3 w-[10%]">
                                       <div className="flex items-center justify-end gap-1">
@@ -5583,9 +5583,9 @@ export default function GA4Metrics() {
                                         </UITooltip>
                                       </div>
                                     </th>
-                                    <th className="text-right p-3 w-[11%]">Conversions</th>
+                                    <th className="text-right p-3 w-[10%]">Conversions</th>
                                     <th className="text-right p-3 w-[9%]">Conv. rate</th>
-                                    <th className="text-right p-3 w-[10%] whitespace-nowrap">GA4 Revenue</th>
+                                    <th className="text-right p-3 w-[13%] whitespace-nowrap">GA4 Revenue</th>
                                   </tr>
                                 </thead>
                                 <tbody>

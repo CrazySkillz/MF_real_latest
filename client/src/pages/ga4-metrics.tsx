@@ -5561,14 +5561,14 @@ export default function GA4Metrics() {
                       <Card>
                         <CardContent className="p-6">
                           {Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0 ? (
-                            <div className="overflow-x-auto border rounded-md">
-                              <table className="w-full min-w-[980px] text-sm table-fixed">
+                            <div className="overflow-hidden border rounded-md">
+                              <table className="w-full text-sm table-fixed">
                                 <thead className="bg-muted border-b">
                                   <tr>
-                                    <th className="text-left p-3 w-[34%]">Landing page</th>
-                                    <th className="text-left p-3 w-[16%]">Source/Medium</th>
-                                    <th className="text-right p-3">Sessions</th>
-                                    <th className="text-right p-3">
+                                    <th className="text-left p-3 w-[31%]">Landing page</th>
+                                    <th className="text-left p-3 w-[19%]">Source/Medium</th>
+                                    <th className="text-right p-3 w-[10%]">Sessions</th>
+                                    <th className="text-right p-3 w-[10%]">
                                       <div className="flex items-center justify-end gap-1">
                                         Users
                                         <UITooltip>
@@ -5583,9 +5583,9 @@ export default function GA4Metrics() {
                                         </UITooltip>
                                       </div>
                                     </th>
-                                    <th className="text-right p-3">Conversions</th>
-                                    <th className="text-right p-3">Conv. rate</th>
-                                    <th className="text-right p-3 whitespace-nowrap">GA4 Revenue</th>
+                                    <th className="text-right p-3 w-[11%]">Conversions</th>
+                                    <th className="text-right p-3 w-[9%]">Conv. rate</th>
+                                    <th className="text-right p-3 w-[10%] whitespace-nowrap">GA4 Revenue</th>
                                   </tr>
                                 </thead>
                                 <tbody>

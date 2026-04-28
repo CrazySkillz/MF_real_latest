@@ -6082,7 +6082,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateRange = String(req.query.dateRange || '30days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
 
-      const campaign = await storage.getCampaign(campaignId);
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
       // Convert date range to GA4 format
@@ -8309,7 +8310,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
-        const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
+        const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+        if (!campaign) return;
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
         const sim = simulateGA4({ campaignId, propertyId: requestedPropertyId || 'yesop', dateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const pid = requestedPropertyId || 'yesop';
@@ -8324,7 +8326,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastUpdated: new Date().toISOString(),
         });
       }
-      const campaign = await storage.getCampaign(campaignId);
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
       // Get all connections or a specific one
@@ -9298,7 +9301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       console.log(`[Connected Platforms] Checking platforms for campaign ${campaignId}`);
-      const campaign = await storage.getCampaign(campaignId);
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const campaignPlatformRaw = String((campaign as any)?.platform || '')
         .split(',')
         .map((s: string) => s.trim().toLowerCase())

@@ -5791,6 +5791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const actorId = getActorId(req as any);
+      const clientId = req.body?.clientId ? String(req.body.clientId) : null;
       if (!actorId) {
         return res.status(401).json({ success: false, error: "Session required. Please refresh and try again." });
       }
@@ -5802,6 +5803,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if already exists
         const existing = await storage.getCampaign(def.id).catch(() => null as any);
         if (existing) {
+          if (
+            clientId &&
+            String(existing?.ownerId || "").trim() === actorId &&
+            !String(existing?.clientId || "").trim()
+          ) {
+            await storage.updateCampaign(def.id, { clientId } as any).catch(() => null);
+          }
           skipped.push(def.name);
           continue;
         }
@@ -5810,8 +5818,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (db) {
           // When DB is available, use raw SQL for stable IDs
           await db.execute(sql`
-            INSERT INTO campaigns (id, owner_id, name, spend, currency, status, industry, platform, ga4_campaign_filter, start_date, created_at)
-            VALUES (${def.id}, ${actorId}, ${def.name}, ${def.spend}, 'USD', 'active', ${def.industry}, 'google_analytics', ${def.utmCampaign}, NOW() - INTERVAL '90 days', NOW())
+            INSERT INTO campaigns (id, owner_id, client_id, name, spend, currency, status, industry, platform, ga4_campaign_filter, start_date, created_at)
+            VALUES (${def.id}, ${actorId}, ${clientId}, ${def.name}, ${def.spend}, 'USD', 'active', ${def.industry}, 'google_analytics', ${def.utmCampaign}, NOW() - INTERVAL '90 days', NOW())
             ON CONFLICT (id) DO NOTHING
           `);
         } else {
@@ -5819,6 +5827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const seeded = await storage.createCampaign({
             name: def.name,
             ownerId: actorId,
+            clientId,
             spend: def.spend,
             currency: "USD",
             status: "active",

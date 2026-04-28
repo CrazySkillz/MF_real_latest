@@ -1246,7 +1246,11 @@ export default function Campaigns() {
 
   const seedDemoMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/seed-yesop-campaigns", { method: "POST", headers: { "Content-Type": "application/json" } });
+      const res = await fetch("/api/seed-yesop-campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: selectedClientId || null }),
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" }));
         throw new Error(err.error || "Failed to seed demo campaigns");

@@ -5584,7 +5584,7 @@ export default function GA4Metrics() {
                                       </div>
                                     </th>
                                     <th className="text-right p-3 w-[10%]">Conversions</th>
-                                    <th className="text-right p-3 w-[9%]">Conv. rate</th>
+                                    <th className="text-right p-3 w-[9%] whitespace-nowrap">Conv. rate</th>
                                     <th className="text-right p-3 w-[13%] whitespace-nowrap">GA4 Revenue</th>
                                   </tr>
                                 </thead>

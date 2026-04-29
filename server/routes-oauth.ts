@@ -696,7 +696,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         file.mimetype === "application/csv" ||
         file.mimetype === "application/vnd.ms-excel" ||
         file.originalname.toLowerCase().endsWith(".csv");
-      cb(ok ? null : new Error("Only CSV files are allowed"), ok);
+      if (ok) cb(null, true);
+      else cb(new Error("Only CSV files are allowed"));
     },
   });
 

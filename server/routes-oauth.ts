@@ -17806,7 +17806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if token is expired
       const now = new Date();
-      const expiresAt = new Date(connection.expiresAt);
+      const expiresAt = new Date(connection.expiresAt as any);
       const isExpired = expiresAt < now;
 
       res.json({

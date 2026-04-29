@@ -691,7 +691,7 @@ Checkpoint after Journey 8:
 - [ ] Source row / micro copy shows the imported source and $10,000.00
 - [ ] **Total Revenue increased** by $10,000
 
-### Step 3: Verify propagation after manual revenue
+### Step 3: Verify propagation after imported revenue
 - [ ] **Overview tab**: ROAS increased (higher revenue ÷ same spend), ROI increased, Profit increased
 - [ ] **KPIs tab**: Revenue KPI current value increased, ROAS KPI current value increased
 - [ ] **Benchmarks tab**: ROAS Benchmark current value increased
@@ -739,6 +739,7 @@ Checkpoint after Journey 8:
 ### Step 6: Add HubSpot Revenue (if HubSpot connected)
 - [ ] "+" → HubSpot → OAuth → campaign field → crosswalk → pipeline (optional) → revenue property → date field (Close Date default) → review → Save
 - [ ] Confirm `Reconnect` appears immediately in a stable header/action area on the first screen
+- [ ] Confirm `Connected to:` appears above the main warning text on the first HubSpot `Source` step and shows the real account label or a real portal fallback, not `Placeholder`
 - [ ] Confirm the first HubSpot screen does **not** show an unnecessary vertical scrollbar
 - [ ] Confirm the first `Source` step copy says: `Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions.`
 - [ ] Confirm the duplicate warning block is not repeated again at the bottom of the first HubSpot step
@@ -754,6 +755,7 @@ Checkpoint after Journey 8:
 - [ ] Confirm the Date field copy explains which HubSpot date property controls deal inclusion and mentions Close Date, Last Modified Date, and Created Date
 - [ ] Confirm `Save Mappings` shows a single `Total Revenue (to date)` value and that it displays the computed amount before save
 - [ ] After save, confirm Overview shows a separate `Pipeline Proxy` card with provider, selected stage label, amount, and selected/contributing campaign values where available
+- [ ] Confirm the Overview `Pipeline Proxy` card is display-only and that source management stays under `Total Revenue`
 - [ ] If both HubSpot and Salesforce Pipeline Proxy are active, confirm the card total aggregates both providers and the microcopy renders separate provider blocks rather than a single flattened sentence
 - [ ] Confirm the `Pipeline Proxy` card remains visible for the active HubSpot source even if the separate proxy endpoint/cache path has not returned fresh data yet
 - [ ] Delete or deactivate the HubSpot revenue source and confirm the `Pipeline Proxy` card disappears
@@ -766,7 +768,7 @@ Checkpoint after Journey 8:
 - [ ] Micro copy: "Salesforce — $X,XXX"
 - [ ] On the Source step, confirm `Reconnect` appears on the first step only and `Connected to ...` is not repeated on later steps
 - [ ] Confirm the main double-counting warning appears on the first `Source` step before the user proceeds deeper into the wizard
-- [ ] Confirm `Total Revenue only (no Pipeline card)` appears above `Total Revenue + Pipeline (Proxy)`
+- [ ] Confirm `Total Revenue + Pipeline (Proxy)` appears above `Total Revenue only (no Pipeline card)` and is the default selected option in new connect mode
 - [ ] Move from `Pipeline` to `Revenue`
 - [ ] Confirm the `Pipeline` step icon turns green/completed once you move past it
 - [ ] Confirm the Crosswalk step does not show a redundant `Refresh values` action
@@ -777,6 +779,7 @@ Checkpoint after Journey 8:
 - [ ] Confirm the final review step shows the selected Pipeline Proxy stage label, current Pipeline Proxy amount, and a note that it is not included in Total Revenue
 - [ ] Disconnect Salesforce temporarily and reopen edit mode: confirm the review step still shows the saved Pipeline Proxy stage and saved proxy amount fallback if live preview is unavailable
 - [ ] After save, confirm Overview shows a separate `Pipeline Proxy` card with provider, selected stage label, amount, and selected/contributing campaign values where available
+- [ ] Confirm the Overview `Pipeline Proxy` card is display-only and that source management stays under `Total Revenue`
 - [ ] If both Salesforce and HubSpot Pipeline Proxy are active, confirm the card total aggregates both providers and the microcopy renders separate provider blocks rather than a single flattened sentence
 - [ ] Confirm the `Pipeline Proxy` card remains visible for the active Salesforce source even if the separate proxy endpoint/cache path has not returned fresh data yet
 - [ ] Delete or deactivate the Salesforce revenue source and confirm the `Pipeline Proxy` card disappears
@@ -903,7 +906,7 @@ Checkpoint after Journey 8:
 - [ ] If **HubSpot revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
 - [ ] If **Salesforce revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
 - [ ] If **Shopify revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
-- [ ] If **existing stored Manual revenue** is active, verify it contributes to `Total Revenue (All Sources)` but does not invent campaign-row allocations; if shown in Ad Comparison it should remain effectively unallocated
+- [ ] If **existing stored Manual revenue** is active from legacy data, verify it contributes to `Total Revenue (All Sources)` but does not invent campaign-row allocations; if shown in Ad Comparison it should remain effectively unallocated
 - [ ] For any active source with unmatched revenue, verify that unmatched remainder does not get added to a campaign row and is preserved as `Unallocated External Revenue`
 - [ ] Verify the sum of all source rows in `Revenue Breakdown` still reconciles to `Total Revenue`
 - [ ] Verify the matched revenue shown in the `Revenue Breakdown` subsections is consistent with the campaign-row increases seen in `All Campaigns`
@@ -924,7 +927,7 @@ For each active revenue source type, validate the source independently:
 - [ ] HubSpot revenue: add/edit/delete the source and verify every related revenue surface updates from the HubSpot deal amount and saved campaign-value mappings
 - [ ] Salesforce revenue: add/edit/delete the source and verify every related revenue surface updates from the Salesforce opportunity amount and saved campaign-value mappings
 - [ ] Shopify revenue: add/edit/delete the source and verify every related revenue surface updates from the Shopify order amount and saved campaign-value mappings
-- [ ] Existing stored Manual revenue: if present, edit/delete the source and verify it updates all-source totals without inventing campaign-row allocations
+- [ ] Existing stored Manual revenue: if present from legacy data, edit/delete the source and verify it updates all-source totals without inventing campaign-row allocations
 
 For each add/edit/delete action above, validate all related revenue surfaces:
 
@@ -1123,6 +1126,7 @@ Required reconciliation checks:
 - [ ] Connect real HubSpot account via OAuth
 - [ ] Complete the wizard: campaign field → crosswalk → revenue property → date field
 - [ ] In `Total Revenue only` mode, verify Crosswalk shows only values backed by confirmed/Closed Won deals
+- [ ] In `Total Revenue only` mode, verify won revenue materializes into true daily rows by deal `Close Date`, not as one synthetic snapshot row
 - [ ] Verify deal count + revenue total match what you see in HubSpot
 - [ ] If Pipeline Proxy is enabled, select a real open deal stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
 - [ ] Confirm the Overview `Pipeline Proxy` card appears because the saved HubSpot source is active, and does not depend only on a fresh proxy endpoint response
@@ -1209,7 +1213,7 @@ Use this instead of rerunning the full plan after every small fix:
 7. Blocked KPIs excluded from scoring + show integrity insight
 8. Notifications created when thresholds breached
 9. All production GA4 spend sources (CSV/Sheets/LinkedIn/Meta/Google Ads) work, and any existing stored Manual spend remains editable/deletable
-10. All production GA4 revenue sources (GA4/CSV/Sheets/HubSpot/Salesforce/Shopify) work, and any existing stored Manual revenue remains editable/deletable
+10. All production GA4 revenue sources (GA4/CSV/Sheets/HubSpot/Salesforce/Shopify) work, and any existing stored legacy Manual revenue remains editable/deletable
 11. Total Spend = sum of micro copy (exact)
 12. Total Revenue = GA4 onsite + CRM offsite (no double-counting)
 13. Edit spend/revenue sources → no duplicates. Delete → recalculates.

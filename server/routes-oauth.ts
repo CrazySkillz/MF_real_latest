@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getAuth } from "@clerk/express";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertKPIReportSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertKPIReportSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -22,7 +22,7 @@ import { enrichRows, inferMissingFields } from "./utils/data-enrichment";
 import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
 import { db } from "./db";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign } from "./auto-refresh-scheduler";
@@ -5595,6 +5595,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = String(req.params.id || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const date = req.body?.date ? String(req.body.date).trim() : undefined; // optional YYYY-MM-DD
       const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date });
       res.json({ success: true, ...result });
@@ -5611,8 +5613,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = String(req.params.id || "");
       const propertyId = String(req.body?.propertyId || "yesop").trim();
 
-      const campaign = await storage.getCampaign(campaignId);
-      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
 
       // Each click writes to a NEW date so data accumulates. Count existing mock rows
       // and offset backwards from yesterday so each click = 1 new day.
@@ -8765,7 +8767,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { dateRange = '7days', propertyId, mock } = req.query;
-      const campaign = await storage.getCampaign(id);
+      const campaign = await ensureCampaignAccess(req as any, res as any, id);
+      if (!campaign) return;
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
       const toGa4StartDate = (dr: string) => {
@@ -10014,6 +10017,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const actorId = getActorId(req as any);
       if (!actorId) return res.status(401).json({ error: "Unauthorized" });
       const { connectionId } = req.params;
+      const [connection] = await db
+        .select({ campaignId: ga4Connections.campaignId })
+        .from(ga4Connections)
+        .where(eq(ga4Connections.id, connectionId))
+        .limit(1);
+      if (!connection) return res.status(404).json({ error: "Connection not found" });
+      const ok = await ensureCampaignAccess(req as any, res as any, String(connection.campaignId));
+      if (!ok) return;
       const success = await storage.deleteGA4Connection(connectionId);
 
       if (success) {

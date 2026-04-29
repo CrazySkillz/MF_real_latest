@@ -82,7 +82,7 @@ Important clarification:
 - but it must not populate `Latest Day Revenue` just because the source materialized a cumulative or revenue-to-date record on `yesterday (UTC)`
 - only true daily-history sources should populate `Latest Day Revenue`
 - practical examples of snapshot-style revenue for this rule include:
-  - `Manual revenue (to date)`
+  - existing stored `Manual` revenue snapshots
   - CRM-style cumulative revenue imports such as HubSpot revenue-to-date
   - CSV or Google Sheets revenue imports without a real date column
 
@@ -132,6 +132,7 @@ Pipeline Proxy rule:
 - if both HubSpot and Salesforce are active with Pipeline Proxy for the same GA4 campaign, the single Overview Pipeline Proxy card should aggregate both exact proxy totals
 - when multiple CRM providers contribute, provenance should render as separate provider blocks rather than one flattened merged sentence
 - HubSpot Pipeline Proxy must use only the HubSpot wizard's saved selected campaign values and selected stage; it must not broaden to GA4 campaign filter values and must never fall back to confirmed `lastTotalRevenue`
+- the Overview `Pipeline Proxy` card is display-only; users manage the underlying CRM source from `Total Revenue`, not from the proxy card itself
 - it is not included in `Total Revenue`, `Profit`, `ROAS`, `ROI`, `CPA`, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
 
 Pipeline Proxy selection model:
@@ -240,9 +241,11 @@ Important meaning:
 - `Close Date` is the default for finance-style won-revenue reporting
 - `Last Modified Date` is useful when the user wants revenue tied to recently updated deals
 - `Created Date` is useful when the user wants revenue tied to when opportunities first entered HubSpot
+- in GA4 `Total Revenue only` mode, confirmed HubSpot revenue should materialize as true daily won rows by each matched deal's `Close Date`, rather than as one synthetic snapshot row
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path
 - the final review step should show Pipeline Proxy stage, amount, and a note that it is not included in Total Revenue
+- the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - the `Reconnect` action on the first HubSpot screen should render in a stable header/action area, not inside the main source-choice card or a shifting scroll region
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - HubSpot OAuth should request offline access / refresh capability so the connection can survive access-token expiry after connect or reconnect
@@ -273,6 +276,7 @@ Important meaning:
 - this path is sensitive because it can include currency validation and attribution-field matching
 - in edit mode, Salesforce revenue must preserve the existing revenue `sourceId` all the way through the save request so the system updates the existing source instead of creating an additive duplicate
 - Salesforce review-step `Total Revenue (to date)` should prefer fresh preview data from the current edit session over stored `lastTotalRevenue` values from the previous save
+- the first Salesforce `Source` step should show `Total Revenue + Pipeline (Proxy)` above `Total Revenue only (no Pipeline card)` and default to the pipeline option in new connect mode
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path
 - the final review step should show Pipeline Proxy stage, amount, and a note that it is not included in Total Revenue
@@ -580,6 +584,30 @@ The required pattern is:
 - if the user does not apply that filter, the imported source is treated as wholly belonging to this campaign
 
 ### Refreshable Vs Snapshot Behavior
+
+- `Shopify`
+  - updated immediately on save/edit
+  - updated again on scheduled auto-refresh
+  - materializes daily order-date revenue rows
+- `HubSpot`
+  - updated immediately on save/edit
+  - updated again on scheduled auto-refresh
+  - in GA4 `Total Revenue only`, materializes true daily won rows by `Close Date`
+- `Salesforce`
+  - updated immediately on save/edit
+  - updated again on scheduled auto-refresh
+  - materializes true daily won rows by the selected Salesforce date field, typically `CloseDate`
+- `Google Sheets`
+  - updated immediately on save/edit
+  - updated again on scheduled auto-refresh
+  - materializes daily rows only when a real date column is mapped; otherwise it stays a snapshot-style source
+- `Upload CSV`
+  - updated immediately on import/edit
+  - no scheduled auto-refresh
+  - materializes daily rows only when a real date column is mapped; otherwise it stays a snapshot-style source
+- existing stored `Manual` revenue
+  - no new production creation path
+  - only changes when the user edits or deletes that legacy source
 
 - `HubSpot`, `Salesforce`, `Shopify`, and eligible `Google Sheets` revenue sources are refreshable connector-style sources
 - saved `HubSpot` and `Salesforce` revenue mappings are eligible for scheduled auto-reprocess through the internal auto-refresh path, while public save-mapping routes must remain protected by normal user/campaign access checks

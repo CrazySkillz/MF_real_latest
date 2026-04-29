@@ -165,6 +165,7 @@ Pipeline Proxy rule:
 - when the endpoint returns a fresh value, the card should use that value; if the endpoint path is stale or unavailable, the card may still render from the active source's saved Pipeline Proxy config
 - if both Salesforce and HubSpot have active Pipeline Proxy configuration for the same GA4 campaign, the card should aggregate their exact proxy totals into one card total
 - the card should show provider-specific provenance blocks rather than one flattened sentence
+- the card is display-only; users manage the underlying CRM revenue source from `Total Revenue`, not from the `Pipeline Proxy` card
 - each provider block should render:
   - provider name
   - selected/contributing campaign value or values

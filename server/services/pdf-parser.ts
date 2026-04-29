@@ -165,9 +165,9 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
       if (match && match[1]) {
         // Special handling for time duration
         if (key === 'avgSessionDuration') {
-          metrics[key as keyof ParsedMetrics] = match[1]; // Keep as string "00:02:38"
+          (metrics as Record<string, unknown>)[key] = match[1]; // Keep as string "00:02:38"
         } else {
-          metrics[key as keyof ParsedMetrics] = extractNumber(match[1]);
+          (metrics as Record<string, unknown>)[key] = extractNumber(match[1]);
         }
         extractedCount++;
       }
@@ -286,7 +286,7 @@ function validateExtractedMetrics(
   
   for (const metric of percentageMetrics) {
     const value = metrics[metric];
-    if (value !== undefined && (value < 0 || value > 100)) {
+    if (typeof value === 'number' && (value < 0 || value > 100)) {
       warnings.push(`❌ CRITICAL: ${metric} out of range (0-100): ${value}%`);
       confidence -= 15;
     }

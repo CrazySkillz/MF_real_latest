@@ -5331,7 +5331,7 @@ export class DatabaseStorage implements IStorage {
 
     // Note: Date filtering would need to be added with proper SQL conditions
     // For now, we'll filter in memory for MVP
-    const events = await query;
+    const events = await query as ConversionEvent[];
 
     let filtered = events;
     if (startDate) {

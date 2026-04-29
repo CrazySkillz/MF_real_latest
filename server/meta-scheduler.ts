@@ -155,7 +155,7 @@ export async function generateMockMetaData(
     baseStartUTC.setUTCDate(baseStartUTC.getUTCDate() - 59);
     const dailyMetrics = await storage.getMetaDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
     const totalSpend = dailyMetrics.reduce((sum, m) => sum + (parseFloat(String(m.spend || 0)) || 0), 0);
-    await storage.updateCampaign(campaignId, { spend: totalSpend });
+    await storage.updateCampaign(campaignId, { spend: totalSpend.toFixed(2) });
     console.log(`[Meta Scheduler] TEST MODE: Updated campaign ${campaignId} spend: ${totalSpend.toFixed(2)}`);
 
     // Populate spend_records for daily granularity (Insights tab support)
@@ -286,7 +286,7 @@ async function fetchRealMetaData(
       // Update campaign cumulative spend from daily metrics
       const dailyMetrics = await storage.getMetaDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
       const totalSpend = dailyMetrics.reduce((sum, m) => sum + (parseFloat(String(m.spend || 0)) || 0), 0);
-      await storage.updateCampaign(campaignId, { spend: totalSpend });
+      await storage.updateCampaign(campaignId, { spend: totalSpend.toFixed(2) });
       console.log(`[Meta Scheduler] Updated campaign ${campaignId} spend: ${totalSpend.toFixed(2)}`);
 
       // Populate spend_records for daily granularity (Insights tab support)

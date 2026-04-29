@@ -118,7 +118,7 @@ export async function enrichPlatformWithGA4Revenue(params: {
   const matched: string[] = [];
   const unmatched: string[] = [];
 
-  for (const [pcId, group] of campaignGroups) {
+  for (const [pcId, group] of Array.from(campaignGroups.entries())) {
     const utmMatch = matchUtmCampaignName(group.campaignName, utmNames, manualMap, pcId);
     if (!utmMatch) {
       unmatched.push(group.campaignName);

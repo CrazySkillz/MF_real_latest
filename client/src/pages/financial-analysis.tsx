@@ -17,6 +17,8 @@ interface Campaign {
   name: string;
   budget?: string;
   status: string;
+  startDate?: string | Date | null;
+  endDate?: string | Date | null;
 }
 
 export default function FinancialAnalysis() {

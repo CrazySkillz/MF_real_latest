@@ -24425,7 +24425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaign: {
           id: campaign.id,
           name: campaign.name,
-          objective: campaign.objective || 'Drive conversions and revenue',
+          objective: campaign.type || 'Drive conversions and revenue',
         },
         metrics: {
           totalRevenue, totalSpend, totalConversions, totalClicks, totalImpressions, totalEngagements,

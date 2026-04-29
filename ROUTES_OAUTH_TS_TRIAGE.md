@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 394 total TypeScript errors
+- `npm run check`: 393 total TypeScript errors
 - `server/routes-oauth.ts`: benchmark/report storage-interface drift is fixed; remaining errors are mostly schema/contract drift, possible real logic bugs, and localized type-shape issues
 - Safe type-only cleanup is paused; do not continue patching app code until one of the stages below is selected
 
@@ -43,8 +43,8 @@ Inspect before editing. These may indicate broken or incomplete route logic.
 - Fixed: `server/routes-oauth.ts(24205)`: missing `targetValue` on benchmark row type.
   - Resolution: benchmark comparison now reads the schema-backed `benchmarkValue` field.
 
-- `server/routes-oauth.ts(24404)`: missing `objective` on campaign row type.
-  - Risk: campaign schema or route expectation drift.
+- Fixed: `server/routes-oauth.ts(24428)`: missing `objective` on campaign row type.
+  - Resolution: response shape still exposes `objective`, sourced from existing `campaign.type` with the same fallback text.
 
 - Fixed: `server/routes-oauth.ts(27071)` comparison of incompatible literal types.
   - Resolution: Shopify is revenue-only in this route, so persisted mode is now the explicit existing runtime value `revenue_to_date`.
@@ -79,4 +79,4 @@ Reason:
 - Remaining route errors are mostly Stage A schema/connection contract drift or Stage B possible logic bugs.
 - Avoid Stage A until the intended persisted schema contract is confirmed.
 
-Next safest inspection target: `server/routes-oauth.ts(24428)` missing `objective` on campaign row type. Inspect only, because this may be campaign schema or route expectation drift.
+Next safest inspection target: `server/routes-oauth.ts(16311)` `campaignName` on `matchingInfo`. Inspect only, because this may be response shape or local type drift.

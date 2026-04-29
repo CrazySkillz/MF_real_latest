@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { kpis, kpiPeriods } from "../shared/schema";
 import { eq, and, lt, desc } from "drizzle-orm";
-import type { KPI, InsertKPIPeriod } from "../shared/schema";
+import type { KPI, InsertKPIPeriod, KPIPeriod } from "../shared/schema";
 import {
   createKPIReminder,
   createKPIAlert,
@@ -406,7 +406,7 @@ async function capturePeriodSnapshots(timeframe: string): Promise<void> {
         .from(kpiPeriods)
         .where(eq(kpiPeriods.kpiId, kpi.id))
         .orderBy(desc(kpiPeriods.periodEnd))
-        .limit(3);
+        .limit(3) as KPIPeriod[];
 
       if (recentPeriods.length >= 3) {
         const allDeclining = recentPeriods.every((p, i) => 

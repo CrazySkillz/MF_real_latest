@@ -25212,7 +25212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For LinkedIn campaigns with LinkedIn API connected, adjust required fields
       // LinkedIn API already provides: Impressions, Clicks, Spend, Conversions
       // Google Sheets only needs: Campaign Name (to match rows) and Revenue (for conversion value)
-      if (platform.toLowerCase() === 'linkedin' && campaignId) {
+      if (platform.toLowerCase() === 'linkedin' && typeof campaignId === 'string') {
         try {
           const linkedInConnection = await storage.getLinkedInConnection(campaignId);
           if (linkedInConnection) {

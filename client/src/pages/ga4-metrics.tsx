@@ -1047,7 +1047,7 @@ export default function GA4Metrics() {
         ? formatNumberByUnit(String((benchmark as any).alertThreshold), String(benchmark.unit || "%"))
         : "",
       alertCondition: (benchmark as any).alertCondition || "below",
-      alertFrequency: (benchmark as any).alertFrequency || "immediate",
+      alertFrequency: String((benchmark as any).alertFrequency || "immediate").toLowerCase(),
       emailNotifications: (benchmark as any).emailNotifications || false,
       emailRecipients: (benchmark as any).emailRecipients || "",
     });
@@ -1168,7 +1168,7 @@ export default function GA4Metrics() {
           ? formatNumberByUnit(String((editingBenchmark as any).alertThreshold), String((editingBenchmark as any).unit || "%"))
           : "",
         alertCondition: (editingBenchmark as any).alertCondition || "below",
-        alertFrequency: (editingBenchmark as any).alertFrequency || "immediate",
+        alertFrequency: String((editingBenchmark as any).alertFrequency || "immediate").toLowerCase(),
         emailNotifications: (editingBenchmark as any).emailNotifications || false,
         emailRecipients: (editingBenchmark as any).emailRecipients || "",
       });
@@ -5555,7 +5555,7 @@ export default function GA4Metrics() {
                                         </div>
                                       </th>
                                       <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
-                                      <th className="text-right font-medium px-2 py-2 w-[100px]">Conv Rate</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[100px]">Conv. Rate</th>
                                       <th className="text-right font-medium px-2 py-2 w-[110px] whitespace-nowrap">GA4 Revenue</th>
                                     </tr>
                                   </thead>
@@ -5618,7 +5618,7 @@ export default function GA4Metrics() {
                                       </div>
                                     </th>
                                     <th className="text-right p-3 w-[10%]">Conversions</th>
-                                    <th className="text-right p-3 w-[9%] whitespace-nowrap">Conv. rate</th>
+                                    <th className="text-right p-3 w-[9%] whitespace-nowrap">Conv. Rate</th>
                                     <th className="text-right p-3 w-[13%] whitespace-nowrap">GA4 Revenue</th>
                                   </tr>
                                 </thead>
@@ -6487,7 +6487,7 @@ export default function GA4Metrics() {
                                   <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                       <Label>Alert Frequency</Label>
-                                      <Select value={newBenchmark.alertFrequency || "daily"} onValueChange={(v) => setNewBenchmark({ ...newBenchmark, alertFrequency: v })}>
+                                      <Select value={newBenchmark.alertFrequency || "immediate"} onValueChange={(v) => setNewBenchmark({ ...newBenchmark, alertFrequency: v })}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent className="z-[10000]">
                                           <SelectItem value="immediate">Immediate</SelectItem>

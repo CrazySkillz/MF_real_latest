@@ -17255,9 +17255,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ success: false, error: "LinkedIn is not connected for this campaign", message: "LinkedIn is not connected for this campaign" });
       }
 
+      const linkedInAccessToken = String(connection.accessToken);
+
       // Fetch ad account details to get the name
       const { LinkedInClient } = await import('./linkedinClient');
-      const linkedInClient = new LinkedInClient(String(connection.accessToken));
+      const linkedInClient = new LinkedInClient(linkedInAccessToken);
       const adAccounts = await linkedInClient.getAdAccounts();
       const selectedAccount = adAccounts.find(acc => acc.id === adAccountId);
 
@@ -17281,7 +17283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignId,
           adAccountId,
           adAccountName: selectedAccount.name,
-          accessToken: String(connection.accessToken),
+          accessToken: linkedInAccessToken,
           expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
           isPrimary: true,
           isActive: true,

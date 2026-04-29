@@ -764,12 +764,12 @@ export default function CustomIntegrationAnalytics() {
     // Title
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(24);
-    doc.setFont(undefined, 'bold');
+    doc.setFont("helvetica", 'bold');
     doc.text(title, 20, 20);
     
     // Subtitle
     doc.setFontSize(12);
-    doc.setFont(undefined, 'normal');
+    doc.setFont("helvetica", 'normal');
     doc.text(subtitle, 20, 30);
     
     // Date
@@ -787,12 +787,12 @@ export default function CustomIntegrationAnalytics() {
     doc.rect(15, y, 180, 10, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
+    doc.setFont("helvetica", 'bold');
     doc.text(title, 20, y + 7);
     // Reset text color to black for content
     doc.setTextColor(50, 50, 50);
     doc.setFontSize(11);
-    doc.setFont(undefined, 'normal');
+    doc.setFont("helvetica", 'normal');
     return y + 15;
   };
 
@@ -822,7 +822,7 @@ export default function CustomIntegrationAnalytics() {
       } else {
         doc.setTextColor(50, 50, 50);
         doc.setFontSize(11);
-        doc.setFont(undefined, 'normal');
+        doc.setFont("helvetica", 'normal');
         
         y = addPDFSection(doc, 'Industry Benchmarks', y, [168, 85, 247]);
         
@@ -832,12 +832,12 @@ export default function CustomIntegrationAnalytics() {
             y = 20;
           }
           
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.setFontSize(12);
           doc.text(benchmark.name || benchmark.metric, 20, y);
           y += 6;
           
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.setFontSize(10);
           
           // Description
@@ -866,25 +866,25 @@ export default function CustomIntegrationAnalytics() {
           
           // Performance Values
           if (benchmark.currentValue) {
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Your Performance:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.text(`${benchmark.currentValue}${benchmark.unit || ''}`, 80, y);
             y += 5;
           }
           
           if (benchmark.benchmarkValue) {
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Benchmark Value:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.text(`${benchmark.benchmarkValue}${benchmark.unit || ''}`, 80, y);
             y += 5;
           }
           
           // Source - always show with fallback
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Source:', 25, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(benchmark.source || 'Custom Integration', 80, y);
           y += 5;
           
@@ -896,9 +896,9 @@ export default function CustomIntegrationAnalytics() {
             const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100) : 0;
             const isAbove = current >= benchmarkVal;
             
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Performance vs Benchmark:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             
             if (isAbove) {
               doc.setTextColor(22, 163, 74); // Green
@@ -912,25 +912,25 @@ export default function CustomIntegrationAnalytics() {
           }
           
           if (benchmark.benchmarkType) {
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Type:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.text(benchmark.benchmarkType, 80, y);
             y += 5;
           }
           
           if (benchmark.geoLocation || benchmark.geographicLocation) {
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Location:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.text(benchmark.geoLocation || benchmark.geographicLocation, 80, y);
             y += 5;
           }
           
           if (benchmark.confidenceLevel) {
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Confidence:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.text(benchmark.confidenceLevel, 80, y);
             y += 5;
           }
@@ -944,7 +944,7 @@ export default function CustomIntegrationAnalytics() {
       const config = overrideReport?.configuration || customReportConfig;
       doc.setTextColor(50, 50, 50);
       doc.setFontSize(11);
-      doc.setFont(undefined, 'normal');
+      doc.setFont("helvetica", 'normal');
       
       // Core Metrics (Audience & Traffic)
       const hasSelectedCoreMetrics = config.coreMetrics && config.coreMetrics.length > 0;
@@ -967,9 +967,9 @@ export default function CustomIntegrationAnalytics() {
           };
           
           if (metrics[metric]) {
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text(metricLabels[metric] + ':', 20, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             if (metric === 'avgSessionDuration') {
               doc.text(String(metrics[metric]), 120, y);
             } else if (metric === 'pagesPerSession') {
@@ -1021,9 +1021,9 @@ export default function CustomIntegrationAnalytics() {
           };
           
           if (metrics[metric] !== undefined && metrics[metric] !== null) {
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text(metricLabels[metric] + ':', 20, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             
             // Format based on metric type
             if (metric.includes('Share')) {
@@ -1057,14 +1057,14 @@ export default function CustomIntegrationAnalytics() {
             }
             
             // KPI Name
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.setFontSize(12);
             doc.text(kpi.name, 20, y);
             y += 6;
             
             // Description
             if (kpi.description) {
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               doc.setFontSize(9);
               doc.setTextColor(100, 100, 100);
               const lines = doc.splitTextToSize(kpi.description, 170);
@@ -1092,22 +1092,22 @@ export default function CustomIntegrationAnalytics() {
               y += 6;
             }
             
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.setFontSize(10);
             
             // Current and Target values with formatting
             if (kpi.currentValue) {
-              doc.setFont(undefined, 'bold');
+              doc.setFont("helvetica", 'bold');
               doc.text('Current:', 25, y);
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               doc.text(`${formatNumber(kpi.currentValue)}${kpi.unit || ''}`, 50, y);
               y += 5;
             }
             
             if (kpi.targetValue) {
-              doc.setFont(undefined, 'bold');
+              doc.setFont("helvetica", 'bold');
               doc.text('Target:', 25, y);
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               doc.text(`${formatNumber(kpi.targetValue)}${kpi.unit || ''}`, 50, y);
               y += 5;
             }
@@ -1115,9 +1115,9 @@ export default function CustomIntegrationAnalytics() {
             // Progress percentage
             if (kpi.currentValue && kpi.targetValue) {
               const progress = Math.min(Math.round((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100), 100);
-              doc.setFont(undefined, 'bold');
+              doc.setFont("helvetica", 'bold');
               doc.text('Progress:', 25, y);
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               
               // Color-code the progress
               if (progress >= 100) {
@@ -1134,9 +1134,9 @@ export default function CustomIntegrationAnalytics() {
             
             if (kpi.targetDate) {
               const dateStr = new Date(kpi.targetDate).toLocaleDateString();
-              doc.setFont(undefined, 'bold');
+              doc.setFont("helvetica", 'bold');
               doc.text('Target Date:', 25, y);
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               doc.text(dateStr, 60, y);
               y += 5;
             }
@@ -1161,12 +1161,12 @@ export default function CustomIntegrationAnalytics() {
               y = 20;
             }
             
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.setFontSize(12);
             doc.text(benchmark.name || benchmark.metric, 20, y);
             y += 6;
             
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.setFontSize(10);
             
             // Description
@@ -1195,25 +1195,25 @@ export default function CustomIntegrationAnalytics() {
             
             // Performance Values
             if (benchmark.currentValue) {
-              doc.setFont(undefined, 'bold');
+              doc.setFont("helvetica", 'bold');
               doc.text('Your Performance:', 25, y);
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               doc.text(`${formatNumber(benchmark.currentValue)}${benchmark.unit || ''}`, 80, y);
               y += 5;
             }
             
             if (benchmark.benchmarkValue) {
-              doc.setFont(undefined, 'bold');
+              doc.setFont("helvetica", 'bold');
               doc.text('Benchmark Value:', 25, y);
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               doc.text(`${formatNumber(benchmark.benchmarkValue)}${benchmark.unit || ''}`, 80, y);
               y += 5;
             }
             
             // Source - always show with fallback
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Source:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.text(benchmark.source || 'Custom Integration', 80, y);
             y += 5;
             
@@ -1225,9 +1225,9 @@ export default function CustomIntegrationAnalytics() {
               const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100) : 0;
               const isAbove = current >= benchmarkVal;
               
-              doc.setFont(undefined, 'bold');
+              doc.setFont("helvetica", 'bold');
               doc.text('Performance vs Benchmark:', 25, y);
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               
               if (isAbove) {
                 doc.setTextColor(22, 163, 74); // Green
@@ -1241,25 +1241,25 @@ export default function CustomIntegrationAnalytics() {
             }
             
             if (benchmark.benchmarkType) {
-              doc.setFont(undefined, 'bold');
+              doc.setFont("helvetica", 'bold');
               doc.text('Type:', 25, y);
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               doc.text(benchmark.benchmarkType, 80, y);
               y += 5;
             }
             
             if (benchmark.geoLocation || benchmark.geographicLocation) {
-              doc.setFont(undefined, 'bold');
+              doc.setFont("helvetica", 'bold');
               doc.text('Location:', 25, y);
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               doc.text(benchmark.geoLocation || benchmark.geographicLocation, 80, y);
               y += 5;
             }
             
             if (benchmark.confidenceLevel) {
-              doc.setFont(undefined, 'bold');
+              doc.setFont("helvetica", 'bold');
               doc.text('Confidence:', 25, y);
-              doc.setFont(undefined, 'normal');
+              doc.setFont("helvetica", 'normal');
               doc.text(benchmark.confidenceLevel, 80, y);
               y += 5;
             }
@@ -1280,7 +1280,7 @@ export default function CustomIntegrationAnalytics() {
       } else {
         doc.setTextColor(50, 50, 50);
         doc.setFontSize(11);
-        doc.setFont(undefined, 'normal');
+        doc.setFont("helvetica", 'normal');
         
         y = addPDFSection(doc, 'Key Performance Indicators', y, [59, 130, 246]);
         doc.setTextColor(50, 50, 50); // Reset to dark after section header
@@ -1292,14 +1292,14 @@ export default function CustomIntegrationAnalytics() {
           }
           
           // KPI Name
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.setFontSize(12);
           doc.text(kpi.name, 20, y);
           y += 6;
           
           // Description
           if (kpi.description) {
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.setFontSize(9);
             doc.setTextColor(100, 100, 100);
             const lines = doc.splitTextToSize(kpi.description, 170);
@@ -1327,22 +1327,22 @@ export default function CustomIntegrationAnalytics() {
             y += 6;
           }
           
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.setFontSize(10);
           
           // Current and Target values with formatting
           if (kpi.currentValue) {
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Current:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.text(`${formatNumber(kpi.currentValue)}${kpi.unit || ''}`, 50, y);
             y += 5;
           }
           
           if (kpi.targetValue) {
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Target:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.text(`${formatNumber(kpi.targetValue)}${kpi.unit || ''}`, 50, y);
             y += 5;
           }
@@ -1350,9 +1350,9 @@ export default function CustomIntegrationAnalytics() {
           // Progress percentage
           if (kpi.currentValue && kpi.targetValue) {
             const progress = Math.min(Math.round((parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100), 100);
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Progress:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             
             // Color-code the progress
             if (progress >= 100) {
@@ -1369,9 +1369,9 @@ export default function CustomIntegrationAnalytics() {
           
           if (kpi.targetDate) {
             const dateStr = new Date(kpi.targetDate).toLocaleDateString();
-            doc.setFont(undefined, 'bold');
+            doc.setFont("helvetica", 'bold');
             doc.text('Target Date:', 25, y);
-            doc.setFont(undefined, 'normal');
+            doc.setFont("helvetica", 'normal');
             doc.text(dateStr, 60, y);
             y += 5;
           }
@@ -1400,52 +1400,52 @@ export default function CustomIntegrationAnalytics() {
       } else {
       doc.setTextColor(50, 50, 50);
       doc.setFontSize(11);
-      doc.setFont(undefined, 'normal');
+      doc.setFont("helvetica", 'normal');
       
       // Audience & Traffic Section
       if (metrics.users || metrics.sessions || metrics.pageviews || metrics.avgSessionDuration || metrics.pagesPerSession || metrics.bounceRate) {
         y = addPDFSection(doc, 'Audience & Traffic', y, [59, 130, 246]);
         
         if (metrics.users) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Users (unique):', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.users), 120, y);
           y += 8;
         }
         if (metrics.sessions) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Sessions:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.sessions), 120, y);
           y += 8;
         }
         if (metrics.pageviews) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Pageviews:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.pageviews), 120, y);
           y += 8;
         }
         if (metrics.avgSessionDuration) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Avg. Session Duration:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(String(metrics.avgSessionDuration), 120, y);
           y += 8;
         }
         if (metrics.pagesPerSession) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Pages / Session:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           const pagesValue = typeof metrics.pagesPerSession === 'string' ? parseFloat(metrics.pagesPerSession).toFixed(2) : metrics.pagesPerSession.toFixed(2);
           doc.text(pagesValue, 120, y);
           y += 8;
         }
         if (metrics.bounceRate) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Bounce Rate:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.bounceRate + '%', 120, y);
           y += 8;
         }
@@ -1458,44 +1458,44 @@ export default function CustomIntegrationAnalytics() {
         y = addPDFSection(doc, 'Traffic Sources', y, [234, 179, 8]);
         
         if (metrics.organicSearchShare) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Organic Search:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.organicSearchShare + '%', 120, y);
           y += 8;
         }
         if (metrics.directBrandedShare) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Direct/Branded:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.directBrandedShare + '%', 120, y);
           y += 8;
         }
         if (metrics.emailShare) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Email (Newsletters):', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.emailShare + '%', 120, y);
           y += 8;
         }
         if (metrics.referralShare) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Referral/Partners:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.referralShare + '%', 120, y);
           y += 8;
         }
         if (metrics.paidShare) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Paid (Display/Search):', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.paidShare + '%', 120, y);
           y += 8;
         }
         if (metrics.socialShare) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Social:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.socialShare + '%', 120, y);
           y += 8;
         }
@@ -1507,51 +1507,51 @@ export default function CustomIntegrationAnalytics() {
         y = addPDFSection(doc, 'Email Performance', y, [16, 185, 129]);
         
         if (metrics.emailsDelivered) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Emails Delivered:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.emailsDelivered), 120, y);
           y += 8;
         }
         if (metrics.openRate) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Open Rate:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.openRate + '%', 120, y);
           y += 8;
         }
         if (metrics.clickThroughRate) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Click-Through Rate:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.clickThroughRate + '%', 120, y);
           y += 8;
         }
         if (metrics.clickToOpenRate) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Click-to-Open Rate:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.clickToOpenRate + '%', 120, y);
           y += 8;
         }
         if (metrics.hardBounces) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Hard Bounces:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.hardBounces + '%', 120, y);
           y += 8;
         }
         if (metrics.spamComplaints) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Spam Complaints:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(metrics.spamComplaints + '%', 120, y);
           y += 8;
         }
         if (metrics.listGrowth) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('List Growth:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.listGrowth), 120, y);
           y += 8;
         }
@@ -1563,66 +1563,66 @@ export default function CustomIntegrationAnalytics() {
         y = addPDFSection(doc, 'Social Media Metrics', y, [168, 85, 247]);
         
         if (metrics.impressions) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Impressions:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.impressions), 120, y);
           y += 8;
         }
         if (metrics.reach) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Reach:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.reach), 120, y);
           y += 8;
         }
         if (metrics.clicks) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Clicks:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.clicks), 120, y);
           y += 8;
         }
         if (metrics.engagements) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Engagements:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.engagements), 120, y);
           y += 8;
         }
         if (metrics.spend) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Spend:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           const spendValue = typeof metrics.spend === 'string' ? parseFloat(metrics.spend) : metrics.spend;
           doc.text('$' + formatNumber(spendValue), 120, y);
           y += 8;
         }
         if (metrics.conversions) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Conversions:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.conversions), 120, y);
           y += 8;
         }
         if (metrics.leads) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Leads:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.leads), 120, y);
           y += 8;
         }
         if (metrics.videoViews) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Video Views:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.videoViews), 120, y);
           y += 8;
         }
         if (metrics.viralImpressions) {
-          doc.setFont(undefined, 'bold');
+          doc.setFont("helvetica", 'bold');
           doc.text('Viral Impressions:', 20, y);
-          doc.setFont(undefined, 'normal');
+          doc.setFont("helvetica", 'normal');
           doc.text(formatNumber(metrics.viralImpressions), 120, y);
           y += 8;
         }

@@ -4342,14 +4342,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignFilter
         );
 
+        const metricsAny = metrics as any;
         // Generate mock engagement metrics if missing
-        const users = Number(metrics?.users || 0);
-        const sessions = Number(metrics?.sessions || 0);
-        const conversions = Number(metrics?.conversions || 0);
-        const pageviews = Number(metrics?.pageviews || 0);
+        const users = Number(metricsAny?.users || 0);
+        const sessions = Number(metricsAny?.sessions || 0);
+        const conversions = Number(metricsAny?.conversions || 0);
+        const pageviews = Number(metricsAny?.pageviews || 0);
 
         // Mock missing metrics with realistic values
-        const newUsers = Number(metrics?.newUsers || Math.floor(users * 0.3)); // ~30% new users
+        const newUsers = Number(metricsAny?.newUsers || Math.floor(users * 0.3)); // ~30% new users
         const engagedSessions = Math.floor(sessions * 0.6); // ~60% engagement rate
         const engagementRate = sessions > 0 ? (engagedSessions / sessions) : 0.6;
         const totalEvents = Math.floor(pageviews * 1.5); // ~1.5 events per pageview
@@ -4365,9 +4366,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sessions: sessions,
             pageviews: pageviews,
             conversions: conversions,
-            revenue: metrics?.revenue || "0",
+            revenue: String(metricsAny?.revenue || "0"),
             engagementRate: String(engagementRate),
-            revenueMetric: metrics?.revenueMetric || "totalRevenue",
+            revenueMetric: metricsAny?.revenueMetric || "totalRevenue",
             isSimulated: false,
           }
         ]);
@@ -8250,7 +8251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lookbackDays,
           isPrimary: true,
           isActive: true
-        });
+        } as any);
         await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
         console.log(`[Set Property] Connection updated and set as primary`);
       } else {
@@ -8277,7 +8278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           clientId: process.env.GOOGLE_CLIENT_ID || undefined,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET || undefined,
           expiresAt,
-        });
+        } as any);
         await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
         console.log(`[Set Property] New connection created: ${newConnection.id}`);
       }
@@ -8933,7 +8934,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         return res.json({
-          success: true,
           ...simulated,
           isSimulated: true,
           simulationReason: 'Forced mock mode (?mock=1) for UI testing (no GA4 connection required).',

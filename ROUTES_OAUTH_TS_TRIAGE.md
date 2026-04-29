@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 401 total TypeScript errors
+- `npm run check`: 398 total TypeScript errors
 - `server/routes-oauth.ts`: benchmark/report storage-interface drift is fixed; remaining errors are mostly schema/contract drift, possible real logic bugs, and localized type-shape issues
 - Safe type-only cleanup is paused; do not continue patching app code until one of the stages below is selected
 
@@ -58,8 +58,8 @@ Treat this as a broader cleanup stage. Prefer fixing the storage interface contr
 
 - Fixed: attribution/snapshot/comparison storage method drift that was caused by the exported concrete storage union.
 
-- Remaining: report/snapshot insertion shape errors around `24732-24991`.
-  - Risk: payload types may not match insert schema, especially numeric/string financial fields.
+- Fixed: custom integration PDF metric insertion shape errors around `24732-24991`.
+  - Resolution: decimal metrics parsed from PDFs are normalized to strings at the insert boundary.
 
 - Fixed: query parameter narrowing around `25217-25221`.
   - Resolution: `campaignId` is narrowed to a string before storage calls.
@@ -69,13 +69,14 @@ Treat this as a broader cleanup stage. Prefer fixing the storage interface contr
 
 ## Recommended Next Stage
 
-Recommended next stage: inspect the remaining report/snapshot insertion shape group before editing.
+Recommended next stage: inspect the smallest remaining Stage B candidate before editing.
 
 Reason:
 
 - The broad storage-method drift is already cleared.
 - The smallest local Stage C issues are now fixed.
-- The next Stage C errors are report/snapshot insertion payload mismatches around `server/routes-oauth.ts(24732-24991)`.
+- The local Stage C custom integration insertion issues are now fixed.
+- Remaining route errors are mostly Stage A schema/connection contract drift or Stage B possible logic bugs.
 - Avoid Stage A until the intended persisted schema contract is confirmed.
 
-Stop before changing report/snapshot insertion shapes, because those affect analytics/report payload contracts.
+Next safest inspection target: `server/routes-oauth.ts(27071)` incompatible literal comparison, because it may be dead/stale branch logic and should be inspected before any edit.

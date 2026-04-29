@@ -9,6 +9,7 @@ import { realGA4Client } from "./real-ga4-client";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import multer from "multer";
 import { parseCsvText } from "./utils/csv";
+import type { ParsedMetrics } from "./services/pdf-parser";
 import { parsePDFMetrics } from "./services/pdf-parser";
 import { nanoid } from "nanoid";
 import { randomBytes, createHash, createHmac, timingSafeEqual } from "crypto";
@@ -52,6 +53,29 @@ function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency'
   if (numericValues.length / values.length > 0.7) return 'number';
 
   return 'text';
+}
+
+function normalizeCustomIntegrationMetrics(metrics: ParsedMetrics) {
+  const normalized: any = { ...metrics };
+  for (const key of [
+    "spend",
+    "pagesPerSession",
+    "bounceRate",
+    "organicSearchShare",
+    "directBrandedShare",
+    "emailShare",
+    "referralShare",
+    "paidShare",
+    "socialShare",
+    "openRate",
+    "clickThroughRate",
+    "clickToOpenRate",
+    "hardBounces",
+    "spamComplaints",
+  ]) {
+    if (typeof normalized[key] === "number") normalized[key] = String(normalized[key]);
+  }
+  return normalized;
 }
 
 function calculateConfidence(values: any[], detectedType: string): number {
@@ -24731,7 +24755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store the metrics
       await storage.createCustomIntegrationMetrics({
         campaignId,
-        ...metrics,
+        ...normalizeCustomIntegrationMetrics(metrics),
         pdfFileName: req.file.originalname,
         emailSubject: `Manual Upload: ${req.file.originalname}`,
         emailId: `manual-${Date.now()}`
@@ -24856,7 +24880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 7. Store metrics
       await storage.createCustomIntegrationMetrics({
         campaignId,
-        ...metrics,
+        ...normalizeCustomIntegrationMetrics(metrics),
         pdfFileName,
         emailSubject: subject,
         emailId: req.body['message-id'] || `sendgrid-${Date.now()}`,
@@ -24990,7 +25014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 7. Store metrics
       await storage.createCustomIntegrationMetrics({
         campaignId,
-        ...metrics,
+        ...normalizeCustomIntegrationMetrics(metrics),
         pdfFileName,
         emailSubject: subject,
         emailId: req.body['message-id'] || req.body['Message-Id'] || `mailgun-${Date.now()}`,

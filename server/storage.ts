@@ -2307,6 +2307,7 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const linkedinReport: LinkedInReport = {
       id,
+      campaignId: report.campaignId || null,
       name: report.name,
       description: report.description || null,
       platformType: (report as any).platformType || 'linkedin',
@@ -2317,9 +2318,12 @@ export class MemStorage implements IStorage {
       scheduleDayOfWeek: report.scheduleDayOfWeek || null,
       scheduleDayOfMonth: report.scheduleDayOfMonth || null,
       scheduleTime: report.scheduleTime || null,
+      scheduleTimeZone: report.scheduleTimeZone || null,
+      quarterTiming: report.quarterTiming || null,
       scheduleRecipients: report.scheduleRecipients || null,
       lastSentAt: null,
       nextScheduledAt: null,
+      status: report.status || "active",
       createdAt: new Date(),
       updatedAt: new Date(),
     };

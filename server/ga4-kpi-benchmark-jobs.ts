@@ -380,7 +380,13 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       }
 
       // 2) Benchmark history points (daily)
-      const benchmarks = await storage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => []);
+      const benchmarkStorage = storage as typeof storage & {
+        getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<any[]>;
+        updateBenchmark(id: string, benchmark: any): Promise<any>;
+        getBenchmarkHistory(benchmarkId: string): Promise<any[]>;
+        recordBenchmarkHistory(history: any): Promise<any>;
+      };
+      const benchmarks = await benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => []);
       for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
         const benchmarkId = String((b as any)?.id || "");
         if (!benchmarkId) continue;
@@ -391,10 +397,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         // Always refresh stored currentValue so same-day Run Refresh updates what alert checks read,
         // even if we skip writing another history point for the same date.
         try {
-          await storage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
+          await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
         } catch (_) { /* best-effort */ }
 
-        const history = await storage.getBenchmarkHistory(benchmarkId).catch(() => []);
+        const history = await benchmarkStorage.getBenchmarkHistory(benchmarkId).catch(() => []);
         const hist = Array.isArray(history) ? history : [];
         const last = hist.length > 0 ? hist[hist.length - 1] : null; // history is ordered asc in DB
         if (last && isoDateUTC(new Date((last as any)?.recordedAt || 0)) === date) continue;
@@ -403,7 +409,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         const variance = computeBenchmarkVariance(metricKey, currentValue, benchmarkValue);
         const rating = computeBenchmarkRating(variance);
 
-        await storage.recordBenchmarkHistory({
+        await benchmarkStorage.recordBenchmarkHistory({
           benchmarkId,
           currentValue: String(round2(currentValue)),
           benchmarkValue: String(round2(benchmarkValue)),

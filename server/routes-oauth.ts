@@ -24202,7 +24202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const benchmarks = await storage.getCampaignBenchmarks(id);
         for (const bm of benchmarks) {
           const currentVal = parseNum(bm.currentValue);
-          const targetVal = parseNum(bm.targetValue);
+          const targetVal = parseNum(bm.benchmarkValue);
           const delta = targetVal > 0 ? ((currentVal - targetVal) / targetVal) * 100 : 0;
 
           benchmarkComparison.push({

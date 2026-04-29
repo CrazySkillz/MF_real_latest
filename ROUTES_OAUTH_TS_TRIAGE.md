@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 388 total TypeScript errors
+- `npm run check`: 387 total TypeScript errors
 - `server/routes-oauth.ts`: benchmark/report storage-interface drift is fixed; remaining errors are mostly schema/contract drift, possible real logic bugs, and localized type-shape issues
 - Safe type-only cleanup is paused; do not continue patching app code until one of the stages below is selected
 
@@ -12,8 +12,8 @@ Current baseline:
 
 These errors touch persisted source/connection object shapes. Do not patch with casual `as any` until the intended schema contract is confirmed.
 
-- `server/routes-oauth.ts(5890)`: `sourceType` on spend records.
-  - Risk: financial persistence shape.
+- Fixed: `server/routes-oauth.ts(5914)`: `sourceType` on spend records.
+  - Resolution: removed the record-level `sourceType`; spend source type remains on the associated `spend_sources` row per the documented source/record split.
 
 - `server/routes-oauth.ts(7624, 7656, 16513, 16518, 26162)`: `conversionValue` on ad connection updates.
   - Risk: ad connection schema/contract drift.
@@ -79,4 +79,4 @@ Reason:
 - Remaining route errors are mostly Stage A schema/connection contract drift or Stage B possible logic bugs.
 - Avoid Stage A until the intended persisted schema contract is confirmed.
 
-Next safest inspection target: Stage A schema/connection contract drift. Start with `server/routes-oauth.ts(5890)` `sourceType` on spend records, inspect only because this touches financial persistence shape.
+Next safest inspection target: Stage A connection contract drift. Start with `server/routes-oauth.ts(7647, 7679)` `conversionValue` on ad connection updates, inspect only because this touches persisted connection shape.

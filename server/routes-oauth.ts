@@ -5911,7 +5911,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             date: dateStr,
             spend: def.spend,
             currency: "USD",
-            sourceType: "manual",
           }]).catch(() => null);
         }
 

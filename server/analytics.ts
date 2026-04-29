@@ -1096,6 +1096,7 @@ export class GoogleAnalytics4Service {
     for (const row of Array.isArray(data?.rows) ? data.rows : []) {
       const dims = Array.isArray(row?.dimensionValues) ? row.dimensionValues : [];
       const mets = Array.isArray(row?.metricValues) ? row.metricValues : [];
+      const sessionsRaw = Number.parseInt(mets[0]?.value || '0', 10) || 0;
 
       const d = {
         date: fmtDate(getDim(dims, idxDate)),
@@ -1105,7 +1106,8 @@ export class GoogleAnalytics4Service {
         campaign: getDim(dims, idxCampaign),
         device: getDim(dims, idxDevice),
         country: getDim(dims, idxCountry),
-        sessionsRaw: Number.parseInt(mets[0]?.value || '0', 10) || 0,
+        sessions: sessionsRaw,
+        sessionsRaw,
         users: Number.parseInt(mets[1]?.value || '0', 10) || 0,
         conversions: Number.parseInt(mets[2]?.value || '0', 10) || 0,
         revenue: Number.parseFloat(mets[3]?.value || '0') || 0,
@@ -1113,7 +1115,6 @@ export class GoogleAnalytics4Service {
 
       // IMPORTANT: sessions must reflect GA4 sessions exactly.
       // Do NOT derive sessions from users; that produces misleading KPIs (e.g., Users == Sessions).
-      d.sessions = d.sessionsRaw;
 
       totalSessionsRaw += d.sessionsRaw;
       totalUsers += d.users;

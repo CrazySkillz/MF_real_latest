@@ -16137,7 +16137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         unmatchedCampaigns: [] as string[],
         totalFilteredRows: 0,
         totalRows: 0,
-        platform: null as string | null
+        platform: null as string | null,
+        campaignName: ''
       };
 
       if (AUTO_CALCULATE_CONVERSION_VALUE) {

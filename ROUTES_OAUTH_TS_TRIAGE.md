@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 393 total TypeScript errors
+- `npm run check`: 392 total TypeScript errors
 - `server/routes-oauth.ts`: benchmark/report storage-interface drift is fixed; remaining errors are mostly schema/contract drift, possible real logic bugs, and localized type-shape issues
 - Safe type-only cleanup is paused; do not continue patching app code until one of the stages below is selected
 
@@ -31,8 +31,8 @@ Inspect before editing. These may indicate broken or incomplete route logic.
 - Fixed: `server/routes-oauth.ts(16678-16683)` missing `totalRevenue` / `totalConversions`.
   - Resolution: zero-platform branch now logs the zero-platform condition instead of referencing variables scoped to the one-platform branch.
 
-- New candidate: `server/routes-oauth.ts(16287)`: `campaignName` on `matchingInfo`.
-  - Risk: response shape may be stale or the declared matching-info type may be too narrow.
+- Fixed: `server/routes-oauth.ts(16311)`: `campaignName` on `matchingInfo`.
+  - Resolution: local `matchingInfo` shape now includes `campaignName`, matching existing response paths.
 
 - Remaining: `server/routes-oauth.ts(23694-23713)`: quality/score values typed as numbers but assigned objects.
   - Risk: possible broken response construction.
@@ -79,4 +79,4 @@ Reason:
 - Remaining route errors are mostly Stage A schema/connection contract drift or Stage B possible logic bugs.
 - Avoid Stage A until the intended persisted schema contract is confirmed.
 
-Next safest inspection target: `server/routes-oauth.ts(16311)` `campaignName` on `matchingInfo`. Inspect only, because this may be response shape or local type drift.
+Next safest inspection target: `server/routes-oauth.ts(23719-23738)` quality/score values typed as numbers but assigned objects. Inspect only, because this may be response construction logic.

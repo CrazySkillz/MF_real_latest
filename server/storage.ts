@@ -2605,14 +2605,26 @@ export class MemStorage implements IStorage {
 
   async createKPI(kpiData: InsertKPI): Promise<KPI> {
     const id = randomUUID();
+    const kpiInput = kpiData as InsertKPI & {
+      sourceType?: string | null;
+      metricKey?: string | null;
+      aggregationMethod?: string | null;
+    };
     const kpi: KPI = {
       id,
       // Keep campaignId exactly as provided - don't transform undefined to null
       campaignId: kpiData.campaignId !== undefined ? kpiData.campaignId : null,
       platformType: kpiData.platformType || null,
+      category: kpiData.category || "performance",
       name: kpiData.name,
-      targetValue: kpiData.targetValue,
-      currentValue: kpiData.currentValue || "0",
+      metric: kpiData.metric || null,
+      sourceType: kpiInput.sourceType || "manual",
+      metricKey: kpiInput.metricKey || null,
+      aggregationMethod: kpiInput.aggregationMethod || null,
+      calculationConfig: kpiData.calculationConfig || null,
+      targetValue: String(kpiData.targetValue),
+      currentValue: kpiData.currentValue != null ? String(kpiData.currentValue) : "0",
+      lastComputedValue: null,
       unit: kpiData.unit,
       description: kpiData.description || null,
       priority: kpiData.priority || "medium",
@@ -2621,12 +2633,16 @@ export class MemStorage implements IStorage {
       trackingPeriod: kpiData.trackingPeriod || 30,
       rollingAverage: kpiData.rollingAverage || "7day",
       targetDate: kpiData.targetDate || null,
-      alertThreshold: kpiData.alertThreshold || null,
+      alertThreshold: kpiData.alertThreshold != null ? String(kpiData.alertThreshold) : null,
+      alertCondition: kpiData.alertCondition || "below",
       alertsEnabled: kpiData.alertsEnabled !== undefined ? kpiData.alertsEnabled : true,
       emailNotifications: kpiData.emailNotifications !== undefined ? kpiData.emailNotifications : false,
+      emailRecipients: kpiData.emailRecipients || null,
       slackNotifications: kpiData.slackNotifications !== undefined ? kpiData.slackNotifications : false,
       alertFrequency: kpiData.alertFrequency || "daily",
       lastAlertSent: null,
+      applyTo: kpiData.applyTo || "all",
+      specificCampaignId: kpiData.specificCampaignId || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

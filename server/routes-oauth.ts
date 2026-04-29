@@ -1225,7 +1225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "2020-01-01";
       const endDate = yesterdayUTC();
 
-      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext);
+      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext as "ga4" | "linkedin");
       res.json({ success: true, platformContext, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue-to-date" });
@@ -1666,7 +1666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!platformContext) return;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext);
+      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext as "ga4" | "linkedin");
       res.json({ success: true, platformContext, dateRange, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue totals" });

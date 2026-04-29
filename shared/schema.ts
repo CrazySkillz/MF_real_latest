@@ -1228,6 +1228,7 @@ export const insertLinkedInConnectionSchema = createInsertSchema(linkedinConnect
   clientId: true,
   clientSecret: true,
   method: true,
+  conversionValue: true,
   expiresAt: true,
 });
 
@@ -1238,6 +1239,7 @@ export const insertMetaConnectionSchema = createInsertSchema(metaConnections).pi
   accessToken: true,
   refreshToken: true,
   method: true,
+  conversionValue: true,
   expiresAt: true,
 });
 

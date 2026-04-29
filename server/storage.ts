@@ -2405,19 +2405,25 @@ export class MemStorage implements IStorage {
     const existing = await this.getCustomIntegration(integration.campaignId);
     if (existing) {
       // Update existing integration with new email and webhook token
-      existing.email = integration.email;
+      existing.email = integration.email ?? null;
       existing.webhookToken = integration.webhookToken;
+      existing.allowedEmailAddresses = integration.allowedEmailAddresses ?? null;
       existing.connectedAt = new Date();
       this.customIntegrations.set(existing.id, existing);
       return existing;
+    }
+
+    if (!integration.webhookToken) {
+      throw new Error("webhookToken is required for custom integrations");
     }
 
     const id = randomUUID();
     const customIntegration: CustomIntegration = {
       id,
       campaignId: integration.campaignId,
-      email: integration.email,
+      email: integration.email ?? null,
       webhookToken: integration.webhookToken,
+      allowedEmailAddresses: integration.allowedEmailAddresses ?? null,
       connectedAt: new Date(),
       createdAt: new Date(),
     };

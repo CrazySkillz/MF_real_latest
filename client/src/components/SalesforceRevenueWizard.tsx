@@ -53,7 +53,7 @@ export function SalesforceRevenueWizard(props: {
    * Used to prevent cross-platform leakage of revenue metrics.
    * Example: GA4 revenue sources must not unlock LinkedIn revenue metrics.
    */
-  platformContext?: "ga4" | "linkedin";
+  platformContext?: "ga4" | "linkedin" | "meta";
   /**
    * Optional: lets the parent modal header Back button step backwards inside this wizard.
    * Increment the nonce to request a single back navigation.

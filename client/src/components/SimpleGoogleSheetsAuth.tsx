@@ -15,7 +15,7 @@ interface SimpleGoogleSheetsAuthProps {
   onSuccess: (connectionInfo?: { connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] }) => void;
   onError: (error: string) => void;
   selectionMode?: 'replace' | 'append';
-  purpose?: 'spend' | 'revenue' | 'general' | 'linkedin_revenue';
+  purpose?: 'spend' | 'revenue' | 'general' | 'linkedin_revenue' | 'meta_revenue';
 }
 
 interface Spreadsheet {
@@ -533,4 +533,3 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     </Card>
   );
 }
-

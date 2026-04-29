@@ -21,7 +21,7 @@ export function ShopifyRevenueWizard(props: {
    * Used to prevent cross-platform leakage of revenue metrics.
    * Example: GA4 revenue sources must not unlock LinkedIn revenue metrics.
    */
-  platformContext?: "ga4" | "linkedin";
+  platformContext?: "ga4" | "linkedin" | "meta";
   /**
    * Optional: parent-driven navigation (used by outer modal Back button).
    */

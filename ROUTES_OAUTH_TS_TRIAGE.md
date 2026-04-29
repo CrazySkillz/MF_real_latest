@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 471 total TypeScript errors
+- `npm run check`: 467 total TypeScript errors
 - `server/routes-oauth.ts`: still has mixed route errors across GA4, ad platforms, Google Sheets, reports, benchmarks, attribution, and legacy storage interfaces
 - Safe rule: fix only one clearly type-only group at a time, then run `npm run check`, `npm run build`, and commit only `server/routes-oauth.ts`
 
@@ -12,25 +12,17 @@ Current baseline:
 
 These can likely be fixed with local casts or local type aliases if inspection confirms the runtime behavior already exists.
 
-- `server/routes-oauth.ts(16784)`: missing declaration for `google-trends-api`.
-  - Type-only fix candidate: add a local declaration file or module declaration.
-  - Risk: low if no import/runtime path changes are made.
-
 - `server/routes-oauth.ts(18020, 18263, 18301, 18342, 18383, 18424, 18465, 18502, 18539, 18614)`: `string | null` passed where `string` is required.
   - Type-only fix candidate: inspect each call and narrow/guard existing values.
   - Risk: low only if existing null handling is preserved.
 
-- `server/routes-oauth.ts(19813)`: `validatedEmailAddresses` possibly undefined.
-  - Type-only fix candidate: default to an empty array if existing behavior already treats missing recipients as empty.
-  - Risk: low after inspection.
+- `server/routes-oauth.ts(17284)`: `accessToken` on `never`.
+  - Type-only fix candidate: inspect the branch; if the narrowed value is intentionally dynamic, use a local cast.
+  - Risk: low only if no branch condition changes are needed.
 
-- `server/routes-oauth.ts(19907)`: dynamic key indexing into uploaded metric row.
-  - Type-only fix candidate: cast the row to `Record<string, any>` at the local lookup.
-  - Risk: low if no field names are changed.
-
-- `server/routes-oauth.ts(25984)`: `Set<string>` iterator/downlevel error.
-  - Type-only fix candidate: replace direct iteration/spread with `Array.from(...)`.
-  - Risk: low.
+- `server/routes-oauth.ts(17807)`: overload mismatch.
+  - Type-only fix candidate: inspect each call and narrow/guard existing values.
+  - Risk: unknown until inspected.
 
 ## Needs Schema Or Interface Decision
 
@@ -54,12 +46,8 @@ Inspect before editing. These may indicate broken or incomplete route logic.
 
 - `server/routes-oauth.ts(16678-16683)`: `totalRevenue` and `totalConversions` are missing variables.
   - Risk: real logic bug, not just typing.
-
-- `server/routes-oauth.ts(17284)`: `accessToken` on `never`.
-  - Risk: incorrect narrowing or unreachable branch.
-
-- `server/routes-oauth.ts(17807)`: overload mismatch.
-  - Risk: unknown until inspected.
+  - Inspection result: this is inside the auto-conversion-value fallback branch after campaign/platform update logic.
+  - Do not cast or suppress; determine whether the branch should use existing calculated totals, transformed row totals, or a different variable name.
 
 - `server/routes-oauth.ts(23698-23717)`: quality/score values typed as numbers but assigned objects.
   - Risk: possible broken response construction.
@@ -80,9 +68,6 @@ Treat as a separate cleanup stage, not part of the GA4 critical cleanup unless a
 
 Next safest code fix:
 
-1. Fix `server/routes-oauth.ts(25984)` if inspection confirms it is only a `Set<string>` iterator/downlevel error.
-2. Run `npm run check` and confirm the count drops from 471.
-3. Run `npm run build`.
-4. Commit only `server/routes-oauth.ts`.
-
-If that error is not isolated, fix `google-trends-api` typing instead as a standalone declaration-only change.
+1. Inspect `server/routes-oauth.ts(17284)` and fix only if it is a local narrowing issue.
+2. Otherwise inspect the `string | null` errors around `18020-18614` and fix only with local guards/defaults.
+3. Do not fix `totalRevenue/totalConversions` as a type-only cleanup; handle it as a separate root-cause bug.

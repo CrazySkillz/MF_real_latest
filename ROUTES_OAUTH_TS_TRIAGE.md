@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 404 total TypeScript errors
+- `npm run check`: 401 total TypeScript errors
 - `server/routes-oauth.ts`: benchmark/report storage-interface drift is fixed; remaining errors are mostly schema/contract drift, possible real logic bugs, and localized type-shape issues
 - Safe type-only cleanup is paused; do not continue patching app code until one of the stages below is selected
 
@@ -61,20 +61,21 @@ Treat this as a broader cleanup stage. Prefer fixing the storage interface contr
 - Remaining: report/snapshot insertion shape errors around `24732-24991`.
   - Risk: payload types may not match insert schema, especially numeric/string financial fields.
 
-- Remaining: query parameter narrowing around `25217-25221`.
-  - Risk: likely local request-query narrowing.
+- Fixed: query parameter narrowing around `25217-25221`.
+  - Resolution: `campaignId` is narrowed to a string before storage calls.
 
-- Remaining: missing `DetectedColumn` type at `25437`.
-  - Risk: likely missing import or stale local type name.
+- Fixed: missing `DetectedColumn` type at `25437`.
+  - Resolution: added a type-only import from the existing column detection utility.
 
 ## Recommended Next Stage
 
-Recommended next stage: inspect the next smallest localized Stage C candidate.
+Recommended next stage: inspect the remaining report/snapshot insertion shape group before editing.
 
 Reason:
 
 - The broad storage-method drift is already cleared.
-- The safest remaining Stage C target is query parameter narrowing at `server/routes-oauth.ts(25217-25221)`, because it is likely a local type guard with no schema or metric behavior change.
+- The smallest local Stage C issues are now fixed.
+- The next Stage C errors are report/snapshot insertion payload mismatches around `server/routes-oauth.ts(24732-24991)`.
 - Avoid Stage A until the intended persisted schema contract is confirmed.
 
 Stop before changing report/snapshot insertion shapes, because those affect analytics/report payload contracts.

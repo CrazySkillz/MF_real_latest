@@ -13,7 +13,7 @@ import { parsePDFMetrics } from "./services/pdf-parser";
 import { nanoid } from "nanoid";
 import { randomBytes, createHash, createHmac, timingSafeEqual } from "crypto";
 import { snapshotScheduler } from "./scheduler";
-import { detectColumnTypes } from "./utils/column-detection";
+import { detectColumnTypes, type DetectedColumn } from "./utils/column-detection";
 import { discoverSchema } from "./utils/schema-discovery";
 import { autoMapColumns, validateMappings, isMappingValid } from "./utils/auto-mapping";
 import { getPlatformFields, getRequiredFields } from "./utils/field-definitions";

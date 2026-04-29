@@ -229,7 +229,7 @@ export async function resolveLinkedInRevenueContext(opts: {
   const hasRevenueTracking = webhookRevenue > 0 || conversionValue > 0 || importedRevenueToDate > 0;
 
   let totalRevenue = 0;
-  let finalConversionValueSource = conversionValueSource;
+  let finalConversionValueSource: LinkedInRevenueContext["conversionValueSource"] = conversionValueSource;
   if (hasRevenueTracking) {
     // PRIORITY 1: Webhook events (most accurate - actual conversion values)
     if (webhookRevenue > 0) {

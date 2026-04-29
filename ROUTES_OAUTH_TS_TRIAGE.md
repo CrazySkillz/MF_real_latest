@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 397 total TypeScript errors
+- `npm run check`: 395 total TypeScript errors
 - `server/routes-oauth.ts`: benchmark/report storage-interface drift is fixed; remaining errors are mostly schema/contract drift, possible real logic bugs, and localized type-shape issues
 - Safe type-only cleanup is paused; do not continue patching app code until one of the stages below is selected
 
@@ -37,8 +37,8 @@ Inspect before editing. These may indicate broken or incomplete route logic.
 - Remaining: `server/routes-oauth.ts(23694-23713)`: quality/score values typed as numbers but assigned objects.
   - Risk: possible broken response construction.
 
-- `server/routes-oauth.ts(24027, 24127)`: `Date` assigned where a string is expected.
-  - Risk: report/snapshot payload shape may need exact serialization.
+- Fixed: `server/routes-oauth.ts(24051, 24151)`: `Date` assigned where a string is expected.
+  - Resolution: freshness timestamps are serialized with `toISOString()` before string-based age checks.
 
 - `server/routes-oauth.ts(24181)`: missing `targetValue` on benchmark row type.
   - Risk: benchmark schema or route expectation drift.
@@ -79,4 +79,4 @@ Reason:
 - Remaining route errors are mostly Stage A schema/connection contract drift or Stage B possible logic bugs.
 - Avoid Stage A until the intended persisted schema contract is confirmed.
 
-Next safest inspection target: `server/routes-oauth.ts(24051, 24151)` Date assigned where a string is expected. Inspect only, because report/snapshot payload serialization can affect downstream consumers.
+Next safest inspection target: `server/routes-oauth.ts(24205)` missing `targetValue` on benchmark row type. Inspect only, because this may be benchmark schema or route expectation drift.

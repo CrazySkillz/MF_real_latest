@@ -24048,7 +24048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const latestSession = await storage.getLatestLinkedInImportSession(id);
         if (latestSession) {
-          linkedinLastUpdate = latestSession.importedAt;
+          linkedinLastUpdate = latestSession.importedAt.toISOString();
           const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
           // Deduplicate: keep latest value per (campaignUrn, metricKey) to prevent double-counting
           const deduped = new Map<string, number>();
@@ -24148,7 +24148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customMetrics.conversions = parseNum(customIntegration.conversions);
           customMetrics.spend = parseNum(customIntegration.spend);
           customMetrics.revenue = 0;
-          customIntegrationLastUpdate = customIntegration.uploadedAt;
+          customIntegrationLastUpdate = customIntegration.uploadedAt.toISOString();
         }
       } catch (err) {
         console.log('No custom integration metrics found for campaign', id);

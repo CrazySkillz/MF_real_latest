@@ -36,6 +36,7 @@ export interface MetaInsights {
   reach: number;
   clicks: number;
   spend: number;
+  conversions: number;
   actions?: MetaAction[];
   videoViews?: number;
   frequency: number;
@@ -49,6 +50,7 @@ export interface MetaInsights {
 
 export interface MetaAction {
   actionType: string;
+  action_type?: string;
   value: string;
 }
 
@@ -470,6 +472,7 @@ export class MetaGraphAPIClient {
       reach,
       clicks,
       spend,
+      conversions,
       actions: data.actions,
       videoViews,
       frequency: parseFloat(data.frequency) || (reach > 0 ? impressions / reach : 0),
@@ -509,6 +512,7 @@ export class MetaGraphAPIClient {
       reach: 0,
       clicks: 0,
       spend: 0,
+      conversions: 0,
       actions: [],
       videoViews: 0,
       frequency: 0,

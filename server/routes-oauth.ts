@@ -16675,13 +16675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               devLog(`[Auto Conversion Value] ℹ️ Cleared campaign.conversionValue (multiple platforms detected)`);
             }
           } else {
-            if (totalRevenue === 0 && totalConversions === 0) {
-              devLog(`[Auto Conversion Value] ℹ️ No Revenue or Conversions columns detected in Google Sheets`);
-            } else if (totalRevenue === 0) {
-              devLog(`[Auto Conversion Value] ℹ️ Revenue column not found (Conversions: ${totalConversions})`);
-            } else if (totalConversions === 0) {
-              devLog(`[Auto Conversion Value] ℹ️ Conversions column not found (Revenue: $${totalRevenue})`);
-            }
+            devLog(`[Auto Conversion Value] ℹ️ No connected ad platforms found; skipping campaign-level conversion value calculation.`);
           }
         } catch (calcError) {
           console.error(`[Auto Conversion Value] ❌ Error calculating conversion value:`, calcError);

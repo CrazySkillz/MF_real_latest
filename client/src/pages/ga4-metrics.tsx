@@ -692,7 +692,7 @@ export default function GA4Metrics() {
       await queryClient.refetchQueries({
         predicate: (query) => {
           const key = query.queryKey;
-          return Array.isArray(key) && key.some((k) => typeof k === "string" && k.includes(campaignId));
+          return Array.isArray(key) && key.some((k) => typeof k === "string" && k.includes(String(campaignId || "")));
         },
         type: "active",
       });
@@ -876,7 +876,13 @@ export default function GA4Metrics() {
         industry: "",
         geoLocation: "",
         description: "",
-        source: ""
+        source: "",
+        alertsEnabled: false,
+        alertThreshold: "",
+        alertCondition: "below",
+        alertFrequency: "immediate",
+        emailNotifications: false,
+        emailRecipients: "",
       });
       toast({ title: "Benchmark created successfully" });
     },
@@ -919,6 +925,12 @@ export default function GA4Metrics() {
         geoLocation: "",
         description: "",
         source: "",
+        alertsEnabled: false,
+        alertThreshold: "",
+        alertCondition: "below",
+        alertFrequency: "immediate",
+        emailNotifications: false,
+        emailRecipients: "",
       });
       toast({ title: "Benchmark updated successfully" });
     },
@@ -1151,6 +1163,14 @@ export default function GA4Metrics() {
         geoLocation: (editingBenchmark as any).geoLocation || "",
         description: (editingBenchmark as any).description || "",
         source: (editingBenchmark as any).source || "",
+        alertsEnabled: (editingBenchmark as any).alertsEnabled || false,
+        alertThreshold: (editingBenchmark as any).alertThreshold
+          ? formatNumberByUnit(String((editingBenchmark as any).alertThreshold), String((editingBenchmark as any).unit || "%"))
+          : "",
+        alertCondition: (editingBenchmark as any).alertCondition || "below",
+        alertFrequency: (editingBenchmark as any).alertFrequency || "immediate",
+        emailNotifications: (editingBenchmark as any).emailNotifications || false,
+        emailRecipients: (editingBenchmark as any).emailRecipients || "",
       });
       return;
     }
@@ -1168,6 +1188,12 @@ export default function GA4Metrics() {
       geoLocation: "",
       description: "",
       source: "",
+      alertsEnabled: false,
+      alertThreshold: "",
+      alertCondition: "below",
+      alertFrequency: "immediate",
+      emailNotifications: false,
+      emailRecipients: "",
     });
   };
 
@@ -3028,7 +3054,7 @@ export default function GA4Metrics() {
                   label: String(source.displayName || source.sourceType || "Source"),
                   amount: fC(Number(source.revenue || 0)),
                 },
-                ...(sourceRevenueBreakdowns.get(source.sourceId) || []).map((item: any) => ({
+                ...(sourceRevenueBreakdowns.get(String(source.sourceId || "")) || []).map((item: any) => ({
                   label: String(item?.campaignValue || ""),
                   amount: fC(Number(item?.revenue || 0)),
                   muted: true,
@@ -3148,7 +3174,7 @@ export default function GA4Metrics() {
             if (!monthMap.has(ym)) monthMap.set(ym, []);
             monthMap.get(ym)!.push(r);
           }
-          [...monthMap.keys()].sort().forEach((ym) => {
+          Array.from(monthMap.keys()).sort().forEach((ym) => {
             const rows = monthMap.get(ym)!;
             const value = trendIsRate
               ? (() => {
@@ -3278,7 +3304,7 @@ export default function GA4Metrics() {
 
       if (includeInsightsDataSummary && (breakdownTotals.sessions > 0 || financialRevenue > 0)) {
         sectionTitle("Data Summary", C.insights);
-        const renderInsightDataCards = (items: [string, string, string][], cols = 4) => {
+        const renderInsightDataCards = (items: string[][], cols = 4) => {
           const cardW = (CW - (cols - 1) * 4) / cols;
           for (let i = 0; i < items.length; i += cols) {
             checkPage(22);
@@ -3299,17 +3325,17 @@ export default function GA4Metrics() {
             y += 22;
           }
         };
-        const primaryDataCards: [string, string, string][] = [
-          ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), `~${formatNumber(Math.round(breakdownTotals.sessions / Math.max(insightsRollups?.availableDays || 1, 1)))}/day avg`]] : []),
-          ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""]] : []),
-          ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), `~${formatMoney(financialRevenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg`]] : []),
+        const primaryDataCards: string[][] = [
+          ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), `~${formatNumber(Math.round(breakdownTotals.sessions / Math.max(insightsRollups?.availableDays || 1, 1)))}/day avg`] as [string, string, string]] : []),
+          ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""] as [string, string, string]] : []),
+          ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), `~${formatMoney(financialRevenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg`] as [string, string, string]] : []),
           ...(channelAnalysis?.topSessionChannel ? [["Top Channel", String(channelAnalysis.topSessionChannel.label || ""), `${channelAnalysis.topSessionShare.toFixed(0)}% of sessions · ${channelAnalysis.channelCount} channels`]] : []),
         ];
-        const secondaryDataCards: [string, string, string][] = [
-          ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""]] : []),
-          ...(financialRevenue > 0 && financialSpend > 0 ? [["Profit", formatMoney(financialRevenue - financialSpend), ""]] : []),
-          ...(financialROAS > 0 ? [["ROAS", `${financialROAS.toFixed(2)}x`, ""]] : []),
-          ...(breakdownTotals.conversions > 0 && financialSpend > 0 ? [["CPA", formatMoney(financialSpend / breakdownTotals.conversions), ""]] : []),
+        const secondaryDataCards: string[][] = [
+          ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""] as [string, string, string]] : []),
+          ...(financialRevenue > 0 && financialSpend > 0 ? [["Profit", formatMoney(financialRevenue - financialSpend), ""] as [string, string, string]] : []),
+          ...(financialROAS > 0 ? [["ROAS", `${financialROAS.toFixed(2)}x`, ""] as [string, string, string]] : []),
+          ...(breakdownTotals.conversions > 0 && financialSpend > 0 ? [["CPA", formatMoney(financialSpend / breakdownTotals.conversions), ""] as [string, string, string]] : []),
         ];
         if (primaryDataCards.length > 0) renderInsightDataCards(primaryDataCards, 4);
         if (secondaryDataCards.length > 0) renderInsightDataCards(secondaryDataCards, 4);
@@ -4715,7 +4741,7 @@ export default function GA4Metrics() {
   }, [campaignBreakdownAgg, revenueDisplaySources]);
 
   const sourceRevenueBreakdowns = useMemo(() => {
-    return new Map(
+    return new Map<string, any[]>(
       revenueDisplaySources.map((source: any) => {
         const rawCfg = source?.mappingConfig;
         const cfg = typeof rawCfg === "string"
@@ -7184,7 +7210,7 @@ export default function GA4Metrics() {
                               if (!monthMap.has(ym)) monthMap.set(ym, []);
                               monthMap.get(ym)!.push(r);
                             }
-                            const monthKeys = [...monthMap.keys()].sort();
+                            const monthKeys = Array.from(monthMap.keys()).sort();
                             const todayYM = new Date().toISOString().slice(0, 7);
 
                             chartData = monthKeys.map((ym, i) => {
@@ -7353,7 +7379,7 @@ export default function GA4Metrics() {
                                           if (!monthMap.has(ym)) monthMap.set(ym, []);
                                           monthMap.get(ym)!.push(r);
                                         }
-                                        const monthKeys = [...monthMap.keys()].sort().reverse(); // most recent first
+                                        const monthKeys = Array.from(monthMap.keys()).sort().reverse(); // most recent first
                                         const todayYM = new Date().toISOString().slice(0, 7);
 
                                         if (monthKeys.length < 2) {
@@ -8536,7 +8562,7 @@ export default function GA4Metrics() {
                                               const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
                                               const nextIds = new Set((nextCfg.selectedKpiIds || allCustomKpiIds).map(String));
                                               if (e.target.checked) nextIds.add(String(k.id)); else nextIds.delete(String(k.id));
-                                              nextCfg.selectedKpiIds = [...nextIds];
+                                              nextCfg.selectedKpiIds = Array.from(nextIds);
                                               nextCfg.subsections.kpis = { ...(nextCfg.subsections?.kpis || {}), items: nextCfg.selectedKpiIds.length > 0 };
                                               nextCfg.sections.kpis = Object.values(nextCfg.subsections.kpis || {}).some(Boolean);
                                               setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));
@@ -8564,7 +8590,7 @@ export default function GA4Metrics() {
                                               const nextCfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
                                               const nextIds = new Set((nextCfg.selectedBenchmarkIds || allCustomBenchmarkIds).map(String));
                                               if (e.target.checked) nextIds.add(String(b.id)); else nextIds.delete(String(b.id));
-                                              nextCfg.selectedBenchmarkIds = [...nextIds];
+                                              nextCfg.selectedBenchmarkIds = Array.from(nextIds);
                                               nextCfg.subsections.benchmarks = { ...(nextCfg.subsections?.benchmarks || {}), items: nextCfg.selectedBenchmarkIds.length > 0 };
                                               nextCfg.sections.benchmarks = Object.values(nextCfg.subsections.benchmarks || {}).some(Boolean);
                                               setGa4ReportForm((p) => ({ ...p, configuration: nextCfg }));

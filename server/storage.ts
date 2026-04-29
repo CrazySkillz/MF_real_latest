@@ -2022,7 +2022,18 @@ export class MemStorage implements IStorage {
     const id = nanoid();
     const newKpi: MetaKpi = {
       id,
-      ...kpi,
+      campaignId: kpi.campaignId,
+      name: kpi.name,
+      metricType: kpi.metricType,
+      targetValue: String(kpi.targetValue),
+      currentValue: kpi.currentValue != null ? String(kpi.currentValue) : null,
+      status: kpi.status || "pending",
+      progress: kpi.progress != null ? String(kpi.progress) : null,
+      startDate: kpi.startDate,
+      endDate: kpi.endDate || null,
+      frequency: kpi.frequency || "daily",
+      alertEnabled: kpi.alertEnabled ?? false,
+      alertThreshold: kpi.alertThreshold != null ? String(kpi.alertThreshold) : null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -2057,7 +2068,16 @@ export class MemStorage implements IStorage {
     const id = nanoid();
     const newBenchmark: MetaBenchmark = {
       id,
-      ...benchmark,
+      campaignId: benchmark.campaignId,
+      name: benchmark.name,
+      metricType: benchmark.metricType,
+      benchmarkValue: String(benchmark.benchmarkValue),
+      currentValue: benchmark.currentValue != null ? String(benchmark.currentValue) : null,
+      industry: benchmark.industry || null,
+      source: benchmark.source || "custom",
+      comparisonType: benchmark.comparisonType || "greater_than",
+      status: benchmark.status || null,
+      percentageDiff: benchmark.percentageDiff != null ? String(benchmark.percentageDiff) : null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -2092,8 +2112,23 @@ export class MemStorage implements IStorage {
     const id = nanoid();
     const newReport: MetaReport = {
       id,
-      ...report,
+      campaignId: report.campaignId,
+      name: report.name,
+      template: report.template,
+      frequency: report.frequency,
+      schedule: report.schedule || null,
+      recipients: report.recipients,
+      format: report.format || "pdf",
+      includeCharts: report.includeCharts ?? true,
+      includeDemographics: report.includeDemographics ?? true,
+      includeGeographics: report.includeGeographics ?? true,
+      includePlacements: report.includePlacements ?? true,
+      dateRange: report.dateRange || "last_30_days",
+      customStartDate: report.customStartDate || null,
+      customEndDate: report.customEndDate || null,
+      enabled: report.enabled ?? true,
       lastSent: null,
+      nextScheduled: report.nextScheduled || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

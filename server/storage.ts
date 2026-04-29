@@ -1221,7 +1221,7 @@ export class MemStorage implements IStorage {
   }
 
   async deleteSpendRecordsBySource(sourceId: string): Promise<boolean> {
-    for (const [id, rec] of this.spendRecords.entries()) {
+    for (const [id, rec] of Array.from(this.spendRecords.entries())) {
       if ((rec as any).spendSourceId === sourceId) this.spendRecords.delete(id);
     }
     return true;
@@ -1254,7 +1254,7 @@ export class MemStorage implements IStorage {
     const sourceIds = new Set<string>();
     let currency: string | undefined = undefined;
 
-    for (const rec of this.spendRecords.values()) {
+    for (const rec of Array.from(this.spendRecords.values())) {
       if (rec.campaignId !== campaignId) continue;
       const srcId = String((rec as any).spendSourceId);
       const src = this.spendSources.get(srcId);
@@ -1275,7 +1275,7 @@ export class MemStorage implements IStorage {
     const end = new Date(endDate + "T23:59:59Z").getTime();
     const totals = new Map<string, { displayName: string; sourceType: string; spend: number; currency?: string }>();
 
-    for (const rec of this.spendRecords.values()) {
+    for (const rec of Array.from(this.spendRecords.values())) {
       if (rec.campaignId !== campaignId) continue;
       const srcId = String((rec as any).spendSourceId);
       const src = this.spendSources.get(srcId);
@@ -1350,7 +1350,7 @@ export class MemStorage implements IStorage {
   }
 
   async deleteRevenueRecordsBySource(sourceId: string): Promise<boolean> {
-    for (const [id, rec] of this.revenueRecords.entries()) {
+    for (const [id, rec] of Array.from(this.revenueRecords.entries())) {
       if (String((rec as any).revenueSourceId) === sourceId) this.revenueRecords.delete(id);
     }
     return true;
@@ -1384,7 +1384,7 @@ export class MemStorage implements IStorage {
     const sourceIds = new Set<string>();
     let currency: string | undefined = undefined;
 
-    for (const rec of this.revenueRecords.values()) {
+    for (const rec of Array.from(this.revenueRecords.values())) {
       if (String((rec as any).campaignId) !== campaignId) continue;
       const srcId = String((rec as any).revenueSourceId);
       const src = this.revenueSources.get(srcId);
@@ -1411,7 +1411,7 @@ export class MemStorage implements IStorage {
     const end = new Date(endDate + "T23:59:59Z").getTime();
     const totals = new Map<string, { displayName: string; sourceType: string; revenue: number; currency?: string }>();
 
-    for (const rec of this.revenueRecords.values()) {
+    for (const rec of Array.from(this.revenueRecords.values())) {
       if (String((rec as any).campaignId) !== campaignId) continue;
       const srcId = String((rec as any).revenueSourceId);
       const src = this.revenueSources.get(srcId);
@@ -1440,7 +1440,7 @@ export class MemStorage implements IStorage {
   // Google Sheets Connection methods
   async getGoogleSheetsConnections(campaignId: string, purpose?: string): Promise<GoogleSheetsConnection[]> {
     const connections: GoogleSheetsConnection[] = [];
-    for (const connection of this.googleSheetsConnections.values()) {
+    for (const connection of Array.from(this.googleSheetsConnections.values())) {
       const matchesPurpose = purpose ? (String((connection as any).purpose || "") === purpose) : true;
       if (connection.campaignId === campaignId && connection.isActive && matchesPurpose) {
         connections.push(connection);
@@ -1453,7 +1453,7 @@ export class MemStorage implements IStorage {
 
   async getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined> {
     if (spreadsheetId) {
-      for (const connection of this.googleSheetsConnections.values()) {
+      for (const connection of Array.from(this.googleSheetsConnections.values())) {
         if (connection.campaignId === campaignId &&
           connection.spreadsheetId === spreadsheetId &&
           connection.isActive) {
@@ -1464,7 +1464,7 @@ export class MemStorage implements IStorage {
     }
 
     // Return the primary connection if no spreadsheetId specified
-    for (const connection of this.googleSheetsConnections.values()) {
+    for (const connection of Array.from(this.googleSheetsConnections.values())) {
       if (connection.campaignId === campaignId &&
         connection.isPrimary &&
         connection.isActive) {
@@ -1473,7 +1473,7 @@ export class MemStorage implements IStorage {
     }
 
     // Fallback to first active connection if no primary
-    for (const connection of this.googleSheetsConnections.values()) {
+    for (const connection of Array.from(this.googleSheetsConnections.values())) {
       if (connection.campaignId === campaignId && connection.isActive) {
         return connection;
       }
@@ -1483,7 +1483,7 @@ export class MemStorage implements IStorage {
   }
 
   async getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined> {
-    for (const connection of this.googleSheetsConnections.values()) {
+    for (const connection of Array.from(this.googleSheetsConnections.values())) {
       if (connection.campaignId === campaignId &&
         connection.isPrimary &&
         connection.isActive) {
@@ -1589,7 +1589,7 @@ export class MemStorage implements IStorage {
   // HubSpot Connection methods
   async getHubspotConnections(campaignId: string): Promise<HubspotConnection[]> {
     const connections: HubspotConnection[] = [];
-    for (const connection of this.hubspotConnections.values()) {
+    for (const connection of Array.from(this.hubspotConnections.values())) {
       if (connection.campaignId === campaignId && connection.isActive) {
         connections.push(connection);
       }
@@ -1659,7 +1659,7 @@ export class MemStorage implements IStorage {
   // Salesforce Connection methods
   async getSalesforceConnections(campaignId: string): Promise<SalesforceConnection[]> {
     const connections: SalesforceConnection[] = [];
-    for (const connection of this.salesforceConnections.values()) {
+    for (const connection of Array.from(this.salesforceConnections.values())) {
       if (connection.campaignId === campaignId && connection.isActive) {
         connections.push(connection);
       }
@@ -1721,7 +1721,7 @@ export class MemStorage implements IStorage {
   // Shopify Connection methods
   async getShopifyConnections(campaignId: string): Promise<ShopifyConnection[]> {
     const connections: ShopifyConnection[] = [];
-    for (const connection of this.shopifyConnections.values()) {
+    for (const connection of Array.from(this.shopifyConnections.values())) {
       if (connection.campaignId === campaignId && connection.isActive) {
         connections.push(connection);
       }

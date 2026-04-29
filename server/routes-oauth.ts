@@ -19904,7 +19904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const metricKeys = ['users', 'sessions', 'pageviews', 'bounceRate', 'emailsDelivered', 'openRate', 'clickThroughRate', 'spend', 'conversions', 'impressions', 'clicks'];
 
         metricKeys.forEach(key => {
-          const currentVal = parseFloat(current[key] || '0');
+          const currentVal = parseFloat((current as Record<string, any>)[key] || '0');
           const previousVal = parseFloat(previous[key] || '0');
           const diff = currentVal - previousVal;
           const percentChange = previousVal !== 0 ? ((diff / previousVal) * 100) : 0;

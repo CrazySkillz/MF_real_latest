@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 381 total TypeScript errors
+- `npm run check`: 380 total TypeScript errors
 - `server/routes-oauth.ts`: benchmark/report storage-interface drift is fixed; remaining errors are mostly schema/contract drift, possible real logic bugs, and localized type-shape issues
 - Safe type-only cleanup is paused; do not continue patching app code until one of the stages below is selected
 
@@ -21,8 +21,8 @@ These errors touch persisted source/connection object shapes. Do not patch with 
 - Fixed: `server/routes-oauth.ts(23082)`: `lastRefreshAt` on LinkedIn connection insert.
   - Resolution: added `lastRefreshAt` to the LinkedIn connection insert schema because `linkedin_connections.last_refresh_at` already exists and the route already maintains freshness metadata.
 
-- `server/routes-oauth.ts(25766)`: `columnMappings` on Google Sheets connection update.
-  - Risk: Google Sheets connection schema/contract drift.
+- Fixed: `server/routes-oauth.ts(25790)`: `columnMappings` on Google Sheets connection update.
+  - Resolution: added `columnMappings` to the Google Sheets connection insert/update schema because `google_sheets_connections.column_mappings` already exists and the save-mappings route persists validated mappings there.
 
 ## Stage B: Real Logic Bug Investigation
 
@@ -69,14 +69,14 @@ Treat this as a broader cleanup stage. Prefer fixing the storage interface contr
 
 ## Recommended Next Stage
 
-Recommended next stage: inspect the remaining Stage A connection contract candidate before editing.
+Recommended next stage: inspect the remaining route-level errors again before editing.
 
 Reason:
 
 - The broad storage-method drift is already cleared.
 - The smallest local Stage C issues are now fixed.
 - The local Stage C custom integration insertion issues are now fixed.
-- Remaining route errors are mostly Stage A schema/connection contract drift or Stage B possible logic bugs.
-- Avoid Stage A until the intended persisted schema contract is confirmed.
+- The confirmed Stage A connection contract drift in `routes-oauth.ts` is now fixed.
+- Remaining route errors should be re-inventoried before selecting the next safe target.
 
-Next safest inspection target: `server/routes-oauth.ts(25790)` `columnMappings` on Google Sheets connection update. Inspect only because this touches persisted Google Sheets connection configuration.
+Next safest inspection target: re-run `npm run check` and identify the next smallest route-local issue, if any. Stop if the next error belongs to broader storage/interface drift or a product behavior decision.

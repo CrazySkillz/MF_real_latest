@@ -1180,6 +1180,7 @@ export const insertGoogleSheetsConnectionSchema = createInsertSchema(googleSheet
   expiresAt: true,
   isPrimary: true,
   isActive: true,
+  columnMappings: true,
   platforms: true,
 });
 

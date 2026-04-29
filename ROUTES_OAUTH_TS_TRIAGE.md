@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 398 total TypeScript errors
+- `npm run check`: 397 total TypeScript errors
 - `server/routes-oauth.ts`: benchmark/report storage-interface drift is fixed; remaining errors are mostly schema/contract drift, possible real logic bugs, and localized type-shape issues
 - Safe type-only cleanup is paused; do not continue patching app code until one of the stages below is selected
 
@@ -46,8 +46,8 @@ Inspect before editing. These may indicate broken or incomplete route logic.
 - `server/routes-oauth.ts(24404)`: missing `objective` on campaign row type.
   - Risk: campaign schema or route expectation drift.
 
-- `server/routes-oauth.ts(27047)`: comparison of incompatible literal types.
-  - Risk: possible dead/unreachable branch or stale value-source logic.
+- Fixed: `server/routes-oauth.ts(27071)` comparison of incompatible literal types.
+  - Resolution: Shopify is revenue-only in this route, so persisted mode is now the explicit existing runtime value `revenue_to_date`.
 
 ## Stage C: Storage And Interface Drift Cleanup
 
@@ -79,4 +79,4 @@ Reason:
 - Remaining route errors are mostly Stage A schema/connection contract drift or Stage B possible logic bugs.
 - Avoid Stage A until the intended persisted schema contract is confirmed.
 
-Next safest inspection target: `server/routes-oauth.ts(27071)` incompatible literal comparison, because it may be dead/stale branch logic and should be inspected before any edit.
+Next safest inspection target: `server/routes-oauth.ts(24051, 24151)` Date assigned where a string is expected. Inspect only, because report/snapshot payload serialization can affect downstream consumers.

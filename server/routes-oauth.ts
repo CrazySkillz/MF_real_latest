@@ -27068,7 +27068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const mappingCfg = JSON.stringify({
           provider: "shopify",
           platformContext: platformCtx,
-          mode: effectiveValueSource === "conversion_value" ? "conversion_value" : "revenue_to_date",
+          mode: "revenue_to_date",
           valueSource: effectiveValueSource,
           campaignField: field,
           selectedValues: selected,

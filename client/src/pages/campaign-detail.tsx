@@ -5328,20 +5328,18 @@ export default function CampaignDetail() {
                       </Button>
                     </Link>
                     
-                    <Button 
-                      variant="outline" 
-                      className="flex items-center justify-start space-x-3 h-auto p-4"
-                      onClick={() => {
-                        setReportType("custom");
-                        setShowReportDialog(true);
-                      }}
-                    >
-                      <Settings className="w-5 h-5" />
-                      <div className="text-left">
-                        <div className="font-medium">Custom Report</div>
-                        <div className="text-xs text-muted-foreground">Build your own</div>
-                      </div>
-                    </Button>
+                    <Link href="/reports">
+                      <Button
+                        variant="outline"
+                        className="flex items-center justify-start space-x-3 h-auto p-4 w-full"
+                      >
+                        <Settings className="w-5 h-5" />
+                        <div className="text-left">
+                          <div className="font-medium">Custom Report</div>
+                          <div className="text-xs text-muted-foreground">Build your own</div>
+                        </div>
+                      </Button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>

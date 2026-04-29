@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { linkedinDailyMetrics, notifications, kpis } from "../shared/schema";
 import { desc, eq } from "drizzle-orm";
-import type { KPI, InsertNotification } from "../shared/schema";
+import type { KPI, InsertNotification, Notification as AppNotification } from "../shared/schema";
 import { storage } from "./storage";
 
 function parseLooseNumber(input: unknown): number {
@@ -153,7 +153,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   
   const existingAlerts = await db.select()
     .from(notifications)
-    .where(eq(notifications.type, 'performance-alert'));
+    .where(eq(notifications.type, 'performance-alert')) as AppNotification[];
   
   const currentValue = parseLooseNumber(kpi.currentValue);
   const alertThreshold = kpi.alertThreshold ? parseLooseNumber(kpi.alertThreshold) : null;

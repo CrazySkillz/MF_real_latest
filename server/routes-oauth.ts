@@ -4121,7 +4121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         });
 
-        const benchmarks = await storage.getCampaignBenchmarks(campaignId).catch(() => []);
+        const benchmarks = await (storage as any).getCampaignBenchmarks(campaignId).catch(() => []);
         const evaluatedBenchmarks = (Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => {
           const metric = String(b?.metric || "").trim();
           const scopeName = b?.linkedInCampaignName ? String(b.linkedInCampaignName) : undefined;
@@ -4936,7 +4936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ success: false, message: "Invalid benchmarkId" });
       return null;
     }
-    const benchmark = await storage.getBenchmark(benchmarkId).catch(() => undefined as any);
+    const benchmark = await (storage as any).getBenchmark(benchmarkId).catch(() => undefined as any);
     if (!benchmark) {
       res.status(404).json({ success: false, message: "Benchmark not found" });
       return null;
@@ -5110,7 +5110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`[Benchmarks] Generating ${metricsToCreate.length} benchmarks (${hasConversionValue ? 'with' : 'without'} revenue metrics)...`);
 
             for (const [metricKey, thresholds] of metricsToCreate) {
-              await storage.createBenchmark({
+              await (storage as any).createBenchmark({
                 campaignId: campaign.id,
                 platformType: 'linkedin',
                 category: 'performance',

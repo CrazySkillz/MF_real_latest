@@ -25981,7 +25981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       if (sheetName.includes(workspaceCampaignName) || workspaceCampaignName.includes(sheetName)) return true;
                     }
 
-                    for (const liName of linkedInCampaignNames) {
+                    for (const liName of Array.from(linkedInCampaignNames)) {
                       if (!liName) continue;
                       if (sheetName === liName) return true;
                       if (sheetName.includes(liName) || liName.includes(sheetName)) return true;

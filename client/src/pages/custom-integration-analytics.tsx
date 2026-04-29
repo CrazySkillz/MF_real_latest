@@ -3738,6 +3738,7 @@ export default function CustomIntegrationAnalytics() {
                   setKpiForm({
                     name: '',
                     description: '',
+                    category: 'performance',
                     metric: '',
                     targetValue: '',
                     currentValue: '',

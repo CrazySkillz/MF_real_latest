@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { SiGoogle } from "react-icons/si";
-import { FileSpreadsheet, CheckCircle, AlertCircle } from "lucide-react";
+import { FileSpreadsheet, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 
 interface GoogleSheetsConnectionFlowProps {
   campaignId: string;

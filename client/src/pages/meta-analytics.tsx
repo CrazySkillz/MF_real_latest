@@ -1408,6 +1408,7 @@ export default function MetaAnalytics() {
                                 onClick={() => {
                                   setEditingKPI(kpi);
                                   setKpiForm({
+                                    ...kpiForm,
                                     name: kpi.name || '',
                                     metric: metricKey,
                                     targetValue: kpi.targetValue || '',
@@ -1643,6 +1644,7 @@ export default function MetaAnalytics() {
                                 onClick={() => {
                                   setEditingBenchmark(benchmark);
                                   setBenchmarkForm({
+                                    ...benchmarkForm,
                                     metric: metricKey,
                                     name: benchmark.name || '',
                                     benchmarkValue: benchmark.benchmarkValue || benchmark.targetValue || '',
@@ -2935,4 +2937,3 @@ export default function MetaAnalytics() {
     </div>
   );
 }
-

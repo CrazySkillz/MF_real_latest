@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 455 total TypeScript errors
+- `npm run check`: 449 total TypeScript errors
 - `server/routes-oauth.ts`: remaining errors are mostly schema/contract drift, possible real logic bugs, and broader storage/interface drift
 - Safe type-only cleanup is paused; do not continue patching app code until one of the stages below is selected
 
@@ -28,11 +28,10 @@ These errors touch persisted source/connection object shapes. Do not patch with 
 
 Inspect before editing. These may indicate broken or incomplete route logic.
 
-- `server/routes-oauth.ts(16678-16683)`: `totalRevenue` and `totalConversions` are missing variables.
-  - Inspection result: inside the auto-conversion-value fallback branch after campaign/platform update logic.
-  - Do not cast or suppress; determine whether the branch should use existing calculated totals, transformed row totals, or a different variable name.
+- Fixed: `server/routes-oauth.ts(16678-16683)` missing `totalRevenue` / `totalConversions`.
+  - Resolution: zero-platform branch now logs the zero-platform condition instead of referencing variables scoped to the one-platform branch.
 
-- `server/routes-oauth.ts(23698-23719)`: quality/score values typed as numbers but assigned objects.
+- Remaining: `server/routes-oauth.ts(23694-23713)`: quality/score values typed as numbers but assigned objects.
   - Risk: possible broken response construction.
 
 - `server/routes-oauth.ts(27053)`: comparison of incompatible literal types.
@@ -53,12 +52,12 @@ Treat this as a broader cleanup stage. Prefer fixing the storage interface contr
 
 ## Recommended Next Stage
 
-Recommended next stage: Stage B, inspect `totalRevenue` / `totalConversions` root cause without editing first.
+Recommended next stage: Stage C, storage/interface drift cleanup.
 
 Reason:
 
-- It may be an actual runtime bug, not just TypeScript noise.
-- It is near active auto-conversion-value logic.
-- Suppressing it would hide uncertainty in revenue/conversion calculations.
+- It likely fixes many route errors with fewer behavior changes if the methods already exist in `server/storage.ts`.
+- It should be handled by validating the storage contract first, then adding missing interface declarations or local aliases in the smallest safe scope.
+- Avoid Stage A until the intended persisted schema contract is confirmed.
 
-If Stage B confirms a clear one-line variable-name mistake, fix it as its own commit with `npm run check` and `npm run build`.
+Start with the benchmark/report method group around `20893-22075`, because those methods are repeated and many likely already exist in `server/storage.ts`.

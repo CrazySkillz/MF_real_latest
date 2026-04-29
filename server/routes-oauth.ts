@@ -19804,7 +19804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate allowed email addresses if provided
-      let validatedEmailAddresses: string[] | undefined;
+      let validatedEmailAddresses: string[] = [];
       if (allowedEmailAddresses && allowedEmailAddresses.length > 0) {
         validatedEmailAddresses = allowedEmailAddresses
           .map((e: string) => e.trim())

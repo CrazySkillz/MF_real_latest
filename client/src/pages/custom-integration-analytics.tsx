@@ -21,6 +21,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatTimeAgo } from "@/lib/utils";
 import { formatPct } from "@shared/metric-math";
 
+interface CustomIntegrationConnection {
+  email?: string;
+}
+
 // Helper function to calculate expected progress based on timeframe
 function calculateExpectedProgress(timeframe: string): number {
   const now = new Date();
@@ -234,7 +238,7 @@ export default function CustomIntegrationAnalytics() {
   });
 
   // Fetch custom integration connection
-  const { data: customIntegration } = useQuery({
+  const { data: customIntegration } = useQuery<CustomIntegrationConnection>({
     queryKey: ["/api/custom-integration", campaignId],
     enabled: !!campaignId,
     staleTime: 0,
@@ -1854,6 +1858,7 @@ export default function CustomIntegrationAnalytics() {
   );
 
   const hasMetrics = hasBasicMetrics || hasAudienceMetrics || hasTrafficSources || hasEmailMetrics;
+  const customIntegrationEmail = customIntegration?.email;
 
   return (
     <div className="flex h-screen bg-muted">
@@ -1905,7 +1910,7 @@ export default function CustomIntegrationAnalytics() {
                 )}
 
                 {/* Show "Awaiting Data" state when there are NO metrics AND data has finished loading */}
-                {!metricsLoading && !hasMetrics && customIntegration?.email && (
+                {!metricsLoading && !hasMetrics && customIntegrationEmail && (
                   <Card className="border-2 border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950">
                     <CardContent className="pt-8 pb-8">
                       <div className="text-center space-y-6">
@@ -1933,13 +1938,13 @@ export default function CustomIntegrationAnalytics() {
                           </p>
                           <div className="flex items-center gap-2">
                             <code className="flex-1 bg-muted px-4 py-3 rounded border border-border text-blue-900 dark:text-blue-100 font-mono text-sm break-all">
-                              {customIntegration.email}
+                              {customIntegrationEmail}
                             </code>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                navigator.clipboard.writeText(customIntegration.email);
+                                navigator.clipboard.writeText(customIntegrationEmail);
                                 toast({ 
                                   title: "Copied!", 
                                   description: "Email address copied to clipboard" 

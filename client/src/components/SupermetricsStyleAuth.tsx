@@ -54,11 +54,12 @@ export function SupermetricsStyleAuth({ campaignId, propertyId, onSuccess, onErr
       }
     } catch (error) {
       console.error('Service account connection error:', error);
-      if (error.message.includes("403") || error.message.includes("permission")) {
+      const message = error instanceof Error ? error.message : "Failed to connect to Google Analytics";
+      if (message.includes("403") || message.includes("permission")) {
         setShowInstructions(true);
         onError("Access denied. Please follow the setup instructions below to grant access.");
       } else {
-        onError(error.message || "Failed to connect to Google Analytics");
+        onError(message || "Failed to connect to Google Analytics");
       }
     } finally {
       setIsConnecting(false);

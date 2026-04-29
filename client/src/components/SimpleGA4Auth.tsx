@@ -58,7 +58,8 @@ export function SimpleGA4Auth({ campaignId, propertyId, onSuccess, onError }: Si
       }
     } catch (error) {
       console.error('Simple GA4 connection error:', error);
-      onError(error.message || "Failed to connect to Google Analytics");
+      const message = error instanceof Error ? error.message : "Failed to connect to Google Analytics";
+      onError(message || "Failed to connect to Google Analytics");
     } finally {
       setIsConnecting(false);
     }

@@ -6160,12 +6160,12 @@ export class DatabaseStorage implements IStorage {
 
   async setDefaultAttributionModel(id: string): Promise<boolean> {
     // Remove default from all models
-    for (const [key, model] of this.attributionModels.entries()) {
+    this.attributionModels.forEach((model, key) => {
       if (model.isDefault) {
         const updated = { ...model, isDefault: false, updatedAt: new Date() };
         this.attributionModels.set(key, updated);
       }
-    }
+    });
 
     // Set new default
     const model = this.attributionModels.get(id);
@@ -6510,9 +6510,9 @@ export class DatabaseStorage implements IStorage {
 
     const insights: AttributionInsight[] = [];
 
-    for (const [channel, channelResults] of channelGroups) {
+    for (const [channel, channelResults] of Array.from(channelGroups.entries())) {
       const totalAttributedValue = channelResults.reduce((sum, result) =>
-        sum + parseFloat(result.attributedValue), 0);
+        sum + parseFloat(result.attributedValue as string), 0);
       const totalTouchpoints = channelResults.length;
       const totalConversions = new Set(channelResults.map(r => r.journeyId)).size;
       const averageCredit = channelResults.reduce((sum, result) =>
@@ -6621,9 +6621,9 @@ export class DatabaseStorage implements IStorage {
       firstClickConversions: number;
     }[] = [];
 
-    for (const [channel, channelResults] of channelGroups) {
+    for (const [channel, channelResults] of Array.from(channelGroups.entries())) {
       const totalAttributedValue = channelResults.reduce((sum, result) =>
-        sum + parseFloat(result.attributedValue), 0);
+        sum + parseFloat(result.attributedValue as string), 0);
       const totalTouchpoints = channelResults.length;
       const averageCredit = channelResults.reduce((sum, result) =>
         sum + parseFloat(result.attributionCredit), 0) / channelResults.length;
@@ -6636,7 +6636,7 @@ export class DatabaseStorage implements IStorage {
       ).size;
 
       // For last-click and first-click, we need to get touchpoint positions
-      const journeyIds = [...new Set(channelResults.map(r => r.journeyId))];
+      const journeyIds = Array.from(new Set(channelResults.map(r => r.journeyId)));
       let lastClickConversions = 0;
       let firstClickConversions = 0;
 

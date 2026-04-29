@@ -5468,7 +5468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 1) Always compute simulation baseline (represents the initial GA4 historical import)
         const simDateRange = ["7days", "30days", "60days", "90days"].includes(toDateRange) ? toDateRange : "30days";
         const sim = simulateGA4({ campaignId, propertyId: pid, dateRange: simDateRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
-        const simRows = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
+        const simRows = (Array.isArray(sim?.timeSeries) ? sim.timeSeries : []) as any[];
         let sessions = 0, users = 0, conversions = 0, revenue = 0, pageviews = 0;
         let totalEngRate = 0, totalBounce = 0, totalDuration = 0;
         for (const r of simRows) {

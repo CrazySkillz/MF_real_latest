@@ -278,6 +278,9 @@ async function buildGA4ReportPayload(report: any) {
     d.setUTCDate(d.getUTCDate() - 89);
     return d.toISOString().slice(0, 10);
   })();
+  const benchmarkStorage = storage as typeof storage & {
+    getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<any[]>;
+  };
 
   const [metrics, breakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, REPORT_LOOKBACK_RANGE, propertyId, campaignFilter),
@@ -290,7 +293,7 @@ async function buildGA4ReportPayload(report: any) {
     storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "ga4").catch(() => [] as any[]),
     storage.getSpendBreakdownBySource(campaignId, startDate, endDate).catch(() => [] as any[]),
     storage.getPlatformKPIs("google_analytics", campaignId).catch(() => [] as any[]),
-    storage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]),
+    benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]),
   ]);
 
   const ga4ToDate = await withTokenRefresh(connection, async (token) => {

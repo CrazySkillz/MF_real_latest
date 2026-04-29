@@ -58,6 +58,21 @@ interface GoogleSheetsData {
     averageCTR?: number;
   };
   insights?: {
+    summary?: {
+      total: number;
+      high: number;
+      medium: number;
+      low?: number;
+    };
+    totalDataPoints?: number;
+    dateRange?: {
+      start: string;
+      end: string;
+    };
+    dateColumn?: string;
+    labelColumn?: string;
+    trendMetrics: string[];
+    trendSeries: Array<Record<string, string | number | null>>;
     topPerformers: Array<{
       metric: string;
       value: number;

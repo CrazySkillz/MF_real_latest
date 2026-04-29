@@ -967,6 +967,8 @@ export class MemStorage implements IStorage {
       refreshToken: connection.refreshToken || null,
       serviceAccountKey: connection.serviceAccountKey || null,
       method: connection.method,
+      encryptedTokens: null,
+      lookbackDays: 90,
       propertyName: connection.propertyName || null,
       websiteUrl: connection.websiteUrl || null,
       displayName: connection.displayName || connection.propertyName || null,

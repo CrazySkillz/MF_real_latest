@@ -3018,6 +3018,12 @@ export class MemStorage implements IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private attributionModels: Map<string, AttributionModel> = new Map();
+  private customerJourneys: Map<string, CustomerJourney> = new Map();
+  private touchpoints: Map<string, Touchpoint> = new Map();
+  private attributionResults: Map<string, AttributionResult> = new Map();
+  private attributionInsights: Map<string, AttributionInsight> = new Map();
+
   // Campaign methods
   async getCampaigns(): Promise<Campaign[]> {
     return db.select().from(campaigns).orderBy(campaigns.createdAt);

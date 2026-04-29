@@ -18019,7 +18019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Real Meta Graph API integration
       const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
-      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const metaClient = new MetaGraphAPIClient(connection.accessToken as string);
       const dateRange = getLastNDaysRange(30);
 
       console.log(`[Meta Analytics] Fetching real data from Meta Graph API`);
@@ -18262,7 +18262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
-      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const metaClient = new MetaGraphAPIClient(connection.accessToken as string);
       const dateRange = getLastNDaysRange(90);
 
       const campaigns = await metaClient.getCampaigns(connection.adAccountId, dateRange);
@@ -18300,7 +18300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
-      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const metaClient = new MetaGraphAPIClient(connection.accessToken as string);
       const dateRange = getLastNDaysRange(Number(days) || 30);
 
       const dailyInsights = await metaClient.getCampaignDailyInsights(
@@ -18341,7 +18341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
-      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const metaClient = new MetaGraphAPIClient(connection.accessToken as string);
       const dateRange = getLastNDaysRange(30);
 
       const demographics = await metaClient.getDemographicInsights(
@@ -18382,7 +18382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
-      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const metaClient = new MetaGraphAPIClient(connection.accessToken as string);
       const dateRange = getLastNDaysRange(30);
 
       const geographics = await metaClient.getGeographicInsights(
@@ -18423,7 +18423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
-      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const metaClient = new MetaGraphAPIClient(connection.accessToken as string);
       const dateRange = getLastNDaysRange(30);
 
       const placements = await metaClient.getPlacementInsights(
@@ -18464,7 +18464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { MetaGraphAPIClient } = await import('./services/meta-graph-api');
-      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const metaClient = new MetaGraphAPIClient(connection.accessToken as string);
 
       const adSets = await metaClient.getAdSets(String(metaCampaignId));
 
@@ -18501,7 +18501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { MetaGraphAPIClient } = await import('./services/meta-graph-api');
-      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const metaClient = new MetaGraphAPIClient(connection.accessToken as string);
 
       const ads = await metaClient.getAds(String(adSetId));
 
@@ -18538,7 +18538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
-      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const metaClient = new MetaGraphAPIClient(connection.accessToken as string);
       const dateRange = getLastNDaysRange(30);
 
       const insights = await metaClient.getAdInsights(String(adId), dateRange);
@@ -18613,7 +18613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { MetaGraphAPIClient } = await import('./services/meta-graph-api');
-      const metaClient = new MetaGraphAPIClient(connection.accessToken);
+      const metaClient = new MetaGraphAPIClient(connection.accessToken as string);
 
       const tokenInfo = await metaClient.verifyToken();
 

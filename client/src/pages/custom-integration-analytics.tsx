@@ -4185,7 +4185,7 @@ export default function CustomIntegrationAnalytics() {
                     </Card>
 
                     <Card 
-                      className={`cursor-pointer transition-all ${reportModalStep === 'custom' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+                      className={`cursor-pointer transition-all ${reportForm.reportType === 'custom' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
                       onClick={() => {
                         setReportModalStep('custom');
                         setReportForm({ ...reportForm, reportType: 'custom' });

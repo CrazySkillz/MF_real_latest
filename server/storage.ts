@@ -2180,6 +2180,7 @@ export class MemStorage implements IStorage {
       selectedCampaignsCount: session.selectedCampaignsCount || 0,
       selectedMetricsCount: session.selectedMetricsCount || 0,
       selectedMetricKeys: session.selectedMetricKeys || null,
+      conversionValue: session.conversionValue || null,
       importedAt: new Date(),
     };
 

@@ -23525,7 +23525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedMetrics = Array.from(new Set(metrics.map((m: any) => m.metricKey)));
 
       // Dynamically aggregate only the selected metrics
-      const aggregated: Record<string, number> = {};
+      const aggregated: Record<string, any> = {};
 
       selectedMetrics.forEach((metricKey: string) => {
         const total = metrics

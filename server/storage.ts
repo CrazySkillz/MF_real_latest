@@ -4167,6 +4167,9 @@ export class DatabaseStorage implements IStorage {
         values.push(connectionId);
         const queryText = `UPDATE google_sheets_connections SET ${updateClause} WHERE id = $${paramIndex} RETURNING id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, client_id, client_secret, expires_at, is_primary, is_active, column_mappings, connected_at, created_at`;
 
+        if (!pool) {
+          throw new Error("Database pool is not initialized");
+        }
         const result = await pool.query(queryText, values);
 
         if (result.rows.length === 0) return undefined;

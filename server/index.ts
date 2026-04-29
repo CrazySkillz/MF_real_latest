@@ -755,7 +755,7 @@ process.on('uncaughtException', (error: Error) => {
 
           log('✅ Database migrations completed successfully');
         } catch (error) {
-          console.error('⚠️  Migration warning (may already exist):', error.message);
+          console.error('⚠️  Migration warning (may already exist):', error instanceof Error ? error.message : String(error));
         }
 
         // Seed dashboard dummy data (idempotent — only runs when tables are empty)

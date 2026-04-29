@@ -1217,8 +1217,8 @@ export function HubSpotRevenueWizard(props: {
             )}
           </div>
 
-          {/* Footer nav (hide on connect/complete) */}
-          {step !== "connect" && step !== "complete" && (
+          {/* Footer nav (hide on complete) */}
+          {step !== "complete" && (
             <div className="flex items-center justify-between pt-3 mt-3 border-t border-border shrink-0">
               <Button variant="outline" onClick={handleBackStep} disabled={valuesLoading || isSaving}>
                 Back

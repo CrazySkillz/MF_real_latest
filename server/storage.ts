@@ -6537,4 +6537,4 @@ const useMemStorage =
   process.env.USE_MEM_STORAGE === "true" ||
   (process.env.NODE_ENV === "development" && !process.env.DATABASE_URL);
 
-export const storage = useMemStorage ? new MemStorage() : new DatabaseStorage();
+export const storage: IStorage = useMemStorage ? new MemStorage() : new DatabaseStorage();

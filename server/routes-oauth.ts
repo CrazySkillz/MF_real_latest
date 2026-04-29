@@ -15371,7 +15371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Aggregate numeric columns
         const aggDatePattern = /^(date|week|day|time|timestamp|period|month|year)/i;
-        headers.forEach((header: string, index: number) => {
+        headers.forEach((header: unknown, index: number) => {
           const headerStr = String(header || '').trim();
           if (!headerStr || aggDatePattern.test(headerStr)) return;
 

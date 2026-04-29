@@ -4,7 +4,7 @@ Generated after the GA4 Stage 3 cleanup pass.
 
 Current baseline:
 
-- `npm run check`: 382 total TypeScript errors
+- `npm run check`: 381 total TypeScript errors
 - `server/routes-oauth.ts`: benchmark/report storage-interface drift is fixed; remaining errors are mostly schema/contract drift, possible real logic bugs, and localized type-shape issues
 - Safe type-only cleanup is paused; do not continue patching app code until one of the stages below is selected
 
@@ -18,8 +18,8 @@ These errors touch persisted source/connection object shapes. Do not patch with 
 - Fixed: `server/routes-oauth.ts(7647, 7679, 16537, 16542, 26186)`: `conversionValue` on ad connection updates.
   - Resolution: added `conversionValue` to the LinkedIn and Meta connection insert/update schemas because the database columns and revenue logic already use it as a persisted connection field.
 
-- `server/routes-oauth.ts(23058)`: `lastRefreshAt` on ad connection update.
-  - Risk: ad connection schema/contract drift.
+- Fixed: `server/routes-oauth.ts(23082)`: `lastRefreshAt` on LinkedIn connection insert.
+  - Resolution: added `lastRefreshAt` to the LinkedIn connection insert schema because `linkedin_connections.last_refresh_at` already exists and the route already maintains freshness metadata.
 
 - `server/routes-oauth.ts(25766)`: `columnMappings` on Google Sheets connection update.
   - Risk: Google Sheets connection schema/contract drift.
@@ -69,7 +69,7 @@ Treat this as a broader cleanup stage. Prefer fixing the storage interface contr
 
 ## Recommended Next Stage
 
-Recommended next stage: inspect the smallest remaining Stage B candidate before editing.
+Recommended next stage: inspect the remaining Stage A connection contract candidate before editing.
 
 Reason:
 
@@ -79,4 +79,4 @@ Reason:
 - Remaining route errors are mostly Stage A schema/connection contract drift or Stage B possible logic bugs.
 - Avoid Stage A until the intended persisted schema contract is confirmed.
 
-Next safest inspection target: `server/routes-oauth.ts(23082)` `lastRefreshAt` on LinkedIn connection update. Inspect only because this touches persisted connection freshness state.
+Next safest inspection target: `server/routes-oauth.ts(25790)` `columnMappings` on Google Sheets connection update. Inspect only because this touches persisted Google Sheets connection configuration.

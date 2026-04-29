@@ -1229,6 +1229,7 @@ export const insertLinkedInConnectionSchema = createInsertSchema(linkedinConnect
   clientSecret: true,
   method: true,
   conversionValue: true,
+  lastRefreshAt: true,
   expiresAt: true,
 });
 

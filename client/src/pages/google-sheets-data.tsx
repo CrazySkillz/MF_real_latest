@@ -1,5 +1,5 @@
 ﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRoute, useLocation, setLocation } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X, DollarSign, Eye, MousePointerClick, BarChart3, Hash } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Link } from "wouter";

@@ -44,6 +44,10 @@ interface FieldMapping {
   confidence: number;
 }
 
+type SheetsData = {
+  calculatedConversionValues?: unknown[];
+};
+
 interface ColumnMappingInterfaceProps {
   campaignId: string;
   connectionId?: string;
@@ -128,7 +132,7 @@ export function ColumnMappingInterface({
   const detectedColumns = columnsData?.columns || [];
 
   // Check if conversion values have been calculated (after mappings are saved)
-  const { data: sheetsData, refetch: refetchSheetsData } = useQuery({
+  const { data: sheetsData, refetch: refetchSheetsData } = useQuery<SheetsData | null>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data"],
     enabled: mappingsJustSaved && !!campaignId,
     queryFn: async () => {
@@ -136,7 +140,8 @@ export function ColumnMappingInterface({
       if (!response.ok) return null;
       return response.json();
     },
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
+      const data = query.state.data;
       // Poll every 2 seconds if mappings were just saved and no conversion values yet
       if (mappingsJustSaved && (!data?.calculatedConversionValues || data.calculatedConversionValues.length === 0)) {
         return 2000; // Poll every 2 seconds

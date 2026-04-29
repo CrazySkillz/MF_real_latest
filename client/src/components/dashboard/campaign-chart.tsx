@@ -10,12 +10,13 @@ export default function CampaignChart() {
 
   // Process campaign data for chart
   const platformData = campaigns.reduce((acc, campaign) => {
-    const existing = acc.find(item => item.name === campaign.platform);
+    const platformName = campaign.platform || "Unknown";
+    const existing = acc.find(item => item.name === platformName);
     if (existing) {
       existing.value += parseFloat(campaign.spend);
     } else {
       acc.push({
-        name: campaign.platform,
+        name: platformName,
         value: parseFloat(campaign.spend),
       });
     }

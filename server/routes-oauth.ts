@@ -3547,7 +3547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const cleanupSalesforcePkce = () => {
     const now = Date.now();
-    for (const [k, v] of salesforcePkceStore.entries()) {
+    for (const [k, v] of Array.from(salesforcePkceStore.entries())) {
       if (!v?.createdAt || now - v.createdAt > SALESFORCE_PKCE_TTL_MS) {
         salesforcePkceStore.delete(k);
       }
@@ -3556,7 +3556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const cleanupShopifyOauth = () => {
     const now = Date.now();
-    for (const [k, v] of shopifyOauthStore.entries()) {
+    for (const [k, v] of Array.from(shopifyOauthStore.entries())) {
       if (!v?.createdAt || now - v.createdAt > SHOPIFY_OAUTH_TTL_MS) {
         shopifyOauthStore.delete(k);
       }
@@ -5286,7 +5286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return r;
         });
         // Append any DB rows for dates NOT in simulation range
-        for (const [date, dbRow] of dbByDate) {
+        for (const [date, dbRow] of Array.from(dbByDate)) {
           if (!simDates.has(date)) merged.push(dbRow);
         }
         // Sort by date
@@ -11174,7 +11174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const spreadsheetTabTitles = new Map<string, string[]>();
-      for (const [spreadsheetId, conns] of bySpreadsheetId.entries()) {
+      for (const [spreadsheetId, conns] of Array.from(bySpreadsheetId.entries())) {
         if (!spreadsheetId) continue;
         const hasMissingSheetName = conns.some((c: any) => !(c as any).sheetName);
         if (!hasMissingSheetName) continue;
@@ -11298,7 +11298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const spreadsheetTabTitles = new Map<string, string[]>();
-      for (const [spreadsheetId, conns] of bySpreadsheetId.entries()) {
+      for (const [spreadsheetId, conns] of Array.from(bySpreadsheetId.entries())) {
         if (!spreadsheetId) continue;
         const hasMissingSheetName = conns.some((c: any) => !(c as any).sheetName);
         if (!hasMissingSheetName) continue;
@@ -13009,7 +13009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Add per-LinkedIn-campaign revenue records when campaignMappings exist
         if (campaignMappings.length > 0 && revenueByDateAndCampaign.size > 0) {
-          for (const [key, rev] of revenueByDateAndCampaign.entries()) {
+          for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
             const [date, urn] = key.split(":");
             if (date && urn) {
               records.push({
@@ -13183,7 +13183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const key = normalizeCampaignValue(raw);
         if (!key) return null;
         if (selectedByKey.has(key)) return selectedByKey.get(key) || null;
-        for (const [selectedKey, selectedValue] of selectedByKey.entries()) {
+        for (const [selectedKey, selectedValue] of Array.from(selectedByKey.entries())) {
           if (selectedKey && key.includes(selectedKey)) return selectedValue;
         }
         return null;
@@ -15135,7 +15135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const combinedPlatformKeywords: string[] = [];
         const connectionPlatforms = mappedConnections.flatMap(conn => getConnectionPlatformKeywords(conn as any));
         if (connectionPlatforms.length > 0) {
-          combinedPlatformKeywords.push(...[...new Set(connectionPlatforms)]);
+          combinedPlatformKeywords.push(...Array.from(new Set(connectionPlatforms)));
         } else {
           try {
             const [linkedInConn, metaConn, ga4Conns, googleAdsConn] = await Promise.all([
@@ -27152,7 +27152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Add per-LinkedIn-campaign revenue records when campaignMappings exist
         if (campaignMappings.length > 0 && revenueByDateAndCampaign.size > 0) {
-          for (const [key, rev] of revenueByDateAndCampaign.entries()) {
+          for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
             const [date, urn] = key.split(":");
             if (date && urn && recordDates.includes(date)) {
               records.push({

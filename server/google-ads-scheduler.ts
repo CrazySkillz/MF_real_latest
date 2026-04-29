@@ -30,7 +30,7 @@ async function generateMockGoogleAdsData(
   let existingDates: string[] = [];
   try {
     const existing = await storage.getGoogleAdsDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
-    existingDates = [...new Set(existing.map((m) => m.date))];
+    existingDates = Array.from(new Set(existing.map((m) => m.date)));
   } catch {
     // ignore
   }

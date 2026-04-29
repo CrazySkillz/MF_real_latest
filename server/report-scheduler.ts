@@ -13,8 +13,8 @@ import { DateTime } from "luxon";
  */
 
 interface ReportWithCampaign extends LinkedInReport {
-  campaignId?: string | null;
-  platformType?: string;
+  campaignId: string | null;
+  platformType: string;
 }
 
 // Monitoring metrics for scheduler health
@@ -537,6 +537,8 @@ async function sendReportEmail(
       monthly: 'Monthly',
       quarterly: 'Quarterly'
     };
+    const scheduleFrequencyKey = String(report.scheduleFrequency || '');
+    const frequencyLabel = frequencyLabels[scheduleFrequencyKey] || scheduleFrequencyKey || 'Scheduled';
 
     const html = `
       <!DOCTYPE html>
@@ -644,7 +646,7 @@ async function sendReportEmail(
           <div class="email-container">
             <div class="header">
               <h1>📊 ${reportLabel}</h1>
-              <p>${frequencyLabels[report.scheduleFrequency] || 'Scheduled'} Report Delivery</p>
+              <p>${frequencyLabel} Report Delivery</p>
             </div>
             
             <div class="content">
@@ -672,7 +674,7 @@ async function sendReportEmail(
                   </div>` : ''}
                   <div class="info-row">
                     <span class="info-label">Frequency:</span>
-                    <span class="info-value">${frequencyLabels[report.scheduleFrequency] || report.scheduleFrequency}</span>
+                    <span class="info-value">${frequencyLabel}</span>
                   </div>
                   <div class="info-row">
                     <span class="info-label">Generated:</span>
@@ -719,7 +721,7 @@ async function sendReportEmail(
       </html>
     `;
 
-    const subject = `📊 ${frequencyLabels[report.scheduleFrequency]} Report: ${report.name}`;
+    const subject = `📊 ${frequencyLabel} Report: ${report.name}`;
 
     const sent = await emailService.sendEmail({
       to: recipients,
@@ -1096,7 +1098,6 @@ export function startReportScheduler(): void {
   cron.schedule(cronSchedule, () => {
     void checkScheduledReports();
   }, {
-    scheduled: true,
     timezone: 'UTC', // Cron runs in UTC, per-report timezones handled in isReportDueNow
   });
 

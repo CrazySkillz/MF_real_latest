@@ -265,7 +265,7 @@ export default function TrendAnalysis() {
     });
 
     // Merge by date
-    const sortedDates = [...new Set(allDates)].sort();
+    const sortedDates = Array.from(new Set(allDates)).sort();
     const series = sortedDates.map(d => {
       const pt = dateMap[d];
       const impressions = (pt.li_impressions || 0) + (pt.meta_impressions || 0) + (pt.gads_impressions || 0);

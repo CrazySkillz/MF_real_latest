@@ -1947,6 +1947,8 @@ export class MemStorage implements IStorage {
         searchImpressionShare: m.searchImpressionShare != null ? String(m.searchImpressionShare) : null,
         costPerConversion: m.costPerConversion != null ? String(m.costPerConversion) : null,
         conversionRate: m.conversionRate != null ? String(m.conversionRate) : null,
+        ga4Revenue: null,
+        ga4UtmName: null,
         importedAt: new Date(),
       };
       if (idx >= 0) {

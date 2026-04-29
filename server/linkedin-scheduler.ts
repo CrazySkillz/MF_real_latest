@@ -226,7 +226,7 @@ async function generateMockLinkedInData(
     };
 
     // Update campaign cumulative spend from daily metrics
-    await storage.updateCampaign(campaignId, { spend: Number(sums.spend || 0) });
+    await storage.updateCampaign(campaignId, { spend: Number(sums.spend || 0).toFixed(2) });
     console.log(`[LinkedIn Scheduler] TEST MODE: Updated campaign ${campaignId} spend: ${Number(sums.spend || 0).toFixed(2)}`);
 
     // Populate spend_records for daily granularity (Insights tab support)
@@ -521,7 +521,7 @@ async function fetchRealLinkedInData(
         dailyEnd.toISOString().split('T')[0]
       );
       const totalSpend = dailyMetrics.reduce((sum, m) => sum + (parseFloat(String(m.spend || 0)) || 0), 0);
-      await storage.updateCampaign(campaignId, { spend: totalSpend });
+      await storage.updateCampaign(campaignId, { spend: totalSpend.toFixed(2) });
       console.log(`[LinkedIn Scheduler] Updated campaign ${campaignId} spend: ${totalSpend}`);
 
       // Populate spend_records for daily granularity (Insights tab support)

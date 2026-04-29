@@ -155,7 +155,7 @@ export function generateDailyMetrics(campaign: MetaCampaign, days: number = 30):
  * Get base metrics configuration by campaign objective
  */
 function getBaseMetricsByObjective(objective: MetaCampaign['objective']) {
-  const configs = {
+  const configs: Partial<Record<MetaCampaign['objective'], { impressions: number; ctr: number; conversionRate: number }>> = {
     BRAND_AWARENESS: {
       impressions: 50000,
       ctr: 0.008, // 0.8%
@@ -183,7 +183,7 @@ function getBaseMetricsByObjective(objective: MetaCampaign['objective']) {
     },
   };
   
-  return configs[objective] || configs.CONVERSIONS;
+  return configs[objective] || configs.CONVERSIONS!;
 }
 
 /**

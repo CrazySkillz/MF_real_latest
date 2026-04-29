@@ -378,7 +378,7 @@ export interface IStorage {
   createClient(data: InsertClient): Promise<Client>;
 }
 
-export class MemStorage implements IStorage {
+export class MemStorage {
   private campaigns: Map<string, Campaign>;
   private metrics: Map<string, Metric>;
   private integrations: Map<string, Integration>;
@@ -6677,4 +6677,4 @@ const useMemStorage =
   process.env.USE_MEM_STORAGE === "true" ||
   (process.env.NODE_ENV === "development" && !process.env.DATABASE_URL);
 
-export const storage: IStorage = useMemStorage ? new MemStorage() : new DatabaseStorage();
+export const storage: IStorage = useMemStorage ? (new MemStorage() as unknown as IStorage) : new DatabaseStorage();

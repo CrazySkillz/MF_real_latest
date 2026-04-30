@@ -209,15 +209,12 @@ Examples of good automation targets:
 - notification routing
 - source add/edit/delete recomputation
 
-## Step 6: Use `Run refresh` As A Fast Validation Tool
+## Step 6: Use Seeded/Demo Campaigns For Fast Validation
 
-The GA4 section has a `Run refresh` link that generates mock data to simulate a new daily update.
+The GA4 section no longer exposes a `Run refresh` mock-data action.
 
-This is a good approach.
+Use seeded/demo campaigns and real query refetches to validate:
 
-Use it to validate:
-
-- daily update behavior
 - Overview freshness
 - KPI recomputation
 - Benchmark recomputation
@@ -228,13 +225,8 @@ Use it to validate:
 
 Important caveat:
 
-- `Run refresh` is a simulation/validation tool
-- it does not replace testing real setup/import/edit/delete workflows
-
-So the right approach is:
-
-- use `Run refresh` for fast regression validation
-- use manual testing for real user journeys and source workflows
+- seeded/demo campaigns do not replace testing real setup/import/edit/delete workflows
+- deployed production validation must use real GA4 data, scheduler runs, and normal refetch behavior
 
 ## Practical Fix Cycle
 

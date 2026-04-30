@@ -194,6 +194,8 @@ Aligned:
 - scheduled report storage, snapshots, and email sending are real backend features
 - server-side scheduled/test-send GA4 PDF generation now exists for:
   - `Overview`
+  - `KPIs`
+  - `Benchmarks`
   - `Ad Comparison`
   - `Insights`
   - `Custom`
@@ -205,7 +207,7 @@ Important caveats:
 - saved report configurations do not have their own recompute job
 - the current `Ad Comparison` report output reflects the current GA4 comparison implementation, which is campaign-row comparison rather than true ad/creative-level reporting
 - the shared scheduler and report-link helper still contain legacy LinkedIn-oriented infrastructure details
-- email delivery timing/provider behavior still depends on scheduler execution and runtime email infrastructure, but the GA4 attachment path is no longer intentionally header-only for `Overview`, `Ad Comparison`, `Insights`, or `Custom`
+- email delivery timing/provider behavior still depends on scheduler execution and runtime email infrastructure, but the GA4 attachment path is no longer intentionally header-only for standard templates or `Custom`
 
 ## Report Library Meaning
 

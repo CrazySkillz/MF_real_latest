@@ -152,7 +152,7 @@ Refresh/freshness:
 
 - confirm the GA4 daily scheduler is running in the deployed environment
 - confirm an empty daily-facts table can be backfilled on demand from the real GA4 Data API
-- confirm `Run refresh` and normal refetch paths do not leave Trends stale relative to refreshed GA4 daily rows
+- confirm normal refetch paths do not leave Trends stale relative to refreshed GA4 daily rows
 
 Error handling:
 

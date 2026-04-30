@@ -10172,6 +10172,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+
       // Store the user's GA4 connection in database using validated data
       const connection = await storage.createGA4Connection({
         campaignId,
@@ -10230,6 +10233,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "Campaign ID, service account key, and property ID are required"
         });
       }
+
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
 
       // Validate JSON format
       let parsedKey;
@@ -10314,6 +10320,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.body;
       if (!campaignId) return res.status(400).json({ success: false, message: "Campaign ID is required" });
 
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+
       const clientId = process.env.GOOGLE_CLIENT_ID;
       if (!clientId) {
         return res.status(500).json({
@@ -10375,6 +10384,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "Missing required fields: campaignId, authCode, clientId, clientSecret, redirectUri"
         });
       }
+
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
 
       // Exchange authorization code for tokens
       const tokenParams = {
@@ -24497,6 +24509,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "Both fromCampaignId and toCampaignId are required"
         });
       }
+
+      const okFrom = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
+      if (!okFrom) return;
+      const okTo = await ensureCampaignAccess(req as any, res as any, toCampaignId);
+      if (!okTo) return;
 
       // Get existing connections from temp campaign
       const existingConnections = await storage.getGA4Connections(fromCampaignId);

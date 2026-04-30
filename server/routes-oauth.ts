@@ -5286,7 +5286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sim = simulateGA4({ campaignId, propertyId: pid, dateRange: simRange, noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const simData = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
 
-        // Merge: simulation is the baseline, DB rows (from Run Refresh) overlay on matching dates or append
+        // Merge: simulation is the baseline, DB rows overlay on matching dates or append
         const storedRows = await storage.getGA4DailyMetrics(campaignId, pid, startDate, endDate).catch(() => [] as any[]);
         const dbByDate = new Map<string, any>();
         for (const r of (storedRows || [])) {
@@ -5298,7 +5298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const merged = simData.map((r: any) => {
           const dbRow = dbByDate.get(String(r.date));
           if (dbRow) {
-            // DB row exists for this date — add Run Refresh data on top of simulation
+            // DB row exists for this date, so add persisted daily data on top of simulation
             return {
               ...r,
               sessions: Number(r.sessions || 0) + Number(dbRow.sessions || 0),
@@ -5506,8 +5506,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalDuration += Number(r?.avgSessionDuration || 0);
         }
 
-        // 2) Add any DB rows from Run Refresh on top of the simulation baseline.
-        // Simulation = historical import baseline. DB rows = incremental daily data from Run Refresh.
+        // 2) Add any DB rows on top of the simulation baseline.
+        // Simulation = historical import baseline. DB rows = persisted daily data.
         const storedRows = await storage.getGA4DailyMetrics(campaignId, pid, startDateUsed, endDateUsed).catch(() => [] as any[]);
         let dbEngRateSum = 0, dbCount = 0;
         if (storedRows && storedRows.length > 0) {
@@ -5628,176 +5628,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, ...result });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to run GA4 Insights jobs" });
-    }
-  });
-
-  // Mock refresh: inject a deterministic daily data point (yesterday UTC) with KNOWN values for data-flow validation.
-  // Values are deliberately simple round numbers so you can cross-reference them in the UI.
-  app.post("/api/campaigns/:id/ga4/mock-refresh", async (req, res) => {
-    try {
-      res.setHeader("Cache-Control", "no-store");
-      const campaignId = String(req.params.id || "");
-      const propertyId = String(req.body?.propertyId || "yesop").trim();
-
-      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!campaign) return;
-
-      // Each click writes to a NEW date so data accumulates. Count existing mock rows
-      // and offset backwards from yesterday so each click = 1 new day.
-      const requestedDate = String(req.body?.date || "").trim();
-      let dateStr: string;
-      if (/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
-        dateStr = requestedDate;
-      } else {
-        const now = new Date();
-        const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-        // Count existing mock rows to determine next date
-        const existingRows = await storage.getGA4DailyMetrics(campaignId, propertyId, "2000-01-01", formatISODateUTC(todayUtc)).catch(() => [] as any[]);
-        const offset = (existingRows?.length || 0) + 1; // +1 because yesterday = offset 1
-        const targetDate = new Date(todayUtc);
-        targetDate.setUTCDate(targetDate.getUTCDate() - offset);
-        dateStr = formatISODateUTC(targetDate);
-      }
-
-      // Deterministic known values per UTM campaign name — easy to verify in the UI
-      const mockProfilesByUtm: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; spend: number }> = {
-        "yesop_brand_search": { users: 500, sessions: 750, pageviews: 2250, conversions: 38, revenue: 2850.00, spend: 950.00 },
-        "yesop_prospecting": { users: 300, sessions: 420, pageviews: 1260, conversions: 18, revenue: 1350.00, spend: 680.00 },
-        "yesop_retargeting": { users: 175, sessions: 260, pageviews: 780, conversions: 22, revenue: 1650.00, spend: 410.00 },
-        "yesop_email_nurture": { users: 125, sessions: 180, pageviews: 540, conversions: 12, revenue: 900.00, spend: 150.00 },
-        "yesop_paid_social": { users: 250, sessions: 375, pageviews: 1125, conversions: 15, revenue: 1125.00, spend: 750.00 },
-      };
-      // Legacy lookup by campaign ID (for yesop-brand, yesop-prospecting, etc.)
-      const mockProfilesById: Record<string, { users: number; sessions: number; pageviews: number; conversions: number; revenue: number; spend: number }> = {
-        "yesop-brand": mockProfilesByUtm["yesop_brand_search"],
-        "yesop-prospecting": mockProfilesByUtm["yesop_prospecting"],
-        "yesop-retargeting": mockProfilesByUtm["yesop_retargeting"],
-        "yesop-email": mockProfilesByUtm["yesop_email_nurture"],
-        "yesop-social": mockProfilesByUtm["yesop_paid_social"],
-      };
-
-      // Resolve which UTM campaigns are selected in the filter
-      const filterRaw = (campaign as any)?.ga4CampaignFilter;
-      let selectedUtmCampaigns: string[] = [];
-      if (filterRaw) {
-        try {
-          const parsed = JSON.parse(String(filterRaw));
-          if (Array.isArray(parsed)) selectedUtmCampaigns = parsed.map((s: any) => String(s).trim()).filter(Boolean);
-          else selectedUtmCampaigns = [String(filterRaw).trim()].filter(Boolean);
-        } catch {
-          selectedUtmCampaigns = [String(filterRaw).trim()].filter(Boolean);
-        }
-      }
-
-      // Sum mock data across all selected campaigns (or default to yesop-brand)
-      const profilesToSum = selectedUtmCampaigns.length > 0
-        ? selectedUtmCampaigns.map(utm => mockProfilesByUtm[utm]).filter(Boolean)
-        : [mockProfilesById[campaignId] || mockProfilesByUtm["yesop_brand_search"]];
-
-      const mockDay = profilesToSum.reduce(
-        (acc, p) => ({
-          users: acc.users + p.users,
-          sessions: acc.sessions + p.sessions,
-          pageviews: acc.pageviews + p.pageviews,
-          conversions: acc.conversions + p.conversions,
-          revenue: acc.revenue + p.revenue,
-          spend: acc.spend + p.spend,
-        }),
-        { users: 0, sessions: 0, pageviews: 0, conversions: 0, revenue: 0, spend: 0 }
-      );
-
-      // Make each Run Refresh behave like a new daily update instead of rewriting the same
-      // fixed mock values. This keeps KPI/Benchmark cards visibly moving during manual QA.
-      const existingDailyRows = await storage.getGA4DailyMetrics(campaignId, propertyId, dateStr, dateStr).catch(() => []);
-      const existingDaily = Array.isArray(existingDailyRows) ? (existingDailyRows as any[])[0] : null;
-      const mockDayNext = existingDaily
-        ? {
-            users: Math.max(mockDay.users, (Number(existingDaily?.users || 0) || 0) + 25),
-            sessions: Math.max(mockDay.sessions, (Number(existingDaily?.sessions || 0) || 0) + 40),
-            pageviews: Math.max(mockDay.pageviews, (Number(existingDaily?.pageviews || 0) || 0) + 120),
-            conversions: Math.max(mockDay.conversions, (Number(existingDaily?.conversions || 0) || 0) + 2),
-            revenue: Number((Math.max(mockDay.revenue, Number(existingDaily?.revenue || 0) || 0) + 175).toFixed(2)),
-            spend: mockDay.spend,
-          }
-        : mockDay;
-
-      // 0) Ensure GA4 connection exists (so the page shows tabs, not "Connect" screen)
-      const existingConns = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
-      if (!existingConns || existingConns.length === 0) {
-        await storage.createGA4Connection({
-          campaignId,
-          propertyId: propertyId || "yesop",
-          method: "access_token",
-          accessToken: "mock-token-yesop",
-          propertyName: "Yesop Demo Property",
-          displayName: "Yesop (Mock GA4)",
-          isPrimary: true,
-          isActive: true,
-        } as any).catch((e: any) => console.error("[mock-refresh] Failed to create GA4 connection:", e?.message));
-      }
-
-      // 1) Upsert GA4 daily metric row (aggregated across selected campaigns)
-      await storage.upsertGA4DailyMetrics([{
-        campaignId,
-        propertyId,
-        date: dateStr,
-        users: mockDayNext.users,
-        sessions: mockDayNext.sessions,
-        pageviews: mockDayNext.pageviews,
-        conversions: mockDayNext.conversions,
-        revenue: String(mockDayNext.revenue.toFixed(2)),
-        engagementRate: "0.62",
-        revenueMetric: "totalRevenue",
-        isSimulated: true,
-      }]);
-
-      // Clean up any stale "GA4 Revenue" or "Mock Spend" sources from older mock-refresh runs
-      // that incorrectly created them. GA4 revenue comes through ga4_daily_metrics, not revenue_records.
-      try {
-        const revSources = await storage.getRevenueSources(campaignId);
-        for (const rs of (revSources as any[] || [])) {
-          if (rs?.displayName === "GA4 Revenue" || (rs?.sourceType === "ga4" && rs?.displayName?.includes?.("GA4"))) {
-            const sid = String(rs.id);
-            await storage.deleteRevenueRecordsBySource(sid).catch(() => {});
-            await storage.deleteRevenueSource(sid).catch(() => {});
-          }
-        }
-        const spendSources = await storage.getSpendSources(campaignId);
-        for (const ss of (spendSources as any[] || [])) {
-          if (ss?.displayName === "Mock Spend") {
-            const sid = String(ss.id);
-            await storage.deleteSpendRecordsBySource(sid).catch(() => {});
-            await storage.deleteSpendSource(sid).catch(() => {});
-          }
-        }
-      } catch { /* best-effort cleanup */ }
-
-      // 2) Run KPI / benchmark jobs for completeness
-      const insightsResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date: dateStr }).catch(() => null);
-
-      // 5) Check alerts so breached thresholds create notifications immediately
-      await checkPerformanceAlerts().catch((e) => console.warn("[mock-refresh] Alert check failed:", (e as any)?.message || e));
-      try {
-        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
-        await checkBenchmarkPerformanceAlerts();
-      } catch (e: any) { console.warn("[mock-refresh] Benchmark alert check failed:", (e as any)?.message || e); }
-
-      res.json({
-        success: true,
-        date: dateStr,
-        injected: {
-          users: mockDayNext.users,
-          sessions: mockDayNext.sessions,
-          pageviews: mockDayNext.pageviews,
-          conversions: mockDayNext.conversions,
-          revenue: mockDayNext.revenue,
-        },
-        summary: `${dateStr}: ${mockDayNext.sessions.toLocaleString()} sessions, ${mockDayNext.conversions} conversions, $${mockDayNext.revenue.toFixed(2)} revenue`,
-        kpiJobResult: insightsResult,
-      });
-    } catch (e: any) {
-      console.error("[mock-refresh] Error:", e);
-      res.status(500).json({ success: false, error: e?.message || "Mock refresh failed" });
     }
   });
 
@@ -27406,3 +27236,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const server = createServer(app);
   return server;
 }
+

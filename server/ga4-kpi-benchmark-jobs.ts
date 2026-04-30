@@ -341,7 +341,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
 
         const metricOrName = String((kpi as any)?.metric || (kpi as any)?.name || "");
         const valueNum = computeKpiValue(metricOrName, inputs);
-        // Always refresh stored currentValue so same-day Run Refresh updates what alert checks read,
+        // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
         // even if we skip writing another history point for the same date.
         try {
           await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);
@@ -394,7 +394,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         if (!metricKey) continue; // can't compute without a metric key
 
         const currentValue = computeKpiValue(metricKey, inputs);
-        // Always refresh stored currentValue so same-day Run Refresh updates what alert checks read,
+        // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
         // even if we skip writing another history point for the same date.
         try {
           await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);

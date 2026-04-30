@@ -54,7 +54,7 @@ function computeBenchmarkRating(variancePct: number) {
 }
 
 // ============================================================
-// YESOP MOCK PROFILES — deterministic values from mock-refresh
+// YESOP MOCK PROFILES - deterministic values from seeded demo data
 // ============================================================
 const PROFILES = {
   "yesop-brand": { users: 500, sessions: 750, pageviews: 2250, conversions: 38, revenue: 2850, spend: 950, engagementRate: 0.62 },

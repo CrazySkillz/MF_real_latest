@@ -246,7 +246,7 @@ For each new GA4 issue, follow this loop:
 4. retest the affected flow manually
 5. run a short regression sweep
 6. add an automated regression test if the issue is a high-risk repeatable rule
-7. use `Run refresh` if the issue touches calculations, freshness, or downstream tabs
+7. use seeded/demo campaigns for calculation and downstream-tab validation when needed
 8. continue to the next issue only after validation passes
 
 ## Production-Readiness Standard

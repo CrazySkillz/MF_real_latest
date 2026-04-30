@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, RefreshCw, Loader2, Activity, Info, Trophy } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, Activity, Info, Trophy } from "lucide-react";
 import { Link } from "wouter";
 import { SiGoogle } from "react-icons/si";
 import { useForm } from "react-hook-form";
@@ -668,50 +668,6 @@ export default function GA4Metrics() {
       });
     },
   });
-
-  // Mock refresh mutation: simulate a daily data update with known values
-  const mockRefreshMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/campaigns/${campaignId}/ga4/mock-refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ propertyId: selectedGA4PropertyId }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(err.error || "Mock refresh failed");
-      }
-      return res.json();
-    },
-    onSuccess: async (data) => {
-      // Force refetch all GA4 + financial queries so the UI picks up the new data immediately
-      const prefix = `/api/campaigns/${campaignId}`;
-      // Refetch ALL active queries for this campaign — covers all query key formats
-      // (some use ["/api/campaigns", id, "ga4-daily", ...] and others use ["/api/campaigns/id/ga4-daily"])
-      await queryClient.refetchQueries({
-        predicate: (query) => {
-          const key = query.queryKey;
-          return Array.isArray(key) && key.some((k) => typeof k === "string" && k.includes(String(campaignId || "")));
-        },
-        type: "active",
-      });
-      // Also invalidate campaign-level queries
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
-      // Refresh the bell / notifications center immediately so alert notifications created during
-      // mock refresh are visible without waiting for the navigation poll interval.
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/notifications"] });
-      toast({
-        title: "Mock Refresh Complete",
-        description: data?.summary || "Daily mock data injected. Check cards for updated values.",
-      });
-    },
-    onError: (error) => {
-      toast({ title: "Mock refresh failed", description: error.message, variant: "destructive" });
-    },
-  });
-
   // GA4 Reports (stored as platform reports)
   const { data: ga4Reports, isLoading: ga4ReportsLoading } = useQuery<any[]>({
     queryKey: ["/api/platforms/google_analytics/reports", campaignId],
@@ -5130,26 +5086,6 @@ export default function GA4Metrics() {
                   <TabsTrigger value="reports">Reports</TabsTrigger>
                 </TabsList>
 
-                {/* Run Refresh button — visible for any connected GA4 property (hide behind admin flag for production launch) */}
-                {selectedGA4PropertyId && (
-                  <div className="flex justify-end -mt-2 mb-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      data-testid="run-refresh-btn"
-                      onClick={() => mockRefreshMutation.mutate()}
-                      disabled={mockRefreshMutation.isPending}
-                    >
-                      {mockRefreshMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                      )}
-                      {mockRefreshMutation.isPending ? "Refreshing..." : "Run Refresh"}
-                    </Button>
-                  </div>
-                )}
-
                 {ga4Error && (
                   <div className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -7576,7 +7512,7 @@ export default function GA4Metrics() {
                             </div>
                           )}
                           {channelAnalysis && channelAnalysis.channels && channelAnalysis.channels.length >= 1 && (() => {
-                            // Scale channel values so they sum to breakdownTotals (which includes Run Refresh data)
+                            // Scale channel values so they sum to breakdownTotals.
                             const sessScale = channelAnalysis.totalSessions > 0 ? breakdownTotals.sessions / channelAnalysis.totalSessions : 1;
                             const convScale = (channelAnalysis.channels.reduce((s: number, c: any) => s + c.conversions, 0) || 1);
                             const convScaleFactor = breakdownTotals.conversions > 0 ? breakdownTotals.conversions / convScale : 1;
@@ -9030,4 +8966,5 @@ export default function GA4Metrics() {
     </div>
   );
 }
+
 

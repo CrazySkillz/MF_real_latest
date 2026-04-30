@@ -279,7 +279,7 @@ Current code-path meaning:
 
 - in test mode, these tables can render from simulated GA4 responses
 - in production mode, they are intended to render from real GA4-backed query paths for the selected GA4 property and the campaign's saved GA4 campaign scope
-- `Run Refresh` is a test/mock validation tool, but the production table-population model is still the real GA4 query path, not a mock-only design
+- production table population uses the real GA4 query path, not a mock-refresh design
 
 Important meaning:
 
@@ -319,8 +319,7 @@ Conversion Events:
 Freshness and updates:
 
 - confirm table queries refetch successfully after normal page refetch/reload
-- confirm test-mode `Run Refresh` updates these tables during validation
-- confirm production freshness expectations are based on real GA4 fetches and refetches, not the mock-refresh tool
+- confirm production freshness expectations are based on real GA4 fetches, refetches, and scheduled refresh
 
 Data quality:
 

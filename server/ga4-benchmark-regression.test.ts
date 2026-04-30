@@ -25,7 +25,7 @@ describe("GA4 Benchmark regression guard", () => {
 
     expect(autoRefreshFile).toContain('import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";');
     expect(autoRefreshFile).toContain("await checkBenchmarkPerformanceAlerts().catch((e) => {");
-    expect(ga4JobsFile).toContain("Always refresh stored currentValue so same-day Run Refresh updates what alert checks read,");
+    expect(ga4JobsFile).toContain("Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,");
     expect(ga4JobsFile).toContain("await storage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);");
   });
 

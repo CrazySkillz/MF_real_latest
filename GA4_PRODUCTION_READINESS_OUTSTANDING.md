@@ -13,9 +13,11 @@
 
 3. Benchmark route shadowing is narrowed so non-Meta benchmark requests pass through to canonical benchmark handlers, generic benchmark `PATCH` is supported for non-Meta records, and the active campaign benchmark GET is campaign-access protected.
 
+4. Scheduled/server-generated GA4 standard KPI and Benchmark reports now render their KPI/Benchmark sections instead of only rendering those sections for custom reports.
+
 ## Remaining Production Blockers
 
-1. Scheduled/server-generated GA4 standard reports do not fully match the standard report templates for KPI and Benchmark reports.
+None currently listed from the production-readiness scan. Continue with the required production validation below.
 
 ## Required Production Validation
 

@@ -927,7 +927,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
   }
 
-  if (reportType === "custom" && sections.kpis) {
+  if (sections.kpis) {
     const items = payload.platformKPIs.filter((item: any) => selectedCustomKpiIds.size === 0 || selectedCustomKpiIds.has(String(item.id)));
     if (items.length > 0) {
       addSimpleTable(
@@ -944,7 +944,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
   }
 
-  if (reportType === "custom" && sections.benchmarks) {
+  if (sections.benchmarks) {
     const items = payload.benchmarks.filter((item: any) => selectedCustomBenchmarkIds.size === 0 || selectedCustomBenchmarkIds.has(String(item.id)));
     if (items.length > 0) {
       addSimpleTable(

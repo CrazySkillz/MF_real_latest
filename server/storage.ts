@@ -6673,8 +6673,6 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-const useMemStorage =
-  process.env.USE_MEM_STORAGE === "true" ||
-  (process.env.NODE_ENV === "development" && !process.env.DATABASE_URL);
+const useMemStorage = process.env.USE_MEM_STORAGE === "true";
 
 export const storage: IStorage = useMemStorage ? (new MemStorage() as unknown as IStorage) : new DatabaseStorage();

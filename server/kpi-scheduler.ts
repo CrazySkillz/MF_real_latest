@@ -435,11 +435,16 @@ export async function runDailyKPIJobs(): Promise<void> {
   console.log('[KPI Scheduler] Running simplified KPI jobs (Option C: Performance alerts only)...');
 
   try {
-    // Ensure GA4 KPIs/Benchmarks have daily progress/history so Insights can show trends/streaks.
-    // Best-effort: never fail the whole scheduler if GA4 refresh has issues.
-    await runGA4DailyKPIAndBenchmarkJobs().catch((e) => {
-      console.warn("[KPI Scheduler] GA4 daily KPI/Benchmark job failed:", (e as any)?.message || e);
-    });
+    const ga4DailyPipelineOwnsRecompute = String(process.env.GA4_DAILY_PIPELINE_OWNS_RECOMPUTE || "false").toLowerCase() === "true";
+    if (ga4DailyPipelineOwnsRecompute) {
+      console.log("[KPI Scheduler] Skipping GA4 KPI/Benchmark recompute because GA4 daily pipeline owns it");
+    } else {
+      // Ensure GA4 KPIs/Benchmarks have daily progress/history so Insights can show trends/streaks.
+      // Best-effort: never fail the whole scheduler if GA4 refresh has issues.
+      await runGA4DailyKPIAndBenchmarkJobs().catch((e) => {
+        console.warn("[KPI Scheduler] GA4 daily KPI/Benchmark job failed:", (e as any)?.message || e);
+      });
+    }
 
     // Only check for performance alerts (below/above target)
     await checkPerformanceAlerts();

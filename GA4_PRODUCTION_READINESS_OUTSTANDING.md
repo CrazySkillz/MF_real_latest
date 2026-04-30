@@ -46,6 +46,6 @@ None currently listed from the production-readiness scan. Continue with the requ
 
 2. Ad Comparison is currently campaign-row comparison, not true ad/creative-level analytics.
 
-3. Insights recommendations are rule-based and directional, not causal proof.
+3. Insights use a rule-based engine. UI/report copy now frames outputs as recommended checks, not causal proof.
 
 4. Report email timing still depends on shared scheduler/email infrastructure.

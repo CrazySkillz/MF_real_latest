@@ -39,7 +39,7 @@ Important meaning:
 - `GA4/BENCHMARKS.md`
   Covers benchmark creation, custom benchmark values, status/progress, gating, alerts, and benchmark refresh behavior.
 - `GA4/AD_COMPARISON.md`
-  Covers the current comparison tab, its present campaign-comparison implementation, and refresh behavior.
+  Covers the current comparison tab, its present campaign-row comparison implementation, and refresh behavior.
 - `GA4/INSIGHTS.md`
   Covers executive financials, trends, findings, action guidance, and budget/pacing notes.
 - `GA4/REPORTS.md`

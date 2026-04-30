@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import type { LinkedInReport } from "../shared/schema";
 import * as cron from "node-cron";
 import { DateTime } from "luxon";
+import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 
 /**
  * Report Scheduler - Automated Email Reports
@@ -878,6 +879,14 @@ export async function checkScheduledReports(): Promise<void> {
         } as any)
         .returning()
         .catch(() => []);
+
+      if (snapshotPayload.platformType === "google_analytics" && snapshotPayload.campaignId) {
+        try {
+          await runGA4DailyKPIAndBenchmarkJobs({ campaignId: String(snapshotPayload.campaignId), date: windowEnd });
+        } catch (e: any) {
+          console.warn("[Report Scheduler] GA4 KPI/Benchmark recompute before report failed:", e?.message || e);
+        }
+      }
 
       const pdfBuffer = await buildPdfAttachmentForReport({
         report,

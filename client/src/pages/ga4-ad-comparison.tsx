@@ -1,7 +1,7 @@
 /**
- * GA4 Campaign Comparison Tab
+ * GA4 Ad Comparison Tab
  * Extracted component for comparing campaign performance metrics.
- * Follows the same pattern as Google Ads Campaign Comparison and LinkedIn Ad Comparison.
+ * Follows the same pattern as other platform comparison views.
  */
 import { Fragment, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,7 @@ interface CampaignAgg {
   revenuePerSession: number;
 }
 
-interface GA4CampaignComparisonProps {
+interface GA4AdComparisonProps {
   campaignBreakdownAgg: CampaignAgg[];
   breakdownLoading: boolean;
   selectedMetric: string;
@@ -50,7 +50,7 @@ const METRIC_LABELS: Record<string, string> = {
   conversionRate: "Conversion Rate",
 };
 
-export default function GA4CampaignComparison({
+export default function GA4AdComparison({
   campaignBreakdownAgg,
   breakdownLoading,
   selectedMetric,
@@ -59,7 +59,7 @@ export default function GA4CampaignComparison({
   formatMoney,
   totalRevenue = 0,
   revenueDisplaySources = [],
-}: GA4CampaignComparisonProps) {
+}: GA4AdComparisonProps) {
   const normalizeCampaignKey = (value: string) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 
   const ga4Revenue = useMemo(() => campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0), [campaignBreakdownAgg]);

@@ -94,7 +94,7 @@ Current custom subsection model:
   - `Executive Financials`
   - `Trends`
   - `Data Summary`
-  - `What changed, what to do next`
+  - `What to investigate next`
 
 Important meaning:
 

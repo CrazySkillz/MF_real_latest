@@ -33,20 +33,36 @@ Important meaning:
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Reports` is the output layer
 
-## Scheduler 1: GA4 Daily Metrics Refresh
+## Scheduler 1: GA4 Daily Refresh Pipeline
 
-This scheduler:
+This scheduler now runs the GA4 daily refresh pipeline:
 
 1. finds campaigns with a GA4 connection
 2. resolves the campaign's GA4 campaign filter
 3. fetches GA4 time-series data
 4. upserts rows into `ga4_daily_metrics`
+5. recomputes GA4 KPI and Benchmark values from the refreshed daily facts
+6. runs KPI and Benchmark alert checks after recompute
 
 Important meaning:
 
 - it keeps persisted GA4 daily facts current
 - it is campaign-scoped and property-scoped
 - this is only one part of `Overview` freshness; `Overview` also depends on refreshed external revenue and spend source state where applicable
+- it does not replace the external value auto-refresh scheduler or the report delivery scheduler
+
+## On-Demand GA4 Refresh
+
+The GA4 on-demand refresh endpoint follows the same downstream dependency rule for the refreshed campaign:
+
+1. refresh the latest complete GA4 daily row
+2. recompute GA4 KPI and Benchmark values for that campaign
+3. run KPI and Benchmark alert checks through the existing GA4 recompute path
+
+Important meaning:
+
+- on-demand GA4 refresh should not leave KPIs, Benchmarks, or Insights relying on stale daily GA4 facts
+- external revenue/spend source refresh remains handled by the external value auto-refresh scheduler
 
 ## Scheduler 2: External Value Auto-Refresh And Auto-Process
 
@@ -142,12 +158,14 @@ Instead:
 
 - ad hoc GA4 reports use live refreshed page state at generation time
 - scheduled/server-generated reports use saved config plus shared report-generation infrastructure
+- scheduled/server-generated GA4 reports run a best-effort campaign KPI/Benchmark recompute before PDF generation
 
 Important meaning:
 
 - `Reports` is a downstream output layer
 - reports should render from refreshed GA4 tab inputs
 - reports must not become a competing source of truth for campaign metrics
+- report delivery continues even if the best-effort pre-send recompute logs a warning
 
 ## Current-State Notes
 
@@ -155,19 +173,20 @@ The current codebase is broadly aligned with the required dependency order, but 
 
 What is true today:
 
-- Overview freshness is updated through the GA4 daily scheduler plus external-value auto-refresh processing
-- GA4 KPI and Benchmark recomputation is triggered by GA4-specific jobs
+- Overview freshness is updated through the GA4 daily refresh pipeline plus external-value auto-refresh processing
+- the GA4 daily refresh pipeline refreshes GA4 daily facts, then recomputes GA4 KPI/Benchmark state, then runs KPI/Benchmark alert checks
+- the generic KPI scheduler can skip its duplicate GA4 KPI/Benchmark recompute when `GA4_DAILY_PIPELINE_OWNS_RECOMPUTE=true`
+- the on-demand GA4 refresh endpoint recomputes GA4 KPI/Benchmark state after updating the latest daily GA4 row
 - when a GA4 KPI/Benchmark recompute runs for a campaign, breached GA4 KPIs and Benchmarks should restore exactly one active in-app alert row if the row is missing
 - Ad Comparison refreshes indirectly from refreshed inputs
 - Insights refreshes indirectly from refreshed inputs
-- report outputs are generated from already-refreshed tab inputs rather than from a report-only metrics pipeline
+- report outputs are generated from already-refreshed tab inputs, with scheduled GA4 reports also performing a best-effort KPI/Benchmark recompute before PDF generation
 - scheduled/server-generated GA4 reports now have dedicated server-side rendering for `Overview`, `Ad Comparison`, `Insights`, and `Custom`, using saved report config plus existing refreshed GA4 inputs
 
 What is not yet fully consolidated:
 
-- there is not one single GA4-only orchestrator that updates every tab in one explicit pipeline
+- external revenue/spend source refresh is still handled by the external value auto-refresh scheduler
 - some immediate post-refresh behavior still relies on a generic KPI refresh helper
-- immediate benchmark alert checks are not mirrored as completely as KPI alert checks in the same auto-refresh path
 - scheduled email delivery still depends on shared scheduler/runtime email infrastructure rather than a GA4-only delivery path
 - opening the bell, opening Notifications, or simply loading the GA4 page is not itself a backfill trigger for missing GA4 in-app alert rows; reconciliation happens when the existing GA4 recompute / scheduler paths run
 

@@ -4398,6 +4398,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         ]);
 
+        try {
+          await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date: dateStr });
+        } catch (e: any) {
+          console.warn("[GA4 Refresh] KPI/Benchmark recompute failed:", e?.message || e);
+        }
+
         res.json({
           success: true,
           message: "GA4 metrics refreshed successfully",

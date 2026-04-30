@@ -10,11 +10,11 @@ The intended pattern is a compare-what-is-working view for ad or creative perfor
 
 ## Current Implementation Pattern
 
-The current implementation is a campaign-comparison view rendered inside the `Ad Comparison` tab.
+The current implementation is a campaign-row comparison view rendered inside the `Ad Comparison` tab.
 
 Important meaning:
 
-- treat the current implementation as campaign comparison inside the ad-comparison slot
+- treat the current implementation as campaign-row comparison inside the ad-comparison slot
 - do not document or build against it as if it were already true ad-level or creative-level analytics
 
 ## Current Tab Structure

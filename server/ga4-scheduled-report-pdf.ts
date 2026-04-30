@@ -249,7 +249,7 @@ const buildInsightsItems = (payload: any) => {
       severity: "positive",
       title: "Revenue momentum improving",
       description: `Last 7d revenue ${payload.formatMoney(rollups.last7.revenue)} vs prior 7d ${payload.formatMoney(rollups.prior7.revenue)}.`,
-      recommendation: "Identify the winning sources and consider scaling them carefully while monitoring efficiency.",
+      recommendation: "Check which sources contributed to the improvement before considering careful scaling.",
     });
   }
   if (items.length === 0) {
@@ -257,7 +257,7 @@ const buildInsightsItems = (payload: any) => {
       severity: "info",
       title: "No major anomalies detected",
       description: "Recent GA4 trends are stable relative to the prior comparison window.",
-      recommendation: "Continue monitoring the main revenue, traffic, and conversion drivers for this campaign.",
+      recommendation: "Continue monitoring the main revenue, traffic, and conversion inputs for this campaign.",
     });
   }
   return items.slice(0, 8);
@@ -847,7 +847,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     const includeDataSummary = reportType !== "custom" || s.dataSummary === true;
     const includeActions = reportType !== "custom" || s.actions === true;
     const onlyActions = reportType === "custom" && includeActions && !includeSummaryCards && !includeTrends && !includeDataSummary;
-    sectionTitle(onlyActions ? "What changed, what to do next" : "Insights", COLORS.insights, 24);
+    sectionTitle(onlyActions ? "What to investigate next" : "Insights", COLORS.insights, 24);
     if (includeSummaryCards) {
       metricCards([
         ["Revenue", formatMoney(payload.financialRevenue)],
@@ -891,11 +891,11 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       );
     }
     if (includeActions) {
-      if (!onlyActions) sectionTitle("What changed, what to do next", COLORS.insights, 16);
+      if (!onlyActions) sectionTitle("What to investigate next", COLORS.insights, 16);
       for (const item of payload.insightsItems.slice(0, 8)) {
         const sevCol = item.severity === "high" ? COLORS.danger : item.severity === "positive" ? COLORS.success : item.severity === "medium" ? COLORS.warning : COLORS.info;
         const lines = doc.splitTextToSize(String(item.description || ""), CW - 20) as string[];
-        const recLines = item.recommendation ? doc.splitTextToSize(`Next step: ${String(item.recommendation || "")}`, CW - 20) as string[] : [];
+        const recLines = item.recommendation ? doc.splitTextToSize(`Recommended check: ${String(item.recommendation || "")}`, CW - 20) as string[] : [];
         const height = 18 + lines.length * 4.5 + (recLines.length > 0 ? recLines.length * 4.5 + 4 : 0);
         checkPage(height + 4);
         doc.setFillColor(...COLORS.white);

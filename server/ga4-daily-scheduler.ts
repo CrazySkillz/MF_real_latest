@@ -1,5 +1,8 @@
 import { storage } from "./storage";
 import { ga4Service } from "./analytics";
+import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+import { checkPerformanceAlerts } from "./kpi-scheduler";
+import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 
 type CampaignFilter = string | string[] | undefined;
 
@@ -88,6 +91,31 @@ export async function refreshAllGA4DailyMetrics(): Promise<void> {
   console.log(`[GA4 Daily] Refresh done (campaignsProcessed=${processed}, rowsUpserted=${upserted})`);
 }
 
+export async function runGA4DailyRefreshPipeline(): Promise<void> {
+  console.log("[GA4 Daily] Pipeline starting");
+  await refreshAllGA4DailyMetrics();
+
+  try {
+    await runGA4DailyKPIAndBenchmarkJobs();
+  } catch (e: any) {
+    console.warn("[GA4 Daily] KPI/Benchmark recompute failed:", e?.message || e);
+  }
+
+  try {
+    await checkPerformanceAlerts();
+  } catch (e: any) {
+    console.warn("[GA4 Daily] KPI alert check failed:", e?.message || e);
+  }
+
+  try {
+    await checkBenchmarkPerformanceAlerts();
+  } catch (e: any) {
+    console.warn("[GA4 Daily] Benchmark alert check failed:", e?.message || e);
+  }
+
+  console.log("[GA4 Daily] Pipeline done");
+}
+
 /**
  * Start the GA4 daily refresh scheduler
  * Runs daily (default: 24h interval), with an initial run on startup.
@@ -104,10 +132,14 @@ export function startGA4DailyScheduler(): void {
   console.log(`[GA4 Daily] Scheduler started (interval=${refreshIntervalHours}h)`);
 
   // Run immediately on startup (best-effort)
-  refreshAllGA4DailyMetrics();
+  runGA4DailyRefreshPipeline().catch((e) => {
+    console.warn("[GA4 Daily] Startup pipeline failed:", (e as any)?.message || e);
+  });
 
   (global as any).ga4DailySchedulerInterval = setInterval(() => {
-    refreshAllGA4DailyMetrics();
+    runGA4DailyRefreshPipeline().catch((e) => {
+      console.warn("[GA4 Daily] Scheduled pipeline failed:", (e as any)?.message || e);
+    });
   }, refreshIntervalMs);
 }
 

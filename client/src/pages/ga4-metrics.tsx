@@ -16,7 +16,7 @@ import WorldMapSVG from "@/components/WorldMapSVG";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
 import { AddSpendWizardModal } from "@/components/AddSpendWizardModal";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
-import GA4CampaignComparison from "@/pages/ga4-campaign-comparison";
+import GA4AdComparison from "@/pages/ga4-ad-comparison";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -221,8 +221,8 @@ export default function GA4Metrics() {
   const [editingGA4ReportId, setEditingGA4ReportId] = useState<string | null>(null);
   const [deleteGA4ReportId, setDeleteGA4ReportId] = useState<string | null>(null);
   const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});
-  // Campaign Comparison tab state
-  const [campaignComparisonMetric, setCampaignComparisonMetric] = useState<string>("sessions");
+  // Ad Comparison tab state
+  const [adComparisonMetric, setAdComparisonMetric] = useState<string>("sessions");
   // Insights Trends state
   const [insightsTrendMode, setInsightsTrendMode] = useState<"daily" | "7d" | "30d" | "monthly">("daily");
   const [insightsTrendMetric, setInsightsTrendMetric] = useState<string>("sessions");
@@ -2765,7 +2765,7 @@ export default function GA4Metrics() {
       const includeAdsBestWorst = reportType !== "custom" || adsSubsections.bestWorst !== false;
       const includeAdsRevenueBreakdown = reportType !== "custom" || adsSubsections.revenueBreakdown !== false;
       const rows = Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : [];
-      const selectedMetric = campaignComparisonMetric;
+      const selectedMetric = adComparisonMetric;
       const metricLabels: Record<string, string> = {
         sessions: "Sessions",
         users: "Users",
@@ -3056,7 +3056,7 @@ export default function GA4Metrics() {
       const includeInsightsDataSummary = reportType !== "custom" || insightsSubsections.dataSummary !== false;
       const includeInsightsActions = reportType !== "custom" || insightsSubsections.actions !== false;
       const insightsOnlyActions = reportType === "custom" && includeInsightsActions && !includeInsightsSummaryCards && !includeInsightsTrends && !includeInsightsDataSummary;
-      sectionTitle(insightsOnlyActions ? "What changed, what to do next" : "Insights", C.insights, 24);
+      sectionTitle(insightsOnlyActions ? "What to investigate next" : "Insights", C.insights, 24);
       const items = Array.isArray(insights) ? insights : [];
       const availableDays = Number(insightsRollups?.availableDays || 0);
       const trendMetric = insightsTrendMetric;
@@ -3349,7 +3349,7 @@ export default function GA4Metrics() {
       } else {
         const top = items.slice(0, 12);
         if (!insightsOnlyActions) {
-          sectionTitle("What changed, what to do next", C.insights, 24);
+          sectionTitle("What to investigate next", C.insights, 24);
         }
         const insightCardTextWidth = CW - 40;
         for (const item of top) {
@@ -3357,7 +3357,7 @@ export default function GA4Metrics() {
           const title = String((item as any)?.title || "");
           const desc = trunc(String((item as any)?.description || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
           const rec = trunc(String((item as any)?.recommendation || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
-          const recText = rec ? `Next step: ${rec}` : "";
+          const recText = rec ? `Recommended check: ${rec}` : "";
 
           doc.setFontSize(8); doc.setFont("helvetica", "normal");
           const descLines = desc ? wrapPdfText(desc, insightCardTextWidth) : [];
@@ -4174,7 +4174,7 @@ export default function GA4Metrics() {
           if (isCpa) {
             return "Audit conversion volume and spend allocation; verify conversion events are firing correctly.";
           }
-          const base = "Review the primary drivers for this KPI and adjust budgets/creative/landing pages.";
+          const base = "Review the likely inputs for this KPI before changing budgets/creative/landing pages.";
           return ch?.topSessionChannel
             ? `${base} Top traffic source: "${ch.topSessionChannel.label}" (${ch.topSessionShare.toFixed(0)}% of sessions).`
             : base;
@@ -4221,12 +4221,12 @@ export default function GA4Metrics() {
             return "Review content relevance and landing page engagement; check mobile performance.";
           }
           if (isRevenue) {
-            const base = "Identify which channels are underperforming and iterate targeting/creative.";
+            const base = "Review which channels may be underperforming before iterating targeting/creative.";
             return ch?.topRevenueChannel
               ? `${base} "${ch.topRevenueChannel.label}" drives ${ch.topRevenueShare.toFixed(0)}% of revenue — investigate changes there first.`
               : base;
           }
-          const base = "Identify which channels/campaigns are underperforming and iterate targeting/creative/landing page.";
+          const base = "Review which channels/campaigns may be underperforming before iterating targeting/creative/landing page.";
           return ch?.topSessionChannel
             ? `${base} Top traffic source: "${ch.topSessionChannel.label}" (${ch.topSessionShare.toFixed(0)}% of sessions).`
             : base;
@@ -4366,7 +4366,7 @@ export default function GA4Metrics() {
           severity: "low",
           title: `Sessions up ${sessionsDelta7.toFixed(1)}% week-over-week`,
           description: `Last 7d: ${formatNumber(insightsRollups.last7.sessions)} sessions vs prior 7d: ${formatNumber(insightsRollups.prior7.sessions)}.`,
-          recommendation: "Momentum is positive. Consider increasing budget on top-performing channels to accelerate growth.",
+          recommendation: "Momentum is positive. Check top-performing channels before considering budget increases.",
         });
       }
 
@@ -4376,7 +4376,7 @@ export default function GA4Metrics() {
           severity: "low",
           title: `Revenue up ${revenueDelta7.toFixed(1)}% week-over-week`,
           description: `Last 7d: ${formatMoney(insightsRollups.last7.revenue)} vs prior 7d: ${formatMoney(insightsRollups.prior7.revenue)}.`,
-          recommendation: "Revenue momentum is strong. Identify which channels drove the increase and double down.",
+          recommendation: "Revenue momentum is strong. Check which channels contributed to the increase before scaling.",
         });
       }
 
@@ -4483,7 +4483,7 @@ export default function GA4Metrics() {
         severity: "low",
         title: `ROAS is strong at ${Number(financialROAS).toFixed(2)}x`,
         description: `Campaign ROAS is ${Number(financialROAS).toFixed(2)}x to date, well above the 1.0x breakeven point.`,
-        recommendation: "Performance is strong. Consider scaling spend on high-ROAS channels or testing new audiences.",
+        recommendation: "Performance is strong. Review high-ROAS channels before considering spend increases or new audience tests.",
       });
     }
 
@@ -4506,7 +4506,7 @@ export default function GA4Metrics() {
             const tgtFmt = `${prefix}${formatNumberByUnit(String((getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? ""), unit)}${suffix}`;
             return `Current ${curFmt} vs target ${tgtFmt}.`;
           })(),
-          recommendation: "This KPI is performing well. Consider raising the target or reallocating budget toward underperforming KPIs.",
+          recommendation: "This KPI is performing well. Review whether the target should be raised or whether budget should be reallocated.",
         });
       }
     }
@@ -4610,7 +4610,7 @@ export default function GA4Metrics() {
     return names;
   }, [allCampaigns]);
 
-  // Aggregate breakdown rows by campaign name for Campaign Performance & Campaign Comparison
+  // Aggregate breakdown rows by campaign name for Campaign Performance & Ad Comparison
   const campaignBreakdownAgg = useMemo(() => {
     const rows = Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
     const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
@@ -6971,11 +6971,11 @@ export default function GA4Metrics() {
                 </TabsContent>
 
                 <TabsContent value="campaigns" className="fade-in">
-                  <GA4CampaignComparison
+                  <GA4AdComparison
                     campaignBreakdownAgg={campaignBreakdownAgg}
                     breakdownLoading={breakdownLoading}
-                    selectedMetric={campaignComparisonMetric}
-                    onMetricChange={setCampaignComparisonMetric}
+                    selectedMetric={adComparisonMetric}
+                    onMetricChange={setAdComparisonMetric}
                     formatNumber={formatNumber}
                     formatMoney={formatMoney}
                     totalRevenue={financialRevenue}
@@ -6988,7 +6988,7 @@ export default function GA4Metrics() {
                     <div>
                       <h3 className="text-lg font-semibold text-foreground">Insights</h3>
                       <p className="text-sm text-muted-foreground/70 mt-1">
-                        Actionable insights from financial integrity checks, KPI + Benchmark performance, plus anomaly detection from daily deltas.
+                        Recommended checks from financial integrity rules, KPI + Benchmark performance, plus anomaly detection from daily deltas.
                       </p>
                     </div>
 
@@ -7601,7 +7601,7 @@ export default function GA4Metrics() {
 
                     <Card className="border-border">
                       <CardHeader>
-                        <CardTitle className="text-lg">What changed, what to do next</CardTitle>
+                        <CardTitle className="text-lg">What to investigate next</CardTitle>
                         <CardDescription>
                           We compare the last 7 days vs the previous 7 days (when enough daily history exists) and cross-check KPI/Benchmark performance.
                         </CardDescription>
@@ -7638,7 +7638,7 @@ export default function GA4Metrics() {
                                       <div className="text-sm text-muted-foreground/70 mt-1">{i.description}</div>
                                       {i.recommendation ? (
                                         <div className="text-sm text-foreground/80/60 mt-2">
-                                          <span className="font-medium">Next step:</span> {i.recommendation}
+                                          <span className="font-medium">Recommended check:</span> {i.recommendation}
                                         </div>
                                       ) : null}
                                     </div>
@@ -8161,7 +8161,7 @@ export default function GA4Metrics() {
                       {
                         key: "insights",
                         title: "Insights",
-                        desc: "Executive financials, trends, and what changed / what to do next",
+                        desc: "Executive financials, trends, and recommended checks",
                         Icon: Info,
                         chips: ["Executive", "Trends", "Actions"],
                       },
@@ -8419,7 +8419,7 @@ export default function GA4Metrics() {
                         ["summaryCards", "Executive Financials"],
                         ["trends", "Trends"],
                         ["dataSummary", "Data Summary"],
-                        ["actions", "What changed, what to do next"],
+                        ["actions", "What to investigate next"],
                       ] as Array<[string, string]> },
                     ].map((s) => {
                       const cfg = normalizeCustomReportConfig(ga4ReportForm.configuration);
@@ -8451,7 +8451,7 @@ export default function GA4Metrics() {
                                     : (s.key === "insights")
                                       ? [
                                           [["summaryCards", "Executive Financials"], ["trends", "Trends"]],
-                                          [["dataSummary", "Data Summary"], ["actions", "What changed, what to do next"]],
+                                          [["dataSummary", "Data Summary"], ["actions", "What to investigate next"]],
                                         ]
                                   : [s.subsections]
                                 ).map((column, columnIdx) => (

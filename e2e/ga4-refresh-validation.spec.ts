@@ -1310,7 +1310,7 @@ test.describe("GA4 Complete Test Suite", () => {
       // Ad Comparison should show campaign data — ranking cards appear when 2+ campaigns
       const hasComparison = content.includes("Best Performing") || content.includes("Sessions") || content.includes("Comparison");
       expect(hasComparison, "Ad Comparison should show comparison data").toBe(true);
-      console.log("✓ O9: Ad Comparison shows multi-campaign comparison");
+      console.log("✓ O9: Ad Comparison shows multi-campaign data");
 
       await apiPatch(page, `/api/campaigns/${CAMPAIGN_ID}`, { ga4CampaignFilter: "yesop_brand_search" });
     });

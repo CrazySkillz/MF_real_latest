@@ -14,7 +14,7 @@ The current tab contains:
 - `Trends`
 - `Data Summary`
 - an executive summary tracker panel
-- `What changed, what to do next`
+- `What to investigate next`
 
 Important meaning:
 
@@ -164,7 +164,7 @@ Cross-tab consistency:
 - confirm Insights `Trends` uses the same persisted GA4 daily facts as other daily-value GA4 surfaces
 - confirm Insights trend totals remain coherent with Overview and KPI/Benchmark context after refresh
 
-## What Changed, What To Do Next
+## What To Investigate Next
 
 Each current finding includes:
 
@@ -181,12 +181,12 @@ Important meaning:
 
 ## Current Limits Of Recommendations
 
-The current `What changed, what to do next` section is rule-based and logically grounded, but it should be treated as executive directional guidance rather than a fully causal diagnostic engine.
+The current `What to investigate next` section is rule-based and logically grounded, but it should be treated as executive directional guidance rather than a fully causal diagnostic engine.
 
 Current meaning:
 
 - findings are generated from explicit rules, thresholds, KPI/Benchmark state, GA4 daily history, and simple channel heuristics
-- recommendations are intended to suggest a sensible starting point for investigation
+- recommendations are intended to suggest recommended checks and sensible starting points for investigation
 - recommendations do not prove root cause
 
 Important current limits:
@@ -212,7 +212,7 @@ Important meaning:
 
 - `Executive financials` focuses on financial health
 - `Data Summary` gives compact operational context
-- `What changed, what to do next` is the action-oriented interpretation layer
+- `What to investigate next` is the action-oriented interpretation layer
 
 ## Budget / Pacing Prompt Pattern
 

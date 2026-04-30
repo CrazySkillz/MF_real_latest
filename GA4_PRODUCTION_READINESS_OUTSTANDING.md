@@ -11,11 +11,11 @@
 
 2. GA4 `Run Refresh` and its mock-refresh backend endpoint have been removed.
 
+3. Benchmark route shadowing is narrowed so non-Meta benchmark requests pass through to canonical benchmark handlers, generic benchmark `PATCH` is supported for non-Meta records, and the active campaign benchmark GET is campaign-access protected.
+
 ## Remaining Production Blockers
 
-1. Benchmark routes are shadowed/duplicated across Meta, campaign-level, platform-level, and generic benchmark handlers. This can route requests to the wrong handler.
-
-2. Scheduled/server-generated GA4 standard reports do not fully match the standard report templates for KPI and Benchmark reports.
+1. Scheduled/server-generated GA4 standard reports do not fully match the standard report templates for KPI and Benchmark reports.
 
 ## Required Production Validation
 

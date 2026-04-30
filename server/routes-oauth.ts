@@ -19176,14 +19176,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   /**
    * Get Meta benchmarks for a campaign
    */
-  app.get("/api/campaigns/:id/benchmarks/evaluated", async (req, res) => {
+  app.get("/api/campaigns/:id/benchmarks/evaluated", async (req, res, next) => {
     try {
       const { id } = req.params;
       const { platform } = req.query;
 
       if (platform !== 'meta' && platform !== 'facebook') {
-        // Not a Meta request, skip
-        return res.status(400).json({ error: "Invalid platform" });
+        return next();
       }
 
       const parsedId = campaignIdSchema.safeParse(String(id || "").trim());
@@ -19205,14 +19204,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   /**
    * Create Meta benchmark
    */
-  app.post("/api/campaigns/:id/benchmarks", async (req, res) => {
+  app.post("/api/campaigns/:id/benchmarks", async (req, res, next) => {
     try {
       const { id } = req.params;
       const benchmarkData = req.body;
 
       if (benchmarkData.platform !== 'meta' && benchmarkData.platform !== 'facebook') {
-        // Not a Meta request, skip
-        return res.status(400).json({ error: "Invalid platform" });
+        return next();
       }
 
       const parsedId = campaignIdSchema.safeParse(String(id || "").trim());
@@ -19245,7 +19243,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify benchmark exists and get campaignId for access check
       const existingBenchmark = await storage.getMetaBenchmarkById(benchmarkId);
       if (!existingBenchmark) {
-        return res.status(404).json({ error: "Benchmark not found" });
+        const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
+        if (!existing) return;
+        const benchmark = await storage.updateBenchmark(benchmarkId, updates);
+        if (!benchmark) {
+          return res.status(404).json({ message: "Benchmark not found" });
+        }
+        return res.json(benchmark);
       }
 
       const ok = await ensureCampaignAccess(req as any, res as any, existingBenchmark.campaignId);
@@ -19262,14 +19266,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   /**
    * Delete Meta benchmark
    */
-  app.delete("/api/benchmarks/:benchmarkId", async (req, res) => {
+  app.delete("/api/benchmarks/:benchmarkId", async (req, res, next) => {
     try {
       const { benchmarkId } = req.params;
 
       // Verify benchmark exists and get campaignId for access check
       const existingBenchmark = await storage.getMetaBenchmarkById(benchmarkId);
       if (!existingBenchmark) {
-        return res.status(404).json({ error: "Benchmark not found" });
+        return next();
       }
 
       const ok = await ensureCampaignAccess(req as any, res as any, existingBenchmark.campaignId);
@@ -20756,6 +20760,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/benchmarks", async (req, res) => {
     try {
       const { id } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, id);
+      if (!ok) return;
       const benchmarks = await storage.getCampaignBenchmarks(id);
       res.json(benchmarks);
     } catch (error) {
@@ -21197,21 +21203,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('KPI report deletion error:', error);
       res.status(500).json({ message: "Failed to delete KPI report" });
-    }
-  });
-
-  // Benchmark routes
-  // Get campaign benchmarks
-  app.get("/api/campaigns/:campaignId/benchmarks", async (req, res) => {
-    try {
-      const { campaignId } = req.params;
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
-      const benchmarks = await storage.getCampaignBenchmarks(campaignId);
-      res.json(benchmarks);
-    } catch (error) {
-      console.error('Campaign benchmarks fetch error:', error);
-      res.status(500).json({ message: "Failed to fetch campaign benchmarks" });
     }
   });
 

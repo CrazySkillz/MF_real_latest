@@ -224,7 +224,7 @@ process.on('uncaughtException', (error: Error) => {
       setTimeout(async () => {
         try {
           if (!db) {
-            log('No DATABASE_URL configured; skipping database migrations and schedulers (using in-memory storage).');
+            log('No DATABASE_URL configured; skipping database migrations and schedulers.');
             return;
           }
           log('Running database migrations...');

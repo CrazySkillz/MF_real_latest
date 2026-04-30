@@ -5842,7 +5842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // 1) Create campaign — use storage API (works with both DB and MemStorage)
+        // 1) Create campaign using the storage API
         if (db) {
           // When DB is available, use raw SQL for stable IDs
           await db.execute(sql`
@@ -5851,7 +5851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ON CONFLICT (id) DO NOTHING
           `);
         } else {
-          // MemStorage fallback — create via storage API and store with stable ID
+          // Create via storage API and store with stable ID
           const seeded = await storage.createCampaign({
             name: def.name,
             ownerId: actorId,
@@ -10795,7 +10795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Use the first connection
           dbConnection = existingConnections[0];
         } else {
-          // Try global map as fallback (for in-memory storage or if DB lookup failed)
+          // Try global map as fallback if DB lookup failed
           const connections = (global as any).googleSheetsConnections;
           if (connections && connections.has(campaignId)) {
             const connection = connections.get(campaignId);
@@ -10975,7 +10975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!dbConnection) {
-        // Try global map as final fallback (for in-memory storage or if DB lookup failed)
+        // Try global map as final fallback if DB lookup failed
         const connections = (global as any).googleSheetsConnections;
         const key = sheetsPurpose ? `${campaignId}:${sheetsPurpose}` : campaignId;
         if (connections && connections.has(key)) {

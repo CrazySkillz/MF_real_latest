@@ -18,6 +18,7 @@ import { refreshAllLinkedInData } from "./linkedin-scheduler";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getInternalAutoRefreshToken } from "./internal-request-auth";
+import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 
 type AnyRecord = Record<string, any>;
 
@@ -582,10 +583,9 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
         // If any upstream sources changed for this campaign, immediately recompute GA4 KPI/Benchmark series for Insights.
         if (anyUpdated) {
           anyCampaignUpdated = true;
-          const r = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4/run-insights-jobs`, {});
-          if (!r.ok) {
-            console.warn(`[Auto Refresh] KPI/Benchmark recompute failed for campaign ${campaignId}:`, r.status, r.json?.error || r.text);
-          }
+          await runGA4DailyKPIAndBenchmarkJobs({ campaignId }).catch((e: any) => {
+            console.warn(`[Auto Refresh] KPI/Benchmark recompute failed for campaign ${campaignId}:`, e?.message || e);
+          });
         }
       } catch (e: any) {
         console.error(`[Auto Refresh] Error processing campaign ${campaignId}:`, e?.message || e);

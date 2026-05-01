@@ -1672,8 +1672,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sourceId = req.params.sourceId;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      const existingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+      const deletingSource = (Array.isArray(existingSpendSources) ? existingSpendSources : [])
+        .find((s: any) => String(s?.id || "") === String(sourceId));
+      let deletingSheetsConnectionId = "";
+      if (String((deletingSource as any)?.sourceType || "") === "google_sheets") {
+        try {
+          const cfg = (deletingSource as any)?.mappingConfig ? JSON.parse(String((deletingSource as any).mappingConfig)) : null;
+          deletingSheetsConnectionId = String(cfg?.connectionId || "").trim();
+        } catch {
+          deletingSheetsConnectionId = "";
+        }
+      }
       await storage.deleteSpendSource(sourceId);
       await recalcCampaignSpend(campaignId);
+      if (deletingSheetsConnectionId) {
+        const remainingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+        const stillUsed = (Array.isArray(remainingSpendSources) ? remainingSpendSources : []).some((s: any) => {
+          if (String(s?.sourceType || "") !== "google_sheets") return false;
+          try {
+            const cfg = s?.mappingConfig ? JSON.parse(String(s.mappingConfig)) : null;
+            return String(cfg?.connectionId || "").trim() === deletingSheetsConnectionId;
+          } catch {
+            return false;
+          }
+        });
+        if (!stillUsed) await storage.deleteGoogleSheetsConnection(deletingSheetsConnectionId);
+      }
 
       res.json({ success: true });
     } catch (e: any) {

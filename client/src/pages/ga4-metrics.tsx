@@ -4863,14 +4863,14 @@ export default function GA4Metrics() {
         <main className="flex-1 p-8">
           {/* Header */}
           <div className="mb-8">
+            <Link href={`/campaigns/${campaignId}`}>
+              <Button variant="ghost" size="sm" className="mb-3">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Campaign
+              </Button>
+            </Link>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-4">
-                <Link href={`/campaigns/${campaignId}`}>
-                  <Button variant="ghost" size="sm">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Campaign
-                  </Button>
-                </Link>
                 <div>
                   <div className="flex items-center space-x-3 mb-2">
                     <SiGoogle className="w-8 h-8 text-orange-500" />
@@ -5613,7 +5613,7 @@ export default function GA4Metrics() {
                                   <tr>
                                     <th className="text-left p-3 w-[36%]">Event</th>
                                     <th className="text-right p-3">Conversions</th>
-                                    <th className="text-right p-3">Event count</th>
+                                    <th className="text-right p-3">Event Count</th>
                                     <th className="text-right p-3">
                                       <div className="flex items-center justify-end gap-1">
                                         Users

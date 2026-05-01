@@ -194,9 +194,6 @@ export default function GA4Metrics() {
     window.history.replaceState({}, "", `${url.pathname}${url.search}`);
   }, []);
   const [showAutoRefresh, setShowAutoRefresh] = useState(false);
-  const [showGa4CampaignPicker, setShowGa4CampaignPicker] = useState(false);
-  const [ga4CampaignSearch, setGa4CampaignSearch] = useState("");
-  const [selectedGa4Campaigns, setSelectedGa4Campaigns] = useState<string[]>([]);
   const [showKPIDialog, setShowKPIDialog] = useState(false);
   const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
   const [editingKPI, setEditingKPI] = useState<any>(null);
@@ -208,6 +205,8 @@ export default function GA4Metrics() {
   const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
   const [editingSpendSource, setEditingSpendSource] = useState<any>(null);
   const [deletingSpendSourceId, setDeletingSpendSourceId] = useState<string | null>(null);
+  const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
+  const [showSpendSourcesDialog, setShowSpendSourcesDialog] = useState(false);
   const [deleteBenchmarkId, setDeleteBenchmarkId] = useState<string | null>(null);
   const [showDeleteBenchmarkDialog, setShowDeleteBenchmarkDialog] = useState(false);
   // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
@@ -1297,25 +1296,6 @@ export default function GA4Metrics() {
     return `${items.slice(0, 2).join(" + ")} + ${items.length - 2} more`;
   }, [selectedGa4CampaignFilterList]);
 
-  const { data: ga4CampaignValuesResp } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-campaign-values", selectedGA4PropertyId],
-    enabled: !!campaignId && !!selectedGA4PropertyId,
-    staleTime: 0,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-    placeholderData: keepPreviousData,
-    queryFn: async () => {
-      const resp = await fetch(
-        `/api/campaigns/${campaignId}/ga4-campaign-values?dateRange=30days&limit=200&propertyId=${encodeURIComponent(
-          String(selectedGA4PropertyId)
-        )}`
-      );
-      const json = await resp.json().catch(() => ({} as any));
-      if (!resp.ok || json?.success === false) return null;
-      return json;
-    },
-  });
-
   // Helper: safely parse numbers from API payloads
   const parseNum = (val: any): number => {
     if (val === null || val === undefined || val === "") return 0;
@@ -2249,6 +2229,8 @@ export default function GA4Metrics() {
   }, [ga4HasRevenueMetric, revenueDisplaySources]);
   const financialConversions = Math.max(Number((ga4ToDateResp as any)?.totals?.conversions || 0), dailySummedTotals.conversions);
   const financialSpend = Number(totalSpendForFinancials || 0);
+  const revenueSourcesCount = revenueDisplaySources.length + (ga4RevenueForFinancials > 0 ? 1 : 0);
+  const spendSourcesCount = spendDisplaySources.length;
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
@@ -4882,19 +4864,6 @@ export default function GA4Metrics() {
               </div>
 
               <div className="flex items-center space-x-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedGa4Campaigns(selectedGa4CampaignFilterList);
-                    setGa4CampaignSearch("");
-                    setShowGa4CampaignPicker(true);
-                  }}
-                  disabled={!selectedGA4PropertyId}
-                  title={!selectedGA4PropertyId ? "Select a GA4 property first" : "Select GA4 campaigns to import"}
-                >
-                  Campaigns{selectedGa4CampaignFilterList.length > 0 ? ` (${selectedGa4CampaignFilterList.length})` : ""}
-                </Button>
                 {selectedGa4CampaignFilterList.length > 0 && (
                   <div className="flex items-center gap-1.5 flex-wrap max-w-md">
                     {selectedGa4CampaignFilterList.slice(0, 3).map((name) => (
@@ -5173,89 +5142,30 @@ export default function GA4Metrics() {
                         <div>
                           <h4 className="text-sm font-semibold text-foreground mb-2">Revenue</h4>
                           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {/* Total Revenue — with "+" add, per-source microcopy, edit/trash (mirrors Spend pattern) */}
+                        {/* Total Revenue */}
                         <Card>
                           <CardContent className="p-5">
-                            {revenueDisplaySources.length > 0 ? (
-                              <>
-                                <div className="flex items-center justify-between">
-                                  <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
-                                  <button
-                                    onClick={() => { setEditingRevenueSource(null); setShowRevenueDialog(true); }}
-                                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
-                                    title="Add revenue source"
-                                  >
-                                    <Plus className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                                <p className="text-2xl font-bold text-foreground mt-1">
-                                  {formatMoney(Number(financialRevenue || 0))}
-                                </p>
-                                <table className="w-full mt-2 pt-2 border-t border-slate-100 text-xs">
-                                  <tbody>
-                                    {ga4RevenueForFinancials > 0 && (
-                                      <tr>
-                                        <td className="text-muted-foreground/70 py-0.5 pr-2">GA4 Revenue</td>
-                                        <td className="text-right font-medium tabular-nums text-foreground/80 py-0.5 whitespace-nowrap">{formatMoney(ga4RevenueForFinancials)}</td>
-                                        <td className="w-[36px]"></td>
-                                      </tr>
-                                    )}
-                                    {revenueDisplaySources.map((s: any) => {
-                                      const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
-                                      const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
-                                      const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
-                                        ? ` · ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
-                                        : "";
-                                      return (
-                                        <tr key={s.sourceId} className="group/rev">
-                                          <td className="text-muted-foreground/70 py-0.5 pr-2 max-w-[120px] truncate" title={revenueSourceDisplayLabel(s) + dateLabel}>
-                                            {revenueSourceDisplayLabel(s)}{dateLabel}
-                                          </td>
-                                          <td className="text-right font-medium tabular-nums text-foreground/80 py-0.5 whitespace-nowrap">
-                                            {s.revenue != null ? formatMoney(s.revenue) : formatMoney(Number(financialRevenue || 0))}
-                                          </td>
-                                          <td className="w-[36px] text-right whitespace-nowrap">
-                                            <button
-                                              onClick={() => { setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue }); setShowRevenueDialog(true); }}
-                                              className="p-0.5 rounded hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground opacity-0 group-hover/rev:opacity-100 transition-all"
-                                              title="Edit"
-                                            ><Edit className="h-3 w-3" /></button>
-                                            <button
-                                              onClick={() => setDeletingRevenueSourceId(s.sourceId)}
-                                              className="p-0.5 rounded hover:bg-red-50 text-muted-foreground/60 hover:text-red-600 opacity-0 group-hover/rev:opacity-100 transition-all"
-                                              title="Delete"
-                                            ><Trash2 className="h-3 w-3" /></button>
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </>
-                            ) : (
-                              <>
-                                <div className="flex items-center justify-between">
-                                  <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
-                                  <button
-                                    onClick={() => { setEditingRevenueSource(null); setShowRevenueDialog(true); }}
-                                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
-                                    title="Add revenue source"
-                                  >
-                                    <Plus className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                                <p className="text-2xl font-bold text-foreground mt-1">
-                                  {formatMoney(Number(financialRevenue || 0))}
-                                </p>
-                                {ga4RevenueForFinancials > 0 && (
-                                  <div className="mt-2 pt-2 border-t border-slate-100">
-                                    <div className="grid grid-cols-[1fr_auto] items-center text-xs gap-x-3">
-                                      <span className="text-muted-foreground/70 truncate">GA4 Revenue</span>
-                                      <span className="text-foreground/80 font-medium tabular-nums text-right whitespace-nowrap">{formatMoney(ga4RevenueForFinancials)}</span>
-                                    </div>
-                                  </div>
-                                )}
-                              </>
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
+                              <button
+                                onClick={() => { setEditingRevenueSource(null); setShowRevenueDialog(true); }}
+                                className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
+                                title="Add revenue source"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <p className="text-2xl font-bold text-foreground mt-1">
+                              {formatMoney(Number(financialRevenue || 0))}
+                            </p>
+                            {revenueSourcesCount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setShowRevenueSourcesDialog(true)}
+                                className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground underline underline-offset-2"
+                              >
+                                Sources ({revenueSourcesCount})
+                              </button>
                             )}
                           </CardContent>
                         </Card>
@@ -5323,67 +5233,27 @@ export default function GA4Metrics() {
                         {/* Total Spend */}
                         <Card>
                           <CardContent className="p-5">
-                            {spendDisplaySources.length > 0 ? (
-                              <>
-                                <div className="flex items-center justify-between">
-                                  <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
-                                  <button
-                                    onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}
-                                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
-                                    title="Add spend source"
-                                  >
-                                    <Plus className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                                <p className="text-2xl font-bold text-foreground mt-1">
-                                  {formatMoney(Number(financialSpend || 0))}
-                                </p>
-                                {spendDisplaySources.length > 0 && (
-                                <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
-                                  {spendDisplaySources.map((s: any) => (
-                                    <div key={s.sourceId} className="flex items-center justify-between text-xs group/spend">
-                                      <span className="text-muted-foreground/70 min-w-[60px] truncate">{s.displayName || spendSourceTypeLabel(s.sourceType)}</span>
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-foreground/80/60 font-medium tabular-nums">
-                                          {s.spend != null ? formatMoney(s.spend) : formatMoney(Number(financialSpend || 0))}
-                                        </span>
-                                        <button
-                                          onClick={() => {
-                                            setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig });
-                                            setShowSpendDialog(true);
-                                          }}
-                                          className="p-0.5 rounded hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground dark:hover:text-muted-foreground/60 opacity-0 group-hover/spend:opacity-100 transition-all"
-                                          title="Edit spend source"
-                                        >
-                                          <Edit className="h-3 w-3" />
-                                        </button>
-                                        <button
-                                          onClick={() => setDeletingSpendSourceId(s.sourceId)}
-                                          className="p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/60 hover:text-red-600 opacity-0 group-hover/spend:opacity-100 transition-all"
-                                          title="Remove spend source"
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                <div className="flex items-center justify-between">
-                                  <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
-                                  <button
-                                    onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}
-                                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
-                                    title="Add spend source"
-                                  >
-                                    <Plus className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                                <p className="text-2xl font-bold text-foreground mt-1">{formatMoney(0)}</p>
-                              </>
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
+                              <button
+                                onClick={() => { setEditingSpendSource(null); setShowSpendDialog(true); }}
+                                className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/60 transition-colors"
+                                title="Add spend source"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <p className="text-2xl font-bold text-foreground mt-1">
+                              {formatMoney(Number(financialSpend || 0))}
+                            </p>
+                            {spendSourcesCount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setShowSpendSourcesDialog(true)}
+                                className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground underline underline-offset-2"
+                              >
+                                Sources ({spendSourcesCount})
+                              </button>
                             )}
                           </CardContent>
                         </Card>
@@ -5698,6 +5568,118 @@ export default function GA4Metrics() {
                       queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
                     }}
                   />
+                  <Dialog open={showRevenueSourcesDialog} onOpenChange={setShowRevenueSourcesDialog}>
+                    <DialogContent className="bg-card border-border max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle className="text-foreground">Revenue Sources</DialogTitle>
+                        <DialogDescription className="text-muted-foreground/70">
+                          Sources contributing to Total Revenue.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-2">
+                        {ga4RevenueForFinancials > 0 && (
+                          <div className="flex items-center justify-between rounded-md border border-border p-3 text-sm">
+                            <div>
+                              <p className="font-medium text-foreground">GA4 Revenue</p>
+                              <p className="text-xs text-muted-foreground/70">Native GA4 revenue</p>
+                            </div>
+                            <p className="font-medium tabular-nums text-foreground">{formatMoney(ga4RevenueForFinancials)}</p>
+                          </div>
+                        )}
+                        {revenueDisplaySources.map((s: any) => {
+                          const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
+                          const isCrm = s.sourceType === "hubspot" || s.sourceType === "salesforce";
+                          const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
+                            ? ` - ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
+                            : "";
+                          return (
+                            <div key={s.sourceId} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                              <div className="min-w-0">
+                                <p className="truncate font-medium text-foreground" title={revenueSourceDisplayLabel(s) + dateLabel}>
+                                  {revenueSourceDisplayLabel(s)}{dateLabel}
+                                </p>
+                                <p className="text-xs text-muted-foreground/70">{revenueSourceTypeLabel(s.sourceType)}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium tabular-nums text-foreground">
+                                  {s.revenue != null ? formatMoney(s.revenue) : formatMoney(Number(financialRevenue || 0))}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setShowRevenueSourcesDialog(false);
+                                    setEditingRevenueSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig, revenue: s.revenue });
+                                    setShowRevenueDialog(true);
+                                  }}
+                                  className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                                  title="Edit revenue source"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setShowRevenueSourcesDialog(false);
+                                    setDeletingRevenueSourceId(s.sourceId);
+                                  }}
+                                  className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                                  title="Remove revenue source"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={showSpendSourcesDialog} onOpenChange={setShowSpendSourcesDialog}>
+                    <DialogContent className="bg-card border-border max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle className="text-foreground">Spend Sources</DialogTitle>
+                        <DialogDescription className="text-muted-foreground/70">
+                          Sources contributing to Total Spend.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-2">
+                        {spendDisplaySources.map((s: any) => (
+                          <div key={s.sourceId} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-foreground" title={s.displayName || spendSourceTypeLabel(s.sourceType)}>
+                                {s.displayName || spendSourceTypeLabel(s.sourceType)}
+                              </p>
+                              <p className="text-xs text-muted-foreground/70">{spendSourceTypeLabel(s.sourceType)}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium tabular-nums text-foreground">
+                                {s.spend != null ? formatMoney(s.spend) : formatMoney(Number(financialSpend || 0))}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setShowSpendSourcesDialog(false);
+                                  setEditingSpendSource({ id: s.sourceId, sourceType: s.sourceType, displayName: s.displayName, mappingConfig: s.mappingConfig });
+                                  setShowSpendDialog(true);
+                                }}
+                                className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                                title="Edit spend source"
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowSpendSourcesDialog(false);
+                                  setDeletingSpendSourceId(s.sourceId);
+                                }}
+                                className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                                title="Remove spend source"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                   <AlertDialog open={!!deletingSpendSourceId} onOpenChange={(open) => { if (!open) setDeletingSpendSourceId(null); }}>
                     <AlertDialogContent className="bg-card border-border">
                       <AlertDialogHeader>
@@ -8817,123 +8799,6 @@ export default function GA4Metrics() {
                       Generate & Download Report
                     </>
                   )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* GA4 Campaign Picker (multi-select) */}
-      <Dialog
-        open={showGa4CampaignPicker}
-        onOpenChange={(open) => {
-          setShowGa4CampaignPicker(open);
-          if (!open) setGa4CampaignSearch("");
-        }}
-      >
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto bg-card border-border">
-          <DialogHeader>
-            <DialogTitle>Select GA4 campaigns to import</DialogTitle>
-            <DialogDescription>
-              Choose one or more GA4 campaign values to scope this MimoSaaS campaign.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="ga4-campaign-search">Search</Label>
-              <Input
-                id="ga4-campaign-search"
-                value={ga4CampaignSearch}
-                onChange={(e) => setGa4CampaignSearch(e.target.value)}
-                placeholder="Search campaign names…"
-              />
-            </div>
-
-            <div className="rounded-lg border border-border p-3 max-h-[45vh] overflow-y-auto">
-              {Array.isArray(ga4CampaignValuesResp?.campaigns) && ga4CampaignValuesResp.campaigns.length > 0 ? (
-                <div className="space-y-2">
-                  {ga4CampaignValuesResp.campaigns
-                    .filter((c: any) => {
-                      const name = String(c?.name || "");
-                      const q = String(ga4CampaignSearch || "").trim().toLowerCase();
-                      if (!q) return true;
-                      return name.toLowerCase().includes(q);
-                    })
-                    .map((c: any) => {
-                      const name = String(c?.name || "").trim();
-                      if (!name) return null;
-                      const checked = selectedGa4Campaigns.includes(name);
-                      return (
-                        <label key={name} className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-muted cursor-pointer">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => {
-                                setSelectedGa4Campaigns((prev) => {
-                                  if (prev.includes(name)) return prev.filter((x) => x !== name);
-                                  return [...prev, name];
-                                });
-                              }}
-                            />
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-foreground truncate">{name}</div>
-                              <div className="text-xs text-muted-foreground/70">Users: {Number(c?.users || 0).toLocaleString()}</div>
-                            </div>
-                          </div>
-                        </label>
-                      );
-                    })}
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground/70">
-                  No campaigns found. This can happen if GA4 reporting is delayed or the selected range has no campaign-tagged traffic.
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-2">
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setShowGa4CampaignPicker(false)} type="button">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={async () => {
-                    try {
-                      if (selectedGa4Campaigns.length === 0) {
-                        throw new Error("Select at least one GA4 campaign");
-                      }
-                      const payload = JSON.stringify(selectedGa4Campaigns);
-                      const resp = await fetch(`/api/campaigns/${campaignId}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        credentials: "include",
-                        body: JSON.stringify({ ga4CampaignFilter: payload }),
-                      });
-                      const json = await resp.json().catch(() => null);
-                      if (!resp.ok) throw new Error(json?.message || "Failed to save GA4 campaign selection");
-
-                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
-                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics"], exact: false });
-                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"], exact: false });
-                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-timeseries"], exact: false });
-                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-metrics"], exact: false });
-
-                      setShowGa4CampaignPicker(false);
-                    } catch (e: any) {
-                      toast({
-                        title: "Failed to save campaigns",
-                        description: e?.message || "Please try again.",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  type="button"
-                  disabled={!campaignId}
-                >
-                  Save
                 </Button>
               </div>
             </div>

@@ -537,9 +537,9 @@ Important meaning:
 - it behaves like a manually maintained snapshot, not a refreshable connector
 - it should be treated as a temporary validation/testing path rather than a long-term production workflow
 
-## Source Rows Under The Cards
+## Source Modal From The Cards
 
-The rows under `Total Revenue` and `Total Spend` are provenance and audit rows.
+The `Sources` action under `Total Revenue` and `Total Spend` opens the provenance and audit rows.
 
 They show which sources contribute to the totals.
 
@@ -547,7 +547,7 @@ Important meaning:
 
 - edit/delete actions operate on source definitions and their records
 - they do not directly edit the total card value
-- executive-facing provenance should be consolidated in shared source rows / `Sources used` areas rather than repeated as per-card microcopy under every financial card
+- executive-facing provenance should be consolidated in a source modal / `Sources used` areas rather than repeated as per-card microcopy under every financial card
 - revenue provenance should enumerate the full active revenue source set, including GA4 native revenue when present, instead of only the first imported/manual revenue source
 
 ## Edit And Delete Pattern

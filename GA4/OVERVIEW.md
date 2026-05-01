@@ -204,6 +204,22 @@ Important meaning:
 
 - it is campaign-scoped within the selected GA4 property
 - it is not a client-wide rollup across unrelated campaigns
+- the GA4 analytics page does not currently let users add or remove GA4 campaign values after setup; changing GA4 scope after setup would require a deliberate rescope workflow that refreshes Overview inputs and recomputes downstream KPI, Benchmark, Insight, alert, and report state
+
+### GA4 Scope Selection Lifecycle
+
+Current production behavior:
+
+- users select the GA4 property and GA4 campaign values during campaign creation or GA4 connection setup
+- the saved `ga4CampaignFilter` defines the GA4 scope for the campaign
+- the GA4 analytics page shows the saved selected campaign values for provenance
+- the GA4 analytics page does not expose a post-setup campaign picker
+
+Reason:
+
+- changing selected GA4 campaigns after setup changes the core analytics scope
+- that scope feeds Overview, KPIs, Benchmarks, Ad Comparison, Insights, Reports, alerts, and scheduled refresh
+- until a dedicated rescope workflow exists, post-setup edits are intentionally avoided to prevent partially refreshed downstream metrics
 
 ## Overview Tables
 

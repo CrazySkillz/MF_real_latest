@@ -32,6 +32,21 @@ Important meaning:
 - `Overview` is the upstream data layer
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Reports` is the output layer
+- because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
+
+## GA4 Scope Changes
+
+Current production behavior:
+
+- GA4 property and campaign-value scope is saved during campaign creation or GA4 connection setup
+- the GA4 analytics page reads and displays that saved scope
+- users cannot add or remove GA4 campaign values from the GA4 analytics page after setup
+
+Reason:
+
+- changing GA4 campaign values after setup is a rescope operation, not a simple UI edit
+- a safe future rescope workflow would need to save the new scope, refresh Overview inputs, recompute KPIs and Benchmarks, refresh downstream Insights and report outputs, and make alert/report implications explicit
+- until that workflow is intentionally implemented, the safest production behavior is setup-time selection only
 
 ## Scheduler 1: GA4 Daily Refresh Pipeline
 

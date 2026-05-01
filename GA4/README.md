@@ -29,6 +29,7 @@ Important meaning:
 - `Connected Platforms` is the campaign-scoped launcher and connection-status section
 - the GA4 page is the platform-specific analytics layer for that campaign
 - the GA4 page is not the campaign-wide rollup page
+- the GA4 property and GA4 campaign values are selected during setup; the GA4 analytics page displays the saved scope and does not provide a post-setup campaign picker
 
 ## Doc Map
 

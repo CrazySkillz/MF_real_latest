@@ -28,8 +28,7 @@ interface GA4Property {
 }
 
 const MOCK_PROPERTIES: GA4Property[] = [
-  { id: '123456789', name: 'Test GA4 Property', account: 'Test Account' },
-  { id: '987654321', name: 'Test Staging Property', account: 'Test Account' },
+  { id: 'yesop', name: 'Yesop Mock Property', account: 'Mock Account' },
 ];
 
 export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4ConnectionFlowProps) {
@@ -295,10 +294,30 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     }
 
     if (isTestMode) {
-      // Skip server call in test mode, go directly to filter
-      toast({ title: 'GA4 Connected!', description: 'Test property selected. Choose campaigns to track.' });
-      setStep('filter');
-      return;
+      try {
+        const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4-property`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ propertyId: selectedProperty, lookbackDays }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || data?.success === false) {
+          throw new Error(data?.message || data?.error || 'Failed to connect test property');
+        }
+        queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/ga4/check-connection', campaignId] });
+        toast({ title: 'GA4 Connected!', description: 'Test property selected. Choose campaigns to track.' });
+        setStep('filter');
+        return;
+      } catch (error: any) {
+        toast({
+          title: 'Connection Failed',
+          description: error?.message || 'Failed to connect test property. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     try {

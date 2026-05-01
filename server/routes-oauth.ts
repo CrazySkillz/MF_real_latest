@@ -4368,18 +4368,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         const metricsAny = metrics as any;
-        // Generate mock engagement metrics if missing
         const users = Number(metricsAny?.users || 0);
         const sessions = Number(metricsAny?.sessions || 0);
         const conversions = Number(metricsAny?.conversions || 0);
         const pageviews = Number(metricsAny?.pageviews || 0);
-
-        // Mock missing metrics with realistic values
-        const newUsers = Number(metricsAny?.newUsers || Math.floor(users * 0.3)); // ~30% new users
-        const engagedSessions = Math.floor(sessions * 0.6); // ~60% engagement rate
-        const engagementRate = sessions > 0 ? (engagedSessions / sessions) : 0.6;
-        const totalEvents = Math.floor(pageviews * 1.5); // ~1.5 events per pageview
-        const eventsPerSession = sessions > 0 ? (totalEvents / sessions) : 2.5;
+        const newUsers = metricsAny?.newUsers == null ? null : Number(metricsAny.newUsers || 0);
+        const engagedSessions = metricsAny?.engagedSessions == null ? null : Number(metricsAny.engagedSessions || 0);
+        const engagementRate = metricsAny?.engagementRate == null ? null : Number(metricsAny.engagementRate || 0);
+        const totalEvents = metricsAny?.eventCount == null ? null : Number(metricsAny.eventCount || 0);
+        const eventsPerSession = metricsAny?.eventsPerSession == null ? null : Number(metricsAny.eventsPerSession || 0);
 
         // Upsert daily metrics with populated values
         await storage.upsertGA4DailyMetrics([
@@ -4392,7 +4389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pageviews: pageviews,
             conversions: conversions,
             revenue: String(metricsAny?.revenue || "0"),
-            engagementRate: String(engagementRate),
+            engagementRate: engagementRate == null ? null : String(engagementRate),
             revenueMetric: metricsAny?.revenueMetric || "totalRevenue",
             isSimulated: false,
           }

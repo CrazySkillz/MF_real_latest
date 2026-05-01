@@ -105,7 +105,7 @@ async function buildPdfAttachmentForReport(args: {
   try {
     if (String((report as any)?.platformType || "") === "google_analytics") {
       const ga4ReportType = String((report as any)?.reportType || "").toLowerCase();
-      if (ga4ReportType === "overview" || ga4ReportType === "ads" || ga4ReportType === "insights" || ga4ReportType === "custom") {
+      if (ga4ReportType === "overview" || ga4ReportType === "kpis" || ga4ReportType === "benchmarks" || ga4ReportType === "ads" || ga4ReportType === "insights" || ga4ReportType === "custom") {
         const { buildGA4ScheduledPdfAttachment } = await import("./ga4-scheduled-report-pdf.js");
         const ga4Pdf = await buildGA4ScheduledPdfAttachment({
           report,

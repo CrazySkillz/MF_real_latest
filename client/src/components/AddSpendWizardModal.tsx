@@ -348,7 +348,11 @@ export function AddSpendWizardModal(props: {
     return () => { mounted = false; };
   }, [props.open, props.campaignId, step]);
 
-  const headers = csvPreview?.headers || [];
+  const savedSheetHeaders = useMemo(() => {
+    if (!isEditing || step !== "sheets_map") return [];
+    return Array.from(new Set([spendColumn, campaignKeyColumn].map((v) => String(v || "").trim()).filter(Boolean)));
+  }, [isEditing, step, spendColumn, campaignKeyColumn]);
+  const headers = csvPreview?.headers || savedSheetHeaders;
   const sampleRows = csvPreview?.sampleRows || [];
 
   const inferredSpendColumn = useMemo(() => {
@@ -386,6 +390,9 @@ export function AddSpendWizardModal(props: {
 
   const uniqueCampaignKeyValues = useMemo(() => {
     if (!effectiveCampaignColumn) return [];
+    if ((!Array.isArray(sampleRows) || sampleRows.length === 0) && step === "sheets_map" && isEditing) {
+      return campaignKeyValues;
+    }
     const set = new Set<string>();
     for (const r of sampleRows) {
       const v = String((r as any)[effectiveCampaignColumn] ?? "").trim();
@@ -395,7 +402,7 @@ export function AddSpendWizardModal(props: {
     const q = campaignKeySearch.trim().toLowerCase();
     const filtered = q ? all.filter((x) => x.toLowerCase().includes(q)) : all;
     return filtered.slice(0, 200);
-  }, [effectiveCampaignColumn, sampleRows, campaignKeySearch]);
+  }, [effectiveCampaignColumn, sampleRows, campaignKeySearch, step, isEditing, campaignKeyValues]);
 
   const previewRows = useMemo(() => {
     if (!Array.isArray(sampleRows) || sampleRows.length === 0) return [];

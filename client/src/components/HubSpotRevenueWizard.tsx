@@ -182,8 +182,8 @@ export function HubSpotRevenueWizard(props: {
   }, [steps, step]);
 
   const connectStatusLabel = useMemo(() => {
-    return portalName || (portalId ? `Portal ${portalId}` : null);
-  }, [portalName, portalId]);
+    return isConnected ? (portalName || "HubSpot account") : null;
+  }, [isConnected, portalName]);
 
   const fetchStatus = async () => {
     const resp = await fetch(`/api/hubspot/${campaignId}/status`, { credentials: "include" });
@@ -1124,7 +1124,7 @@ export function HubSpotRevenueWizard(props: {
                     <div>
                       <div className="text-xs text-muted-foreground/70">HubSpot account</div>
                       <div className="font-medium text-foreground">
-                        {portalName ? portalName : portalId ? `Portal ${portalId}` : "—"}
+                        {connectStatusLabel || "—"}
                       </div>
                     </div>
 
@@ -1169,7 +1169,7 @@ export function HubSpotRevenueWizard(props: {
                     )}
 
                     <div>
-                      <div className="text-xs text-muted-foreground/70">Selected value(s)</div>
+                      <div className="text-xs text-muted-foreground/70">Selected deal(s)</div>
                       <div className="font-medium text-foreground">
                         {selectedValues.length > 0
                           ? `${selectedValues.slice(0, 6).join(", ")}${selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}`

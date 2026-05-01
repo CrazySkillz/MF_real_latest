@@ -247,6 +247,7 @@ Important meaning:
 - the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path
 - the final review step should show Pipeline Proxy stage, amount, and a note that it is not included in Total Revenue
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
+- the HubSpot review step should label selected CRM records as `Selected deal(s)`, not generic selected values
 - the `Reconnect` action on the first HubSpot screen should render in a stable header/action area, not inside the main source-choice card or a shifting scroll region
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - HubSpot OAuth should request offline access / refresh capability so the connection can survive access-token expiry after connect or reconnect
@@ -281,6 +282,7 @@ Important meaning:
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path
 - the final review step should show Pipeline Proxy stage, amount, and a note that it is not included in Total Revenue
+- the Salesforce review step should label selected CRM records as `Selected opportunity(ies)`, not generic selected values
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - if Salesforce is disconnected in edit mode, the review step should still show the saved Pipeline Proxy stage and saved proxy amount until live preview becomes available again
 - if a saved Salesforce revenue source exists but live OAuth is down, the `Add revenue source` chooser should show `Reconnect required` rather than `Not connected`

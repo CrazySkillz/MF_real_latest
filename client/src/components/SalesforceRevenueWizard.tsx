@@ -1462,7 +1462,7 @@ export function SalesforceRevenueWizard(props: {
                   </div>
 
                   <div>
-                    <div className="text-xs text-muted-foreground/70">Selected value(s)</div>
+                    <div className="text-xs text-muted-foreground/70">Selected opportunity(ies)</div>
                     <div className="font-medium text-foreground">
                       {selectedValues.length > 0
                         ? `${selectedValues.slice(0, 6).join(", ")}${selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}`

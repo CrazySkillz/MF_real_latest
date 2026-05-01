@@ -237,6 +237,18 @@ export function AddSpendWizardModal(props: {
       if (connectionId) {
         setSelectedSheetConnectionId(connectionId);
       }
+      const savedHeaders = Array.isArray(mapping?.sheetHeaders) ? mapping.sheetHeaders.map((h: any) => String(h ?? "")).filter(Boolean) : [];
+      const savedSampleRows = Array.isArray(mapping?.sheetSampleRows) ? mapping.sheetSampleRows : [];
+      const savedRowCount = Number.isFinite(mapping?.sheetRowCount) ? Number(mapping.sheetRowCount) : undefined;
+      if (savedHeaders.length) {
+        setCsvPreview({
+          success: true,
+          fileName: mapping?.displayName || src?.displayName || "Google Sheets",
+          headers: savedHeaders,
+          sampleRows: savedSampleRows,
+          rowCount: savedRowCount,
+        });
+      }
       return;
     }
 
@@ -773,6 +785,9 @@ export function AddSpendWizardModal(props: {
         campaignValues: hasCampaignScope ? campaignKeyValues : null,
         currency: props.currency || "USD",
         dateRange: props.dateRange || "30days",
+        sheetHeaders: Array.isArray(csvPreview?.headers) ? csvPreview.headers : undefined,
+        sheetSampleRows: Array.isArray(csvPreview?.sampleRows) ? csvPreview.sampleRows : undefined,
+        sheetRowCount: typeof csvPreview?.rowCount === "number" ? csvPreview.rowCount : undefined,
       };
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/sheets/process`, {
         method: "POST", credentials: "include",

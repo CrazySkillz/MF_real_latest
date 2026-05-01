@@ -500,7 +500,7 @@ Important current-state note:
 - the visible spend flow is a preview + mapping + import workflow
 - in the current spend UI, Google Sheets is treated as a spend-to-date import flow rather than a user-configured daily-date mapping flow
 - Google Sheets spend is eligible for scheduled auto-refresh after setup
-- editing an existing Google Sheets spend source should open from the saved mapping without auto-running a live sheet preview; saved spend/campaign columns and selected campaign values should remain visible without reconnecting, and users can use `Change sheet/tab` when they need to reconnect or change the sheet
+- editing an existing Google Sheets spend source should open from the saved mapping without auto-running a live sheet preview; saved spend/campaign columns and selected campaign values should remain visible without reconnecting, and new/updated mappings should preserve lightweight preview metadata so full column/value choices can repopulate in edit mode
 - if the user selects a campaign identifier column and matching values are available, at least one campaign value must be selected before import
 - the connect substate should progress through `Connect Google Sheets`; it should not render a redundant footer `Next` button before a connected sheet/tab is actually being selected
 - the chooser should keep `Change sheet/tab` but should not expose an in-flow `Remove` action in this Google Sheets spend experience

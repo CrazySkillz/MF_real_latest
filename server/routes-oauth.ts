@@ -5622,21 +5622,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Manual trigger: compute daily KPI progress + benchmark history for GA4 Insights (useful for testing).
-  app.post("/api/campaigns/:id/ga4/run-insights-jobs", async (req, res) => {
-    try {
-      res.setHeader("Cache-Control", "no-store");
-      const campaignId = String(req.params.id || "");
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
-      const date = req.body?.date ? String(req.body.date).trim() : undefined; // optional YYYY-MM-DD
-      const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date });
-      res.json({ success: true, ...result });
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to run GA4 Insights jobs" });
-    }
-  });
-
   // ============================================================================
   // Seed Yesop Demo Campaigns
   // Creates 5 pre-seeded campaigns with GA4 "yesop" connections, spend sources,

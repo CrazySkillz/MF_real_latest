@@ -634,7 +634,7 @@ export function AddSpendWizardModal(props: {
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) {
         if (json?.requiresReauthorization || String(json?.error || "").includes("UNAUTHENTICATED")) {
-          throw new Error("Google Sheets needs to be reconnected. Click “Change sheet/tab” to reconnect.");
+          throw new Error("Google Sheets needs to be reconnected. Click Reconnect.");
         }
         throw new Error(json?.error || "Failed to preview sheet");
       }
@@ -1874,9 +1874,14 @@ export function AddSpendWizardModal(props: {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <Label>Choose Google Sheet</Label>
-                          <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
-                            Change sheet/tab
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
+                              Reconnect
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
+                              Change sheet/tab
+                            </Button>
+                          </div>
                         </div>
                         <Select value={selectedSheetConnectionId} onValueChange={setSelectedSheetConnectionId}>
                           <SelectTrigger>

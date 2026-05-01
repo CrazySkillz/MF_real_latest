@@ -172,7 +172,7 @@ High-risk shared dependencies include:
 - Profit / ROAS / ROI / CPA
 - KPI current values and executive snapshot
 - Benchmark current values and executive snapshot
-- source rows and edit/delete behavior
+- source modal provenance and edit/delete behavior
 - Ad Comparison values
 - Insights values and findings
 - Reports output

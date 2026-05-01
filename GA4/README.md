@@ -17,7 +17,7 @@ Use these files in this order:
 3. `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 stabilization, fix sequencing, regression checks, and testing workflow
 4. the specific tab doc you are changing
 5. `GA4/OVERVIEW.md` when the work touches Overview behavior, card/table meaning, or GA4 scope
-6. `GA4/FINANCIAL_SOURCES.md` if the work touches revenue, spend, `Latest Day Revenue`, `Latest Day Spend`, `Profit`, `ROAS`, `ROI`, `CPA`, source rows, or imported values
+6. `GA4/FINANCIAL_SOURCES.md` if the work touches revenue, spend, `Latest Day Revenue`, `Latest Day Spend`, `Profit`, `ROAS`, `ROI`, `CPA`, source modal provenance, or imported values
 
 ## Canonical GA4 Journey
 
@@ -50,7 +50,7 @@ Important meaning:
 - `GA4_DEVELOPMENT_WORKFLOW.md`
   Covers the recommended GA4 bug-fix, regression-testing, and manual-testing workflow for stabilizing the platform safely.
 - `GA4/FINANCIAL_SOURCES.md`
-  Covers `Total Revenue`, `Total Spend`, the `+` source flows, provenance, edit/delete behavior, and computation rules.
+  Covers `Total Revenue`, `Total Spend`, the `+` source flows, source modal provenance, edit/delete behavior, and computation rules.
 
 ## Overview Vs Financial Sources
 

@@ -207,6 +207,7 @@ export default function GA4Metrics() {
   const [deletingSpendSourceId, setDeletingSpendSourceId] = useState<string | null>(null);
   const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
   const [showSpendSourcesDialog, setShowSpendSourcesDialog] = useState(false);
+  const [showPipelineProxySourcesDialog, setShowPipelineProxySourcesDialog] = useState(false);
   const [deleteBenchmarkId, setDeleteBenchmarkId] = useState<string | null>(null);
   const [showDeleteBenchmarkDialog, setShowDeleteBenchmarkDialog] = useState(false);
   // Spend ingestion is handled via AddSpendWizardModal and persisted server-side.
@@ -2155,6 +2156,7 @@ export default function GA4Metrics() {
       providerEntries: entries.map((entry: any) => ({
         providerLabel: entry.providerLabel,
         pipelineStageLabel: entry.pipelineStageLabel,
+        totalToDate: Number(entry.totalToDate || 0),
         sourceId: entry.sourceId || null,
         sourceType: entry.sourceType || null,
         displayName: entry.displayName || entry.providerLabel,
@@ -2231,6 +2233,9 @@ export default function GA4Metrics() {
   const financialSpend = Number(totalSpendForFinancials || 0);
   const revenueSourcesCount = revenueDisplaySources.length + (ga4RevenueForFinancials > 0 ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;
+  const pipelineProxySourcesCount = Array.isArray(pipelineProxyData?.providerEntries) && pipelineProxyData.providerEntries.length > 0
+    ? pipelineProxyData.providerEntries.length
+    : pipelineProxyData?.success ? 1 : 0;
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
@@ -5162,7 +5167,7 @@ export default function GA4Metrics() {
                               <button
                                 type="button"
                                 onClick={() => setShowRevenueSourcesDialog(true)}
-                                className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground underline underline-offset-2"
+                                className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
                               >
                                 Sources ({revenueSourcesCount})
                               </button>
@@ -5191,37 +5196,15 @@ export default function GA4Metrics() {
                               <p className="text-2xl font-bold text-foreground mt-1">
                                 {formatMoney(Number(pipelineProxyData.totalToDate || 0))}
                               </p>
-                              <div className="text-xs text-muted-foreground/70 mt-1 space-y-2">
-                                {Array.isArray(pipelineProxyData.providerEntries) && pipelineProxyData.providerEntries.length > 0 ? (
-                                  <ul className="space-y-2 pl-4 list-disc">
-                                    {pipelineProxyData.providerEntries.map((entry: any, idx: number) => (
-                                      <li key={`${entry?.providerLabel || "provider"}-${idx}`} className="space-y-0.5">
-                                        <div className="flex items-start justify-between gap-2">
-                                          <p className="font-medium text-foreground/90">{entry?.providerLabel || "Provider"}</p>
-                                        </div>
-                                        <p>
-                                          {[
-                                            Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0 ? entry.campaignValues.join(", ") : null,
-                                            entry?.pipelineStageLabel ? `- ${entry.pipelineStageLabel}` : null,
-                                          ].filter(Boolean).join(" ")}
-                                        </p>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p>
-                                    {[
-                                      pipelineProxyData.providerLabel,
-                                      pipelineProxyData.pipelineStageLabel,
-                                      ...(Array.isArray(pipelineProxyData.pipelineValueRevenueTotals) && pipelineProxyData.pipelineValueRevenueTotals.length > 0
-                                        ? pipelineProxyData.pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
-                                        : Array.isArray(pipelineProxyData.selectedValues) && pipelineProxyData.selectedValues.length > 0
-                                          ? [`Selected values: ${pipelineProxyData.selectedValues.join(", ")}`]
-                                          : []),
-                                    ].filter(Boolean).join(" · ")}
-                                  </p>
-                                )}
-                              </div>
+                              {pipelineProxySourcesCount > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPipelineProxySourcesDialog(true)}
+                                  className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+                                >
+                                  Sources ({pipelineProxySourcesCount})
+                                </button>
+                              )}
                             </CardContent>
                           </Card>
                         )}
@@ -5250,7 +5233,7 @@ export default function GA4Metrics() {
                               <button
                                 type="button"
                                 onClick={() => setShowSpendSourcesDialog(true)}
-                                className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground underline underline-offset-2"
+                                className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
                               >
                                 Sources ({spendSourcesCount})
                               </button>
@@ -5674,6 +5657,42 @@ export default function GA4Metrics() {
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={showPipelineProxySourcesDialog} onOpenChange={setShowPipelineProxySourcesDialog}>
+                    <DialogContent className="bg-card border-border max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle className="text-foreground">Pipeline Proxy Sources</DialogTitle>
+                        <DialogDescription className="text-muted-foreground/70">
+                          Sources contributing to Pipeline Proxy.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-2">
+                        {(Array.isArray(pipelineProxyData?.providerEntries) && pipelineProxyData.providerEntries.length > 0
+                          ? pipelineProxyData.providerEntries
+                          : [{
+                              providerLabel: pipelineProxyData?.providerLabel,
+                              pipelineStageLabel: pipelineProxyData?.pipelineStageLabel,
+                              totalToDate: pipelineProxyData?.totalToDate,
+                              campaignValues: Array.isArray(pipelineProxyData?.pipelineValueRevenueTotals) && pipelineProxyData.pipelineValueRevenueTotals.length > 0
+                                ? pipelineProxyData.pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
+                                : Array.isArray(pipelineProxyData?.selectedValues) ? pipelineProxyData.selectedValues : [],
+                            }]
+                        ).map((entry: any, idx: number) => (
+                          <div key={`${entry?.providerLabel || "provider"}-${idx}`} className="rounded-md border border-border p-3 text-sm">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-medium text-foreground">{entry?.providerLabel || "Provider"}</p>
+                              <p className="font-medium tabular-nums text-foreground">{formatMoney(Number(entry?.totalToDate || 0))}</p>
+                            </div>
+                            <div className="mt-1 text-xs text-muted-foreground/70">
+                              {[
+                                entry?.pipelineStageLabel ? `Stage: ${entry.pipelineStageLabel}` : null,
+                                Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0 ? `Campaigns: ${entry.campaignValues.join(", ")}` : null,
+                              ].filter(Boolean).join(" | ")}
                             </div>
                           </div>
                         ))}

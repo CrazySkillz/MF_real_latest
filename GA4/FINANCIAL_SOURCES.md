@@ -21,7 +21,7 @@ Required pattern:
 5. the system materializes normalized records tied to that source
 6. derived campaign values are recomputed
 7. GA4 card queries refetch
-8. the cards and source rows repopulate from the updated state
+8. the cards and source modal provenance repopulate from the updated state
 
 Visible Overview layout:
 
@@ -38,7 +38,7 @@ Visible Overview layout:
   - `ROI`
   - `CPA`
 
-This layout is presentation-only. It must not change financial source-of-truth, source rows, edit/delete behavior, or calculations.
+This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
 ## Revenue Computation
 
@@ -57,7 +57,7 @@ Important clarification:
 - in those cases, users may rely entirely on imported external revenue sources
 - the GA4 revenue metric is optional to the overall campaign revenue model; external revenue import is a valid primary path
 - when GA4 native revenue exists, refresh should update the GA4-native aggregated revenue amount for the campaign's selected GA4 scope
-- the `GA4 Revenue` source row under `Total Revenue` should show that full aggregated GA4 amount, not a partial or single-day figure
+- the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
 - for GA4 `Ad Comparison`, external revenue may be added into campaign rows only when the source saves real campaign-identifying values that match GA4 campaign rows exactly
 - any external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`, not proportionally distributed
 - in the GA4 `Ad Comparison` Revenue Breakdown table, a source may show an indented per-campaign subsection from its saved exact `campaignValueRevenueTotals`
@@ -127,10 +127,11 @@ If spend or revenue is missing, downstream metrics may be blocked or call out mi
 Pipeline Proxy rule:
 
 - Pipeline Proxy is a separate Revenue subsection card when HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` is configured
-- it should show the card title, amount, source provider, selected CRM stage label, and selected/contributing campaign values where available
+- it should show the card title, amount, and a compact `Sources` action
+- clicking `Sources` should open a read-only Pipeline Proxy sources modal with source provider, provider proxy amount, selected CRM stage label, and selected/contributing campaign values where available
 - Overview should render it from the active CRM revenue source configuration and enrich it with endpoint data when available; it must not disappear solely because the separate proxy endpoint is stale
 - if both HubSpot and Salesforce are active with Pipeline Proxy for the same GA4 campaign, the single Overview Pipeline Proxy card should aggregate both exact proxy totals
-- when multiple CRM providers contribute, provenance should render as separate provider blocks rather than one flattened merged sentence
+- when multiple CRM providers contribute, modal provenance should render as separate provider entries rather than one flattened merged sentence
 - HubSpot Pipeline Proxy must use only the HubSpot wizard's saved selected campaign values and selected stage; it must not broaden to GA4 campaign filter values and must never fall back to confirmed `lastTotalRevenue`
 - the Overview `Pipeline Proxy` card is display-only; users manage the underlying CRM source from `Total Revenue`, not from the proxy card itself
 - it is not included in `Total Revenue`, `Profit`, `ROAS`, `ROI`, `CPA`, KPIs, Benchmarks, Ad Comparison, Insights, or Reports
@@ -208,7 +209,7 @@ The user journey is:
 8. the user confirms the mapping and import settings
 9. the system saves a Shopify revenue source for this campaign
 10. the system materializes normalized revenue records for the matched Shopify orders
-11. campaign financial values are recomputed and the GA4 cards/source rows refetch
+11. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
 
 Important meaning:
 
@@ -231,7 +232,7 @@ The user journey is:
 10. the final review step shows confirmed Total Revenue separately from Pipeline Proxy stage and amount
 11. the system saves a HubSpot revenue source with the mapping configuration
 12. the system materializes normalized revenue records for the matched HubSpot records
-13. campaign financial values are recomputed and the GA4 cards/source rows refetch
+13. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
 
 Important meaning:
 
@@ -268,7 +269,7 @@ The user journey is:
 11. the system validates the mapping and currency requirements
 12. the system saves a Salesforce revenue source with the mapping configuration
 13. the system materializes normalized revenue records for the matched Salesforce opportunities
-14. campaign financial values are recomputed and the GA4 cards/source rows refetch
+14. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
 
 Important meaning:
 
@@ -312,7 +313,7 @@ The user journey is:
 9. the user confirms the mapping and runs the import
 10. the system saves a Google Sheets revenue source with the mapping configuration
 11. the system materializes normalized revenue records from the sheet rows
-12. campaign financial values are recomputed and the GA4 cards/source rows refetch
+12. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
 
 Important meaning:
 
@@ -341,7 +342,7 @@ The user journey is:
 9. the user confirms the mapping and runs the import
 10. the system saves a CSV revenue source with the mapping configuration
 11. the system materializes normalized revenue records from the kept CSV rows
-12. campaign financial values are recomputed and the GA4 cards/source rows refetch
+12. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
 
 Important meaning:
 
@@ -422,7 +423,7 @@ The user journey is:
 10. the user clicks `Import spend`
 11. the system saves a LinkedIn spend source for the campaign
 12. the system materializes spend records and recomputes campaign financial values
-13. the GA4 cards and source rows refetch
+13. the GA4 cards and source modal provenance refetches
 
 Important meaning:
 
@@ -444,7 +445,7 @@ The user journey is:
 9. the user clicks `Import spend`
 10. the system saves a Meta/Facebook spend source with campaign-selection breakdown metadata
 11. the system materializes spend records and recomputes campaign financial values
-12. the GA4 cards and source rows refetch
+12. the GA4 cards and source modal provenance refetches
 
 Important current-state note:
 
@@ -467,7 +468,7 @@ The user journey is:
 9. the user clicks `Import spend`
 10. the system saves a Google Ads spend source with campaign-selection breakdown metadata
 11. the system materializes spend records and recomputes campaign financial values
-12. the GA4 cards and source rows refetch
+12. the GA4 cards and source modal provenance refetches
 
 Important current-state note:
 
@@ -489,7 +490,7 @@ The user journey is:
 9. the user confirms the mapping and runs the import
 10. the system saves a Google Sheets spend source with the mapping configuration
 11. the system materializes spend records and recomputes campaign financial values
-12. the GA4 cards and source rows refetch
+12. the GA4 cards and source modal provenance refetches
 
 Important current-state note:
 
@@ -513,7 +514,7 @@ The user journey is:
 7. the user confirms the mapping and runs the import
 8. the system saves a CSV spend source with the mapping configuration
 9. the system materializes spend records and recomputes campaign financial values
-10. the GA4 cards and source rows refetch
+10. the GA4 cards and source modal provenance refetches
 
 Important meaning:
 
@@ -539,9 +540,9 @@ Important meaning:
 
 ## Source Modal From The Cards
 
-The `Sources` action under `Total Revenue` and `Total Spend` opens the provenance and audit rows.
+The `Sources` action under `Total Revenue` and `Total Spend` opens the provenance and audit entries.
 
-They show which sources contribute to the totals.
+These entries show which sources contribute to the totals.
 
 Important meaning:
 
@@ -554,10 +555,10 @@ Important meaning:
 
 The required pattern is:
 
-1. user edits or deletes a source row
+1. user edits or deletes a source from the source modal
 2. the source definition and/or materialized records are updated
 3. campaign financial values are recomputed
-4. the cards and provenance rows repopulate from the new state
+4. the cards and source modal provenance repopulate from the new state
 
 ### Edit Meaning By Source Type
 
@@ -574,7 +575,7 @@ The required pattern is:
 - review-step totals in CRM edit flows should refresh from the current preview inputs and should not let stale saved totals override fresh preview totals
 - Salesforce confirmed campaign-level provenance depends on `mappingConfig.campaignValueRevenueTotals`; Pipeline Proxy refresh/persistence must preserve that confirmed field and must not replace it with `pipelineValueRevenueTotals`
 - Salesforce confirmed campaign-level provenance is built from exact confirmed Opportunity records and requires the save/materialization query to select the attribution field as well as filter by it
-- if an Ad Comparison or Overview provenance row is missing, trace the field `campaignValueRevenueTotals` from CRM save -> persisted revenue source -> `/revenue-sources` response -> frontend merge -> table render before changing UI
+- if an Ad Comparison or Overview provenance entry is missing, trace the field `campaignValueRevenueTotals` from CRM save -> persisted revenue source -> `/revenue-sources` response -> frontend merge -> table render before changing UI
 - `Manual` edit should overwrite the saved snapshot amount and then recompute downstream values
 
 ### Campaign Filter Meaning For CSV And Google Sheets
@@ -625,7 +626,7 @@ The required pattern is:
 2. the system saves or updates the source definition and mapping configuration
 3. the system materializes normalized revenue or spend records from that source
 4. campaign financial totals are recomputed from those records and any applicable native GA4 revenue
-5. the GA4 Overview cards and financial source rows refetch from the recomputed state
+5. the GA4 Overview cards and financial source modal provenance refetch from the recomputed state
 
 Important meaning:
 

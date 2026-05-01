@@ -148,8 +148,6 @@ export function AddSpendWizardModal(props: {
   const suppressCampaignResetRef = useRef(false);
   const campaignKeyTouchedRef = useRef(false);
   const autoDateDecisionRef = useRef<string | null>(null);
-  const [autoPreviewSheetOnOpen, setAutoPreviewSheetOnOpen] = useState(false);
-  const [isEditPrefillLoading, setIsEditPrefillLoading] = useState(false);
   const [csvPrefillMapping, setCsvPrefillMapping] = useState<any>(null);
   const [csvEditNotice, setCsvEditNotice] = useState<string>("");
 
@@ -175,7 +173,6 @@ export function AddSpendWizardModal(props: {
       setSelectedSheetConnectionId("");
       setSheetsPreview(null);
       setIsSheetsLoading(false);
-      setAutoPreviewSheetOnOpen(false);
       setCsvPrefillMapping(null);
       setCsvEditNotice("");
       setSelectedPlatform(null);
@@ -239,8 +236,6 @@ export function AddSpendWizardModal(props: {
       const connectionId = String(mapping?.connectionId || "").trim();
       if (connectionId) {
         setSelectedSheetConnectionId(connectionId);
-        setIsEditPrefillLoading(true);
-        setAutoPreviewSheetOnOpen(true);
       }
       return;
     }
@@ -673,18 +668,6 @@ export function AddSpendWizardModal(props: {
       setIsRemovingSheet(false);
     }
   };
-
-  // When editing a Google Sheets spend source, auto-preview to jump directly to mapping.
-  useEffect(() => {
-    if (!props.open) return;
-    if (!autoPreviewSheetOnOpen) return;
-    if (step !== "sheets_map") return;
-    if (!selectedSheetConnectionId) return;
-    setAutoPreviewSheetOnOpen(false);
-    // Fire and forget; it will set step to sheets_map.
-    previewSheet().finally(() => setIsEditPrefillLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.open, autoPreviewSheetOnOpen, step, selectedSheetConnectionId]);
 
   const processCsv = async () => {
     if (!csvFile && !canRecalculateCsvEditWithoutReupload) {
@@ -1228,7 +1211,7 @@ export function AddSpendWizardModal(props: {
                 <DialogTitle className="truncate leading-normal">{title}</DialogTitle>
                 <DialogDescription className="mt-1">{description}</DialogDescription>
               </div>
-              {step !== "select" && (
+              {step !== "select" && !isEditing && (
                 <Button variant="ghost" onClick={handleBack}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back

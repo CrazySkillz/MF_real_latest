@@ -4653,14 +4653,16 @@ export default function CampaignDetail() {
     },
     {
       platform: "Google Sheets",
-      connected: platformStatusMap.get("google-sheets")?.connected === true,
+      connected: platformStatusMap.get("google-sheets")?.connectedCampaignLevel === true,
       impressions: sheetsData?.summary?.totalImpressions || 0,
       clicks: sheetsData?.summary?.totalClicks || 0,
       conversions: 0, // Conversions not in summary, would need to be calculated separately
       spend: sheetsData?.summary?.totalSpend?.toString() || "0.00",
       ctr: sheetsData?.summary?.averageCTR ? `${formatPct(sheetsData.summary.averageCTR)}` : "0.00%",
       cpc: sheetsData?.summary?.totalClicks && sheetsData.summary.totalClicks > 0 && sheetsData.summary.totalSpend ? `$${(sheetsData.summary.totalSpend / sheetsData.summary.totalClicks).toFixed(2)}` : "$0.00",
-      analyticsPath: platformStatusMap.get("google-sheets")?.analyticsPath || `/campaigns/${campaign?.id}/google-sheets-data`
+      analyticsPath: platformStatusMap.get("google-sheets")?.connectedCampaignLevel === true
+        ? (platformStatusMap.get("google-sheets")?.analyticsPath || `/campaigns/${campaign?.id}/google-sheets-data`)
+        : null
     },
     {
       platform: "Facebook Ads", 

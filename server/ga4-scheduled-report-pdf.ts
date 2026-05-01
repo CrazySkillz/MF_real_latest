@@ -739,37 +739,40 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     if (includeCampaignBreakdown) {
       addSimpleTable(
         "Campaign Breakdown",
-        ["CAMPAIGN", "SESSIONS", "USERS", "CONV", "REVENUE"],
+        ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "GA4 REVENUE"],
         payload.campaignBreakdownAgg.slice(0, 15).map((row: any) => [
           String(row?.name || "(not set)"),
           formatNumber(row?.sessions || 0),
           formatNumber(row?.users || 0),
           formatNumber(row?.conversions || 0),
+          formatPct(Number(row?.conversionRate || 0)),
           formatMoney(Number((Number(row?.revenue || 0) + Number(payload.campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2))),
         ]),
-        [76, 24, 22, 22, 40],
+        [52, 22, 20, 28, 26, 36],
         COLORS.overview
       );
     }
     if (includeLandingPages) {
       addSimpleTable(
         "Landing Pages",
-        ["LANDING PAGE", "SESSIONS", "USERS", "CONV", "REVENUE"],
+        ["LANDING PAGE", "SOURCE/MEDIUM", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "GA4 REVENUE"],
         (payload.landingPages?.rows || []).slice(0, 15).map((row: any) => [
           String(row?.landingPage || "(not set)"),
+          `${String(row?.source || "(not set)")}/${String(row?.medium || "(not set)")}`,
           formatNumber(row?.sessions || 0),
           formatNumber(row?.users || 0),
           formatNumber(row?.conversions || 0),
+          formatPct(Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row?.sessions || 0)) * 100 : 0),
           formatMoney(Number(row?.revenue || 0)),
         ]),
-        [76, 24, 22, 22, 40],
+        [42, 38, 20, 18, 26, 22, 18],
         COLORS.overview
       );
     }
     if (includeConversionEvents) {
       addSimpleTable(
         "Conversion Events",
-        ["EVENT", "CONV", "EVENTS", "USERS", "REVENUE"],
+        ["EVENT", "CONVERSIONS", "EVENT COUNT", "USERS", "GA4 REVENUE"],
         (payload.conversionEvents?.rows || []).slice(0, 15).map((row: any) => [
           String(row?.eventName || "(not set)"),
           formatNumber(row?.conversions || 0),
@@ -777,7 +780,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           formatNumber(row?.users || 0),
           formatMoney(Number(row?.revenue || 0)),
         ]),
-        [76, 22, 24, 22, 40],
+        [64, 30, 30, 24, 36],
         COLORS.overview
       );
     }

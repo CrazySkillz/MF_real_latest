@@ -2717,33 +2717,36 @@ export default function GA4Metrics() {
 
       if (includeOverviewCampaignBreakdown) addSimpleTable(
         "Campaign Breakdown",
-        ["CAMPAIGN", "SESSIONS", "USERS", "CONV", "REVENUE"],
+        ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "GA4 REVENUE"],
         (Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : []).slice(0, 15).map((c: any) => [
           String(c?.name || "(not set)"),
           fN(Number(c?.sessions || 0)),
           fN(Number(c?.users || 0)),
           fN(Number(c?.conversions || 0)),
+          fP(Number(c?.conversionRate || 0)),
           fC(Number((Number(c?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(c?.name || "")) || 0)).toFixed(2))),
         ]),
-        [76, 24, 22, 22, 40]
+        [52, 22, 20, 28, 26, 36]
       );
 
       if (includeOverviewLandingPages) addSimpleTable(
         "Landing Pages",
-        ["LANDING PAGE", "SESSIONS", "USERS", "CONV", "REVENUE"],
+        ["LANDING PAGE", "SOURCE/MEDIUM", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "GA4 REVENUE"],
         (Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : []).slice(0, 15).map((r: any) => [
           String(r?.landingPage || "(not set)"),
+          `${String(r?.source || "(not set)")}/${String(r?.medium || "(not set)")}`,
           fN(Number(r?.sessions || 0)),
           fN(Number(r?.users || 0)),
           fN(Number(r?.conversions || 0)),
+          fP(Number(r?.sessions || 0) > 0 ? (Number(r?.conversions || 0) / Number(r?.sessions || 0)) * 100 : 0),
           fC(Number(r?.revenue || 0)),
         ]),
-        [76, 24, 22, 22, 40]
+        [42, 38, 20, 18, 26, 22, 18]
       );
 
       if (includeOverviewConversionEvents) addSimpleTable(
         "Conversion Events",
-        ["EVENT", "CONV", "EVENTS", "USERS", "REVENUE"],
+        ["EVENT", "CONVERSIONS", "EVENT COUNT", "USERS", "GA4 REVENUE"],
         (Array.isArray(ga4ConversionEvents?.rows) ? ga4ConversionEvents.rows : []).slice(0, 15).map((r: any) => [
           String(r?.eventName || "(not set)"),
           fN(Number(r?.conversions || 0)),
@@ -2751,7 +2754,7 @@ export default function GA4Metrics() {
           fN(Number(r?.users || 0)),
           fC(Number(r?.revenue || 0)),
         ]),
-        [76, 22, 24, 22, 40]
+        [64, 30, 30, 24, 36]
       );
     }
 

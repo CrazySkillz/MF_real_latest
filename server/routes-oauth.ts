@@ -3348,10 +3348,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             accessToken = fallback.accessToken;
             await storage.updateGoogleSheetsConnection(String(conn.id), {
               accessToken: fallback.accessToken,
-              refreshToken: fallback.refreshToken || null,
-              clientId: fallback.clientId,
-              clientSecret: fallback.clientSecret,
-              expiresAt: fallback.expiresAt,
+              refreshToken: fallback.refreshToken || conn.refreshToken || null,
+              clientId: fallback.clientId || conn.clientId,
+              clientSecret: fallback.clientSecret || conn.clientSecret,
+              expiresAt: fallback.expiresAt || conn.expiresAt,
               isActive: true as any,
             } as any);
           }
@@ -3469,10 +3469,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             accessToken = fallback.accessToken;
             await storage.updateGoogleSheetsConnection(String(conn.id), {
               accessToken: fallback.accessToken,
-              refreshToken: fallback.refreshToken || null,
-              clientId: fallback.clientId,
-              clientSecret: fallback.clientSecret,
-              expiresAt: fallback.expiresAt,
+              refreshToken: fallback.refreshToken || conn.refreshToken || null,
+              clientId: fallback.clientId || conn.clientId,
+              clientSecret: fallback.clientSecret || conn.clientSecret,
+              expiresAt: fallback.expiresAt || conn.expiresAt,
               isActive: true as any,
             } as any);
           }
@@ -6519,6 +6519,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error('Failed to obtain access token');
       }
 
+      const existingSheetsConnections = await storage.getGoogleSheetsConnections(campaignId, purpose || undefined).catch(() => [] as any[]);
+      const reusableRefreshToken = (existingSheetsConnections as any[])
+        .filter((c: any) => c?.refreshToken)
+        .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime())[0]?.refreshToken;
+      const durableRefreshToken = tokens.refresh_token || reusableRefreshToken || null;
+      if (!durableRefreshToken) {
+        return sendPopupError("Google Sheets did not return a durable refresh token. Please reconnect Google Sheets and approve access so scheduled refresh can continue without reconnecting.");
+      }
+
       // Store tokens temporarily (will be moved to real campaign later)
       // CRITICAL: Store clientId and clientSecret for token refresh
       // Use 'pending' as placeholder for spreadsheetId since schema requires notNull
@@ -6528,7 +6537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           spreadsheetId: 'pending', // Will be set when user selects spreadsheet
           purpose,
           accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
+          refreshToken: durableRefreshToken,
           clientId: process.env.GOOGLE_CLIENT_ID || '',
           clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
           expiresAt: new Date(Date.now() + ((tokens.expires_in || 3600) * 1000)),
@@ -10868,10 +10877,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               spreadsheetName,
               sheetName,
               accessToken: dbConnection.accessToken,
-              refreshToken: dbConnection.refreshToken || null,
-              clientId: dbConnection.clientId,
-              clientSecret: dbConnection.clientSecret,
-              expiresAt: dbConnection.expiresAt,
+              refreshToken: dbConnection.refreshToken || existing.refreshToken || null,
+              clientId: dbConnection.clientId || existing.clientId,
+              clientSecret: dbConnection.clientSecret || existing.clientSecret,
+              expiresAt: dbConnection.expiresAt || existing.expiresAt,
               isActive: true as any,
             } as any);
           } catch {

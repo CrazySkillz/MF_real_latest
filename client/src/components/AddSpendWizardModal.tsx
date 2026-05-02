@@ -656,6 +656,22 @@ export function AddSpendWizardModal(props: {
         }
         throw new Error(json?.error || "Failed to preview sheet");
       }
+      const nextHeaders = Array.isArray(json?.headers) ? json.headers.map((h: any) => String(h ?? "")) : [];
+      let initialConnectionId = "";
+      try {
+        const initialMapping = props.initialSource?.mappingConfig ? JSON.parse(String(props.initialSource.mappingConfig)) : null;
+        initialConnectionId = String(initialMapping?.connectionId || "");
+      } catch {
+        initialConnectionId = "";
+      }
+      const changedConnection = !!initialConnectionId && String(connectionId) !== initialConnectionId;
+      if (changedConnection || (spendColumn && !nextHeaders.includes(spendColumn))) setSpendColumn("");
+      if (changedConnection || (campaignKeyColumn && !nextHeaders.includes(campaignKeyColumn))) setCampaignKeyColumn("");
+      if (changedConnection) {
+        setCampaignKeyValues([]);
+        setCampaignKeySearch("");
+        campaignKeyTouchedRef.current = false;
+      }
       setSheetsPreview(json);
       setCsvPreview({ success: true, fileName: `${json.spreadsheetName || "Google Sheet"}`, headers: json.headers, sampleRows: json.sampleRows, rowCount: json.rowCount });
       setStep("sheets_map");
@@ -1257,7 +1273,7 @@ export function AddSpendWizardModal(props: {
                 <DialogTitle className="truncate leading-normal">{title}</DialogTitle>
                 <DialogDescription className="mt-1">{description}</DialogDescription>
               </div>
-              {step !== "select" && (!isEditing || step === "csv_map") && (
+              {step !== "select" && (!isEditing || step === "csv_map" || step === "sheets_map") && (
                 <Button variant="ghost" onClick={handleBack}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back
@@ -2172,7 +2188,11 @@ export function AddSpendWizardModal(props: {
                           <div className="space-y-1">
                             <div className="text-sm font-medium">Columns</div>
                             <div className="text-sm text-foreground/80/60">
-                              Spend: <span className="font-medium">{spendColumn || "—"}</span>
+                              {step === "sheets_map" ? (
+                                <span className="font-medium">Spend</span>
+                              ) : (
+                                <>Spend: <span className="font-medium">{spendColumn || "—"}</span></>
+                              )}
                             </div>
                             <p className="text-xs text-muted-foreground/70">
                               Spend values will be imported from this column

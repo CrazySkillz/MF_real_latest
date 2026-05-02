@@ -506,6 +506,7 @@ Important current-state note:
 - when no spend-purpose sheet connection is currently listed, the Google Sheets spend flow should render the auth component directly rather than showing a duplicate parent-level `Connect Google Sheets` pre-screen
 - the chooser should keep `Reconnect` and `Change sheet/tab` recovery actions but should not expose an in-flow `Remove` action in this Google Sheets spend experience
 - reconnect/change-sheet transitions should render the Google Sheets auth component directly so users see one smooth loading-to-selection flow instead of duplicate parent and child connection screens
+- after Google Sheets auth succeeds, the UI should remain in a loading state while spreadsheets load and must not flash back to the initial `Connect Google Sheets` screen
 - after reconnect, spreadsheet listing should prefer the newest pending OAuth connection so stale older tokens do not block sheet selection
 - if Google does not return tab metadata for a selected spreadsheet, the connector may fall back to the first tab and the continue button should match that fallback instead of requiring an unavailable tab selection
 

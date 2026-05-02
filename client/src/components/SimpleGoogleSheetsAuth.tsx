@@ -479,6 +479,19 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     );
   }
 
+  if (authCompleted && spreadsheets.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-3">
+        <div className="flex gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+        </div>
+        <p className="text-sm text-muted-foreground">Loading spreadsheets...</p>
+      </div>
+    );
+  }
+
   // Initial connection screen
   return (
     <Card className="w-full border border-border">

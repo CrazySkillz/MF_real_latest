@@ -509,7 +509,9 @@ Important current-state note:
 - after Google Sheets auth succeeds, the UI should remain in a loading state while spreadsheets load and must not flash back to the initial `Connect Google Sheets` screen
 - the spend modal should finish checking existing Google Sheets spend connections before mounting the auth component, so users do not see a temporary connect screen before the saved-sheet chooser loads
 - after reconnect, spreadsheet listing should prefer the newest pending OAuth connection so stale older tokens do not block sheet selection
-- if Google does not return tab metadata for a selected spreadsheet, the connector may fall back to the first tab and the continue button should match that fallback instead of requiring an unavailable tab selection
+- users must explicitly select a Google Sheets tab before connecting; the connector should not silently use the first sheet/tab by default
+- after a user connects and selects a Google Sheets tab in the spend flow, the modal should load the sheet preview and advance to mapping rather than asking the user to select the same connected tab again
+- when changing/reconnecting a Google Sheets spend tab from an existing saved-sheet chooser, `Back` should return to that chooser rather than exiting to the spend-source picker
 
 ## Spend Source 5: CSV Journey
 

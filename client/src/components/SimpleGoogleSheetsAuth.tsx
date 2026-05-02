@@ -252,7 +252,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
 
     // Require explicit tab selection to avoid accidentally connecting the wrong tab due to defaults/stale state.
     const sheetsToConnect = selectedSheetNamesRef.current.length > 0 ? selectedSheetNamesRef.current : selectedSheetNames;
-    if (availableSheets.length > 0 && (!Array.isArray(sheetsToConnect) || sheetsToConnect.length === 0)) {
+    if (!Array.isArray(sheetsToConnect) || sheetsToConnect.length === 0) {
       onError(isRevenueConnector ? "Please select 1 tab to connect." : "Please select at least one tab to connect.");
       return;
     }
@@ -280,7 +280,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
       const response = await apiRequest("POST", `/api/google-sheets/select-spreadsheet-multiple`, {
         campaignId,
         spreadsheetId: selectedSpreadsheet,
-        sheetNames: sheetsToConnect.length > 0 ? sheetsToConnect : [null],
+        sheetNames: sheetsToConnect,
         selectionMode,
         purpose,
       });
@@ -425,24 +425,28 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
                     )}
                   </div>
                 </>
+              ) : selectedSpreadsheet ? (
+                <p className="text-sm text-muted-foreground">
+                  No tabs found for this spreadsheet. Choose a different spreadsheet or reconnect Google Sheets.
+                </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Using first sheet (default)
+                  Select a spreadsheet to load its tabs.
                 </p>
               )}
               <p className="text-xs text-muted-foreground/70">
                 {availableSheets.length > 0 
                   ? (isRevenueConnector
                       ? `Select a tab and map the Revenue column in the next step.`
-                      : `Select one or multiple tabs to connect. If none selected, the first tab will be used.`)
-                  : `The first tab in the spreadsheet will be used.`}
+                      : `Select one or multiple tabs to connect.`)
+                  : selectedSpreadsheet ? `A tab selection is required before connecting.` : `Choose a spreadsheet first.`}
               </p>
             </div>
           )}
 
           <Button
             onClick={handleSpreadsheetSelection}
-            disabled={!selectedSpreadsheet || (availableSheets.length > 0 && selectedSheetNames.length === 0) || isSelectingSpreadsheet}
+            disabled={!selectedSpreadsheet || isLoadingSheets || selectedSheetNames.length === 0 || isSelectingSpreadsheet}
             className="w-full"
             size="lg"
           >
@@ -454,9 +458,13 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
             ) : (
               <>
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                {selectedSheetNames.length > 0
+                {!selectedSpreadsheet
+                  ? 'Select a spreadsheet to continue'
+                  : isLoadingSheets
+                    ? 'Loading tabs...'
+                    : selectedSheetNames.length > 0
                   ? `Connect ${selectedSheetNames.length} Sheet${selectedSheetNames.length > 1 ? 's' : ''}`
-                  : availableSheets.length > 0 ? 'Select a tab to continue' : 'Use first sheet'}
+                  : 'Select a tab to continue'}
               </>
             )}
           </Button>

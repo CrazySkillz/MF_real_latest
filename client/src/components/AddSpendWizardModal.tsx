@@ -626,14 +626,14 @@ export function AddSpendWizardModal(props: {
     }
   };
 
-  const previewSheet = async () => {
-    if (!selectedSheetConnectionId) return;
+  const previewSheet = async (connectionId = selectedSheetConnectionId) => {
+    if (!connectionId) return;
     setIsSheetsLoading(true);
     try {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/sheets/preview`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connectionId: selectedSheetConnectionId }),
+        body: JSON.stringify({ connectionId }),
       });
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) {
@@ -1205,6 +1205,10 @@ export function AddSpendWizardModal(props: {
   const handleBack = () => {
     if (step === "select") return;
     if (step === "csv_map") return setStep("csv");
+    if (step === "sheets_choose" && showSheetsConnect && sheetsConnections.length > 0) {
+      setShowSheetsConnect(false);
+      return;
+    }
     if (step === "sheets_map") return setStep("sheets_choose");
     setStep("select");
   };
@@ -1818,7 +1822,12 @@ export function AddSpendWizardModal(props: {
                             });
                           }
                           await refreshSheetsConnections();
-                          toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
+                          if (preferredId) {
+                            await previewSheet(preferredId);
+                            toast({ title: "Google Sheets connected", description: "Loading preview..." });
+                          } else {
+                            toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
+                          }
                         }}
                         onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
                       />
@@ -1854,7 +1863,12 @@ export function AddSpendWizardModal(props: {
                               if (!preferredId && !selectedSheetConnectionId && filtered && filtered.length === 1) {
                                 setSelectedSheetConnectionId(String(filtered[0].id));
                               }
-                              toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
+                              if (preferredId) {
+                                await previewSheet(preferredId);
+                                toast({ title: "Google Sheets connected", description: "Loading preview..." });
+                              } else {
+                                toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
+                              }
                             } catch {
                               // ignore
                             }
@@ -1895,7 +1909,7 @@ export function AddSpendWizardModal(props: {
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
                       {!showSheetsConnect && sheetsConnections.length > 0 && (
-                        <Button onClick={previewSheet} disabled={!selectedSheetConnectionId || isSheetsLoading}>
+                        <Button onClick={() => previewSheet()} disabled={!selectedSheetConnectionId || isSheetsLoading}>
                           {isSheetsLoading ? "Loading..." : "Next"}
                         </Button>
                       )}

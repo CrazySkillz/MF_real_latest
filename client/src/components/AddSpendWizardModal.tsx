@@ -2143,7 +2143,7 @@ export function AddSpendWizardModal(props: {
                               Spend: <span className="font-medium">{spendColumn || "—"}</span>
                             </div>
                             <p className="text-xs text-muted-foreground/70">
-                              We’ll treat imported spend as a total and distribute it evenly across the current GA4 window ({props.dateRange || "30days"}).
+                              Spend will be imported from this column
                             </p>
                           </div>
                           <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
@@ -2167,10 +2167,7 @@ export function AddSpendWizardModal(props: {
 
                         <div className="pt-2 border-t space-y-3">
                           <div className="space-y-1">
-                            <div className="text-sm font-medium">Campaign mapping (only if this dataset includes multiple campaigns)</div>
-                            <p className="text-xs text-muted-foreground/70">
-                              If this file/tab is already scoped to this campaign, leave these blank. Otherwise select the identifier column (Campaign ID or Campaign Name) and the value(s) for this campaign.
-                            </p>
+                            <div className="text-sm font-medium">Campaign mapping</div>
                           </div>
 
                           <div className="grid gap-4 md:grid-cols-2">
@@ -2251,7 +2248,7 @@ export function AddSpendWizardModal(props: {
                           </table>
                         </div>
                         <p className="text-xs text-muted-foreground/70 mt-2">
-                          Processing will automatically **sum spend by day**, so unaggregated rows are OK.
+                          Processing will automatically sum spend by day
                         </p>
                       </div>
                     )}

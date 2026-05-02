@@ -504,6 +504,7 @@ Important current-state note:
 - if the user selects a campaign identifier column and matching values are available, at least one campaign value must be selected before import
 - the connect substate should progress through `Connect Google Sheets`; it should not render a redundant footer `Next` button before a connected sheet/tab is actually being selected
 - the chooser should keep `Reconnect` and `Change sheet/tab` recovery actions but should not expose an in-flow `Remove` action in this Google Sheets spend experience
+- reconnect/change-sheet transitions should render the Google Sheets auth component directly so users see one smooth loading-to-selection flow instead of duplicate parent and child connection screens
 - after reconnect, spreadsheet listing should prefer the newest pending OAuth connection so stale older tokens do not block sheet selection
 - if Google does not return tab metadata for a selected spreadsheet, the connector may fall back to the first tab and the continue button should match that fallback instead of requiring an unavailable tab selection
 

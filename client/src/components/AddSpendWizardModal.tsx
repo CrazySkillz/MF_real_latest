@@ -1827,11 +1827,7 @@ export function AddSpendWizardModal(props: {
                         )}
                       </div>
                     ) : showSheetsConnect ? (
-                      <div className="space-y-3">
-                        <div className="text-sm font-medium">Connect Google Sheets</div>
-                        <p className="text-xs text-muted-foreground/70">
-                          No Sheets are connected to this campaign yet. Connect once, then we’ll let you pick a sheet/tab.
-                        </p>
+                      <div>
                         <SimpleGoogleSheetsAuth
                           campaignId={props.campaignId}
                           selectionMode="append"

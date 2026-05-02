@@ -2263,7 +2263,7 @@ export function AddSpendWizardModal(props: {
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b">
-                                {headers.slice(0, 6).map((h) => (
+                                {headers.map((h) => (
                                   <th key={h} className="text-left py-2 pr-4 font-medium">{h}</th>
                                 ))}
                               </tr>
@@ -2271,7 +2271,7 @@ export function AddSpendWizardModal(props: {
                             <tbody>
                               {previewRows.slice(0, 5).map((r, idx) => (
                                 <tr key={idx} className="border-b last:border-b-0">
-                                  {headers.slice(0, 6).map((h) => (
+                                  {headers.map((h) => (
                                     <td key={h} className="py-2 pr-4 text-foreground/80/60">{String((r as any)[h] ?? "")}</td>
                                   ))}
                                 </tr>

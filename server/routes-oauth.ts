@@ -3214,6 +3214,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
       const existingSourceId = mapping?.sourceId || null;
+      const previewHeadersForStorage = Array.isArray(mapping?.csvHeaders) && mapping.csvHeaders.length > 0
+        ? mapping.csvHeaders.map((h: any) => String(h ?? ""))
+        : parsedHeaders;
+      const previewRowsForStorage = Array.isArray(mapping?.csvSampleRows) && mapping.csvSampleRows.length > 0
+        ? mapping.csvSampleRows
+        : parsedRows.slice(0, 25);
+      const previewRowCountForStorage = Number.isFinite(mapping?.csvRowCount)
+        ? Number(mapping.csvRowCount)
+        : parsedRows.length;
       const normalizedStoredRows = parsedRows.map((row: any) => ({
         campaignKey: campaignCol ? String(row?.[campaignCol] ?? "").trim() : "",
         spendRaw: String(row?.[spendCol] ?? "").trim(),
@@ -3224,9 +3233,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storedSpendColumn: spendCol,
         storedCampaignColumn: campaignCol,
         csvStoredSpendRows: normalizedStoredRows,
-        csvHeaders: parsedHeaders,
-        csvSampleRows: parsedRows.slice(0, 25),
-        csvRowCount: parsedRows.length,
+        csvHeaders: previewHeadersForStorage,
+        csvSampleRows: previewRowsForStorage,
+        csvRowCount: previewRowCountForStorage,
       };
       delete mappingForStorage.sourceId; // don't persist sourceId in mappingConfig
 

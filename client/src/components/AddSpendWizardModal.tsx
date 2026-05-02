@@ -1252,7 +1252,7 @@ export function AddSpendWizardModal(props: {
                 <DialogTitle className="truncate leading-normal">{title}</DialogTitle>
                 <DialogDescription className="mt-1">{description}</DialogDescription>
               </div>
-              {step !== "select" && !isEditing && (
+              {step !== "select" && (!isEditing || step === "csv_map") && (
                 <Button variant="ghost" onClick={handleBack}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back
@@ -2257,7 +2257,7 @@ export function AddSpendWizardModal(props: {
                           </table>
                         </div>
                         <p className="text-xs text-muted-foreground/70 mt-2">
-                          Processing will automatically sum spend by day
+                          Processing will automatically sum spend
                         </p>
                       </div>
                     )}

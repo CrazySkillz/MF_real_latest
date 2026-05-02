@@ -236,17 +236,6 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     });
   }, [isRevenueConnector]);
 
-  const selectAllSheets = useCallback(() => {
-    if (selectedSheetNames.length === availableSheets.length) {
-      selectedSheetNamesRef.current = [];
-      setSelectedSheetNames([]);
-    } else {
-      const next = availableSheets.map(sheet => sheet.title);
-      selectedSheetNamesRef.current = next;
-      setSelectedSheetNames(next);
-    }
-  }, [availableSheets, selectedSheetNames]);
-
   const handleSpreadsheetSelection = useCallback(async () => {
     if (!selectedSpreadsheet) {
       onError("Please select a spreadsheet");
@@ -345,9 +334,6 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
             <FileSpreadsheet className="w-5 h-5 text-green-600" />
             Select Your Spreadsheet
           </CardTitle>
-          <CardDescription>
-            Choose which Google Sheets document to connect for campaign data
-          </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-4">
@@ -371,17 +357,6 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>{isRevenueConnector ? "Select Sheet/Tab (Revenue/Conversion Value)" : "Select Sheet/Tab(s)"}</Label>
-                {!isRevenueConnector && availableSheets.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={selectAllSheets}
-                    className="text-xs h-auto py-1"
-                  >
-                    {selectedSheetNames.length === availableSheets.length ? 'Deselect All' : 'Select All'}
-                  </Button>
-                )}
               </div>
               {isLoadingSheets ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

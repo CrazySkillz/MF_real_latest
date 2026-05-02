@@ -101,6 +101,15 @@ export function AddSpendWizardModal(props: {
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
   const [sheetsConnectionsLoading, setSheetsConnectionsLoading] = useState(false);
   const [isRemovingSheet, setIsRemovingSheet] = useState(false);
+  const getSheetConnectionLabel = (connection: any) => {
+    const spreadsheetId = String(connection?.spreadsheetId || "").trim();
+    const spreadsheetName = String(connection?.spreadsheetName || "").trim();
+    const sheetName = String(connection?.sheetName || "").trim();
+    const generatedSpreadsheetName = spreadsheetId ? `Spreadsheet ${spreadsheetId}` : "";
+    if (sheetName && spreadsheetName === generatedSpreadsheetName) return sheetName;
+    if (spreadsheetName && sheetName && spreadsheetName !== sheetName) return `${spreadsheetName} - ${sheetName}`;
+    return sheetName || spreadsheetName || spreadsheetId || "Google Sheet";
+  };
 
   // Ad platform state
   const [selectedPlatform, setSelectedPlatform] = useState<AdPlatform | null>(null);
@@ -657,7 +666,9 @@ export function AddSpendWizardModal(props: {
       const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections?purpose=spend`, { credentials: "include" });
       const json = await resp.json().catch(() => null);
       const conns = Array.isArray(json?.connections) ? json.connections : Array.isArray(json) ? json : [];
-      const filtered = conns.filter((c: any) => c && c.isActive !== false);
+      const filtered = conns
+        .filter((c: any) => c && c.isActive !== false)
+        .map((c: any) => ({ ...c, spreadsheetName: getSheetConnectionLabel(c), sheetName: "" }));
       setSheetsConnections(filtered);
       return filtered;
     } catch {
@@ -1823,8 +1834,7 @@ export function AddSpendWizardModal(props: {
                           }
                           await refreshSheetsConnections();
                           if (preferredId) {
-                            await previewSheet(preferredId);
-                            toast({ title: "Google Sheets connected", description: "Loading preview..." });
+                            toast({ title: "Google Sheets connected", description: "Click Next to preview the sheet." });
                           } else {
                             toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
                           }
@@ -1864,8 +1874,7 @@ export function AddSpendWizardModal(props: {
                                 setSelectedSheetConnectionId(String(filtered[0].id));
                               }
                               if (preferredId) {
-                                await previewSheet(preferredId);
-                                toast({ title: "Google Sheets connected", description: "Loading preview..." });
+                                toast({ title: "Google Sheets connected", description: "Click Next to preview the sheet." });
                               } else {
                                 toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
                               }

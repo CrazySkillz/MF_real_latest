@@ -2152,7 +2152,7 @@ export function AddSpendWizardModal(props: {
                               Spend: <span className="font-medium">{spendColumn || "—"}</span>
                             </div>
                             <p className="text-xs text-muted-foreground/70">
-                              Spend will be imported from this column
+                              Spend values will be imported from this column
                             </p>
                           </div>
                           <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
@@ -2181,7 +2181,7 @@ export function AddSpendWizardModal(props: {
 
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                              <Label>Campaign identifier for multi-campaign datasets</Label>
+                              <Label className="font-normal">Campaign identifier</Label>
                               <Select
                                 value={campaignKeyColumn || CAMPAIGN_COL_NONE}
                                 onValueChange={(v) => {
@@ -2197,7 +2197,7 @@ export function AddSpendWizardModal(props: {
                               </Select>
                             </div>
                             <div className="space-y-2">
-                              <Label>Campaign value(s)</Label>
+                              <Label className="font-normal">Campaign value(s)</Label>
                               <Input
                                 value={campaignKeySearch}
                                 onChange={(e) => setCampaignKeySearch(e.target.value)}

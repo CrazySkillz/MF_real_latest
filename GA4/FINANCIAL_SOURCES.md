@@ -503,6 +503,7 @@ Important current-state note:
 - editing an existing Google Sheets spend source should open from the saved mapping without auto-running a live sheet preview; saved spend/campaign columns and selected campaign values should remain visible without reconnecting, and new/updated mappings should preserve lightweight preview metadata so full column/value choices can repopulate in edit mode
 - if the user selects a campaign identifier column and matching values are available, at least one campaign value must be selected before import
 - the connect substate should progress through `Connect Google Sheets`; it should not render a redundant footer `Next` button before a connected sheet/tab is actually being selected
+- when no spend-purpose sheet connection is currently listed, the Google Sheets spend flow should render the auth component directly rather than showing a duplicate parent-level `Connect Google Sheets` pre-screen
 - the chooser should keep `Reconnect` and `Change sheet/tab` recovery actions but should not expose an in-flow `Remove` action in this Google Sheets spend experience
 - reconnect/change-sheet transitions should render the Google Sheets auth component directly so users see one smooth loading-to-selection flow instead of duplicate parent and child connection screens
 - after reconnect, spreadsheet listing should prefer the newest pending OAuth connection so stale older tokens do not block sheet selection

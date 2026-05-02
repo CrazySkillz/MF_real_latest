@@ -1787,45 +1787,33 @@ export function AddSpendWizardModal(props: {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {sheetsConnections.length === 0 ? (
-                      <div className="space-y-3">
-                        <div className="text-sm font-medium">Google Sheets</div>
-                        <p className="text-xs text-muted-foreground/70">
-                          No Sheets are connected to this campaign yet.
-                        </p>
-                        {!showSheetsConnect ? (
-                          <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
-                            Connect Google Sheets
-                          </Button>
-                        ) : (
-                          <SimpleGoogleSheetsAuth
-                            campaignId={props.campaignId}
-                            selectionMode="append"
-                            purpose="spend"
-                            onSuccess={async (info) => {
-                              setShowSheetsConnect(false);
-                              const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
-                              if (preferredId) {
-                                setSelectedSheetConnectionId(preferredId);
-                                setSheetsConnections((prev) => {
-                                  const exists = prev.some((c: any) => String(c?.id) === preferredId);
-                                  if (exists) return prev;
-                                  const optimistic = {
-                                    id: preferredId,
-                                    spreadsheetId: info?.spreadsheetId || "",
-                                    spreadsheetName: info?.spreadsheetId || "Google Sheet",
-                                    sheetName: Array.isArray(info?.sheetNames) ? info?.sheetNames?.[0] : undefined,
-                                    isActive: true,
-                                  };
-                                  return [optimistic, ...prev];
-                                });
-                              }
-                              await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
-                            }}
-                            onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
-                          />
-                        )}
-                      </div>
+                      <SimpleGoogleSheetsAuth
+                        campaignId={props.campaignId}
+                        selectionMode="append"
+                        purpose="spend"
+                        onSuccess={async (info) => {
+                          setShowSheetsConnect(false);
+                          const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
+                          if (preferredId) {
+                            setSelectedSheetConnectionId(preferredId);
+                            setSheetsConnections((prev) => {
+                              const exists = prev.some((c: any) => String(c?.id) === preferredId);
+                              if (exists) return prev;
+                              const optimistic = {
+                                id: preferredId,
+                                spreadsheetId: info?.spreadsheetId || "",
+                                spreadsheetName: info?.spreadsheetId || "Google Sheet",
+                                sheetName: Array.isArray(info?.sheetNames) ? info?.sheetNames?.[0] : undefined,
+                                isActive: true,
+                              };
+                              return [optimistic, ...prev];
+                            });
+                          }
+                          await refreshSheetsConnections();
+                          toast({ title: "Google Sheets connected", description: "Now pick the sheet you want to use for spend." });
+                        }}
+                        onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
+                      />
                     ) : showSheetsConnect ? (
                       <div>
                         <SimpleGoogleSheetsAuth

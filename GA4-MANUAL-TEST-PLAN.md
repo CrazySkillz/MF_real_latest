@@ -706,8 +706,7 @@ Checkpoint after Journey 8:
 
 ### Step 4: Add CSV Revenue
 - [ ] "+" → CSV → upload → map Revenue + Campaign columns
-- [ ] Optional: map a Date column only if you want daily revenue history
-- [ ] Confirm the Date column supports daily history / latest-day style calculations but does **not** make CSV auto-refreshing
+- [ ] Confirm there is no Date column selector in the Revenue CSV mapping screen
 - [ ] Leave campaign values unselected after choosing a campaign column
 - [ ] Confirm `Import revenue` is blocked/disabled until at least one campaign value is selected
 - [ ] Select one or more campaign values → Import

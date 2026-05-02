@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, FileSpreadsheet, ShoppingCart, Upload, ArrowLeft, Trash2 } from "lucide-react";
+import { AlertCircle, Building2, FileSpreadsheet, ShoppingCart, Upload, ArrowLeft, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { HubSpotRevenueWizard } from "@/components/HubSpotRevenueWizard";
@@ -164,6 +164,7 @@ export function AddRevenueWizardModal(props: {
 
   // CSV
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvInputKey, setCsvInputKey] = useState(0);
   const [csvPreview, setCsvPreview] = useState<Preview | null>(null);
   const [csvRevenueCol, setCsvRevenueCol] = useState<string>("");
   const [csvConversionValueCol, setCsvConversionValueCol] = useState<string>("");
@@ -384,6 +385,7 @@ export function AddRevenueWizardModal(props: {
     setPlatformCampaigns([]);
     setSavingManual(false);
     setCsvFile(null);
+    setCsvInputKey((n) => n + 1);
     setCsvPreview(null);
     setCsvRevenueCol("");
     setCsvConversionValueCol("");
@@ -417,6 +419,19 @@ export function AddRevenueWizardModal(props: {
     setHubspotInitialMappingConfig(null);
     setSalesforceInitialMappingConfig(null);
     setCrmConnecting(null);
+  };
+
+  const clearCsvFile = () => {
+    setCsvFile(null);
+    setCsvInputKey((n) => n + 1);
+    setCsvPreview(null);
+    setCsvRevenueCol("");
+    setCsvConversionValueCol("");
+    setCsvCampaignCol("");
+    setCsvCampaignQuery("");
+    setCsvDateCol("");
+    setCsvCampaignValues([]);
+    setCsvValueSource('revenue');
   };
 
   useEffect(() => {
@@ -1582,6 +1597,14 @@ export function AddRevenueWizardModal(props: {
               <div className="space-y-4">
                 <Card>
                   <CardContent className="space-y-3 pt-6">
+                    <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-amber-800 dark:text-amber-300">
+                          <strong>CSV data won't auto-update.</strong> Consider using Google Sheets for automatic daily refreshes.
+                        </div>
+                      </div>
+                    </div>
                     {isEditing && (
                       <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 p-3 text-sm text-amber-900 dark:text-amber-100">
                         {initialSource?.displayName && (
@@ -1626,26 +1649,38 @@ export function AddRevenueWizardModal(props: {
                           </div>
                         </div>
                       )}
-                      <div>
-                        <Label>Upload file (CSV)</Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor="revenue-csv-file">Upload file (CSV)</Label>
+                          {csvFile && (
+                            <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
+                              Remove file
+                            </Button>
+                          )}
+                        </div>
+                        <Input
+                          key={`revenue-csv-file-${csvInputKey}`}
+                          id="revenue-csv-file"
+                          type="file"
+                          accept=".csv,text/csv"
+                          className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0] || null;
+                            setCsvFile(f);
+                            setCsvPreview(null);
+                            setCsvRevenueCol("");
+                            setCsvConversionValueCol("");
+                            setCsvDateCol("");
+                            setCsvCampaignCol("");
+                            setCsvCampaignValues([]);
+                            setCsvCampaignQuery("");
+                            setCsvValueSource('revenue');
+                          }}
+                        />
+                        <p className="text-xs text-muted-foreground/70">
+                          Required columns: Revenue. Optional: Campaign (for multi-campaign files).
+                        </p>
                       </div>
-                      <Input
-                        type="file"
-                        accept=".csv,text/csv"
-                        className="cursor-pointer file:cursor-pointer"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0] || null;
-                          setCsvFile(f);
-                          setCsvPreview(null);
-                          setCsvRevenueCol("");
-                          setCsvConversionValueCol("");
-                          setCsvDateCol("");
-                          setCsvCampaignCol("");
-                          setCsvCampaignValues([]);
-                          setCsvCampaignQuery("");
-                          setCsvValueSource('revenue');
-                        }}
-                      />
                     </div>
 
                     <div className="flex justify-end gap-2">
@@ -1729,8 +1764,6 @@ export function AddRevenueWizardModal(props: {
                             </Select>
                           </div>
 
-                          {/* Date column removed: revenue imports are treated as revenue-to-date (lifetime). */}
-
                           {platformContext === 'linkedin' && (
                             <div className="space-y-1">
                               <Label>{csvValueSource === 'revenue' ? 'Conversion value column (disabled)' : 'Conversion value column'}</Label>
@@ -1755,7 +1788,7 @@ export function AddRevenueWizardModal(props: {
                           )}
                         </div>
 
-                        <div className="space-y-1">
+                        {false && (<>
                           <Label>Date column (recommended for daily tracking)</Label>
                           <Select value={csvDateCol || SELECT_NONE} onValueChange={(v) => setCsvDateCol(v === SELECT_NONE ? "" : v)}>
                             <SelectTrigger>
@@ -1771,7 +1804,7 @@ export function AddRevenueWizardModal(props: {
                           <p className="text-xs text-muted-foreground/70">
                             Select a date column for daily revenue tracking. If you leave this blank, the CSV will behave like a static revenue snapshot rather than daily history.
                           </p>
-                        </div>
+                        </>)}
 
                         {platformContext === 'linkedin' && (
                           <div className="text-xs text-muted-foreground/70">
@@ -1819,7 +1852,7 @@ export function AddRevenueWizardModal(props: {
                           <div className="text-sm text-muted-foreground/70">Select a campaign column to choose campaign values.</div>
                         )}
 
-                        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground/70">
+                        <div className="hidden">
                           <div>
                             Mode: <span className="font-medium">{csvDateCol ? "Daily history" : "Snapshot"}</span>
                           </div>

@@ -342,25 +342,22 @@ The user journey is:
 5. the user selects the revenue column
 6. the user selects the campaign column
 7. the user selects one or more campaign values to keep for this campaign
-8. the user can optionally select a date column
-9. the user confirms the mapping and runs the import
-10. the system saves a CSV revenue source with the mapping configuration
-11. the system materializes normalized revenue records from the kept CSV rows
-12. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
+8. the user confirms the mapping and runs the import
+9. the system saves a CSV revenue source with the mapping configuration
+10. the system materializes normalized revenue records from the kept CSV rows
+11. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
 
 Important meaning:
 
 - CSV is a structured import workflow, not a simple file attachment
-- without a date column, the import behaves more like a revenue-to-date snapshot
-- with a date column, the source behaves more like daily revenue history
-- a date column supports daily-history calculations and latest-day/trend-style views; it does not make CSV auto-refreshing
+- CSV revenue is imported as a revenue-to-date source in the normal GA4 UI
 - because CSV is manual, updates require re-upload rather than automatic refresh
 - CSV should be treated as a one-time or occasional import, not an auto-syncing source
 - if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
 - the UI should make it explicit that CSV updates require manual re-upload
 - CSV revenue edit should reopen directly into the mapping screen when the stored imported dataset is available
 - if only campaign-value selection changes, CSV revenue should recalculate without forcing a re-upload
-- if structural mappings change, such as revenue column, conversion value column, campaign column, date column, or value-source mode, re-upload is still required
+- if structural mappings change, such as revenue column, conversion value column, campaign column, or value-source mode, re-upload is still required
 - `Update revenue` should remain disabled until a meaningful edit is made
 
 ## Revenue Source 6: Existing Stored Manual Revenue

@@ -561,6 +561,11 @@ export function AddSpendWizardModal(props: {
       if (!resp.ok || !json?.success) {
         throw new Error(json?.error || "Failed to preview CSV");
       }
+      const nextHeaders = Array.isArray(json?.headers) ? json.headers.map((h: any) => String(h ?? "")) : [];
+      if (spendColumn && !nextHeaders.includes(spendColumn)) setSpendColumn("");
+      if (campaignKeyColumn && !nextHeaders.includes(campaignKeyColumn)) setCampaignKeyColumn("");
+      setCampaignKeyValues([]);
+      setCampaignKeySearch("");
       setCsvPreview(json);
       setStep("csv_map");
     } catch (e: any) {
@@ -1960,7 +1965,16 @@ export function AddSpendWizardModal(props: {
                         type="file"
                         accept=".csv,text/csv"
                         className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted"
-                        onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setCsvFile(file);
+                          if (file) {
+                            setCsvPreview(null);
+                            setCampaignKeyValues([]);
+                            setCampaignKeySearch("");
+                            campaignKeyTouchedRef.current = false;
+                          }
+                        }}
                       />
                       <p className="text-xs text-muted-foreground/70">
                         Required columns: Spend. Optional: Date + Campaign (for multi-campaign files).
@@ -2130,7 +2144,16 @@ export function AddSpendWizardModal(props: {
                             type="file"
                             accept=".csv,text/csv"
                             className="cursor-pointer file:cursor-pointer file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted"
-                            onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              setCsvFile(file);
+                              if (file) {
+                                setCsvPreview(null);
+                                setCampaignKeyValues([]);
+                                setCampaignKeySearch("");
+                                campaignKeyTouchedRef.current = false;
+                              }
+                            }}
                           />
                           <p className="text-xs text-muted-foreground/70">
                             Re-upload the CSV to preview rows, adjust columns, and re-process spend.

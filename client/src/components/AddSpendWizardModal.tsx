@@ -824,6 +824,7 @@ export function AddSpendWizardModal(props: {
         sheetHeaders: Array.isArray(csvPreview?.headers) ? csvPreview.headers : undefined,
         sheetSampleRows: Array.isArray(csvPreview?.sampleRows) ? csvPreview.sampleRows : undefined,
         sheetRowCount: typeof csvPreview?.rowCount === "number" ? csvPreview.rowCount : undefined,
+        ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
       };
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/sheets/process`, {
         method: "POST", credentials: "include",

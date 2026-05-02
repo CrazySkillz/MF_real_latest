@@ -3558,20 +3558,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
+      const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : null;
 
-      const nextSpendMappingConfig = JSON.stringify({
+      const mappingForStorage = {
         ...mapping,
         mode: "spend_to_date",
         connectionId,
         spreadsheetId: conn.spreadsheetId,
         sheetName: conn.sheetName || null,
         lastSyncedAt: new Date().toISOString(),
-      });
+      };
+      delete (mappingForStorage as any).sourceId;
+      const nextSpendMappingConfig = JSON.stringify(mappingForStorage);
 
       const existingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
       const existingSheetsSpendSource = (Array.isArray(existingSpendSources) ? existingSpendSources : []).find((s: any) => {
         if (!s || (s as any).isActive === false) return false;
         if (String((s as any).sourceType || "") !== "google_sheets") return false;
+        if (existingSourceId && String((s as any).id || "") === existingSourceId) return true;
         try {
           const cfg = (s as any).mappingConfig ? JSON.parse(String((s as any).mappingConfig)) : null;
           return String(cfg?.connectionId || "") === String(connectionId);

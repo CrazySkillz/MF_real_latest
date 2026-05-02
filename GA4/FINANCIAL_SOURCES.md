@@ -309,7 +309,7 @@ The user journey is:
 2. the modal opens and the user selects `Google Sheets`
 3. the user enters the Google Sheets connection chooser step
 4. if no suitable sheet connection exists yet, the user connects a Google Sheet / tab first
-5. once a connection is selected, the system loads a sheet preview
+5. once a connection is selected, the user clicks `Next` and the system loads a sheet preview
 6. the user selects the revenue column
 7. the user can optionally select a campaign column and matching campaign value or values
 8. the user can optionally select a date column
@@ -328,6 +328,7 @@ Important meaning:
 - Google Sheets refreshability comes from the connected sheet source, while the date column controls date granularity
 - if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
 - Google Sheets revenue edit should keep `Update revenue` disabled until a meaningful edit is made
+- in Google Sheets revenue edit mode, changing the selected sheet/tab must update the existing revenue source by stable `sourceId`; it must not create a second additive Google Sheets revenue source
 - the UI should make this daily-history vs snapshot distinction explicit so users understand the downstream effect on latest-day and trend-style views
 
 ## Revenue Source 5: CSV Journey
@@ -511,9 +512,11 @@ Important current-state note:
 - after reconnect, spreadsheet listing should prefer the newest pending OAuth connection so stale older tokens do not block sheet selection
 - users must explicitly select a Google Sheets tab before connecting; the connector should not silently use the first sheet/tab by default
 - Google Sheets tab-loading failures should surface the real error to the user instead of silently turning into a misleading `No tabs found` state
-- after a user connects and selects a Google Sheets tab in the spend flow, the modal should load the sheet preview and advance to mapping rather than asking the user to select the same connected tab again
+- after a user connects and selects a Google Sheets tab in the spend flow, the selected tab should appear in the chooser and the user should click `Next` to load preview/mapping; the modal should not auto-advance before the user confirms the selected tab
 - existing saved Google Sheets revenue tabs should expose a `Next` action so users can continue to preview/mapping when the chooser already has a selected tab
 - when changing/reconnecting a Google Sheets spend tab from an existing saved-sheet chooser, `Back` should return to that chooser rather than exiting to the spend-source picker
+- in Google Sheets spend edit mode, `Back` from mapping should return to the sheet/tab chooser, and `Next` should repopulate mapping from the selected sheet/tab without reusing stale values from a different connection
+- in Google Sheets spend edit mode, changing the selected sheet/tab must update the existing spend source by stable `sourceId`; it must not create a second additive Google Sheets spend source
 - Google Sheets OAuth placeholder rows with `spreadsheetId='pending'` must not be returned to source choosers as selectable sheet connections
 - spreadsheet-tab loading should use the same newest/pending OAuth token selection pattern as spreadsheet listing so reconnects do not list files with one token and try to load tabs with an older token
 - if a saved Google Sheets spend connection's token fails during preview or import, the spend path may self-heal by verifying the same spreadsheet/tab with the newest campaign Google Sheets token and updating the saved connection tokens before asking the user to reconnect
@@ -539,6 +542,10 @@ Important meaning:
 - CSV spend is a structured import workflow, not a file attachment
 - the visible flow behaves like a spend-to-date snapshot import
 - CSV spend does not auto-refresh on a schedule
+- CSV spend preview should show all uploaded columns in the preview table, not only mapped processing columns
+- CSV spend edit should expose `Back` from mapping to upload so the user can replace the CSV file before previewing again
+- when a new CSV is selected in edit mode, stale preview rows, campaign search, and selected campaign values from the previous CSV must be cleared before the new preview/mapping is shown
+- CSV spend edit should preserve full preview metadata for reopening the source, while processing can still store normalized spend/campaign rows for recalculation
 - once a CSV spend source has been imported with the persisted edit payload, edit mode can recalculate from the stored imported dataset when the user changes only campaign-value selection
 - if the user changes mapped columns or the original stored dataset is not available, re-upload is still required
 
@@ -584,12 +591,14 @@ The required pattern is:
 - `Google Sheets` edit should reopen the connection/mapping flow for that sheet source
 - `Google Sheets` spend edit should keep `Update spend` disabled until the user makes a meaningful change
 - `Google Sheets` spend edit should allow recalculation when the user changes selected campaign values, mapped columns, or the selected sheet connection
+- `Google Sheets` spend edit must pass stable source identity through the save path so changing sheet/tab updates the existing source instead of creating a duplicate
 - `CSV` spend edit should reopen the mapping flow
+- `CSV` spend edit should allow `Back` to the upload step and should clear stale preview/selection state when a replacement CSV is chosen
 - if only campaign-value selection changes and the stored import dataset is available, `Update spend` should recalculate without forcing a re-upload
 - if mapped columns change or the original stored dataset is unavailable, `CSV` spend edit should require re-upload
 - `CSV` spend edit should keep `Update spend` disabled until the user makes a meaningful change
 - `Salesforce` revenue edit must update the existing revenue source and replace that source's materialized records rather than creating a second additive source row
-- for CRM edit flows, stable source identity is required: the existing `sourceId` must survive modal -> wizard -> save payload -> save route
+- for connector edit flows that can change underlying connection identifiers, stable source identity is required: the existing `sourceId` must survive modal -> wizard -> save payload -> save route
 - review-step totals in CRM edit flows should refresh from the current preview inputs and should not let stale saved totals override fresh preview totals
 - Salesforce confirmed campaign-level provenance depends on `mappingConfig.campaignValueRevenueTotals`; Pipeline Proxy refresh/persistence must preserve that confirmed field and must not replace it with `pipelineValueRevenueTotals`
 - Salesforce confirmed campaign-level provenance is built from exact confirmed Opportunity records and requires the save/materialization query to select the attribution field as well as filter by it

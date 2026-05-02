@@ -1219,6 +1219,7 @@ export function AddRevenueWizardModal(props: {
         currency,
         displayName: "Google Sheets revenue",
         mode: "revenue_to_date",
+        ...(isEditing && initialSource?.id ? { sourceId: String(initialSource.id) } : {}),
       };
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/process`, {
         method: "POST",
@@ -1951,11 +1952,19 @@ export function AddRevenueWizardModal(props: {
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
                             if (preferredId) {
                               setSheetsConnectionId(preferredId);
+                              setSheetsConnections((prev) => {
+                                const exists = prev.some((c: any) => String(c?.id) === preferredId);
+                                if (exists) return prev;
+                                return [{
+                                  id: preferredId,
+                                  spreadsheetId: info?.spreadsheetId || "",
+                                  spreadsheetName: info?.spreadsheetId || "Google Sheet",
+                                  sheetName: Array.isArray(info?.sheetNames) ? info.sheetNames[0] : undefined,
+                                  isActive: true,
+                                }, ...prev];
+                              });
                               await refreshSheetsConnections();
-                              // No "Next" in this flow: go straight to mapping.
-                              await handleSheetsPreview(preferredId);
-                              setStep("sheets_map");
-                              toast({ title: "Google Sheets connected", description: "Loading preview…" });
+                              toast({ title: "Google Sheets connected", description: "Click Next to preview the sheet." });
                             } else {
                               await refreshSheetsConnections();
                               toast({ title: "Google Sheets connected", description: "Select a tab to continue." });
@@ -1980,11 +1989,19 @@ export function AddRevenueWizardModal(props: {
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
                             if (preferredId) {
                               setSheetsConnectionId(preferredId);
+                              setSheetsConnections((prev) => {
+                                const exists = prev.some((c: any) => String(c?.id) === preferredId);
+                                if (exists) return prev;
+                                return [{
+                                  id: preferredId,
+                                  spreadsheetId: info?.spreadsheetId || "",
+                                  spreadsheetName: info?.spreadsheetId || "Google Sheet",
+                                  sheetName: Array.isArray(info?.sheetNames) ? info.sheetNames[0] : undefined,
+                                  isActive: true,
+                                }, ...prev];
+                              });
                               await refreshSheetsConnections();
-                              // No "Next" in this flow: go straight to mapping.
-                              await handleSheetsPreview(preferredId);
-                              setStep("sheets_map");
-                              toast({ title: "Google Sheets connected", description: "Loading preview…" });
+                              toast({ title: "Google Sheets connected", description: "Click Next to preview the sheet." });
                             } else {
                               await refreshSheetsConnections();
                               toast({ title: "Google Sheets connected", description: "Select a tab to continue." });
@@ -2024,11 +2041,6 @@ export function AddRevenueWizardModal(props: {
                             setSheetsCampaignCol("");
                             setSheetsCampaignQuery("");
                             setSheetsCampaignValues([]);
-                            // Auto-advance: selecting a tab should preview and move to mapping (no redundant Next button).
-                            void (async () => {
-                              await handleSheetsPreview(v);
-                              setStep("sheets_map");
-                            })();
                           }}
                         >
                           <SelectTrigger>

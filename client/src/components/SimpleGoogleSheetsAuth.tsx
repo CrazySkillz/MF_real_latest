@@ -46,7 +46,6 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
   const [isLoadingSheets, setIsLoadingSheets] = useState(false);
   const [isSelectingSpreadsheet, setIsSelectingSpreadsheet] = useState(false);
   const popupRef = useRef<Window | null>(null);
-  const autoConnectRanRef = useRef(false);
 
   const cleanupPopup = useCallback(() => {
     if (popupRef.current && !popupRef.current.closed) {
@@ -198,7 +197,6 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
   }, [campaignId, onError, purpose]);
 
   const handleSpreadsheetChange = useCallback((spreadsheetId: string) => {
-    autoConnectRanRef.current = false;
     setSelectedSpreadsheet(spreadsheetId);
     setAvailableSheets([]);
     selectedSheetNamesRef.current = [];
@@ -215,7 +213,6 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
   }, [selectedSheetNames]);
 
   const toggleSheetSelection = useCallback((sheetTitle: string) => {
-    autoConnectRanRef.current = false;
     setSelectedSheetNames(prev => {
       // Revenue connector must be single-tab to avoid ambiguity/double-counting.
       if (isRevenueConnector) {
@@ -311,19 +308,6 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
       setIsSelectingSpreadsheet(false);
     }
   }, [campaignId, selectedSpreadsheet, selectedSheetNames, availableSheets, onSuccess, onError, isRevenueConnector]);
-
-  // Revenue connector UX: once the user has selected a spreadsheet + exactly one tab, auto-connect (no redundant Next/Connect button).
-  useEffect(() => {
-    if (!isRevenueConnector) return;
-    if (!authCompleted) return;
-    if (!selectedSpreadsheet) return;
-    if (!selectedSheetNamesRef.current || selectedSheetNamesRef.current.length === 0) return;
-    if (isSelectingSpreadsheet) return;
-    if (autoConnectRanRef.current) return;
-    autoConnectRanRef.current = true;
-    void handleSpreadsheetSelection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRevenueConnector, authCompleted, selectedSpreadsheet, isSelectingSpreadsheet]);
 
   // Show spreadsheet selection after auth
   if (authCompleted && spreadsheets.length > 0) {

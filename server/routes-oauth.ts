@@ -2564,8 +2564,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaign = await storage.getCampaign(campaignId);
       const currency = mapping.currency || (campaign as any)?.currency || "USD";
+      const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : null;
 
       const normalizedMapping = { ...mapping, dateRange: undefined, mode: valueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date" };
+      delete (normalizedMapping as any).sourceId;
       const nextMappingConfig = JSON.stringify({
         ...normalizedMapping,
         connectionId,
@@ -2587,6 +2589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingSheetsSource = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
         if (!s || (s as any).isActive === false) return false;
         if (String((s as any).sourceType || "") !== "google_sheets") return false;
+        if (existingSourceId && String((s as any).id || "") === existingSourceId) return true;
         try {
           const cfg = (s as any).mappingConfig ? JSON.parse(String((s as any).mappingConfig)) : null;
           return String(cfg?.connectionId || "") === String(connectionId);

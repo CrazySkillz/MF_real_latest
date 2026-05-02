@@ -373,7 +373,7 @@ Checkpoint after Journey 3:
 - [ ] **Conversions ≈ 2,648** (simulation 2,592 + 1 day of 56)
 - [ ] **Revenue ≈ $244,552** (simulation $240,352 + 1 day of $4,200)
 - [ ] Values AGGREGATE — simulation baseline + Run Refresh increments, not replaced
-- [ ] If GA4 native revenue exists, the `GA4 Revenue` micro copy row under `Total Revenue` updates to the refreshed aggregated GA4 amount for the selected GA4 scope
+- [ ] If GA4 native revenue exists, the `GA4 Revenue` row in the Total Revenue source modal updates to the refreshed aggregated GA4 amount for the selected GA4 scope
 - [ ] Financial templates (ROAS/ROI/CPA) still DISABLED — need spend
 
 ### Step 2: Add spend via Add Spend wizard
@@ -381,7 +381,7 @@ Checkpoint after Journey 3:
 - [ ] Select **Upload CSV**, **Google Sheets**, or a supported ad-platform test-mode path
 - [ ] Import spend totaling **$5,000.00**
 - [ ] **Total Spend = $5,000.00**
-- [ ] Source row / micro copy shows the imported source and **$5,000.00**
+- [ ] Total Spend source modal shows the imported source and **$5,000.00**
 
 ### Step 3: Verify financial metrics unlocked
 - [ ] **ROAS** now calculated (Revenue ÷ $5,000)
@@ -624,13 +624,14 @@ Checkpoint after Journey 7:
 - [ ] **Total Spend = existing spend + CSV + LinkedIn + Meta + Google Ads**
 
 ### Step 7: Verify all sources active
-- [ ] All sources shown in micro copy with individual amounts
-- [ ] **Sum of ALL micro copy amounts = Total Spend card** (exact match, no rounding drift)
+- [ ] Click **Sources** on Total Spend and confirm all active spend sources are listed with individual amounts
+- [ ] **Sum of ALL source amounts = Total Spend card** (exact match, no rounding drift)
 - [ ] ROAS/CPA/ROI/Profit all reflect the cumulative total spend
 
 ### Step 8: Edit a spend source
 - [ ] Click edit (pencil) on the CSV source
 - [ ] Confirm `Update spend` is **disabled** immediately on open before any changes are made
+- [ ] Click `Back`, upload a replacement CSV, click `Next`, and confirm the preview shows the replacement CSV's full column set
 - [ ] Deselect one campaign value while keeping one valid campaign selected
 - [ ] Confirm `Update spend` becomes enabled after the mapping change
 - [ ] Click `Update spend`
@@ -643,7 +644,7 @@ Checkpoint after Journey 7:
 ### Step 9: Delete a spend source
 - [ ] Click delete (trash) on the LinkedIn source → confirm
 - [ ] Total Spend decreases by the LinkedIn amount
-- [ ] Micro copy: LinkedIn line disappears
+- [ ] Click **Sources** on Total Spend and confirm the LinkedIn source row disappears
 - [ ] ROAS/CPA/Profit recalculated
 - [ ] **KPIs tab**: ROAS/CPA KPIs reflect the reduced spend
 - [ ] **Benchmarks tab**: ROAS/CPA Benchmarks reflect the reduced spend
@@ -651,18 +652,22 @@ Checkpoint after Journey 7:
 
 ### Step 10: Add Google Sheets Spend
 - [ ] In the initial connect substate, confirm there is **no** redundant footer `Next` button before a connected sheet/tab is selected
-- [ ] "+" → Sheets → authenticate → select sheet → map Spend column
+- [ ] "+" -> Sheets -> authenticate -> select spreadsheet/tab
+- [ ] Confirm the selected tab remains in the chooser and the user must click `Next` before mapping loads
+- [ ] Click `Next` -> map Spend column
 - [ ] Select a campaign identifier column and leave all campaign values unselected
 - [ ] Confirm `Import spend` is blocked/disabled until at least one campaign value is selected
 - [ ] Select one or more campaign values → Save
-- [ ] Micro copy: "Google Sheets — $X,XXX" (NOT the spreadsheet name)
+- [ ] Click **Sources** on Total Spend and confirm "Google Sheets - $X,XXX" appears in the source modal
 - [ ] Click edit (pencil) on the Google Sheets source
 - [ ] Confirm the chooser does **not** show an in-flow `Remove` action
 - [ ] Confirm `Update spend` is **disabled** immediately on open before any changes are made
+- [ ] Click `Back`, select a different Google Sheet/tab, click `Next`, and confirm mapping/preview values come from the newly selected tab
 - [ ] Deselect one campaign value while keeping one valid campaign selected
 - [ ] Confirm `Update spend` becomes enabled after the mapping change
 - [ ] Click `Update spend`
 - [ ] Total Spend recalculated (old Google Sheets amount replaced, not duplicated)
+- [ ] Confirm the edit updated the same source row; no second Google Sheets spend source was created
 - [ ] Reopen the same Google Sheets source in edit mode and restore the original campaign selection
 - [ ] Confirm `Update spend` becomes disabled again when the edit state matches the saved mapping
 - [ ] Delete still follows the same pattern as other sources
@@ -688,7 +693,7 @@ Checkpoint after Journey 8:
 ### Step 2: Add Revenue
 - [ ] Overview tab → click "+" on Total Revenue card → select **Upload CSV**, **Google Sheets**, or a supported revenue connector
 - [ ] Import $10,000 → Save
-- [ ] Source row / micro copy shows the imported source and $10,000.00
+- [ ] Total Revenue source modal shows the imported source and $10,000.00
 - [ ] **Total Revenue increased** by $10,000
 
 ### Step 3: Verify propagation after imported revenue
@@ -729,6 +734,7 @@ Checkpoint after Journey 8:
 - [ ] Micro copy: "Google Sheets — $X,XXX"
 - [ ] Click edit (pencil) on the Google Sheets revenue source
 - [ ] Confirm `Update revenue` is **disabled** immediately on open before any changes are made
+- [ ] Click `Back`, select a different Google Sheet/tab, click `Next`, and confirm mapping/preview values come from the newly selected tab
 - [ ] Deselect one campaign value while keeping one valid value selected
 - [ ] Confirm `Update revenue` becomes enabled after the mapping change
 - [ ] Click `Update revenue`
@@ -792,15 +798,15 @@ Checkpoint after Journey 8:
 - [ ] Go to the final review step
 - [ ] Confirm `Total Revenue (to date)` refreshes to the new computed amount for the edited deal selection
 - [ ] Save the edit
-- [ ] Confirm the existing Salesforce micro copy/source row is updated in place
-- [ ] Confirm save does **not** create a second additive Salesforce revenue micro copy entry under `Total Revenue`
+- [ ] Confirm the existing Salesforce source row is updated in place
+- [ ] Confirm save does **not** create a second additive Salesforce revenue source entry under `Total Revenue`
 
 ### Step 8: Shopify Revenue (if Shopify connected)
 - [ ] "+" → Shopify → domain + token → campaign field → revenue metric → Save
 
 ### Step 9: Verify all revenue sources active
-- [ ] All shown in micro copy with individual amounts
-- [ ] **Sum of ALL micro copy amounts = Total Revenue card** (exact match)
+- [ ] All shown in the Total Revenue source modal with individual amounts
+- [ ] **Sum of ALL source amounts = Total Revenue card** (exact match)
 - [ ] ROAS/ROI/Profit all reflect cumulative total revenue
 - [ ] **Insights tab**: `Sources used` Revenue line shows the full active revenue source set, not just the first imported source
 
@@ -1001,7 +1007,7 @@ Required reconciliation checks:
 - [ ] CSV with no matching campaigns → 0 rows, $0
 - [ ] Sheets token expired → reconnect message
 - [ ] Edit passes sourceId → no duplicate created
-- [ ] Salesforce revenue edit save passes source identity through to the save path → existing source updates instead of adding a new micro copy row
+- [ ] Salesforce revenue edit save passes source identity through to the save path → existing source updates instead of adding a duplicate source row
 - [ ] Salesforce review totals prefer fresh preview totals over stale stored totals in edit mode
 - [ ] HubSpot with 0 matching deals → $0 (warning shown)
 - [ ] Multiple CRMs → both contribute to total
@@ -1214,7 +1220,7 @@ Use this instead of rerunning the full plan after every small fix:
 8. Notifications created when thresholds breached
 9. All production GA4 spend sources (CSV/Sheets/LinkedIn/Meta/Google Ads) work, and any existing stored Manual spend remains editable/deletable
 10. All production GA4 revenue sources (GA4/CSV/Sheets/HubSpot/Salesforce/Shopify) work, and any existing stored legacy Manual revenue remains editable/deletable
-11. Total Spend = sum of micro copy (exact)
+11. Total Spend = sum of source-modal spend rows (exact)
 12. Total Revenue = GA4 onsite + CRM offsite (no double-counting)
 13. Edit spend/revenue sources → no duplicates. Delete → recalculates.
 14. Edit KPI → target/alert changes reflected on card, progress recalculates, insights update

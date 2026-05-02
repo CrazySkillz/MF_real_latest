@@ -512,6 +512,7 @@ Important current-state note:
 - users must explicitly select a Google Sheets tab before connecting; the connector should not silently use the first sheet/tab by default
 - after a user connects and selects a Google Sheets tab in the spend flow, the modal should load the sheet preview and advance to mapping rather than asking the user to select the same connected tab again
 - when changing/reconnecting a Google Sheets spend tab from an existing saved-sheet chooser, `Back` should return to that chooser rather than exiting to the spend-source picker
+- Google Sheets OAuth placeholder rows with `spreadsheetId='pending'` must not be returned to source choosers as selectable sheet connections
 
 ## Spend Source 5: CSV Journey
 

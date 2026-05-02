@@ -10902,7 +10902,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const purpose = (req.query as any)?.purpose ? String((req.query as any).purpose) : undefined;
-      const connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
+      const connections = (await storage.getGoogleSheetsConnections(campaignId, purpose))
+        .filter((conn: any) => conn && conn.spreadsheetId && conn.spreadsheetId !== 'pending');
 
       // If sheetName isn't persisted in the DB (older schema / failed migrations), the UI falls back to "Tab 1/2/3...".
       // For better UX and troubleshooting, attempt to enrich missing sheetName values from Google Sheets metadata.

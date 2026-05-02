@@ -442,7 +442,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
 
           <Button
             onClick={handleSpreadsheetSelection}
-            disabled={!selectedSpreadsheet || selectedSheetNames.length === 0 || isSelectingSpreadsheet}
+            disabled={!selectedSpreadsheet || (availableSheets.length > 0 && selectedSheetNames.length === 0) || isSelectingSpreadsheet}
             className="w-full"
             size="lg"
           >
@@ -456,7 +456,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                 {selectedSheetNames.length > 0
                   ? `Connect ${selectedSheetNames.length} Sheet${selectedSheetNames.length > 1 ? 's' : ''}`
-                  : 'Select a tab to continue'}
+                  : availableSheets.length > 0 ? 'Select a tab to continue' : 'Use first sheet'}
               </>
             )}
           </Button>

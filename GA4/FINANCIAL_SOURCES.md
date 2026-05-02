@@ -505,6 +505,7 @@ Important current-state note:
 - the connect substate should progress through `Connect Google Sheets`; it should not render a redundant footer `Next` button before a connected sheet/tab is actually being selected
 - the chooser should keep `Reconnect` and `Change sheet/tab` recovery actions but should not expose an in-flow `Remove` action in this Google Sheets spend experience
 - after reconnect, spreadsheet listing should prefer the newest pending OAuth connection so stale older tokens do not block sheet selection
+- if Google does not return tab metadata for a selected spreadsheet, the connector may fall back to the first tab and the continue button should match that fallback instead of requiring an unavailable tab selection
 
 ## Spend Source 5: CSV Journey
 

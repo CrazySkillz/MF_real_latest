@@ -7245,7 +7245,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       const conns = await storage.getGoogleSheetsConnections(campaignId, purpose);
-      let connection: any = conns.find((c: any) => c && c.accessToken) || conns[0];
+      const newestFirst = (Array.isArray(conns) ? conns : [])
+        .filter((c: any) => c && c.accessToken)
+        .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
+      let connection: any = newestFirst.find((c: any) => String(c?.spreadsheetId || "") === "pending") || newestFirst[0] || conns[0];
 
       if (!connection || !connection.accessToken) {
         console.error(`[Google Sheets] No connection found for campaign ${campaignId}`);
@@ -7282,7 +7285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         devLog('🔄 Token expires soon, refreshing before Drive API call...');
         try {
           accessToken = await refreshGoogleSheetsToken(connection);
-          connection = await storage.getGoogleSheetsConnection(campaignId, connection.spreadsheetId); // Get updated connection
+          connection = { ...connection, accessToken };
         } catch (refreshError) {
           console.error('⚠️ Token refresh failed:', refreshError);
           // Continue with existing token, will retry if 401

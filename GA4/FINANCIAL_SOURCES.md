@@ -504,6 +504,7 @@ Important current-state note:
 - if the user selects a campaign identifier column and matching values are available, at least one campaign value must be selected before import
 - the connect substate should progress through `Connect Google Sheets`; it should not render a redundant footer `Next` button before a connected sheet/tab is actually being selected
 - the chooser should keep `Reconnect` and `Change sheet/tab` recovery actions but should not expose an in-flow `Remove` action in this Google Sheets spend experience
+- after reconnect, spreadsheet listing should prefer the newest pending OAuth connection so stale older tokens do not block sheet selection
 
 ## Spend Source 5: CSV Journey
 

@@ -172,6 +172,9 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
         `/api/google-sheets/${spreadsheetId}/sheets?campaignId=${encodeURIComponent(campaignId)}&purpose=${encodeURIComponent(purpose)}`
       );
       const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || "Failed to fetch sheets");
+      }
       
       if (data.success && data.sheets && data.sheets.length > 0) {
         setAvailableSheets(data.sheets);

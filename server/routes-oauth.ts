@@ -10444,9 +10444,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get connection to access token
       const conns = await storage.getGoogleSheetsConnections(String(campaignId), purpose ? String(purpose) : undefined);
-      const connection = conns.find((c: any) => c && c.accessToken) || conns[0];
+      const newestFirst = (Array.isArray(conns) ? conns : [])
+        .filter((c: any) => c && c.accessToken)
+        .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
+      const connection =
+        newestFirst.find((c: any) => String(c?.spreadsheetId || '') === 'pending') ||
+        newestFirst.find((c: any) => String(c?.spreadsheetId || '') === String(spreadsheetId)) ||
+        newestFirst[0] ||
+        conns[0];
       if (!connection || !connection.accessToken) {
         return res.status(404).json({ error: 'No Google Sheets connection found for this campaign' });
+      }
+
+      if ((!connection.clientId || !connection.clientSecret) && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+        await storage.updateGoogleSheetsConnection(connection.id, {
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET
+        });
+        connection.clientId = process.env.GOOGLE_CLIENT_ID;
+        connection.clientSecret = process.env.GOOGLE_CLIENT_SECRET;
       }
 
       // Refresh token if needed
@@ -10459,10 +10475,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch spreadsheet metadata to get sheet names
-      const metadataResponse = await fetch(
+      let metadataResponse = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?includeGridData=false`,
         { headers: { 'Authorization': `Bearer ${accessToken}` } }
       );
+
+      if (metadataResponse.status === 401 && connection.refreshToken) {
+        accessToken = await refreshGoogleSheetsToken(connection);
+        metadataResponse = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?includeGridData=false`,
+          { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        );
+      }
 
       if (!metadataResponse.ok) {
         const errorText = await metadataResponse.text();

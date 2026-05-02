@@ -2050,6 +2050,17 @@ export function AddRevenueWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
                       </Button>
+                      {!showSheetsConnect && sheetsConnections.length > 0 && (
+                        <Button
+                          onClick={async () => {
+                            const ok = await handleSheetsPreview(sheetsConnectionId);
+                            if (ok) setStep("sheets_map");
+                          }}
+                          disabled={!sheetsConnectionId || sheetsProcessing}
+                        >
+                          {sheetsProcessing ? "Loading..." : "Next"}
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

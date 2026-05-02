@@ -2342,9 +2342,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (!resp.ok) {
         const txt = await resp.text();
+        const message = resp.status === 403
+          ? "Access denied. Reconnect Google Sheets or make sure the connected Google account still has access to this spreadsheet."
+          : resp.status === 404
+            ? "Spreadsheet not found. It may have been deleted or moved. Choose a different sheet/tab."
+            : `Failed to fetch sheet: ${txt}`;
         return res.status(resp.status === 401 ? 401 : 400).json({
           success: false,
-          error: `Failed to fetch sheet: ${txt}`,
+          error: message,
           requiresReauthorization: resp.status === 401,
         });
       }
@@ -2464,9 +2469,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (!resp.ok) {
         const txt = await resp.text();
+        const message = resp.status === 403
+          ? "Access denied. Reconnect Google Sheets or make sure the connected Google account still has access to this spreadsheet."
+          : resp.status === 404
+            ? "Spreadsheet not found. It may have been deleted or moved. Choose a different sheet/tab."
+            : `Failed to fetch sheet: ${txt}`;
         return res.status(resp.status === 401 ? 401 : 400).json({
           success: false,
-          error: `Failed to fetch sheet: ${txt}`,
+          error: message,
           requiresReauthorization: resp.status === 401,
         });
       }

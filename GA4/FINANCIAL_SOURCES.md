@@ -510,11 +510,14 @@ Important current-state note:
 - the spend modal should finish checking existing Google Sheets spend connections before mounting the auth component, so users do not see a temporary connect screen before the saved-sheet chooser loads
 - after reconnect, spreadsheet listing should prefer the newest pending OAuth connection so stale older tokens do not block sheet selection
 - users must explicitly select a Google Sheets tab before connecting; the connector should not silently use the first sheet/tab by default
+- Google Sheets tab-loading failures should surface the real error to the user instead of silently turning into a misleading `No tabs found` state
 - after a user connects and selects a Google Sheets tab in the spend flow, the modal should load the sheet preview and advance to mapping rather than asking the user to select the same connected tab again
+- existing saved Google Sheets revenue tabs should expose a `Next` action so users can continue to preview/mapping when the chooser already has a selected tab
 - when changing/reconnecting a Google Sheets spend tab from an existing saved-sheet chooser, `Back` should return to that chooser rather than exiting to the spend-source picker
 - Google Sheets OAuth placeholder rows with `spreadsheetId='pending'` must not be returned to source choosers as selectable sheet connections
 - spreadsheet-tab loading should use the same newest/pending OAuth token selection pattern as spreadsheet listing so reconnects do not list files with one token and try to load tabs with an older token
 - if a saved Google Sheets spend connection's token fails during preview or import, the spend path may self-heal by verifying the same spreadsheet/tab with the newest campaign Google Sheets token and updating the saved connection tokens before asking the user to reconnect
+- Google Sheets spend preview/import should surface clear `403` and `404` recovery messages without auto-deleting the connection or switching sheets
 
 ## Spend Source 5: CSV Journey
 

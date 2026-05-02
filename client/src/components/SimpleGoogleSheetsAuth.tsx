@@ -188,14 +188,14 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
       }
     } catch (error: any) {
       console.error("Failed to fetch sheets:", error);
-      // Don't show error, just set empty sheets - user can still proceed with default
       setAvailableSheets([]);
       selectedSheetNamesRef.current = [];
       setSelectedSheetNames([]);
+      onError(error?.message || "Could not load Google Sheets tabs. Please reconnect Google Sheets and try again.");
     } finally {
       setIsLoadingSheets(false);
     }
-  }, [campaignId]);
+  }, [campaignId, onError, purpose]);
 
   const handleSpreadsheetChange = useCallback((spreadsheetId: string) => {
     autoConnectRanRef.current = false;

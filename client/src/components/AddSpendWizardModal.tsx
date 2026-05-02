@@ -99,6 +99,7 @@ export function AddSpendWizardModal(props: {
   const [selectedSheetConnectionId, setSelectedSheetConnectionId] = useState<string>("");
   const [sheetsPreview, setSheetsPreview] = useState<any>(null);
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
+  const [sheetsConnectionsLoading, setSheetsConnectionsLoading] = useState(false);
   const [isRemovingSheet, setIsRemovingSheet] = useState(false);
 
   // Ad platform state
@@ -345,6 +346,7 @@ export function AddSpendWizardModal(props: {
     if (step !== "sheets_choose" && step !== "sheets_map") return;
     let mounted = true;
     (async () => {
+      setSheetsConnectionsLoading(true);
       try {
         // Only load Spend-purpose connections for this modal (avoid pre-filling from Revenue connections).
         const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections?purpose=spend`, { credentials: "include" });
@@ -355,6 +357,8 @@ export function AddSpendWizardModal(props: {
         setSheetsConnections(conns.filter((c: any) => c && c.isActive !== false));
       } catch {
         // ignore
+      } finally {
+        if (mounted) setSheetsConnectionsLoading(false);
       }
     })();
     return () => { mounted = false; };
@@ -1786,7 +1790,11 @@ export function AddSpendWizardModal(props: {
                     <CardDescription>Choose the Google Sheet tab that contains your spend data.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {sheetsConnections.length === 0 ? (
+                    {sheetsConnectionsLoading ? (
+                      <div className="rounded-lg border border-border bg-muted/40 p-4">
+                        <div className="text-sm text-muted-foreground">Loading your connected Google Sheets...</div>
+                      </div>
+                    ) : sheetsConnections.length === 0 ? (
                       <SimpleGoogleSheetsAuth
                         campaignId={props.campaignId}
                         selectionMode="append"

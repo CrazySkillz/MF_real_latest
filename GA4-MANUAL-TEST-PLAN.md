@@ -94,6 +94,7 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Reports: custom-report PDF major section order is `Overview -> KPIs -> Benchmarks -> Ad Comparison -> Insights`
 - Reports: custom-report subsection selection is respected and unchecked subsections are excluded
 - Connected source rows: edit/delete still recompute totals correctly
+- Source import security: CSV/Sheets preview and process routes only work for campaigns the signed-in user can access
 - Notifications: `View KPI` and `View Benchmark` open the correct GA4 tab and exact card, including when already on the same campaign page
 - Bell: clicking a KPI or Benchmark alert opens the correct GA4 tab and exact card, including when already on the same campaign page
 - Notifications: page filter uses `Client`, not `Campaign`

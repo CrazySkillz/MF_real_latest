@@ -146,6 +146,7 @@ Recent lesson:
 - for wizard-selection bugs, also prove that the selection list endpoint uses the same eligibility rules as the save/materialization path; do not let Crosswalk expose values that the confirmed save path will later exclude
 - for Salesforce OAuth durability bugs, prove whether the callback actually received `refresh_token`, what `scope` Salesforce returned, and whether an existing stored refresh token was available to preserve before changing reconnect or status logic
 - if diagnostics show `scope: 'api'` with no returned `refresh_token`, stop app-side guessing and fix the Salesforce Connected App OAuth scopes/policies first
+- for source-import preview/process routes, verify campaign access before returning preview data or mutating source records; this is part of the GA4 template for future integrations such as LinkedIn, Meta, and Google Ads
 
 Do not batch many unrelated fixes together.
 

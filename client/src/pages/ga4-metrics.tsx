@@ -2704,7 +2704,7 @@ export default function GA4Metrics() {
 
       if (includeOverviewCampaignBreakdown) addSimpleTable(
         "Campaign Breakdown",
-        ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "GA4 REVENUE"],
+        ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "REVENUE"],
         (Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : []).slice(0, 15).map((c: any) => [
           String(c?.name || "(not set)"),
           fN(Number(c?.sessions || 0)),
@@ -5348,7 +5348,7 @@ export default function GA4Metrics() {
                                       </th>
                                       <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
                                       <th className="text-right font-medium px-2 py-2 w-[100px]">Conv. Rate</th>
-                                      <th className="text-right font-medium px-2 py-2 w-[110px] whitespace-nowrap">GA4 Revenue</th>
+                                      <th className="text-right font-medium px-2 py-2 w-[110px] whitespace-nowrap">Revenue</th>
                                     </tr>
                                   </thead>
                                   <tbody>

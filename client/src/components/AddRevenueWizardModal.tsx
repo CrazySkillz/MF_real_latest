@@ -1608,11 +1608,8 @@ export function AddRevenueWizardModal(props: {
                       </div>
                     </div>
                     {isEditing && (
-                      <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 p-3 text-sm text-amber-900 dark:text-amber-100">
-                        {initialSource?.displayName && (
-                          <p className="font-medium mb-1">Previously uploaded: {initialSource.displayName}</p>
-                        )}
-                        <p className="text-xs">Select the file below to update. Your previous column mapping will be reused automatically.</p>
+                      <div className="text-xs text-muted-foreground/70">
+                        To edit a CSV import, please re-upload the same (or updated) file. We'll re-process revenue using your updated mappings after preview.
                       </div>
                     )}
 

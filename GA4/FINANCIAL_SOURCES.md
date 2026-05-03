@@ -359,6 +359,7 @@ Important meaning:
 - if only campaign-value selection changes, CSV revenue should recalculate without forcing a re-upload
 - if structural mappings change, such as revenue column, conversion value column, campaign column, or value-source mode, re-upload is still required
 - `Update revenue` should remain disabled until a meaningful edit is made
+- CSV revenue preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
 
 ## Revenue Source 6: Existing Stored Manual Revenue
 
@@ -545,6 +546,7 @@ Important meaning:
 - CSV spend edit should preserve full preview metadata for reopening the source, while processing can still store normalized spend/campaign rows for recalculation
 - once a CSV spend source has been imported with the persisted edit payload, edit mode can recalculate from the stored imported dataset when the user changes only campaign-value selection
 - if the user changes mapped columns or the original stored dataset is not available, re-upload is still required
+- CSV spend preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
 
 ## Spend Source 6: Existing Stored Manual Spend
 
@@ -607,6 +609,13 @@ The required pattern is:
 - if the user selects a campaign identifier column and one or more campaign values, only matching rows should contribute to this campaign
 - if a campaign identifier column is selected and matching values are available, import should be blocked until at least one campaign value is chosen
 - if the user does not apply that filter, the imported source is treated as wholly belonging to this campaign
+
+### Import Endpoint Security Template
+
+- every source-import preview endpoint must verify that the signed-in user can access the target campaign before returning headers, sample rows, campaign values, or source metadata
+- every source-import process/save endpoint must verify that same campaign access before creating or updating source definitions and before materializing revenue or spend records
+- this applies to CSV, Google Sheets, and future connector-style import previews such as LinkedIn, Meta, Google Ads, or other integrations that use the GA4 source pattern as a template
+- access checks are required even when the endpoint only previews uploaded data, because preview output can expose campaign-scoped source configuration and can lead into source mutation
 
 ### Refreshable Vs Snapshot Behavior
 

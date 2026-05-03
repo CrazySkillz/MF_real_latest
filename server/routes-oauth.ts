@@ -3086,7 +3086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/spend/csv/preview", importRateLimiter, uploadCsv.single("file"), async (req, res) => {
+  app.post("/api/campaigns/:id/spend/csv/preview", importRateLimiter, requireCampaignAccessParamId, uploadCsv.single("file"), async (req, res) => {
     try {
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
       const file = (req as any).file as any;
@@ -3112,7 +3112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/spend/csv/process", importRateLimiter, uploadCsv.single("file"), async (req, res) => {
+  app.post("/api/campaigns/:id/spend/csv/process", importRateLimiter, requireCampaignAccessParamId, uploadCsv.single("file"), async (req, res) => {
     try {
       const campaignId = req.params.id;
       const mapping = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;

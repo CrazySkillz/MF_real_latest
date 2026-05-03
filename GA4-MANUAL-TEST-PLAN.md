@@ -598,6 +598,7 @@ Checkpoint after Journey 7:
 ### Step 2: Add CSV Spend
 - [ ] Overview tab → click "+" on Total Spend card → select **CSV**
 - [ ] Upload a CSV file with spend data → preview → map Spend column → Import
+- [ ] Confirm the mapping screen shows `Spend` as a dropdown field directly, with no `Columns`, `Edit columns`, or `Campaign mapping` heading
 - [ ] Toast: "Imported {N} row(s), total USD {amount}"
 - [ ] Micro copy: "filename.csv — $X,XXX"
 - [ ] **Total Spend increased** by the CSV amount
@@ -1116,12 +1117,17 @@ Required reconciliation checks:
 - [ ] Wait for Google Ads scheduler to run → verify spend updated
 
 ### Google Sheets — Spend (real connection)
-- [ ] Create a Google Sheet with columns: Date, Spend, Campaign
-- [ ] Add some rows with known values (e.g., 5 rows totaling $5,000)
-- [ ] Connect the sheet as a spend source → verify $5,000 imported
-- [ ] **Add more rows to the spreadsheet** (e.g., add $1,000 more)
-- [ ] Wait for Sheets scheduler to run (or reconnect/re-import)
-- [ ] Verify spend updated to $6,000
+- [ ] Create a Google Sheet with columns: `Date`, `Campaign Name`, `Spend`
+- [ ] Add known rows for the campaign value being tested, for example `yesop_brand_search` rows totaling `$240`
+- [ ] Connect the sheet as a spend source and map `Spend = Spend`, `Date column = Date`, `Campaign identifier = Campaign Name`, `Campaign value(s) = yesop_brand_search`
+- [ ] Import spend and verify `Total Spend = $240`
+- [ ] Add a new matching row to the same sheet, for example `2026-01-04, yesop_brand_search, 300`
+- [ ] Temporarily set `AUTO_REFRESH_RUN_ON_STARTUP=true` in Render and redeploy/restart
+- [ ] Wait for the Auto Refresh run to complete, then refresh the GA4 Overview page
+- [ ] Verify `Total Spend = $540`
+- [ ] Verify the source was updated/replaced, not duplicated
+- [ ] Remove `AUTO_REFRESH_RUN_ON_STARTUP=true` after validation
+- [ ] Do not use `GA4_DAILY_REFRESH_INTERVAL_HOURS=0.05` for this test; that flag controls the GA4 daily metrics scheduler, not Google Sheets spend auto-refresh
 
 ### Google Sheets — Revenue (real connection)
 - [ ] Create a Google Sheet with columns: Date, Revenue, Campaign

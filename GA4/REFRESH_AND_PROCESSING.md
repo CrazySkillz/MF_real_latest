@@ -94,6 +94,16 @@ Current eligible sources include:
 - Meta spend through `ad_platforms`
 - Google Ads spend through `ad_platforms`
 
+Google Sheets spend auto-refresh rule:
+
+- Google Sheets spend is refreshed by the external value auto-refresh scheduler, not by `GA4_DAILY_REFRESH_INTERVAL_HOURS`
+- `GA4_DAILY_REFRESH_INTERVAL_HOURS` controls the GA4 daily metrics pipeline and is not a valid fast test for Google Sheets spend
+- to validate Google Sheets spend auto-refresh quickly in a deployed environment, temporarily set `AUTO_REFRESH_RUN_ON_STARTUP=true`, redeploy/restart, wait for the auto-refresh run to complete, then remove that flag after the test
+- production should not keep `AUTO_REFRESH_RUN_ON_STARTUP=true`; the normal scheduler runs on its daily schedule
+- on refresh, the saved Google Sheets spend source is reprocessed from the current sheet rows and replaces the previous stored amount for that source
+- if a `Date` column is mapped, daily spend records are materialized from the dated rows; adding a new matching dated row should increase `Total Spend` by that row's spend amount after refresh
+- if a campaign identifier/value filter is mapped, only rows matching the saved campaign value set should be included
+
 CRM auto-reprocess rule:
 
 - saved HubSpot and Salesforce mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard

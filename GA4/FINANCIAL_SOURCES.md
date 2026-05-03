@@ -501,6 +501,9 @@ Important current-state note:
 
 - the visible spend flow is a preview + mapping + import workflow
 - Google Sheets spend can materialize daily records when a date column is mapped; if no date column is selected, it remains a spend-to-date snapshot-style source
+- Google Sheets spend auto-refresh re-reads the saved sheet/tab and replaces the stored Google Sheets spend source amount from the latest matching sheet rows; it must not create a duplicate source or add the refreshed value on top of the old value
+- if a campaign identifier and campaign values are mapped, auto-refresh includes only rows matching those selected campaign values
+- the date column controls daily spend history; auto-refresh still sums all matching rows for `Total Spend`, while latest-day style views use dated records
 - Google Sheets spend is eligible for scheduled auto-refresh after setup
 - editing an existing Google Sheets spend source should open from the saved mapping without auto-running a live sheet preview; saved spend/date/campaign columns and selected campaign values should remain visible without reconnecting, and new/updated mappings should preserve lightweight preview metadata so full column/value choices can repopulate in edit mode
 - if the user selects a campaign identifier column and matching values are available, at least one campaign value must be selected before import
@@ -542,6 +545,8 @@ Important meaning:
 
 - CSV spend is a structured import workflow, not a file attachment
 - the visible flow behaves like a spend-to-date snapshot import
+- the CSV spend mapping screen should show `Spend` as a direct dropdown field; it should not require an `Edit columns` sub-action to change the spend column
+- the CSV spend mapping screen should not show extra section headings named `Columns` or `Campaign mapping`; the visible controls are the spend dropdown, optional campaign identifier/value controls, preview table, and action buttons
 - CSV spend does not auto-refresh on a schedule
 - CSV spend preview should show all uploaded columns in the preview table, not only mapped processing columns
 - CSV spend edit should expose `Back` from mapping to upload so the user can replace the CSV file before previewing again

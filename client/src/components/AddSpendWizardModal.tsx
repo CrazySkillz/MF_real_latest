@@ -86,7 +86,6 @@ export function AddSpendWizardModal(props: {
 
   const [spendColumn, setSpendColumn] = useState<string>("");
   const [spendDateColumn, setSpendDateColumn] = useState<string>("");
-  const [showColumnMapping, setShowColumnMapping] = useState(false);
 
   const [campaignKeyColumn, setCampaignKeyColumn] = useState<string>("");
   const [campaignKeyValues, setCampaignKeyValues] = useState<string[]>([]);
@@ -174,7 +173,6 @@ export function AddSpendWizardModal(props: {
       setIsProcessing(false);
       setSpendColumn("");
       setSpendDateColumn("");
-      setShowColumnMapping(false);
       setCampaignKeyColumn("");
       setCampaignKeyValues([]);
       setCampaignKeySearch("");
@@ -2192,55 +2190,22 @@ export function AddSpendWizardModal(props: {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {step === "sheets_map" ? (
-                          <div className="space-y-2">
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label className="font-normal">Spend</Label>
-                                <Select value={spendColumn} onValueChange={setSpendColumn}>
-                                  <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
-                                  <SelectContent className="z-[10000]">
-                                    {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                                <p className="text-xs text-muted-foreground/70">
-                                  Spend values will be imported from this column
-                                </p>
-                              </div>
+                        <div className="space-y-2">
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label className="font-normal">Spend</Label>
+                              <Select value={spendColumn} onValueChange={setSpendColumn}>
+                                <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
+                                <SelectContent className="z-[10000]">
+                                  {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground/70">
+                                Spend values will be imported from this column
+                              </p>
                             </div>
                           </div>
-                        ) : (
-                          <>
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="space-y-1">
-                                <div className="text-sm font-medium">Columns</div>
-                                <div className="text-sm text-foreground/80/60">
-                                  Spend: <span className="font-medium">{spendColumn || "—"}</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground/70">
-                                  Spend values will be imported from this column
-                                </p>
-                              </div>
-                              <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
-                                {showColumnMapping ? "Hide" : "Edit"} columns
-                              </Button>
-                            </div>
-
-                            {showColumnMapping && (
-                              <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
-                                <div className="space-y-2">
-                                  <Label>Spend column</Label>
-                                  <Select value={spendColumn} onValueChange={setSpendColumn}>
-                                    <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
-                                    <SelectContent className="z-[10000]">
-                                      {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
+                        </div>
                         {step === "sheets_map" && (
                           <div className="pt-2 border-t space-y-2">
                             <Label className="font-normal">Date column (recommended for daily tracking)</Label>
@@ -2263,11 +2228,6 @@ export function AddSpendWizardModal(props: {
                         )}
 
                         <div className="pt-2 border-t space-y-3">
-                          {step !== "sheets_map" && (
-                            <div className="space-y-1">
-                              <div className="text-sm font-medium">Campaign mapping</div>
-                            </div>
-                          )}
 
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">

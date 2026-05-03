@@ -2283,7 +2283,7 @@ export function AddSpendWizardModal(props: {
 
                     {previewRows.length > 0 && (
                       <div className="rounded-md border overflow-hidden p-3">
-                        <div className="text-sm font-medium mb-3">Preview (first {Math.min(previewRows.length, 5)} rows)</div>
+                        <div className="text-sm font-medium mb-3">Preview</div>
                         <div className="overflow-auto">
                           <table className="w-full text-sm">
                             <thead>

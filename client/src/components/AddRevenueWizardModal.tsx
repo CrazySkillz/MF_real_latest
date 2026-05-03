@@ -1823,7 +1823,7 @@ export function AddRevenueWizardModal(props: {
                         </div>
 
                         <div className="rounded-md border overflow-hidden p-3">
-                          <div className="text-sm font-medium mb-3">Preview (first {Math.min(filteredCsvPreviewRows.length, 5)} rows)</div>
+                          <div className="text-sm font-medium mb-3">Preview</div>
                           <div className="overflow-auto">
                             <table className="w-full text-sm">
                               <thead>
@@ -2219,16 +2219,10 @@ export function AddRevenueWizardModal(props: {
                         )}
 
 
-                        <div className="flex items-center">
-                          <div className="text-xs text-muted-foreground/70">
-                            Rows detected: <span className="font-medium">{sheetsPreview.rowCount.toLocaleString()}</span>
-                          </div>
-                        </div>
-
                         {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">
                           <div className="px-3 py-2 text-xs font-medium text-foreground/80/60 bg-muted/40 border-b">
-                            Preview (first {Math.min(5, filteredSheetsPreviewRows.length)} row{Math.min(5, filteredSheetsPreviewRows.length) === 1 ? "" : "s"})
+                            Preview
                           </div>
                           <div className="overflow-auto">
                             <table className="w-full text-sm table-fixed">

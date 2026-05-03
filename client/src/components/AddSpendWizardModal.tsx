@@ -2194,7 +2194,6 @@ export function AddSpendWizardModal(props: {
                       <div className="space-y-4">
                         {step === "sheets_map" ? (
                           <div className="space-y-2">
-                            <div className="text-sm font-medium">Columns</div>
                             <div className="grid gap-4 md:grid-cols-2">
                               <div className="space-y-2">
                                 <Label className="font-normal">Spend</Label>
@@ -2264,9 +2263,11 @@ export function AddSpendWizardModal(props: {
                         )}
 
                         <div className="pt-2 border-t space-y-3">
-                          <div className="space-y-1">
-                            <div className="text-sm font-medium">Campaign mapping</div>
-                          </div>
+                          {step !== "sheets_map" && (
+                            <div className="space-y-1">
+                              <div className="text-sm font-medium">Campaign mapping</div>
+                            </div>
+                          )}
 
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">

@@ -1124,6 +1124,7 @@ export function AddRevenueWizardModal(props: {
       const headers: string[] = Array.isArray(json.headers) ? json.headers : [];
       const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";
       const guessCv = headers.find((h) => /conversion.?value|value.?per.?conversion|aov|order.?value/i.test(h)) || "";
+      const guessDate = headers.find((h) => /^date$/i.test(h.trim()) || /(^|[_\s-])date($|[_\s-])/i.test(h)) || "";
       const preserve = !!opts?.preserveExisting;
       if (!preserve) {
         if (platformContext !== 'linkedin') {
@@ -1138,6 +1139,7 @@ export function AddRevenueWizardModal(props: {
             setSheetsConversionValueCol("");
           }
         }
+        setSheetsDateCol(guessDate);
         setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
         setSheetsCampaignValues([]);
         setSheetsCampaignQuery("");
@@ -1152,6 +1154,7 @@ export function AddRevenueWizardModal(props: {
             if (!sheetsRevenueCol) setSheetsRevenueCol(guess);
           }
         }
+        if (!sheetsDateCol) setSheetsDateCol(guessDate);
         if (!sheetsCampaignCol) setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
       }
       return true;
@@ -2216,19 +2219,16 @@ export function AddRevenueWizardModal(props: {
                         )}
 
 
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center">
                           <div className="text-xs text-muted-foreground/70">
                             Rows detected: <span className="font-medium">{sheetsPreview.rowCount.toLocaleString()}</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground/70">
-                            Mode: <span className="font-medium">{sheetsDateCol ? "Daily history" : "Snapshot"}</span>
                           </div>
                         </div>
 
                         {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">
                           <div className="px-3 py-2 text-xs font-medium text-foreground/80/60 bg-muted/40 border-b">
-                            Preview (first {Math.min(8, filteredSheetsPreviewRows.length)} row{Math.min(8, filteredSheetsPreviewRows.length) === 1 ? "" : "s"})
+                            Preview (first {Math.min(5, filteredSheetsPreviewRows.length)} row{Math.min(5, filteredSheetsPreviewRows.length) === 1 ? "" : "s"})
                           </div>
                           <div className="overflow-auto">
                             <table className="w-full text-sm table-fixed">
@@ -2242,7 +2242,7 @@ export function AddRevenueWizardModal(props: {
                                 </tr>
                               </thead>
                               <tbody>
-                                {(filteredSheetsPreviewRows || []).slice(0, 8).map((row, idx) => (
+                                {(filteredSheetsPreviewRows || []).slice(0, 5).map((row, idx) => (
                                   <tr key={idx} className="border-b last:border-b-0">
                                     {(sheetsPreview.headers || []).slice(0, 8).map((h) => (
                                       <td key={h} className="p-2 text-xs text-foreground/80 dark:text-slate-200 truncate">

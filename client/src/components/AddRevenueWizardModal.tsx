@@ -174,6 +174,7 @@ export function AddRevenueWizardModal(props: {
   const [csvCampaignValues, setCsvCampaignValues] = useState<string[]>([]);
   const [csvProcessing, setCsvProcessing] = useState(false);
   const [csvPreviewing, setCsvPreviewing] = useState(false);
+  const [showCsvColumnMapping, setShowCsvColumnMapping] = useState(false);
   const [csvPrefill, setCsvPrefill] = useState<null | {
     displayName?: string;
     revenueColumn?: string;
@@ -395,6 +396,7 @@ export function AddRevenueWizardModal(props: {
     setCsvCampaignValues([]);
     setCsvProcessing(false);
     setCsvPreviewing(false);
+    setShowCsvColumnMapping(false);
     setCsvPrefill(null);
     setCsvValueSource('revenue');
     setSheetsConnectionId("");
@@ -1269,7 +1271,7 @@ export function AddRevenueWizardModal(props: {
   const title = step === "select" ? "Add revenue source" :
     step === "manual" ? (isEditing ? "Edit manual revenue" : "Manual revenue") :
       step === "csv" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
-        step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
+        step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Map CSV columns") :
           step === "sheets_choose" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
             step === "sheets_map" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
               step === "hubspot" ? "HubSpot revenue" :
@@ -1715,188 +1717,153 @@ export function AddRevenueWizardModal(props: {
                       </div>
                     ) : (
                       <>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="flex items-start justify-between gap-4">
                           <div className="space-y-1">
-                            <Label>Campaign column</Label>
-                            <Select
-                              value={csvCampaignCol || ""}
-                              onValueChange={(v) => {
-                                setCsvCampaignCol(v);
-                                setCsvCampaignValues([]);
-                                setCsvCampaignQuery("");
-                              }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select campaign column" />
-                              </SelectTrigger>
-                              <SelectContent className="z-[10000]">
-                                {csvHeaders.map((h) => (
-                                  <SelectItem key={h} value={h}>
-                                    {h}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <div className="text-sm font-medium">Columns</div>
+                            <div className="text-sm text-foreground/80/60">
+                              Revenue: <span className="font-medium">{csvRevenueCol || "�"}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground/70">
+                              Revenue values will be imported from this column
+                            </p>
                           </div>
+                          <Button type="button" variant="outline" onClick={() => setShowCsvColumnMapping((v) => !v)}>
+                            {showCsvColumnMapping ? "Hide" : "Edit"} columns
+                          </Button>
+                        </div>
 
-                          <div className="space-y-1">
-                            <Label>
-                              {platformContext === 'linkedin'
-                                ? (csvValueSource === 'conversion_value' ? 'Revenue column (disabled)' : 'Revenue column')
-                                : 'Revenue column'}
-                            </Label>
-                            <Select
-                              value={(csvRevenueCol || (platformContext === 'linkedin' ? SELECT_NONE : '')) as any}
-                              onValueChange={(v) => setCsvRevenueCol(v === SELECT_NONE ? "" : v)}
-                              disabled={platformContext === 'linkedin' && csvValueSource === 'conversion_value'}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={platformContext === 'linkedin' && csvValueSource === 'conversion_value' ? 'Disabled' : (platformContext === 'linkedin' ? 'Select revenue column' : 'Select revenue column')} />
-                              </SelectTrigger>
-                              <SelectContent className="z-[10000]">
-                                {platformContext === 'linkedin' && <SelectItem value={SELECT_NONE}>None</SelectItem>}
-                                {csvHeaders.map((h) => (
-                                  <SelectItem key={h} value={h}>
-                                    {h}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {platformContext === 'linkedin' && (
-                            <div className="space-y-1">
-                              <Label>{csvValueSource === 'revenue' ? 'Conversion value column (disabled)' : 'Conversion value column'}</Label>
+                        {showCsvColumnMapping && (
+                          <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
+                            <div className="space-y-2">
+                              <Label>Revenue column</Label>
                               <Select
-                                value={(csvConversionValueCol || SELECT_NONE) as any}
-                                onValueChange={(v) => setCsvConversionValueCol(v === SELECT_NONE ? "" : v)}
-                                disabled={csvValueSource === 'revenue'}
+                                value={(csvRevenueCol || (platformContext === 'linkedin' ? SELECT_NONE : '')) as any}
+                                onValueChange={(v) => setCsvRevenueCol(v === SELECT_NONE ? "" : v)}
+                                disabled={platformContext === 'linkedin' && csvValueSource === 'conversion_value'}
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder={csvValueSource === 'revenue' ? 'Disabled' : 'Select conversion value column'} />
+                                  <SelectValue placeholder="Select revenue column" />
                                 </SelectTrigger>
                                 <SelectContent className="z-[10000]">
-                                  <SelectItem value={SELECT_NONE}>None</SelectItem>
+                                  {platformContext === 'linkedin' && <SelectItem value={SELECT_NONE}>None</SelectItem>}
                                   {csvHeaders.map((h) => (
-                                    <SelectItem key={h} value={h}>
-                                      {h}
-                                    </SelectItem>
+                                    <SelectItem key={h} value={h}>{h}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </div>
-                          )}
-                        </div>
 
-                        {false && (<>
-                          <Label>Date column (recommended for daily tracking)</Label>
-                          <Select value={csvDateCol || SELECT_NONE} onValueChange={(v) => setCsvDateCol(v === SELECT_NONE ? "" : v)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="None — all rows summed into one total" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[10000]">
-                              <SelectItem value={SELECT_NONE}>None — all rows summed into one total</SelectItem>
-                              {csvHeaders.map((h) => (
-                                <SelectItem key={h} value={h}>{h}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground/70">
-                            Select a date column for daily revenue tracking. If you leave this blank, the CSV will behave like a static revenue snapshot rather than daily history.
-                          </p>
-                        </>)}
-
-                        {platformContext === 'linkedin' && (
-                          <div className="text-xs text-muted-foreground/70">
-                            Mode: <span className="font-medium">{csvValueSource === 'conversion_value' ? 'Conversion Value' : 'Total Revenue'}</span>
+                            {platformContext === 'linkedin' && (
+                              <div className="space-y-2">
+                                <Label>{csvValueSource === 'revenue' ? 'Conversion value column (disabled)' : 'Conversion value column'}</Label>
+                                <Select
+                                  value={(csvConversionValueCol || SELECT_NONE) as any}
+                                  onValueChange={(v) => setCsvConversionValueCol(v === SELECT_NONE ? "" : v)}
+                                  disabled={csvValueSource === 'revenue'}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={csvValueSource === 'revenue' ? 'Disabled' : 'Select conversion value column'} />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-[10000]">
+                                    <SelectItem value={SELECT_NONE}>None</SelectItem>
+                                    {csvHeaders.map((h) => (
+                                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                           </div>
                         )}
 
-                        {csvCampaignCol ? (
-                          <div className="rounded-md border p-3 space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="text-sm font-medium">Campaign value(s)</div>
-                              <div className="text-xs text-muted-foreground/70">
-                                Selected: <span className="font-medium">{csvCampaignValues.length}</span>
+                        <div className="pt-2 border-t space-y-3">
+                          <div className="text-sm font-medium">Campaign mapping</div>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label className="font-normal">Campaign identifier</Label>
+                              <Select
+                                value={csvCampaignCol || SELECT_NONE}
+                                onValueChange={(v) => {
+                                  setCsvCampaignCol(v === SELECT_NONE ? "" : v);
+                                  setCsvCampaignValues([]);
+                                  setCsvCampaignQuery("");
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Search values..." />
+                                </SelectTrigger>
+                                <SelectContent className="z-[10000]">
+                                  <SelectItem value={SELECT_NONE}>Search values...</SelectItem>
+                                  {csvHeaders.map((h) => (
+                                    <SelectItem key={h} value={h}>{h}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label className="font-normal">Campaign value(s)</Label>
+                              <Input
+                                value={csvCampaignQuery}
+                                onChange={(e) => setCsvCampaignQuery(e.target.value)}
+                                placeholder="Search values..."
+                                disabled={!csvCampaignCol}
+                              />
+                              <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
+                                {!csvCampaignCol ? (
+                                  <div className="text-xs text-muted-foreground/70">Upload/preview data to see campaign values.</div>
+                                ) : uniqueValuesFromPreview(csvPreview, csvCampaignCol).length === 0 ? (
+                                  <div className="text-xs text-muted-foreground/70">No values found in the preview.</div>
+                                ) : (
+                                  uniqueValuesFromPreview(csvPreview, csvCampaignCol)
+                                    .filter((v) => v.toLowerCase().includes(csvCampaignQuery.toLowerCase()))
+                                    .slice(0, 300)
+                                    .map((v) => (
+                                      <div key={v} className="flex items-start gap-2">
+                                        <Checkbox
+                                          checked={csvCampaignValues.includes(v)}
+                                          onCheckedChange={(checked) => {
+                                            const next = Boolean(checked);
+                                            setCsvCampaignValues((prev) => {
+                                              if (next) return prev.includes(v) ? prev : [...prev, v];
+                                              return prev.filter((x) => x !== v);
+                                            });
+                                          }}
+                                        />
+                                        <div className="text-sm text-foreground/80/60">{v}</div>
+                                      </div>
+                                    ))
+                                )}
                               </div>
                             </div>
-                            <Input value={csvCampaignQuery} onChange={(e) => setCsvCampaignQuery(e.target.value)} placeholder="Search values…" />
-                            <div className="max-h-[220px] overflow-y-auto space-y-2">
-                              {uniqueValuesFromPreview(csvPreview, csvCampaignCol)
-                                .filter((v) => v.toLowerCase().includes(csvCampaignQuery.toLowerCase()))
-                                .slice(0, 300)
-                                .map((v) => {
-                                  const checked = csvCampaignValues.includes(v);
-                                  return (
-                                    <label key={v} className="flex items-center gap-2 text-sm">
-                                      <Checkbox
-                                        checked={checked}
-                                        onCheckedChange={(next) => {
-                                          const isOn = !!next;
-                                          setCsvCampaignValues((prev) => {
-                                            if (isOn) return prev.includes(v) ? prev : [...prev, v];
-                                            return prev.filter((x) => x !== v);
-                                          });
-                                        }}
-                                      />
-                                      <span className="truncate">{v}</span>
-                                    </label>
-                                  );
-                                })}
-                              {uniqueValuesFromPreview(csvPreview, csvCampaignCol).length === 0 && (
-                                <div className="text-sm text-muted-foreground/70">No campaign values found in sample rows.</div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground/70">Select a campaign column to choose campaign values.</div>
-                        )}
-
-                        <div className="hidden">
-                          <div>
-                            Mode: <span className="font-medium">{csvDateCol ? "Daily history" : "Snapshot"}</span>
-                          </div>
-                          <div>
-                            Update model: <span className="font-medium">Manual re-upload only</span>
                           </div>
                         </div>
 
-                        {/* Preview table */}
-                        <div className="rounded-md border overflow-hidden">
-                          <div className="px-3 py-2 text-xs font-medium text-foreground/80/60 bg-muted/40 border-b">
-                            Preview (first {Math.min(8, filteredCsvPreviewRows.length)} row{Math.min(8, filteredCsvPreviewRows.length) === 1 ? "" : "s"})
-                          </div>
+                        <div className="rounded-md border overflow-hidden p-3">
+                          <div className="text-sm font-medium mb-3">Preview (first {Math.min(filteredCsvPreviewRows.length, 5)} rows)</div>
                           <div className="overflow-auto">
-                            <table className="w-full text-sm table-fixed">
-                              <thead className="bg-card">
-                                <tr>
-                                  {(csvPreview.headers || []).slice(0, 8).map((h) => (
-                                    <th key={h} className="text-left p-2 border-b text-xs font-medium text-muted-foreground/70 truncate">
-                                      {h}
-                                    </th>
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b">
+                                  {(csvPreview.headers || []).map((h) => (
+                                    <th key={h} className="text-left py-2 pr-4 font-medium">{h}</th>
                                   ))}
                                 </tr>
                               </thead>
                               <tbody>
-                                {(filteredCsvPreviewRows || []).slice(0, 8).map((row, idx) => (
+                                {(filteredCsvPreviewRows || []).slice(0, 5).map((row, idx) => (
                                   <tr key={idx} className="border-b last:border-b-0">
-                                    {(csvPreview.headers || []).slice(0, 8).map((h) => (
-                                      <td key={h} className="p-2 text-xs text-foreground/80 dark:text-slate-200 truncate">
-                                        {String((row as any)?.[h] ?? "")}
-                                      </td>
+                                    {(csvPreview.headers || []).map((h) => (
+                                      <td key={h} className="py-2 pr-4 text-foreground/80/60">{String((row as any)?.[h] ?? "")}</td>
                                     ))}
                                   </tr>
                                 ))}
-                                {(filteredCsvPreviewRows || []).length === 0 && (
-                                  <tr>
-                                    <td className="p-3 text-sm text-muted-foreground/70" colSpan={8}>
-                                      No rows match the current filter.
-                                    </td>
-                                  </tr>
-                                )}
                               </tbody>
                             </table>
                           </div>
+                          <p className="text-xs text-muted-foreground/70 mt-2">
+                            Processing will automatically sum revenue
+                          </p>
                         </div>
                       </>
                     )}
@@ -1905,24 +1872,23 @@ export function AddRevenueWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
                       </Button>
-      <Button
-        onClick={handleCsvProcess}
-        disabled={
-          !csvPreview ||
-          csvProcessing ||
-          requiresCsvCampaignValueSelection ||
-          (isEditing && !hasMeaningfulCsvRevenueEditChanges) ||
-          (isEditing && !csvFile && !canRecalculateCsvRevenueEditWithoutReupload)
-        }
-      >
-                        {csvProcessing ? "Processing…" : isEditing ? "Update revenue" : "Import revenue"}
+                      <Button
+                        onClick={handleCsvProcess}
+                        disabled={
+                          !csvPreview ||
+                          csvProcessing ||
+                          requiresCsvCampaignValueSelection ||
+                          (isEditing && !hasMeaningfulCsvRevenueEditChanges) ||
+                          (isEditing && !csvFile && !canRecalculateCsvRevenueEditWithoutReupload)
+                        }
+                      >
+                        {csvProcessing ? "Processing..." : isEditing ? "Update revenue" : "Import revenue"}
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
               </div>
             )}
-
             {step === "sheets_choose" && (
               <div className="space-y-4">
                 <Card>
@@ -2418,3 +2384,4 @@ export function AddRevenueWizardModal(props: {
     </Dialog>
   );
 }
+

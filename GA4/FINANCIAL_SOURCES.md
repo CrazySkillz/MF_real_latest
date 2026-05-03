@@ -312,18 +312,21 @@ The user journey is:
 3. the user enters the Google Sheets connection chooser step
 4. if no suitable sheet connection exists yet, the user connects a Google Sheet / tab first
 5. once a connection is selected, the user clicks `Next` and the system loads a sheet preview
-6. the user selects the revenue column
-7. the user can optionally select a campaign column and matching campaign value or values
-8. the user can optionally select a date column
-9. the user confirms the mapping and runs the import
-10. the system saves a Google Sheets revenue source with the mapping configuration
-11. the system materializes normalized revenue records from the sheet rows
-12. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
+6. the `Map sheet columns` screen opens
+7. the user selects the `Revenue` column from a direct dropdown
+8. the user can optionally select a date column for daily revenue tracking
+9. the user can optionally select a campaign identifier column and matching campaign value or values
+10. the user confirms the mapping and runs the import
+11. the system saves a Google Sheets revenue source with the mapping configuration
+12. the system materializes normalized revenue records from the sheet rows
+13. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
 
 Important meaning:
 
 - Google Sheets is a connected-sheet preview and mapping workflow
 - the preview step is part of the source-selection journey, not a separate admin flow
+- the visible mapping screen should follow the same pattern as Google Sheets spend: value-column dropdown first, optional date column second, then campaign identifier and campaign value controls
+- the mapping screen title should be `Map sheet columns` in new-source mode
 - if the user selects a date column, the source behaves like daily revenue history
 - if the user does not select a date column, the source behaves like a revenue snapshot / revenue-to-date import
 - the date column supports daily-history behavior; it does not itself create automatic daily syncing

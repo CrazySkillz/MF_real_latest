@@ -726,7 +726,10 @@ Checkpoint after Journey 8:
 - [ ] Delete (trash) → recalculated
 
 ### Step 5: Add Google Sheets Revenue
-- [ ] "+" → Sheets → authenticate → select → map Revenue column
+- [ ] "+" → Sheets → authenticate → select sheet/tab → click `Next`
+- [ ] Confirm the mapping screen title is `Map sheet columns`
+- [ ] Confirm the screen follows the Google Sheets Spend pattern: `Revenue` dropdown first, Date column next, then Campaign identifier and Campaign value(s)
+- [ ] Map the `Revenue` dropdown to the revenue column
 - [ ] Optional: map a Date column only if you want daily revenue history
 - [ ] Confirm the Date column supports daily history / latest-day style calculations but does **not** by itself create automatic daily syncing
 - [ ] Select a campaign column and leave all campaign values unselected

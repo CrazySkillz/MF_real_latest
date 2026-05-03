@@ -174,7 +174,6 @@ export function AddRevenueWizardModal(props: {
   const [csvCampaignValues, setCsvCampaignValues] = useState<string[]>([]);
   const [csvProcessing, setCsvProcessing] = useState(false);
   const [csvPreviewing, setCsvPreviewing] = useState(false);
-  const [showCsvColumnMapping, setShowCsvColumnMapping] = useState(false);
   const [csvPrefill, setCsvPrefill] = useState<null | {
     displayName?: string;
     revenueColumn?: string;
@@ -396,7 +395,6 @@ export function AddRevenueWizardModal(props: {
     setCsvCampaignValues([]);
     setCsvProcessing(false);
     setCsvPreviewing(false);
-    setShowCsvColumnMapping(false);
     setCsvPrefill(null);
     setCsvValueSource('revenue');
     setSheetsConnectionId("");
@@ -1273,7 +1271,7 @@ export function AddRevenueWizardModal(props: {
       step === "csv" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
         step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Map CSV columns") :
           step === "sheets_choose" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
-            step === "sheets_map" ? (isEditing ? "Edit Google Sheets revenue" : "Google Sheets") :
+            step === "sheets_map" ? (isEditing ? "Edit Google Sheets revenue" : "Map sheet columns") :
               step === "hubspot" ? "HubSpot revenue" :
                 step === "salesforce" ? "Salesforce revenue" :
                   step === "shopify" ? "Shopify revenue" :
@@ -1714,67 +1712,52 @@ export function AddRevenueWizardModal(props: {
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-1">
-                            <div className="text-sm font-medium">Columns</div>
-                            <div className="text-sm text-foreground/80/60">
-                              Revenue: <span className="font-medium">{csvRevenueCol || "�"}</span>
-                            </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label className="font-normal">Revenue</Label>
+                            <Select
+                              value={(csvRevenueCol || (platformContext === 'linkedin' ? SELECT_NONE : '')) as any}
+                              onValueChange={(v) => setCsvRevenueCol(v === SELECT_NONE ? "" : v)}
+                              disabled={platformContext === 'linkedin' && csvValueSource === 'conversion_value'}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select revenue column" />
+                              </SelectTrigger>
+                              <SelectContent className="z-[10000]">
+                                {platformContext === 'linkedin' && <SelectItem value={SELECT_NONE}>None</SelectItem>}
+                                {csvHeaders.map((h) => (
+                                  <SelectItem key={h} value={h}>{h}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <p className="text-xs text-muted-foreground/70">
                               Revenue values will be imported from this column
                             </p>
                           </div>
-                          <Button type="button" variant="outline" onClick={() => setShowCsvColumnMapping((v) => !v)}>
-                            {showCsvColumnMapping ? "Hide" : "Edit"} columns
-                          </Button>
-                        </div>
 
-                        {showCsvColumnMapping && (
-                          <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
+                          {platformContext === 'linkedin' && (
                             <div className="space-y-2">
-                              <Label>Revenue column</Label>
+                              <Label className="font-normal">{csvValueSource === 'revenue' ? 'Conversion value column (disabled)' : 'Conversion value column'}</Label>
                               <Select
-                                value={(csvRevenueCol || (platformContext === 'linkedin' ? SELECT_NONE : '')) as any}
-                                onValueChange={(v) => setCsvRevenueCol(v === SELECT_NONE ? "" : v)}
-                                disabled={platformContext === 'linkedin' && csvValueSource === 'conversion_value'}
+                                value={(csvConversionValueCol || SELECT_NONE) as any}
+                                onValueChange={(v) => setCsvConversionValueCol(v === SELECT_NONE ? "" : v)}
+                                disabled={csvValueSource === 'revenue'}
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select revenue column" />
+                                  <SelectValue placeholder={csvValueSource === 'revenue' ? 'Disabled' : 'Select conversion value column'} />
                                 </SelectTrigger>
                                 <SelectContent className="z-[10000]">
-                                  {platformContext === 'linkedin' && <SelectItem value={SELECT_NONE}>None</SelectItem>}
+                                  <SelectItem value={SELECT_NONE}>None</SelectItem>
                                   {csvHeaders.map((h) => (
                                     <SelectItem key={h} value={h}>{h}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </div>
-
-                            {platformContext === 'linkedin' && (
-                              <div className="space-y-2">
-                                <Label>{csvValueSource === 'revenue' ? 'Conversion value column (disabled)' : 'Conversion value column'}</Label>
-                                <Select
-                                  value={(csvConversionValueCol || SELECT_NONE) as any}
-                                  onValueChange={(v) => setCsvConversionValueCol(v === SELECT_NONE ? "" : v)}
-                                  disabled={csvValueSource === 'revenue'}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder={csvValueSource === 'revenue' ? 'Disabled' : 'Select conversion value column'} />
-                                  </SelectTrigger>
-                                  <SelectContent className="z-[10000]">
-                                    <SelectItem value={SELECT_NONE}>None</SelectItem>
-                                    {csvHeaders.map((h) => (
-                                      <SelectItem key={h} value={h}>{h}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                          )}
+                        </div>
 
                         <div className="pt-2 border-t space-y-3">
-                          <div className="text-sm font-medium">Campaign mapping</div>
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                               <Label className="font-normal">Campaign identifier</Label>
@@ -2095,8 +2078,8 @@ export function AddRevenueWizardModal(props: {
                     ) : (
                       <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label>Campaign column (optional)</Label>
+                          <div className="space-y-1 order-3">
+                            <Label className="font-normal">Campaign identifier</Label>
                             <Select
                               value={sheetsCampaignCol || SELECT_NONE}
                               onValueChange={(v) => {
@@ -2117,16 +2100,47 @@ export function AddRevenueWizardModal(props: {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <p className="text-xs text-muted-foreground/70 mt-1">
-                              If your sheet contains multiple campaigns, filter it to the campaign value(s) you want.
-                            </p>
                           </div>
 
-                          <div className="space-y-1">
-                            <Label>
+                          <div className="space-y-1 order-4">
+                            <Label className="font-normal">Campaign value(s)</Label>
+                            <Input value={sheetsCampaignQuery} onChange={(e) => setSheetsCampaignQuery(e.target.value)} placeholder="Search values..." disabled={!sheetsCampaignCol} />
+                            <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
+                              {!sheetsCampaignCol ? (
+                                <div className="text-xs text-muted-foreground/70">Select a campaign identifier to see campaign values.</div>
+                              ) : uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol).length === 0 ? (
+                                <div className="text-xs text-muted-foreground/70">No campaign values found in sample rows.</div>
+                              ) : (
+                                uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol)
+                                  .filter((v) => v.toLowerCase().includes(sheetsCampaignQuery.toLowerCase()))
+                                  .slice(0, 300)
+                                  .map((v) => {
+                                    const checked = sheetsCampaignValues.includes(v);
+                                    return (
+                                      <label key={v} className="flex items-center gap-2 text-sm">
+                                        <Checkbox
+                                          checked={checked}
+                                          onCheckedChange={(next) => {
+                                            const isOn = !!next;
+                                            setSheetsCampaignValues((prev) => {
+                                              if (isOn) return prev.includes(v) ? prev : [...prev, v];
+                                              return prev.filter((x) => x !== v);
+                                            });
+                                          }}
+                                        />
+                                        <span className="truncate">{v}</span>
+                                      </label>
+                                    );
+                                  })
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1 order-1">
+                            <Label className="font-normal">
                               {platformContext === 'linkedin'
                                 ? (sheetsValueSource === 'conversion_value' ? 'Revenue column (disabled)' : 'Revenue column')
-                                : 'Revenue column'}
+                                : 'Revenue'}
                             </Label>
                             <Select
                               value={(sheetsRevenueCol || (platformContext === 'linkedin' ? SELECT_NONE : '')) as any}
@@ -2145,16 +2159,19 @@ export function AddRevenueWizardModal(props: {
                                 ))}
                               </SelectContent>
                             </Select>
+                            <p className="text-xs text-muted-foreground/70 mt-1">
+                              Revenue values will be imported from this column
+                            </p>
                           </div>
 
-                          <div className="space-y-1 md:col-span-2">
-                            <Label>Date column (recommended for daily tracking)</Label>
+                          <div className="space-y-1 md:col-span-2 order-2">
+                            <Label className="font-normal">Date column (recommended for daily tracking)</Label>
                             <Select value={sheetsDateCol || SELECT_NONE} onValueChange={(v) => setSheetsDateCol(v === SELECT_NONE ? "" : v)}>
                               <SelectTrigger>
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                <SelectItem value={SELECT_NONE}>None — import as a revenue snapshot (all rows summed into one total)</SelectItem>
+                                <SelectItem value={SELECT_NONE}>None</SelectItem>
                                 {sheetsHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>{h}</SelectItem>
                                 ))}
@@ -2198,43 +2215,6 @@ export function AddRevenueWizardModal(props: {
                           </div>
                         )}
 
-                        {sheetsCampaignCol && (
-                          <div className="rounded-md border p-3 space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="text-sm font-medium">Campaign value(s)</div>
-                              <div className="text-xs text-muted-foreground/70">
-                                Selected: <span className="font-medium">{sheetsCampaignValues.length}</span>
-                              </div>
-                            </div>
-                            <Input value={sheetsCampaignQuery} onChange={(e) => setSheetsCampaignQuery(e.target.value)} placeholder="Search values…" />
-                            <div className="max-h-[220px] overflow-y-auto space-y-2">
-                              {uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol)
-                                .filter((v) => v.toLowerCase().includes(sheetsCampaignQuery.toLowerCase()))
-                                .slice(0, 300)
-                                .map((v) => {
-                                  const checked = sheetsCampaignValues.includes(v);
-                                  return (
-                                    <label key={v} className="flex items-center gap-2 text-sm">
-                                      <Checkbox
-                                        checked={checked}
-                                        onCheckedChange={(next) => {
-                                          const isOn = !!next;
-                                          setSheetsCampaignValues((prev) => {
-                                            if (isOn) return prev.includes(v) ? prev : [...prev, v];
-                                            return prev.filter((x) => x !== v);
-                                          });
-                                        }}
-                                      />
-                                      <span className="truncate">{v}</span>
-                                    </label>
-                                  );
-                                })}
-                              {uniqueValuesFromPreview(sheetsPreview, sheetsCampaignCol).length === 0 && (
-                                <div className="text-sm text-muted-foreground/70">No campaign values found in sample rows.</div>
-                              )}
-                            </div>
-                          </div>
-                        )}
 
                         <div className="flex items-center justify-between">
                           <div className="text-xs text-muted-foreground/70">

@@ -939,9 +939,9 @@ For each add/edit/delete action above, validate all related revenue surfaces:
 
 - [ ] Overview `Total Revenue` card equals GA4 native revenue plus all active imported revenue sources
 - [ ] Overview revenue source rows/microcopy show the correct source amount and do not duplicate edited sources
-- [ ] Overview `Campaign Breakdown` revenue values include exact campaign-matched imported revenue only when saved source campaign values match GA4 campaign rows
-- [ ] Overview `Landing Pages` revenue values remain GA4-native (`totalRevenue` / fallback `purchaseRevenue`) and do not receive campaign-only imported revenue
-- [ ] Overview `Conversion Events` revenue values remain GA4-native (`totalRevenue` / fallback `purchaseRevenue`) and do not receive campaign-only imported revenue
+- [ ] Overview `Campaign Breakdown` uses the column label `Revenue` and includes exact campaign-matched imported revenue only when saved source campaign values match GA4 campaign rows
+- [ ] Overview `Landing Pages` uses the column label `GA4 Revenue`; values remain GA4-native (`totalRevenue` / fallback `purchaseRevenue`) and do not receive campaign-only imported revenue
+- [ ] Overview `Conversion Events` uses the column label `GA4 Revenue`; values remain GA4-native (`totalRevenue` / fallback `purchaseRevenue`) and do not receive campaign-only imported revenue
 - [ ] Overview top `Users` card remains the deduplicated overall GA4 user total for the selected scope
 - [ ] Overview table `Users` values are treated as row-level directional counts and are not expected to sum or reconcile exactly to the top `Users` card
 - [ ] KPIs tab: Revenue KPI current value matches Overview `Total Revenue`

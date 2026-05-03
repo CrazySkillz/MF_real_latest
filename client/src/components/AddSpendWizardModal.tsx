@@ -85,6 +85,7 @@ export function AddSpendWizardModal(props: {
   const [showSheetsConnect, setShowSheetsConnect] = useState(false);
 
   const [spendColumn, setSpendColumn] = useState<string>("");
+  const [spendDateColumn, setSpendDateColumn] = useState<string>("");
   const [showColumnMapping, setShowColumnMapping] = useState(false);
 
   const [campaignKeyColumn, setCampaignKeyColumn] = useState<string>("");
@@ -172,6 +173,7 @@ export function AddSpendWizardModal(props: {
       setIsCsvPreviewing(false);
       setIsProcessing(false);
       setSpendColumn("");
+      setSpendDateColumn("");
       setShowColumnMapping(false);
       setCampaignKeyColumn("");
       setCampaignKeyValues([]);
@@ -228,6 +230,7 @@ export function AddSpendWizardModal(props: {
 
     const sourceType = String(src?.sourceType || "").toLowerCase();
     const mapSpend = mapping?.spendColumn ? String(mapping.spendColumn) : "";
+    const mapDate = mapping?.dateColumn ? String(mapping.dateColumn) : "";
     const mapCampaignCol = mapping?.campaignColumn ? String(mapping.campaignColumn) : "";
     const mapCampaignVals = Array.isArray(mapping?.campaignValues)
       ? mapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
@@ -236,6 +239,7 @@ export function AddSpendWizardModal(props: {
     if (sourceType === "google_sheets") {
       setStep("sheets_map");
       if (mapSpend) setSpendColumn(mapSpend);
+      if (mapDate) setSpendDateColumn(mapDate);
       if (mapCampaignCol) {
         // Prevent the "campaign column changed" effect from wiping prefilled values.
         suppressCampaignResetRef.current = true;
@@ -375,8 +379,8 @@ export function AddSpendWizardModal(props: {
 
   const savedSheetHeaders = useMemo(() => {
     if (!isEditing || step !== "sheets_map") return [];
-    return Array.from(new Set([spendColumn, campaignKeyColumn].map((v) => String(v || "").trim()).filter(Boolean)));
-  }, [isEditing, step, spendColumn, campaignKeyColumn]);
+    return Array.from(new Set([spendColumn, spendDateColumn, campaignKeyColumn].map((v) => String(v || "").trim()).filter(Boolean)));
+  }, [isEditing, step, spendColumn, spendDateColumn, campaignKeyColumn]);
   const headers = csvPreview?.headers || savedSheetHeaders;
   const sampleRows = csvPreview?.sampleRows || [];
 
@@ -508,6 +512,7 @@ export function AddSpendWizardModal(props: {
     if (!initialMapping) return false;
 
     const initialSpendColumn = String(initialMapping?.spendColumn || "");
+    const initialDateColumn = String(initialMapping?.dateColumn || "");
     const initialCampaignColumn = String(initialMapping?.campaignColumn || "");
     const initialConnectionId = String(initialMapping?.connectionId || "");
     const initialCampaignValues = Array.isArray(initialMapping?.campaignValues)
@@ -519,6 +524,7 @@ export function AddSpendWizardModal(props: {
     const currentConnectionId = String(selectedSheetConnectionId || "");
 
     if (String(spendColumn || "") !== initialSpendColumn) return true;
+    if (String(spendDateColumn || "") !== initialDateColumn) return true;
     if (currentCampaignColumn !== initialCampaignColumn) return true;
     if (currentConnectionId !== initialConnectionId) return true;
     if (currentCampaignValues.length !== initialCampaignValues.length) return true;
@@ -528,7 +534,7 @@ export function AddSpendWizardModal(props: {
       if (!initialSet.has(value)) return true;
     }
     return false;
-  }, [isEditing, props.initialSource?.mappingConfig, spendColumn, effectiveCampaignColumn, campaignKeyValues, selectedSheetConnectionId]);
+  }, [isEditing, props.initialSource?.mappingConfig, spendColumn, spendDateColumn, effectiveCampaignColumn, campaignKeyValues, selectedSheetConnectionId]);
 
   // If we are editing a CSV spend source and the user re-uploads a file, try to apply the saved mapping.
   useEffect(() => {
@@ -666,6 +672,7 @@ export function AddSpendWizardModal(props: {
       }
       const changedConnection = !!initialConnectionId && String(connectionId) !== initialConnectionId;
       if (changedConnection || (spendColumn && !nextHeaders.includes(spendColumn))) setSpendColumn("");
+      if (changedConnection || (spendDateColumn && !nextHeaders.includes(spendDateColumn))) setSpendDateColumn("");
       if (changedConnection || (campaignKeyColumn && !nextHeaders.includes(campaignKeyColumn))) setCampaignKeyColumn("");
       if (changedConnection) {
         setCampaignKeyValues([]);
@@ -814,7 +821,7 @@ export function AddSpendWizardModal(props: {
       const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;
       const mapping = {
         displayName: "Google Sheets",
-        dateColumn: null, // date-agnostic: always distribute spend across the selected period
+        dateColumn: spendDateColumn || null,
         spendColumn,
         campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
@@ -2185,36 +2192,74 @@ export function AddSpendWizardModal(props: {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-1">
+                        {step === "sheets_map" ? (
+                          <div className="space-y-2">
                             <div className="text-sm font-medium">Columns</div>
-                            <div className="text-sm text-foreground/80/60">
-                              {step === "sheets_map" ? (
-                                <span className="font-medium">Spend</span>
-                              ) : (
-                                <>Spend: <span className="font-medium">{spendColumn || "—"}</span></>
-                              )}
+                            <div className="grid gap-4 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label className="font-normal">Spend</Label>
+                                <Select value={spendColumn} onValueChange={setSpendColumn}>
+                                  <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
+                                  <SelectContent className="z-[10000]">
+                                    {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground/70">
+                                  Spend values will be imported from this column
+                                </p>
+                              </div>
                             </div>
-                            <p className="text-xs text-muted-foreground/70">
-                              Spend values will be imported from this column
-                            </p>
                           </div>
-                          <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
-                            {showColumnMapping ? "Hide" : "Edit"} columns
-                          </Button>
-                        </div>
-
-                        {showColumnMapping && (
-                          <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
-                            <div className="space-y-2">
-                              <Label>Spend column</Label>
-                              <Select value={spendColumn} onValueChange={setSpendColumn}>
-                                <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
-                                <SelectContent className="z-[10000]">
-                                  {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
+                        ) : (
+                          <>
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="space-y-1">
+                                <div className="text-sm font-medium">Columns</div>
+                                <div className="text-sm text-foreground/80/60">
+                                  Spend: <span className="font-medium">{spendColumn || "�"}</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground/70">
+                                  Spend values will be imported from this column
+                                </p>
+                              </div>
+                              <Button type="button" variant="outline" onClick={() => setShowColumnMapping((v) => !v)}>
+                                {showColumnMapping ? "Hide" : "Edit"} columns
+                              </Button>
                             </div>
+
+                            {showColumnMapping && (
+                              <div className="grid gap-4 md:grid-cols-2 pt-2 border-t">
+                                <div className="space-y-2">
+                                  <Label>Spend column</Label>
+                                  <Select value={spendColumn} onValueChange={setSpendColumn}>
+                                    <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
+                                    <SelectContent className="z-[10000]">
+                                      {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {step === "sheets_map" && (
+                          <div className="pt-2 border-t space-y-2">
+                            <Label className="font-normal">Date column (recommended for daily tracking)</Label>
+                            <Select
+                              value={spendDateColumn || CAMPAIGN_COL_NONE}
+                              onValueChange={(v) => setSpendDateColumn(v === CAMPAIGN_COL_NONE ? "" : v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select date column" />
+                              </SelectTrigger>
+                              <SelectContent className="z-[10000]">
+                                <SelectItem value={CAMPAIGN_COL_NONE}>None</SelectItem>
+                                {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground/70">
+                              Select a date column for daily spend tracking. If you leave this blank, the source will behave like a spend-to-date snapshot rather than daily history.
+                            </p>
                           </div>
                         )}
 
@@ -2245,7 +2290,7 @@ export function AddSpendWizardModal(props: {
                               <Input
                                 value={campaignKeySearch}
                                 onChange={(e) => setCampaignKeySearch(e.target.value)}
-                                placeholder="Search values…"
+                                placeholder="Search values..."
                                 disabled={!effectiveCampaignColumn}
                               />
                               <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
@@ -2274,8 +2319,6 @@ export function AddSpendWizardModal(props: {
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
 
                     {previewRows.length > 0 && (
                       <div className="rounded-md border overflow-hidden p-3">
@@ -2323,6 +2366,8 @@ export function AddSpendWizardModal(props: {
                         {isProcessing ? "Processing..." : (isEditing ? "Update spend" : "Import spend")}
                       </Button>
                     </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
                 )}

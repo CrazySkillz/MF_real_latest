@@ -59,6 +59,8 @@ Important clarification:
 - when GA4 native revenue exists, refresh should update the GA4-native aggregated revenue amount for the campaign's selected GA4 scope
 - the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
 - for GA4 `Ad Comparison`, external revenue may be added into campaign rows only when the source saves real campaign-identifying values that match GA4 campaign rows exactly
+- for GA4 `Overview -> Campaign Breakdown`, the same exact campaign-matched rule applies, so that table's column label should be `Revenue`, not `GA4 Revenue`
+- `Overview -> Landing Pages` and `Overview -> Conversion Events` remain GA4-native row views and should keep the `GA4 Revenue` label
 - any external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`, not proportionally distributed
 - in the GA4 `Ad Comparison` Revenue Breakdown table, a source may show an indented per-campaign subsection from its saved exact `campaignValueRevenueTotals`
 - that subsection should use the stored source values directly and should not be duplicated by a separate standalone unallocated row when the same amount is already represented there
@@ -488,18 +490,19 @@ The user journey is:
 5. the user selects the connected sheet/tab
 6. the system loads a preview of the sheet headers and sample rows
 7. the user selects the spend column
-8. the user can optionally select a campaign identifier column and one or more campaign values
-9. the user confirms the mapping and runs the import
-10. the system saves a Google Sheets spend source with the mapping configuration
-11. the system materializes spend records and recomputes campaign financial values
-12. the GA4 cards and source modal provenance refetches
+8. the user can optionally select a date column for daily spend tracking
+9. the user can optionally select a campaign identifier column and one or more campaign values
+10. the user confirms the mapping and runs the import
+11. the system saves a Google Sheets spend source with the mapping configuration
+12. the system materializes spend records and recomputes campaign financial values
+13. the GA4 cards and source modal provenance refetches
 
 Important current-state note:
 
 - the visible spend flow is a preview + mapping + import workflow
-- in the current spend UI, Google Sheets is treated as a spend-to-date import flow rather than a user-configured daily-date mapping flow
+- Google Sheets spend can materialize daily records when a date column is mapped; if no date column is selected, it remains a spend-to-date snapshot-style source
 - Google Sheets spend is eligible for scheduled auto-refresh after setup
-- editing an existing Google Sheets spend source should open from the saved mapping without auto-running a live sheet preview; saved spend/campaign columns and selected campaign values should remain visible without reconnecting, and new/updated mappings should preserve lightweight preview metadata so full column/value choices can repopulate in edit mode
+- editing an existing Google Sheets spend source should open from the saved mapping without auto-running a live sheet preview; saved spend/date/campaign columns and selected campaign values should remain visible without reconnecting, and new/updated mappings should preserve lightweight preview metadata so full column/value choices can repopulate in edit mode
 - if the user selects a campaign identifier column and matching values are available, at least one campaign value must be selected before import
 - the connect substate should progress through `Connect Google Sheets`; it should not render a redundant footer `Next` button before a connected sheet/tab is actually being selected
 - when no spend-purpose sheet connection is currently listed, the Google Sheets spend flow should render the auth component directly rather than showing a duplicate parent-level `Connect Google Sheets` pre-screen

@@ -806,6 +806,31 @@ Status: `Done`
   - confirm Google Sheets spend connect substate shows no redundant footer `Next`
   - confirm real sheet/tab selection still progresses normally
 
+### 25. Google Sheets spend date column should auto-detect
+
+Status: `Done`
+
+- Resolution:
+  - Google Sheets spend preview now preselects a detected date-like header such as `Date` in the Date column dropdown
+  - existing valid saved date mappings are preserved
+  - changing to a different sheet/tab replaces invalid stale date mappings with the detected date header when available
+- Current decision:
+  - keep date mapping optional, but prefill the obvious date column to support daily spend tracking by default
+- Severity: `P3`
+- Area: `GA4 Overview / Google Sheets spend source`
+- Affected docs:
+  - `GA4/FINANCIAL_SOURCES.md`
+  - `GA4-MANUAL-TEST-PLAN.md`
+- Expected behavior:
+  - if the sheet preview includes `Date` or another date-like header, the mapping screen should default the Date column dropdown to that header instead of `None`
+  - users can still choose another date column or `None`
+- Current behavior:
+  - resolved
+- Required regression checks:
+  - confirm `Date` is prefilled for Google Sheets spend when the sheet has a `Date` header
+  - confirm existing valid saved date mappings remain selected in edit mode
+  - confirm import totals and spend records are unchanged except for the selected date mapping
+
 ## Severity View
 
 - `P0`
@@ -836,6 +861,7 @@ Status: `Done`
   - 11. custom report subsection selection gap
   - 12. Dashboard refinement
   - 13. Freestyle Chat still in progress
+  - 25. Google Sheets spend date column auto-detect
 
 ## Per-Fix Rule
 

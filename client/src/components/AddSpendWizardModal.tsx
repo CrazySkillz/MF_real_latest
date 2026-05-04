@@ -669,9 +669,11 @@ export function AddSpendWizardModal(props: {
         initialConnectionId = "";
       }
       const changedConnection = !!initialConnectionId && String(connectionId) !== initialConnectionId;
+      const guessDateColumn = nextHeaders.find((h: string) => /^date$/i.test(h.trim()) || /(^|[_\s-])date($|[_\s-])/i.test(h)) || "";
       if (changedConnection || (spendColumn && !nextHeaders.includes(spendColumn))) setSpendColumn("");
-      if (changedConnection || (spendDateColumn && !nextHeaders.includes(spendDateColumn))) setSpendDateColumn("");
+      if (changedConnection || (spendDateColumn && !nextHeaders.includes(spendDateColumn))) setSpendDateColumn(guessDateColumn);
       if (changedConnection || (campaignKeyColumn && !nextHeaders.includes(campaignKeyColumn))) setCampaignKeyColumn("");
+      if (!changedConnection && !spendDateColumn) setSpendDateColumn(guessDateColumn);
       if (changedConnection) {
         setCampaignKeyValues([]);
         setCampaignKeySearch("");

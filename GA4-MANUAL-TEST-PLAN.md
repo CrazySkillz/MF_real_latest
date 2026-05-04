@@ -658,6 +658,7 @@ Checkpoint after Journey 7:
 - [ ] "+" -> Sheets -> authenticate -> select spreadsheet/tab
 - [ ] Confirm the selected tab remains in the chooser and the user must click `Next` before mapping loads
 - [ ] Click `Next` -> map Spend column
+- [ ] If the sheet has a `Date` column, confirm the Date column dropdown is prefilled with `Date`
 - [ ] Select a campaign identifier column and leave all campaign values unselected
 - [ ] Confirm `Import spend` is blocked/disabled until at least one campaign value is selected
 - [ ] Select one or more campaign values → Save

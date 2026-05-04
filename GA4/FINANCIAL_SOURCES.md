@@ -497,7 +497,7 @@ The user journey is:
 5. the user selects the connected sheet/tab
 6. the system loads a preview of the sheet headers and sample rows
 7. the user selects the spend column
-8. the user can optionally select a date column for daily spend tracking
+8. the date column is prefilled when the sheet has a date-like header such as `Date`; the user can keep it, choose another date column, or choose `None`
 9. the user can optionally select a campaign identifier column and one or more campaign values
 10. the user confirms the mapping and runs the import
 11. the system saves a Google Sheets spend source with the mapping configuration
@@ -508,6 +508,7 @@ Important current-state note:
 
 - the visible spend flow is a preview + mapping + import workflow
 - Google Sheets spend can materialize daily records when a date column is mapped; if no date column is selected, it remains a spend-to-date snapshot-style source
+- when the sheet preview contains a date-like header such as `Date`, the spend mapping screen should prefill the date column with that header instead of defaulting to `None`
 - Google Sheets spend auto-refresh re-reads the saved sheet/tab and replaces the stored Google Sheets spend source amount from the latest matching sheet rows; it must not create a duplicate source or add the refreshed value on top of the old value
 - if a campaign identifier and campaign values are mapped, auto-refresh includes only rows matching those selected campaign values
 - the date column controls daily spend history; auto-refresh still sums all matching rows for `Total Spend`, while latest-day style views use dated records

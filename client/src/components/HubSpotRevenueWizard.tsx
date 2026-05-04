@@ -182,7 +182,7 @@ export function HubSpotRevenueWizard(props: {
   }, [steps, step]);
 
   const connectStatusLabel = useMemo(() => {
-    return isConnected ? (portalName || "HubSpot account") : null;
+    return isConnected ? (portalName || null) : null;
   }, [isConnected, portalName]);
 
   const fetchStatus = async () => {
@@ -688,7 +688,7 @@ export function HubSpotRevenueWizard(props: {
             {step === "review" && (
               <>
                 <ClipboardCheck className="w-5 h-5 text-blue-600" />
-                Save Mappings
+                Review Settings
               </>
             )}
             {step === "complete" && (
@@ -720,11 +720,9 @@ export function HubSpotRevenueWizard(props: {
               (pipelineEnabled
                 ? `Select the value(s) from "Deal Name" that should map to this MimoSaaS campaign`
                 : `Select the value(s) from "Deal Name" that should map to this MimoSaaS campaign`)}
-            {step === "pipeline" &&
-              "Choose the open stage to use for Pipeline Proxy. This filters the selected campaign values and is not included in Total Revenue."}
             {step === "revenue" &&
               "Select the HubSpot field that represents deal amount."}
-            {step === "review" && "Review the settings below, then save mappings."}
+            {step === "review" && "Review the settings below, then import revenue."}
 	            {step === "complete" &&
 	              "HubSpot is connected. Your selected revenue input will be used to compute financial metrics."}
 	          </CardDescription>
@@ -1236,7 +1234,7 @@ export function HubSpotRevenueWizard(props: {
                           false)
                 }
               >
-                {step === "review" ? (isSaving ? "Saving…" : "Save Mappings") : "Continue"}
+                {step === "review" ? (isSaving ? "Importing…" : "Import revenue") : "Continue"}
               </Button>
             </div>
           )}

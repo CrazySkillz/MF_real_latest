@@ -231,10 +231,11 @@ The user journey is:
 7. if `Total Revenue + Pipeline (Proxy)` is selected, the user chooses the HubSpot pipeline/deal stage to apply to those selected campaign values
 8. the user chooses the HubSpot revenue property
 9. the user chooses the date field / lookback window used for the import
-10. the final review step shows confirmed Total Revenue separately from Pipeline Proxy stage and amount
-11. the system saves a HubSpot revenue source with the mapping configuration
-12. the system materializes normalized revenue records for the matched HubSpot records
-13. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
+10. the final `Review Settings` step shows confirmed Total Revenue separately from Pipeline Proxy stage and amount
+11. the user clicks `Import revenue`
+12. the system saves a HubSpot revenue source with the mapping configuration
+13. the system materializes normalized revenue records for the matched HubSpot records
+14. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
 
 Important meaning:
 
@@ -247,9 +248,9 @@ Important meaning:
 - in GA4 `Total Revenue only` mode, confirmed HubSpot revenue should materialize as true daily won rows by each matched deal's `Close Date`, rather than as one synthetic snapshot row
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path
-- the final review step should show Pipeline Proxy stage, amount, and a note that it is not included in Total Revenue
+- the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
-- HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` text in the wizard; if the friendly name is unavailable, use a generic `HubSpot account` fallback
+- HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
 - the HubSpot review step should label selected CRM records as `Selected deal(s)`, not generic selected values
 - the `Reconnect` action on the first HubSpot screen should render in a stable header/action area, not inside the main source-choice card or a shifting scroll region
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
@@ -269,11 +270,12 @@ The user journey is:
 7. if `Total Revenue + Pipeline (Proxy)` is selected, the user chooses the Salesforce Opportunity stage to apply to those selected campaign values
 8. the user chooses the Salesforce revenue field
 9. the user chooses the date field / lookback window used for import
-10. the final review step shows confirmed Total Revenue separately from Pipeline Proxy stage and amount
-11. the system validates the mapping and currency requirements
-12. the system saves a Salesforce revenue source with the mapping configuration
-13. the system materializes normalized revenue records for the matched Salesforce opportunities
-14. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
+10. the final `Review Settings` step shows confirmed Total Revenue separately from Pipeline Proxy stage and amount
+11. the user clicks `Import revenue`
+12. the system validates the mapping and currency requirements
+13. the system saves a Salesforce revenue source with the mapping configuration
+14. the system materializes normalized revenue records for the matched Salesforce opportunities
+15. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
 
 Important meaning:
 
@@ -284,7 +286,7 @@ Important meaning:
 - the first Salesforce `Source` step should show `Total Revenue + Pipeline (Proxy)` above `Total Revenue only (no Pipeline card)` and default to the pipeline option in new connect mode
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path
-- the final review step should show Pipeline Proxy stage, amount, and a note that it is not included in Total Revenue
+- the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
 - the Salesforce review step should label selected CRM records as `Selected opportunity(ies)`, not generic selected values
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - if Salesforce is disconnected in edit mode, the review step should still show the saved Pipeline Proxy stage and saved proxy amount until live preview becomes available again

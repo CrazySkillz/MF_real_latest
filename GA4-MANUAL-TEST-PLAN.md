@@ -1146,9 +1146,11 @@ Required reconciliation checks:
 
 ### HubSpot (real connection)
 - [ ] Connect real HubSpot account via OAuth
+- [ ] Confirm the first HubSpot Source screen shows `Connected to: <account name>` and does not show generic `HubSpot account` text
 - [ ] Complete the wizard: campaign field → crosswalk → revenue property → date field
 - [ ] In `Total Revenue only` mode, verify Crosswalk shows only values backed by confirmed/Closed Won deals
 - [ ] In `Total Revenue only` mode, verify won revenue materializes into true daily rows by deal `Close Date`, not as one synthetic snapshot row
+- [ ] Confirm the final HubSpot review step is titled `Review Settings`, says `Review the settings below, then import revenue`, and the primary button says `Import revenue`
 - [ ] Verify deal count + revenue total match what you see in HubSpot
 - [ ] If Pipeline Proxy is enabled, select a real open deal stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
 - [ ] Confirm the Overview `Pipeline Proxy` card appears because the saved HubSpot source is active, and does not depend only on a fresh proxy endpoint response
@@ -1160,6 +1162,7 @@ Required reconciliation checks:
 ### Salesforce (real connection)
 - [ ] Connect real Salesforce account via OAuth
 - [ ] Complete wizard: campaign field → revenue field → date field
+- [ ] Confirm the final Salesforce review step is titled `Review Settings`, says `Review the settings below, then import revenue`, and the primary button says `Import revenue`
 - [ ] Verify opportunity count + revenue match Salesforce
 - [ ] If the saved Salesforce source exists but auth is down, the revenue-source chooser shows `Reconnect required` rather than `Not connected`
 - [ ] If the stored Salesforce access token is missing but the refresh token is still valid, the chooser/status path recovers the connection and does not incorrectly stay in `Reconnect required`

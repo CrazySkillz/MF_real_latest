@@ -661,7 +661,8 @@ Status: `Done`
   - `Reconnect` was moved into a stable header/action area on the first HubSpot screen
   - the first HubSpot screen no longer uses the unnecessary vertical scrollbar behavior from the shared scroll body
   - the HubSpot `Date field` copy now explains what it actually controls in the current revenue model
-  - `Save Mappings` now shows a single `Total Revenue (to date)` display and preloads the computed amount before save
+  - the final HubSpot review step now uses `Review Settings` / `Import revenue` wording while keeping the same save/import behavior
+  - the HubSpot connection label no longer falls back to generic `HubSpot account` text when the friendly account name is unavailable
 - Current decision:
   - keep the current HubSpot revenue logic
   - treat these changes as UI/summary stabilization only, not a change to mapping or save behavior
@@ -674,7 +675,8 @@ Status: `Done`
 - Expected behavior:
   - the first HubSpot screen should feel stable and intentional, without delayed Reconnect rendering or unnecessary scrollbar behavior
   - the Date field should be understandable to users as the HubSpot date property that controls which deals count in the revenue total
-  - `Save Mappings` should show one `Total Revenue (to date)` value and it should display the computed amount before save
+  - the final review screen should be labeled `Review Settings`, explain that the user is about to import revenue, and use an `Import revenue` primary action
+  - the first screen should show the friendly account name when available and should not show generic `HubSpot account` text
 - Current behavior:
   - resolved
 - Why this mattered:
@@ -688,8 +690,9 @@ Status: `Done`
 - Required regression checks:
   - confirm `Reconnect` renders immediately in the header on the first HubSpot screen
   - confirm the first HubSpot screen does not show an unnecessary vertical scrollbar
-- confirm the Date field copy clearly explains its purpose
-- confirm `Save Mappings` shows one `Total Revenue (to date)` value with the computed amount before save
+  - confirm the Date field copy clearly explains its purpose
+  - confirm the review step title is `Review Settings`, the description says `Review the settings below, then import revenue`, and the primary button says `Import revenue`
+  - confirm the first screen shows `Connected to: <account name>` when HubSpot returns an account name and does not show generic `HubSpot account` text
 
 ### 20. Salesforce revenue edit flow must preserve source identity and refresh review totals from fresh preview data
 
@@ -699,6 +702,7 @@ Status: `Done`
   - Salesforce edit mode now passes the existing revenue `sourceId` through the revenue modal into the Salesforce wizard and into the save request payload
   - the Salesforce save route now updates/replaces the existing revenue source and its records in edit mode instead of creating a second additive source row
   - Salesforce review-step `Total Revenue (to date)` now refreshes from current preview inputs and prefers fresh preview totals over stale stored `lastTotalRevenue`
+  - the final Salesforce review step now uses `Review Settings` / `Import revenue` wording while keeping the same save/import behavior
 - Current decision:
   - keep Salesforce create behavior additive for brand-new sources
   - keep Salesforce edit behavior update-in-place for existing sources
@@ -712,6 +716,7 @@ Status: `Done`
 - Expected behavior:
   - editing an existing Salesforce revenue source should update that existing source, not create a second micro copy/source row
   - changing selected deal values in edit mode should update the final review-step `Total Revenue (to date)` before save
+  - the final review screen should be labeled `Review Settings`, explain that the user is about to import revenue, and use an `Import revenue` primary action
 - Current behavior:
   - resolved
 - Why this mattered:
@@ -727,6 +732,7 @@ Status: `Done`
   - change selected deal values and confirm the final review total updates before save
   - save the edit and confirm the existing Salesforce source row updates in place
   - confirm no second Salesforce micro copy/source row is added under `Total Revenue`
+  - confirm the review step title is `Review Settings`, the description says `Review the settings below, then import revenue`, and the primary button says `Import revenue`
 
 ### 21. GA4 blocked KPI/Benchmark UI and Journey 9 revenue-deletion expectations needed cleanup
 

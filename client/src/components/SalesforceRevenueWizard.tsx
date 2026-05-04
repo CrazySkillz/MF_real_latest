@@ -996,7 +996,7 @@ export function SalesforceRevenueWizard(props: {
               {step === "review" && (
                 <>
                   <ClipboardCheck className="w-5 h-5 text-blue-600" />
-                  Save Mappings
+                  Review Settings
                 </>
               )}
               {step === "complete" && (
@@ -1042,17 +1042,13 @@ export function SalesforceRevenueWizard(props: {
                 : "Only add Salesforce revenue if these deals are NOT already tracked as GA4 ecommerce transactions.")}
             {step === "campaign-field" &&
               "Select the Salesforce Opportunity field that identifies which deals belong to this MimoSaaS campaign."}
-            {step === "crosswalk" &&
-              (pipelineEnabled
-                ? `Select the Salesforce campaign values to include from "${campaignFieldLabel}". Closed Won matches contribute to Total Revenue. Matches in the selected Pipeline Proxy stage contribute to Pipeline Proxy.`
-                : `Select the value(s) from "${campaignFieldLabel}" that should map to this MimoSaaS campaign.`)}
-            {step === "pipeline" &&
-              "Choose the open stage to use for Pipeline Proxy. This filters the selected campaign values and is not included in Total Revenue."}
+            {step === "crosswalk" && !pipelineEnabled &&
+              `Select the value(s) from "${campaignFieldLabel}" that should map to this MimoSaaS campaign.`}
             {step === "revenue" &&
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Select the Opportunity field that represents conversion value per conversion (estimated value)."
                 : "Select the Opportunity field that represents revenue (usually Amount).")}
-            {step === "review" && "Review the settings below, then save mappings."}
+            {step === "review" && "Review the settings below, then import revenue."}
             {step === "complete" &&
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Conversion value is saved. Revenue metrics should now be unlocked in Overview."
@@ -1518,7 +1514,7 @@ export function SalesforceRevenueWizard(props: {
                   (step === "review" && effectiveCurrencyMismatch)
                 }
               >
-                {step === "review" ? (isSaving ? "Saving…" : "Save Mappings") : "Continue"}
+                {step === "review" ? (isSaving ? "Importing…" : "Import revenue") : "Continue"}
               </Button>
             </div>
           )}

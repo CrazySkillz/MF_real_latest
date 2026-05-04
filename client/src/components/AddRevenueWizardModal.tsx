@@ -1679,7 +1679,7 @@ export function AddRevenueWizardModal(props: {
                           }}
                         />
                         <p className="text-xs text-muted-foreground/70">
-                          Required columns: Revenue. Optional: Campaign (for multi-campaign files).
+                          Required columns: Revenue
                         </p>
                       </div>
                     </div>

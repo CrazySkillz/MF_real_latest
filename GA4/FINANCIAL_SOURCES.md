@@ -249,6 +249,9 @@ Important meaning:
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path
 - the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
+- the `Review Settings` subtitle should say `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`
+- the `Review Settings` details card should not repeat a second heading such as `Review HubSpot revenue settings`
+- the `Review Settings` details card should keep `Selected deal(s)` directly under `Total Revenue (to date)` so the confirmed revenue and selected deals read as one continuous summary
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
 - the HubSpot `Review Settings` summary should not repeat the account row; account context belongs on the first `Source` step
@@ -363,6 +366,7 @@ Important meaning:
 - CSV revenue is imported as a revenue-to-date source in the normal GA4 UI
 - because CSV is manual, updates require re-upload rather than automatic refresh
 - CSV should be treated as a one-time or occasional import, not an auto-syncing source
+- the CSV upload/re-upload helper text should list only the required primary column as `Required columns: Revenue`; optional campaign mapping is handled on the mapping screen
 - if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
 - the UI should make it explicit that CSV updates require manual re-upload
 - CSV revenue edit should reopen directly into the mapping screen when the stored imported dataset is available
@@ -557,6 +561,7 @@ Important meaning:
 
 - CSV spend is a structured import workflow, not a file attachment
 - the visible flow behaves like a spend-to-date snapshot import
+- the CSV upload/re-upload helper text should list only the required primary column as `Required columns: Spend`; optional campaign mapping is handled on the mapping screen
 - the CSV spend mapping screen should show `Spend` as a direct dropdown field; it should not require an `Edit columns` sub-action to change the spend column
 - the CSV spend mapping screen should not show extra section headings named `Columns` or `Campaign mapping`; the visible controls are the spend dropdown, optional campaign identifier/value controls, preview table, and action buttons
 - CSV spend does not auto-refresh on a schedule

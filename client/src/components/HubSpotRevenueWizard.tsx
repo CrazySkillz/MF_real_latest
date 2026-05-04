@@ -722,7 +722,7 @@ export function HubSpotRevenueWizard(props: {
                 : `Select the value(s) from "Deal Name" that should map to this MimoSaaS campaign`)}
             {step === "revenue" &&
               "Select the HubSpot field that represents deal amount."}
-            {step === "review" && "Review the settings below, then import revenue."}
+            {step === "review" && "Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign."}
 	            {step === "complete" &&
 	              "HubSpot is connected. Your selected revenue input will be used to compute financial metrics."}
 	          </CardDescription>
@@ -1100,82 +1100,68 @@ export function HubSpotRevenueWizard(props: {
             {step === "review" && (
               <div className="space-y-4">
                 <div className="rounded-lg border border-border bg-muted/40 p-4">
-                  <div className="text-sm font-semibold text-foreground">
-                    Review HubSpot revenue settings
-                  </div>
-                  <div className="text-sm text-muted-foreground/70 mt-1">
-                    Confirm these details before saving.
-                    {isLinkedIn ? (
-                      <>
-                        {" "}
-                        Source of truth: <span className="font-medium">Revenue (to date)</span>.
-                      </>
-                    ) : (
-                      <>
-                        {" "}
-                        Revenue will be treated as <span className="font-medium">revenue-to-date</span> for this campaign.
-                      </>
-                    )}
-                  </div>
-
-	                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <div className="text-xs text-muted-foreground/70">
-                        Revenue field
-                      </div>
-                      <div className="font-medium text-foreground">
-                        {revenuePropertyLabel}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-muted-foreground/70">Campaign identifier field</div>
-                      <div className="font-medium text-foreground">{campaignPropertyLabel}</div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
-                      <div className="font-medium text-foreground text-green-700 dark:text-green-400">
-                        {reviewRevenue != null
-                          ? `$${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                          : "—"}
-                      </div>
-                    </div>
-
-                    {pipelineEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="space-y-3">
                       <div>
-                        <div className="text-xs text-muted-foreground/70">Pipeline proxy</div>
-                        <div className="font-medium text-foreground">
-                          {pipelineStageLabel || pipelineStageId || "—"}
+                        <div className="text-xs text-muted-foreground/70">
+                          Revenue field
                         </div>
-                        <div className="mt-1 text-sm font-medium text-foreground">
-                          {reviewPipelineProxyAmount != null
-                            ? `$${Number(reviewPipelineProxyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        <div className="font-medium text-foreground">
+                          {revenuePropertyLabel}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
+                        <div className="font-medium text-foreground text-green-700 dark:text-green-400">
+                          {reviewRevenue != null
+                            ? `$${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "—"}
                         </div>
-                        <div className="mt-1 text-xs text-muted-foreground/70">
-                          Open-stage early signal. Not included in Total Revenue.
-                        </div>
                       </div>
-                    )}
 
-                    <div>
-                      <div className="text-xs text-muted-foreground/70">Selected deal(s)</div>
-                      <div className="font-medium text-foreground">
-                        {selectedValues.length > 0
-                          ? `${selectedValues.slice(0, 6).join(", ")}${selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}`
-                          : "—"}
+                      <div>
+                        <div className="text-xs text-muted-foreground/70">Selected deal(s)</div>
+                        <div className="font-medium text-foreground">
+                          {selectedValues.length > 0
+                            ? `${selectedValues.slice(0, 6).join(", ")}${selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}`
+                            : "—"}
+                        </div>
                       </div>
                     </div>
 
-                    <div>
-                      <div className="text-xs text-muted-foreground/70">Date field</div>
-                      <div className="font-medium text-foreground">
-                        {dateField === "hs_lastmodifieddate"
-                          ? "Last Modified Date"
-                          : dateField === "createdate"
-                            ? "Created Date"
-                            : "Close Date"}
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground/70">Campaign identifier field</div>
+                        <div className="font-medium text-foreground">{campaignPropertyLabel}</div>
+                      </div>
+
+                      {pipelineEnabled && (
+                        <div>
+                          <div className="text-xs text-muted-foreground/70">Pipeline proxy</div>
+                          <div className="font-medium text-foreground">
+                            {pipelineStageLabel || pipelineStageId || "—"}
+                          </div>
+                          <div className="mt-1 text-sm font-medium text-foreground">
+                            {reviewPipelineProxyAmount != null
+                              ? `$${Number(reviewPipelineProxyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : "—"}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground/70">
+                            Open-stage early signal. Not included in Total Revenue.
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="text-xs text-muted-foreground/70">Date field</div>
+                        <div className="font-medium text-foreground">
+                          {dateField === "hs_lastmodifieddate"
+                            ? "Last Modified Date"
+                            : dateField === "createdate"
+                              ? "Created Date"
+                              : "Close Date"}
+                        </div>
                       </div>
                     </div>
                   </div>

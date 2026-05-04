@@ -2031,7 +2031,7 @@ export function AddSpendWizardModal(props: {
                         }}
                       />
                       <p className="text-xs text-muted-foreground/70">
-                        Required columns: Spend. Optional: Date + Campaign (for multi-campaign files).
+                        Required columns: Spend
                       </p>
                     </div>
                     <div className="flex justify-end gap-2">

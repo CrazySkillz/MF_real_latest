@@ -1675,6 +1675,7 @@ export function AddRevenueWizardModal(props: {
                             setCsvCampaignValues([]);
                             setCsvCampaignQuery("");
                             setCsvValueSource('revenue');
+                            setCsvPrefill(null);
                           }}
                         />
                         <p className="text-xs text-muted-foreground/70">
@@ -1934,6 +1935,13 @@ export function AddRevenueWizardModal(props: {
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
                             if (preferredId) {
                               setSheetsConnectionId(preferredId);
+                              setSheetsPreview(null);
+                              setSheetsRevenueCol("");
+                              setSheetsConversionValueCol("");
+                              setSheetsCampaignCol("");
+                              setSheetsDateCol("");
+                              setSheetsCampaignQuery("");
+                              setSheetsCampaignValues([]);
                               setSheetsConnections((prev) => {
                                 const exists = prev.some((c: any) => String(c?.id) === preferredId);
                                 if (exists) return prev;
@@ -1971,6 +1979,13 @@ export function AddRevenueWizardModal(props: {
                             const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
                             if (preferredId) {
                               setSheetsConnectionId(preferredId);
+                              setSheetsPreview(null);
+                              setSheetsRevenueCol("");
+                              setSheetsConversionValueCol("");
+                              setSheetsCampaignCol("");
+                              setSheetsDateCol("");
+                              setSheetsCampaignQuery("");
+                              setSheetsCampaignValues([]);
                               setSheetsConnections((prev) => {
                                 const exists = prev.some((c: any) => String(c?.id) === preferredId);
                                 if (exists) return prev;
@@ -2021,6 +2036,7 @@ export function AddRevenueWizardModal(props: {
                             setSheetsRevenueCol("");
                             setSheetsConversionValueCol("");
                             setSheetsCampaignCol("");
+                            setSheetsDateCol("");
                             setSheetsCampaignQuery("");
                             setSheetsCampaignValues([]);
                           }}

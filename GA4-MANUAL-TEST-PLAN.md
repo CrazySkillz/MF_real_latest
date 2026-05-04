@@ -634,6 +634,7 @@ Checkpoint after Journey 7:
 - [ ] Click edit (pencil) on the CSV source
 - [ ] Confirm `Update spend` is **disabled** immediately on open before any changes are made
 - [ ] Click `Back`, upload a replacement CSV, click `Next`, and confirm the preview shows the replacement CSV's full column set
+- [ ] Confirm old mapped values/search/selected campaign values from the previous CSV are not still selected after the replacement CSV preview loads
 - [ ] Deselect one campaign value while keeping one valid campaign selected
 - [ ] Confirm `Update spend` becomes enabled after the mapping change
 - [ ] Click `Update spend`
@@ -665,6 +666,7 @@ Checkpoint after Journey 7:
 - [ ] Confirm the chooser does **not** show an in-flow `Remove` action
 - [ ] Confirm `Update spend` is **disabled** immediately on open before any changes are made
 - [ ] Click `Back`, select a different Google Sheet/tab, click `Next`, and confirm mapping/preview values come from the newly selected tab
+- [ ] Confirm old mapped columns/search/selected campaign values from the previous sheet are not still selected after the new sheet preview loads
 - [ ] Deselect one campaign value while keeping one valid campaign selected
 - [ ] Confirm `Update spend` becomes enabled after the mapping change
 - [ ] Click `Update spend`
@@ -717,6 +719,7 @@ Checkpoint after Journey 8:
 - [ ] Click edit (pencil) on the CSV revenue source
 - [ ] Confirm it opens directly into the mapping screen with preview loaded
 - [ ] Confirm `Update revenue` is **disabled** immediately on open before any changes are made
+- [ ] Click `Back`, upload a replacement CSV, click `Next`, and confirm old mapped values/search/selected campaign values from the previous CSV are not still selected
 - [ ] Deselect one campaign value while keeping one valid value selected
 - [ ] Confirm `Update revenue` becomes enabled after the mapping change
 - [ ] Click `Update revenue`
@@ -739,6 +742,7 @@ Checkpoint after Journey 8:
 - [ ] Click edit (pencil) on the Google Sheets revenue source
 - [ ] Confirm `Update revenue` is **disabled** immediately on open before any changes are made
 - [ ] Click `Back`, select a different Google Sheet/tab, click `Next`, and confirm mapping/preview values come from the newly selected tab
+- [ ] Confirm old mapped columns/search/selected campaign values from the previous sheet are not still selected after the new sheet preview loads
 - [ ] Deselect one campaign value while keeping one valid value selected
 - [ ] Confirm `Update revenue` becomes enabled after the mapping change
 - [ ] Click `Update revenue`

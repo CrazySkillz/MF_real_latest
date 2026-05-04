@@ -1846,6 +1846,14 @@ export function AddSpendWizardModal(props: {
                           const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
                           if (preferredId) {
                             setSelectedSheetConnectionId(preferredId);
+                            setSheetsPreview(null);
+                            setCsvPreview(null);
+                            setSpendColumn("");
+                            setSpendDateColumn("");
+                            setCampaignKeyColumn("");
+                            setCampaignKeyValues([]);
+                            setCampaignKeySearch("");
+                            campaignKeyTouchedRef.current = false;
                             setSheetsConnections((prev) => {
                               const exists = prev.some((c: any) => String(c?.id) === preferredId);
                               if (exists) return prev;
@@ -1881,6 +1889,14 @@ export function AddSpendWizardModal(props: {
                             // (even before we finish refreshing the connections list).
                             if (preferredId) {
                               setSelectedSheetConnectionId(preferredId);
+                              setSheetsPreview(null);
+                              setCsvPreview(null);
+                              setSpendColumn("");
+                              setSpendDateColumn("");
+                              setCampaignKeyColumn("");
+                              setCampaignKeyValues([]);
+                              setCampaignKeySearch("");
+                              campaignKeyTouchedRef.current = false;
                               setSheetsConnections((prev) => {
                                 const exists = prev.some((c: any) => String(c?.id) === preferredId);
                                 if (exists) return prev;
@@ -1925,7 +1941,20 @@ export function AddSpendWizardModal(props: {
                             </Button>
                           </div>
                         </div>
-                        <Select value={selectedSheetConnectionId} onValueChange={setSelectedSheetConnectionId}>
+                        <Select
+                          value={selectedSheetConnectionId}
+                          onValueChange={(v) => {
+                            setSelectedSheetConnectionId(v);
+                            setSheetsPreview(null);
+                            setCsvPreview(null);
+                            setSpendColumn("");
+                            setSpendDateColumn("");
+                            setCampaignKeyColumn("");
+                            setCampaignKeyValues([]);
+                            setCampaignKeySearch("");
+                            campaignKeyTouchedRef.current = false;
+                          }}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder={"Select a connected sheet"} />
                           </SelectTrigger>
@@ -1992,6 +2021,7 @@ export function AddSpendWizardModal(props: {
                           setCsvFile(file);
                           if (file) {
                             setCsvPreview(null);
+                            setCsvPrefillMapping(null);
                             setCampaignKeyValues([]);
                             setCampaignKeySearch("");
                             campaignKeyTouchedRef.current = false;
@@ -2171,6 +2201,7 @@ export function AddSpendWizardModal(props: {
                               setCsvFile(file);
                               if (file) {
                                 setCsvPreview(null);
+                                setCsvPrefillMapping(null);
                                 setCampaignKeyValues([]);
                                 setCampaignKeySearch("");
                                 campaignKeyTouchedRef.current = false;

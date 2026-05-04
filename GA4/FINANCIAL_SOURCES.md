@@ -334,6 +334,7 @@ Important meaning:
 - if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
 - Google Sheets revenue edit should keep `Update revenue` disabled until a meaningful edit is made
 - in Google Sheets revenue edit mode, changing the selected sheet/tab must update the existing revenue source by stable `sourceId`; it must not create a second additive Google Sheets revenue source
+- in Google Sheets revenue edit mode, selecting or connecting a different sheet/tab must clear stale mapped columns, campaign search, and selected campaign values from the previous sheet before previewing the new sheet/tab
 - the UI should make this daily-history vs snapshot distinction explicit so users understand the downstream effect on latest-day and trend-style views
 
 ## Revenue Source 5: CSV Journey
@@ -363,6 +364,7 @@ Important meaning:
 - CSV revenue edit should reopen directly into the mapping screen when the stored imported dataset is available
 - if only campaign-value selection changes, CSV revenue should recalculate without forcing a re-upload
 - if structural mappings change, such as revenue column, conversion value column, campaign column, or value-source mode, re-upload is still required
+- when a replacement CSV is selected in edit mode, stale saved prefill, campaign search, and selected campaign values from the previous CSV must be cleared before the new preview/mapping is shown
 - `Update revenue` should remain disabled until a meaningful edit is made
 - CSV revenue preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
 
@@ -524,6 +526,7 @@ Important current-state note:
 - when changing/reconnecting a Google Sheets spend tab from an existing saved-sheet chooser, `Back` should return to that chooser rather than exiting to the spend-source picker
 - in Google Sheets spend edit mode, `Back` from mapping should return to the sheet/tab chooser, and `Next` should repopulate mapping from the selected sheet/tab without reusing stale values from a different connection
 - in Google Sheets spend edit mode, changing the selected sheet/tab must update the existing spend source by stable `sourceId`; it must not create a second additive Google Sheets spend source
+- in Google Sheets spend edit mode, selecting or connecting a different sheet/tab must clear stale mapped columns, campaign search, and selected campaign values from the previous sheet before previewing the new sheet/tab
 - Google Sheets OAuth placeholder rows with `spreadsheetId='pending'` must not be returned to source choosers as selectable sheet connections
 - spreadsheet-tab loading should use the same newest/pending OAuth token selection pattern as spreadsheet listing so reconnects do not list files with one token and try to load tabs with an older token
 - if a saved Google Sheets spend connection's token fails during preview or import, the spend path may self-heal by verifying the same spreadsheet/tab with the newest campaign Google Sheets token and updating the saved connection tokens before asking the user to reconnect

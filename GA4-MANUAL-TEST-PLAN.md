@@ -720,6 +720,7 @@ Checkpoint after Journey 8:
 - [ ] Confirm it opens directly into the mapping screen with preview loaded
 - [ ] Confirm `Update revenue` is **disabled** immediately on open before any changes are made
 - [ ] Click `Back`, upload a replacement CSV, click `Next`, and confirm old mapped values/search/selected campaign values from the previous CSV are not still selected
+- [ ] Confirm the replacement CSV upload screen does not show a header `Back` button
 - [ ] Deselect one campaign value while keeping one valid value selected
 - [ ] Confirm `Update revenue` becomes enabled after the mapping change
 - [ ] Click `Update revenue`
@@ -742,6 +743,7 @@ Checkpoint after Journey 8:
 - [ ] Click edit (pencil) on the Google Sheets revenue source
 - [ ] Confirm `Update revenue` is **disabled** immediately on open before any changes are made
 - [ ] Click `Back`, select a different Google Sheet/tab, click `Next`, and confirm mapping/preview values come from the newly selected tab
+- [ ] Confirm the Google Sheets revenue chooser screen does not show a header `Back` button
 - [ ] Confirm old mapped columns/search/selected campaign values from the previous sheet are not still selected after the new sheet preview loads
 - [ ] Deselect one campaign value while keeping one valid value selected
 - [ ] Confirm `Update revenue` becomes enabled after the mapping change

@@ -333,6 +333,7 @@ Important meaning:
 - Google Sheets refreshability comes from the connected sheet source, while the date column controls date granularity
 - if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
 - Google Sheets revenue edit should keep `Update revenue` disabled until a meaningful edit is made
+- Google Sheets revenue edit chooser should not show the outer header `Back` button; users either continue with `Next`, use `Change sheet/tab`, cancel, or close
 - in Google Sheets revenue edit mode, changing the selected sheet/tab must update the existing revenue source by stable `sourceId`; it must not create a second additive Google Sheets revenue source
 - in Google Sheets revenue edit mode, selecting or connecting a different sheet/tab must clear stale mapped columns, campaign search, and selected campaign values from the previous sheet before previewing the new sheet/tab
 - the UI should make this daily-history vs snapshot distinction explicit so users understand the downstream effect on latest-day and trend-style views
@@ -362,6 +363,7 @@ Important meaning:
 - if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
 - the UI should make it explicit that CSV updates require manual re-upload
 - CSV revenue edit should reopen directly into the mapping screen when the stored imported dataset is available
+- CSV revenue edit upload/re-upload screen should not show the outer header `Back` button; users either upload and continue, cancel, or close
 - if only campaign-value selection changes, CSV revenue should recalculate without forcing a re-upload
 - if structural mappings change, such as revenue column, conversion value column, campaign column, or value-source mode, re-upload is still required
 - when a replacement CSV is selected in edit mode, stale saved prefill, campaign search, and selected campaign values from the previous CSV must be cleared before the new preview/mapping is shown

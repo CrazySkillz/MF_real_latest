@@ -663,7 +663,7 @@ Status: `Done`
   - the HubSpot `Date field` copy now explains what it actually controls in the current revenue model
   - the final HubSpot review step now uses `Review Settings` / `Import revenue` wording while keeping the same save/import behavior
   - the HubSpot connection label no longer falls back to generic `HubSpot account` text when the friendly account name is unavailable
-  - the HubSpot review summary account row now uses `Connected to` and avoids both `HubSpot account` and `—`
+  - the HubSpot review summary no longer repeats the account row
 - Current decision:
   - keep the current HubSpot revenue logic
   - treat these changes as UI/summary stabilization only, not a change to mapping or save behavior
@@ -678,7 +678,7 @@ Status: `Done`
   - the Date field should be understandable to users as the HubSpot date property that controls which deals count in the revenue total
   - the final review screen should be labeled `Review Settings`, explain that the user is about to import revenue, and use an `Import revenue` primary action
   - the first screen should show the friendly account name when available and should not show generic `HubSpot account` text
-  - the review summary should use `Connected to` for the account row and should not show generic `HubSpot account` text
+  - the review summary should not repeat account metadata
 - Current behavior:
   - resolved
 - Why this mattered:
@@ -695,7 +695,7 @@ Status: `Done`
   - confirm the Date field copy clearly explains its purpose
   - confirm the review step title is `Review Settings`, the description says `Review the settings below, then import revenue`, and the primary button says `Import revenue`
   - confirm the first screen shows `Connected to: <account name>` when HubSpot returns an account name and does not show generic `HubSpot account` text
-  - confirm the review summary account row says `Connected to` and does not show `HubSpot account` or `—`
+  - confirm the review summary does not show a repeated account row or `Account name unavailable`
 
 ### 20. Salesforce revenue edit flow must preserve source identity and refresh review totals from fresh preview data
 

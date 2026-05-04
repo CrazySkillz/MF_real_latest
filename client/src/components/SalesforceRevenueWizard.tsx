@@ -1048,7 +1048,7 @@ export function SalesforceRevenueWizard(props: {
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Select the Opportunity field that represents conversion value per conversion (estimated value)."
                 : "Select the Opportunity field that represents revenue (usually Amount).")}
-            {step === "review" && "Review the settings below, then import revenue."}
+            {step === "review" && "Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign."}
             {step === "complete" &&
               (isLinkedIn && valueSource === "conversion_value"
                 ? "Conversion value is saved. Revenue metrics should now be unlocked in Overview."
@@ -1394,15 +1394,7 @@ export function SalesforceRevenueWizard(props: {
           {step === "review" && (
             <div className="space-y-4">
               <div className="rounded-lg border border-border bg-muted/40 p-4">
-                <div className="text-sm font-semibold text-foreground">
-                  Review Salesforce revenue settings
-                </div>
-                <div className="text-sm text-muted-foreground/70 mt-1">
-                  Confirm these details before saving.
-                  {" "}Revenue will be treated as <span className="font-medium">revenue-to-date</span> for this campaign.
-                </div>
-
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>
                     <div className="text-xs text-muted-foreground/70">Salesforce account</div>
                     <div className="font-medium text-foreground">

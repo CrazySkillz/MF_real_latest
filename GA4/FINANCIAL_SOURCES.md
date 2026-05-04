@@ -291,6 +291,8 @@ Important meaning:
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path
 - the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
+- the `Review Settings` subtitle should say `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`
+- the `Review Settings` details card should not repeat a second heading such as `Review Salesforce revenue settings`
 - the Salesforce review step should label selected CRM records as `Selected opportunity(ies)`, not generic selected values
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - if Salesforce is disconnected in edit mode, the review step should still show the saved Pipeline Proxy stage and saved proxy amount until live preview becomes available again

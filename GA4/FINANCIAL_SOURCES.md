@@ -251,6 +251,7 @@ Important meaning:
 - the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
+- the HubSpot `Review Settings` summary should label the account row as `Connected to`; if HubSpot does not return an account name, it should show `Account name unavailable` rather than `HubSpot account` or `—`
 - the HubSpot review step should label selected CRM records as `Selected deal(s)`, not generic selected values
 - the `Reconnect` action on the first HubSpot screen should render in a stable header/action area, not inside the main source-choice card or a shifting scroll region
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard

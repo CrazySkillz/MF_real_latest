@@ -1151,6 +1151,7 @@ Required reconciliation checks:
 - [ ] In `Total Revenue only` mode, verify Crosswalk shows only values backed by confirmed/Closed Won deals
 - [ ] In `Total Revenue only` mode, verify won revenue materializes into true daily rows by deal `Close Date`, not as one synthetic snapshot row
 - [ ] Confirm the final HubSpot review step is titled `Review Settings`, says `Review the settings below, then import revenue`, and the primary button says `Import revenue`
+- [ ] Confirm the final HubSpot review summary labels the account row as `Connected to` and does not show `HubSpot account` or `—`
 - [ ] Verify deal count + revenue total match what you see in HubSpot
 - [ ] If Pipeline Proxy is enabled, select a real open deal stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
 - [ ] Confirm the Overview `Pipeline Proxy` card appears because the saved HubSpot source is active, and does not depend only on a fresh proxy endpoint response

@@ -1120,9 +1120,9 @@ export function HubSpotRevenueWizard(props: {
 
 	                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>
-                      <div className="text-xs text-muted-foreground/70">HubSpot account</div>
+                      <div className="text-xs text-muted-foreground/70">Connected to</div>
                       <div className="font-medium text-foreground">
-                        {connectStatusLabel || "—"}
+                        {connectStatusLabel || "Account name unavailable"}
                       </div>
                     </div>
 

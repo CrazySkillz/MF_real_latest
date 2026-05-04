@@ -7256,7 +7256,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (infoResp.ok) {
           const info: any = await infoResp.json().catch(() => ({}));
           if (info?.portalId) portalId = String(info.portalId);
-          if (info?.accountName) portalName = String(info.accountName);
+          const accountName = info?.accountName || info?.portalName || info?.name;
+          if (accountName) portalName = String(accountName);
         }
       } catch {
         // ignore
@@ -11733,7 +11734,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (infoResp.ok) {
             const info: any = await infoResp.json().catch(() => ({}));
             if (info?.portalId) portalId = String(info.portalId);
-            if (info?.accountName) portalName = String(info.accountName);
+            const accountName = info?.accountName || info?.portalName || info?.name;
+            if (accountName) portalName = String(accountName);
             if (portalName || portalId) {
               await storage.updateHubspotConnection(String(conn.id), {
                 portalId,
